@@ -149,7 +149,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
               onClick={deselect}
             >
               <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-orange-50 border-2 border-dashed border-orange-200 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-violet-50 border-2 border-dashed border-violet-200 flex items-center justify-center">
                   <Plus size={28} className="text-primary" />
                 </div>
                 <div>
@@ -294,7 +294,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
               banner.variant === 'danger'  ? 'bg-red-50 border-red-300 text-red-700' :
               banner.variant === 'warning' ? 'bg-amber-50 border-amber-300 text-amber-700' :
               banner.variant === 'success' ? 'bg-green-50 border-green-300 text-green-700' :
-              banner.variant === 'safety'  ? 'bg-orange-50 border-orange-300 text-orange-700' :
+              banner.variant === 'safety'  ? 'bg-violet-50 border-violet-300 text-violet-800' :
               'bg-blue-50 border-blue-300 text-blue-700'
             }`}
           >

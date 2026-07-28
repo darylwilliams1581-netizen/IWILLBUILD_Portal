@@ -218,6 +218,7 @@ export const StopCircle = NullIcon;
 export const Sun = NullIcon;
 export const Table = NullIcon;
 export const Table2 = NullIcon;
+export const TableProperties = NullIcon;
 export const Tag = NullIcon;
 export const Terminal = NullIcon;
 export const Timer = NullIcon;
@@ -394,6 +395,13 @@ export const ClipboardCheck = NullIcon;
 
 // ── Additional icons ──────────────────────────────────────────────────────────
 export const AlarmClock = NullIcon;
+export const FileStack = NullIcon;
+export const CircleDashed = NullIcon;
+export const ChevronsUpDown = NullIcon;
+export const ListFilter = NullIcon;
+export const ShoppingCart = NullIcon;
+export const Milestone = NullIcon;
+export const ArrowRightLeft = NullIcon;
 
 export const Gamepad2 = NullIcon;
 

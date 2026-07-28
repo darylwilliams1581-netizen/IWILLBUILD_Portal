@@ -105,9 +105,9 @@ export default function PwaInstallPrompt() {
       aria-label="Install IWILLBUILD app"
       className="fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto"
     >
-      <div className="bg-gray-900 border border-orange-500/40 rounded-2xl shadow-2xl p-4 flex gap-3 items-start">
+      <div className="bg-gray-900 border border-violet-600/40 rounded-2xl shadow-2xl p-4 flex gap-3 items-start">
         {/* Icon */}
-        <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shrink-0 mt-0.5">
+        <div className="w-10 h-10 rounded-xl bg-violet-500 flex items-center justify-center shrink-0 mt-0.5">
           <span className="text-white font-black text-sm leading-none">IW</span>
         </div>
 
@@ -118,11 +118,11 @@ export default function PwaInstallPrompt() {
           {showIosHint ? (
             <p className="text-gray-400 text-xs mt-1 leading-relaxed">
               Tap{' '}
-              <span className="inline-flex items-center gap-0.5 text-orange-400 font-medium">
+              <span className="inline-flex items-center gap-0.5 text-violet-400 font-medium">
                 <Share size={11} className="inline" /> Share
               </span>
               {' '}then{' '}
-              <span className="text-orange-400 font-medium">Add to Home Screen</span>
+              <span className="text-violet-400 font-medium">Add to Home Screen</span>
               {' '}to install.
             </p>
           ) : (
@@ -134,7 +134,7 @@ export default function PwaInstallPrompt() {
           {!showIosHint && deferredPrompt && (
             <button
               onClick={handleInstall}
-              className="mt-2 flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+              className="mt-2 flex items-center gap-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
             >
               <Download size={12} />
               Install App

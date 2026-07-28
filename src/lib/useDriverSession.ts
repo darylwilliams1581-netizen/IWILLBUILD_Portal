@@ -7,9 +7,15 @@
  * When running inside a Capacitor native shell, GPS position updates are sent
  * via the native Geolocation plugin (more reliable, works on Android background).
  * On web, falls back to browser navigator.geolocation.
+ *
+ * GPS status heartbeat:
+ * Sends location_permission_status + gps_status to the server every 30s
+ * (and on permission/GPS state changes) so the office Fleet view can show
+ * meaningful status rather than "No GPS yet".
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getNativeGeo, isNative } from './capacitor-plugins';
+import type { GpsPermissionStatus } from './useGpsPermission';
 
 export interface DriverSession {
   id: number;
@@ -21,13 +27,29 @@ export interface DriverSession {
   source: string;
 }
 
+export type GpsStatusValue =
+  | 'live'
+  | 'waiting_permission'
+  | 'denied'
+  | 'unavailable'
+  | 'waiting_fix'
+  | 'stale';
+
 // How often to push a GPS update to the server while a session is active
 const GPS_PUSH_INTERVAL_MS = 15_000; // 15s — balance battery vs freshness
+
+// How often to send a heartbeat (permission + GPS status) even without a GPS fix
+const HEARTBEAT_INTERVAL_MS = 30_000; // 30s — matches session refresh cadence
 
 export function useDriverSession() {
   const [session, setSession] = useState<DriverSession | null | undefined>(undefined);
   const [error, setError] = useState('');
   const gpsWatchCleanupRef = useRef<(() => void) | null>(null);
+
+  // Track the latest permission + GPS status so heartbeats always send current values
+  const permStatusRef  = useRef<GpsPermissionStatus>('unknown');
+  const gpsStatusRef   = useRef<GpsStatusValue>('waiting_fix');
+  const sessionIdRef   = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -40,6 +62,24 @@ export function useDriverSession() {
     }
   }, []);
 
+  // ── Send a heartbeat (permission + GPS status) ─────────────────────────────
+  const sendHeartbeat = useCallback(async (
+    sessionId: number,
+    locationPermissionStatus: GpsPermissionStatus,
+    gpsStatus: GpsStatusValue,
+  ) => {
+    try {
+      await fetch(`/api/fleet/driver-sessions/${sessionId}/heartbeat`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationPermissionStatus, gpsStatus }),
+      });
+    } catch {
+      // Heartbeat failures are non-fatal
+    }
+  }, []);
+
   // ── Push a GPS position to the server ─────────────────────────────────────
   const pushGps = useCallback(async (sessionId: number) => {
     try {
@@ -47,6 +87,7 @@ export function useDriverSession() {
       let lng: number | null = null;
       let speed: number | null = null;
       let heading: number | null = null;
+      let accuracy: number | null = null;
 
       const geo = await getNativeGeo();
       if (geo) {
@@ -55,10 +96,11 @@ export function useDriverSession() {
           enableHighAccuracy: true,
           timeout: 10_000,
         });
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-        speed = pos.coords.speed ?? null;
-        heading = pos.coords.heading ?? null;
+        lat      = pos.coords.latitude;
+        lng      = pos.coords.longitude;
+        speed    = pos.coords.speed ?? null;
+        heading  = pos.coords.heading ?? null;
+        accuracy = pos.coords.accuracy ?? null;
       } else if (navigator.geolocation) {
         // Web browser fallback
         const pos = await new Promise<GeolocationPosition | null>((resolve) => {
@@ -69,42 +111,88 @@ export function useDriverSession() {
           );
         });
         if (pos) {
-          lat = pos.coords.latitude;
-          lng = pos.coords.longitude;
-          speed = pos.coords.speed ?? null;
-          heading = pos.coords.heading ?? null;
+          lat      = pos.coords.latitude;
+          lng      = pos.coords.longitude;
+          speed    = pos.coords.speed ?? null;
+          heading  = pos.coords.heading ?? null;
+          accuracy = pos.coords.accuracy ?? null;
         }
       }
 
-      if (lat == null || lng == null) return;
+      if (lat == null || lng == null) {
+        // Got no fix — update GPS status to waiting_fix and send heartbeat
+        if (gpsStatusRef.current !== 'denied' && gpsStatusRef.current !== 'unavailable') {
+          gpsStatusRef.current = 'waiting_fix';
+          void sendHeartbeat(sessionId, permStatusRef.current, 'waiting_fix');
+        }
+        return;
+      }
 
-      await fetch(`/api/fleet/driver-sessions/${sessionId}/gps`, {
+      // We have a fix — push to telemetry endpoint (correct endpoint: /telemetry with points array)
+      await fetch(`/api/fleet/driver-sessions/${sessionId}/telemetry`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, speed_kmh: speed != null ? speed * 3.6 : null, heading }),
+        body: JSON.stringify({
+          points: [{
+            recorded_at: new Date().toISOString(),
+            lat,
+            lng,
+            speed_kmh: speed != null ? speed * 3.6 : null,
+            heading,
+            accuracy_m: accuracy,
+          }],
+        }),
       });
+
+      // Update GPS status to live and send heartbeat
+      gpsStatusRef.current = 'live';
+      void sendHeartbeat(sessionId, permStatusRef.current, 'live');
     } catch {
       // GPS push failures are non-fatal — session continues
     }
-  }, []);
+  }, [sendHeartbeat]);
+
+  // ── Expose a method for DriverGpsStatus to report permission/GPS state ─────
+  // Called by DriverGpsStatus whenever its local state changes.
+  const reportGpsState = useCallback((
+    permStatus: GpsPermissionStatus,
+    gpsStatus: GpsStatusValue,
+  ) => {
+    permStatusRef.current = permStatus;
+    gpsStatusRef.current  = gpsStatus;
+    const sid = sessionIdRef.current;
+    if (sid != null) {
+      void sendHeartbeat(sid, permStatus, gpsStatus);
+    }
+  }, [sendHeartbeat]);
 
   // ── Start GPS push loop when session is active ─────────────────────────────
   useEffect(() => {
     if (!session?.id) {
-      // Clean up any existing GPS watch
       gpsWatchCleanupRef.current?.();
       gpsWatchCleanupRef.current = null;
+      sessionIdRef.current = null;
       return;
     }
 
     const sessionId = session.id;
+    sessionIdRef.current = sessionId;
 
-    // Push immediately on session start
+    // Send initial heartbeat immediately (even before GPS fix)
+    void sendHeartbeat(sessionId, permStatusRef.current, gpsStatusRef.current);
+
+    // Push GPS immediately on session start
     void pushGps(sessionId);
 
-    // Then push on interval
-    const interval = setInterval(() => void pushGps(sessionId), GPS_PUSH_INTERVAL_MS);
+    // GPS push interval
+    const gpsInterval = setInterval(() => void pushGps(sessionId), GPS_PUSH_INTERVAL_MS);
+
+    // Heartbeat interval — keeps office informed even when GPS is denied/unavailable
+    const heartbeatInterval = setInterval(
+      () => void sendHeartbeat(sessionId, permStatusRef.current, gpsStatusRef.current),
+      HEARTBEAT_INTERVAL_MS,
+    );
 
     // On native, also set up a continuous position watch for faster updates
     if (isNative()) {
@@ -113,18 +201,29 @@ export function useDriverSession() {
         geo.watchPosition(
           { enableHighAccuracy: true, timeout: 15_000 },
           (pos, err) => {
-            if (err || !pos) return;
-            void fetch(`/api/fleet/driver-sessions/${sessionId}/gps`, {
+            if (err || !pos) {
+              gpsStatusRef.current = 'waiting_fix';
+              void sendHeartbeat(sessionId, permStatusRef.current, 'waiting_fix');
+              return;
+            }
+            // Push to telemetry
+            void fetch(`/api/fleet/driver-sessions/${sessionId}/telemetry`, {
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                speed_kmh: pos.coords.speed != null ? pos.coords.speed * 3.6 : null,
-                heading: pos.coords.heading ?? null,
+                points: [{
+                  recorded_at: new Date().toISOString(),
+                  lat: pos.coords.latitude,
+                  lng: pos.coords.longitude,
+                  speed_kmh: pos.coords.speed != null ? pos.coords.speed * 3.6 : null,
+                  heading: pos.coords.heading ?? null,
+                  accuracy_m: pos.coords.accuracy ?? null,
+                }],
               }),
             }).catch(() => undefined);
+            // Update GPS status
+            gpsStatusRef.current = 'live';
           }
         ).then((watchId) => {
           gpsWatchCleanupRef.current = () => void geo.clearWatch({ id: watchId });
@@ -133,11 +232,12 @@ export function useDriverSession() {
     }
 
     return () => {
-      clearInterval(interval);
+      clearInterval(gpsInterval);
+      clearInterval(heartbeatInterval);
       gpsWatchCleanupRef.current?.();
       gpsWatchCleanupRef.current = null;
     };
-  }, [session?.id, pushGps]);
+  }, [session?.id, pushGps, sendHeartbeat]);
 
   useEffect(() => {
     void refresh();
@@ -151,7 +251,9 @@ export function useDriverSession() {
       credentials: 'include',
     });
     setSession(null);
+    sessionIdRef.current = null;
   }
 
-  return { session, error, refresh, stopSession };
+  return { session, error, refresh, stopSession, reportGpsState };
 }
+

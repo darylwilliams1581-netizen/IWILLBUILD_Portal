@@ -151,7 +151,7 @@ export default async function handler(req: Request, res: Response) {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b;background:#f8fafc;margin:0;padding:0">
   <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-    <div style="background:#f97316;padding:24px 32px">
+    <div style="background:#7c3aed;padding:24px 32px">
       <p style="margin:0;font-size:20px;font-weight:800;color:#fff">${companyName}</p>
       <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,.85)">Tax Invoice</p>
     </div>
@@ -161,7 +161,7 @@ export default async function handler(req: Request, res: Response) {
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:24px">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <tr><td style="color:#64748b;padding:4px 0">Invoice No</td><td style="text-align:right;font-weight:600">${invNum}</td></tr>
-          ${total   ? `<tr><td style="color:#64748b;padding:4px 0">Amount</td><td style="text-align:right;font-weight:700;color:#f97316;font-size:15px">${total}</td></tr>` : ''}
+          ${total   ? `<tr><td style="color:#64748b;padding:4px 0">Amount</td><td style="text-align:right;font-weight:700;color:#7c3aed;font-size:15px">${total}</td></tr>` : ''}
           ${dueDate ? `<tr><td style="color:#64748b;padding:4px 0">Due Date</td><td style="text-align:right;font-weight:600">${dueDate}</td></tr>` : ''}
         </table>
       </div>

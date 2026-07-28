@@ -65,7 +65,7 @@ const EST_STATUS: Record<string, { label: string; color: string; icon: React.Ele
 };
 
 const INV_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  unpaid:    { label: 'Unpaid',    color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
+  unpaid:    { label: 'Unpaid',    color: 'text-violet-800', bg: 'bg-violet-50 border-violet-200' },
   overdue:   { label: 'Overdue',   color: 'text-red-700',    bg: 'bg-red-50 border-red-200' },
   partial:   { label: 'Partial',   color: 'text-amber-700',  bg: 'bg-amber-50 border-amber-200' },
   paid:      { label: 'Paid',      color: 'text-emerald-700',bg: 'bg-emerald-50 border-emerald-200' },
@@ -118,7 +118,7 @@ export default function PortalJobDetailPage() {
       });
       const data = await res.json() as { ok?: boolean; status?: string; error?: string };
       if (data.ok) {
-        setActionDone(prev => ({ ...prev, [estId]: action }));
+        setActionDone(prev => ({ ...prev, [estId]: action === 'approve' ? 'approved' : 'declined' }));
         setEstimates(prev => prev.map(e => e.id === estId ? { ...e, status: data.status ?? e.status } : e));
         setActionEstId(null);
         setActionNotes('');
@@ -151,7 +151,7 @@ export default function PortalJobDetailPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <Loader2 size={28} className="text-orange-400 animate-spin" />
+      <Loader2 size={28} className="text-violet-400 animate-spin" />
     </div>
   );
 
@@ -160,7 +160,7 @@ export default function PortalJobDetailPage() {
       <div className="bg-white rounded-2xl border border-red-200 p-8 max-w-sm w-full text-center">
         <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
         <p className="font-semibold text-slate-700">{error}</p>
-        <Link to={`/portal/dashboard?token=${token}`} className="mt-4 inline-block text-sm text-orange-500 hover:underline">
+        <Link to={`/portal/dashboard?token=${token}`} className="mt-4 inline-block text-sm text-violet-600 hover:underline">
           ← Back to dashboard
         </Link>
       </div>
@@ -188,7 +188,7 @@ export default function PortalJobDetailPage() {
             </Link>
             <div className="flex-1" />
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-violet-500 flex items-center justify-center">
                 <Building2 size={14} className="text-white" />
               </div>
               <span className="text-sm font-semibold text-slate-600 hidden sm:block">{companyName}</span>
@@ -202,8 +202,8 @@ export default function PortalJobDetailPage() {
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl border border-slate-200 p-6">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                  <HardHat size={22} className="text-orange-500" />
+                <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                  <HardHat size={22} className="text-violet-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-400 mb-0.5">{job.job_number}</p>
@@ -295,7 +295,7 @@ export default function PortalJobDetailPage() {
                                 onChange={e => setActionNotes(e.target.value)}
                                 placeholder="Add a note (optional)…"
                                 rows={2}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400 resize-none mb-3"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400 resize-none mb-3"
                               />
                               <div className="flex gap-2">
                                 <button
@@ -369,7 +369,7 @@ export default function PortalJobDetailPage() {
                         <button
                           onClick={() => handlePay(inv.id)}
                           disabled={payingId === inv.id}
-                          className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                          className="w-full py-2.5 rounded-xl bg-violet-500 text-white text-sm font-bold hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                         >
                           {payingId === inv.id
                             ? <><Loader2 size={14} className="animate-spin" /> Redirecting to payment…</>
@@ -392,13 +392,13 @@ export default function PortalJobDetailPage() {
 
           {/* Outstanding summary */}
           {invoices.some(i => ['unpaid', 'overdue', 'partial'].includes(i.status)) && (
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center gap-3">
-              <DollarSign size={18} className="text-orange-500 shrink-0" />
+            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 flex items-center gap-3">
+              <DollarSign size={18} className="text-violet-600 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-orange-800">
+                <p className="text-sm font-bold text-violet-800">
                   Total outstanding: {fmtMoney(invoices.filter(i => ['unpaid', 'overdue', 'partial'].includes(i.status)).reduce((s, i) => s + i.total_inc_gst, 0))}
                 </p>
-                <p className="text-xs text-orange-600 mt-0.5">Pay each invoice above using the Pay button.</p>
+                <p className="text-xs text-violet-700 mt-0.5">Pay each invoice above using the Pay button.</p>
               </div>
             </div>
           )}

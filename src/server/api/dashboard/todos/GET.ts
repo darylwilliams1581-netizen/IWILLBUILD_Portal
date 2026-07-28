@@ -17,7 +17,8 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    // Fetch all open todos with job info
+    // Fetch all active (non-terminal) todos with job info
+    // Terminal statuses: Completed, Cancelled
     const todos = await db
       .select({
         id: jobTodos.id,
@@ -26,6 +27,7 @@ export default async function handler(req: Request, res: Response) {
         dueDate: jobTodos.dueDate,
         status: jobTodos.status,
         notes: jobTodos.notes,
+        assignedName: jobTodos.assignedName,
         jobName: jobs.name,
         jobNumber: jobs.jobNumber,
       })
@@ -34,6 +36,7 @@ export default async function handler(req: Request, res: Response) {
       .where(and(
         eq(jobTodos.companyId, profile.companyId),
         ne(jobTodos.status, 'Completed'),
+        ne(jobTodos.status, 'Cancelled'),
       ));
 
     const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD

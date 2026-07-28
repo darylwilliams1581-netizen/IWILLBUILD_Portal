@@ -73,7 +73,7 @@ export default class PortalErrorBoundary extends Component<Props, State> {
           <div className="flex items-center gap-3">
             <button
               onClick={this.handleRefresh}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-orange-600 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors"
             >
               <RefreshCw size={14} />
               Refresh
@@ -108,7 +108,7 @@ export default class PortalErrorBoundary extends Component<Props, State> {
         <div className="flex items-center gap-3">
           <button
             onClick={this.handleRefresh}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-violet-700 transition-colors shadow-md"
           >
             <RefreshCw size={15} />
             Refresh

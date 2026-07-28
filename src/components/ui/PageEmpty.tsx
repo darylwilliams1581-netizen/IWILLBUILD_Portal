@@ -27,7 +27,7 @@ export default function PageEmpty({ icon: Icon, heading, description, action }: 
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-5 px-5 py-2.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-xl transition-colors"
+          className="mt-5 px-5 py-2.5 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-xl transition-colors"
         >
           {action.label}
         </button>

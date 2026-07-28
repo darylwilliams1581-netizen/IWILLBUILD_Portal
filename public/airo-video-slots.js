@@ -9,11 +9,55 @@
  * Works in both dev and production modes — in dev mode the Vite plugin also handles
  * video patching via HMR, but this script acts as a fallback for direct page loads
  * (e.g. opening the preview link in a new tab without the builder parent frame).
+ *
+ * Safari notes:
+ * - muted/playsinline must be HTML attributes (set before src) + explicit play()
+ * - z-index:-1 fill videos paint behind the host's opaque background — clear it
  */
 ;(function () {
   var SLOT_PREFIX_IMAGES = '/airo-assets/images/'
   var SLOT_PREFIX_VIDEOS = '/airo-assets/videos/'
+  var BG_VIDEO_FILL_STYLE = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none;'
+  var CLEAR_BG_ATTR = 'data-airo-bg-video-clear-bg'
   var mediaTypes = {}
+
+  function configureAutoplayVideo(video) {
+    // Keep in lockstep with dev-tools/src/utils/autoplay-video.ts (parity test).
+    video.muted = true
+    video.defaultMuted = true
+    video.autoplay = true
+    video.loop = true
+    video.playsInline = true
+    video.preload = 'auto'
+    video.setAttribute('muted', '')
+    video.setAttribute('playsinline', '')
+    video.setAttribute('webkit-playsinline', '')
+    var kick = function () {
+      var p = video.play()
+      if (p && typeof p.catch === 'function') p.catch(function () {})
+    }
+    if (video.isConnected) {
+      // HAVE_CURRENT_DATA === 2 — mirror TS readyState gate
+      if (video.readyState >= 2) {
+        kick()
+      } else {
+        video.addEventListener('loadeddata', kick, { once: true })
+        // Also try immediately — Safari sometimes needs the call before loadeddata
+        kick()
+      }
+    } else if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(kick)
+    } else {
+      kick()
+    }
+  }
+
+  function prepareBackgroundVideoHost(el) {
+    var pos = window.getComputedStyle(el).position
+    if (pos === 'static') el.style.position = 'relative'
+    el.style.setProperty('background-color', 'transparent', 'important')
+    el.setAttribute(CLEAR_BG_ATTR, 'true')
+  }
 
   function extractSlotPath(url) {
     if (!url) return null
@@ -40,17 +84,14 @@
 
     var videoUrl = img.src.replace(SLOT_PREFIX_IMAGES, SLOT_PREFIX_VIDEOS)
     var video = document.createElement('video')
-    video.src = videoUrl
-    video.autoplay = true
-    video.muted = true
-    video.loop = true
-    video.playsInline = true
     video.className = img.className
     video.style.cssText = img.style.cssText
     if (img.width) video.width = img.width
     if (img.height) video.height = img.height
     video.setAttribute('data-airo-video', '')
     video.setAttribute('data-slot', slotPath)
+    configureAutoplayVideo(video)
+    video.src = videoUrl
 
     img.setAttribute('data-airo-video-patched', 'true')
     img.style.display = 'none'
@@ -85,16 +126,12 @@
       videoUrl = SLOT_PREFIX_VIDEOS + slotPath
     }
     var video = document.createElement('video')
-    video.src = videoUrl
-    video.autoplay = true
-    video.muted = true
-    video.loop = true
-    video.playsInline = true
     video.setAttribute('data-airo-bg-video', '')
     video.setAttribute('data-slot', slotPath)
-    video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;'
-    var pos = window.getComputedStyle(el).position
-    if (pos === 'static') el.style.position = 'relative'
+    video.style.cssText = BG_VIDEO_FILL_STYLE
+    configureAutoplayVideo(video)
+    video.src = videoUrl
+    prepareBackgroundVideoHost(el)
     el.insertBefore(video, el.firstChild)
   }
 

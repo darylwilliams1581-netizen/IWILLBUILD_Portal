@@ -28,6 +28,8 @@ import CompanyTab from '@/components/settings/CompanyTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
 import { Skeleton } from '@/components/ui/skeleton';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
@@ -90,7 +92,9 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Settings — IWILLBUILD Portal</title>
         <meta name="description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />
@@ -114,7 +118,7 @@ export default function SettingsPage() {
       >
         <button
           onClick={() => navigate('/home')}
-          className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm shrink-0"
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm shrink-0"
           title="Dashboard"
         >
           <Home size={18} />
@@ -122,7 +126,7 @@ export default function SettingsPage() {
         <div className="flex-1 flex flex-col items-center justify-center min-w-0">
           <h1 className="text-gray-900 font-bold text-sm leading-tight">Settings</h1>
           <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-            <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors">Home</button>
+            <button onClick={() => navigate('/home')} className="hover:text-violet-600 transition-colors">Home</button>
             <span>/</span>
             <span className="text-gray-500 font-medium">Settings</span>
           </div>

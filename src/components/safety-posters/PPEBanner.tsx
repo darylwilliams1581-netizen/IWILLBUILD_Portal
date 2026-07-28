@@ -18,7 +18,7 @@ export default function PPEBanner() {
     <div style={{
       fontFamily: 'Arial, sans-serif',
       background: '#fff',
-      border: '2px solid #f97316',
+      border: '2px solid #7c3aed',
       borderRadius: 6,
       overflow: 'hidden',
       display: 'flex',
@@ -26,7 +26,7 @@ export default function PPEBanner() {
     }}>
       {/* Left label — orange only, no black */}
       <div style={{
-        background: '#f97316',
+        background: '#7c3aed',
         padding: '8px 12px',
         display: 'flex',
         flexDirection: 'column',
@@ -64,7 +64,7 @@ export default function PPEBanner() {
               width: 34,
               height: 34,
               background: '#fff9f5',
-              border: '1.5px solid #f97316',
+              border: '1.5px solid #7c3aed',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',

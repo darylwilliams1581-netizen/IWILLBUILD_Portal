@@ -101,7 +101,7 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
       {photos.length === 0 && (
         <button
           onClick={() => fileRef.current?.click()}
-          className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-2xl hover:border-orange-300 hover:bg-orange-50/30 transition-all text-center cursor-pointer"
+          className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-2xl hover:border-violet-300 hover:bg-violet-50/30 transition-all text-center cursor-pointer"
         >
           <div className="text-slate-300 mb-3"><Camera size={32} /></div>
           <p className="text-sm font-semibold text-slate-500">No photos yet</p>
@@ -113,7 +113,7 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
       {photos.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {photos.map(photo => (
-            <div key={photo.id} className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 hover:border-orange-300 hover:shadow-md transition-all cursor-pointer"
+            <div key={photo.id} className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
               onClick={() => setLightbox(photo)}>
               <img
                 src={photo.file_path}
@@ -145,7 +145,7 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
           {/* Upload tile */}
           <button
             onClick={() => fileRef.current?.click()}
-            className="aspect-square rounded-xl border-2 border-dashed border-slate-200 hover:border-orange-300 hover:bg-orange-50/30 transition-all flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-orange-500"
+            className="aspect-square rounded-xl border-2 border-dashed border-slate-200 hover:border-violet-300 hover:bg-violet-50/30 transition-all flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-violet-600"
           >
             <Plus size={20} />
             <span className="text-[10px] font-semibold">Add</span>

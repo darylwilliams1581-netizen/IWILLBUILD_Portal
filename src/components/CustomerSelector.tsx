@@ -120,8 +120,8 @@ export default function CustomerSelector({ value, onChange, onCreateNew, disable
                 key={c.id}
                 type="button"
                 onClick={() => select(c)}
-                className={`w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-orange-50 transition-colors border-b border-slate-50 last:border-0 ${
-                  value?.id === c.id ? 'bg-orange-50' : ''
+                className={`w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-violet-50 transition-colors border-b border-slate-50 last:border-0 ${
+                  value?.id === c.id ? 'bg-violet-50' : ''
                 }`}
               >
                 <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -148,7 +148,7 @@ export default function CustomerSelector({ value, onChange, onCreateNew, disable
               <button
                 type="button"
                 onClick={() => { setOpen(false); onCreateNew(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-primary hover:bg-orange-50 rounded-lg transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-primary hover:bg-violet-50 rounded-lg transition-colors"
               >
                 <Plus size={14} />
                 Add new customer

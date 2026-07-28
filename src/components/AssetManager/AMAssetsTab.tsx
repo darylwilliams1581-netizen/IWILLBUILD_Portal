@@ -37,7 +37,7 @@ interface Asset {
 
 export const EQUIPMENT_TYPES = [
   { value: 'equipment', label: 'Equipment',   icon: Wrench,     color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  { value: 'plant',     label: 'Plant',       icon: Truck,      color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { value: 'plant',     label: 'Plant',       icon: Truck,      color: 'bg-violet-100 text-violet-800 border-violet-200' },
   { value: 'tools',     label: 'Tools',       icon: Wrench,     color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { value: 'safety',    label: 'Safety Gear', icon: ShieldCheck,color: 'bg-green-100 text-green-700 border-green-200' },
   { value: 'hire',      label: 'Hire Item',   icon: Tag,        color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -153,7 +153,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
           {ASSIGN_TYPES.map(({ id, label, icon: Icon, color }) => (
             <button key={id} onClick={() => { setType(id); setValue(''); }}
               className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${
-                type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color
+                type === id ? 'ring-2 ring-violet-600 ring-offset-1 ' + color : color
               }`}>
               <Icon size={18} /><span>{label}</span>
             </button>
@@ -174,7 +174,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
             {/* Container picker */}
             {type === 'container' && (
               <select value={value} onChange={(e) => setValue(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400 bg-white">
                 <option value="">— select container —</option>
                 {containers.map((c) => (
                   <option key={c.id} value={String(c.id)}>
@@ -187,7 +187,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
             {/* Truck picker */}
             {type === 'truck' && (
               <select value={value} onChange={(e) => setValue(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400 bg-white">
                 <option value="">— select truck —</option>
                 {trucks.map((t) => (
                   <option key={t.id} value={String(t.id)}>
@@ -201,7 +201,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
             {/* Person picker */}
             {type === 'person' && people.length > 0 && (
               <select value={value} onChange={(e) => setValue(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400 bg-white">
                 <option value="">— select person —</option>
                 {people.map((p) => <option key={p} value={p}>{p}</option>)}
                 <option value="">+ Type a new name below</option>
@@ -222,7 +222,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
                   type === 'car'       ? 'e.g. ABC-123' :
                   'Container ID'
                 }
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
             )}
           </div>
         )}
@@ -230,7 +230,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
         <div className="flex gap-2 justify-end pt-1">
           <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
           <button onClick={save} disabled={!type || !value.trim() || saving}
-            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg disabled:opacity-40">
+            className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg disabled:opacity-40">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
             Assign {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}
           </button>
@@ -270,20 +270,20 @@ function AddForm({ onSave, onCancel, saving }: {
           <div key={k}>
             <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
             <input value={form[k]} onChange={set(k)} placeholder={ph}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
           </div>
         ))}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Category</label>
           <select value={form.asset_type} onChange={set('asset_type')}
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30">
+            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30">
             {EQUIPMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Owned / Hire</label>
           <select value={form.purchase_or_hire} onChange={set('purchase_or_hire')}
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30">
+            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30">
             <option value="owned">Owned</option>
             <option value="hire">Hire</option>
           </select>
@@ -297,14 +297,14 @@ function AddForm({ onSave, onCancel, saving }: {
           <div key={k}>
             <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
             <input value={form[k]} onChange={set(k)} placeholder={ph}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
           </div>
         ))}
       </div>
       <div className="flex items-center gap-2 justify-end pt-1">
         <button onClick={onCancel} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
         <button onClick={() => onSave(form)} disabled={saving || !form.name.trim()}
-          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+          className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
           {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
           Add Equipment
         </button>
@@ -323,7 +323,7 @@ function ChildRow({ asset, isLast, onSelect }: {
   return (
     <div
       onClick={() => onSelect(asset.id)}
-      className={`px-4 py-2.5 flex items-center gap-3 hover:bg-orange-50/40 transition-colors cursor-pointer group/child ${
+      className={`px-4 py-2.5 flex items-center gap-3 hover:bg-violet-50/40 transition-colors cursor-pointer group/child ${
         !isLast ? 'border-b border-slate-100' : ''
       }`}
     >
@@ -347,7 +347,7 @@ function ChildRow({ asset, isLast, onSelect }: {
           </div>
         )}
       </div>
-      <ChevronRight size={12} className="text-slate-300 shrink-0 group-hover/child:text-orange-400 transition-colors" />
+      <ChevronRight size={12} className="text-slate-300 shrink-0 group-hover/child:text-violet-400 transition-colors" />
     </div>
   );
 }
@@ -386,13 +386,13 @@ function GroupHeader({
   return (
     <div className="flex flex-col">
       <div
-        className={`border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-orange-300 hover:shadow-sm transition-all group ${
-          selected ? 'border-orange-400 bg-orange-50/40' : 'border-slate-200 bg-white'
+        className={`border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-violet-300 hover:shadow-sm transition-all group ${
+          selected ? 'border-violet-400 bg-violet-50/40' : 'border-slate-200 bg-white'
         } ${isExpanded && hasChildren ? 'rounded-b-none border-b-0' : ''}`}
       >
         {/* Checkbox */}
-        <button onClick={onToggleSelect} className="shrink-0 text-slate-300 hover:text-orange-500 transition-colors">
-          {selected ? <CheckSquare size={16} className="text-orange-500" /> : <Square size={16} />}
+        <button onClick={onToggleSelect} className="shrink-0 text-slate-300 hover:text-violet-600 transition-colors">
+          {selected ? <CheckSquare size={16} className="text-violet-600" /> : <Square size={16} />}
         </button>
 
         {/* Expand toggle */}
@@ -480,11 +480,11 @@ function AssetRow({ asset, selected, onToggleSelect, onSelect, onArchive, onDele
   const isOverdue = (d: string | null) => !!d && new Date(d) < new Date();
 
   return (
-    <div className={`bg-white border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-orange-300 hover:shadow-sm transition-all group ${
-      selected ? 'border-orange-400 bg-orange-50/40' : 'border-slate-200'
+    <div className={`bg-white border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-violet-300 hover:shadow-sm transition-all group ${
+      selected ? 'border-violet-400 bg-violet-50/40' : 'border-slate-200'
     }`}>
-      <button onClick={(e) => onToggleSelect(asset.id, e)} className="shrink-0 text-slate-300 hover:text-orange-500 transition-colors">
-        {selected ? <CheckSquare size={16} className="text-orange-500" /> : <Square size={16} />}
+      <button onClick={(e) => onToggleSelect(asset.id, e)} className="shrink-0 text-slate-300 hover:text-violet-600 transition-colors">
+        {selected ? <CheckSquare size={16} className="text-violet-600" /> : <Square size={16} />}
       </button>
 
       <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 cursor-pointer"
@@ -551,7 +551,7 @@ function AssetRow({ asset, selected, onToggleSelect, onSelect, onArchive, onDele
         )}
       </div>
 
-      <ChevronRight size={14} className="text-slate-300 shrink-0 group-hover:text-orange-400 transition-colors" />
+      <ChevronRight size={14} className="text-slate-300 shrink-0 group-hover:text-violet-400 transition-colors" />
     </div>
   );
 }
@@ -693,10 +693,10 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search equipment..."
-            className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+            className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
         </div>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 text-slate-600">
+          className="px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600/30 text-slate-600">
           <option value="">All categories</option>
           {EQUIPMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
@@ -707,7 +707,7 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
           <Archive size={13} />{showArchived ? 'Archived' : 'Active'}
         </button>
         <button onClick={() => setShowAdd((v) => !v)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
+          className="flex items-center gap-1.5 px-3 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors">
           {showAdd ? <X size={13} /> : <Plus size={13} />}
           {showAdd ? 'Cancel' : 'Add'}
         </button>
@@ -720,9 +720,9 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
         <div className="flex items-center gap-3 px-1">
           <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors">
             {selectedIds.length === assets.length && assets.length > 0
-              ? <CheckSquare size={15} className="text-orange-500" />
+              ? <CheckSquare size={15} className="text-violet-600" />
               : selectedIds.length > 0
-                ? <CheckSquare size={15} className="text-orange-300" />
+                ? <CheckSquare size={15} className="text-violet-300" />
                 : <Square size={15} />
             }
             <span>{selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}</span>
@@ -731,7 +731,7 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
             <>
               <div className="h-4 w-px bg-slate-200" />
               <button onClick={() => setShowBulkAssign(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors">
                 <Briefcase size={12} /> Assign {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}
               </button>
               <button onClick={() => setSelectedIds([])} className="text-xs text-slate-600 hover:text-slate-800 transition-colors">Clear</button>

@@ -80,7 +80,7 @@ export default async function handler(req: Request, res: Response) {
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:8px;">
           <div style="background:#0f172a;padding:20px 24px;border-radius:6px 6px 0 0;margin-bottom:0;">
-            <span style="color:#f97316;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
+            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
             <span style="color:#94a3b8;font-size:14px;margin-left:12px;">New Website Enquiry</span>
           </div>
           <div style="background:#ffffff;padding:24px;border-radius:0 0 6px 6px;border:1px solid #e2e8f0;border-top:none;">
@@ -91,7 +91,7 @@ export default async function handler(req: Request, res: Response) {
               </tr>
               <tr>
                 <td style="padding:8px 0;color:#64748b;font-size:13px;vertical-align:top;">Email</td>
-                <td style="padding:8px 0;color:#0f172a;font-size:14px;"><a href="mailto:${senderEmail}" style="color:#f97316;">${senderEmail}</a></td>
+                <td style="padding:8px 0;color:#0f172a;font-size:14px;"><a href="mailto:${senderEmail}" style="color:#7c3aed;">${senderEmail}</a></td>
               </tr>
               <tr>
                 <td style="padding:8px 0;color:#64748b;font-size:13px;vertical-align:top;">Phone</td>
@@ -120,7 +120,7 @@ export default async function handler(req: Request, res: Response) {
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:8px;">
           <div style="background:#0f172a;padding:20px 24px;border-radius:6px 6px 0 0;">
-            <span style="color:#f97316;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
+            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
           </div>
           <div style="background:#ffffff;padding:28px 24px;border-radius:0 0 6px 6px;border:1px solid #e2e8f0;border-top:none;">
             <p style="color:#0f172a;font-size:16px;font-weight:600;margin:0 0 12px;">Hi ${senderName},</p>
@@ -130,7 +130,7 @@ export default async function handler(req: Request, res: Response) {
             <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 24px;">
               In the meantime, feel free to explore the portal or start your free 30-day trial.
             </p>
-            <a href="https://iwillbuild.com/signup" style="display:inline-block;background:#f97316;color:#ffffff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:6px;text-decoration:none;">
+            <a href="https://iwillbuild.com/signup" style="display:inline-block;background:#7c3aed;color:#ffffff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:6px;text-decoration:none;">
               Start Free Trial
             </a>
             <hr style="border:none;border-top:1px solid #f1f5f9;margin:28px 0 16px;" />

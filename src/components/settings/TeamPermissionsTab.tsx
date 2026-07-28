@@ -21,7 +21,7 @@ type Role   = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonl
 type Status = 'active' | 'invited' | 'inactive';
 
 const ROLE_CONFIG: Record<Role, { label: string; color: string; bg: string; border: string; avatarBg: string; icon: React.ElementType }> = {
-  owner:      { label: 'Owner',      color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-300',  avatarBg: 'from-amber-500 to-orange-600',   icon: Crown },
+  owner:      { label: 'Owner',      color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-300',  avatarBg: 'from-amber-500 to-violet-700',   icon: Crown },
   admin:      { label: 'Admin',      color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200',   avatarBg: 'from-blue-500 to-blue-700',      icon: Shield },
   manager:    { label: 'Manager',    color: 'text-violet-700',  bg: 'bg-violet-50',  border: 'border-violet-200', avatarBg: 'from-violet-500 to-violet-700',  icon: UserCheck },
   supervisor: { label: 'Supervisor', color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200', avatarBg: 'from-indigo-500 to-indigo-700',  icon: HardHat },
@@ -211,7 +211,7 @@ function InlineEditor({
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving || (targetIsOwner && !callerIsOwner)}
-            className="flex-1 bg-primary hover:bg-orange-600 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60">
+            className="flex-1 bg-primary hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
             Save Changes
           </button>

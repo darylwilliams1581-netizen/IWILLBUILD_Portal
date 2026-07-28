@@ -147,7 +147,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center">
               <FileUp size={15} className="text-primary" />
             </div>
             <div>
@@ -193,7 +193,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => inputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary hover:bg-orange-50/30 transition-colors"
+                className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary hover:bg-violet-50/30 transition-colors"
               >
                 {mode === 'docx'
                   ? <FileText size={32} className="text-slate-300" />
@@ -231,7 +231,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
               <button
                 onClick={() => void handleParse()}
                 disabled={!file || loading}
-                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading
                   ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing…' : 'Saving & Parsing…'}</>
@@ -291,7 +291,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
                   {preview.blocks.map((b, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-slate-600 py-0.5">
                       <span className="w-5 h-5 rounded bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">{i + 1}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-orange-50 text-primary text-[10px] font-mono">{b.type}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-violet-50 text-primary text-[10px] font-mono">{b.type}</span>
                       <span className="truncate text-slate-500">
                         {b.type === 'heading' ? b.content
                           : b.type === 'text' ? b.content
@@ -322,7 +322,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
                         key={value}
                         onClick={() => setInsertMode(value)}
                         className={`flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                          insertMode === value ? 'bg-orange-50' : 'hover:bg-slate-50'
+                          insertMode === value ? 'bg-violet-50' : 'hover:bg-slate-50'
                         }`}
                       >
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
@@ -357,7 +357,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
                   className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors ${
                     insertMode === 'replace' && hasExistingBlocks
                       ? 'bg-red-500 hover:bg-red-600'
-                      : 'bg-primary hover:bg-orange-600'
+                      : 'bg-primary hover:bg-violet-700'
                   }`}
                 >
                   {insertMode === 'replace' && hasExistingBlocks ? 'Replace & Apply' : 'Apply to Canvas'}

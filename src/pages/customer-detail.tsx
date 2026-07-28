@@ -189,7 +189,7 @@ export default function CustomerDetailPage() {
                   <button
                     onClick={sendPortalInvite}
                     disabled={inviteSending || !customer.email}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                   >
                     {inviteSending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                     {inviteSending ? 'Sending…' : 'Send invite'}
@@ -266,7 +266,7 @@ export default function CustomerDetailPage() {
                       <Link
                         key={j.id}
                         to={`/jobs/${j.id}`}
-                        className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-orange-50/30 transition-all group"
+                        className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-violet-50/30 transition-all group"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">

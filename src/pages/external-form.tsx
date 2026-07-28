@@ -676,7 +676,7 @@ export default function ExternalFormPage() {
                     type="button"
                     onClick={() => void handleNext()}
                     disabled={saving}
-                    className="flex items-center gap-1.5 text-sm bg-primary hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-sm bg-primary hover:bg-violet-700 text-white px-5 py-2.5 rounded-xl font-bold transition-colors disabled:opacity-50"
                   >
                     {saving ? <Loader2 size={14} className="animate-spin" /> : null}
                     Next

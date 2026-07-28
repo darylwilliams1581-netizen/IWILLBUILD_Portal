@@ -133,7 +133,7 @@ function CategoryFilter({ selected, onChange, counts, total }: CategoryFilterPro
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${
           open || !isAll
-            ? 'border-primary bg-orange-50 text-primary'
+            ? 'border-primary bg-violet-50 text-primary'
             : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
         }`}
       >
@@ -160,7 +160,7 @@ function CategoryFilter({ selected, onChange, counts, total }: CategoryFilterPro
                   type="button"
                   onClick={() => toggle(cat)}
                   className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                    checked ? 'bg-orange-50 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-50'
+                    checked ? 'bg-violet-50 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -393,7 +393,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
         </div>
         <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
           <div
-            className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-orange-50 transition-colors"
+            className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-violet-50 transition-colors"
             onClick={() => inputRef.current?.click()}
           >
             <input ref={inputRef} type="file" accept={ALLOWED_EXTENSIONS} className="hidden" onChange={handleFileChange} />
@@ -744,7 +744,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs text-slate-500">Showing:</span>
           {[...selectedCats].map((cat) => (
-            <span key={cat} className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-50 text-primary border border-orange-200 px-2 py-0.5 rounded-full">
+            <span key={cat} className="inline-flex items-center gap-1 text-xs font-semibold bg-violet-50 text-primary border border-violet-200 px-2 py-0.5 rounded-full">
               {cat}
               <button onClick={() => {
                 const next = new Set(selectedCats);
@@ -839,7 +839,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => window.open(`/view/file/${f.id}`, '_blank', 'noopener,noreferrer')}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Open in new tab"
                   >
                     <ExternalLink size={15} />
@@ -852,7 +852,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
                       linkType: 'file_transfer',
                       defaultPermissions: ['view', 'download'],
                     })}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Share / QR"
                   >
                     <Link2 size={15} />
@@ -884,7 +884,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
                   )}
                   <button
                     onClick={() => downloadFile(f.id, f.originalName)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Download"
                   >
                     <Download size={15} />

@@ -35,7 +35,7 @@ export default function PortalPaymentSuccessPage() {
           </p>
           <Link
             to={`/portal/dashboard?token=${token}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-bold hover:bg-violet-700 transition-colors"
           >
             <ArrowLeft size={14} /> Back to portal
           </Link>

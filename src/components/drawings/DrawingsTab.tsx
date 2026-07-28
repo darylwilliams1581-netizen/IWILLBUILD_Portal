@@ -93,7 +93,7 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">Drawing File <span className="text-red-500">*</span></label>
             <div onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:border-primary/50 hover:bg-orange-50/30'}`}>
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:border-primary/50 hover:bg-violet-50/30'}`}>
               {file ? (
                 <div className="flex items-center justify-center gap-2">
                   <Check size={16} className="text-emerald-600" />
@@ -159,7 +159,7 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
             <button type="button" onClick={onClose} disabled={uploading}
               className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
             <button type="submit" disabled={uploading || !file}
-              className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {uploading ? 'Uploading…' : 'Upload Drawing'}
             </button>
@@ -191,7 +191,7 @@ function EditRow({ drawing, onSave, onCancel, showDisciplineCol }: {
   }
 
   return (
-    <tr className="bg-orange-50/40">
+    <tr className="bg-violet-50/40">
       <td className="px-3 py-2"><input value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs" placeholder="No." /></td>
       <td className="px-3 py-2"><input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs" /></td>
       <td className="px-3 py-2"><input value={revision} onChange={(e) => setRevision(e.target.value)} className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs" /></td>
@@ -300,7 +300,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
             {groupByDiscipline ? 'Flat list' : 'Group by discipline'}
           </button>
           <button onClick={() => setShowUpload(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-xs font-bold transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-xs font-bold transition-colors">
             <Plus size={13} /> Upload Drawing
           </button>
         </div>
@@ -319,7 +319,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
           <p className="text-sm font-semibold text-slate-500">No drawings yet</p>
           <p className="text-xs text-slate-400">Upload a PDF or DWG to start the drawing register.</p>
           <button onClick={() => setShowUpload(true)}
-            className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold">
+            className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold">
             <Upload size={14} /> Upload First Drawing
           </button>
         </div>
@@ -376,7 +376,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
                               <div className="flex items-center gap-2 min-w-0">
                                 {pdf ? <FileText size={13} className="text-red-500 shrink-0" /> : <FileX size={13} className="text-slate-400 shrink-0" />}
                                 <span className="text-sm font-semibold text-slate-800 truncate max-w-[200px]">{drawing.title}</span>
-                                {hasMarkup && <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">Marked up</span>}
+                                {hasMarkup && <span className="text-[10px] bg-violet-100 text-violet-800 font-bold px-1.5 py-0.5 rounded-full shrink-0">Marked up</span>}
                               </div>
                               {drawing.file_name && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[220px]">{drawing.file_name}</p>}
                             </td>
@@ -410,7 +410,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
                                 </a>
                                 {hasMarkup && drawing.marked_up_file_id && (
                                   <a href={fileServePath(drawing.marked_up_file_id)} download title="Download marked-up copy"
-                                    className="p-1.5 rounded-lg text-orange-500 hover:bg-orange-50 transition-colors">
+                                    className="p-1.5 rounded-lg text-violet-600 hover:bg-violet-50 transition-colors">
                                     <Download size={13} />
                                   </a>
                                 )}

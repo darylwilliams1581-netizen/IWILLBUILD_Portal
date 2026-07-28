@@ -10,13 +10,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Car, FileText, StickyNote, BookOpen,
-  Clock, TrendingUp, Calculator, Receipt, Users,
-  HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
-  Building2, Layers, Settings, CreditCard, Wrench,
-  ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
-  User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  HardHat as HardHatIcon, Navigation, ClipboardCheck, Ruler, ClipboardList,
-  History, ShieldAlert,
+  Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
+  Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
+  LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
+  Zap, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -34,7 +31,6 @@ import NotificationBell from '@/components/NotificationBell';
 import {
   resolveHomeIcons, type HomeIconDef,
 } from '@/lib/homeIcons';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
@@ -52,61 +48,77 @@ const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
 function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: string) => void }) {
   const Icon = item.icon;
   return (
+    /*
+     * Fixed-width cell — every tile is exactly the same width so the grid
+     * columns stay perfectly aligned at all phone widths (375 / 390 / 430 px).
+     * The outer button is the grid cell; it does NOT grow or shrink.
+     * w-full fills the grid column; items-center centres the icon + label.
+     */
     <motion.button
-      whileTap={{ scale: 0.86 }}
-      whileHover={{ scale: 1.07, y: -3 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+      whileTap={{ scale: 0.88 }}
+      whileHover={{ scale: 1.06, y: -2 }}
+      transition={{ type: 'spring', stiffness: 440, damping: 20 }}
       onClick={() => onNavigate(item.href)}
-      className="flex flex-col items-center gap-[7px] group outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 rounded-[22px]"
+      className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+      style={{ gap: '5px' }}
     >
-      {/* Tile */}
+      {/* Icon tile — slightly smaller on mobile (54 px) vs desktop (66 px) */}
       <div
-        className={`w-[60px] h-[60px] sm:w-[68px] sm:h-[68px] rounded-[18px] sm:rounded-[20px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden`}
+        className={`w-[54px] h-[54px] sm:w-[66px] sm:h-[66px] rounded-[14px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden flex-shrink-0`}
         style={{
-          boxShadow: '0 4px 12px rgba(0,0,0,0.20), 0 1px 3px rgba(0,0,0,0.10)',
+          boxShadow: '0 3px 8px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10)',
         }}
       >
         {/* Top-left gloss sheen */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)',
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)',
           }}
         />
         {/* Bottom inner shadow for depth */}
         <div
           className="absolute inset-0 pointer-events-none rounded-[inherit]"
-          style={{
-            boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.15)',
-          }}
+          style={{ boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.12)' }}
         />
-        <Icon size={25} strokeWidth={1.75} className="sm:hidden relative z-10 drop-shadow-sm" />
-        <Icon size={29} strokeWidth={1.75} className="hidden sm:block relative z-10 drop-shadow-sm" />
+        {/* Icon — single element, size controlled via CSS class */}
+        <Icon size={21} strokeWidth={1.8} className="home-icon-glyph relative z-10 drop-shadow-sm" />
         {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
-      {/* Label */}
-      <span className="text-[10.5px] sm:text-[11.5px] text-gray-800 font-semibold text-center leading-[1.25] max-w-[66px] sm:max-w-[76px] tracking-[-0.01em]">
+
+      {/*
+       * Label — fixed two-line reserved area so every cell is the same height
+       * regardless of label length.  Long labels clamp with ellipsis after
+       * line 2 and never push the row taller.
+       *
+       * Height maths (mobile):
+       *   font-size  9px  ×  line-height 1.25  =  11.25 px / line
+       *   2 lines                               =  22.5 px  → round to 23 px
+       *   We use minHeight: '23px' so single-line labels still reserve the
+       *   same vertical space as two-line labels.
+       */}
+      <span
+        className="text-[9px] sm:text-[11px] text-gray-800 font-semibold text-center w-full px-0.5"
+        style={{
+          lineHeight: 1.25,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          minHeight: '23px',
+          wordBreak: 'break-word',
+          hyphens: 'auto',
+        }}
+      >
         {item.label}
       </span>
     </motion.button>
   );
 }
-
-// ── Filter chip types ─────────────────────────────────────────────────────────
-
-type FilterTab = 'all' | 'field' | 'safety' | 'tools' | 'management';
-
-const FILTER_TABS: { id: FilterTab; label: string }[] = [
-  { id: 'all',        label: 'All' },
-  { id: 'field',      label: 'Field' },
-  { id: 'safety',     label: 'Safety' },
-  { id: 'tools',      label: 'Tools' },
-  { id: 'management', label: 'Management' },
-];
 
 // ── Shared sheet backdrop + panel ─────────────────────────────────────────────
 
@@ -128,7 +140,7 @@ function Sheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
@@ -136,7 +148,7 @@ function Sheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden"
             style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
           >
             {/* Handle */}
@@ -199,7 +211,7 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
@@ -207,8 +219,11 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
@@ -219,8 +234,8 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <Camera size={15} className="text-orange-500" />
+                <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                  <Camera size={15} className="text-violet-600" />
                 </div>
                 <div>
                   <h2 className="text-gray-900 font-bold text-base">Select Job</h2>
@@ -239,7 +254,7 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <div className="w-6 h-6 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
                 </div>
               ) : jobs.length === 0 ? (
                 <div className="text-center py-10">
@@ -251,10 +266,10 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
                   <button
                     key={job.id}
                     onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
+                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                      <Camera size={16} className="text-orange-500" />
+                    <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                      <Camera size={16} className="text-violet-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
@@ -268,8 +283,8 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
               )}
             </div>
 
-            {/* Safe area spacer */}
-            <div className="h-4 shrink-0" />
+            {/* Safe area spacer — clears iPhone home indicator */}
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -308,14 +323,17 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -369,7 +387,7 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
                 ))
               )}
             </div>
-            <div className="h-4 shrink-0" />
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -408,14 +426,17 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -469,7 +490,7 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
                 ))
               )}
             </div>
-            <div className="h-4 shrink-0" />
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -501,10 +522,13 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   const [reference, setReference] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoIsHeic, setPhotoIsHeic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Track blob URL so we can revoke it on unmount / clear
+  const photoBlobRef = useRef<string | null>(null);
 
   // Load jobs on open
   useEffect(() => {
@@ -520,7 +544,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
       .finally(() => setJobsLoading(false));
   }, [open]);
 
-  // Reset on close
+  // Reset on close — also revoke any blob URL
   useEffect(() => {
     if (!open) {
       setSelectedJob(null);
@@ -529,8 +553,14 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
       setAmount('');
       setEntryDate(new Date().toISOString().slice(0, 10));
       setReference('');
+      // Revoke blob URL before clearing
+      if (photoBlobRef.current) {
+        URL.revokeObjectURL(photoBlobRef.current);
+        photoBlobRef.current = null;
+      }
       setPhotoFile(null);
       setPhotoPreview(null);
+      setPhotoIsHeic(false);
       setSaved(false);
       setError('');
     }
@@ -539,10 +569,37 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+
+    // Revoke previous blob URL to avoid memory leak
+    if (photoBlobRef.current) {
+      URL.revokeObjectURL(photoBlobRef.current);
+      photoBlobRef.current = null;
+    }
+
+    // Detect HEIC — WKWebView cannot render HEIC in an <img> tag
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    const isHeic = f.type === 'image/heic' || f.type === 'image/heif' ||
+                   ext === 'heic' || ext === 'heif';
+
     setPhotoFile(f);
-    const reader = new FileReader();
-    reader.onload = ev => setPhotoPreview(ev.target?.result as string);
-    reader.readAsDataURL(f);
+    setPhotoIsHeic(isHeic);
+
+    if (isHeic) {
+      // No preview available — show placeholder instead
+      setPhotoPreview(null);
+    } else {
+      // Use createObjectURL — never FileReader.readAsDataURL which can OOM on iOS
+      try {
+        const url = URL.createObjectURL(f);
+        photoBlobRef.current = url;
+        setPhotoPreview(url);
+      } catch {
+        setPhotoPreview(null);
+      }
+    }
+
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
   }
 
   async function handleSubmit() {
@@ -587,14 +644,17 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
@@ -672,12 +732,35 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
                       {/* Receipt photo */}
                       <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Receipt Photo <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
-                        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handlePhoto} />
-                        {photoPreview ? (
-                          <div className="relative w-full h-36 rounded-xl overflow-hidden border border-gray-200">
-                            <img src={photoPreview} alt="Receipt" className="w-full h-full object-cover" />
+                        {/* No capture="environment" — let iOS show the full picker (camera + library).
+                            capture= forces camera-only and can crash if permission not yet granted. */}
+                        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handlePhoto} />
+                        {photoFile ? (
+                          <div className="relative w-full rounded-xl overflow-hidden border border-gray-200">
+                            {photoPreview ? (
+                              <img
+                                src={photoPreview}
+                                alt="Receipt"
+                                className="w-full h-36 object-cover"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : photoIsHeic ? (
+                              /* HEIC cannot be previewed in WKWebView — show a placeholder */
+                              <div className="w-full h-24 flex flex-col items-center justify-center gap-1.5 bg-slate-100">
+                                <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">HEIC</span>
+                                <span className="text-xs text-slate-400">{photoFile.name}</span>
+                                <span className="text-[10px] text-slate-400">Will upload correctly</span>
+                              </div>
+                            ) : (
+                              <div className="w-full h-24 flex items-center justify-center bg-slate-100">
+                                <span className="text-xs text-slate-400">{photoFile.name}</span>
+                              </div>
+                            )}
                             <button
-                              onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                              onClick={() => {
+                                if (photoBlobRef.current) { URL.revokeObjectURL(photoBlobRef.current); photoBlobRef.current = null; }
+                                setPhotoFile(null); setPhotoPreview(null); setPhotoIsHeic(false);
+                              }}
                               className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-white"
                             >
                               <X size={12} />
@@ -777,7 +860,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
 
             {/* Footer CTA */}
             {!saved && selectedJob && (
-              <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
+              <div className="px-4 pt-3 border-t border-gray-100 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}>
                 <button
                   onClick={() => void handleSubmit()}
                   disabled={saving}
@@ -954,12 +1037,15 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
@@ -1003,6 +1089,7 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
                 </button>
               ))}
             </div>
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1060,6 +1147,364 @@ function RiskyJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
+// ── Phone Job Card creation sheet ─────────────────────────────────────────────
+// 3-step flow: form → completion (photos + sign-off) → done
+// Keeps each step focused and field-first.
+function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  const [step, setStep] = useState<'form' | 'completion' | 'done'>('form');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [createdId, setCreatedId] = useState<number | null>(null);
+  const [createdNum, setCreatedNum] = useState('');
+  const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
+  const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
+
+  // Step 1: core fields
+  const [form, setForm] = useState({
+    customerId: '',
+    customerNameOverride: '',
+    siteAddress: '',
+    serviceDate: new Date().toISOString().slice(0, 10),
+    assignedUserId: '',
+    workDescription: '',
+    labourHours: '',
+    labourRate: '',
+  });
+
+  // Step 2: completion fields
+  const [completionSummary, setCompletionSummary] = useState('');
+  const [authorisedBy, setAuthorisedBy] = useState('');
+  const [approvalDate, setApprovalDate] = useState(new Date().toISOString().slice(0, 10));
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setStep('form');
+    setError('');
+    setCreatedId(null);
+    setCreatedNum('');
+    setForm({
+      customerId: '', customerNameOverride: '', siteAddress: '',
+      serviceDate: new Date().toISOString().slice(0, 10),
+      assignedUserId: '', workDescription: '', labourHours: '', labourRate: '',
+    });
+    setCompletionSummary('');
+    setAuthorisedBy('');
+    setApprovalDate(new Date().toISOString().slice(0, 10));
+    setPhotoFiles([]);
+    setPhotoPreviewUrls([]);
+    fetch('/api/customers?status=active&limit=200', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { customers?: { id: number; name: string }[] } | null) => setCustomers(d?.customers ?? []))
+      .catch(() => {});
+    fetch('/api/team/members', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { members?: { id: string; name: string }[] } | null) => setTeam(d?.members ?? []))
+      .catch(() => {});
+  }, [open]);
+
+  function setF(k: keyof typeof form, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  function handlePhotoFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const newFiles = Array.from(files);
+    setPhotoFiles(prev => [...prev, ...newFiles]);
+    newFiles.forEach(f => {
+      const url = URL.createObjectURL(f);
+      setPhotoPreviewUrls(prev => [...prev, url]);
+    });
+  }
+
+  function removePhoto(i: number) {
+    URL.revokeObjectURL(photoPreviewUrls[i]);
+    setPhotoFiles(prev => prev.filter((_, idx) => idx !== i));
+    setPhotoPreviewUrls(prev => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function handleCreate() {
+    if (!form.workDescription.trim()) { setError('Work description is required'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const body: Record<string, unknown> = {
+        workDescription: form.workDescription,
+        siteAddress: form.siteAddress || undefined,
+        serviceDate: form.serviceDate || undefined,
+        completionSummary: completionSummary || undefined,
+        authorisedBy: authorisedBy || undefined,
+        approvalDate: approvalDate || undefined,
+        status: completionSummary || authorisedBy ? 'complete' : 'draft',
+      };
+      if (form.customerId) body.customerId = Number(form.customerId);
+      else if (form.customerNameOverride) body.customerNameOverride = form.customerNameOverride;
+      if (form.assignedUserId) {
+        body.assignedUserId = form.assignedUserId;
+        const m = team.find(t => t.id === form.assignedUserId);
+        if (m) body.assignedName = m.name;
+      }
+      if (form.labourHours) body.labourHours = Number(form.labourHours);
+      if (form.labourRate) body.labourRate = Number(form.labourRate);
+
+      const res = await fetch('/api/job-cards', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json() as { jobCard?: { id: number; card_number: string }; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      const newId = data.jobCard!.id;
+      setCreatedId(newId);
+      setCreatedNum(data.jobCard!.card_number);
+
+      // Upload photos if any
+      if (photoFiles.length > 0) {
+        const fd = new FormData();
+        photoFiles.forEach(f => fd.append('photos', f));
+        await fetch(`/api/job-cards/${newId}/photos`, {
+          method: 'POST', credentials: 'include', body: fd,
+        }).catch(() => {}); // non-fatal
+      }
+
+      setStep('done');
+    } catch (err) {
+      setError(String((err as Error).message));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-3 text-[15px] text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-white';
+  const labelCls = 'block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1';
+
+  return (
+    <Sheet open={open} onClose={onClose} title="New Job Card" titleIcon={Zap} titleIconClass="text-yellow-500">
+      {step === 'done' ? (
+        /* ── Done ── */
+        <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 size={28} className="text-green-600" />
+          </div>
+          <div>
+            <p className="text-[17px] font-bold text-gray-900">Job Card created</p>
+            <p className="text-[13px] text-gray-400 mt-1 font-mono">{createdNum}</p>
+            {photoFiles.length > 0 && (
+              <p className="text-[12px] text-gray-400 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <button
+              onClick={() => { onClose(); navigate(`/job-cards/${createdId}`); }}
+              className="w-full py-3 rounded-xl bg-yellow-500 text-white font-bold text-[15px] hover:bg-yellow-600 transition-colors"
+            >
+              Open Job Card
+            </button>
+            <button
+              onClick={() => { onClose(); navigate('/job-cards'); }}
+              className="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-[14px] hover:bg-gray-200 transition-colors"
+            >
+              View all Job Cards
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-gray-400 text-[13px] font-medium hover:text-gray-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+      ) : step === 'completion' ? (
+        /* ── Step 2: Completion + Photos ── */
+        <div className="flex flex-col gap-4 pb-6">
+          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-100 rounded-xl text-[12px] text-yellow-700">
+            <CheckCircle2 size={13} className="shrink-0" />
+            <span>Optional — add completion details and photos before saving</span>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              <AlertTriangle size={14} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Labour */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Labour hours</label>
+              <input type="number" min="0" step="0.25" value={form.labourHours} onChange={e => setF('labourHours', e.target.value)}
+                placeholder="0.00" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Rate ($/hr)</label>
+              <input type="number" min="0" step="0.01" value={form.labourRate} onChange={e => setF('labourRate', e.target.value)}
+                placeholder="0.00" className={inputCls} />
+            </div>
+          </div>
+
+          {/* Completion summary */}
+          <div>
+            <label className={labelCls}>Work completed / report</label>
+            <textarea value={completionSummary} onChange={e => setCompletionSummary(e.target.value)}
+              rows={3} placeholder="Summary of work completed…"
+              className={`${inputCls} resize-none`} />
+          </div>
+
+          {/* Authorised by + date */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Authorised by</label>
+              <input type="text" value={authorisedBy} onChange={e => setAuthorisedBy(e.target.value)}
+                placeholder="Customer name" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Sign date</label>
+              <input type="date" value={approvalDate} onChange={e => setApprovalDate(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+
+          {/* Photos */}
+          <div>
+            <label className={labelCls}>Photos</label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              capture="environment"
+              className="hidden"
+              onChange={e => handlePhotoFiles(e.target.files)}
+            />
+            {photoPreviewUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {photoPreviewUrls.map((url, i) => (
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-[13px] font-medium flex items-center justify-center gap-2 hover:border-yellow-300 hover:text-yellow-600 transition-colors"
+            >
+              <Camera size={16} />
+              {photoPreviewUrls.length > 0 ? 'Add more photos' : 'Take or choose photos'}
+            </button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => void handleCreate()}
+              disabled={saving}
+              className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
+              Save Job Card
+            </button>
+            <button
+              onClick={() => setStep('form')}
+              className="w-full py-2 text-gray-400 text-[13px] font-medium hover:text-gray-600 transition-colors"
+            >
+              ← Back to details
+            </button>
+          </div>
+        </div>
+
+      ) : (
+        /* ── Step 1: Core form ── */
+        <div className="flex flex-col gap-4 pb-6">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              <AlertTriangle size={14} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Customer — prefer existing record */}
+          <div>
+            <label className={labelCls}>Customer</label>
+            <select value={form.customerId} onChange={e => setF('customerId', e.target.value)} className={inputCls}>
+              <option value="">— Select customer —</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {!form.customerId && (
+              <input type="text" value={form.customerNameOverride} onChange={e => setF('customerNameOverride', e.target.value)}
+                placeholder="Or type a one-off name…" className={`${inputCls} mt-2`} />
+            )}
+          </div>
+
+          {/* Site */}
+          <div>
+            <label className={labelCls}>Site address</label>
+            <input type="text" value={form.siteAddress} onChange={e => setF('siteAddress', e.target.value)}
+              placeholder="123 Main St" className={inputCls} />
+          </div>
+
+          {/* Service date */}
+          <div>
+            <label className={labelCls}>Service date</label>
+            <input type="date" value={form.serviceDate} onChange={e => setF('serviceDate', e.target.value)} className={inputCls} />
+          </div>
+
+          {/* Work description */}
+          <div>
+            <label className={labelCls}>Work description <span className="text-red-500">*</span></label>
+            <textarea value={form.workDescription} onChange={e => setF('workDescription', e.target.value)}
+              rows={3} placeholder="Describe the work…"
+              className={`${inputCls} resize-none`} />
+          </div>
+
+          {/* Assigned worker */}
+          <div>
+            <label className={labelCls}>Assigned worker</label>
+            <select value={form.assignedUserId} onChange={e => setF('assignedUserId', e.target.value)} className={inputCls}>
+              <option value="">— Unassigned —</option>
+              {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+
+          {/* Next: completion step */}
+          <button
+            onClick={() => {
+              if (!form.workDescription.trim()) { setError('Work description is required'); return; }
+              setError('');
+              setStep('completion');
+            }}
+            className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors flex items-center justify-center gap-2 mt-2"
+          >
+            <CheckCircle2 size={18} />
+            Next: Completion &amp; Photos
+          </button>
+
+          <button
+            onClick={() => {
+              if (!form.workDescription.trim()) { setError('Work description is required'); return; }
+              setError('');
+              void handleCreate();
+            }}
+            disabled={saving}
+            className="w-full py-3 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-[14px] transition-colors hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
+            Save as Draft
+          </button>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
 function ScheduleJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   return (
@@ -1105,19 +1550,22 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <ClipboardCheck size={15} className="text-orange-600" />
+                <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                  <ClipboardCheck size={15} className="text-violet-700" />
                 </div>
                 <div>
                   <h2 className="text-gray-900 font-bold text-base">Prestart Check</h2>
@@ -1139,10 +1587,10 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
                 <button
                   key={asset.id}
                   onClick={() => { onClose(); navigate(`/prestart?vehicleId=${asset.id}`); }}
-                  className="w-full flex items-center gap-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl px-3 py-3 text-left transition-colors"
+                  className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-200 rounded-xl px-3 py-3 text-left transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                    <ClipboardCheck size={16} className="text-orange-500" />
+                  <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <ClipboardCheck size={16} className="text-violet-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-gray-900 font-semibold text-sm truncate">{asset.name}</p>
@@ -1154,6 +1602,7 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
                 </button>
               ))}
             </div>
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1323,14 +1772,17 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
@@ -1421,10 +1873,10 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                       {result && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-orange-50 border border-orange-200'}`}
+                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-violet-50 border border-violet-200'}`}
                         >
-                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-orange-500'} />
-                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-orange-700'}`}>
+                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-violet-600'} />
+                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-violet-800'}`}>
                             {result.type === 'signin'
                               ? `Signed in to ${result.name}`
                               : `Signed out${result.name ? ` — ${result.name}` : ''}`
@@ -1451,7 +1903,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                         <button
                           onClick={() => void handleSignOut()}
                           disabled={acting || !isSignedIn}
-                          className="h-12 rounded-2xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                          className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
                         >
                           {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
                           Sign Out
@@ -1485,7 +1937,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                                 <button
                                   onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
                                   disabled={forcingOut === u.user_id}
-                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-orange-100 hover:bg-orange-200 active:bg-orange-300 disabled:opacity-40 text-orange-700 text-xs font-bold flex items-center gap-1 transition-colors"
+                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 active:bg-violet-300 disabled:opacity-40 text-violet-800 text-xs font-bold flex items-center gap-1 transition-colors"
                                 >
                                   {forcingOut === u.user_id
                                     ? <Loader2 size={11} className="animate-spin" />
@@ -1507,6 +1959,8 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                 </motion.div>
               )}
             </div>
+            {/* Safe area spacer — clears iPhone home indicator + tab bar */}
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1545,14 +1999,17 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -1606,7 +2063,7 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
                 ))
               )}
             </div>
-            <div className="h-4 shrink-0" />
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1616,11 +2073,11 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
 
 // ── Profile sheet ─────────────────────────────────────────────────────────────
 function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: sessionData } = useSession();
+  const { session } = useSession();
   const { me } = usePermissions();
   const navigate = useNavigate();
-  const name = sessionData?.user?.name ?? me?.user?.name ?? 'User';
-  const email = sessionData?.user?.email ?? me?.user?.email ?? '';
+  const name = session?.user?.name ?? me?.user?.name ?? 'User';
+  const email = session?.user?.email ?? me?.user?.email ?? '';
   const company = me?.company?.name ?? '';
 
   async function handleSignOut() {
@@ -1640,7 +2097,7 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
@@ -1648,7 +2105,7 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl overflow-hidden"
             style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
           >
             <div className="flex justify-center pt-3 pb-1">
@@ -1657,8 +2114,8 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             <div className="px-5 py-4 pb-8">
               {/* Avatar + name */}
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
-                  <User size={24} className="text-orange-500" />
+                <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center">
+                  <User size={24} className="text-violet-600" />
                 </div>
                 <div>
                   <p className="text-gray-900 font-bold text-base">{name}</p>
@@ -1701,12 +2158,10 @@ interface HomeIconGridProps {
   role: string;
   isSolo: boolean;
   isPlatformOwner: boolean;
-  activeFilter: FilterTab;
-  setActiveFilter: (f: FilterTab) => void;
   onNavigate: (href: string) => void;
 }
 
-function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFilter, setActiveFilter, onNavigate }: HomeIconGridProps) {
+function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, onNavigate }: HomeIconGridProps) {
   // Resolve icons client-side only — SSR and first hydration both use the
   // SSR-safe default so the DOM structure never changes during hydration,
   // preventing the sos-shim patchedRemoveChild NotFoundError.
@@ -1726,56 +2181,22 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
     ...(isPlatformOwner ? platformAsIconDef : []),
   ];
 
-  const filtered = activeFilter === 'all'
-    ? allIcons
-    : allIcons.filter(i => i.group === activeFilter);
-
   return (
-    <>
-      {/* Filter chips */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex justify-center gap-1.5 flex-wrap">
-          {FILTER_TABS.map(tab => (
-            <motion.button
-              key={tab.id}
-              onClick={() => setActiveFilter(tab.id)}
-              whileTap={{ scale: 0.94 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-              className={`shrink-0 px-4 py-[7px] rounded-full text-[11.5px] font-bold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
-                activeFilter === tab.id
-                  ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/40'
-                  : 'bg-white/80 text-gray-500 border border-gray-200 hover:bg-white hover:text-gray-900 hover:border-gray-300 hover:shadow-sm'
-              }`}
-            >
-              {tab.label}
-            </motion.button>
-          ))}
-        </div>
+    <div className="px-4 pt-3">
+      <div className="mx-auto" style={{ maxWidth: 640 }}>
+        {allIcons.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+            <p className="text-sm font-medium">No icons available</p>
+          </div>
+        ) : (
+          <div className="home-icon-grid">
+            {allIcons.map((item) => (
+              <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Icon grid */}
-      <div className="px-5 pt-3">
-        <div className="mx-auto" style={{ maxWidth: 640 }}>
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <p className="text-sm font-medium">No icons in this category</p>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                gap: '18px 12px',
-              }}
-            >
-              {filtered.map((item) => (
-                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -1783,24 +2204,22 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { can, isAdmin, isPlatformOwner, me, loading, role } = usePermissions();
-  const { data: sessionData } = useSession();
+  const { isPlatformOwner, me, loading, role } = usePermissions();
+  const { session } = useSession();
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
-  const [iconPermsLoaded, setIconPermsLoaded] = useState(false);
 
   useEffect(() => {
-    const userId = me?.user?.id ?? sessionData?.user?.id;
+    const userId = me?.user?.id ?? session?.user?.id;
     if (!userId || loading) return;
     fetch(`/api/team/members/${userId}/icon-permissions`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((data: { allowedKeys?: string[] | null } | null) => {
         setIconPermissions(data?.allowedKeys ?? null);
       })
-      .catch(() => setIconPermissions(null))
-      .finally(() => setIconPermsLoaded(true));
-  }, [me?.user?.id, sessionData?.user?.id, loading]);
+      .catch(() => setIconPermissions(null));
+  }, [me?.user?.id, session?.user?.id, loading]);
 
   // Determine if this is a solo user (only member of their company)
   const [isSolo, setIsSolo] = useState(false);
@@ -1813,8 +2232,6 @@ export default function HomeScreen() {
       })
       .catch(() => setIsSolo(false));
   }, [me?.user?.id, loading]);
-
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
   const [dashOpen, setDashOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -1834,10 +2251,11 @@ export default function HomeScreen() {
   const [prestartPickerOpen, setPrestartPickerOpen] = useState(false);
   const [sitePrestartPickerOpen, setSitePrestartPickerOpen] = useState(false);
   const [riskyPickerOpen, setRiskyPickerOpen] = useState(false);
+  const [jobCardOpen, setJobCardOpen] = useState(false);
   const [activeStatusKey, setActiveStatusKey] = useState(0);
   const activeStatus = useActiveStatus(activeStatusKey);
 
-  const name = sessionData?.user?.name ?? me?.user?.name ?? '';
+  const name = session?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
 
   const hour = new Date().getHours();
@@ -1864,6 +2282,7 @@ export default function HomeScreen() {
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
+    if (href === '?panel=job-card') { setJobCardOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
@@ -1872,7 +2291,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#edf0f5' }}>
-        <div className="w-8 h-8 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -1881,13 +2300,13 @@ export default function HomeScreen() {
     <div className="min-h-screen flex flex-col relative overflow-hidden"
       style={{ background: '#edf0f5' }}
     >
-      {/* Very subtle noise texture */}
+      {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-          opacity: 0.45,
+          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.035) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+          opacity: 0.28,
         }}
       />
       {/* Warm glow — top right */}
@@ -1896,7 +2315,7 @@ export default function HomeScreen() {
         style={{
           top: '-120px', right: '-120px',
           width: '420px', height: '420px',
-          background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.07) 0%, transparent 60%)',
         }}
       />
       {/* Cool glow — bottom left */}
@@ -1905,18 +2324,18 @@ export default function HomeScreen() {
         style={{
           bottom: '40px', left: '-100px',
           width: '320px', height: '320px',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.04) 0%, transparent 60%)',
         }}
       />
-      {/* Watermark logo */}
+      {/* Watermark logo — very faint, just enough to brand the background */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: 'url(/airo-assets/images/uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv)',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center 38%',
-          backgroundSize: '44%',
-          opacity: 0.045,
+          backgroundSize: '40%',
+          opacity: 0.028,
         }}
       />
 
@@ -1942,12 +2361,12 @@ export default function HomeScreen() {
         <div className="flex items-center justify-between gap-3">
           {/* Left: greeting */}
           <div className="min-w-0">
-            <p className="text-orange-400/50 text-[10.5px] font-semibold tracking-[0.06em] uppercase truncate">{dateStr}</p>
+            <p className="text-violet-400/50 text-[10.5px] font-semibold tracking-[0.06em] uppercase truncate">{dateStr}</p>
             <p className="text-white font-extrabold text-[21px] leading-tight mt-0.5 tracking-[-0.02em] truncate">
               {greeting},{' '}
               <span
                 className="text-transparent bg-clip-text"
-                style={{ backgroundImage: 'linear-gradient(90deg, #fb923c, #f97316)' }}
+                style={{ backgroundImage: 'linear-gradient(90deg, #fb923c, #7c3aed)' }}
               >
                 {firstName}
               </span>
@@ -1960,9 +2379,9 @@ export default function HomeScreen() {
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-400/20 flex items-center justify-center hover:bg-orange-500/25 transition-colors"
+              className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-400/20 flex items-center justify-center hover:bg-violet-500/25 transition-colors"
             >
-              <User size={15} className="text-orange-300" />
+              <User size={15} className="text-violet-300" />
             </button>
             <button
               onClick={async () => {
@@ -2002,14 +2421,12 @@ export default function HomeScreen() {
       {/* HomeIconGrid is always rendered (SSR + client) with the same icon list
           so React never adds/removes child nodes during hydration — that mismatch
           is what triggers the sos-shim patchedRemoveChild NotFoundError. */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
         <HomeIconGrid
           iconPermissions={iconPermissions}
           role={role ?? ''}
           isSolo={isSolo}
           isPlatformOwner={isPlatformOwner}
-          activeFilter={activeFilter}
-          setActiveFilter={setActiveFilter}
           onNavigate={handleNavigate}
         />
       </div>
@@ -2020,9 +2437,9 @@ export default function HomeScreen() {
         onClose={() => setDashOpen(false)}
         title="Home"
         titleIcon={LayoutDashboard}
-        titleIconClass="text-orange-500"
+        titleIconClass="text-violet-600"
       >
-        <DashboardBanner userId={sessionData?.user?.id ?? 'anon'} />
+        <DashboardBanner userId={session?.user?.id ?? 'anon'} />
         <div className="mt-4">
           <KpiWidgets />
         </div>
@@ -2057,8 +2474,8 @@ export default function HomeScreen() {
         onClose={() => setQuotesPickerOpen(false)}
         title="Quotes"
         subtitle="Select a job to view its quotes"
-        iconBg="bg-orange-100"
-        iconFg="text-orange-600"
+        iconBg="bg-violet-100"
+        iconFg="text-violet-700"
         Icon={FileText}
         onSelect={(job) => { setQuotesPickerOpen(false); navigate(`/jobs/${job.id}/quotes`); }}
       />
@@ -2074,7 +2491,9 @@ export default function HomeScreen() {
       <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
       <SitePrestartJobPickerSheet open={sitePrestartPickerOpen} onClose={() => setSitePrestartPickerOpen(false)} />
       <RiskyJobPickerSheet open={riskyPickerOpen} onClose={() => setRiskyPickerOpen(false)} />
+      <PhoneJobCardSheet open={jobCardOpen} onClose={() => setJobCardOpen(false)} />
       </div>{/* end z-10 content wrapper */}
+
     </div>
   );
 }

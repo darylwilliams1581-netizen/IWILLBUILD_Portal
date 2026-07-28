@@ -72,7 +72,7 @@ function DarkToggle({ label, icon: Icon, value, onChange }: {
       type="button"
       onClick={onChange}
       className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border transition-all ${
-        value ? 'border-primary/30 bg-orange-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+        value ? 'border-primary/30 bg-violet-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'
       }`}
     >
       <span className="flex items-center gap-2.5 text-sm text-slate-700">
@@ -126,12 +126,12 @@ function TemplateModal({ mode, initial, onClose, onSave, saving }: TemplateModal
         className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl bg-white border border-slate-200"
       >
         {/* Accent line */}
-        <div className="h-0.5 w-full bg-gradient-to-r from-primary via-orange-400 to-transparent" />
+        <div className="h-0.5 w-full bg-gradient-to-r from-primary via-violet-500 to-transparent" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-orange-50">
+            <div className="p-2 rounded-xl bg-violet-50">
               <FileText size={15} className="text-primary" />
             </div>
             <h2 className="font-heading font-bold text-base text-slate-900">
@@ -337,7 +337,7 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
         )}
         <button
           onClick={onShare}
-          className="p-2 rounded-xl text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+          className="p-2 rounded-xl text-slate-400 hover:text-violet-700 hover:bg-violet-50 transition-colors"
           title="Share public link"
         >
           <Link2 size={14} />
@@ -413,7 +413,7 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
               <Link2 size={15} className="text-primary" />
             </div>
             <div>
@@ -524,7 +524,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
         </div>
       ) : submissions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4">
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4">
             <Inbox size={24} className="text-primary" />
           </div>
           <p className="font-heading font-bold text-slate-700 mb-1">No submissions yet</p>
@@ -544,8 +544,8 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer"
                   onClick={() => toggleExpand(s.id)}
                 >
-                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                    <User size={14} className="text-orange-600" />
+                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                    <User size={14} className="text-violet-700" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">
@@ -771,7 +771,7 @@ export function FormsPage() {
         {/* Header */}
         <header className="h-16 flex items-center justify-between px-6 shrink-0 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-orange-50">
+            <div className="p-2 rounded-xl bg-violet-50">
               <FileText size={16} className="text-primary" />
             </div>
             <div>
@@ -855,7 +855,7 @@ export function FormsPage() {
                   className="flex flex-col items-center justify-center h-full min-h-[400px] text-center"
                 >
                   <div className="relative mb-6">
-                    <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-orange-50 border border-orange-100">
+                    <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-violet-50 border border-violet-100">
                       <FileText size={32} className="text-primary" />
                     </div>
                     <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
@@ -1015,7 +1015,7 @@ export function FormsPage() {
                         key={job.id}
                         type="button"
                         onClick={() => { setSelectedJobId(job.id); setJobPickerError(''); }}
-                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors ${selectedJobId === job.id ? 'bg-orange-50' : 'hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors ${selectedJobId === job.id ? 'bg-violet-50' : 'hover:bg-slate-50'}`}
                       >
                         <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${selectedJobId === job.id ? 'border-primary bg-primary' : 'border-slate-300'}`}>
                           {selectedJobId === job.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -1047,7 +1047,7 @@ export function FormsPage() {
                 <button
                   onClick={() => void handleJobPickerSubmit()}
                   disabled={jobPickerLoading || !selectedJobId}
-                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {jobPickerLoading
                     ? <><Loader2 size={14} className="animate-spin" /> Opening…</>

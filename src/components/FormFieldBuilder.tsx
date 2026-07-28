@@ -312,7 +312,7 @@ function LogicEditor({ fieldId, logic, allFields, onChange }: {
           exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.15 }}
           className="overflow-hidden"
         >
-          <div className="flex flex-col gap-3 rounded-xl p-3 border border-primary/20 bg-orange-50/60">
+          <div className="flex flex-col gap-3 rounded-xl p-3 border border-primary/20 bg-violet-50/60">
             {/* Action */}
             <div>
               <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Action</label>
@@ -441,7 +441,7 @@ function InstructionImageUploader({ templateId, fieldId, currentUrl, onUploaded 
         </div>
       ) : (
         <label className={`flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
-          uploading ? 'border-primary/30 bg-orange-50/50 pointer-events-none' : 'border-slate-200 bg-slate-50 hover:border-primary/50 hover:bg-orange-50/30'
+          uploading ? 'border-primary/30 bg-violet-50/50 pointer-events-none' : 'border-slate-200 bg-slate-50 hover:border-primary/50 hover:bg-violet-50/30'
         }`}>
           {uploading ? (
             <><Loader2 size={18} className="animate-spin text-primary" /><span className="text-xs text-slate-400">Uploading…</span></>
@@ -694,7 +694,7 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
                           onKeyDown={(e) => { if (e.key === 'Enter') void addOption(); }}
                           placeholder="Add option…" className={`${diSm} flex-1 min-w-0`} />
                         <button onClick={addOption}
-                          className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-orange-600 rounded-lg transition-colors">
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-violet-700 rounded-lg transition-colors">
                           Add
                         </button>
                       </div>
@@ -815,7 +815,7 @@ function AddFieldPanel({ onAdd, adding }: { onAdd: (type: string) => Promise<voi
       <div className="p-3 flex flex-col gap-3">
         {GROUPS.map((group) => {
           const groupFields = FIELD_TYPES.filter((f) => f.group === group);
-          const accent = GROUP_ACCENT[group] ?? '#f97316';
+          const accent = GROUP_ACCENT[group] ?? '#7c3aed';
           return (
             <div key={group}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: `${accent}` }}>{group}</p>
@@ -1133,7 +1133,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
             )}
             {fields.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-orange-50 border border-orange-200">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-violet-50 border border-violet-200">
                   <Plus size={24} className="text-primary/60" />
                 </div>
                 <p className="text-sm font-bold text-slate-400">No fields yet</p>

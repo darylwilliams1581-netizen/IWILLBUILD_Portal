@@ -14,6 +14,8 @@ import {
 import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
 import InstallAppTab from '@/components/settings/InstallAppTab';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 const inputClass = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -185,7 +187,9 @@ export default function ProfilePage() {
   const isOwner = me?.profile?.role === 'owner';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>My Profile — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your profile, licences, emergency contact and security settings." />
@@ -216,7 +220,7 @@ export default function ProfilePage() {
           <button
             onClick={() => setInstallOpen(true)}
             title="Install App on your device"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 border border-slate-200 hover:border-orange-200 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 border border-slate-200 hover:border-violet-200 transition-colors"
           >
             <Smartphone size={14} />
             <span className="hidden sm:inline">Install App</span>
@@ -231,7 +235,7 @@ export default function ProfilePage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6">
             {/* Avatar + name */}
             <div className="flex items-center gap-4 mb-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-black text-2xl shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-black text-2xl shrink-0">
                 {initials}
               </div>
               <div>
@@ -266,7 +270,7 @@ export default function ProfilePage() {
                 {profileError && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} />{profileError}</div>}
                 {profileState === 'saved' && <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 font-semibold"><CheckCircle2 size={13} />Profile updated.</div>}
                 <div className="flex justify-end border-t border-slate-100 pt-3">
-                  <button type="submit" disabled={profileSaving} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
+                  <button type="submit" disabled={profileSaving} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                     {profileSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save Profile
                   </button>
                 </div>
@@ -282,7 +286,7 @@ export default function ProfilePage() {
             {/* Licenses */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6">
               <h2 className="font-bold text-sm text-slate-800 mb-4 flex items-center gap-2">
-                <FileText size={15} className="text-orange-400" />Licenses
+                <FileText size={15} className="text-violet-400" />Licenses
               </h2>
               <label className={labelClass}>Licence numbers / details</label>
               <textarea
@@ -341,7 +345,7 @@ export default function ProfilePage() {
             {extrasState === 'saved' && <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 font-semibold"><CheckCircle2 size={13} />Details saved.</div>}
 
             <div className="flex justify-end">
-              <button type="submit" disabled={extrasSaving} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
+              <button type="submit" disabled={extrasSaving} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                 {extrasSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save Details
               </button>
             </div>
@@ -378,7 +382,7 @@ export default function ProfilePage() {
 
             {attachments.length === 0 ? (
               <div
-                className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
+                className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Paperclip size={24} className="text-slate-300 mx-auto mb-2" />
@@ -476,7 +480,7 @@ export default function ProfilePage() {
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
                 <Smartphone size={16} className="text-primary" />
               </div>
               <div className="flex-1">

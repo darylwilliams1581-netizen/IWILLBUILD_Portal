@@ -110,7 +110,7 @@ export default function ManualVerifyModal({ user, onClose, onVerified }: Props) 
           <Button
             onClick={() => void handleConfirm()}
             disabled={loading}
-            className="flex-1 sm:flex-none bg-primary hover:bg-orange-600 text-white font-bold"
+            className="flex-1 sm:flex-none bg-primary hover:bg-violet-700 text-white font-bold"
           >
             {loading ? (
               <>

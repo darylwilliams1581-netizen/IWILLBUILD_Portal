@@ -28,7 +28,7 @@ export default function FormDetailPage() {
   if (jobId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div style={{ width: 28, height: 28, border: '3px solid #e2e8f0', borderTopColor: '#f97316', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        <div style={{ width: 28, height: 28, border: '3px solid #e2e8f0', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -47,8 +47,8 @@ export default function FormDetailPage() {
 
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-            <ClipboardList size={20} className="text-orange-600" />
+          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+            <ClipboardList size={20} className="text-violet-700" />
           </div>
           <div>
             <h1 className="text-lg font-black text-slate-800">Form #{id}</h1>
@@ -64,7 +64,7 @@ export default function FormDetailPage() {
           </p>
           <button
             onClick={() => navigate('/studio?tab=forms')}
-            className="mt-2 px-5 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors"
+            className="mt-2 px-5 py-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors"
           >
             Go to Forms
           </button>

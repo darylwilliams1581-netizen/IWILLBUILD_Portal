@@ -184,11 +184,11 @@ export default function DazzaAiTab() {
         )}
       </div>
 
-      <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 flex items-start gap-3">
+      <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 flex items-start gap-3">
         <Bot size={16} className="text-primary shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-bold text-orange-900">{currentMode.label}</p>
-          <p className="text-xs text-orange-700 mt-0.5">{currentMode.desc}</p>
+          <p className="text-xs text-violet-800 mt-0.5">{currentMode.desc}</p>
         </div>
       </div>
 
@@ -221,14 +221,14 @@ export default function DazzaAiTab() {
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Suggested SWMS Documents ({suggestions.length})</p>
           <div className="flex flex-col gap-2">
             {suggestions.map((s, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-100 rounded-lg">
+              <div key={i} className="flex items-start gap-3 p-3 bg-violet-50 border border-violet-100 rounded-lg">
                 <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shrink-0 mt-0.5">
                   <ShieldAlert size={12} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-slate-800">{s.title}</p>
                   {s.work_activity && <p className="text-xs text-slate-500 mt-0.5">{s.work_activity}</p>}
-                  {s.reason && <p className="text-xs text-orange-700 mt-1 italic">{s.reason}</p>}
+                  {s.reason && <p className="text-xs text-violet-800 mt-1 italic">{s.reason}</p>}
                 </div>
               </div>
             ))}
@@ -272,7 +272,7 @@ export default function DazzaAiTab() {
         <button
           onClick={() => void handleSend()}
           disabled={!input.trim() || streaming}
-          className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shrink-0"
+          className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shrink-0"
         >
           {streaming ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           {streaming ? 'Thinking\u2026' : 'Ask Dazza'}

@@ -154,7 +154,7 @@ export default function HomeIconPermissions({ memberId, memberRole, canEdit }: P
                 setAllowedKeys(new Set(allKeys));
                 setDirty(true);
               }}
-              className="text-[11px] text-slate-500 hover:text-orange-600 underline underline-offset-2 transition-colors"
+              className="text-[11px] text-slate-500 hover:text-violet-700 underline underline-offset-2 transition-colors"
             >
               All on
             </button>
@@ -165,7 +165,7 @@ export default function HomeIconPermissions({ memberId, memberRole, canEdit }: P
                 setAllowedKeys(next);
                 setDirty(true);
               }}
-              className="text-[11px] text-slate-500 hover:text-orange-600 underline underline-offset-2 transition-colors"
+              className="text-[11px] text-slate-500 hover:text-violet-700 underline underline-offset-2 transition-colors"
             >
               All off
             </button>
@@ -173,7 +173,7 @@ export default function HomeIconPermissions({ memberId, memberRole, canEdit }: P
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold transition-colors disabled:opacity-60 ml-1"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold transition-colors disabled:opacity-60 ml-1"
               >
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                 {saving ? 'Saving…' : 'Save'}
@@ -239,7 +239,7 @@ function IconToggle({
         locked
           ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
           : enabled
-            ? 'border-orange-400 bg-orange-50 shadow-sm cursor-pointer'
+            ? 'border-violet-400 bg-violet-50 shadow-sm cursor-pointer'
             : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer',
       ].join(' ')}
     >
@@ -250,14 +250,14 @@ function IconToggle({
             <Lock size={8} className="text-white" strokeWidth={2.5} />
           </span>
         ) : enabled ? (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center shadow">
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-violet-500 rounded-full flex items-center justify-center shadow">
             <Check size={9} className="text-white" strokeWidth={3} />
           </span>
         ) : null}
       </div>
       <span className={[
         'text-[9px] font-semibold leading-tight max-w-[56px]',
-        locked ? 'text-slate-400' : enabled ? 'text-orange-600' : 'text-gray-500',
+        locked ? 'text-slate-400' : enabled ? 'text-violet-700' : 'text-gray-500',
       ].join(' ')}>
         {icon.label}
       </span>

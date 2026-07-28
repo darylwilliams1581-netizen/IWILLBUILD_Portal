@@ -91,14 +91,14 @@ export default function AssetNotes({ assetId }: { assetId: number }) {
           onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void handleAdd(); }}
           placeholder="Add a note — maintenance history, warranty info, observations…"
           rows={3}
-          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
+          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400"
         />
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500">Cmd+Enter to save</span>
           <button
             onClick={() => void handleAdd()}
             disabled={saving || !body.trim()}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
             Add Note
@@ -116,7 +116,7 @@ export default function AssetNotes({ assetId }: { assetId: number }) {
       ) : (
         <div className="flex flex-col gap-3">
           {notes.map(note => (
-            <div key={note.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 group hover:border-orange-200 hover:shadow-sm transition-all">
+            <div key={note.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 group hover:border-violet-200 hover:shadow-sm transition-all">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm text-slate-700 whitespace-pre-wrap flex-1">{note.body}</p>
                 <button

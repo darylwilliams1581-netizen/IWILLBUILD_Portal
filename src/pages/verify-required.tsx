@@ -246,7 +246,7 @@ export default function VerifyRequiredPage() {
               <button
                 onClick={handleResend}
                 disabled={resending || resent}
-                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
               >
                 <RefreshCw size={15} className={resending ? 'animate-spin' : ''} />
                 {resent ? 'Email resent!' : resending ? 'Sending…' : 'Resend verification email'}
@@ -397,7 +397,7 @@ export default function VerifyRequiredPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail size={12} />
-                    <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-orange-400 transition-colors">
+                    <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-violet-400 transition-colors">
                       Contact IWILLBUILD support
                     </a>
                   </div>
@@ -419,7 +419,7 @@ export default function VerifyRequiredPage() {
                   <button
                     onClick={handleSelfVerify}
                     disabled={selfVerifying}
-                    className="flex items-center gap-2 text-xs font-bold text-primary hover:text-orange-400 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-2 text-xs font-bold text-primary hover:text-violet-400 disabled:opacity-50 transition-colors"
                   >
                     <ShieldCheck size={14} className={selfVerifying ? 'animate-pulse' : ''} />
                     {selfVerifying ? 'Verifying…' : 'Bypass email — I am the platform developer'}

@@ -133,58 +133,74 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     // ── Job attendance rows ───────────────────────────────────────────────
-    const jaWhere = buildWhere(companyId, filterParams, 'ja');
-    const [jaRows] = await db.execute(sql.raw(`
-      SELECT
-        CONCAT('ja-', ja.id)  AS id,
-        'job_attendance'       AS record_type,
-        ja.action,
-        ja.source,
-        ja.actor_type,
-        u.name                AS user_name,
-        u.email               AS user_email,
-        ja.job_id,
-        j.name                AS job_name,
-        NULL                  AS fleet_id,
-        NULL                  AS fleet_name,
-        ja.notes,
-        ja.created_at,
-        NULL                  AS signed_out_at,
-        NULL                  AS duration_minutes
-      FROM job_attendance ja
-      LEFT JOIN user u ON u.id = ja.user_id
-      LEFT JOIN jobs j  ON j.id = ja.job_id
-      WHERE ${jaWhere}
-    `)) as unknown as [HistoryRow[], unknown];
+    let jaRows: HistoryRow[] = [];
+    try {
+      const jaWhere = buildWhere(companyId, filterParams, 'ja');
+      const [rows] = await db.execute(sql.raw(`
+        SELECT
+          CONCAT('ja-', ja.id)  AS id,
+          'job_attendance'       AS record_type,
+          ja.action,
+          ja.source,
+          ja.actor_type,
+          u.name                AS user_name,
+          u.email               AS user_email,
+          ja.job_id,
+          j.name                AS job_name,
+          NULL                  AS fleet_id,
+          NULL                  AS fleet_name,
+          ja.notes,
+          ja.created_at,
+          NULL                  AS signed_out_at,
+          NULL                  AS duration_minutes
+        FROM job_attendance ja
+        LEFT JOIN user u ON u.id = ja.user_id
+        LEFT JOIN jobs j  ON j.id = ja.job_id
+        WHERE ${jaWhere}
+      `)) as unknown as [HistoryRow[], unknown];
+      jaRows = rows ?? [];
+    } catch (jaErr) {
+      console.warn('GET /api/signin-history: job_attendance query failed:', (jaErr as Error)?.message?.slice(0, 120));
+    }
 
     // ── Fleet usage rows ──────────────────────────────────────────────────
-    const fulWhere = buildWhere(companyId, filterParams, 'ful');
-    const [fulRows] = await db.execute(sql.raw(`
-      SELECT
-        CONCAT('ful-', ful.id) AS id,
-        'fleet_usage'          AS record_type,
-        'signin'               AS action,
-        COALESCE(ful.source, 'portal') AS source,
-        COALESCE(ful.actor_type, 'employee') AS actor_type,
-        u.name                 AS user_name,
-        u.email                AS user_email,
-        ful.job_id,
-        j.name                 AS job_name,
-        ful.fleet_id,
-        fa.name                AS fleet_name,
-        ful.note               AS notes,
-        ful.started_at         AS created_at,
-        ful.ended_at           AS signed_out_at,
-        ful.duration_minutes
-      FROM fleet_usage_logs ful
-      LEFT JOIN user u       ON u.id  = ful.user_id
-      LEFT JOIN jobs j        ON j.id  = ful.job_id
-      LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
-      WHERE ${fulWhere}
-    `)) as unknown as [HistoryRow[], unknown];
+    let fulRows: HistoryRow[] = [];
+    try {
+      const fulWhere = buildWhere(companyId, filterParams, 'ful');
+      const [rows] = await db.execute(sql.raw(`
+        SELECT
+          CONCAT('ful-', ful.id) AS id,
+          'fleet_usage'          AS record_type,
+          'signin'               AS action,
+          COALESCE(ful.source, 'portal') AS source,
+          COALESCE(ful.actor_type, 'employee') AS actor_type,
+          u.name                 AS user_name,
+          u.email                AS user_email,
+          ful.job_id,
+          j.name                 AS job_name,
+          ful.fleet_id,
+          fa.name                AS fleet_name,
+          ful.note               AS notes,
+          ful.started_at         AS created_at,
+          ful.ended_at           AS signed_out_at,
+          ful.duration_minutes
+        FROM fleet_usage_logs ful
+        LEFT JOIN user u       ON u.id  = ful.user_id
+        LEFT JOIN jobs j        ON j.id  = ful.job_id
+        LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
+        WHERE ${fulWhere}
+      `)) as unknown as [HistoryRow[], unknown];
+      fulRows = rows ?? [];
+    } catch (fulErr) {
+      // fleet_usage_logs may not exist yet — silently skip
+      const msg = (fulErr as Error)?.message ?? '';
+      if (!msg.includes('fleet_usage_logs') && !msg.includes("doesn't exist")) {
+        console.warn('GET /api/signin-history: fleet_usage_logs query failed:', msg.slice(0, 120));
+      }
+    }
 
     // ── Merge, sort by created_at desc, paginate ──────────────────────────
-    const all = [...(jaRows ?? []), ...(fulRows ?? [])].sort(
+    const all = [...jaRows, ...fulRows].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 

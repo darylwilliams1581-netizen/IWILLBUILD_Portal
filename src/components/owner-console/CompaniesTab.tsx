@@ -68,7 +68,7 @@ export default function CompaniesTab({ companies, supportMode, onEnterSupport, o
           </div>
           <button
             onClick={onCreateCompany}
-            className="flex items-center gap-2 px-3 py-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-primary hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-colors"
           >
             <Plus size={13} /> Create Company
           </button>

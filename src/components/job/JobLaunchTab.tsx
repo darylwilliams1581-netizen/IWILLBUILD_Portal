@@ -41,8 +41,8 @@ export default function JobLaunchTab({ job }: Props) {
       label: 'Studio',
       description: 'Build documents, contracts, SWMS and reports for this job.',
       icon: FileText,
-      color: 'bg-orange-50',
-      iconColor: 'text-orange-500',
+      color: 'bg-violet-50',
+      iconColor: 'text-violet-600',
       standaloneUrl: `/studio/builder/new${jqEncoded}&type=custom-document`,
       sameTabUrl: `/studio/builder/new${jqEncoded}&type=custom-document`,
     },
@@ -170,7 +170,7 @@ function ModuleCard({ mod, onOpenHere }: { mod: ModuleCard; onOpenHere: () => vo
           to={mod.standaloneUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-orange-600 px-2.5 py-1.5 rounded-lg hover:bg-orange-50 transition-colors ml-auto"
+          className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-violet-700 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 transition-colors ml-auto"
         >
           <ExternalLink size={11} />
           New tab

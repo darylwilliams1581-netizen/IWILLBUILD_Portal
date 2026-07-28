@@ -26,6 +26,7 @@ import TakeoffPad from '../components/estimating/TakeoffPad';
 import { useDriverSession } from '@/lib/useDriverSession';
 import { hapticImpact, hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
 import DriverGpsStatus from '@/components/driver/DriverGpsStatus';
+import { useGpsPermission } from '@/lib/useGpsPermission';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -414,8 +415,8 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
             ) : (
               <div className="space-y-2">
                 {jobs.map(job => (
-                  <button key={job.id} onClick={() => setSelectedJob(job)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${selectedJob?.id === job.id ? 'bg-orange-50 border-orange-300 text-gray-900' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-orange-500' : 'bg-gray-300'}`} />
+                  <button key={job.id} onClick={() => setSelectedJob(job)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${selectedJob?.id === job.id ? 'bg-violet-50 border-violet-300 text-gray-900' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-violet-500' : 'bg-gray-300'}`} />
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">{job.name}</p>
                       {job.jobNumber && <p className="text-xs text-gray-400 font-mono">{job.jobNumber}</p>}
@@ -499,14 +500,17 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
 export default function DriverPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session, refresh, stopSession } = useDriverSession();
+  const { session, refresh, stopSession, reportGpsState } = useDriverSession();
+
+  // GPS permission — checked on mount, used to gate session start
+  const { status: gpsPermStatus, request: requestGpsPerm, openSettings: openGpsSettings } = useGpsPermission();
 
   const [showPicker, setShowPicker]             = useState(false);
   const [vehicles, setVehicles]                 = useState<Vehicle[]>([]);
   const [vehiclesLoading, setVehiclesLoading]   = useState(false);
   const [starting, setStarting]                 = useState(false);
   const [stopping, setStopping]                 = useState(false);
-  const [showStopConfirm, setShowStopConfirm]   = useState(false);
+
   const [actionError, setActionError]           = useState('');
   const [showBuildersCalc, setShowBuildersCalc] = useState(false);
   const [showTakeoffPad, setShowTakeoffPad]     = useState(false);
@@ -606,7 +610,6 @@ export default function DriverPage() {
     try {
       await stopSession(session.id);
       void hapticSuccess();
-      setShowStopConfirm(false);
       navigate('/home');
     } catch {
       setActionError('Failed to end session — please try again');
@@ -627,7 +630,7 @@ export default function DriverPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-dvh bg-gray-50 flex flex-col">
         <h1 className="sr-only">Drive — IWILLBUILD</h1>
 
         {/* ── Top bar ── */}
@@ -748,7 +751,62 @@ export default function DriverPage() {
                     {stopping ? <Loader2 size={18} className="animate-spin" /> : <Square size={18} className="fill-white" />}
                     {stopping ? 'Ending session…' : 'End Drive Session'}
                   </button>
+                ) : gpsPermStatus === 'prompt' || gpsPermStatus === 'unknown' ? (
+                  /* ── Permission not yet requested — show Enable Location first ── */
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+                      <MapPin size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-amber-800">Location access needed</p>
+                        <p className="text-xs text-amber-700 mt-0.5 leading-snug">
+                          GPS tracking requires location permission. Tap below to enable it before starting your drive.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => void requestGpsPerm()}
+                      className="w-full flex items-center justify-center gap-2.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-amber-200"
+                    >
+                      <MapPin size={18} />
+                      Enable Location
+                    </button>
+                    <button
+                      onClick={async () => { await loadVehicles(); setShowPicker(true); }}
+                      disabled={starting}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-gray-200 text-gray-500 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      Skip — start without GPS
+                    </button>
+                  </div>
+                ) : gpsPermStatus === 'denied' ? (
+                  /* ── Permission denied — show Settings link + allow skip ── */
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3.5">
+                      <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-red-800">Location access denied</p>
+                        <p className="text-xs text-red-700 mt-0.5 leading-snug">
+                          GPS tracking won't work. Enable location for IWILLBUILD in your device Settings to track this drive.
+                        </p>
+                        <button
+                          onClick={() => void openGpsSettings()}
+                          className="mt-2 flex items-center gap-1 text-xs font-semibold text-red-700 underline underline-offset-2"
+                        >
+                          Open Settings
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => { await loadVehicles(); setShowPicker(true); }}
+                      disabled={starting}
+                      className="w-full flex items-center justify-center gap-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-blue-200 disabled:opacity-60"
+                    >
+                      {starting ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} className="fill-white" />}
+                      {starting ? 'Starting…' : 'Start Without GPS'}
+                    </button>
+                  </div>
                 ) : (
+                  /* ── Permission granted (or unavailable on web) — normal start ── */
                   <button
                     onClick={async () => { await loadVehicles(); setShowPicker(true); }}
                     disabled={starting}
@@ -765,7 +823,7 @@ export default function DriverPage() {
             <AnimatePresence>
               {sessionActive && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }}>
-                  <DriverGpsStatus variant="card" active={true} />
+                  <DriverGpsStatus variant="card" active={true} onStateChange={reportGpsState} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -777,7 +835,7 @@ export default function DriverPage() {
               {/* Prestart link */}
               <button
                 onClick={() => navigate('/prestart')}
-                className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 w-full hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100 transition-colors text-left"
+                className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 w-full hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 transition-colors text-left"
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
                 <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-md shadow-amber-200">
@@ -796,7 +854,7 @@ export default function DriverPage() {
                 className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shrink-0 shadow-md shadow-orange-200">
+                <div className="w-12 h-12 rounded-2xl bg-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-violet-200">
                   <LayoutDashboard size={22} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -827,7 +885,7 @@ export default function DriverPage() {
                   <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Attendance</span>
                 </button>
                 <Link to="/safety" className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                  <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center"><HardHat size={16} className="text-white" /></div>
+                  <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center"><HardHat size={16} className="text-white" /></div>
                   <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Safety</span>
                 </Link>
                 <Link to="/fleet" className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors">
@@ -838,12 +896,13 @@ export default function DriverPage() {
             </div>
 
             {/* ── Launch ── */}
-            <Link to="/jobs" className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-black py-5 rounded-2xl transition-colors shadow-lg shadow-orange-500/25">
+            <Link to="/jobs" className="flex items-center justify-center gap-3 w-full bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white font-black py-5 rounded-2xl transition-colors shadow-lg shadow-violet-200/25">
               <Rocket size={20} />
               <span className="text-base">Launch</span>
             </Link>
 
-            <div className="h-8" />
+            {/* Bottom spacer — ensures last card clears MobileTabBar on iPhone */}
+            <div className="h-24" />
           </div>
         </div>
       </div>

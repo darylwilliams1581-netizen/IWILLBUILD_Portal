@@ -157,7 +157,7 @@ export default function ResetPasswordPage() {
                 </p>
                 <Link
                   to="/forgot-password"
-                  className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white font-semibold text-sm px-5 py-2.5 rounded-md transition-colors"
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white font-semibold text-sm px-5 py-2.5 rounded-md transition-colors"
                 >
                   Request a new link
                 </Link>
@@ -230,7 +230,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
+                  className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">

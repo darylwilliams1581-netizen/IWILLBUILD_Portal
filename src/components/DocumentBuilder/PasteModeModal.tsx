@@ -138,7 +138,7 @@ export default function PasteModeModal({ isWord, onSelect, onCancel }: Props) {
               className={[
                 'flex items-start gap-3.5 w-full text-left px-4 py-3.5 rounded-xl border transition-all',
                 focused === mode
-                  ? 'border-primary/50 bg-orange-50 shadow-sm'
+                  ? 'border-primary/50 bg-violet-50 shadow-sm'
                   : 'border-transparent hover:border-slate-200 hover:bg-slate-50',
               ].join(' ')}
             >
@@ -177,7 +177,7 @@ export default function PasteModeModal({ isWord, onSelect, onCancel }: Props) {
           </p>
           <button
             onClick={() => onSelect(focused)}
-            className="px-4 py-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
+            className="px-4 py-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors"
           >
             Paste
           </button>

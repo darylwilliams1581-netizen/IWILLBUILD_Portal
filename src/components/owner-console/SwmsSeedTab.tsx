@@ -109,8 +109,8 @@ export default function SwmsSeedTab() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-          <ShieldCheck size={18} className="text-orange-600" />
+        <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+          <ShieldCheck size={18} className="text-violet-700" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-slate-900">SWMS Library Seed</h2>
@@ -129,7 +129,7 @@ export default function SwmsSeedTab() {
             type="checkbox"
             checked={replace}
             onChange={(e) => setReplace(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+            className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-400"
           />
           <span className="text-sm text-slate-700">
             Replace existing <span className="text-slate-400">(adds <code className="bg-slate-100 px-1 rounded text-xs">?replace=1</code> — overwrites any already-seeded template)</span>
@@ -142,7 +142,7 @@ export default function SwmsSeedTab() {
         <button
           onClick={runSeedAll}
           disabled={running || pushing}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
         >
           {running ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
           {running ? `Seeding… (${results.length}/${SEEDS.length})` : 'Seed All 24 SWMS'}
@@ -152,7 +152,7 @@ export default function SwmsSeedTab() {
           <button
             onClick={runPush}
             disabled={pushing}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
           >
             {pushing ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
             {pushing ? 'Pushing…' : 'Push to All Companies'}

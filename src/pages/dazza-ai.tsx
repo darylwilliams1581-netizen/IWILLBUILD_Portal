@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Bot, Send, User, HardHat, Truck, BarChart2,
-  RefreshCw, Calculator, Wrench, AlertTriangle,
+  RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { usePermissions } from '@/lib/usePermissions';
 import {
   calcPier, calcSlab, calcPit, calcTrench, calcGstAdd, calcGstRemove,
@@ -377,7 +378,7 @@ function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg:
       </div>
       <button
         onClick={run}
-        className="w-full bg-primary hover:bg-orange-600 text-white text-xs font-bold py-1.5 rounded-lg transition-colors"
+        className="w-full bg-primary hover:bg-violet-700 text-white text-xs font-bold py-1.5 rounded-lg transition-colors"
       >
         Calculate
       </button>
@@ -388,7 +389,7 @@ function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg:
           {result.detail && <div className="text-[10px] text-slate-500 mt-1 leading-relaxed">{result.detail}</div>}
           <button
             onClick={sendToChat}
-            className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-700 transition-colors"
+            className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-violet-800 transition-colors"
           >
             <Send size={9} /> Send to chat
           </button>
@@ -757,7 +758,9 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-[#f5f6f8] lg:pt-[96px] flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Dazza AI — IWILLBUILD Portal</title>
         <meta name="description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
@@ -774,65 +777,51 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
+      {/* Visually-hidden h1 for accessibility / SEO — page is a full-screen app shell */}
+      <h1 className="sr-only">Dazza AI — IWILLBUILD Portal</h1>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* ── Top bar ── */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+        {/* ── Sub-header: Dazza status + chat controls ── */}
+        <header className="h-11 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center shrink-0">
-              <Bot size={16} className="text-white" />
+            <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
+              <Bot size={13} className="text-white" />
             </div>
-            <div>
-              <h1 className="font-heading font-bold text-sm leading-none">Dazza AI</h1>
-              <p className="text-[10px] text-slate-500 leading-none mt-0.5">
-                {ctxLoading ? 'Loading context…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
-              </p>
-            </div>
+            <span className="font-heading font-bold text-sm leading-none text-slate-800">Dazza AI</span>
+            <span className="text-[10px] text-slate-400">
+              {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
+            </span>
             <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
               Online
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {isAdmin && (
               <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
                 <button
                   onClick={() => setActiveTab('chat')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all ${
-                    activeTab === 'chat'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                    activeTab === 'chat' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
-                  <Bot size={12} /> Chat
+                  <Bot size={11} /> Chat
                 </button>
                 <button
                   onClick={() => setActiveTab('brain')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all ${
-                    activeTab === 'brain'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                    activeTab === 'brain' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
-                  <Brain size={12} /> Brain
+                  <Brain size={11} /> Brain
                 </button>
               </div>
             )}
-            <button
-              onClick={exportChat}
-              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
-              title="Export chat"
-            >
-              <Download size={13} />
-              <span className="hidden sm:inline">Export</span>
+            <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
+              <Download size={12} /><span className="hidden sm:inline">Export</span>
             </button>
-            <button
-              onClick={clearChat}
-              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
-            >
-              <RefreshCw size={13} />
-              <span className="hidden sm:inline">New chat</span>
+            <button onClick={clearChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+              <RefreshCw size={12} /><span className="hidden sm:inline">New chat</span>
             </button>
           </div>
         </header>
@@ -879,7 +868,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                     key={a.label}
                     onClick={() => void sendMessage(a.prompt)}
                     disabled={isTyping || ctxLoading}
-                    className="flex items-center gap-1.5 shrink-0 bg-slate-50 hover:bg-orange-50 hover:border-primary/30 border border-slate-200 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all disabled:opacity-40 whitespace-nowrap"
+                    className="flex items-center gap-1.5 shrink-0 bg-slate-50 hover:bg-violet-50 hover:border-primary/30 border border-slate-200 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all disabled:opacity-40 whitespace-nowrap"
                   >
                     <a.icon size={11} className="text-slate-400 group-hover:text-primary" />
                     {a.label}
@@ -997,9 +986,9 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                     <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
                       <Bot size={13} className="text-white" />
                     </div>
-                    <div className="bg-orange-50 border border-orange-200 rounded-2xl rounded-tl-sm px-3 py-2 flex items-center gap-2 shadow-sm">
-                      <Loader2 size={11} className="text-orange-500 animate-spin shrink-0" />
-                      <span className="text-xs text-orange-700 font-medium">{activeToolCall}</span>
+                    <div className="bg-violet-50 border border-violet-200 rounded-2xl rounded-tl-sm px-3 py-2 flex items-center gap-2 shadow-sm">
+                      <Loader2 size={11} className="text-violet-600 animate-spin shrink-0" />
+                      <span className="text-xs text-violet-800 font-medium">{activeToolCall}</span>
                     </div>
                   </motion.div>
                 )}
@@ -1104,7 +1093,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                 <button
                   onClick={() => void sendMessage(input)}
                   disabled={!input.trim() || isTyping}
-                  className="w-8 h-8 bg-primary hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0"
+                  className="w-8 h-8 bg-primary hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0"
                 >
                   {isTyping ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                 </button>
@@ -1194,7 +1183,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                             placeholder="e.g. 12.5 * 3.6"
                             className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40 bg-white"
                           />
-                          <button onClick={runSimple} className="bg-primary text-white text-xs font-bold px-2.5 rounded-lg hover:bg-orange-600 transition-colors">=</button>
+                          <button onClick={runSimple} className="bg-primary text-white text-xs font-bold px-2.5 rounded-lg hover:bg-violet-700 transition-colors">=</button>
                         </div>
                         {simpleResult && (
                           <div className="mt-1.5 text-sm font-black text-primary">{simpleResult}</div>
@@ -1243,29 +1232,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
               </AnimatePresence>
             </div>
 
-            {/* About Dazza */}
-            <div className="mt-auto p-3">
-              <div className="bg-slate-900 rounded-xl p-3 text-white">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Bot size={13} className="text-white/60" />
-                  <span className="text-xs font-bold">About Dazza</span>
-                </div>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Dazza reads your live portal data. AI calls are server-side — your API keys are never exposed to the browser.
-                </p>
-                <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">
-                  Always verify building, safety, legal and compliance decisions with a competent person.
-                </p>
-                {isAdmin && (
-                  <a
-                    href="/settings"
-                    className="mt-2 flex items-center gap-1 text-[10px] text-primary font-semibold hover:text-orange-400 transition-colors"
-                  >
-                    <Wrench size={9} /> Configure in Settings
-                  </a>
-                )}
-              </div>
-            </div>
+
           </div>
           </> /* end activeTab === 'chat' Fragment */
           )}

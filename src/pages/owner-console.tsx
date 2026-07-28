@@ -10,8 +10,9 @@ import {
   Play, Info, Clock, Copy, Check, Plus, Database,
   Settings, Users, Building2, LogOut,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { useSupportMode } from '@/lib/useSupportMode';
 import OverviewTab from '@/components/owner-console/OverviewTab';
 import CompaniesTab from '@/components/owner-console/CompaniesTab';
@@ -593,8 +594,9 @@ export default function OwnerConsolePage() {
   // Access guard
   if (!permsLoading && !isPlatformOwner) {
     return (
-      <div className="flex h-full bg-[#F4F5F7]">
-        <PortalSidebar />
+      <div className="min-h-screen bg-[#F4F5F7] lg:pt-[96px]">
+        <DesktopTopBar />
+        <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-sm">
             <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-4">
@@ -604,7 +606,7 @@ export default function OwnerConsolePage() {
             <p className="text-sm text-slate-500 mb-6">Platform developer access is required to view the Developer Console.</p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors"
+              className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors"
             >
               Back to Dashboard
             </button>
@@ -623,10 +625,11 @@ export default function OwnerConsolePage() {
     : null;
 
   return (
-    <div className="flex h-full bg-[#F4F5F7] overflow-hidden">
-      <PortalSidebar />
+    <div className="min-h-screen bg-[#F4F5F7] lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col h-full overflow-hidden">
         <Helmet>
           <title>Developer Console — IWILLBUILD Portal</title>
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
@@ -870,7 +873,7 @@ export default function OwnerConsolePage() {
                       <p className="text-sm text-slate-500 mb-6">Select a company from the Companies tab to enter Support Setup mode.</p>
                       <button
                         onClick={() => setTab('companies')}
-                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors"
+                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors"
                       >
                         Go to Companies
                       </button>
@@ -919,8 +922,8 @@ export default function OwnerConsolePage() {
                   {/* Safety DB Migration card */}
                   <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
-                        <Database size={16} className="text-orange-600" />
+                      <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center">
+                        <Database size={16} className="text-violet-700" />
                       </div>
                       <div>
                         <p className="font-bold text-sm text-slate-800">Safety DB Migration</p>
@@ -931,7 +934,7 @@ export default function OwnerConsolePage() {
                       <button
                         onClick={runSafetyMigration}
                         disabled={safetyMigStatus === 'running'}
-                        className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                        className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
                       >
                         {safetyMigStatus === 'running' ? (
                           <><Loader2 size={13} className="animate-spin" />Running…</>
@@ -1210,7 +1213,7 @@ export default function OwnerConsolePage() {
               <button
                 onClick={() => void handleCreateCompany()}
                 disabled={creating}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-60 transition-colors"
               >
                 {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Create Company

@@ -8,7 +8,7 @@ import {
 
 interface Inspection { id: number; report_title: string | null; report_no: string | null; asset_name: string; }
 
-const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30';
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30';
 const LABEL = 'block text-xs font-semibold text-slate-500 mb-1';
 
 export default function AMSharedReportsTab() {
@@ -69,7 +69,7 @@ export default function AMSharedReportsTab() {
       {/* Generate panel */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <Share2 size={15} className="text-orange-500" />
+          <Share2 size={15} className="text-violet-600" />
           Generate Shared Report Link
         </h3>
         <p className="text-xs text-slate-500">
@@ -98,7 +98,7 @@ export default function AMSharedReportsTab() {
         </div>
 
         <button onClick={() => void handleGenerate()} disabled={generating || !selectedInspection}
-          className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 self-start">
+          className="flex items-center gap-2 px-4 py-2.5 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 self-start">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           Generate link
         </button>

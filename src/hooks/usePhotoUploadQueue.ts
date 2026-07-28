@@ -1,21 +1,35 @@
 /**
  * usePhotoUploadQueue
- *
+ * ─────────────────────────────────────────────────────────────────────────────
  * Manages a queue of pending photo uploads with:
- * - Optimistic thumbnail cards (local blob URLs for JPEG/PNG/WebP)
- * - XHR-based upload for real progress events
- * - Controlled concurrency (max 2 simultaneous uploads)
- * - Per-item status: pending → preparing → uploading → uploaded | failed
- * - Retry individual failed items
- * - Remove pending/failed items
- * - Automatic blob URL revocation after upload
+ *
+ * OFFLINE-FIRST:
+ *   - Photos are saved to IndexedDB immediately on capture (before any upload)
+ *   - Queue is restored from IDB on mount — survives app close / refresh
+ *   - Network-aware: pauses when offline, auto-resumes when connection returns
+ *   - Manual retry available at any time
+ *
+ * SYNC STATES (field-friendly):
+ *   saved      — on device, not yet attempted (was: pending)
+ *   preparing  — resizing/normalising locally
+ *   uploading  — actively sending to server
+ *   synced     — confirmed on server (was: uploaded)
+ *   failed     — upload failed, retry available
+ *
+ * CONCURRENCY: max 2 simultaneous uploads
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  savePhoto,
+  removePhoto,
+  loadPendingPhotos,
+  incrementAttempts,
+} from '@/lib/offlinePhotoStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type UploadStatus = 'pending' | 'preparing' | 'uploading' | 'uploaded' | 'failed';
+export type UploadStatus = 'saved' | 'preparing' | 'uploading' | 'synced' | 'failed';
 
 export interface PendingPhoto {
   clientId: string;
@@ -32,6 +46,8 @@ export interface PendingPhoto {
   error: string | null;
   /** The prepared File ready to upload */
   _file: File | null;
+  /** Whether this item was restored from IDB on mount */
+  restoredFromDevice: boolean;
 }
 
 interface UsePhotoUploadQueueOptions {
@@ -49,7 +65,6 @@ function nextClientId(): string {
 const PREVIEW_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
 const HEIC_EXTS = ['heic', 'heif'];
-const ALLOWED_TYPES = [...PREVIEW_TYPES, ...HEIC_MIMES];
 const MAX_PX = 1920;
 const JPEG_QUALITY = 0.88;
 const CONCURRENCY = 2;
@@ -65,29 +80,55 @@ function canPreview(file: File): boolean {
 
 async function normaliseToJpeg(file: File): Promise<File | null> {
   let bitmap: ImageBitmap;
-  try { bitmap = await createImageBitmap(file); } catch { return null; }
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return null;
+  }
+
   let { width, height } = bitmap;
   if (width > MAX_PX || height > MAX_PX) {
     if (width >= height) { height = Math.round((height / width) * MAX_PX); width = MAX_PX; }
     else                 { width  = Math.round((width  / height) * MAX_PX); height = MAX_PX; }
   }
-  const canvas = document.createElement('canvas');
-  canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  let canvas: HTMLCanvasElement;
+  let ctx: CanvasRenderingContext2D | null;
+  try {
+    canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext('2d');
+  } catch {
+    bitmap.close();
+    return null;
+  }
+
+  if (!ctx) { bitmap.close(); return file; }
+
+  try {
+    ctx.drawImage(bitmap, 0, 0, width, height);
+  } catch {
+    bitmap.close();
+    return null;
+  }
   bitmap.close();
+
   return await new Promise<File>((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) { resolve(file); return; }
-      const stem = file.name.replace(/\.[^.]+$/, '');
-      resolve(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
-    }, 'image/jpeg', JPEG_QUALITY);
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(file); return; }
+        const stem = file.name.replace(/\.[^.]+$/, '');
+        resolve(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
+      }, 'image/jpeg', JPEG_QUALITY);
+    } catch {
+      resolve(file);
+    }
   });
 }
 
 async function prepareFile(file: File): Promise<File> {
-  if (isIos()) return file; // iOS: upload raw, server handles HEIC
+  if (isIos()) return file;
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const isHeic = HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(file.type);
   if (isHeic || PREVIEW_TYPES.includes(file.type)) {
@@ -129,7 +170,7 @@ function uploadFileXhr(
       }
     });
 
-    xhr.addEventListener('error', () => reject(new Error('Network error — please try again')));
+    xhr.addEventListener('error', () => reject(new Error('No connection — saved on device')));
     xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
 
     xhr.send(fd);
@@ -140,16 +181,64 @@ function uploadFileXhr(
 
 export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQueueOptions) {
   const [queue, setQueue] = useState<PendingPhoto[]>([]);
-  // Track active upload count without triggering re-renders on every tick
-  const activeRef = useRef(0);
-  // Ref to queue so callbacks inside processNext always see latest state
-  const queueRef = useRef<PendingPhoto[]>([]);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [restoredFromDevice, setRestoredFromDevice] = useState(false);
+
+  const activeRef  = useRef(0);
+  const queueRef   = useRef<PendingPhoto[]>([]);
   queueRef.current = queue;
+
+  // ── Network listeners ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handleOnline  = () => { setIsOnline(true);  setTimeout(() => processNext(), 500); };
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online',  handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online',  handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Restore from IDB on mount ──────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!jobId || isNaN(jobId)) return;
+
+    void (async () => {
+      const stored = await loadPendingPhotos(jobId);
+      if (stored.length === 0) { setRestoredFromDevice(true); return; }
+
+      const restored: PendingPhoto[] = stored.map((s) => ({
+        clientId:          s.clientId,
+        fileName:          s.fileName,
+        mimeType:          s.mimeType,
+        localPreviewUrl:   canPreview(s.file) ? URL.createObjectURL(s.file) : null,
+        status:            'saved' as UploadStatus,
+        progress:          0,
+        serverPhotoId:     null,
+        error:             null,
+        _file:             s.file,
+        restoredFromDevice: true,
+      }));
+
+      setQueue(restored);
+      setRestoredFromDevice(true);
+
+      // Kick off uploads if online
+      if (navigator.onLine) setTimeout(() => processNext(), 200);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
 
   // ── Mutators ───────────────────────────────────────────────────────────────
 
   const updateItem = useCallback((clientId: string, patch: Partial<PendingPhoto>) => {
-    setQueue((prev) => prev.map((item) => item.clientId === clientId ? { ...item, ...patch } : item));
+    setQueue((prev) => prev.map((item) =>
+      item.clientId === clientId ? { ...item, ...patch } : item
+    ));
   }, []);
 
   const removeItem = useCallback((clientId: string) => {
@@ -158,29 +247,33 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
       if (item?.localPreviewUrl) URL.revokeObjectURL(item.localPreviewUrl);
       return prev.filter((i) => i.clientId !== clientId);
     });
+    // Remove from IDB too
+    void removePhoto(clientId);
   }, []);
 
-  // ── Process queue (concurrency-controlled) ─────────────────────────────────
+  // ── Process queue (concurrency-controlled, network-aware) ─────────────────
 
   const processNext = useCallback(() => {
+    if (!navigator.onLine) return; // Don't attempt when offline
+
     const current = queueRef.current;
-    const pending = current.filter((i) => i.status === 'pending' || i.status === 'preparing');
+    const pending = current.filter((i) => i.status === 'saved' || i.status === 'preparing');
     if (pending.length === 0 || activeRef.current >= CONCURRENCY) return;
 
-    // Pick the first truly pending item (not already being prepared)
-    const next = current.find((i) => i.status === 'pending');
+    const next = current.find((i) => i.status === 'saved');
     if (!next) return;
 
     activeRef.current += 1;
     const { clientId } = next;
 
-    // Step 1: preparing (normalise/resize)
+    // Step 1: preparing (normalise/resize locally)
     updateItem(clientId, { status: 'preparing', progress: 0 });
+    void incrementAttempts(clientId);
 
     void (async () => {
       let file: File | null = next._file;
       if (!file) {
-        updateItem(clientId, { status: 'failed', error: 'File missing' });
+        updateItem(clientId, { status: 'failed', error: 'File missing — please retry' });
         activeRef.current -= 1;
         processNext();
         return;
@@ -202,86 +295,112 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
           (pct) => updateItem(clientId, { progress: pct }),
         );
 
-        // Revoke blob URL — server photo is now the source of truth
+        // Revoke blob URL — server is now the source of truth
         const item = queueRef.current.find((i) => i.clientId === clientId);
         if (item?.localPreviewUrl) URL.revokeObjectURL(item.localPreviewUrl);
 
+        // Remove from IDB — confirmed synced
+        void removePhoto(clientId);
+
         updateItem(clientId, {
-          status: 'uploaded',
-          progress: 100,
-          serverPhotoId: result.id,
-          localPreviewUrl: null,
-          error: null,
+          status:            'synced',
+          progress:          100,
+          serverPhotoId:     result.id,
+          localPreviewUrl:   null,
+          error:             null,
+          restoredFromDevice: false,
         });
       } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Upload failed';
         updateItem(clientId, {
           status: 'failed',
-          error: e instanceof Error ? e.message : 'Upload failed',
+          error:  msg,
         });
+        // Keep in IDB — will retry on next session or manual retry
       } finally {
         activeRef.current -= 1;
+
         // Check if batch is complete
         const updated = queueRef.current;
-        const stillActive = updated.filter((i) => i.status === 'pending' || i.status === 'preparing' || i.status === 'uploading');
+        const stillActive = updated.filter(
+          (i) => i.status === 'saved' || i.status === 'preparing' || i.status === 'uploading'
+        );
         if (stillActive.length === 0) {
-          const uploadedCount = updated.filter((i) => i.status === 'uploaded').length;
-          const failedCount   = updated.filter((i) => i.status === 'failed').length;
-          if (uploadedCount > 0 || failedCount > 0) {
-            onBatchComplete?.(uploadedCount, failedCount);
+          const syncedCount = updated.filter((i) => i.status === 'synced').length;
+          const failedCount = updated.filter((i) => i.status === 'failed').length;
+          if (syncedCount > 0 || failedCount > 0) {
+            onBatchComplete?.(syncedCount, failedCount);
           }
         }
-        // Kick off next
+
         processNext();
       }
     })();
 
-    // Kick off another slot if concurrency allows
     if (activeRef.current < CONCURRENCY) processNext();
   }, [jobId, updateItem, onBatchComplete]);
 
   // ── Enqueue files ──────────────────────────────────────────────────────────
 
   const enqueueFiles = useCallback((files: File[]) => {
-    const newItems: PendingPhoto[] = files.map((file) => {
+    const now = Date.now();
+
+    const newItems: PendingPhoto[] = files.map((file, i) => {
+      const clientId = nextClientId();
       const isPreviewable = canPreview(file);
       const localPreviewUrl = isPreviewable ? URL.createObjectURL(file) : null;
+
+      // Save to IDB immediately — photo is safe on device before any upload
+      void savePhoto({
+        clientId,
+        jobId,
+        fileName:   file.name,
+        mimeType:   file.type || 'application/octet-stream',
+        file,
+        capturedAt: now + i,
+        attempts:   0,
+      });
+
       return {
-        clientId: nextClientId(),
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
+        clientId,
+        fileName:          file.name,
+        mimeType:          file.type || 'application/octet-stream',
         localPreviewUrl,
-        status: 'pending' as UploadStatus,
-        progress: 0,
-        serverPhotoId: null,
-        error: null,
-        _file: file,
+        status:            'saved' as UploadStatus,
+        progress:          0,
+        serverPhotoId:     null,
+        error:             null,
+        _file:             file,
+        restoredFromDevice: false,
       };
     });
 
     setQueue((prev) => [...prev, ...newItems]);
 
-    // Kick off processing after state update
-    setTimeout(() => processNext(), 0);
-  }, [processNext]);
+    // Only kick off upload if online
+    if (navigator.onLine) {
+      setTimeout(() => processNext(), 0);
+    }
+  }, [jobId, processNext]);
 
   // ── Retry a failed item ────────────────────────────────────────────────────
 
   const retryItem = useCallback((clientId: string) => {
     setQueue((prev) => prev.map((item) =>
       item.clientId === clientId && item.status === 'failed'
-        ? { ...item, status: 'pending', progress: 0, error: null }
+        ? { ...item, status: 'saved', progress: 0, error: null }
         : item
     ));
-    setTimeout(() => processNext(), 0);
+    if (navigator.onLine) setTimeout(() => processNext(), 0);
   }, [processNext]);
 
-  // ── Clear uploaded items ───────────────────────────────────────────────────
+  // ── Clear synced items ─────────────────────────────────────────────────────
 
   const clearUploaded = useCallback(() => {
     setQueue((prev) => {
-      prev.filter((i) => i.status === 'uploaded' && i.localPreviewUrl)
+      prev.filter((i) => i.status === 'synced' && i.localPreviewUrl)
         .forEach((i) => URL.revokeObjectURL(i.localPreviewUrl!));
-      return prev.filter((i) => i.status !== 'uploaded');
+      return prev.filter((i) => i.status !== 'synced');
     });
   }, []);
 
@@ -294,17 +413,23 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
 
   // ── Derived state ──────────────────────────────────────────────────────────
 
-  const isUploading = queue.some((i) => i.status === 'uploading' || i.status === 'preparing');
-  const uploadedCount = queue.filter((i) => i.status === 'uploaded').length;
+  const isUploading   = queue.some((i) => i.status === 'uploading' || i.status === 'preparing');
+  const uploadedCount = queue.filter((i) => i.status === 'synced').length;
   const failedCount   = queue.filter((i) => i.status === 'failed').length;
-  const pendingCount  = queue.filter((i) => i.status === 'pending' || i.status === 'preparing' || i.status === 'uploading').length;
-  const totalCount    = queue.length;
+  const savedCount    = queue.filter((i) => i.status === 'saved').length;
+  const pendingCount  = queue.filter(
+    (i) => i.status === 'saved' || i.status === 'preparing' || i.status === 'uploading'
+  ).length;
+  const totalCount = queue.length;
 
   return {
     queue,
     isUploading,
+    isOnline,
+    restoredFromDevice,
     uploadedCount,
     failedCount,
+    savedCount,
     pendingCount,
     totalCount,
     enqueueFiles,

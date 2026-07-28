@@ -71,7 +71,7 @@ export default function StorageProviderCard() {
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-            isR2 ? 'bg-orange-50 border border-orange-200' : 'bg-slate-50 border border-slate-200'
+            isR2 ? 'bg-violet-50 border border-violet-200' : 'bg-slate-50 border border-slate-200'
           }`}>
             {isR2 ? <Cloud size={15} className="text-primary" /> : <Server size={15} className="text-slate-500" />}
           </div>
@@ -94,7 +94,7 @@ export default function StorageProviderCard() {
         <div className="flex items-center gap-3">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${
             isR2
-              ? 'bg-orange-50 border-orange-200 text-orange-700'
+              ? 'bg-violet-50 border-violet-200 text-violet-800'
               : 'bg-slate-50 border-slate-200 text-slate-600'
           }`}>
             {isR2 ? <Zap size={11} /> : <HardDrive size={11} />}

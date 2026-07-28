@@ -96,7 +96,7 @@ export default function DownloadsPage() {
                       <span>Updated {file.date}</span>
                     </div>
                   </div>
-                  <button className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-orange-600 transition-colors shrink-0 mt-1">
+                  <button className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-violet-700 transition-colors shrink-0 mt-1">
                     <ExternalLink size={13} />
                     Download
                   </button>

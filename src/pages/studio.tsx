@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import ShareLibraryTab from '@/components/studio/ShareLibraryTab';
 import { AnimatePresence } from 'motion/react';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
@@ -41,7 +43,7 @@ const TYPE_COLORS: Record<string, string> = {
   form:      'bg-cyan-100 text-cyan-700 border-cyan-200',
   contract:  'bg-amber-100 text-amber-700 border-amber-200',
   quote:     'bg-emerald-100 text-emerald-700 border-emerald-200',
-  report:    'bg-orange-100 text-orange-700 border-orange-200',
+  report:    'bg-violet-100 text-violet-800 border-violet-200',
   induction: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   custom:    'bg-slate-100 text-slate-600 border-slate-200',
 };
@@ -74,7 +76,7 @@ function ToolBtn({
   const cls = danger
     ? 'text-slate-400 hover:bg-red-50 hover:text-red-500'
     : variant === 'orange'
-      ? 'text-orange-500 hover:bg-orange-50 hover:text-orange-600'
+      ? 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'
       : variant === 'green'
         ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
         : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700';
@@ -135,7 +137,7 @@ export default function StudioPage() {
           templateType: 'custom',
           blocks: [],
           pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' },
-          theme: { backgroundColor: '#ffffff', accentColor: '#f97316', textColor: '#1e293b', tableHeaderColor: '#1e293b', tableHeaderTextColor: '#ffffff' },
+          theme: { backgroundColor: '#ffffff', accentColor: '#7c3aed', textColor: '#1e293b', tableHeaderColor: '#1e293b', tableHeaderTextColor: '#ffffff' },
           systemFields: [],
           sourceAttachments: [],
         }),
@@ -171,7 +173,9 @@ export default function StudioPage() {
   }, [navigate]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Studio — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD Studio — build quotes, contracts, safety documents and more." />
@@ -205,7 +209,7 @@ export default function StudioPage() {
             </button>
             <button
               onClick={() => navigate('/studio/builder/new')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors"
             >
               <Plus size={15} />
               <span className="hidden sm:inline">New document</span>
@@ -224,7 +228,7 @@ export default function StudioPage() {
               className={[
                 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
                 activeTab === id
-                  ? 'bg-orange-50 text-primary font-semibold'
+                  ? 'bg-violet-50 text-primary font-semibold'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted',
               ].join(' ')}
             >

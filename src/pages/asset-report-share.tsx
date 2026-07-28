@@ -30,7 +30,7 @@ interface ReportData {
 const SEVERITY_COLORS: Record<string, string> = {
   low: 'bg-slate-100 text-slate-600 border-slate-200',
   med: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  high: 'bg-orange-50 text-orange-700 border-orange-200',
+  high: 'bg-violet-50 text-violet-800 border-violet-200',
   critical: 'bg-red-50 text-red-700 border-red-200',
 };
 const STATUS_COLORS: Record<string, string> = {

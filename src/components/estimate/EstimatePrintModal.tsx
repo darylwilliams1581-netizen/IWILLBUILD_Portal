@@ -140,7 +140,7 @@ export default function EstimatePrintModal({
 
     const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>${escapeHtml(docTitle)}</title><style>
 *{box-sizing:border-box;margin:0;padding:0}@page{size:A4;margin:14mm 14mm 16mm 14mm}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:#1e293b;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media screen{body{padding:20mm 20mm;max-width:210mm;margin:0 auto}}
-.doc-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #f97316;padding-bottom:14px;margin-bottom:18px}.company-name{font-size:20px;font-weight:800;color:#f97316;letter-spacing:-0.3px;line-height:1.2}.company-header-sub{font-size:12px;font-weight:600;color:#475569;margin-top:3px}.company-detail{font-size:11px;color:#64748b;margin-top:2px;line-height:1.5}.doc-label{text-align:right}.doc-label-title{font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.5px}.doc-label-sub{font-size:11px;color:#94a3b8;margin-top:3px}
+.doc-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #7c3aed;padding-bottom:14px;margin-bottom:18px}.company-name{font-size:20px;font-weight:800;color:#7c3aed;letter-spacing:-0.3px;line-height:1.2}.company-header-sub{font-size:12px;font-weight:600;color:#475569;margin-top:3px}.company-detail{font-size:11px;color:#64748b;margin-top:2px;line-height:1.5}.doc-label{text-align:right}.doc-label-title{font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.5px}.doc-label-sub{font-size:11px;color:#94a3b8;margin-top:3px}
 .meta-table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px}.meta-key{width:130px;font-weight:600;color:#64748b;padding:3px 12px 3px 0;vertical-align:top;white-space:nowrap}.meta-val{color:#1e293b;font-weight:500;padding:3px 0}
 .lines-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:0}.thead-row{background:#f8fafc}.thead-row th{padding:9px 10px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;border-top:1px solid #e2e8f0;border-bottom:2px solid #e2e8f0}.th-desc{text-align:left}.th-num{text-align:right;width:70px}.th-unit{text-align:left;width:60px}.line-row td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}.line-row:last-child td{border-bottom:2px solid #e2e8f0}.td-desc{text-align:left;line-height:1.5}.td-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.td-unit{text-align:left;color:#64748b}.td-amount{font-weight:600}.line-row{page-break-inside:avoid}
 .totals-wrap{display:flex;justify-content:flex-end;margin-top:12px;margin-bottom:16px}.totals-table{border-collapse:collapse;font-size:13px;min-width:240px}.totals-table td{padding:5px 10px}.tot-label{color:#475569;text-align:left}.tot-val{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}.tot-total-row td{font-size:16px;font-weight:800;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:8px}
@@ -172,7 +172,7 @@ ${metaHtml}${tableHtml}${totalsHtml}${disclaimerHtml}${paymentHtml}${acceptanceH
             { value: 'scope-total', label: 'Scope with Total', desc: 'Line descriptions + qty/unit, total at bottom' },
             { value: 'unpriced', label: 'Unpriced Scope', desc: 'Descriptions and quantities only — no prices' },
           ] as const).map((opt) => (
-            <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${mode === opt.value ? 'border-primary bg-orange-50' : 'border-border hover:bg-muted/50'}`}>
+            <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${mode === opt.value ? 'border-primary bg-violet-50' : 'border-border hover:bg-muted/50'}`}>
               <input type="radio" name="printMode" value={opt.value} checked={mode === opt.value} onChange={() => setMode(opt.value)} className="mt-0.5 accent-primary" />
               <div>
                 <p className="text-sm font-semibold">{opt.label}</p>
@@ -183,7 +183,7 @@ ${metaHtml}${tableHtml}${totalsHtml}${disclaimerHtml}${paymentHtml}${acceptanceH
         </div>
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-muted transition-colors">Cancel</button>
-          <button onClick={() => void doPrint()} disabled={printing} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-60">
+          <button onClick={() => void doPrint()} disabled={printing} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-60">
             {printing ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
             {printing ? 'Preparing…' : 'Print / PDF'}
           </button>

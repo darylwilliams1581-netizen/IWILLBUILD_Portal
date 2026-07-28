@@ -164,19 +164,19 @@ function PhoneVerificationSection() {
                 <p className="text-sm text-slate-600">A 6-digit code was sent to <span className="font-semibold text-slate-800">{savedPhone}</span>. Enter it below — expires in 10 minutes.</p>
                 <div className="flex gap-2 items-center">
                   <input type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" className={`${inputClass} tracking-[0.3em] text-center font-mono text-lg max-w-[160px]`} autoFocus />
-                  <button type="submit" disabled={verifying || code.length !== 6} className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button type="submit" disabled={verifying || code.length !== 6} className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     {verifying ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}Verify
                   </button>
                   <button type="button" onClick={() => setVerifyStep('idle')} className="text-sm text-slate-600 hover:text-slate-800 px-3 transition-colors">Cancel</button>
                 </div>
                 {verifyError && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{verifyError}</p>}
-                <button type="button" onClick={handleSendCode} disabled={sendingCode} className="text-xs text-primary hover:text-orange-600 transition-colors self-start">Resend code</button>
+                <button type="button" onClick={handleSendCode} disabled={sendingCode} className="text-xs text-primary hover:text-violet-700 transition-colors self-start">Resend code</button>
               </form>
             ) : (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-amber-600 text-sm"><AlertCircle size={14} /><span>{savedPhone} — Not verified</span></div>
                 {sendError && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{sendError}</p>}
-                <button onClick={handleSendCode} disabled={sendingCode || !smsAvailable} className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors self-start">
+                <button onClick={handleSendCode} disabled={sendingCode || !smsAvailable} className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors self-start">
                   {sendingCode ? <Loader2 size={13} className="animate-spin" /> : <Smartphone size={13} />}Send verification code
                 </button>
               </div>
@@ -255,7 +255,7 @@ export default function MyAccountTab() {
         <h2 className="font-bold text-base text-slate-800 mb-4">Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-black text-xl shrink-0">{initials}</div>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-black text-xl shrink-0">{initials}</div>
             <div>
               <div className="font-bold text-slate-900 text-base">{me?.user?.name ?? '—'}</div>
               <div className="text-sm text-slate-400">{me?.user?.email ?? '—'}</div>
@@ -282,7 +282,7 @@ export default function MyAccountTab() {
               {profileError && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} />{profileError}</div>}
               {profileState === 'saved' && <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 font-semibold"><CheckCircle2 size={13} />Profile updated successfully.</div>}
               <div className="pt-1 border-t border-slate-100 flex justify-end">
-                <button type="submit" disabled={profileSaving} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <button type="submit" disabled={profileSaving} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   {profileSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save Profile
                 </button>
               </div>
@@ -330,7 +330,7 @@ export default function MyAccountTab() {
             {errorMsg && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} />{errorMsg}</div>}
             {saveState === 'success' && <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 font-semibold"><CheckCircle2 size={13} />Password changed successfully. You're still logged in.</div>}
             <div className="pt-1 border-t border-slate-100 flex justify-end">
-              <button type="submit" disabled={saving || !!newPwError || !!confirmPwError || !currentPw || !newPw || !confirmPw} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="submit" disabled={saving || !!newPwError || !!confirmPwError || !currentPw || !newPw || !confirmPw} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}Update Password
               </button>
             </div>

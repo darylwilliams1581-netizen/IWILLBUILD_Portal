@@ -102,7 +102,7 @@ export default async function handler(req: Request, res: Response) {
         subject: `You've been invited to join ${company?.name ?? 'IWILLBUILD'}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-            <div style="background: #F97316; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <div style="background: #7C3AED; padding: 16px 24px; border-radius: 8px 8px 0 0;">
               <h1 style="color: white; margin: 0; font-size: 20px;">IWILLBUILD Portal</h1>
             </div>
             <div style="background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
@@ -111,7 +111,7 @@ export default async function handler(req: Request, res: Response) {
               ${name ? `<p style="color: #444;">Hi ${name},</p>` : ''}
               <p style="color: #444;">Your role will be: <strong>${role}</strong></p>
               <p style="margin: 24px 0;">
-                <a href="${inviteUrl}" style="background: #F97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+                <a href="${inviteUrl}" style="background: #7C3AED; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
                   Accept Invitation
                 </a>
               </p>

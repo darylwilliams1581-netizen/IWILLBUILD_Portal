@@ -113,7 +113,7 @@ export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Globe size={14} className="text-orange-500" />
+            <Globe size={14} className="text-violet-600" />
             Publish to Global Library
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -153,7 +153,7 @@ export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
                 key={t.id}
                 onClick={() => setSelectedId(t.id === selectedId ? null : t.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                  selectedId === t.id ? 'bg-orange-50 border-l-2 border-orange-400' : 'hover:bg-slate-50'
+                  selectedId === t.id ? 'bg-violet-50 border-l-2 border-violet-400' : 'hover:bg-slate-50'
                 }`}
               >
                 <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -165,7 +165,7 @@ export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
                     {t.template_type ? TYPE_LABELS[t.template_type] ?? t.template_type : 'Document'} · Updated {fmtDate(t.updated_at)}
                   </p>
                 </div>
-                {selectedId === t.id && <CheckCircle2 size={14} className="text-orange-500 flex-shrink-0" />}
+                {selectedId === t.id && <CheckCircle2 size={14} className="text-violet-600 flex-shrink-0" />}
               </button>
             ))}
           </div>
@@ -176,7 +176,7 @@ export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
       <button
         onClick={() => { if (selectedId) setShowModal(true); }}
         disabled={!selectedId}
-        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         <Globe size={14} />
         {selectedId ? `Publish "${selectedDoc?.name ?? ''}" to Global Library` : 'Select a document above to publish'}
@@ -189,7 +189,7 @@ export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
             <BookOpen size={12} />
             Recently in Global Library
           </h4>
-          <a href="/owner-console" className="text-xs text-orange-500 font-semibold hover:underline">
+          <a href="/owner-console" className="text-xs text-violet-600 font-semibold hover:underline">
             Manage all →
           </a>
         </div>
@@ -205,8 +205,8 @@ export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
           <div className="flex flex-col gap-2">
             {recentItems.slice(0, 8).map((item) => (
               <div key={item.id} className="flex items-center gap-3 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl">
-                <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
-                  <Library size={12} className="text-orange-500" />
+                <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center flex-shrink-0">
+                  <Library size={12} className="text-violet-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-800 truncate">{item.title}</p>

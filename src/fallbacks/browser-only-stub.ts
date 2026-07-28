@@ -56,3 +56,46 @@ export const useWatch = null;
 export const useFieldArray = null;
 export const FormProvider = null;
 export const Controller = null;
+
+// ── date-fns ──────────────────────────────────────────────────────────────────
+// date-fns is stubbed to this file during SSR. Export no-op versions of every
+// named function imported across the codebase so Rollup binding resolution
+// doesn't fail. These are never called server-side (pages are client-only).
+export const format = () => '';
+export const formatDistanceToNow = () => '';
+export const formatDistance = () => '';
+export const formatRelative = () => '';
+export const parseISO = (s: string) => new Date(s);
+export const parse = () => new Date(0);
+export const isValid = () => false;
+export const isAfter = () => false;
+export const isBefore = () => false;
+export const isSameDay = () => false;
+export const isSameMonth = () => false;
+export const isSameYear = () => false;
+export const startOfDay = () => new Date(0);
+export const endOfDay = () => new Date(0);
+export const startOfWeek = () => new Date(0);
+export const endOfWeek = () => new Date(0);
+export const startOfMonth = () => new Date(0);
+export const endOfMonth = () => new Date(0);
+export const addDays = () => new Date(0);
+export const addWeeks = () => new Date(0);
+export const addMonths = () => new Date(0);
+export const subDays = () => new Date(0);
+export const subWeeks = () => new Date(0);
+export const subMonths = () => new Date(0);
+export const differenceInDays = () => 0;
+export const differenceInHours = () => 0;
+export const differenceInMinutes = () => 0;
+export const differenceInCalendarDays = () => 0;
+export const getDay = () => 0;
+export const getDate = () => 0;
+export const getMonth = () => 0;
+export const getYear = () => 0;
+export const setHours = () => new Date(0);
+export const setMinutes = () => new Date(0);
+export const eachDayOfInterval = () => [];
+export const eachWeekOfInterval = () => [];
+export const enUS = {};
+export const enAU = {};

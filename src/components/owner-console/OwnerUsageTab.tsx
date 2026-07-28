@@ -136,7 +136,7 @@ function CustomLimitsModal({
             <div key={key} className="flex items-center gap-3">
               <Icon size={14} className="text-slate-400 shrink-0" />
               <label className="text-sm font-medium text-slate-700 w-32 shrink-0">{label}</label>
-              <div className="flex-1 flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400">
+              <div className="flex-1 flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-violet-400">
                 <button
                   type="button"
                   onClick={() => setLimits(l => ({ ...l, [key]: Math.max(0, l[key] - 1) }))}
@@ -163,7 +163,7 @@ function CustomLimitsModal({
           <div className="flex items-center gap-3">
             <HardDrive size={14} className="text-slate-400 shrink-0" />
             <label className="text-sm font-medium text-slate-700 w-32 shrink-0">Storage (GB)</label>
-            <div className="flex-1 flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400">
+            <div className="flex-1 flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-violet-400">
               <button
                 type="button"
                 onClick={() => setLimits(l => ({ ...l, storageBytes: Math.max(0, l.storageBytes - GB) }))}
@@ -197,7 +197,7 @@ function CustomLimitsModal({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             Save Limits
@@ -237,7 +237,7 @@ export default function OwnerUsageTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={24} className="animate-spin text-orange-500" />
+        <Loader2 size={24} className="animate-spin text-violet-600" />
       </div>
     );
   }

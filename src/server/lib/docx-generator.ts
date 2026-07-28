@@ -18,7 +18,7 @@ async function getDocx(): Promise<DocxLib> {
 }
 
 // ── Colour constants (OOXML hex, no #) ────────────────────────────────────────
-const ORANGE_HEX = 'F97316';
+const ORANGE_HEX = '7C3AED';
 const DARK_HEX   = '0F1117';
 const SLATE_HEX  = '3E4452';
 const LIGHT_HEX  = 'F2F3F5';

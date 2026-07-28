@@ -1,32 +1,59 @@
 /**
  * PendingPhotoCard
  *
- * Compact horizontal banner row for a single pending/uploading/uploaded/failed photo.
- * Matches the slim style of BatchUploadSummary — no large card, no aspect-square thumbnail.
+ * Compact horizontal banner row for a single pending/uploading/synced/failed photo.
+ * Uses field-friendly language — no technical jargon.
+ *
+ * Sync states shown to the user:
+ *   saved      → "Saved on device"   (safe locally, waiting to upload)
+ *   preparing  → "Getting ready…"    (resizing/normalising)
+ *   uploading  → "Uploading… 42%"    (actively sending)
+ *   synced     → "Synced"            (confirmed on server)
+ *   failed     → "Couldn't upload"   (retry available)
  */
 
 import { motion } from 'motion/react';
-import { X, RefreshCw, CheckCircle2, AlertCircle, ImageOff, Loader2 } from 'lucide-react';
+import { X, RefreshCw, CheckCircle2, AlertCircle, ImageOff, Loader2, HardDrive, WifiOff } from 'lucide-react';
 import type { PendingPhoto, UploadStatus } from '@/hooks/usePhotoUploadQueue';
 
 interface PendingPhotoCardProps {
   item: PendingPhoto;
+  isOnline: boolean;
   onRetry: (clientId: string) => void;
   onRemove: (clientId: string) => void;
 }
 
+// ── Field-friendly labels ─────────────────────────────────────────────────────
+
 const STATUS_LABEL: Record<UploadStatus, string> = {
-  pending:   'Waiting',
-  preparing: 'Preparing…',
+  saved:     'Saved on device',
+  preparing: 'Getting ready…',
   uploading: 'Uploading…',
-  uploaded:  'Uploaded',
-  failed:    'Failed',
+  synced:    'Synced',
+  failed:    'Couldn\'t upload',
 };
 
-export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPhotoCardProps) {
+// ── Colour scheme per state ───────────────────────────────────────────────────
+
+const STATE_STYLE: Record<UploadStatus, { row: string; label: string }> = {
+  saved:     { row: 'bg-slate-50 border-slate-200',       label: 'text-slate-500' },
+  preparing: { row: 'bg-violet-50 border-violet-200',     label: 'text-violet-600' },
+  uploading: { row: 'bg-violet-50 border-violet-200',     label: 'text-violet-600' },
+  synced:    { row: 'bg-emerald-50 border-emerald-200',   label: 'text-emerald-600' },
+  failed:    { row: 'bg-red-50 border-red-200',           label: 'text-red-600' },
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export default function PendingPhotoCard({ item, isOnline, onRetry, onRemove }: PendingPhotoCardProps) {
   const isActive   = item.status === 'uploading' || item.status === 'preparing';
-  const isUploaded = item.status === 'uploaded';
+  const isSynced   = item.status === 'synced';
   const isFailed   = item.status === 'failed';
+  const isSaved    = item.status === 'saved';
+  const style      = STATE_STYLE[item.status];
+
+  // When offline and saved, show a softer "waiting for connection" hint
+  const offlineAndWaiting = isSaved && !isOnline;
 
   return (
     <motion.div
@@ -35,13 +62,7 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.14 }}
-      className={[
-        'flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm',
-        isUploaded ? 'bg-emerald-50 border-emerald-200'
-          : isFailed  ? 'bg-red-50 border-red-200'
-          : isActive  ? 'bg-orange-50 border-orange-200'
-          : 'bg-slate-50 border-slate-200',
-      ].join(' ')}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm ${style.row}`}
     >
       {/* Tiny thumbnail or icon */}
       <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-slate-200 flex items-center justify-center">
@@ -60,13 +81,15 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
       {/* Status icon */}
       <div className="shrink-0">
         {isActive ? (
-          <Loader2 size={14} className="animate-spin text-orange-500" />
-        ) : isUploaded ? (
+          <Loader2 size={14} className="animate-spin text-violet-600" />
+        ) : isSynced ? (
           <CheckCircle2 size={14} className="text-emerald-500" />
         ) : isFailed ? (
           <AlertCircle size={14} className="text-red-500" />
+        ) : offlineAndWaiting ? (
+          <WifiOff size={14} className="text-slate-400" />
         ) : (
-          <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
+          <HardDrive size={14} className="text-slate-400" />
         )}
       </div>
 
@@ -76,28 +99,32 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
           {item.fileName}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className={[
-            'text-[10px] font-semibold leading-none',
-            isUploaded ? 'text-emerald-600'
-              : isFailed ? 'text-red-600'
-              : isActive  ? 'text-orange-500'
-              : 'text-slate-400',
-          ].join(' ')}>
-            {STATUS_LABEL[item.status]}
+          <span className={`text-[10px] font-semibold leading-none ${style.label}`}>
+            {offlineAndWaiting
+              ? 'Waiting for connection'
+              : STATUS_LABEL[item.status]}
             {item.status === 'uploading' && item.progress > 0 ? ` ${item.progress}%` : ''}
           </span>
           {isFailed && item.error && (
             <span className="text-[10px] text-red-400 truncate">{item.error}</span>
           )}
         </div>
-        {/* Inline progress bar */}
+
+        {/* Progress bar — uploading only */}
         {item.status === 'uploading' && (
-          <div className="w-full h-1 bg-orange-100 rounded-full overflow-hidden mt-1">
+          <div className="w-full h-1 bg-violet-100 rounded-full overflow-hidden mt-1">
             <div
-              className="h-full bg-orange-400 rounded-full transition-all duration-200"
+              className="h-full bg-violet-500 rounded-full transition-all duration-200"
               style={{ width: `${item.progress}%` }}
             />
           </div>
+        )}
+
+        {/* "Restored from device" badge — shown on items recovered after app restart */}
+        {item.restoredFromDevice && isSaved && (
+          <span className="inline-flex items-center gap-1 mt-0.5 text-[9px] font-semibold text-slate-400 uppercase tracking-wide">
+            <HardDrive size={8} /> Recovered
+          </span>
         )}
       </div>
 

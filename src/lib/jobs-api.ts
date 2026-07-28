@@ -52,7 +52,7 @@ export const STATUS_STYLE: Record<string, { color: string; bg: string; dot: stri
   'Works Approved':        { color: 'text-teal-700',    bg: 'bg-teal-50 border-teal-200',        dot: 'bg-teal-400' },
   'Ready to Start':        { color: 'text-cyan-700',    bg: 'bg-cyan-50 border-cyan-200',        dot: 'bg-cyan-400' },
   'Works in Progress':     { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200',  dot: 'bg-emerald-500' },
-  'On Hold':               { color: 'text-orange-700',  bg: 'bg-orange-50 border-orange-200',    dot: 'bg-orange-400' },
+  'On Hold':               { color: 'text-violet-800',  bg: 'bg-violet-50 border-violet-200',    dot: 'bg-violet-500' },
   'Completed':             { color: 'text-green-700',   bg: 'bg-green-50 border-green-200',      dot: 'bg-green-500' },
   'Rectification Required':{ color: 'text-red-700',     bg: 'bg-red-50 border-red-200',          dot: 'bg-red-500' },
   'Closed':                { color: 'text-gray-500',    bg: 'bg-gray-100 border-gray-200',       dot: 'bg-gray-400' },

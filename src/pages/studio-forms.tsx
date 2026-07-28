@@ -6,12 +6,16 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, ClipboardList } from 'lucide-react';
 import { FormsPage } from '@/pages/forms';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 export default function StudioFormsPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Forms — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD form templates — build and complete field forms." />

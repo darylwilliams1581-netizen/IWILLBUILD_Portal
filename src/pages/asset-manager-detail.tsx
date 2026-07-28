@@ -27,7 +27,7 @@ export default function AssetManagerDetailPage() {
       </Helmet>
       <div className="min-h-screen flex items-center justify-center">
         <h1 className="sr-only">Asset Manager</h1>
-        <Loader2 size={28} className="animate-spin text-orange-500" />
+        <Loader2 size={28} className="animate-spin text-violet-600" />
       </div>
     </>
   );

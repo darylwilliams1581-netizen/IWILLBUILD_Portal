@@ -85,7 +85,7 @@ export default function ViewEstimatePage() {
               />
               <a
                 href={`/estimates/${estimate.id}`}
-                className="flex items-center gap-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                className="flex items-center gap-1.5 text-xs bg-violet-500 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
               >
                 <Download size={13} />
                 Open Editor
@@ -105,7 +105,7 @@ export default function ViewEstimatePage() {
         <div className="flex-1 overflow-auto">
           {loading && (
             <div className="flex items-center justify-center py-24">
-              <Loader2 size={28} className="animate-spin text-orange-500" />
+              <Loader2 size={28} className="animate-spin text-violet-600" />
             </div>
           )}
 
@@ -128,7 +128,7 @@ export default function ViewEstimatePage() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center shrink-0">
                         <FileText size={16} className="text-white" />
                       </div>
                       <h1 className="text-xl font-bold text-white print:text-gray-900">{estimate.title}</h1>
@@ -209,7 +209,7 @@ export default function ViewEstimatePage() {
                   )}
                   <div className="flex justify-between text-base font-bold border-t border-gray-700 print:border-gray-300 pt-2 mt-2">
                     <span className="text-white print:text-gray-900">Total</span>
-                    <span className="text-orange-400 print:text-orange-600">{fmtMoney(totals.total)}</span>
+                    <span className="text-violet-400 print:text-violet-700">{fmtMoney(totals.total)}</span>
                   </div>
                 </div>
               </div>

@@ -10,7 +10,7 @@
  *   - Collapsible comment thread
  */
 import { useState } from 'react';
-import { MessageSquare, ChevronDown, Send, Loader2 } from 'lucide-react';
+import { MessageSquare, ChevronDown, Send, Loader2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import TagTaskCard from './TagTaskCard';
 import { NOTE_TYPE_META, renderMentions, type Note, type NoteComment, type TagTask } from '@/lib/notes-types';
@@ -21,9 +21,10 @@ interface Props {
   currentUserRole: string;
   onTaskUpdate: (noteId: number, updated: TagTask) => void;
   onCommentAdd: (noteId: number, body: string) => Promise<void>;
+  onDeleteNote?: (noteId: number) => void;
 }
 
-export default function NotesFeed({ notes, currentUserId, currentUserRole, onTaskUpdate, onCommentAdd }: Props) {
+export default function NotesFeed({ notes, currentUserId, currentUserRole, onTaskUpdate, onCommentAdd, onDeleteNote }: Props) {
   if (notes.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-10 text-center">
@@ -44,6 +45,7 @@ export default function NotesFeed({ notes, currentUserId, currentUserRole, onTas
           currentUserRole={currentUserRole}
           onTaskUpdate={(updated) => onTaskUpdate(note.id, updated)}
           onCommentAdd={(body) => onCommentAdd(note.id, body)}
+          onDelete={onDeleteNote ? () => onDeleteNote(note.id) : undefined}
         />
       ))}
     </div>
@@ -58,16 +60,23 @@ interface NoteCardProps {
   currentUserRole: string;
   onTaskUpdate: (updated: TagTask) => void;
   onCommentAdd: (body: string) => Promise<void>;
+  onDelete?: () => void;
 }
 
-function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommentAdd }: NoteCardProps) {
+function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommentAdd, onDelete }: NoteCardProps) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentBody, setCommentBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localComments, setLocalComments] = useState<NoteComment[]>(note.comments);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const meta = NOTE_TYPE_META[note.noteType] ?? NOTE_TYPE_META.note;
-  const isNote = note.noteType === 'note';
+  // Show delete button to the note author or admins/managers
+  const canDelete = onDelete && (
+    note.authorUserId === currentUserId ||
+    currentUserRole === 'admin' ||
+    currentUserRole === 'manager'
+  );
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault();
@@ -118,6 +127,35 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
             </span>
           </div>
         </div>
+        {/* Delete button — visible to author or admin */}
+        {canDelete && !confirmDelete && (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="flex-shrink-0 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Delete note"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+        {canDelete && confirmDelete && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { onDelete?.(); }}
+              className="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px] font-bold"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Body */}
@@ -132,7 +170,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
       {note.tasks.length > 0 && (
         <div className="px-3 pb-3 flex flex-col gap-2">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Tagged actions ({note.tasks.length})
+            Tagged tasks ({note.tasks.length})
           </p>
           {note.tasks.map((task) => (
             <TagTaskCard
@@ -201,7 +239,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
                   <button
                     type="submit"
                     disabled={!commentBody.trim() || submitting}
-                    className="flex-shrink-0 p-2 rounded-lg bg-primary text-white disabled:opacity-40 hover:bg-orange-600 transition-colors"
+                    className="flex-shrink-0 p-2 rounded-lg bg-primary text-white disabled:opacity-40 hover:bg-violet-700 transition-colors"
                   >
                     {submitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                   </button>

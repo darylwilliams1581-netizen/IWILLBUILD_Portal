@@ -277,7 +277,7 @@ export default function SignupPage() {
                   setStep(1);
                   setError('');
                 }}
-                className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-orange-600 transition-colors"
+                className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-violet-700 transition-colors"
               >
                 Continue setup
               </button>
@@ -432,13 +432,13 @@ export default function SignupPage() {
 
                     <button
                       onClick={goStep2}
-                      className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"
+                      className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"
                     >
                       Continue <ChevronRight size={15} />
                     </button>
                     <p className="text-center text-xs text-white/35">
                       Already have an account?{' '}
-                      <Link to="/login" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">Sign in</Link>
+                      <Link to="/login" className="text-primary hover:text-violet-400 font-medium transition-colors duration-150">Sign in</Link>
                     </p>
                   </div>
                 </motion.div>
@@ -508,7 +508,7 @@ export default function SignupPage() {
                       </button>
                       <button
                         onClick={goStep3}
-                        className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150"
+                        className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150"
                       >
                         Continue <ChevronRight size={15} />
                       </button>
@@ -610,7 +610,7 @@ export default function SignupPage() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150"
+                          className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150"
                         >
                           {loading ? (
                             <span className="flex items-center gap-2">
@@ -625,7 +625,7 @@ export default function SignupPage() {
 
                       <p className="text-center text-xs text-white/35">
                         Already have an account?{' '}
-                        <Link to="/login" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">Sign in</Link>
+                        <Link to="/login" className="text-primary hover:text-violet-400 font-medium transition-colors duration-150">Sign in</Link>
                       </p>
                     </div>
                   </form>

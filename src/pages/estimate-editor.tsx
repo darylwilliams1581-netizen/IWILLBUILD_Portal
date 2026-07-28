@@ -510,7 +510,7 @@ export default function EstimateEditorPage() {
                 disabled={saving}
                 className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 ${
                   dirty
-                    ? 'bg-primary hover:bg-orange-600 text-white'
+                    ? 'bg-primary hover:bg-violet-700 text-white'
                     : 'bg-primary/70 hover:bg-primary text-white'
                 }`}
               >
@@ -631,14 +631,14 @@ export default function EstimateEditorPage() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setShowCostPicker(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
                       >
                         <Calculator size={12} />
                         Cost Guide
                       </button>
                       <button
                         onClick={() => setShowRecipePicker(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
                       >
                         <BookOpen size={12} />
                         Recipe
@@ -647,7 +647,7 @@ export default function EstimateEditorPage() {
                         onClick={addLine}
                         disabled={isLocked || lines.length >= LIMITS.ESTIMATE_LINES}
                         title={lines.length >= LIMITS.ESTIMATE_LINES ? `Estimate line limit reached (${LIMITS.ESTIMATE_LINES} lines)` : undefined}
-                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors"
                       >
                         <Plus size={13} />
                         Add Line
@@ -663,14 +663,14 @@ export default function EstimateEditorPage() {
                       </button>
                       <button
                         onClick={() => setShowCsvImport(true)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
                       >
                         <Upload size={12} />Import CSV
                       </button>
                       <button
                         onClick={handleExportCsv}
                         disabled={exportingCsv || lines.length === 0}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
                       >
                         {exportingCsv ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}Export CSV
                       </button>
@@ -714,7 +714,7 @@ export default function EstimateEditorPage() {
                               }}
                               rows={1}
                               placeholder="Description"
-                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm resize-none transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 text-sm resize-none transition-colors disabled:bg-transparent disabled:cursor-default"
                               style={{ minHeight: '34px', height: 'auto', overflow: 'hidden' }}
                               ref={(el) => {
                                 // Auto-size on mount / value change
@@ -732,7 +732,7 @@ export default function EstimateEditorPage() {
                                 value={line.category ?? ''}
                                 disabled={isLocked}
                                 onChange={(e) => updateLine(line._key, 'category', e.target.value)}
-                                className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors bg-transparent disabled:cursor-default text-slate-500"
+                                className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors bg-transparent disabled:cursor-default text-slate-500"
                               >
                                 <option value="">— none —</option>
                                 {estimateCategories.map((c) => (
@@ -746,7 +746,7 @@ export default function EstimateEditorPage() {
                                 disabled={isLocked}
                                 onChange={(e) => updateLine(line._key, 'category', e.target.value)}
                                 placeholder="Area/Category"
-                                className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors disabled:bg-transparent disabled:cursor-default text-slate-500"
+                                className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors disabled:bg-transparent disabled:cursor-default text-slate-500"
                               />
                             )}
                           </td>
@@ -758,7 +758,7 @@ export default function EstimateEditorPage() {
                               value={line.quantity}
                               disabled={isLocked}
                               onChange={(e) => updateLine(line._key, 'quantity', e.target.value)}
-                              className="w-full px-1.5 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-1.5 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
                             />
                           </td>
                           <td className="px-2 py-2">
@@ -768,7 +768,7 @@ export default function EstimateEditorPage() {
                               disabled={isLocked}
                               onChange={(e) => updateLine(line._key, 'unit', e.target.value)}
                               placeholder="ea"
-                              className="w-full px-1.5 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-1.5 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
                             />
                           </td>
                           <td className="px-2 py-2">
@@ -779,7 +779,7 @@ export default function EstimateEditorPage() {
                               value={line.rate}
                               disabled={isLocked}
                               onChange={(e) => updateLine(line._key, 'rate', e.target.value)}
-                              className="w-full px-1.5 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-1.5 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
                             />
                           </td>
                           <td className="px-2 py-2 text-right font-mono text-sm text-foreground">
@@ -927,7 +927,7 @@ export default function EstimateEditorPage() {
               onClick={handleSave}
               disabled={saving}
               className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${
-                dirty ? 'bg-primary hover:bg-orange-600 text-white' : 'bg-muted text-muted-foreground'
+                dirty ? 'bg-primary hover:bg-violet-700 text-white' : 'bg-muted text-muted-foreground'
               }`}
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}

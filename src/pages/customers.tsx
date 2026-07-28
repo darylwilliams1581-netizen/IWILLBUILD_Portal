@@ -140,7 +140,7 @@ function CustomerFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setError('Stakeholder name is required'); return; }
+    if (!form.name.trim()) { setError('Contact name is required'); return; }
     setSaving(true); setError('');
     try {
       const payload = {
@@ -181,18 +181,18 @@ function CustomerFormModal({
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><Users size={16} className="text-primary" /></div>
-            <h2 className="font-heading font-bold text-base">{initial ? 'Edit Stakeholder' : 'New Stakeholder'}</h2>
+            <div className="p-1.5 bg-violet-50 rounded-md"><Users size={16} className="text-primary" /></div>
+            <h2 className="font-heading font-bold text-base">{initial ? 'Edit Contact' : 'New Contact'}</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-          {/* Stakeholder type */}
+          {/* Contact type */}
           <div>
-            <label className={lbl}>Stakeholder Type <span className="text-red-500">*</span></label>
+            <label className={lbl}>Contact Type <span className="text-red-500">*</span></label>
             <div className="flex flex-wrap gap-2">
-              {['Customer', 'Client', 'Subcontractor', 'Supplier', 'Employee', 'Support', 'Other'].map((t) => (
+              {['Customer', 'Supplier', 'Contractor', 'Other'].map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -272,9 +272,9 @@ function CustomerFormModal({
 
           <div className="flex gap-3 pt-2 border-t border-slate-100">
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              {initial ? 'Save Changes' : 'Create Stakeholder'}
+              {initial ? 'Save Changes' : 'Create Contact'}
             </button>
           </div>
         </form>
@@ -518,18 +518,18 @@ export default function CustomersPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Stakeholders — IWILLBUILD Portal</title>
-        <meta name="description" content="Manage your customer and stakeholder register — contacts, companies and linked jobs." />
+        <title>Contacts — IWILLBUILD Portal</title>
+        <meta name="description" content="Manage your contacts register — customers, suppliers, contractors and linked jobs." />
         <link rel="canonical" href="https://iwillbuild.com/customers" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Stakeholders — IWILLBUILD Portal" />
-        <meta property="og:description" content="Manage your customer and stakeholder register — contacts, companies and linked jobs." />
+        <meta property="og:title" content="Contacts — IWILLBUILD Portal" />
+        <meta property="og:description" content="Manage your contacts register — customers, suppliers, contractors and linked jobs." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/customers" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Stakeholders — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Manage your customer and stakeholder register — contacts, companies and linked jobs." />
+        <meta name="twitter:title" content="Contacts — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Manage your contacts register — customers, suppliers, contractors and linked jobs." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
@@ -541,7 +541,7 @@ export default function CustomersPage() {
           <div className="flex items-center gap-3">
             <MobileMenuButton onClick={openMobileMenu} />
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Stakeholders</h1>
+              <h1 className="font-heading font-black text-xl text-foreground">Contacts</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
               </p>
@@ -551,10 +551,10 @@ export default function CustomersPage() {
             onClick={() => { setEditing(null); setShowModal(true); }}
             disabled={isViewOnly}
             title={isViewOnly ? 'Subscribe to continue' : undefined}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
-            <span className="hidden sm:inline">+ New Stakeholder</span>
+            <span className="hidden sm:inline">+ New Contact</span>
             <span className="sm:hidden">Add</span>
           </button>
         </div>
@@ -566,7 +566,7 @@ export default function CustomersPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search stakeholders, contacts, email…"
+              placeholder="Search contacts, email, phone…"
               className="w-full pl-9 pr-4 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
           </div>
@@ -607,19 +607,19 @@ export default function CustomersPage() {
         {/* Empty state */}
         {!loading && !error && customers.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
               <Users size={26} className="text-primary" />
             </div>
-            <p className="font-heading font-bold text-base text-foreground mb-1">No stakeholders yet</p>
+            <p className="font-heading font-bold text-base text-foreground mb-1">No contacts yet</p>
             <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-              Add your first stakeholder to link them to projects and track work history.
+              Add your first contact to link them to projects and track work history.
             </p>
             <button
               onClick={() => !isViewOnly && setShowModal(true)}
               disabled={isViewOnly}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Plus size={15} />+ New Stakeholder
+              <Plus size={15} />+ New Contact
             </button>
           </div>
         )}

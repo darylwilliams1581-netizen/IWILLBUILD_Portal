@@ -2,9 +2,17 @@
  * DrawingViewer — full-screen viewer shell combining PdfViewer, AnnotationToolbar,
  * RevisionPanel, and ShareModal for a single drawing.
  * Revision panel is collapsible to maximise PDF viewing area.
+ *
+ * Mobile (Sprint 5 — Gesture Viewer):
+ * - Revision panel hidden on mobile by default (toggle via "…" menu)
+ * - Annotation toolbar hidden on mobile (< sm) — already was hidden
+ * - Safe-area top padding on the top bar (notch / Dynamic Island)
+ * - Safe-area bottom padding on the body area (home indicator)
+ * - Overflow menu: Upload, Share, Revisions — all accessible on mobile
+ * - overflowX: hidden on outer shell and body row
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft } from 'lucide-react';
+import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, MoreHorizontal } from 'lucide-react';
 import PdfViewer from './PdfViewer';
 import AnnotationToolbar from './AnnotationToolbar';
 import RevisionPanel from './RevisionPanel';
@@ -44,6 +52,8 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const [showShare, setShowShare] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [revPanelOpen, setRevPanelOpen] = useState(false);
+  // Mobile top-bar overflow menu
+  const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Undo: undoTrigger increments to signal the canvas to pop its history
@@ -92,25 +102,32 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const hasPdf = Boolean(drawing.source_file_path);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
-      {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900 border-b border-slate-700 flex-shrink-0">
+    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-950" style={{ overflowX: 'clip' }}>
+      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
+      <div
+        className="viewer-toolbar flex items-center gap-2 px-3 bg-slate-900 border-b border-slate-700 flex-shrink-0"
+        style={{
+          // Safe-area top: status bar / notch / Dynamic Island on iPhone
+          paddingTop: 'max(env(safe-area-inset-top), 10px)',
+          paddingBottom: '10px',
+        }}
+      >
         <button
           onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors flex-shrink-0"
         >
           <X size={16} />
         </button>
 
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold text-slate-100 truncate max-w-[240px]">{drawing.title}</span>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-sm font-semibold text-slate-100 truncate max-w-[140px] sm:max-w-[240px]">{drawing.title}</span>
           {drawing.revision_name && (
-            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
+            <span className="hidden sm:inline text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
               {drawing.revision_name}
             </span>
           )}
           {isLocked && (
-            <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+            <span className="hidden sm:flex items-center gap-1 text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
               <Lock size={9} /> Locked
             </span>
           )}
@@ -119,54 +136,101 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex-1" />
+        {/* Desktop actions */}
+        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 text-slate-300 text-xs font-semibold hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          >
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            {hasPdf ? 'Replace PDF' : 'Upload PDF'}
+          </button>
+          <button
+            onClick={() => setShowShare(true)}
+            disabled={!hasPdf}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <Share2 size={13} /> Share
+          </button>
+          <button
+            onClick={() => setRevPanelOpen(s => !s)}
+            title={revPanelOpen ? 'Hide revisions' : 'Show revisions'}
+            className={[
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors',
+              revPanelOpen
+                ? 'border-violet-600/50 bg-violet-500/10 text-violet-400'
+                : 'border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
+            ].join(' ')}
+          >
+            {revPanelOpen ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+            Revisions
+          </button>
+        </div>
 
-        {/* Upload PDF */}
+        {/* Mobile "…" overflow menu button */}
         <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 text-slate-300 text-xs font-semibold hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          onClick={() => setMobileTopMenuOpen(s => !s)}
+          className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors flex-shrink-0"
+          title="More options"
         >
-          {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-          {hasPdf ? 'Replace PDF' : 'Upload PDF'}
-        </button>
-        <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
-
-        {/* Share */}
-        <button
-          onClick={() => setShowShare(true)}
-          disabled={!hasPdf}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          <Share2 size={13} /> Share
-        </button>
-
-        {/* Revision panel toggle */}
-        <button
-          onClick={() => setRevPanelOpen(s => !s)}
-          title={revPanelOpen ? 'Hide revisions' : 'Show revisions'}
-          className={[
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors',
-            revPanelOpen
-              ? 'border-orange-500/50 bg-orange-500/10 text-orange-400'
-              : 'border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
-          ].join(' ')}
-        >
-          {revPanelOpen ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-          Revisions
+          <MoreHorizontal size={16} />
         </button>
       </div>
 
+      {/* ── Mobile overflow menu ─────────────────────────────────────────────── */}
+      {mobileTopMenuOpen && (
+        <div className="md:hidden flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-800 border-b border-slate-700 shrink-0">
+          <button
+            onClick={() => { fileInputRef.current?.click(); setMobileTopMenuOpen(false); }}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 text-slate-300 text-xs font-semibold bg-slate-700 disabled:opacity-50"
+          >
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            {hasPdf ? 'Replace PDF' : 'Upload PDF'}
+          </button>
+          <button
+            onClick={() => { setShowShare(true); setMobileTopMenuOpen(false); }}
+            disabled={!hasPdf}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold disabled:opacity-40"
+          >
+            <Share2 size={13} /> Share
+          </button>
+          <button
+            onClick={() => { setRevPanelOpen(s => !s); setMobileTopMenuOpen(false); }}
+            className={[
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold',
+              revPanelOpen
+                ? 'border-violet-600/50 bg-violet-500/10 text-violet-400'
+                : 'border-slate-600 text-slate-300 bg-slate-700',
+            ].join(' ')}
+          >
+            {revPanelOpen ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+            {revPanelOpen ? 'Hide revisions' : 'Show revisions'}
+          </button>
+        </div>
+      )}
+
       {uploadError && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-red-900/40 border-b border-red-700/40 text-xs text-red-300">
+        <div className="flex items-center gap-2 px-4 py-2 bg-red-900/40 border-b border-red-700/40 text-xs text-red-300 shrink-0">
           <AlertCircle size={13} /> {uploadError}
         </div>
       )}
 
-      {/* Body */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Annotation toolbar (left) */}
-        <div className="flex-shrink-0 p-2 bg-slate-900 border-r border-slate-700 flex items-start">
+      {/* Hidden file input — shared by both desktop and mobile upload buttons */}
+      <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
+
+      {/* ── Body ─────────────────────────────────────────────────────────────── */}
+      <div
+        className="flex flex-1 min-h-0 overflow-hidden"
+        style={{
+          overflowX: 'clip',
+          // Safe-area bottom: home indicator on iPhone
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {/* Annotation toolbar (left) — hidden on mobile to save space */}
+        <div className="hidden sm:flex flex-shrink-0 p-2 bg-slate-900 border-r border-slate-700 items-start">
           <AnnotationToolbar
             activeTool={activeTool}
             activeStyle={activeStyle}
@@ -201,20 +265,20 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
             onUndoAvailableChange={setCanUndo}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500 px-4">
             <Upload size={40} className="text-slate-600" />
             <p className="text-sm font-semibold text-slate-400">No PDF uploaded yet</p>
-            <p className="text-xs text-slate-600">Click "Upload PDF" to add a drawing file</p>
+            <p className="text-xs text-slate-600 text-center">Tap "…" then "Upload PDF" to add a drawing file</p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
             >
               Upload PDF
             </button>
           </div>
         )}
 
-        {/* Revision panel (right) — collapsible */}
+        {/* Revision panel (right) — hidden on mobile by default, toggled via overflow menu */}
         {revPanelOpen && (
           <RevisionPanel
             drawingId={drawing.id}

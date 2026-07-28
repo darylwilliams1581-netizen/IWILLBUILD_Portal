@@ -206,7 +206,7 @@ export default function JobEstimates({ jobId }: Props) {
         </h2>
         <button
           onClick={() => setShowNew(true)}
-          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           <Plus size={14} />
           New Estimate
@@ -239,7 +239,7 @@ export default function JobEstimates({ jobId }: Props) {
             <button
               onClick={handleCreate}
               disabled={creating || !newTitle.trim()}
-              className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+              className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-1.5 rounded-lg transition-colors disabled:opacity-60"
             >
               {creating ? <Loader2 size={13} className="animate-spin" /> : null}
               Create & Open
@@ -256,7 +256,7 @@ export default function JobEstimates({ jobId }: Props) {
           <p className="text-xs text-muted-foreground mb-4">Create an estimate to start pricing this job.</p>
           <button
             onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={14} />
             New Estimate
@@ -387,7 +387,7 @@ export default function JobEstimates({ jobId }: Props) {
                       onClick={() => void handleConvertToInvoice(est)}
                       disabled={isConverting}
                       title="Convert to Invoice"
-                      className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 shrink-0"
+                      className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 shrink-0"
                     >
                       {isConverting ? <Loader2 size={12} className="animate-spin" /> : <Receipt size={12} />}
                       Invoice
@@ -407,14 +407,14 @@ export default function JobEstimates({ jobId }: Props) {
                       <button
                         onClick={() => setShareEst(est)}
                         title="Share link"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-violet-50 transition-colors"
                       >
                         <Share2 size={14} />
                       </button>
                       <button
                         onClick={() => window.open(`/view/estimate/${est.id}`, '_blank', 'noopener,noreferrer')}
                         title="Open in new tab"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-violet-50 transition-colors"
                       >
                         <ExternalLink size={14} />
                       </button>

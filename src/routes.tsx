@@ -5,6 +5,8 @@ import RouteErrorFallback from '@/components/RouteErrorFallback';
 import { usePermissions } from '@/lib/usePermissions';
 
 // ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
+import NativeStartupGate from '@/components/NativeStartupGate';
+import ShellRouter from '@/components/ShellRouter';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
@@ -45,6 +47,7 @@ const JobSitePrestartPage = lazy(() => import('./pages/job-site-prestart'));
 const JobRiskyPage        = lazy(() => import('./pages/job-risky'));
 const IncidentsPage       = lazy(() => import('./pages/incidents'));
 const IncidentDetailPage  = lazy(() => import('./pages/incident-detail'));
+const RiskRegisterPage    = lazy(() => import('./pages/risk-register'));
 
 const TeamPage           = lazy(() => import('./pages/team'));
 
@@ -64,6 +67,11 @@ const InvoicesPage       = lazy(() => import('./pages/invoices'));
 const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
+const ListsPage          = lazy(() => import('./pages/lists'));
+const UserLogsPage       = lazy(() => import('./pages/user-logs'));
+const QuickLinksPage     = lazy(() => import('./pages/quick-links'));
+const JobCardsPage       = lazy(() => import('./pages/job-cards'));
+const JobCardDetailPage  = lazy(() => import('./pages/job-card-detail'));
 
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
@@ -89,7 +97,7 @@ const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HelpPage                = lazy(() => import('./pages/help'));
-const HomeScreenPage          = lazy(() => import('./pages/home'));
+// HomeScreenPage is loaded inside ShellRouter (lazy, only when app shell is active)
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
 const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
@@ -110,7 +118,7 @@ const routeError = <RouteErrorFallback />;
 function PageLoader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
-      <div style={{ width: 28, height: 28, border: '3px solid #e2e8f0', borderTopColor: '#f97316', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <div style={{ width: 28, height: 28, border: '3px solid #e2e8f0', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -139,8 +147,8 @@ function protectDev(element: React.ReactElement) {
 }
 
 export const routes: RouteObject[] = [
-  { path: '/',              element: <HomePage /> },
-  { path: '/home',          element: protect(<HomeScreenPage />), errorElement: routeError },
+  { path: '/',              element: <NativeStartupGate><HomePage /></NativeStartupGate> },
+  { path: '/home',          element: protect(<ShellRouter />), errorElement: routeError },
   { path: '/login',         element: <LoginPage /> },
   { path: '/signup',        element: <SignupPage /> },
   { path: '/privacy',       element: <PrivacyPage /> },
@@ -185,6 +193,7 @@ export const routes: RouteObject[] = [
   { path: '/jobs/:id/risky',         element: protect(<Suspense fallback={<PageLoader />}><JobRiskyPage /></Suspense>),        errorElement: routeError },
   { path: '/incidents',              element: protect(<Suspense fallback={<PageLoader />}><IncidentsPage /></Suspense>),        errorElement: routeError },
   { path: '/incidents/:id',          element: protect(<Suspense fallback={<PageLoader />}><IncidentDetailPage /></Suspense>),   errorElement: routeError },
+  { path: '/risk-register',          element: protect(<Suspense fallback={<PageLoader />}><RiskRegisterPage /></Suspense>),     errorElement: routeError },
   { path: '/fleet/:id/drive',   element: protect(<Suspense fallback={<PageLoader />}><FleetDrivePage /></Suspense>),   errorElement: routeError },
   { path: '/jobs/:id/costs',   element: protect(<Suspense fallback={<PageLoader />}><JobCostsPage /></Suspense>),   errorElement: routeError },
   // QR scan landing — unauthenticated allowed (guest check-in form)
@@ -194,14 +203,14 @@ export const routes: RouteObject[] = [
   { path: '/scheduler',     element: protect(<SchedulerPage />),       errorElement: routeError },
   { path: '/fleet',         element: protect(<FleetPage />),           errorElement: routeError },
   { path: '/fleet/:id',     element: protect(<FleetDetailPage />),     errorElement: routeError },
-  { path: '/forms',         loader: () => redirect('/studio?tab=forms') },
+  { path: '/forms',         loader: () => redirect('/studio/forms') },
   { path: '/files',         element: protect(<FilesPage />),           errorElement: routeError },
   { path: '/estimating',    element: protect(<EstimatingPage />),      errorElement: routeError },
   { path: '/builders-calc', element: protect(<BuildersCalcPage />),    errorElement: routeError },
   { path: '/takeoff-pad',   element: protect(<TakeoffPadPage />),      errorElement: routeError },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />),  errorElement: routeError },
   { path: '/safety',        element: protect(<SafetyPage />),            errorElement: routeError },
-  { path: '/library',       loader: () => redirect('/studio?tab=library') },
+  { path: '/library',       loader: () => redirect('/studio/library') },
   { path: '/customers',     element: protect(<CustomersPage />),       errorElement: routeError },
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
@@ -236,6 +245,7 @@ export const routes: RouteObject[] = [
   { path: '/annette',       loader: () => redirect('/owner-console?tab=health-check') },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
   { path: '/team/schedule', loader: () => redirect('/scheduler?tab=team-shifts') },
+  { path: '/quick-links',   element: protect(<QuickLinksPage />),      errorElement: routeError },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/help',          element: protect(<Suspense fallback={<PageLoader />}><HelpPage /></Suspense>), errorElement: routeError },
@@ -243,6 +253,10 @@ export const routes: RouteObject[] = [
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
+  { path: '/lists',         element: protect(<ListsPage />),           errorElement: routeError },
+  { path: '/user-logs',     element: protect(<UserLogsPage />),        errorElement: routeError },
+  { path: '/job-cards',     element: protect(<JobCardsPage />),        errorElement: routeError },
+  { path: '/job-cards/:id', element: protect(<JobCardDetailPage />),   errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)
   { path: '/view/file/:id',     element: protect(<ViewFilePage />),     errorElement: routeError },

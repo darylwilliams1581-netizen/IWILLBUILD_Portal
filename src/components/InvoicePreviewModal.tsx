@@ -66,7 +66,7 @@ function buildHtml(invoice: Invoice, settings: CompanySettings): string {
     .company-info { font-size: 13px; color: #475569; line-height: 1.6; }
     .company-name { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
     .invoice-meta { text-align: right; }
-    .invoice-number { font-size: 22px; font-weight: 900; color: #f97316; }
+    .invoice-number { font-size: 22px; font-weight: 900; color: #7c3aed; }
     .status-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #f1f5f9; color: #64748b; margin-top: 4px; }
     .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
     .meta-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
@@ -82,7 +82,7 @@ function buildHtml(invoice: Invoice, settings: CompanySettings): string {
     .total-row.grand { font-size: 15px; font-weight: 900; border-top: 2px solid #e2e8f0; padding-top: 8px; margin-top: 4px; }
     .total-row.paid-row { color: #16a34a; }
     .total-row.balance { display: none; }
-    .amount-due-bar { width: 100%; background: #f97316; color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-radius: 8px; margin-top: 16px; margin-bottom: 32px; }
+    .amount-due-bar { width: 100%; background: #7c3aed; color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-radius: 8px; margin-top: 16px; margin-bottom: 32px; }
     .amount-due-bar .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
     .amount-due-bar .value { font-size: 20px; font-weight: 900; }
     .total-label { color: #64748b; min-width: 120px; text-align: right; }
@@ -246,8 +246,8 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
           {/* Header bar */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
-                <FileText size={15} className="text-orange-500" />
+              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                <FileText size={15} className="text-violet-600" />
               </div>
               <div>
                 <h2 className="font-bold text-sm text-gray-900">Invoice Preview</h2>
@@ -261,7 +261,7 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
               <button
                 onClick={handleDownload}
                 disabled={downloading || loadingSettings}
-                className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-colors"
               >
                 {downloading
                   ? <Loader2 size={14} className="animate-spin" />
@@ -281,7 +281,7 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
           <div className="flex-1 overflow-hidden bg-gray-100 p-4">
             {loadingSettings ? (
               <div className="flex items-center justify-center h-full">
-                <Loader2 size={24} className="animate-spin text-orange-400" />
+                <Loader2 size={24} className="animate-spin text-violet-400" />
               </div>
             ) : (
               <iframe

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate as useRRNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   CalendarDays,
@@ -21,10 +21,13 @@ import {
   CheckCircle2,
   AlertTriangle,
   Truck,
+  ArrowLeft,
+  Home,
 } from 'lucide-react';
-import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
+import PortalSidebar from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
 import AssetSchedulerView from '@/components/scheduler/AssetSchedulerView';
+import TasksSchedulerView from '@/components/scheduler/TasksSchedulerView';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -170,7 +173,7 @@ const STATUS_BAR: Record<string, string> = {
   'Works Approved':         'bg-teal-400',
   'Ready to Start':         'bg-cyan-400',
   'Works in Progress':      'bg-emerald-500',
-  'On Hold':                'bg-orange-400',
+  'On Hold':                'bg-violet-500',
   'Completed':              'bg-green-500',
   'Rectification Required': 'bg-red-500',
   'Closed':                 'bg-gray-400',
@@ -244,7 +247,7 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               {['Job', 'Client', 'Location', 'Status', 'Sched. Start', 'Exp. Completion', 'Duration', 'Supervisor / Team', 'Progress', ''].map(h => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -257,50 +260,50 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
               const supervisor = job.supervisorName ?? job.teamLabel ?? '—';
               return (
                 <tr key={job.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-slate-800 truncate max-w-[160px]">{job.name}</div>
-                    {job.jobNumber && <div className="text-xs text-slate-400">#{job.jobNumber}</div>}
+                  <td className="px-3 py-1.5">
+                    <div className="font-semibold text-slate-800 truncate max-w-[160px] leading-snug">{job.name}</div>
+                    {job.jobNumber && <div className="text-[11px] text-slate-400">#{job.jobNumber}</div>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 truncate max-w-[120px]">{job.client ?? '—'}</td>
-                  <td className="px-4 py-3 max-w-[140px]">
+                  <td className="px-3 py-1.5 text-slate-600 truncate max-w-[120px] text-xs">{job.client ?? '—'}</td>
+                  <td className="px-3 py-1.5 max-w-[140px]">
                     {job.address ? (
                       <a
                         href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
                         target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-orange-600 hover:text-orange-700 text-xs truncate"
+                        className="flex items-center gap-1 text-violet-700 hover:text-violet-800 text-xs truncate"
                         title={job.address}
                       >
-                        <MapPin size={11} className="shrink-0" />
+                        <MapPin size={10} className="shrink-0" />
                         <span className="truncate">{job.address}</span>
                       </a>
                     ) : <span className="text-slate-400 text-xs">—</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${style.bg} ${style.color}`}>
+                  <td className="px-3 py-1.5">
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${style.bg} ${style.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap text-xs">
                     <div>{fmt(job.scheduledStartDate)}</div>
-                    {job.scheduledStartTime && <div className="text-xs text-orange-600 font-medium">{fmtTime(job.scheduledStartTime)}</div>}
+                    {job.scheduledStartTime && <div className="text-[11px] text-violet-700 font-medium">{fmtTime(job.scheduledStartTime)}</div>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap text-xs">
                     <div>{fmt(job.expectedCompletionDate)}</div>
-                    {job.scheduledEndTime && <div className="text-xs text-slate-400">{fmtTime(job.scheduledEndTime)}</div>}
+                    {job.scheduledEndTime && <div className="text-[11px] text-slate-400">{fmtTime(job.scheduledEndTime)}</div>}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{duration}</td>
-                  <td className="px-4 py-3 text-slate-600 truncate max-w-[140px]">{supervisor}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5 text-slate-500 whitespace-nowrap text-xs">{duration}</td>
+                  <td className="px-3 py-1.5 text-slate-600 truncate max-w-[140px] text-xs">{supervisor}</td>
+                  <td className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden w-16">
-                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${job.progress}%` }} />
+                      <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden w-14">
+                        <div className="h-full bg-violet-500 rounded-full" style={{ width: `${job.progress}%` }} />
                       </div>
-                      <span className="text-xs text-slate-500 w-8 text-right">{job.progress}%</span>
+                      <span className="text-[11px] text-slate-500 w-7 text-right">{job.progress}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link to={`/jobs/${job.id}`} className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 whitespace-nowrap">
+                  <td className="px-3 py-1.5">
+                    <Link to={`/jobs/${job.id}`} className="flex items-center gap-1 text-xs font-medium text-violet-700 hover:text-violet-800 whitespace-nowrap">
                       Open <ExternalLink size={11} />
                     </Link>
                   </td>
@@ -329,11 +332,11 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
               <div className="grid grid-cols-2 gap-1 text-xs text-slate-500">
                 {job.client  && <span className="flex items-center gap-1"><User   size={10} />{job.client}</span>}
                 {job.address
-                  ? <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-orange-600"><MapPin size={10} className="shrink-0" /><span className="truncate">{job.address}</span></a>
+                  ? <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-violet-700"><MapPin size={10} className="shrink-0" /><span className="truncate">{job.address}</span></a>
                   : null}
                 <span className="flex items-center gap-1">
                   <Calendar size={10} />{fmt(job.scheduledStartDate)}
-                  {job.scheduledStartTime && <span className="text-orange-600 font-medium ml-1">{fmtTime(job.scheduledStartTime)}</span>}
+                  {job.scheduledStartTime && <span className="text-violet-700 font-medium ml-1">{fmtTime(job.scheduledStartTime)}</span>}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock size={10} />{fmt(job.expectedCompletionDate)}
@@ -342,11 +345,11 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${job.progress}%` }} />
+                  <div className="h-full bg-violet-500 rounded-full" style={{ width: `${job.progress}%` }} />
                 </div>
                 <span className="text-xs text-slate-500">{job.progress}%</span>
               </div>
-              <Link to={`/jobs/${job.id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700">
+              <Link to={`/jobs/${job.id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-800">
                 Open Job <ChevronRight size={12} />
               </Link>
             </div>
@@ -461,7 +464,7 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
             <div
               key={i}
               className={`min-h-[80px] p-1.5 transition-colors ${
-                isToday   ? 'bg-orange-50' :
+                isToday   ? 'bg-violet-50' :
                 isWeekend ? 'bg-slate-50/80' :
                 isDragTarget ? 'bg-blue-50' :
                 'bg-white'
@@ -471,7 +474,7 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
               onDrop={(e) => handleDrop(e, date)}
             >
               <div className={`text-xs font-semibold mb-1 w-6 h-6 flex items-center justify-center rounded-full ${
-                isToday ? 'bg-orange-500 text-white' : 'text-slate-500'
+                isToday ? 'bg-violet-500 text-white' : 'text-slate-500'
               }`}>
                 {date.getDate()}
               </div>
@@ -613,8 +616,8 @@ function DayView({ jobs, anchorDate, onReschedule }: {
           {/* Now indicator */}
           {showNow && (
             <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: `${nowPct}%` }}>
-              <div className="w-2 h-2 rounded-full bg-orange-500 -ml-1 shrink-0" />
-              <div className="flex-1 h-px bg-orange-500" />
+              <div className="w-2 h-2 rounded-full bg-violet-500 -ml-1 shrink-0" />
+              <div className="flex-1 h-px bg-violet-500" />
             </div>
           )}
 
@@ -695,7 +698,6 @@ function TimelineView({ jobs, window: timeWindow, anchorDate, onReschedule }: Ti
   // Drag state
   const [dragging, setDragging] = useState<{ jobId: number; startX: number; origStart: string; origEnd: string } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  const [dropTarget, setDropTarget] = useState<string | null>(null); // for unscheduled drop
 
   function barProps(job: SchedulerJob) {
     if (!job.scheduledStartDate || !job.expectedCompletionDate) return null;
@@ -798,9 +800,9 @@ function TimelineView({ jobs, window: timeWindow, anchorDate, onReschedule }: Ti
                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                 const isMonthEdge = d.getDate() === 1;
                 return (
-                  <div key={i} style={{ width: DW }} className={`shrink-0 text-center py-0.5 border-r ${isMonthEdge ? 'border-slate-300' : 'border-slate-100'} ${isToday ? 'bg-orange-50' : isWeekend ? 'bg-slate-50/60' : ''}`}>
+                  <div key={i} style={{ width: DW }} className={`shrink-0 text-center py-0.5 border-r ${isMonthEdge ? 'border-slate-300' : 'border-slate-100'} ${isToday ? 'bg-violet-50' : isWeekend ? 'bg-slate-50/60' : ''}`}>
                     {showDayLabel(i) && (
-                      <span className={`text-[10px] font-medium ${isToday ? 'text-orange-600 font-bold' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-medium ${isToday ? 'text-violet-700 font-bold' : 'text-slate-400'}`}>
                         {d.getDate()}
                       </span>
                     )}
@@ -835,7 +837,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate, onReschedule }: Ti
                   ) : null;
                 })}
                 {todayOffset >= 0 && todayOffset < totalDays && (
-                  <div className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-70" style={{ left: todayOffset * DW + DW / 2 }} />
+                  <div className="absolute top-0 bottom-0 w-px bg-violet-500 z-10 opacity-70" style={{ left: todayOffset * DW + DW / 2 }} />
                 )}
                 {bar && (
                   <div
@@ -926,7 +928,7 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-orange-500" size={24} />
+        <Loader2 className="animate-spin text-violet-600" size={24} />
       </div>
     );
   }
@@ -960,9 +962,9 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
               const isToday   = d.toDateString() === new Date().toDateString();
               const isWeekend = d.getDay() === 0 || d.getDay() === 6;
               return (
-                <div key={i} style={{ width: DW }} className={`shrink-0 text-center py-1.5 border-r border-slate-100 ${isToday ? 'bg-orange-50' : isWeekend ? 'bg-slate-50/60' : ''}`}>
+                <div key={i} style={{ width: DW }} className={`shrink-0 text-center py-1.5 border-r border-slate-100 ${isToday ? 'bg-violet-50' : isWeekend ? 'bg-slate-50/60' : ''}`}>
                   {showDayLabel(i) && (
-                    <span className={`text-[10px] font-medium ${isToday ? 'text-orange-600 font-bold' : 'text-slate-400'}`}>
+                    <span className={`text-[10px] font-medium ${isToday ? 'text-violet-700 font-bold' : 'text-slate-400'}`}>
                       {d.getDate()}
                     </span>
                   )}
@@ -1012,7 +1014,7 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
                   ) : null;
                 })}
                 {todayOffset >= 0 && todayOffset < totalDays && (
-                  <div className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-70" style={{ left: todayOffset * DW + DW / 2 }} />
+                  <div className="absolute top-0 bottom-0 w-px bg-violet-500 z-10 opacity-70" style={{ left: todayOffset * DW + DW / 2 }} />
                 )}
                 {lanes.map((lane, laneIdx) =>
                   lane.map(job => {
@@ -1042,7 +1044,7 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
             const activeJobs = m.jobs.filter(j => overlapsWindow(j, windowStart, windowEnd));
             return (
               <div key={m.id} className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${activeJobs.length === 0 ? 'bg-green-400' : activeJobs.length === 1 ? 'bg-orange-400' : 'bg-red-400'}`} />
+                <div className={`w-2 h-2 rounded-full ${activeJobs.length === 0 ? 'bg-green-400' : activeJobs.length === 1 ? 'bg-violet-500' : 'bg-red-400'}`} />
                 <span className="text-[10px] text-slate-600 font-medium">{m.name}</span>
                 <span className="text-[10px] text-slate-500">{activeJobs.length === 0 ? 'Available' : `${activeJobs.length} job${activeJobs.length > 1 ? 's' : ''}`}</span>
               </div>
@@ -1083,7 +1085,7 @@ function UnscheduledSection({ jobs, onSchedule }: { jobs: SchedulerJob[]; onSche
               </span>
               <button
                 onClick={() => onSchedule(job)}
-                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 border border-orange-200 rounded-lg transition-colors"
+                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50 border border-violet-200 rounded-lg transition-colors"
               >
                 Schedule
               </button>
@@ -1129,24 +1131,24 @@ function QuickScheduleModal({ job, onClose, onSave }: {
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Start Date</label>
               <input type="date" value={start} onChange={e => setStart(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Start Time</label>
               <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">End Date</label>
               <input type="date" value={end} onChange={e => setEnd(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">End Time</label>
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
             </div>
           </div>
         </div>
@@ -1155,7 +1157,7 @@ function QuickScheduleModal({ job, onClose, onSave }: {
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving || !start || !end}
-            className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-violet-500 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
             Save
           </button>
@@ -1169,7 +1171,8 @@ function QuickScheduleModal({ job, onClose, onSave }: {
 
 export default function SchedulerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'team-shifts' ? 'team-shifts' : 'jobs';
+  const activeTab = (searchParams.get('tab') === 'tasks' ? 'tasks' : searchParams.get('tab') === 'team-shifts' ? 'team-shifts' : 'jobs') as 'jobs' | 'tasks' | 'team-shifts';
+  const rrNavigate = useRRNavigate();
 
   const [jobs,            setJobs]            = useState<SchedulerJob[]>([]);
   const [crewMembers,     setCrewMembers]      = useState<CrewMember[]>([]);
@@ -1334,23 +1337,34 @@ export default function SchedulerPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pt-[96px]">
 
         {/* ── Top bar ── */}
-        <div className="h-14 bg-white border-b border-slate-200 flex items-center gap-3 px-4 shrink-0">
-          <div className="md:hidden">
-            <MobileMenuButton onClick={() => window.dispatchEvent(new CustomEvent('portal:open-menu'))} />
-          </div>
-          <CalendarDays size={18} className="text-orange-500 shrink-0" />
-          <h1 className="text-base font-bold text-slate-800">Scheduler</h1>
+        <div className="op-page-header flex items-center gap-2 shrink-0 min-w-0">
+
+          {/* Back + Home */}
+          <button type="button" onClick={() => rrNavigate(-1)} title="Back"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <ArrowLeft size={14} />
+          </button>
+          <Link to="/home" title="Home"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <Home size={14} />
+          </Link>
+
+          <CalendarDays size={14} className="text-primary shrink-0" />
+          <h1 className="op-page-title shrink-0">Scheduler</h1>
 
           {/* ── Top-level page tabs ── */}
-          <div className="ml-4 flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => setSearchParams({})}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeTab === 'jobs' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
+          <div className="ml-3 flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+            <button onClick={() => setSearchParams({})}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${activeTab === 'jobs' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               Jobs
+            </button>
+            <button onClick={() => setSearchParams({ tab: 'tasks' })}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${activeTab === 'tasks' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Tasks
             </button>
           </div>
 
@@ -1368,66 +1382,61 @@ export default function SchedulerPage() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
-            {view !== 'table' && view !== 'assets' && (
-              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-                {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
-                  <button
-                    key={key}
-                    onClick={() => switchWindow(key)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      timeWindow === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {WINDOW_LABELS[key]}
-                  </button>
-                ))}
-              </div>
+            {/* Time window and view toggle — jobs tab only */}
+            {activeTab === 'jobs' && (
+              <>
+                {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
+                {view !== 'table' && view !== 'assets' && (
+                  <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+                    {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
+                      <button key={key} onClick={() => switchWindow(key)}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${timeWindow === key ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                        {WINDOW_LABELS[key]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="h-4 w-px bg-gray-200" />
+
+                {/* View toggle */}
+                <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+                  {([
+                    { key: 'table',    icon: <List size={12} />,        label: 'Table' },
+                    { key: 'timeline', icon: <BarChart2 size={12} />,   label: 'Timeline' },
+                    { key: 'calendar', icon: <Calendar size={12} />,    label: 'Calendar' },
+                    { key: 'crew',     icon: <Users size={12} />,       label: 'Crew' },
+                    { key: 'assets',   icon: <Truck size={12} />,       label: 'Assets' },
+                  ] as const).map(({ key, icon, label }) => (
+                    <button key={key} onClick={() => setView(key)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all ${view === key ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-
-            <div className="h-5 w-px bg-slate-200" />
-
-            {/* View toggle */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-              {([
-                { key: 'table',    icon: <List size={13} />,        label: 'Table' },
-                { key: 'timeline', icon: <BarChart2 size={13} />,   label: 'Timeline' },
-                { key: 'calendar', icon: <Calendar size={13} />,    label: 'Calendar' },
-                { key: 'crew',     icon: <Users size={13} />,       label: 'Crew' },
-                { key: 'assets',   icon: <Truck size={13} />,       label: 'Assets' },
-              ] as const).map(({ key, icon, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setView(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    view === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  {icon} {label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
-          {/* ── Filters + period nav bar — hidden in assets view (has its own toolbar) ── */}
-          {view !== 'assets' && (
-          <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2 shrink-0">
+          {/* ── Filters + period nav bar — jobs tab only, hidden in assets view ── */}
+          {activeTab === 'jobs' && view !== 'assets' && (
+          <div className="op-toolbar flex-wrap">
           <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search jobs..."
-              className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-40"
+              className="op-toolbar-search pl-7 w-40"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            className="op-toolbar-search appearance-none cursor-pointer"
           >
             <option value="All">All statuses</option>
             {JOB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1437,7 +1446,7 @@ export default function SchedulerPage() {
             <select
               value={supervisorFilter}
               onChange={e => setSupervisorFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              className="op-toolbar-search appearance-none cursor-pointer"
             >
               {supervisors.map(s => (
                 <option key={s} value={s}>{s === 'All' ? 'All supervisors' : s}</option>
@@ -1448,103 +1457,116 @@ export default function SchedulerPage() {
           {/* Period navigation */}
           {view !== 'table' && (
             <div className="flex items-center gap-1 ml-auto">
-              <button onClick={() => navigate(-1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Previous period">
-                <ChevronLeft size={14} />
+              <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
+                <ChevronLeft size={13} />
               </button>
-              <span className="text-xs font-semibold text-slate-700 min-w-[140px] text-center px-1">{windowLabel}</span>
-              <button onClick={() => navigate(1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Next period">
-                <ChevronRight size={14} />
+              <span className="text-xs font-semibold text-gray-700 min-w-[130px] text-center px-1">{windowLabel}</span>
+              <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Next period">
+                <ChevronRight size={13} />
               </button>
-              <button onClick={goToToday} className="px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1">
+              <button onClick={goToToday} className="px-2 py-0.5 text-xs font-semibold text-primary hover:bg-violet-50 rounded transition-colors border border-violet-200 ml-1">
                 Today
               </button>
             </div>
           )}
 
-          <div className="text-xs text-slate-400 hidden lg:block">
+          <div className="text-[11px] text-gray-400 hidden lg:block ml-auto">
             {visibleCount} scheduled · {unscheduled.length} unscheduled
           </div>
           </div>
           )}
 
         {/* ── Main content ── */}
-        <div className={`flex-1 overflow-y-auto ${view === 'assets' ? '' : 'p-4'}`}>
-          {/* Assets view — full-height, manages its own layout */}
-          {view === 'assets' && (
-            <div className="h-full flex flex-col bg-white border border-slate-200 rounded-none overflow-hidden">
-              <AssetSchedulerView
-                timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'}
-                anchorDate={anchorDate}
-                onWindowChange={(tw) => switchWindow(tw)}
-                onNavigate={navigate}
-                onGoToday={goToToday}
-                windowLabel={windowLabel}
-              />
+        <div className={`flex-1 overflow-y-auto ${view === 'assets' && activeTab === 'jobs' ? '' : 'p-3 md:p-4'}`}>
+
+          {/* ── Tasks tab ── */}
+          {activeTab === 'tasks' && (
+            <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+              <TasksSchedulerView />
             </div>
           )}
 
-          {view !== 'assets' && loading && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="animate-spin text-orange-500" size={28} />
-            </div>
-          )}
-
-          {view !== 'assets' && !loading && error && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-4">
-              <AlertCircle size={16} /> {error}
-            </div>
-          )}
-
-          {view !== 'assets' && !loading && !error && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                {view === 'table' && <TableView jobs={filtered} />}
-                {view === 'timeline' && timeWindow === 'day' && (
-                  <DayView
-                    jobs={filtered}
+          {/* ── Jobs tab ── */}
+          {activeTab === 'jobs' && (
+            <>
+              {/* Assets view — full-height, manages its own layout */}
+              {view === 'assets' && (
+                <div className="h-full flex flex-col bg-white border border-gray-200 rounded-none overflow-hidden">
+                  <AssetSchedulerView
+                    timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'}
                     anchorDate={anchorDate}
-                    onReschedule={handleReschedule}
-                  />
-                )}
-                {view === 'timeline' && timeWindow !== 'day' && (
-                  <TimelineView
-                    jobs={filtered}
-                    window={timeWindow}
-                    anchorDate={anchorDate}
-                    onReschedule={handleReschedule}
-                  />
-                )}
-                {view === 'calendar' && (
-                  <CalendarView
-                    jobs={filtered}
-                    anchorDate={anchorDate}
+                    onWindowChange={(tw) => switchWindow(tw)}
                     onNavigate={navigate}
-                    onReschedule={handleReschedule}
+                    onGoToday={goToToday}
+                    windowLabel={windowLabel}
                   />
-                )}
-                {view === 'crew' && (
-                  <CrewView
-                    members={crewMembers}
-                    unassignedJobs={unassignedJobs}
-                    window={timeWindow}
-                    anchorDate={anchorDate}
-                    loading={crewLoading}
-                    onReschedule={handleReschedule}
-                  />
-                )}
-              </div>
-
-              {view !== 'crew' && (
-                <UnscheduledSection
-                  jobs={unscheduled}
-                  onSchedule={setScheduleTarget}
-                />
+                </div>
               )}
-            </motion.div>
+
+              {view !== 'assets' && loading && (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="animate-spin text-violet-600" size={28} />
+                </div>
+              )}
+
+              {view !== 'assets' && !loading && error && (
+                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4">
+                  <AlertCircle size={16} /> {error}
+                </div>
+              )}
+
+              {view !== 'assets' && !loading && !error && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+                    {view === 'table' && <TableView jobs={filtered} />}
+                    {view === 'timeline' && timeWindow === 'day' && (
+                      <DayView
+                        jobs={filtered}
+                        anchorDate={anchorDate}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                    {view === 'timeline' && timeWindow !== 'day' && (
+                      <TimelineView
+                        jobs={filtered}
+                        window={timeWindow}
+                        anchorDate={anchorDate}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                    {view === 'calendar' && (
+                      <CalendarView
+                        jobs={filtered}
+                        anchorDate={anchorDate}
+                        onNavigate={navigate}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                    {view === 'crew' && (
+                      <CrewView
+                        members={crewMembers}
+                        unassignedJobs={unassignedJobs}
+                        window={timeWindow}
+                        anchorDate={anchorDate}
+                        loading={crewLoading}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                  </div>
+
+                  {view !== 'crew' && (
+                    <UnscheduledSection
+                      jobs={unscheduled}
+                      onSchedule={setScheduleTarget}
+                    />
+                  )}
+                </motion.div>
+              )}
+            </>
           )}
         </div>
       </div>

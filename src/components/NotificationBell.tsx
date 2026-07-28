@@ -45,8 +45,8 @@ const TYPE_ICON: Record<string, React.ElementType> = {
 const TYPE_COLOR: Record<string, string> = {
   todo_overdue:      'text-red-500 bg-red-50',
   todo_due_today:    'text-amber-500 bg-amber-50',
-  fleet_service_due: 'text-orange-500 bg-orange-50',
-  fleet_rego_due:    'text-orange-500 bg-orange-50',
+  fleet_service_due: 'text-violet-600 bg-violet-50',
+  fleet_rego_due:    'text-violet-600 bg-violet-50',
   fleet_flag:        'text-red-500 bg-red-50',
   form_completed:    'text-blue-500 bg-blue-50',
   estimate_approved: 'text-emerald-500 bg-emerald-50',
@@ -66,7 +66,7 @@ function formatRelative(dateStr: string): string {
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
-export default function NotificationBell({ collapsed }: { collapsed?: boolean }) {
+export default function NotificationBell({ collapsed, onTopBar }: { collapsed?: boolean; onTopBar?: boolean; }) {
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -146,9 +146,23 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
       <button
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
-        className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 ${
-          open ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
-        }`}
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          border: 'none',
+          background: open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+          color: open ? '#ffffff' : 'rgba(255,255,255,0.75)',
+          cursor: 'pointer',
+          flexShrink: 0,
+          transition: 'background 0.15s, color 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.15)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = open ? '#ffffff' : 'rgba(255,255,255,0.75)'; }}
       >
         <Bell size={16} />
         {unreadCount > 0 && (

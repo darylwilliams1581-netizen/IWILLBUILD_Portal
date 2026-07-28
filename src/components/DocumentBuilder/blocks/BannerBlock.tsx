@@ -15,7 +15,7 @@ const VARIANT_STYLES: Record<Exclude<BannerVariant, 'safety_first' | 'first_aid'
   warning: { bg: 'bg-amber-50',  border: 'border-amber-300',  icon: AlertTriangle, iconColor: 'text-amber-500' },
   danger:  { bg: 'bg-red-50',    border: 'border-red-300',    icon: AlertOctagon,  iconColor: 'text-red-500' },
   success: { bg: 'bg-green-50',  border: 'border-green-300',  icon: CheckCircle,   iconColor: 'text-green-500' },
-  safety:  { bg: 'bg-orange-50', border: 'border-orange-300', icon: Shield,        iconColor: 'text-orange-500' },
+  safety:  { bg: 'bg-violet-50', border: 'border-violet-300', icon: Shield,        iconColor: 'text-violet-600' },
   custom:  { bg: 'bg-slate-50',  border: 'border-slate-300',  icon: ShieldAlert,   iconColor: 'text-slate-500' },
 };
 

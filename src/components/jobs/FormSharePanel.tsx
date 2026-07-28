@@ -232,7 +232,7 @@ export function FormSharePanel({
                 type="button"
                 onClick={() => void handleCreate()}
                 disabled={creating}
-                className="flex items-center gap-1.5 text-xs bg-primary hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 w-full justify-center"
+                className="flex items-center gap-1.5 text-xs bg-primary hover:bg-violet-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 w-full justify-center"
               >
                 {creating ? <Loader2 size={11} className="animate-spin" /> : <Share2 size={11} />}
                 {activeLink ? 'Regenerate Link' : 'Create Share Link'}

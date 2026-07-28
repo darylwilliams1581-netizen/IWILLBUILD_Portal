@@ -533,7 +533,7 @@ function ToolBtn({
     amber:  'text-amber-600 hover:bg-amber-50',
     red:    'text-red-600 hover:bg-red-50',
     green:  'text-green-600 hover:bg-green-50',
-    orange: 'text-orange-600 hover:bg-orange-50',
+    orange: 'text-violet-700 hover:bg-violet-50',
     yellow: 'text-yellow-700 hover:bg-yellow-50',
   };
   const accentCls = accent ? accentClasses[accent] ?? '' : '';

@@ -4,6 +4,8 @@ import { jobTodos, profiles } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 
+const VALID_STATUSES = new Set(['Open', 'In Progress', 'Completed', 'Cancelled']);
+
 export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
@@ -25,15 +27,39 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!existing) return res.status(404).json({ error: 'Todo not found' });
 
-    const { title, dueDate, status, notes } = req.body as {
-      title?: string; dueDate?: string; status?: string; notes?: string;
+    const {
+      title,
+      description,
+      dueDate,
+      startDate,
+      status,
+      notes,
+      assignedUserId,
+      assignedName,
+    } = req.body as {
+      title?: string;
+      description?: string;
+      dueDate?: string | null;
+      startDate?: string | null;
+      status?: string;
+      notes?: string | null;
+      assignedUserId?: string | null;
+      assignedName?: string | null;
     };
+
+    if (status !== undefined && !VALID_STATUSES.has(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` });
+    }
 
     const update: Record<string, unknown> = {};
     if (title !== undefined) update.title = title.trim();
+    if (description !== undefined) update.description = description?.trim() || null;
     if (dueDate !== undefined) update.dueDate = dueDate?.trim() || null;
+    if (startDate !== undefined) update.startDate = startDate?.trim() || null;
     if (status !== undefined) update.status = status;
     if (notes !== undefined) update.notes = notes?.trim() || null;
+    if (assignedUserId !== undefined) update.assignedUserId = assignedUserId?.trim() || null;
+    if (assignedName !== undefined) update.assignedName = assignedName?.trim() || null;
 
     if (Object.keys(update).length > 0) {
       await db.update(jobTodos).set(update).where(eq(jobTodos.id, todoId));

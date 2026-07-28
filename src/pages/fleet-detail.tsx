@@ -231,7 +231,7 @@ function PrestartModal({ asset, onClose, onSaved }: PrestartModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {saving ? 'Saving…' : 'Submit Prestart'}
@@ -384,7 +384,7 @@ function EditAssetModal({ asset, onClose, onSaved }: EditAssetModalProps) {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors">
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
@@ -492,7 +492,7 @@ function ServiceLogModal({ assetId, log, onClose, onSaved }: {
     }
   }
 
-  const inp = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white';
+  const inp = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white';
   const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1';
 
   return (
@@ -573,7 +573,7 @@ function ServiceLogModal({ assetId, log, onClose, onSaved }: {
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-violet-500 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {log ? 'Save Changes' : 'Add Log'}
             </button>
@@ -913,7 +913,7 @@ export default function FleetDetailPage() {
                       <p className="text-xs text-slate-400 mb-4">Start a daily prestart to log the condition of this asset.</p>
                       <button
                         onClick={() => setShowPrestartModal(true)}
-                        className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+                        className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
                       >
                         <Plus size={12} /> Start First Prestart
                       </button>
@@ -993,7 +993,7 @@ export default function FleetDetailPage() {
                       {serviceLogsLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
                       <button
                         onClick={() => { setEditingLog(undefined); setShowServiceModal(true); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-violet-500 hover:bg-violet-700 rounded-lg transition-colors"
                       >
                         <Plus size={12} /> Add Log
                       </button>

@@ -107,7 +107,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-orange-50 rounded-md">
+                  <div className="p-1.5 bg-violet-50 rounded-md">
                     <HardHat size={16} className="text-primary" />
                   </div>
                   <h2 className="font-heading font-bold text-base">New {workSingular}</h2>
@@ -232,7 +232,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : `Create ${workSingular}`}
                   </button>

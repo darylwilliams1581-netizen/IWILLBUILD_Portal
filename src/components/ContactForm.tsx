@@ -147,7 +147,7 @@ export default function ContactForm() {
         style={{
           width: '100%',
           padding: '12px 20px',
-          background: status === 'sending' ? '#c2410c' : '#f97316',
+          background: status === 'sending' ? '#c2410c' : '#7c3aed',
           color: '#ffffff',
           fontWeight: 700,
           fontSize: 15,

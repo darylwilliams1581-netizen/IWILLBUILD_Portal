@@ -151,7 +151,7 @@ export default function SecurityTab() {
         {phase === 'disabled' && (
           <div className="bg-white border border-slate-200 rounded-xl p-6">
             <div className="flex items-start gap-4 mb-5">
-              <div className="w-10 h-10 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 bg-violet-50 border border-violet-200 rounded-xl flex items-center justify-center shrink-0">
                 <Smartphone size={18} className="text-primary" />
               </div>
               <div>
@@ -165,7 +165,7 @@ export default function SecurityTab() {
             <button
               onClick={startSetup}
               disabled={busy}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
               Set Up Two-Factor Authentication
@@ -229,7 +229,7 @@ export default function SecurityTab() {
                 <button
                   onClick={verifyEnable}
                   disabled={busy || token.length !== 6}
-                  className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                   Verify &amp; Enable

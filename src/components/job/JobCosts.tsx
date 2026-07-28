@@ -63,7 +63,7 @@ const EVENT_COLORS: Record<string, string> = {
   MATERIAL:     'bg-amber-100 text-amber-800 border-amber-200',
   PLANT:        'bg-purple-100 text-purple-800 border-purple-200',
   SUBCONTRACTOR:'bg-emerald-100 text-emerald-800 border-emerald-200',
-  RECEIPT:      'bg-orange-100 text-orange-800 border-orange-200',
+  RECEIPT:      'bg-violet-100 text-violet-800 border-violet-200',
   PURCHASE:     'bg-red-100 text-red-800 border-red-200',
   VARIATION:    'bg-yellow-100 text-yellow-800 border-yellow-200',
   INVOICE_LINE: 'bg-indigo-100 text-indigo-800 border-indigo-200',

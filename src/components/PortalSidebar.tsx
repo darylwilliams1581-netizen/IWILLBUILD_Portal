@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   HardHat,
   Truck,
-  ChevronLeft,
-  ChevronRight,
-
+  Camera,
   LogOut,
   Settings,
   FolderOpen,
@@ -21,23 +19,50 @@ import {
   Receipt,
   Bot,
   Layers,
-  Map,
-  Building2,
-  Calculator,
-  UserCircle,
   MoreHorizontal,
-  Smartphone,
-
+  PanelLeftClose,
+  PanelLeftOpen,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
 
-import NotificationBell from '@/components/NotificationBell';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import { useSessionTimeout } from '@/lib/auth/useSessionTimeout';
 import SessionExpiredBanner from '@/components/auth/SessionExpiredBanner';
+
+// ── Sidebar collapse persistence ──────────────────────────────────────────────
+const LS_KEY = 'iwb_desktop_sidebar_collapsed';
+
+function readCollapsed(): boolean {
+  try { return localStorage.getItem(LS_KEY) === '1'; } catch { return false; }
+}
+function writeCollapsed(v: boolean) {
+  try { localStorage.setItem(LS_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}
+
+// ── Sidebar widths ────────────────────────────────────────────────────────────
+const SIDEBAR_EXPANDED  = 240;
+const SIDEBAR_COLLAPSED =  64;
+
+// ── Company logo hook ─────────────────────────────────────────────────────────
+function useCompanyLogo() {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/company', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { company?: { logo_url?: string | null } } | null) => {
+        setLogoUrl(d?.company?.logo_url ?? null);
+      })
+      .catch(() => {});
+  }, []);
+  return logoUrl;
+}
 
 // ── Trial/subscription status hook ───────────────────────────────────────────
 interface SubInfo {
@@ -58,30 +83,29 @@ function useSubscriptionStatus() {
 }
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
-// Top-level items render as plain links.
-// Items inside a group render under a collapsible dropdown.
-
 interface NavItem {
   label: string;
   icon: React.ElementType;
   href: string;
   permKey: string | null;
+  ownerOnly?: boolean;
 }
 
 function buildNavEntries(_workPlural: string): NavItem[] {
   return [
-    { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
-    { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
-    { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },
-    { label: 'Equipment',    icon: Building2,       href: '/studio/asset-manager', permKey: null },
-    { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
-    { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
-    { label: 'Studio',       icon: Layers,          href: '/studio',               permKey: null },
-    { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
-    { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
-    { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
-    { label: 'Customers',    icon: Users,           href: '/customers',            permKey: 'jobs' },
-    { label: 'Team',         icon: UserCircle,      href: '/team',                 permKey: null },
+    // ── Daily-use rail (10 items) ─────────────────────────────────────────────
+    { label: 'Dashboard',  icon: LayoutDashboard, href: '/home',        permKey: null },
+    { label: 'Jobs',       icon: HardHat,         href: '/jobs',        permKey: 'jobs' },
+    { label: 'Job Cards',  icon: Zap,             href: '/job-cards',   permKey: 'jobs' },
+    { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',   permKey: 'jobs' },
+    { label: 'Fleet',      icon: Truck,           href: '/fleet',       permKey: 'fleet' },
+    { label: 'Invoices',   icon: Receipt,         href: '/invoices',    permKey: 'invoices' },
+    { label: 'Files',      icon: FolderOpen,      href: '/files',       permKey: 'files' },
+    { label: 'Safety',     icon: ShieldCheck,     href: '/safety',      permKey: null },
+    { label: 'Incidents',  icon: AlertCircle,     href: '/incidents',   permKey: null },
+    { label: 'Contacts',   icon: Users,           href: '/customers',   permKey: 'jobs' },
+    // Studio (legacy tab hub) — owner-only until templates are migrated to Library
+    { label: 'Studio (legacy)', icon: Layers,     href: '/studio',      permKey: null, ownerOnly: true },
   ];
 }
 
@@ -106,50 +130,60 @@ function SidebarUserStrip({
   const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
   const initial = (displayName || displayEmail || '?')[0].toUpperCase();
 
-  // Only show skeleton on very first load before any data arrives.
-  // Once me or sessionUser is available, always render the real strip.
   if (!me && !sessionUser) {
     return (
-      <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5 opacity-40">
-        <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0" />
-        <div className="min-w-0 flex-1"><div className="h-2.5 w-20 bg-gray-200 rounded" /></div>
+      <div className="mt-1 px-2 py-2 rounded bg-gray-50 flex items-center gap-2 opacity-40">
+        <div className="w-6 h-6 rounded bg-gray-200 shrink-0" />
+        {!collapsed && <div className="min-w-0 flex-1"><div className="h-2 w-16 bg-gray-200 rounded" /></div>}
+      </div>
+    );
+  }
+
+  if (collapsed) {
+    return (
+      <div
+        className="mt-1 flex items-center justify-center py-2"
+        title={displayName || displayEmail || 'User'}
+      >
+        <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-white font-black text-[11px] shrink-0">
+          {initial}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5">
-      <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
+    <div className="mt-1 px-2 py-2 rounded bg-gray-50 flex items-center gap-2">
+      <div className="w-6 h-6 rounded bg-primary flex items-center justify-center text-white font-black text-[10px] shrink-0">
         {initial}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-semibold text-gray-800 truncate">{displayName || 'User'}</div>
+        <div className="text-[12px] font-semibold text-gray-800 truncate">{displayName || 'User'}</div>
         <div className="text-[10px] text-gray-400 truncate">{displayEmail}</div>
       </div>
-      <NotificationBell collapsed={collapsed} />
     </div>
   );
 }
 
 // ─── Shared nav content ───────────────────────────────────────────────────────
 function SidebarContent({
-  collapsed,
   onClose,
-  onToggle,
+  collapsed,
+  onToggleCollapse,
 }: {
-  collapsed: boolean;
   onClose?: () => void;
-  onToggle?: () => void;
+  collapsed: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const location  = useLocation();
-  const navigate  = useNavigate();
   const { isAdmin, loading: permsLoading, can, isOwner, isPlatformOwner, me } = usePermissions();
   const subInfo   = useSubscriptionStatus();
   const { workPlural } = useTerminology();
   const navEntries = buildNavEntries(workPlural);
+  const companyLogoUrl = useCompanyLogo();
+  const companyName = me?.company?.name ?? 'Portal';
 
   const isActive = (href: string) => {
-    // Handle query-param tabs like /studio?tab=safety
     if (href.includes('?')) {
       const [hPath, hQuery] = href.split('?');
       const hParams = new URLSearchParams(hQuery);
@@ -160,10 +194,7 @@ function SidebarContent({
       }
       return true;
     }
-    // For /studio (no query param), only active when NOT on a tab
-    if (href === '/studio') {
-      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
-    }    return location.pathname === href || location.pathname.startsWith(href + '/');
+    return location.pathname === href || location.pathname.startsWith(href + '/');
   };
 
   async function handleLogout() {
@@ -180,48 +211,102 @@ function SidebarContent({
     }
   }
 
-  const linkClass = (active: boolean) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
-      active ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+  // Nav link — adapts to collapsed/expanded
+  const navLinkClass = (active: boolean, isDazza = false) => {
+    const base = `flex items-center rounded transition-colors duration-100 group relative text-[13px] ${
+      collapsed ? 'justify-center px-0 py-2 mx-1' : 'gap-2.5 px-3 py-1.5'
     }`;
+    if (isDazza) {
+      return `${base} ${active ? 'bg-violet-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 font-medium'}`;
+    }
+    return `${base} ${active ? 'bg-violet-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'}`;
+  };
 
   return (
     <>
       {/* ── Logo / header ── */}
-      <div className="flex items-center h-16 px-4 border-b border-gray-200 shrink-0 gap-2">
-        {collapsed ? (
+      <div
+        className={`flex border-b border-gray-100 shrink-0 ${
+          collapsed
+            ? 'flex-col items-center justify-center gap-1 py-3 px-2 min-h-[60px]'
+            : 'flex-row items-center gap-2.5 px-3 py-0 min-h-[60px]'
+        }`}
+      >
+        {/* Logo mark — always shown */}
+        {companyLogoUrl ? (
           <img
-            src="/assets/logo.png"
-            alt="IWILLBUILD"
-            className="h-8 w-auto object-contain shrink-0"
+            src={companyLogoUrl}
+            alt={companyName}
+            className="h-8 w-8 object-contain rounded-lg shrink-0"
           />
         ) : (
-          <img
-            src="/assets/logo.png"
-            alt="IWILLBUILD"
-            className="h-9 w-auto object-contain shrink-0 flex-1 min-w-0"
-          />
-        )}
-        {onToggle && (
-          <button
-            onClick={onToggle}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="ml-auto w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white hover:bg-orange-600 transition-colors shrink-0"
+          <div
+            className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm"
+            title={companyName}
           >
-            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-          </button>
+            <span className="text-white text-sm font-black leading-none">
+              {companyName.trim()[0]?.toUpperCase() ?? 'P'}
+            </span>
+          </div>
         )}
-        {onClose && (
-          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <X size={18} />
-          </button>
+
+        {/* Company name + close — expanded only */}
+        {!collapsed && (
+          <>
+            <div className="flex-1 min-w-0 relative overflow-hidden">
+              <span className="block text-[13px] font-bold text-gray-800 leading-tight whitespace-nowrap">
+                {companyName}
+              </span>
+              <span className="block text-[10px] text-gray-400 font-medium leading-tight mt-0.5">
+                Portal
+              </span>
+              {/* Fade-out mask on right edge */}
+              <span
+                className="absolute inset-y-0 right-0 w-6 pointer-events-none"
+                style={{ background: 'linear-gradient(to right, transparent, #ffffff)' }}
+                aria-hidden="true"
+              />
+            </div>
+
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                aria-label="Close menu"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </>
         )}
       </div>
 
+      {/* ── Collapse toggle — desktop only (not shown in mobile drawer) ── */}
+      {!onClose && onToggleCollapse && (
+        <div className={`flex shrink-0 border-b border-gray-100 ${collapsed ? 'justify-center py-1.5' : 'justify-end px-2 py-1.5'}`}>
+          <button
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+          >
+            {collapsed
+              ? <PanelLeftOpen  size={15} aria-hidden="true" />
+              : <PanelLeftClose size={15} aria-hidden="true" />
+            }
+          </button>
+        </div>
+      )}
+
       {/* ── Main nav ── */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">        {navEntries.map((item) => {
-          if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
-          if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
+      <nav
+        className={`flex-1 overflow-y-auto py-2 flex flex-col gap-0 ${collapsed ? 'px-0' : 'px-2'}`}
+        aria-label="Main navigation"
+      >
+        {navEntries.map((item) => {
+          if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey as any)) return null;
+          if (item.ownerOnly && (permsLoading || !isPlatformOwner)) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
           const isDazza = item.href === '/dazza-ai';
@@ -231,66 +316,51 @@ function SidebarContent({
               key={item.href}
               to={item.href}
               onClick={onClose}
+              aria-current={active ? 'page' : undefined}
+              aria-label={collapsed ? item.label : undefined}
               title={collapsed ? item.label : undefined}
-              className={
-                isDazza
-                  ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
-                  : linkClass(active)
-              }
+              className={navLinkClass(active, isDazza)}
             >
-              <Icon size={17} className="shrink-0" />
-              {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
-              {collapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  {item.label}
-                </div>
-              )}
+              <Icon size={15} className="shrink-0" aria-hidden="true" />
+              {!collapsed && <span className="truncate flex-1">{item.label}</span>}
             </Link>
           );
         })}
 
-        {/* ── Admin group ── */}
-        <div className="mt-3">
-          {!collapsed && (
-            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 select-none">
+        {/* ── Manage group ── */}
+        <div className="mt-2">
+          {/* Section heading — hidden when collapsed, sr-only for a11y */}
+          {collapsed ? (
+            <div className="mx-1 my-1 border-t border-gray-100" aria-hidden="true" />
+          ) : (
+            <p className="px-3 mb-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 select-none">
               Manage
             </p>
           )}
-          {collapsed && <div className="mx-3 border-t border-gray-200 mb-2" />}
 
           {adminItems.map((item) => {
             if (!permsLoading && item.adminOnly && !isAdmin) return null;
-            // ownerOnly items: hide until permissions resolve, then hide if not platform owner
             if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
             const Icon   = item.icon;
             const active = isActive(item.href);
             const isDazza = item.href === '/dazza-ai';
             return (
-              <div key={item.href}>
-                <Link
-                  to={item.href}
-                  onClick={onClose}
-                  title={collapsed ? item.label : undefined}
-                  className={
-                    isDazza
-                      ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
-                      : linkClass(active)
-                  }
-                >
-                  <Icon size={17} className="shrink-0" />
-                  {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                      {item.label}
-                    </div>
-                  )}
-                </Link>
-              </div>
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={onClose}
+                aria-current={active ? 'page' : undefined}
+                aria-label={collapsed ? item.label : undefined}
+                title={collapsed ? item.label : undefined}
+                className={navLinkClass(active, isDazza)}
+              >
+                <Icon size={15} className="shrink-0" aria-hidden="true" />
+                {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+              </Link>
             );
           })}
 
-          {/* Developer Console — platform developer only (NOT company admin/owner) */}
-          {/* Show once loaded and confirmed as platform developer; hide once loaded and confirmed NOT */}
+          {/* Developer Console */}
           {(permsLoading || isPlatformOwner) && (() => {
             if (!permsLoading && !isPlatformOwner) return null;
             const active = isActive('/owner-console');
@@ -298,16 +368,13 @@ function SidebarContent({
               <Link
                 to="/owner-console"
                 onClick={onClose}
+                aria-current={active ? 'page' : undefined}
+                aria-label={collapsed ? 'Developer Console' : undefined}
                 title={collapsed ? 'Developer Console' : undefined}
-                className={`${linkClass(active)} border border-orange-300`}
+                className={`${navLinkClass(active)} border border-violet-200`}
               >
-                <ShieldCheck size={17} className="shrink-0 text-orange-500" />
-                {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-600">Developer Console</span>}
-                {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                    Developer Console
-                  </div>
-                )}
+                <ShieldCheck size={15} className="shrink-0 text-violet-600" aria-hidden="true" />
+                {!collapsed && <span className="truncate flex-1 text-violet-700">Developer Console</span>}
               </Link>
             );
           })()}
@@ -315,26 +382,24 @@ function SidebarContent({
       </nav>
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-gray-200" />
+      <div className="mx-2 border-t border-gray-100" />
 
       {/* ── Bottom strip ── */}
-      <div className="py-3 px-2 flex flex-col gap-0.5">
+      <div className={`py-2 flex flex-col gap-0 ${collapsed ? 'px-0' : 'px-2'}`}>
         <button
           onClick={handleLogout}
+          aria-label="Log out"
           title={collapsed ? 'Log out' : undefined}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150 group relative w-full"
+          className={`flex items-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-100 w-full text-[13px] font-medium ${
+            collapsed ? 'justify-center px-0 py-2 mx-1' : 'gap-2.5 px-3 py-1.5'
+          }`}
         >
-          <LogOut size={17} className="shrink-0" />
-          {!collapsed && <span className="text-sm font-semibold">Log out</span>}
-          {collapsed && (
-            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-              Log out
-            </div>
-          )}
+          <LogOut size={15} className="shrink-0" aria-hidden="true" />
+          {!collapsed && <span>Log out</span>}
         </button>
 
-        {/* Trial / subscription banner */}
-        {subInfo && !isOwner && subInfo.status !== 'active' && (
+        {/* Trial / subscription banner — only in expanded mode */}
+        {!collapsed && subInfo && !isOwner && subInfo.status !== 'active' && (
           <Link
             to="/billing"
             className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
@@ -349,34 +414,47 @@ function SidebarContent({
               ? <AlertTriangle size={13} className="text-red-500 shrink-0" />
               : <CreditCard size={13} className="text-amber-500 shrink-0" />
             }
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                {subInfo.status === 'trial_expired' ? (
-                  <p className="text-xs font-bold text-red-600">Trial expired</p>
-                ) : subInfo.status === 'cancelled' ? (
-                  <p className="text-xs font-bold text-red-600">Subscription cancelled</p>
-                ) : subInfo.status === 'past_due' ? (
-                  <p className="text-xs text-red-600 font-bold">Payment past due</p>
-                ) : (
-                  <>
-                    <p className="text-xs font-bold text-amber-600">Free trial</p>
-                    <p className="text-[10px] text-gray-500">
-                      {subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
+            <div className="min-w-0 flex-1">
+              {subInfo.status === 'trial_expired' ? (
+                <p className="text-xs font-bold text-red-600">Trial expired</p>
+              ) : subInfo.status === 'cancelled' ? (
+                <p className="text-xs font-bold text-red-600">Subscription cancelled</p>
+              ) : subInfo.status === 'past_due' ? (
+                <p className="text-xs text-red-600 font-bold">Payment past due</p>
+              ) : (
+                <>
+                  <p className="text-xs font-bold text-amber-600">Free trial</p>
+                  <p className="text-[10px] text-gray-500">
+                    {subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining
+                  </p>
+                </>
+              )}
+            </div>
+          </Link>
+        )}
+
+        {/* Collapsed: subscription warning dot */}
+        {collapsed && subInfo && !isOwner && subInfo.status !== 'active' && (
+          <Link
+            to="/billing"
+            title={
+              subInfo.status === 'trial_expired' ? 'Trial expired — upgrade'
+              : subInfo.status === 'cancelled'   ? 'Subscription cancelled'
+              : subInfo.status === 'past_due'    ? 'Payment past due'
+              : `Free trial — ${subInfo.daysLeft ?? 0}d left`
+            }
+            className="flex justify-center py-1"
+          >
+            <span className={`w-2 h-2 rounded-full ${
+              subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
+                ? 'bg-red-500'
+                : 'bg-amber-400'
+            }`} />
           </Link>
         )}
 
         {/* User strip */}
-        {!collapsed && <SidebarUserStrip sessionUser={me?.user ?? null} me={me} collapsed={collapsed} />}
-        {collapsed && (
-          <div className="flex justify-center mt-1">
-            <NotificationBell collapsed={collapsed} />
-          </div>
-        )}
+        <SidebarUserStrip sessionUser={me?.user ?? null} me={me} collapsed={collapsed} />
       </div>
     </>
   );
@@ -397,9 +475,10 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 export default function PortalSidebar() {
-  const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location    = useLocation();
+  const [collapsed, setCollapsed] = useState<boolean>(() => readCollapsed());
+  const location = useLocation();
+  const _sidebarRef = useRef<HTMLElement>(null);
 
   // ── Session timeout enforcement ───────────────────────────────────────────
   const { isExpired } = useSessionTimeout();
@@ -414,22 +493,28 @@ export default function PortalSidebar() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  function handleToggleCollapse() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      writeCollapsed(next);
+      return next;
+    });
+  }
+
+  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
+
   return (
     <>
-      {/* ── Session expired banner (shown above everything) ── */}
+      {/* ── Session expired banner ── */}
       {isExpired && <SessionExpiredBanner />}
 
-      {/* ── Desktop sidebar ── */}
-      <motion.aside
-        animate={{ width: collapsed ? 72 : 240 }}
-        transition={{ duration: 0.2, ease: 'easeInOut' as const }}
-        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-200 shrink-0 overflow-hidden"
-        style={{ minWidth: collapsed ? 72 : 240 }}
-      >
-        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      </motion.aside>
+      {/* ── Desktop top bar — launcher + notifications, fixed top-right ── */}
+      <DesktopTopBar />
 
-      {/* ── Mobile overlay drawer (full sidebar, opened via More or hamburger) ── */}
+      {/* ── Desktop dock — bottom-centre floating pill ── */}
+      <DesktopDock />
+
+      {/* ── Mobile overlay drawer ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -440,7 +525,7 @@ export default function PortalSidebar() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 bg-black/40 z-40 md:hidden"
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
             />
             <motion.aside
               key="drawer"
@@ -451,7 +536,11 @@ export default function PortalSidebar() {
               className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-              <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} />
+              {/* Mobile drawer always renders expanded — pass collapsed=false */}
+              <SidebarContent
+                onClose={() => setMobileOpen(false)}
+                collapsed={false}
+              />
             </motion.aside>
           </>
         )}
@@ -476,17 +565,16 @@ function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
 }
 
 // ─── Mobile bottom tab bar ────────────────────────────────────────────────────
-// Shown only on mobile (<768px). Provides one-thumb access to primary routes.
-// "More" opens the full sidebar drawer.
+// Shown only on mobile (<768px). Field-first: Home, Jobs, Camera, Sign In, More.
+// "More" opens the full sidebar drawer for access to all portal pages.
 const MOBILE_TAB_ITEMS = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Jobs',      icon: HardHat,         href: '/jobs' },
-  { label: 'Forms',     icon: Layers,          href: '/forms' },
-  { label: 'Safety',    icon: ShieldCheck,     href: '/safety' },
+  { label: 'Home',  icon: LayoutDashboard, href: '/home' },
+  { label: 'Jobs',  icon: HardHat,         href: '/jobs' },
 ] as const;
 
 function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (href: string) => {
     if (href.includes('?')) {
@@ -499,19 +587,20 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
       }
       return true;
     }
-    if (href === '/studio') {
-      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
-    }
     return location.pathname === href || location.pathname.startsWith(href + '/');
   };
 
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      aria-label="Mobile navigation"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        boxShadow: '0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.06)',
+      }}
+      aria-label="Field navigation"
     >
       <div className="flex items-stretch">
+        {/* Home + Jobs tabs */}
         {MOBILE_TAB_ITEMS.map((item) => {
           const Icon   = item.icon;
           const active = isActive(item.href);
@@ -519,38 +608,62 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
             <Link
               key={item.href}
               to={item.href}
-              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
               style={{
-                color: active ? '#f97316' : 'rgba(0,0,0,0.4)',
+                color: active ? '#7c3aed' : 'rgba(0,0,0,0.4)',
                 WebkitTapHighlightColor: 'transparent',
               }}
               aria-current={active ? 'page' : undefined}
             >
-              {active && (
-                <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary"
-                  aria-hidden="true"
-                />
-              )}
-              <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: active ? 700 : 500,
-                  letterSpacing: '0.01em',
-                  lineHeight: 1,
-                }}
-              >
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: '0.01em', lineHeight: 1 }}>
                 {item.label}
               </span>
+              {active && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-violet-500" aria-hidden="true" />
+              )}
             </Link>
           );
         })}
 
+        {/* Camera — raised orange FAB */}
+        <button
+          onClick={() => navigate('/jobs')}
+          className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px]"
+          style={{ WebkitTapHighlightColor: 'transparent', background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Camera"
+        >
+          <div className="w-12 h-12 rounded-full bg-violet-500 flex items-center justify-center shadow-lg -mt-5 border-4 border-white">
+            <Camera size={22} className="text-white" strokeWidth={2} />
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1, color: '#7c3aed', marginTop: 2 }}>
+            Camera
+          </span>
+        </button>
+
+        {/* Safety */}
+        <Link
+          to="/safety"
+          className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
+          style={{
+            color: isActive('/safety') ? '#7c3aed' : 'rgba(0,0,0,0.4)',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          aria-current={isActive('/safety') ? 'page' : undefined}
+        >
+          <ShieldCheck size={22} strokeWidth={isActive('/safety') ? 2.2 : 1.8} />
+          <span style={{ fontSize: 10, fontWeight: isActive('/safety') ? 700 : 500, letterSpacing: '0.01em', lineHeight: 1 }}>
+            Safety
+          </span>
+          {isActive('/safety') && (
+            <span className="absolute bottom-1 w-1 h-1 rounded-full bg-violet-500" aria-hidden="true" />
+          )}
+        </Link>
+
         {/* More — opens full sidebar drawer */}
         <button
           onClick={onMoreClick}
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
           style={{
             color: 'rgba(0,0,0,0.4)',
             background: 'none',
@@ -560,10 +673,8 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
           } as React.CSSProperties}
           aria-label="More navigation options"
         >
-          <MoreHorizontal size={20} strokeWidth={1.8} />
-          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1 }}>
-            More
-          </span>
+          <MoreHorizontal size={22} strokeWidth={1.8} />
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1 }}>More</span>
         </button>
       </div>
     </nav>

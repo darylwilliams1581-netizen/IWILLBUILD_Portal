@@ -159,7 +159,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       line-height: 1.5;
     }
     .header-badge {
-      background: #f97316;
+      background: #7c3aed;
       color: #fff;
       font-size: 8.5px;
       font-weight: 700;
@@ -221,7 +221,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
     }
     ul.bullets li::before {
       content: "•";
-      color: #f97316;
+      color: #7c3aed;
       font-weight: 700;
       flex-shrink: 0;
     }
@@ -231,7 +231,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
 
     /* ── PPE Banner ── */
     .ppe-wrap {
-      border: 2px solid #f97316;
+      border: 2px solid #7c3aed;
       border-radius: 6px;
       overflow: hidden;
       display: flex;
@@ -239,7 +239,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       margin-bottom: 14px;
     }
     .ppe-label {
-      background: #f97316;
+      background: #7c3aed;
       padding: 8px 12px;
       display: flex;
       flex-direction: column;
@@ -277,7 +277,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       width: 32px;
       height: 32px;
       background: #fff9f5;
-      border: 1.5px solid #f97316;
+      border: 1.5px solid #7c3aed;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -451,7 +451,7 @@ function PreviewSection({ title, content }: { title: string; content: string | n
       <ul className="space-y-1.5">
         {lines.map((line, i) => (
           <li key={i} className="flex gap-2 text-[11px] text-slate-700 leading-snug">
-            <span className="text-orange-400 font-bold shrink-0 mt-0.5">•</span>
+            <span className="text-violet-400 font-bold shrink-0 mt-0.5">•</span>
             <span dangerouslySetInnerHTML={{ __html: richText(esc(line)) }} />
           </li>
         ))}
@@ -511,7 +511,7 @@ export default function SwmsPrintModal({ swms, onClose }: Props) {
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
             >
               <Printer size={14} />
               Print / Save PDF

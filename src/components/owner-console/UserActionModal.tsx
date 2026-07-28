@@ -69,16 +69,16 @@ function actionConfig(action: UserAction) {
       icon: Shield,
       iconColor: 'text-slate-600',
       iconBg: 'bg-slate-50 border-slate-200',
-      confirmClass: 'bg-primary hover:bg-orange-600 text-white',
+      confirmClass: 'bg-primary hover:bg-violet-700 text-white',
     };
     case 'force-temp-password': return {
       title: 'Set temporary password',
       description: 'Generates a temporary password and forces the user to change it on next login. All active sessions will be revoked.',
       confirmLabel: 'Set temp password',
       icon: KeyRound,
-      iconColor: 'text-orange-600',
-      iconBg: 'bg-orange-50 border-orange-200',
-      confirmClass: 'bg-orange-500 hover:bg-orange-600 text-white',
+      iconColor: 'text-violet-700',
+      iconBg: 'bg-violet-50 border-violet-200',
+      confirmClass: 'bg-violet-500 hover:bg-violet-700 text-white',
     };
     case 'unlock-account': return {
       title: 'Unlock account',
@@ -105,7 +105,7 @@ function actionConfig(action: UserAction) {
       icon: Shield,
       iconColor: 'text-slate-600',
       iconBg: 'bg-slate-50 border-slate-200',
-      confirmClass: 'bg-primary hover:bg-orange-600 text-white',
+      confirmClass: 'bg-primary hover:bg-violet-700 text-white',
     };
   }
 }
@@ -188,8 +188,8 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
           <div className="px-6 pt-6 pb-4 flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl border bg-orange-50 border-orange-200 flex items-center justify-center shrink-0">
-              <KeyRound size={20} className="text-orange-600" />
+            <div className="w-11 h-11 rounded-xl border bg-violet-50 border-violet-200 flex items-center justify-center shrink-0">
+              <KeyRound size={20} className="text-violet-700" />
             </div>
             <div className="flex-1">
               <h2 className="font-black text-slate-900 text-lg">Temporary password set</h2>
@@ -200,7 +200,7 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
             </button>
           </div>
           <div className="mx-6 mb-4 px-4 py-3 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between gap-3">
-            <code className="text-orange-400 font-mono text-lg tracking-widest">{tempPassword}</code>
+            <code className="text-violet-400 font-mono text-lg tracking-widest">{tempPassword}</code>
             <button
               onClick={() => { void navigator.clipboard.writeText(tempPassword); }}
               className="text-xs text-slate-400 hover:text-white border border-slate-600 rounded-lg px-2.5 py-1.5 transition-colors"
@@ -216,7 +216,7 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
           <div className="px-6 pb-6">
             <button
               onClick={() => { onSuccess(action, user.userId, {}); }}
-              className="w-full py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors"
+              className="w-full py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold transition-colors"
             >
               Done
             </button>

@@ -469,7 +469,7 @@ function SecureShareViewer({ token }: { token: string }) {
 
           {!loading && link && !unlocked && (
             <div className="bg-white border border-slate-200 rounded-2xl p-8 flex flex-col items-center gap-5">
-              <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-violet-50 rounded-xl flex items-center justify-center">
                 <Key size={22} className="text-primary" />
               </div>
               <div className="text-center">
@@ -528,7 +528,7 @@ function SecureShareViewer({ token }: { token: string }) {
                     </span>
                   )}
                   {link.permissions.map((p) => (
-                    <span key={p} className="flex items-center gap-1 bg-orange-50 border border-orange-200 text-orange-700 rounded-full px-2.5 py-1 font-semibold">
+                    <span key={p} className="flex items-center gap-1 bg-violet-50 border border-violet-200 text-violet-800 rounded-full px-2.5 py-1 font-semibold">
                       <Shield size={10} />
                       {p.charAt(0).toUpperCase() + p.slice(1)}
                     </span>

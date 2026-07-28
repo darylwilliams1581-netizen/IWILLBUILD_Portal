@@ -7,9 +7,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   AlertTriangle, Plus, Filter, X, ChevronRight,
-  Loader2, CheckCircle2, Clock, Search,
+  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -56,14 +58,14 @@ export const INCIDENT_TYPES = [
 export const SEVERITY_OPTIONS: { value: string; label: string; color: string }[] = [
   { value: 'low',      label: 'Low',      color: 'bg-emerald-100 text-emerald-700' },
   { value: 'medium',   label: 'Medium',   color: 'bg-amber-100 text-amber-700' },
-  { value: 'high',     label: 'High',     color: 'bg-orange-100 text-orange-700' },
+  { value: 'high',     label: 'High',     color: 'bg-violet-100 text-violet-800' },
   { value: 'critical', label: 'Critical', color: 'bg-red-100 text-red-700' },
 ];
 
 export const STATUS_OPTIONS: { value: string; label: string; color: string }[] = [
   { value: 'open',             label: 'Open',             color: 'bg-blue-100 text-blue-700' },
   { value: 'investigating',    label: 'Investigating',    color: 'bg-amber-100 text-amber-700' },
-  { value: 'action required',  label: 'Action Required',  color: 'bg-orange-100 text-orange-700' },
+  { value: 'action required',  label: 'Action Required',  color: 'bg-violet-100 text-violet-800' },
   { value: 'closed',           label: 'Closed',           color: 'bg-slate-100 text-slate-500' },
 ];
 
@@ -137,7 +139,9 @@ export default function IncidentsPage() {
     : incidents;
 
   return (
-    <>
+    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Incident Register — IWILLBUILD</title>
         <meta name="description" content="Company incident register — injuries, near misses, property damage, and safety events." />
@@ -148,6 +152,18 @@ export default function IncidentsPage() {
       <div className="flex flex-col min-h-screen bg-slate-50">
         {/* Header */}
         <div className="bg-red-700 text-white px-4 safe-top pb-3">
+          {/* Breadcrumb row */}
+          <div className="flex items-center gap-1.5 text-xs text-red-300 mb-2 pt-1">
+            <button
+              type="button"
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1 hover:text-white transition-colors"
+            >
+              <Home size={11} /> Home
+            </button>
+            <ChevronRight size={10} className="text-red-400" />
+            <span className="text-red-100 font-medium">Incident Register</span>
+          </div>
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle size={20} className="text-red-200" />
@@ -345,7 +361,7 @@ export default function IncidentsPage() {
                           <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">Injury</span>
                         )}
                         {Boolean(incident.property_damage) && (
-                          <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">Property damage</span>
+                          <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">Property damage</span>
                         )}
                         {Boolean(incident.environmental_impact) && (
                           <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">Environmental</span>
@@ -359,6 +375,6 @@ export default function IncidentsPage() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

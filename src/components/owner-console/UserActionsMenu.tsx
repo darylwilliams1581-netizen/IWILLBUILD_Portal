@@ -100,7 +100,7 @@ export default function UserActionsMenu({ user, onAction }: Props) {
             <Shield size={14} />Change role
           </button>
           <div className="my-1 border-t border-slate-100" />
-          <button onClick={() => trigger('impersonate')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors">
+          <button onClick={() => trigger('impersonate')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50 transition-colors">
             <Eye size={14} />View as user
           </button>
           <button onClick={() => trigger('view-sessions')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
@@ -110,7 +110,7 @@ export default function UserActionsMenu({ user, onAction }: Props) {
             <Trash2 size={14} />Force logout
           </button>
           <div className="my-1 border-t border-slate-100" />
-          <button onClick={() => trigger('force-temp-password')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors">
+          <button onClick={() => trigger('force-temp-password')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50 transition-colors">
             <KeyRound size={14} />Set temp password
           </button>
           <button onClick={() => trigger('unlock-account')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors">

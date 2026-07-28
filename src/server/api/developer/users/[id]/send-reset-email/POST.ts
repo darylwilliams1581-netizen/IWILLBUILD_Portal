@@ -76,7 +76,7 @@ export default async function handler(req: Request, res: Response) {
         subject: 'Reset your IWILLBUILD password',
         html: `
           <p>A password reset was requested for your IWILLBUILD account.</p>
-          <p><a href="${resetUrl}" style="background:#F97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Reset Password</a></p>
+          <p><a href="${resetUrl}" style="background:#7C3AED;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Reset Password</a></p>
           <p>This link expires in 30 minutes. If you didn't request this, you can ignore this email.</p>
           <p style="color:#888;font-size:12px;">Or copy this link: ${resetUrl}</p>
         `,

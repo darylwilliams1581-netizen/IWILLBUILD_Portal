@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   RefreshCw, AlertCircle, TrendingUp, CheckSquare, Square,
-  Plus, ExternalLink,
+  Plus, ExternalLink, FileText,
 } from 'lucide-react';
 import {
   type ProgressLine, type Contractor, type PurchaseOrder,

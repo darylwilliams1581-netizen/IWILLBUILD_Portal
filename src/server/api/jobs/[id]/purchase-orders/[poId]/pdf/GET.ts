@@ -152,7 +152,7 @@ export default async function handler(req: Request, res: Response) {
 <body style="padding:32px 40px;max-width:800px;margin:0 auto;">
 
   <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #f97316;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #7c3aed;">
     <div>
       ${comp.logo_url ? `<img src="${esc(String(comp.logo_url))}" alt="Logo" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:8px;" />` : ''}
       <p style="font-size:18px;font-weight:800;color:#111827;">${esc(String(comp.company_name ?? ''))}</p>
@@ -162,7 +162,7 @@ export default async function handler(req: Request, res: Response) {
       ${pdfSettings.businessAddress ? `<p style="font-size:11px;color:#6b7280;">${esc(pdfSettings.businessAddress)}</p>` : ''}
     </div>
     <div style="text-align:right;">
-      <p style="font-size:22px;font-weight:900;color:#f97316;letter-spacing:-0.5px;">PURCHASE ORDER</p>
+      <p style="font-size:22px;font-weight:900;color:#7c3aed;letter-spacing:-0.5px;">PURCHASE ORDER</p>
       <p style="font-size:16px;font-weight:700;color:#111827;margin-top:4px;">${esc(String(po.po_number))}</p>
       <span style="display:inline-block;margin-top:8px;padding:4px 12px;background:${sBg};color:${sColor};border:1px solid ${sColor};border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;">${sLabel}</span>
     </div>
@@ -204,7 +204,7 @@ export default async function handler(req: Request, res: Response) {
   <!-- Scope Lines -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
     <thead>
-      <tr style="background:#f97316;">
+      <tr style="background:#7c3aed;">
         <th style="padding:10px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.5px;">Description</th>
         <th style="padding:10px;text-align:center;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">Qty / Unit</th>
         <th style="padding:10px;text-align:right;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.5px;">Rate</th>
@@ -227,7 +227,7 @@ export default async function handler(req: Request, res: Response) {
         <span style="font-size:12px;color:#6b7280;">GST (10%)</span>
         <span style="font-size:12px;font-weight:600;color:#111827;">${fmtCurrency(po.gst)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;padding:10px 0;background:#f97316;border-radius:6px;margin-top:4px;padding-left:12px;padding-right:12px;">
+      <div style="display:flex;justify-content:space-between;padding:10px 0;background:#7c3aed;border-radius:6px;margin-top:4px;padding-left:12px;padding-right:12px;">
         <span style="font-size:14px;font-weight:800;color:#fff;">TOTAL</span>
         <span style="font-size:14px;font-weight:800;color:#fff;">${fmtCurrency(po.total)}</span>
       </div>

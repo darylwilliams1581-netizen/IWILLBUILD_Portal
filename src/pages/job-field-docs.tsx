@@ -14,6 +14,8 @@ import {
   ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight, Home,
 } from 'lucide-react';
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,7 @@ interface Stakeholder {
 // ── Job Picker ────────────────────────────────────────────────────────────────
 
 function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -79,8 +82,11 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
   );
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-      <Helmet>
+    <div className="min-h-screen bg-gray-50 lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+        <Helmet>
         <title>Field Docs | IWILLBUILD</title>
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
@@ -147,6 +153,7 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -158,6 +165,7 @@ function AddDocModal({ jobId, onClose, onAdded }: {
   onClose: () => void;
   onAdded: (docs: FieldDoc[]) => void;
 }) {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Array<{ id: number; title: string; status: string }>>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
@@ -241,7 +249,16 @@ function AddDocModal({ jobId, onClose, onAdded }: {
           {!loading && (
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               {filtered.length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-6">No templates found — create some in the SWMS Library first</p>
+                <div className="text-center py-6 px-4">
+                  <p className="text-sm text-slate-400 mb-3">No templates found — create some in the SWMS Library first</p>
+                  <button
+                    onClick={() => { onClose(); navigate('/safety'); }}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <FileText size={12} />
+                    Go to SWMS Library
+                  </button>
+                </div>
               )}
               {filtered.map(t => (
                 <button
@@ -638,6 +655,125 @@ function SignonPanel({ docId, signons, onNewSignon, onClose }: {
   );
 }
 
+// ── Doc Preview Modal ─────────────────────────────────────────────────────────
+
+interface FullDoc extends FieldDoc {
+  risks?: string | null;
+  controls?: string | null;
+  ppe?: string | null;
+  plant_equipment?: string | null;
+  training_competency?: string | null;
+  emergency_controls?: string | null;
+  environmental_controls?: string | null;
+  sign_off_requirements?: string | null;
+  hazards?: string | null;
+}
+
+function Section({ title, content }: { title: string; content?: string | null }) {
+  if (!content?.trim()) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">{title}</h3>
+      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">{content}</p>
+    </div>
+  );
+}
+
+function DocPreviewModal({ doc, job, onClose, onReview }: {
+  doc: FieldDoc;
+  job: Job;
+  onClose: () => void;
+  onReview?: () => void;
+}) {
+  const [full, setFull] = useState<FullDoc | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/safety/job-swms/${doc.id}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setFull((d as { jobSwms?: FullDoc }).jobSwms ?? null))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [doc.id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.22, ease: 'easeOut' as const }}
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="p-1.5 bg-teal-50 rounded-lg shrink-0 mt-0.5">
+              <FileText size={16} className="text-teal-600" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-heading font-bold text-base text-slate-800 leading-snug">{doc.title}</h2>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge(doc.status)}`}>
+                  {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                </span>
+                <span className="text-xs text-slate-400">Rev {doc.revision_number}</span>
+                <span className="text-xs text-slate-400">{job.name}</span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0 ml-2">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4">
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={22} className="animate-spin text-teal-600" />
+            </div>
+          )}
+
+          {!loading && full && (
+            <>
+              <Section title="Work Activity" content={full.work_activity} />
+              <Section title="Hazards" content={full.hazards} />
+              <Section title="Risks" content={full.risks} />
+              <Section title="Controls" content={full.controls} />
+              <Section title="PPE Required" content={full.ppe} />
+              <Section title="Plant & Equipment" content={full.plant_equipment} />
+              <Section title="Training & Competency" content={full.training_competency} />
+              <Section title="Emergency Controls" content={full.emergency_controls} />
+              <Section title="Environmental Controls" content={full.environmental_controls} />
+              <Section title="Sign-off Requirements" content={full.sign_off_requirements} />
+              {!full.work_activity && !full.hazards && !full.risks && !full.controls && (
+                <p className="text-sm text-slate-400 italic text-center py-8">No content recorded for this document.</p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 pb-5 pt-4 border-t border-slate-100 flex gap-3 shrink-0">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+            Close
+          </button>
+          {onReview && doc.status === 'draft' && (
+            <button
+              onClick={() => { onReview(); onClose(); }}
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <ClipboardCheck size={14} /> Mark as Reviewed
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Print View ────────────────────────────────────────────────────────────────
 
 function PrintView({ doc, job, signons, onClose }: {
@@ -771,6 +907,7 @@ function DocCard({ doc, job, onStatusChange }: {
   const [signonsLoaded, setSignonsLoaded] = useState(false);
   const [updating, setUpdating]       = useState(false);
   const [showPrint, setShowPrint]     = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [signonCount, setSignonCount] = useState(doc.signoff_count);
 
   // Load signons when panel opens for the first time
@@ -858,6 +995,15 @@ function DocCard({ doc, job, onStatusChange }: {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+            {/* Preview */}
+            <button
+              onClick={() => setShowPreview(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors border border-slate-200"
+            >
+              <FileText size={11} />
+              Preview
+            </button>
+
             {/* Review */}
             {doc.status === 'draft' && (
               <button
@@ -935,6 +1081,18 @@ function DocCard({ doc, job, onStatusChange }: {
           />
         )}
       </AnimatePresence>
+
+      {/* Preview modal */}
+      <AnimatePresence>
+        {showPreview && (
+          <DocPreviewModal
+            doc={doc}
+            job={job}
+            onClose={() => setShowPreview(false)}
+            onReview={() => void changeStatus('reviewed')}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -982,7 +1140,9 @@ export default function JobFieldDocsPage() {
 
   // ── Job selected → docs view ──
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       {/* Top bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
         <button

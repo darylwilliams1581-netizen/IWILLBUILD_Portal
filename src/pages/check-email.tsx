@@ -115,7 +115,7 @@ export default function CheckEmailPage() {
                 <button
                   onClick={handleResend}
                   disabled={resending}
-                  className="flex items-center gap-2 mx-auto text-sm font-semibold text-primary hover:text-orange-400 disabled:opacity-50 transition-colors"
+                  className="flex items-center gap-2 mx-auto text-sm font-semibold text-primary hover:text-violet-400 disabled:opacity-50 transition-colors"
                 >
                   <RefreshCw size={14} className={resending ? 'animate-spin' : ''} />
                   {resending ? 'Sending...' : 'Resend verification email'}

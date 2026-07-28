@@ -272,7 +272,7 @@ export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, 
           <button
             onClick={onToggleCollapse}
             title="Expand block library"
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
           >
             <PanelLeftOpen size={14} />
           </button>
@@ -318,7 +318,7 @@ export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, 
             <div className="px-3 py-2 border-b border-slate-100 flex flex-col gap-1.5">
               <button
                 onClick={onImportDocx}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-50 border border-violet-200 text-primary text-xs font-semibold hover:bg-violet-100 transition-colors"
               >
                 <FileUp size={13} />
                 Import DOCX / PDF
@@ -352,9 +352,9 @@ export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, 
                             <button
                               key={blockDef.type}
                               onClick={() => addBlock(blockDef.factory())}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-orange-50 hover:text-primary transition-colors group"
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-violet-50 hover:text-primary transition-colors group"
                             >
-                              <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-100 group-hover:border-orange-200 transition-colors">
+                              <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 group-hover:bg-violet-100 group-hover:border-violet-200 transition-colors">
                                 <Icon size={13} className="text-slate-500 group-hover:text-primary" />
                               </div>
                               <div className="min-w-0">

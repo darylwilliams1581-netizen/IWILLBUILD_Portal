@@ -1,11 +1,13 @@
 /**
  * /safety/posters — Standalone Safety Posters page
- * Renders the PostersTab directly with its own nav header.
+ * Renders the PostersTab directly with DesktopTopBar + DesktopDock on desktop.
  */
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Image } from 'lucide-react';
 import { PostersTab } from '@/pages/safety';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 export default function SafetyPostersPage() {
   const navigate = useNavigate();
@@ -19,8 +21,12 @@ export default function SafetyPostersPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
+      {/* Desktop nav */}
+      <DesktopTopBar />
+      <DesktopDock />
+
+      {/* Mobile header */}
+      <header className="md:hidden sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
         <button
           onClick={() => navigate('/home')}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -35,7 +41,7 @@ export default function SafetyPostersPage() {
       </header>
 
       {/* Posters content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto pt-0 lg:pt-[96px]">
         <PostersTab />
       </div>
     </div>

@@ -433,7 +433,7 @@ export default function DazzaBrainStatus({ supportCompanyId }: { supportCompanyI
                       <SourceBadge source={interaction.answer_source} />
                       <ConfidenceBadge level={interaction.confidence_level} />
                       {(interaction.conflict_detected === 1 || interaction.conflict_detected === true) && (
-                        <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">⚡ Conflict</span>
+                        <span className="text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-bold">⚡ Conflict</span>
                       )}
                       {interaction.tokens_used > 0 && (
                         <span className="text-[10px] text-slate-300">{interaction.tokens_used} tokens</span>

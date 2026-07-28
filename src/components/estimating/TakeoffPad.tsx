@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, Trash2, Loader2, CheckCircle2, AlertCircle, ClipboardList } from 'lucide-react';
+import { getPlatform, isNative } from '@/lib/capacitor-plugins';
+import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
+import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 
 // ── Speech recognition types ──────────────────────────────────────────────────
 interface SpeechRecognitionEvent extends Event {
@@ -39,6 +42,9 @@ declare global {
 
 function getSpeechRecognition(): (new () => SpeechRecognitionInstance) | null {
   if (typeof window === 'undefined') return null;
+  // WKWebView (iOS Capacitor) does not support the Web Speech API.
+  // Returning null here causes the component to show the keyboard-mic tip instead.
+  if (getPlatform() === 'ios') return null;
   return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
 }
 
@@ -56,6 +62,9 @@ export default function TakeoffPad() {
   const [listening, setListening] = useState(false);
   const [micUnsupported, setMicUnsupported] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
+  const [showMicExplainer, setShowMicExplainer] = useState(false);
+
+  const permExplainer = usePermissionExplainer();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -129,6 +138,16 @@ export default function TakeoffPad() {
       return;
     }
 
+    // Show pre-permission explainer on native before first mic use
+    if (isNative() && permExplainer.shouldShow('microphone')) {
+      setShowMicExplainer(true);
+      return;
+    }
+
+    doStartListening(SR);
+  }
+
+  function doStartListening(SR: new () => SpeechRecognitionInstance) {
     const rec = new SR();
     rec.continuous = true;
     rec.interimResults = false;
@@ -209,6 +228,21 @@ export default function TakeoffPad() {
 
   return (
     <div className="flex flex-col gap-4 max-w-3xl">
+      {/* Microphone pre-permission explainer */}
+      <PermissionExplainerModal
+        type="microphone"
+        open={showMicExplainer}
+        onNotNow={() => {
+          permExplainer.markShown('microphone');
+          setShowMicExplainer(false);
+        }}
+        onEnable={() => {
+          permExplainer.markShown('microphone');
+          setShowMicExplainer(false);
+          const SR = getSpeechRecognition();
+          if (SR) doStartListening(SR);
+        }}
+      />
       {/* Header row */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-primary/10 shrink-0">
@@ -243,23 +277,33 @@ export default function TakeoffPad() {
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-slate-500">Notes</label>
-          {/* Mic button */}
-          <button
-            onClick={toggleMic}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
-              listening
-                ? 'bg-red-500 border-red-500 text-white animate-pulse'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-primary hover:text-primary'
-            }`}
-          >
-            {listening ? <MicOff size={13} /> : <Mic size={13} />}
-            {listening ? 'Stop listening' : 'Voice input'}
-          </button>
+          {/* Mic button — hidden on iOS WebView where Web Speech API is unavailable */}
+          {getPlatform() !== 'ios' && (
+            <button
+              onClick={toggleMic}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                listening
+                  ? 'bg-red-500 border-red-500 text-white animate-pulse'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-primary hover:text-primary'
+              }`}
+            >
+              {listening ? <MicOff size={13} /> : <Mic size={13} />}
+              {listening ? 'Stop listening' : 'Voice input'}
+            </button>
+          )}
         </div>
 
-        {micUnsupported && (
+        {/* iOS: show keyboard mic tip instead of the Web Speech button */}
+        {getPlatform() === 'ios' && (
+          <div className="px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-700 flex items-start gap-2">
+            <Mic size={13} className="shrink-0 mt-0.5 text-blue-500" />
+            <span>Tap the <strong>microphone key</strong> on your keyboard to dictate notes.</span>
+          </div>
+        )}
+
+        {micUnsupported && getPlatform() !== 'ios' && (
           <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-            Use your phone keyboard microphone for voice-to-text.
+            Voice input is not supported in this browser. Use your phone keyboard microphone for voice-to-text.
           </div>
         )}
 

@@ -57,22 +57,25 @@ export default async function handler(req: Request, res: Response) {
         )
     `));
 
-    // Get all active sessions with their latest telemetry point
+    // Get all active sessions with their latest telemetry point + GPS/permission status
     const [rows] = await db.execute(sql.raw(`
       SELECT
-        fds.id            AS session_id,
+        fds.id                          AS session_id,
         fds.fleet_asset_id,
         fds.driver_name,
         fds.start_at,
         fds.status,
-        fa.name           AS asset_name,
-        fa.type           AS asset_type,
+        fds.location_permission_status,
+        fds.gps_status,
+        fds.last_heartbeat_at,
+        fa.name                         AS asset_name,
+        fa.type                         AS asset_type,
         fa.rego,
         t.lat,
         t.lng,
         t.speed_kmh,
         t.heading,
-        t.recorded_at     AS last_seen_at
+        t.recorded_at                   AS last_seen_at
       FROM fleet_driver_sessions fds
       JOIN fleet_assets fa ON fa.id = fds.fleet_asset_id
       LEFT JOIN fleet_session_telemetry t

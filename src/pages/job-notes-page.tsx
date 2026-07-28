@@ -7,6 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, StickyNote, Loader2, Download, Home } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import NotesPanel from '@/components/notes/NotesPanel';
+import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 
 interface Job {
   id: number;
@@ -77,7 +78,7 @@ export default function JobNotesPage() {
           <ArrowLeft size={18} />
         </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? (
@@ -86,9 +87,9 @@ export default function JobNotesPage() {
               <>
                 <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Notes'}</h1>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
                   <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
+                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
                   <span>/</span>
                   <span className="text-gray-500 font-medium">Notes</span>
                 </div>
@@ -118,18 +119,6 @@ export default function JobNotesPage() {
         </div>
       </div>
 
-      {/* ── Mobile: export CSV floats top-right ── */}
-      <button
-        onClick={exportCsv}
-        disabled={exporting}
-        className="md:hidden fixed top-3 right-3 z-20 h-9 px-3 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center gap-1.5 text-xs font-semibold text-gray-600 active:bg-gray-100 disabled:opacity-40 transition-colors"
-        style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)' }}
-        aria-label="Export CSV"
-      >
-        {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-        CSV
-      </button>
-
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -156,7 +145,7 @@ export default function JobNotesPage() {
           <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
           </button>
-          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
             <Home size={16} />
           </button>
           <div className="flex-1 min-w-0">
@@ -173,6 +162,18 @@ export default function JobNotesPage() {
               </>
             )}
           </div>
+          {/* Overflow menu — secondary actions */}
+          <MobileOverflowMenu
+            surface="light"
+            items={[
+              {
+                label: exporting ? 'Exporting…' : 'Export CSV',
+                icon: exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />,
+                onSelect: () => void exportCsv(),
+                disabled: exporting,
+              },
+            ]}
+          />
         </div>
       </div>
     </div>

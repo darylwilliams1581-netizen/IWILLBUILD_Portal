@@ -218,7 +218,7 @@ function BuiltinChecks({ companies }: { companies: Company[] }) {
           <button
             onClick={runChecks}
             disabled={!selectedCompanyId || running}
-            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
           >
             {running ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Run Checks
@@ -382,7 +382,7 @@ function DazzaConsole({ companies }: { companies: Company[] }) {
           <button
             onClick={send}
             disabled={!input.trim() || sending}
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
           >
             {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           </button>
@@ -401,7 +401,7 @@ function DazzaConsole({ companies }: { companies: Company[] }) {
             <button
               key={p}
               onClick={() => setInput(p)}
-              className="text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-primary border border-slate-200 text-slate-600 rounded-full px-2.5 py-1 transition-colors font-medium"
+              className="text-[11px] bg-slate-100 hover:bg-violet-50 hover:text-primary border border-slate-200 text-slate-600 rounded-full px-2.5 py-1 transition-colors font-medium"
             >
               {p}
             </button>
@@ -499,7 +499,7 @@ function AnnettePanel({ companies }: { companies: Company[] }) {
           <button
             onClick={run}
             disabled={running}
-            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
           >
             {running ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
             {running ? 'Running Annette…' : 'Run Annette Health Check'}
@@ -641,7 +641,7 @@ function PromptTestPanel({ companies }: { companies: Company[] }) {
         <button
           onClick={run}
           disabled={!prompt.trim() || running}
-          className="self-start flex items-center gap-2 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+          className="self-start flex items-center gap-2 px-4 py-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
         >
           {running ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           Run Prompt

@@ -12,13 +12,14 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
   AlertTriangle, Loader2, ClipboardCheck, Users, FileText,
   Pen, X, Check, Printer, HardHat, Shield, Info,
-  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays,
+  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays, Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
+import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -220,8 +221,8 @@ function Section({
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
       >
-        <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', accent ?? 'bg-orange-100')}>
-          <Icon size={16} className={accent ? 'text-white' : 'text-orange-600'} />
+        <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', accent ?? 'bg-violet-100')}>
+          <Icon size={16} className={accent ? 'text-white' : 'text-violet-700'} />
         </div>
         <span className="flex-1 font-semibold text-slate-800 text-sm">{title}</span>
         {badge && (
@@ -297,13 +298,13 @@ function PrestartList({ jobId, onSelect, onNew }: PrestartListProps) {
 
   if (loading) return (
     <div className="flex items-center justify-center py-16">
-      <Loader2 size={24} className="animate-spin text-orange-500" />
+      <Loader2 size={24} className="animate-spin text-violet-600" />
     </div>
   );
 
   return (
     <div className="space-y-3">
-      <Button onClick={onNew} className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12">
+      <Button onClick={onNew} className="w-full bg-violet-500 hover:bg-violet-700 text-white rounded-xl h-12">
         <Plus size={18} className="mr-2" />
         Create Today's Prestart
       </Button>
@@ -317,7 +318,7 @@ function PrestartList({ jobId, onSelect, onNew }: PrestartListProps) {
             <button
               key={p.id}
               onClick={() => onSelect(p)}
-              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-white text-left hover:border-orange-300 transition-colors"
+              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-white text-left hover:border-violet-300 transition-colors"
             >
               <div className={cn(
                 'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
@@ -395,10 +396,10 @@ function NewPrestartDialog({ jobId, onCreated, onCancel }: {
           onClick={() => { setMode('blank'); setSelectedCopyId(null); }}
           className={cn(
             'p-4 rounded-xl border-2 text-left transition-colors',
-            mode === 'blank' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-white',
+            mode === 'blank' ? 'border-violet-600 bg-violet-50' : 'border-slate-200 bg-white',
           )}
         >
-          <FileText size={20} className="text-orange-500 mb-2" />
+          <FileText size={20} className="text-violet-600 mb-2" />
           <p className="text-sm font-semibold text-slate-800">Start blank</p>
           <p className="text-xs text-slate-500 mt-0.5">Fresh prestart for today</p>
         </button>
@@ -407,11 +408,11 @@ function NewPrestartDialog({ jobId, onCreated, onCancel }: {
           disabled={previousPrestarts.length === 0}
           className={cn(
             'p-4 rounded-xl border-2 text-left transition-colors',
-            mode === 'copy' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-white',
+            mode === 'copy' ? 'border-violet-600 bg-violet-50' : 'border-slate-200 bg-white',
             previousPrestarts.length === 0 && 'opacity-40 cursor-not-allowed',
           )}
         >
-          <ClipboardCheck size={20} className="text-orange-500 mb-2" />
+          <ClipboardCheck size={20} className="text-violet-600 mb-2" />
           <p className="text-sm font-semibold text-slate-800">Copy previous</p>
           <p className="text-xs text-slate-500 mt-0.5">Carry forward crew & SWMS</p>
         </button>
@@ -426,10 +427,10 @@ function NewPrestartDialog({ jobId, onCreated, onCancel }: {
               onClick={() => setSelectedCopyId(p.id)}
               className={cn(
                 'w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors',
-                selectedCopyId === p.id ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-white',
+                selectedCopyId === p.id ? 'border-violet-600 bg-violet-50' : 'border-slate-200 bg-white',
               )}
             >
-              <div className={cn('w-4 h-4 rounded-full border-2 flex-shrink-0', selectedCopyId === p.id ? 'border-orange-500 bg-orange-500' : 'border-slate-300')} />
+              <div className={cn('w-4 h-4 rounded-full border-2 flex-shrink-0', selectedCopyId === p.id ? 'border-violet-600 bg-violet-500' : 'border-slate-300')} />
               <div>
                 <p className="text-sm font-medium text-slate-800">
                   {p.prestart_date ? new Date(p.prestart_date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : 'No date'}
@@ -448,7 +449,7 @@ function NewPrestartDialog({ jobId, onCreated, onCancel }: {
         <Button
           onClick={create}
           disabled={!mode || (mode === 'copy' && !selectedCopyId) || creating}
-          className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-xl"
+          className="flex-1 bg-violet-500 hover:bg-violet-700 text-white rounded-xl"
         >
           {creating ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
           Create
@@ -488,7 +489,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
     setSubmitting(true);
     setError('');
     try {
-      const r = await fetch(`/api/jobs/${prestart.job_id ?? jobId}/site-prestarts/${prestart.id}/workers`, {
+      const r = await fetch(`/api/jobs/${prestart.job_id}/site-prestarts/${prestart.id}/workers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -518,7 +519,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Locked summary */}
-      <div className="bg-orange-500 text-white px-4 pt-3 pb-4 safe-top">
+      <div className="bg-violet-500 text-white px-4 pt-3 pb-4 safe-top">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Shield size={18} />
@@ -620,7 +621,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
             <Button
               onClick={submit}
               disabled={submitting}
-              className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-base font-bold"
+              className="w-full h-14 bg-violet-500 hover:bg-violet-700 text-white rounded-xl text-base font-bold"
             >
               {submitting ? <Loader2 size={18} className="animate-spin mr-2" /> : <Pen size={18} className="mr-2" />}
               Sign On
@@ -808,7 +809,7 @@ export default function JobSitePrestartPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-dvh bg-slate-50">
         {/* Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-20 safe-top">
           <div className="flex items-center gap-3 px-4 pt-3 pb-3">
@@ -818,22 +819,46 @@ export default function JobSitePrestartPage() {
                 else navigate(returnTo);
               }}
               className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
+              aria-label="Back"
             >
               <ChevronLeft size={20} className="text-slate-600" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="font-bold text-slate-900 text-base leading-tight">Site Prestart</h1>
-              <p className="text-xs text-slate-500">Daily site safety briefing</p>
+              <h1 className="font-bold text-slate-900 text-base leading-tight truncate">Site Prestart</h1>
+              <p className="text-xs text-slate-500 truncate">
+                {prestart?.job_name ?? 'Daily site safety briefing'}
+              </p>
             </div>
             {view === 'form' && prestart && (
               <div className="flex items-center gap-2">
                 {saving && <Loader2 size={14} className="animate-spin text-slate-400" />}
-                {saveMsg && <span className="text-xs text-green-600">{saveMsg}</span>}
-                {prestart.status === 'finalised' && (
-                  <button onClick={printPrestart} className="p-2 rounded-xl hover:bg-slate-100">
-                    <Printer size={18} className="text-slate-600" />
-                  </button>
-                )}
+                {saveMsg && <span className="text-xs text-green-600 hidden sm:inline">{saveMsg}</span>}
+                {/* Overflow menu — secondary actions (Print visible on desktop too) */}
+                <div className="hidden sm:flex items-center gap-2">
+                  {prestart.status === 'finalised' && (
+                    <button onClick={printPrestart} className="p-2 rounded-xl hover:bg-slate-100" title="Print">
+                      <Printer size={18} className="text-slate-600" />
+                    </button>
+                  )}
+                </div>
+                <MobileOverflowMenu
+                  surface="light"
+                  className="sm:hidden"
+                  items={[
+                    {
+                      label: 'Print',
+                      icon: <Printer size={15} />,
+                      onSelect: printPrestart,
+                      disabled: prestart.status !== 'finalised',
+                    },
+                    {
+                      label: 'Home',
+                      icon: <ChevronLeft size={15} />,
+                      onSelect: () => navigate('/home'),
+                      dividerAbove: true,
+                    },
+                  ]}
+                />
               </div>
             )}
           </div>
@@ -906,7 +931,7 @@ export default function JobSitePrestartPage() {
                       <Users size={13} className="mr-1" />
                       Sign-on ({workers.length})
                     </Button>
-                    <button onClick={printPrestart} className="text-xs text-slate-500 underline">Print</button>
+                    <button onClick={printPrestart} className="hidden sm:inline text-xs text-slate-500 underline">Print</button>
                   </div>
                 )}
               </div>
@@ -917,7 +942,7 @@ export default function JobSitePrestartPage() {
               </div>
 
               {/* Section 1: Job Details */}
-              <Section title="Job Details" icon={HardHat} defaultOpen accent="bg-orange-500">
+              <Section title="Job Details" icon={HardHat} defaultOpen accent="bg-violet-500">
                 <p className="text-xs text-slate-400 -mt-1">Check these job details are correct before starting the briefing.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Job Number">
@@ -1187,7 +1212,7 @@ export default function JobSitePrestartPage() {
                         className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
                           prestart.weather_delay === opt.value
                             ? opt.value
-                              ? 'bg-orange-500 border-orange-500 text-white'
+                              ? 'bg-violet-500 border-violet-600 text-white'
                               : 'bg-slate-600 border-slate-600 text-white'
                             : 'bg-transparent border-slate-600 text-slate-400 hover:border-slate-400'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -1225,10 +1250,10 @@ export default function JobSitePrestartPage() {
               </Section>
 
               {/* Worker sign-on summary */}
-              <Section title={`Worker Sign-On (${workers.length})`} icon={Users} accent="bg-orange-500">
+              <Section title={`Worker Sign-On (${workers.length})`} icon={Users} accent="bg-violet-500">
                 <Button
                   onClick={() => setView('signon')}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-11"
+                  className="w-full bg-violet-500 hover:bg-violet-700 text-white rounded-xl h-11"
                 >
                   <Users size={16} className="mr-2" />
                   {isReadOnly ? 'View Sign-On Register' : 'Open Sign-On Screen'}
@@ -1252,7 +1277,9 @@ export default function JobSitePrestartPage() {
               {/* Finalise confirm */}
               {showFinaliseConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
-                  <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 max-h-[90dvh] overflow-y-auto"
+                    style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+                  >
                     <h3 className="font-bold text-slate-800">Finalise Prestart?</h3>
                     <p className="text-sm text-slate-600">Once finalised, the briefing content becomes read-only. Workers can still sign on after finalising.</p>
                     {finaliseError && (

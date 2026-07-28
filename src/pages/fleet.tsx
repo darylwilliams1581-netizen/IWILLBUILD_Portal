@@ -18,8 +18,11 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowLeft,
+  Navigation,
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   fetchFleet,
   createAsset,
@@ -30,8 +33,8 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
+import { usePermissions } from '@/lib/usePermissions';
 import { lazy, Suspense } from 'react';
-import { Navigation } from 'lucide-react';
 
 // Google Maps-based live map
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
@@ -88,7 +91,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.15 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-heading font-bold text-base">New Fleet Asset</h2>
@@ -240,7 +243,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               {saving ? 'Creating…' : 'Create Asset'}
@@ -283,6 +286,7 @@ export default function FleetPage() {
   const [successName, setSuccessName] = useState('');
   const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
+  const { isAdmin } = usePermissions();
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -319,7 +323,9 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Fleet — IWILLBUILD Portal</title>
         <meta name="description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
@@ -338,34 +344,88 @@ export default function FleetPage() {
 
       <PortalErrorBoundary inline>
       <div className="flex flex-col flex-1">
-        {/* Slim top bar — title + back only, no controls (avoids iPhone status bar overlap) */}
-        <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-          <button
-            onClick={() => navigate('/home')}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            aria-label="Back to Home"
-          >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">Home</span>
-          </button>
-          <span className="text-gray-300">|</span>
-          <Truck size={17} className="text-primary shrink-0" />
-          <h1 className="font-heading font-bold text-base truncate flex-1">Fleet</h1>
-          {!loading && (
-            <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
-              {assets.length} asset{assets.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          {attentionCount > 0 && (
-            <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
-              <AlertTriangle size={10} />
-              {attentionCount}
-            </span>
-          )}
+        {/* Header — back/title left · view toggle centre · add asset right */}
+        <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
+          <div className="flex items-center gap-2 px-4 h-12">
+            {/* Left: back + title */}
+            <button
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Back to Home"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Home</span>
+            </button>
+            <span className="text-gray-300 shrink-0">|</span>
+            <Truck size={17} className="text-primary shrink-0" />
+            <h1 className="font-heading font-bold text-base truncate">Fleet</h1>
+            {!loading && (
+              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
+                {assets.length} asset{assets.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {attentionCount > 0 && (
+              <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
+                <AlertTriangle size={10} />
+                {attentionCount}
+              </span>
+            )}
+
+            {/* Centre: view toggle + add asset — absolutely centred */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
+              {/* Assets tab */}
+              <button
+                onClick={() => setView('assets')}
+                title="Assets list"
+                className={[
+                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                ].join(' ')}
+              >
+                <Truck size={13} />
+                <span>Assets</span>
+              </button>
+
+              {/* Live Map tab */}
+              <button
+                onClick={() => setView('live-map')}
+                title="Live GPS map"
+                className={[
+                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                ].join(' ')}
+              >
+                <Navigation size={13} />
+                <span>Live Map</span>
+              </button>
+
+              {/* Tracker Portal tab — desktop only */}
+              {/* REMOVED — replaced by Quick Links sidebar module */}
+
+              {/* Divider + Add Asset — only shown on assets tab */}
+              {view === 'assets' && (
+                <>
+                  <span className="w-px h-5 bg-slate-300 mx-0.5 shrink-0" />
+                  <button
+                    onClick={() => !isViewOnly && setShowModal(true)}
+                    disabled={isViewOnly}
+                    title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={13} />
+                    <span>Add Asset</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Right spacer — keeps left content from overlapping centre */}
+            <div className="ml-auto" />
+          </div>
         </header>
 
-        {/* Content — extra bottom padding so floating bar doesn't overlap */}
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0 pb-20">
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
               <PortalErrorBoundary inline>
@@ -379,6 +439,8 @@ export default function FleetPage() {
                 </Suspense>
               </PortalErrorBoundary>
           )}
+
+          {/* ── Tracker Portal view — REMOVED, replaced by Quick Links ── */}
 
           {/* ── Assets view ── */}
           {view === 'assets' && (
@@ -478,7 +540,7 @@ export default function FleetPage() {
                     onClick={() => !isViewOnly && setShowModal(true)}
                     disabled={isViewOnly}
                     title={isViewOnly ? 'Subscribe to continue' : undefined}
-                    className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={15} />
                     Add First Asset
@@ -574,48 +636,7 @@ export default function FleetPage() {
         </AnimatePresence>
       </div>
 
-        {/* ── Floating bottom action bar ── */}
-        {/* Sits above iPhone home indicator; avoids status-bar overlap at top */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-3 px-4 bg-white/95 backdrop-blur-sm border-t border-border shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
-          style={{ paddingTop: '12px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}
-        >
-          {/* View toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200 flex-1 max-w-[200px]">
-            <button
-              onClick={() => setView('assets')}
-              title="Assets list"
-              className={[
-                'flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-xs font-semibold transition-colors',
-                view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500',
-              ].join(' ')}
-            >
-              <Truck size={14} />
-              <span>Assets</span>
-            </button>
-            <button
-              onClick={() => setView('live-map')}
-              title="Live GPS map"
-              className={[
-                'flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-xs font-semibold transition-colors',
-                view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500',
-              ].join(' ')}
-            >
-              <Navigation size={14} />
-              <span>Live Map</span>
-            </button>
-          </div>
-
-          {/* Add Asset */}
-          <button
-            onClick={() => !isViewOnly && setShowModal(true)}
-            disabled={isViewOnly}
-            title={isViewOnly ? 'Subscribe to continue' : undefined}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-          >
-            <Plus size={16} />
-            <span>Add Asset</span>
-          </button>
-        </div>
+        {/* ── No more floating bottom bar — controls moved to header ── */}
       </PortalErrorBoundary>
     </div>
   );

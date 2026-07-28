@@ -111,8 +111,8 @@ export default function StarterPackTab({ companies }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-          <Package size={18} className="text-orange-600" />
+        <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+          <Package size={18} className="text-violet-700" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-slate-900">Legacy Starter Pack</h2>
@@ -158,7 +158,7 @@ export default function StarterPackTab({ companies }: Props) {
               setSelectedId(e.target.value ? parseInt(e.target.value) : '');
               setLastResult(null);
             }}
-            className="w-full appearance-none bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
+            className="w-full appearance-none bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400"
           >
             <option value="">— Choose a company —</option>
             {companies.map((c) => (
@@ -246,7 +246,7 @@ export default function StarterPackTab({ companies }: Props) {
             type="checkbox"
             checked={force}
             onChange={(e) => setForce(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+            className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-400"
           />
           <span className="text-sm text-slate-700">
             Force re-run <span className="text-slate-400">(resets guard and re-seeds; skips items that already exist)</span>
@@ -259,7 +259,7 @@ export default function StarterPackTab({ companies }: Props) {
         <button
           onClick={runStarterPack}
           disabled={running || loadingStatus}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
         >
           {running ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
           {running ? 'Running…' : force ? 'Force Re-run Starter Pack' : 'Load Starter Pack'}

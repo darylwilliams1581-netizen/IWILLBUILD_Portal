@@ -118,7 +118,7 @@ export default function PhotoSharePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-orange-400" />
+        <Loader2 size={28} className="animate-spin text-violet-400" />
       </div>
     );
   }
@@ -155,8 +155,8 @@ export default function PhotoSharePage() {
         {/* ── Desktop header (md+) ── */}
         <div className="hidden md:block bg-white border-b border-slate-100 sticky top-0 z-10" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-              <Camera size={16} className="text-orange-500" />
+            <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+              <Camera size={16} className="text-violet-600" />
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="font-heading font-bold text-sm text-slate-900 truncate leading-tight">
@@ -201,7 +201,7 @@ export default function PhotoSharePage() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.4) }}
                   onClick={() => setLightbox(idx)}
-                  className="group relative aspect-square rounded-lg md:rounded-xl overflow-hidden bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  className="group relative aspect-square rounded-lg md:rounded-xl overflow-hidden bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                 >
                   {photoUrl(tok, photo) ? (
                     <img
@@ -245,8 +245,8 @@ export default function PhotoSharePage() {
           style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-              <Camera size={15} className="text-orange-500" />
+            <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+              <Camera size={15} className="text-violet-600" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-heading font-bold text-sm text-slate-900 truncate leading-tight">{job.name}</p>

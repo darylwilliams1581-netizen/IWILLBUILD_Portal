@@ -269,7 +269,7 @@ export default function PdfStyleTab({ isAdmin }: Props) {
               onClick={() => set('logoSize', s.value)}
               className={`flex-1 flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all text-sm font-semibold
                 ${style.logoSize === s.value
-                  ? 'border-primary bg-orange-50 text-primary'
+                  ? 'border-primary bg-violet-50 text-primary'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
                 }
                 ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -421,7 +421,7 @@ export default function PdfStyleTab({ isAdmin }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save PDF Style

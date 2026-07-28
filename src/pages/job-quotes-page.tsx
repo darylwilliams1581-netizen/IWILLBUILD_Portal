@@ -77,7 +77,7 @@ function StatusDropdown({
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                   {s}
-                  {estimate.status === s && <CheckCircle size={10} className="ml-auto text-orange-500" />}
+                  {estimate.status === s && <CheckCircle size={10} className="ml-auto text-violet-600" />}
                 </button>
               );
             })}
@@ -250,14 +250,14 @@ export default function JobQuotesPage() {
             <ChevronLeft size={18} />
           </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             <p className="text-gray-900 font-bold text-xl leading-tight text-center">Quotes</p>
             <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-              <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+              <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
               <span>/</span>
-              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
+              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
               <span>/</span>
               <span className="text-gray-500 font-medium">Quotes</span>
             </div>
@@ -266,7 +266,7 @@ export default function JobQuotesPage() {
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-bold px-4 py-2.5 rounded-2xl transition-colors disabled:opacity-60 shrink-0"
+              className="flex items-center gap-2 bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold px-4 py-2.5 rounded-2xl transition-colors disabled:opacity-60 shrink-0"
             >
               {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               New Quote
@@ -290,8 +290,8 @@ export default function JobQuotesPage() {
           </div>
         ) : estimates.length === 0 ? (
           <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto mb-4">
-              <FileText size={24} className="text-orange-400" />
+            <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
+              <FileText size={24} className="text-violet-400" />
             </div>
             <p className="font-bold text-gray-800 mb-1">No quotes yet</p>
             <p className="text-sm text-gray-400 mb-5">Create your first quote for this job</p>
@@ -299,7 +299,7 @@ export default function JobQuotesPage() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-colors disabled:opacity-60"
+                className="inline-flex items-center gap-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-colors disabled:opacity-60"
               >
                 {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 New Quote
@@ -319,13 +319,13 @@ export default function JobQuotesPage() {
                   <div key={est.id} className="px-4 py-4">
                     {/* Row 1: icon + title + total */}
                     <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0 mt-0.5">
-                        <FileText size={15} className="text-orange-400" />
+                      <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 mt-0.5">
+                        <FileText size={15} className="text-violet-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <Link
                           to={`/estimates/${est.id}`}
-                          className="font-bold text-gray-900 text-sm hover:text-orange-500 transition-colors truncate block"
+                          className="font-bold text-gray-900 text-sm hover:text-violet-600 transition-colors truncate block"
                         >
                           {est.title}
                         </Link>
@@ -376,7 +376,7 @@ export default function JobQuotesPage() {
                         <button
                           onClick={() => handleConvertToInvoice(est.id)}
                           disabled={convertingId === est.id}
-                          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60"
+                          className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60"
                         >
                           {convertingId === est.id
                             ? <Loader2 size={11} className="animate-spin" />

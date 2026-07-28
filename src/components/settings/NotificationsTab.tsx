@@ -48,14 +48,14 @@ const PREF_GROUPS: PrefGroup[] = [
     icon: Clock,
     iconColor: 'text-amber-500',
     items: [
-      { key: 'todoOverdue',  label: 'Overdue to-dos',   description: 'Alert when a job to-do passes its due date' },
-      { key: 'todoDueToday', label: 'Due today',         description: 'Alert for to-dos due on the current day' },
+      { key: 'todoOverdue',  label: 'Overdue tasks',    description: 'Alert when a job task passes its due date' },
+      { key: 'todoDueToday', label: 'Due today',         description: 'Alert for tasks due on the current day' },
     ],
   },
   {
     label: 'Fleet',
     icon: Truck,
-    iconColor: 'text-orange-500',
+    iconColor: 'text-violet-600',
     items: [
       { key: 'fleetServiceDue',  label: 'Service due',          description: 'Alert when service is due within 14 days' },
       { key: 'fleetRegoDue',     label: 'Rego expiring',        description: 'Alert when rego expires within 14 days' },

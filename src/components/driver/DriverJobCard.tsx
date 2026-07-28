@@ -145,7 +145,7 @@ export default function DriverJobCard({ jobId, onJobSelect, compact = false }: D
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Current Job</span>
         </div>
         <p className="text-gray-400 text-sm mt-2">No active jobs assigned to you right now.</p>
-        <Link to="/jobs" className="inline-flex items-center gap-1 text-orange-400 text-sm mt-2 hover:text-orange-300">
+        <Link to="/jobs" className="inline-flex items-center gap-1 text-violet-400 text-sm mt-2 hover:text-violet-300">
           View all jobs <ExternalLink size={12} />
         </Link>
       </div>
@@ -158,7 +158,7 @@ export default function DriverJobCard({ jobId, onJobSelect, compact = false }: D
       {/* Header row */}
       <div className={`flex items-center justify-between ${compact ? 'px-4 pt-4 pb-2' : 'px-5 pt-5 pb-3'}`}>
         <div className="flex items-center gap-2">
-          <Briefcase size={14} className="text-orange-400" />
+          <Briefcase size={14} className="text-violet-400" />
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Current Job</span>
         </div>
         <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export default function DriverJobCard({ jobId, onJobSelect, compact = false }: D
           {jobs.length > 1 && (
             <button
               onClick={() => setShowPicker(p => !p)}
-              className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 font-medium"
+              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 font-medium"
             >
               Change
               {showPicker ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -206,7 +206,7 @@ export default function DriverJobCard({ jobId, onJobSelect, compact = false }: D
                   onClick={() => selectJob(job)}
                   className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors ${
                     selectedJob?.id === job.id
-                      ? 'bg-orange-500/10 border border-orange-500/30'
+                      ? 'bg-violet-500/10 border border-violet-600/30'
                       : 'hover:bg-gray-800'
                   }`}
                 >
@@ -220,7 +220,7 @@ export default function DriverJobCard({ jobId, onJobSelect, compact = false }: D
                     <div className="shrink-0 flex items-center gap-2">
                       <StatusBadge status={job.status} />
                       {selectedJob?.id === job.id && (
-                        <CheckCircle2 size={14} className="text-orange-400" />
+                        <CheckCircle2 size={14} className="text-violet-400" />
                       )}
                     </div>
                   </div>
@@ -282,7 +282,7 @@ export default function DriverJobCard({ jobId, onJobSelect, compact = false }: D
           {/* Link to full job */}
           <Link
             to={`/jobs/${selectedJob.id}`}
-            className="inline-flex items-center gap-1.5 mt-4 text-orange-400 hover:text-orange-300 text-sm font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 mt-4 text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
           >
             Open job details
             <ChevronRight size={14} />

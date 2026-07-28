@@ -131,7 +131,7 @@ export default function PrivacyPage() {
               <p>We may disclose your personal information to:</p>
               <ul>
                 <li><strong>Service providers</strong> — third-party vendors who assist us in operating the Service, including cloud hosting providers, database infrastructure, email delivery services, and payment processors. These providers are contractually required to handle your information securely and only for the purposes we specify.</li>
-                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWILLBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#f97316' }}>stripe.com/au/privacy</a>.</li>
+                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWILLBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed' }}>stripe.com/au/privacy</a>.</li>
                 <li><strong>Accounting integrations (e.g. Xero)</strong> — if you choose to connect a third-party accounting platform, data such as approved invoices and customer contacts may be synced to that platform at your direction. You can disconnect integrations at any time from <strong>Settings → Integrations</strong>. Data already transmitted to a third-party platform is governed by that platform's privacy policy.</li>
                 <li><strong>Your company administrator</strong> — account owners and administrators within your company workspace can access data created by team members in accordance with their role permissions.</li>
                 <li><strong>Legal and regulatory authorities</strong> — where required by law, court order, or to protect the rights, property, or safety of IWILLBUILD, our users, or the public.</li>
@@ -173,7 +173,7 @@ export default function PrivacyPage() {
                 <li>Regular review of security practices as the platform evolves.</li>
               </ul>
               <p>
-                No system is completely secure. We encourage you to use a strong, unique password and to keep your login credentials private. If you suspect unauthorised access to your account, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{ color: '#f97316' }}>support@iwillbuild.com</a>.
+                No system is completely secure. We encourage you to use a strong, unique password and to keep your login credentials private. If you suspect unauthorised access to your account, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>.
               </p>
             </Section>
 
@@ -206,13 +206,13 @@ export default function PrivacyPage() {
                 <li><strong>Complain</strong> about how we have handled your personal information.</li>
               </ul>
               <p>
-                To exercise any of these rights, contact us at <a href="mailto:support@iwillbuild.com" style={{ color: '#f97316' }}>support@iwillbuild.com</a>. We will respond to access and correction requests within 30 days. In some circumstances we may be unable to provide access (for example, where doing so would unreasonably impact the privacy of another individual), and we will explain why.
+                To exercise any of these rights, contact us at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>. We will respond to access and correction requests within 30 days. In some circumstances we may be unable to provide access (for example, where doing so would unreasonably impact the privacy of another individual), and we will explain why.
               </p>
               <p>
                 If you are not satisfied with our response to a privacy complaint, you may lodge a complaint with the <strong style={{ color: '#f1f5f9' }}>Office of the Australian Information Commissioner (OAIC)</strong>:
               </p>
               <ul>
-                <li>Website: <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" style={{ color: '#f97316' }}>www.oaic.gov.au</a></li>
+                <li>Website: <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed' }}>www.oaic.gov.au</a></li>
                 <li>Phone: 1300 363 992</li>
                 <li>Post: GPO Box 5218, Sydney NSW 2001</li>
               </ul>
@@ -233,7 +233,7 @@ export default function PrivacyPage() {
                 <strong style={{ color: '#f1f5f9' }}>IWILLBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
-                <a href="mailto:support@iwillbuild.com" style={{ color: '#f97316' }}>support@iwillbuild.com</a>
+                <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>
               </p>
               <p>We aim to respond to all privacy enquiries within 5 business days.</p>
             </Section>
@@ -245,7 +245,7 @@ export default function PrivacyPage() {
         <footer style={{ borderTop: '1px solid #1e293b', padding: '24px', textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
             <Link to="/" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Home</Link>
-            <Link to="/privacy" style={{ color: '#f97316', textDecoration: 'none', fontSize: 13 }}>Privacy Policy</Link>
+            <Link to="/privacy" style={{ color: '#7c3aed', textDecoration: 'none', fontSize: 13 }}>Privacy Policy</Link>
             <Link to="/terms" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Terms of Use</Link>
             <Link to="/login" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Sign In</Link>
           </div>

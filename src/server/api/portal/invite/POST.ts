@@ -72,7 +72,7 @@ export default async function handler(req: Request, res: Response) {
               Hi ${String(customer.contact_person ?? customer.name)},<br><br>
               ${companyName} has given you access to your client portal where you can view your jobs, review estimates, and pay invoices.
             </p>
-            <a href="${portalUrl}" style="display:inline-block;background:#f97316;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none">
+            <a href="${portalUrl}" style="display:inline-block;background:#7c3aed;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none">
               Access your portal
             </a>
             <p style="color:#94a3b8;font-size:13px;margin:24px 0 0">

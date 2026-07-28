@@ -38,15 +38,18 @@ export default function JobPhotosPage() {
       const saved = localStorage.getItem('jobPhotosZoom');
       if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
     } catch (_) {}
-    return 'medium';
+    // Default to small (3-across) on mobile, medium on desktop
+    return window.innerWidth < 768 ? 'small' : 'medium';
   });
 
-  // Share sheet state
+  // Share state
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copiedQr, setCopiedQr] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  // Send-selected state
+  const [sendMsg, setSendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -105,6 +108,52 @@ export default function JobPhotosPage() {
     a.click();
   };
 
+  /**
+   * Download selected photos.
+   * On iOS Safari, <a download> is blocked — open each URL in a new tab instead.
+   * On desktop, use the standard anchor-click approach.
+   */
+  const handleDownloadSelected = useCallback(() => {
+    photosRef.current?.downloadSelected();
+  }, []);
+
+  /**
+   * Send selected photos via Web Share API (iOS/Android native share sheet).
+   * Falls back to copying the job share link if Web Share is unavailable.
+   */
+  const handleSendSelected = useCallback(async () => {
+    setSendMsg(null);
+    // Try Web Share API first (works on iOS Safari 15+, Android Chrome)
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `${job?.name ?? 'Job'} — Photos`,
+          text: `View photos for ${job?.name ?? 'this job'} on IWILLBUILD`,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to copy
+      }
+    }
+    // Fallback: generate a share link and copy it
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json() as { shareUrl?: string };
+      if (data.shareUrl) {
+        await navigator.clipboard.writeText(data.shareUrl).catch(() => {});
+        setSendMsg('Share link copied to clipboard');
+        setTimeout(() => setSendMsg(null), 3000);
+      }
+    } catch {
+      setSendMsg('Could not generate share link');
+      setTimeout(() => setSendMsg(null), 3000);
+    }
+  }, [job, jobId]);
+
   // Sync select mode changes back to the handle
   const handleSetSelectMode = (v: boolean) => {
     setSelectModeLocal(v);
@@ -121,7 +170,7 @@ export default function JobPhotosPage() {
   const title = job ? `${job.name} — Photos` : 'Job Photos';
 
   return (
-    <div className="min-h-screen bg-orange-500 flex flex-col">
+    <div className="min-h-screen bg-[#f5f6f8] flex flex-col">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage photos for this job." />
@@ -129,94 +178,130 @@ export default function JobPhotosPage() {
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />
       </Helmet>
 
-      {/* ── Safe-area top bar ── */}
-      <div
-        className="bg-black border-b border-white/10 shrink-0 sticky top-0 z-10 safe-top"
-        style={{
-          boxShadow: '0 1px 0 rgba(0,0,0,0.3)',
-        }}
-      >
-        <div className="flex items-center gap-2 px-3 pb-3">
-          {/* Back — desktop only */}
+      {/* ── Page header — matches op-page-header style ── */}
+      <header className="h-11 bg-white border-b border-gray-200 flex items-center gap-2 px-3 shrink-0 sticky top-0 z-10 safe-top">
+        {/* Back */}
+        <button
+          onClick={() => navigate(`/jobs/${id}`)}
+          className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+          aria-label="Back"
+        >
+          <ArrowLeft size={15} />
+        </button>
+        {/* Home */}
+        <button
+          onClick={() => navigate('/home')}
+          className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+          aria-label="Dashboard"
+        >
+          <Home size={15} />
+        </button>
+
+        {/* Title */}
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          {loading ? (
+            <div className="h-3.5 w-32 bg-gray-200 rounded animate-pulse" />
+          ) : (
+            <>
+              <h1 className="font-heading font-bold text-[13px] text-gray-900 truncate">
+                {job?.name ?? 'Job Photos'}
+              </h1>
+              {job?.jobNumber && (
+                <span className="text-[11px] font-mono text-gray-400 shrink-0 hidden sm:inline">{job.jobNumber}</span>
+              )}
+              <span className="text-[11px] text-gray-400 shrink-0">
+                · {photoCount} photo{photoCount !== 1 ? 's' : ''}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Desktop toolbar actions */}
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
+          {/* Upload */}
           <button
-            onClick={() => navigate(`/jobs/${id}`)}
-            className="hidden md:flex w-9 h-9 rounded-xl bg-white/10 items-center justify-center text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0 touch-manipulation"
-            aria-label="Back"
+            onClick={() => photosRef.current?.openFilePicker()}
+            disabled={uploading || atLimit}
+            title="Upload up to 10 photos at a time"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold rounded transition-colors"
           >
-            <ArrowLeft size={18} />
+            {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+            Upload
           </button>
-
-          {/* Home — desktop only */}
+          {/* Camera */}
           <button
-            onClick={() => navigate('/home')}
-            className="hidden md:flex w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-400/40 items-center justify-center text-orange-400 hover:bg-orange-500/30 active:bg-orange-500/40 transition-colors shrink-0 touch-manipulation"
-            aria-label="Dashboard"
+            onClick={() => photosRef.current?.openCamera()}
+            disabled={uploading || atLimit}
+            title="Take a photo"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
           >
-            <Home size={16} />
+            <Camera size={12} /> Camera
           </button>
-
-          {/* Title — centered on mobile, left-aligned on desktop */}
-          <div className="flex-1 min-w-0 flex flex-col items-center md:items-start px-1">
-            {loading ? (
-              <div className="h-4 w-32 bg-white/20 rounded animate-pulse" />
-            ) : (
-              <>
-                <h1 className="text-white font-bold text-sm leading-tight truncate text-center md:text-left w-full">
-                  {job?.name ?? 'Job Photos'}
-                </h1>
-                <p className="text-xs text-white/50 leading-tight">
-                  {job?.jobNumber ? `${job.jobNumber} · ` : ''}{photoCount} photo{photoCount !== 1 ? 's' : ''}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Desktop-only: view size toggle */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
-            {/* Upload */}
+          {/* Select */}
+          {!selectMode ? (
             <button
-              onClick={() => photosRef.current?.openFilePicker()}
-              disabled={uploading || atLimit}
-              title="Upload up to 10 photos at a time"
-              className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+              onClick={() => handleSetSelectMode(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors"
             >
-              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-              Photos
+              <CheckSquare size={12} /> Select
             </button>
-            {/* Camera */}
+          ) : (
             <button
-              onClick={() => photosRef.current?.openCamera()}
-              disabled={uploading || atLimit}
-              title="Take a photo"
-              className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+              onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors"
             >
-              <Camera size={14} /> Camera
+              <X size={12} /> Done {selectedCount > 0 && `(${selectedCount})`}
             </button>
-            {/* View size */}
-            <div className="flex items-center border border-white/20 rounded-lg overflow-hidden bg-white/5">
-              {(['small', 'medium', 'large'] as const).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => handleSetViewSize(size)}
-                  className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}
-                  title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
-                >
-                  {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
-                </button>
-              ))}
-            </div>
+          )}
+          {selectMode && selectedCount > 0 && (
+            <>
+              <button
+                onClick={handleDownloadSelected}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors"
+              >
+                <Download size={12} /> Download
+              </button>
+              <button
+                onClick={() => void handleSendSelected()}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors"
+              >
+                <Send size={12} /> Send
+              </button>
+            </>
+          )}
+          {/* Share */}
+          <button
+            onClick={() => photosRef.current?.generateShareLink()}
+            disabled={photoCount === 0}
+            title="Share view-only link"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors"
+          >
+            <Share2 size={12} /> Share
+          </button>
+          {/* View size */}
+          <div className="flex items-center bg-gray-100 rounded overflow-hidden">
+            {(['small', 'medium', 'large'] as const).map((size) => (
+              <button
+                key={size}
+                onClick={() => handleSetViewSize(size)}
+                className={`px-2 py-1 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
+              >
+                {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+      </header>
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-orange-400" />
+            <Loader2 size={24} className="animate-spin text-primary" />
           </div>
         ) : (
-          <div className="px-2 py-2 pb-36 sm:px-4 sm:py-4">
+          <div className="px-2 py-2 pb-28 sm:px-4 sm:py-4 md:pb-6">
             <JobPhotos
               ref={photosRef}
               jobId={jobId}
@@ -231,39 +316,27 @@ export default function JobPhotosPage() {
 
       {/* ── Mobile bottom action bar ── */}
       <div
-        className="fixed bottom-0 inset-x-0 z-20 bg-black border-t border-white/10 safe-bottom"
-        style={{
-          boxShadow: '0 -2px 12px rgba(0,0,0,0.4)',
-        }}
+        className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 safe-bottom"
+        style={{ overflowX: 'clip' }}
       >
         {/* Normal mode */}
         {!selectMode && (
-          <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
-
-            {/* Back — mobile only */}
+          <div className="flex items-center gap-1.5 px-3 pt-2 pb-2 min-w-0 overflow-x-clip">
+            {/* Back */}
             <button
               onClick={() => navigate(`/jobs/${id}`)}
               aria-label="Back"
-              className="md:hidden w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors touch-manipulation shrink-0"
+              className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
             >
               <ArrowLeft size={16} />
             </button>
 
-            {/* Home — mobile only */}
-            <button
-              onClick={() => navigate('/home')}
-              aria-label="Dashboard"
-              className="md:hidden w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center text-orange-400 active:bg-orange-500/30 transition-colors touch-manipulation shrink-0"
-            >
-              <Home size={16} />
-            </button>
-
-            {/* Upload from library — flex-1 so it fills remaining space */}
+            {/* Upload — flex-1 */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
-              title="Upload up to 10 photos at a time"
-              className="flex-1 h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
+              title="Upload photos"
+              className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors touch-manipulation font-semibold text-sm"
               aria-label="Upload photos from library"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
@@ -272,7 +345,7 @@ export default function JobPhotosPage() {
             {/* Select */}
             <button
               onClick={() => handleSetSelectMode(true)}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation shrink-0"
             >
               <CheckSquare size={15} />
               <span className="text-[9px] font-semibold leading-none">Select</span>
@@ -282,20 +355,20 @@ export default function JobPhotosPage() {
             <button
               onClick={() => photosRef.current?.generateShareLink()}
               disabled={photoCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0"
               title="Share view-only link"
             >
               <Share2 size={15} />
               <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
 
-            {/* View size (mobile) */}
-            <div className="flex items-center border border-white/20 rounded-xl overflow-hidden bg-white/5 shrink-0 h-10">
+            {/* View size */}
+            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-gray-50 shrink-0 h-10">
               {(['small', 'medium', 'large'] as const).map((size) => (
                 <button
                   key={size}
                   onClick={() => handleSetViewSize(size)}
-                  className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}
+                  className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
                 </button>
@@ -306,46 +379,55 @@ export default function JobPhotosPage() {
 
         {/* Select mode */}
         {selectMode && (
-          <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-            {/* Done */}
-            <button
-              onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors touch-manipulation shrink-0"
-            >
-              <X size={16} />
-              <span className="text-[10px] font-semibold leading-none">Done</span>
-            </button>
+          <div className="flex flex-col">
+            {sendMsg && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border-t border-emerald-200 text-xs text-emerald-700 font-medium">
+                <Check size={12} className="shrink-0" />
+                {sendMsg}
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-3 pt-2 pb-2">
+              {/* Done */}
+              <button
+                onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation shrink-0"
+              >
+                <X size={16} />
+                <span className="text-[10px] font-semibold leading-none">Done</span>
+              </button>
 
-            {/* Count label */}
-            <div className="flex-1 text-center">
-              <p className="text-sm font-semibold text-white">
-                {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
-              </p>
+              {/* Count label */}
+              <div className="flex-1 text-center">
+                <p className="text-sm font-semibold text-gray-800">
+                  {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
+                </p>
+              </div>
+
+              {/* Download selected */}
+              <button
+                onClick={handleDownloadSelected}
+                disabled={selectedCount === 0}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0"
+              >
+                <Download size={16} />
+                <span className="text-[10px] font-semibold leading-none">Download</span>
+              </button>
+
+              {/* Send selected */}
+              <button
+                onClick={() => void handleSendSelected()}
+                disabled={selectedCount === 0}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0"
+              >
+                <Send size={16} />
+                <span className="text-[10px] font-semibold leading-none">Send</span>
+              </button>
             </div>
-
-            {/* Download selected */}
-            <button
-              onClick={() => photosRef.current?.downloadSelected()}
-              disabled={selectedCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
-            >
-              <Download size={16} />
-              <span className="text-[10px] font-semibold leading-none">Download</span>
-            </button>
-
-            {/* Send selected */}
-            <button
-              disabled={selectedCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
-            >
-              <Send size={16} />
-              <span className="text-[10px] font-semibold leading-none">Send</span>
-            </button>
           </div>
         )}
       </div>
 
-      {/* ── Floating camera widget — centered above bottom bar ── */}
+      {/* ── Floating camera FAB — mobile only, above bottom bar ── */}
       {!selectMode && (
         <div
           className="fixed z-30 left-1/2 -translate-x-1/2 md:hidden"
@@ -360,7 +442,7 @@ export default function JobPhotosPage() {
             transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }}
             whileTap={{ scale: 0.92 }}
             className="w-16 h-16 rounded-full disabled:opacity-50 touch-manipulation overflow-hidden p-0 border-0 bg-transparent"
-            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.45)' }}
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
           >
             <img
               src="/airo-assets/images/ui/camera-fab-icon"

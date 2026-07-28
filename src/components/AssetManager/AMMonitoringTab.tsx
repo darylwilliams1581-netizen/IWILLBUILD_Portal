@@ -16,7 +16,7 @@ interface MonitoringItem {
 const PIPELINE_STAGES = [
   { key: 'draft',           label: 'Created',    color: 'bg-slate-600' },
   { key: 'in_progress',     label: 'In Progress', color: 'bg-blue-500' },
-  { key: 'action_required', label: 'Action Req.', color: 'bg-orange-500' },
+  { key: 'action_required', label: 'Action Req.', color: 'bg-violet-500' },
   { key: 'complete',        label: 'Complete',   color: 'bg-emerald-500' },
   { key: 'closed',          label: 'Closed',     color: 'bg-slate-500' },
 ];
@@ -62,7 +62,7 @@ export default function AMMonitoringTab() {
       {!loading && items.length > 0 && (
         <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5">
-            <Activity size={14} className="text-orange-500" />
+            <Activity size={14} className="text-violet-600" />
             <span className="text-sm font-bold text-slate-800">{items.length}</span>
             <span className="text-xs text-slate-500">active inspections</span>
           </div>
@@ -74,10 +74,10 @@ export default function AMMonitoringTab() {
             </div>
           )}
           {actionRequired.length > 0 && (
-            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5">
-              <AlertTriangle size={14} className="text-orange-500" />
-              <span className="text-sm font-bold text-orange-700">{actionRequired.length}</span>
-              <span className="text-xs text-orange-600">action required</span>
+            <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-xl px-4 py-2.5">
+              <AlertTriangle size={14} className="text-violet-600" />
+              <span className="text-sm font-bold text-violet-800">{actionRequired.length}</span>
+              <span className="text-xs text-violet-700">action required</span>
             </div>
           )}
         </div>
@@ -128,7 +128,7 @@ export default function AMMonitoringTab() {
                 {/* Stats */}
                 <div className="flex items-center gap-3 flex-wrap">
                   {item.total_defects > 0 && (
-                    <div className={`flex items-center gap-1 text-xs ${item.open_defects > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                    <div className={`flex items-center gap-1 text-xs ${item.open_defects > 0 ? 'text-violet-700' : 'text-emerald-600'}`}>
                       {item.open_defects > 0 ? <AlertTriangle size={11} /> : <CheckCircle2 size={11} />}
                       <span>{item.open_defects} open / {item.total_defects} defects</span>
                     </div>

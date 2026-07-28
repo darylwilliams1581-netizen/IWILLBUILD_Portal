@@ -67,7 +67,7 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
     .company-info { font-size: 13px; color: #475569; line-height: 1.6; }
     .company-name { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
     .invoice-meta { text-align: right; }
-    .invoice-number { font-size: 22px; font-weight: 900; color: #f97316; }
+    .invoice-number { font-size: 22px; font-weight: 900; color: #7c3aed; }
     .status-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #f1f5f9; color: #64748b; margin-top: 4px; }
     .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
     .meta-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
@@ -87,7 +87,7 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
     .total-value { min-width: 100px; text-align: right; font-weight: 600; }
     .terms { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
     .footer { font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
-    .print-btn { display: block; margin: 0 auto 24px; padding: 10px 28px; background: #f97316; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .print-btn { display: block; margin: 0 auto 24px; padding: 10px 28px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -175,7 +175,7 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><Printer size={15} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><Printer size={15} className="text-primary" /></div>
             <h2 className="font-heading font-bold text-sm">Print / Save PDF</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
@@ -192,7 +192,7 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
                 <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
                 <button
                   onClick={() => { handlePrint(); onClose(); }}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors"
                 >
                   <Printer size={14} />Open Print View
                 </button>

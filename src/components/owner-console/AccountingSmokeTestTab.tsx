@@ -255,7 +255,7 @@ function ProviderCard({
                             style={{
                               display: 'flex', alignItems: 'center', gap: 5,
                               padding: '6px 12px', borderRadius: 7,
-                              border: '1px solid #f97316', background: '#fff7ed',
+                              border: '1px solid #7c3aed', background: '#fff7ed',
                               fontSize: 12, fontWeight: 700, color: '#c2410c',
                               cursor: c.syncing ? 'not-allowed' : 'pointer',
                               opacity: c.syncing ? 0.6 : 1,

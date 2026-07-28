@@ -13,7 +13,7 @@ const MODULES = [
   { href: '/studio/jobs',      label: 'Jobs',       desc: 'Create, track and close out jobs' },
   { href: '/studio/estimates', label: 'Estimating', desc: 'Cost guides, quotes and approvals' },
   { href: '/studio/fleet',     label: 'Fleet',      desc: 'Prestarts, service logs and flags' },
-  { href: '/studio/accounts',  label: 'Accounts',   desc: 'Xero, MYOB and QuickBooks sync' },
+  { href: '/studio/accounts',  label: 'Accounts',   desc: 'Xero and QuickBooks sync' },
   { href: '/studio',           label: 'Studio',     desc: 'Documents, forms and safety packs' },
 ];
 
@@ -209,7 +209,7 @@ export default function Header() {
             to="/signup"
             style={{
               padding: '8px 18px', borderRadius: 8,
-              background: '#f97316', color: '#fff',
+              background: '#7c3aed', color: '#fff',
               fontWeight: 700, fontSize: 14, textDecoration: 'none',
               boxShadow: '0 2px 10px rgba(249,115,22,.35)',
               transition: 'opacity 0.15s',
@@ -302,7 +302,7 @@ export default function Header() {
                 marginTop: 8,
                 display: 'block', textAlign: 'center',
                 padding: '12px', borderRadius: 9,
-                background: '#f97316', color: '#fff',
+                background: '#7c3aed', color: '#fff',
                 fontWeight: 700, fontSize: 14, textDecoration: 'none',
               }}
             >

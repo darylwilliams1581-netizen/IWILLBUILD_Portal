@@ -87,8 +87,8 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-              <FilePlus2 size={15} className="text-orange-500" />
+            <div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-600/20 flex items-center justify-center">
+              <FilePlus2 size={15} className="text-violet-600" />
             </div>
             <p className="text-sm font-bold text-slate-900">Add Drawing to Job</p>
           </div>
@@ -104,7 +104,7 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
                 if (f) { setFile(f); if (!title.trim()) setTitle(f.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ')); }
               }} />
             <div onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:border-orange-400/50 hover:bg-orange-50/20'}`}>
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:border-violet-400/50 hover:bg-violet-50/20'}`}>
               {file ? (
                 <div className="flex items-center justify-center gap-2">
                   <FileText size={16} className="text-emerald-600" />
@@ -122,7 +122,7 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Drawing Title <span className="text-red-500">*</span></label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Ground Floor Plan"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30" />
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30" />
           </div>
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
@@ -134,7 +134,7 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
             <button type="button" onClick={onClose} disabled={creating}
               className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
             <button type="submit" disabled={creating || !title.trim()}
-              className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
               {creating ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
               {creating ? 'Adding…' : 'Add Drawing'}
             </button>
@@ -200,7 +200,7 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 gap-3 text-slate-400">
-        <Loader2 size={20} className="animate-spin text-orange-500" />
+        <Loader2 size={20} className="animate-spin text-violet-600" />
         <span className="text-sm">Loading drawings…</span>
       </div>
     );
@@ -212,13 +212,13 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-heading font-bold text-slate-900 text-base flex items-center gap-2">
-            <Layers size={16} className="text-orange-500" />
+            <Layers size={16} className="text-violet-600" />
             Drawings
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">{drawings.length} drawing{drawings.length !== 1 ? 's' : ''} — managed in Plan Manager</p>
         </div>
         <button onClick={() => setShowUpload(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-colors">
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold transition-colors">
           <Upload size={13} /> Add Drawing
         </button>
       </div>
@@ -236,7 +236,7 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
           <p className="text-sm font-semibold text-slate-500">No drawings yet</p>
           <p className="text-xs text-slate-400">Upload a PDF to start the drawing register for this job.</p>
           <button onClick={() => setShowUpload(true)}
-            className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold">
+            className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold">
             <Upload size={14} /> Add First Drawing
           </button>
         </div>
@@ -324,7 +324,7 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
                       <div className="flex items-center gap-1">
                         {drawing.source_file_path && (
                           <button onClick={() => void loadDrawing(drawing.id)} title="Open viewer"
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-violet-50 hover:text-violet-700 transition-colors">
                             <Eye size={13} />
                           </button>
                         )}

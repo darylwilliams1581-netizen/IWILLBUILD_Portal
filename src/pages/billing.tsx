@@ -15,6 +15,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -563,7 +565,9 @@ export default function BillingPage() {
   const canManage = isAdmin || isOwner;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Subscription — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
@@ -596,7 +600,7 @@ export default function BillingPage() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div className="w-full px-4 sm:px-6 py-8">
 
           {/* Banners */}
           <AnimatePresence>
@@ -888,7 +892,7 @@ export default function BillingPage() {
                       transition={{ duration: 0.3 }}
                       className={`relative flex flex-col bg-white rounded-2xl border-2 p-5 shadow-sm transition-all duration-150 ${
                         plan.highlight && !isCurrent
-                          ? 'border-primary shadow-orange-100'
+                          ? 'border-primary shadow-violet-200'
                           : isCurrent
                           ? 'border-emerald-400'
                           : 'border-slate-200 hover:border-slate-300'
@@ -958,7 +962,7 @@ export default function BillingPage() {
                               : isDowngradeAction
                               ? 'bg-amber-500 hover:bg-amber-600 text-white'
                               : plan.highlight
-                              ? 'bg-primary hover:bg-orange-600 text-white'
+                              ? 'bg-primary hover:bg-violet-700 text-white'
                               : 'bg-slate-900 hover:bg-slate-700 text-white'
                           }`}
                         >

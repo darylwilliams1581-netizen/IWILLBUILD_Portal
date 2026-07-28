@@ -47,7 +47,7 @@ const IMG_H = CELL_H - CAPTION_H;
 const SINGLE_IMG_H = CONTENT_H - 48;
 
 // ── Colour palette ────────────────────────────────────────────────────────────
-const COL_ORANGE = rgb(0.976, 0.451, 0.086);  // #F97316
+const COL_ORANGE = rgb(0.976, 0.451, 0.086);  // #7C3AED
 const COL_DARK   = rgb(0.216, 0.255, 0.318);  // #374151
 const COL_GREY   = rgb(0.557, 0.600, 0.647);  // #8E99A5
 const COL_LIGHT  = rgb(0.949, 0.953, 0.957);  // #F2F3F4

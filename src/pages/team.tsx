@@ -34,6 +34,8 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import HomeIconPermissions from '@/components/team/HomeIconPermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Role definitions ──────────────────────────────────────────────────────────
 type Role = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonly';
@@ -50,7 +52,7 @@ interface RoleConfig {
 }
 
 const ROLE_CONFIG: Record<Role, RoleConfig> = {
-  owner:      { label: 'Owner',      color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-300',  avatarBg: 'from-amber-500 to-orange-600',   icon: Crown,    description: 'Full control. Cannot be removed or demoted by Admins.' },
+  owner:      { label: 'Owner',      color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-300',  avatarBg: 'from-amber-500 to-violet-700',   icon: Crown,    description: 'Full control. Cannot be removed or demoted by Admins.' },
   admin:      { label: 'Admin',      color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200',   avatarBg: 'from-blue-500 to-blue-700',      icon: Shield,   description: 'Manage team, settings and all features.' },
   manager:    { label: 'Manager',    color: 'text-violet-700',  bg: 'bg-violet-50',  border: 'border-violet-200', avatarBg: 'from-violet-500 to-violet-700',  icon: UserCheck, description: 'Manage jobs, fleet and team operations.' },
   supervisor: { label: 'Supervisor', color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200', avatarBg: 'from-indigo-500 to-indigo-700',  icon: HardHat,  description: 'Oversee jobs and field crews.' },
@@ -233,7 +235,7 @@ function InviteModal({
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-600 text-sm font-semibold py-2.5 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
               <button type="submit" disabled={loading}
-                className="flex-1 bg-primary hover:bg-orange-600 text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+                className="flex-1 bg-primary hover:bg-violet-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Send Invite
               </button>
@@ -438,7 +440,7 @@ function EditMemberModal({
             </button>
             {(!roleLocked || callerIsOwner) && (
               <button type="button" onClick={handleSave} disabled={loading}
-                className="bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60">
+                className="bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60">
                 {loading ? <Loader2 size={13} className="animate-spin" /> : null}
                 Save Changes
               </button>
@@ -575,15 +577,17 @@ export default function TeamPage() {
     {
       label: 'Invited',
       count: members.filter(m => m.status === 'invited').length,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      border: 'border-orange-200',
+      color: 'text-violet-700',
+      bg: 'bg-violet-50',
+      border: 'border-violet-200',
       icon: Clock,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:pt-[96px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Team — IWILLBUILD Portal</title>
         <meta name="description" content="Manage team members, roles and access for the IWILLBUILD portal." />
@@ -624,7 +628,7 @@ export default function TeamPage() {
               onClick={() => !isViewOnly && setShowInvite(true)}
               disabled={isViewOnly}
               title={isViewOnly ? 'Subscribe to continue' : undefined}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={15} />
               Invite Member

@@ -208,7 +208,7 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
         ) : (
           <button
             onClick={onOpen}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-orange-600 text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
           >
             <PlayCircle size={12} /> Continue
           </button>
@@ -265,7 +265,7 @@ function NewFormPicker({ templates, starting, onStart }: {
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={starting !== null}
-        className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition-colors"
+        className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition-colors"
       >
         {starting !== null ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
         New Form
@@ -292,9 +292,9 @@ function NewFormPicker({ templates, starting, onStart }: {
                   onStart(t.id);
                 }}
                 disabled={starting === t.id}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors disabled:opacity-50"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-violet-50 transition-colors disabled:opacity-50"
               >
-                <div className="p-1.5 rounded-lg bg-orange-50 shrink-0">
+                <div className="p-1.5 rounded-lg bg-violet-50 shrink-0">
                   <FileText size={13} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -482,7 +482,7 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
         {/* Empty state when templates exist but no submissions */}
         {templates.length > 0 && submissions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-xl border border-dashed border-slate-200">
-            <div className="p-3 rounded-2xl bg-orange-50 mb-3">
+            <div className="p-3 rounded-2xl bg-violet-50 mb-3">
               <FileText size={20} className="text-primary" />
             </div>
             <p className="text-sm font-semibold text-slate-600">No forms started yet</p>

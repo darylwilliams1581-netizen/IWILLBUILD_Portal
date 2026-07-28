@@ -439,8 +439,8 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   @page { size: A4; margin: 14mm; }
   @media print { body { padding: 0; } }
 
-  .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #f97316; padding-bottom: 12px; margin-bottom: 20px; }
-  .company-name { font-size: 18px; font-weight: 800; color: #f97316; letter-spacing: -0.3px; }
+  .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #7c3aed; padding-bottom: 12px; margin-bottom: 20px; }
+  .company-name { font-size: 18px; font-weight: 800; color: #7c3aed; letter-spacing: -0.3px; }
   .form-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 2px; }
   .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; background: ${isDraft ? '#fef3c7' : '#d1fae5'}; color: ${statusColor}; border: 1.5px solid ${isDraft ? '#fcd34d' : '#6ee7b7'}; }
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-bottom: 20px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
@@ -689,7 +689,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
           <p className="text-sm text-slate-500 mt-1">{templateName}</p>
         </div>
         <button onClick={onComplete}
-          className="mt-2 px-6 py-2.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold rounded-xl transition-colors">
+          className="mt-2 px-6 py-2.5 bg-primary hover:bg-violet-700 text-white text-sm font-bold rounded-xl transition-colors">
           Back to Forms
         </button>
       </div>
@@ -837,7 +837,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
                 type="button"
                 onClick={goToNextPage}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
               >
                 Next <ChevronRight size={14} />
               </button>

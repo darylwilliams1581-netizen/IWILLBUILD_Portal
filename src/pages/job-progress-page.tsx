@@ -219,16 +219,16 @@ export default function JobProgressPage() {
           <ArrowLeft size={18} />
         </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
               <>
                 <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Progress'}</h1>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
                   <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
+                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
                   <span>/</span>
                   <span className="text-gray-500 font-medium">Progress</span>
                 </div>
@@ -246,7 +246,7 @@ export default function JobProgressPage() {
             <CheckCircle2 size={13} /> Saved
           </span>
         )}
-        <button onClick={exportPdf} disabled={exportingPdf} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-colors">
+        <button onClick={exportPdf} disabled={exportingPdf} className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-colors">
           {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
           Export PDF
         </button>
@@ -261,7 +261,7 @@ export default function JobProgressPage() {
         <ArrowLeft size={18} />
       </button>
       {/* ── Mobile: Dashboard button ── */}
-      <button onClick={() => navigate('/home')} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '60px' }} aria-label="Dashboard">
+      <button onClick={() => navigate('/home')} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-violet-50/90 backdrop-blur-sm shadow-sm border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '60px' }} aria-label="Dashboard">
         <Home size={16} />
       </button>
 
@@ -273,7 +273,7 @@ export default function JobProgressPage() {
             Save
           </button>
         )}
-        <button onClick={exportPdf} disabled={exportingPdf} className="h-9 px-3 rounded-xl bg-orange-500 shadow-sm flex items-center gap-1.5 text-xs font-semibold text-white active:bg-orange-600 disabled:opacity-40 transition-colors">
+        <button onClick={exportPdf} disabled={exportingPdf} className="h-9 px-3 rounded-xl bg-violet-500 shadow-sm flex items-center gap-1.5 text-xs font-semibold text-white active:bg-violet-700 disabled:opacity-40 transition-colors">
           {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
           PDF
         </button>

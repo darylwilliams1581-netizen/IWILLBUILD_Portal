@@ -9,13 +9,15 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, AlertTriangle, Plus, Trash2, CheckCircle2,
   Lock, Loader2, Users, ClipboardCheck, X, Save,
-  ShieldAlert,
+  ShieldAlert, Home, ChevronRight,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   INCIDENT_TYPES, SEVERITY_OPTIONS, STATUS_OPTIONS,
-  severityBadge, statusBadge,
+  statusBadge,
   type Incident,
 } from './incidents';
+import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -134,6 +136,8 @@ export default function IncidentDetailPage() {
   const [incident, setIncident] = useState<FullIncident | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [closing, setClosing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -291,6 +295,8 @@ export default function IncidentDetailPage() {
   async function handleSave() {
     if (!validate()) return;
     setSaving(true);
+    setSaveSuccess(false);
+    if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
     try {
       if (isNew) {
         const r = await fetch('/api/incidents', {
@@ -308,6 +314,8 @@ export default function IncidentDetailPage() {
           body: JSON.stringify(formToBody(form)),
         });
         await loadIncident();
+        setSaveSuccess(true);
+        saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3500);
       }
     } catch (e) {
       setErrors({ general: String(e) });
@@ -432,28 +440,64 @@ export default function IncidentDetailPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="flex flex-col min-h-screen bg-slate-50">
+      <div className="flex flex-col min-h-dvh bg-slate-50">
         {/* Header */}
-        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
-          <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-sm">{pageTitle}</h1>
-            {!isNew && incident && (
-              <p className="text-xs text-red-200">{incident.incident_type}</p>
+        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5 min-w-0 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1 hover:text-white transition-colors"
+            >
+              <Home size={11} /> Home
+            </button>
+            <ChevronRight size={10} className="text-red-400" />
+            <button
+              type="button"
+              onClick={() => navigate(returnTo)}
+              className="hover:text-white transition-colors"
+            >
+              Incidents
+            </button>
+            <ChevronRight size={10} className="text-red-400" />
+            <span className="text-red-100 font-medium truncate max-w-[120px]">{pageTitle}</span>
+          </div>
+          <div className="flex items-center gap-3 min-w-0">
+            <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold text-sm">{pageTitle}</h1>
+              {!isNew && incident && (
+                <p className="text-xs text-red-200">{incident.incident_type}</p>
+              )}
+            </div>
+            {!isNew && incident && !isClosed && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(incident.status)}`}>
+                {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
+              </span>
+            )}
+            {isClosed && (
+              <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
+                <Lock size={11} /> Closed
+              </span>
+            )}
+            {/* Overflow menu — secondary actions */}
+            {!isNew && !isClosed && (
+              <MobileOverflowMenu
+                surface="dark"
+                items={[
+                  {
+                    label: 'Close Incident',
+                    icon: <Lock size={15} />,
+                    onSelect: () => setShowCloseModal(true),
+                    destructive: true,
+                  },
+                ]}
+              />
             )}
           </div>
-          {!isNew && incident && !isClosed && (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(incident.status)}`}>
-              {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
-            </span>
-          )}
-          {isClosed && (
-            <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
-              <Lock size={11} /> Closed
-            </span>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-32">
@@ -533,7 +577,7 @@ export default function IncidentDetailPage() {
 
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Severity <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 incident-severity-grid">
                 {SEVERITY_OPTIONS.map(s => (
                   <button
                     key={s.value}
@@ -626,7 +670,7 @@ export default function IncidentDetailPage() {
           {/* Impacts */}
           <section className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <ShieldAlert size={13} className="text-orange-500" /> Impacts
+              <ShieldAlert size={13} className="text-violet-600" /> Impacts
             </h2>
             <YesNo label="Was anyone injured?" value={form.injuryOccurred} onChange={v => updateForm({ injuryOccurred: v })} disabled={isClosed} />
             {form.injuryOccurred && (
@@ -935,9 +979,24 @@ export default function IncidentDetailPage() {
         </div>
 
         {/* Bottom actions */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 safe-bottom flex gap-3">
-          {!isClosed && (
-            <>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 safe-bottom">
+          {/* Save success banner — slides up above the action bar */}
+          <AnimatePresence>
+            {saveSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border-t border-emerald-200 text-emerald-700 text-sm font-medium"
+              >
+                <CheckCircle2 size={15} className="shrink-0" />
+                Incident saved
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-3 p-4">
+            {!isClosed && (
               <button
                 type="button"
                 onClick={handleSave}
@@ -946,33 +1005,26 @@ export default function IncidentDetailPage() {
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> {isNew ? 'Create Incident' : 'Save'}</>}
               </button>
-              {!isNew && (
-                <button
-                  type="button"
-                  onClick={() => setShowCloseModal(true)}
-                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center gap-2"
-                >
-                  <Lock size={14} /> Close
-                </button>
-              )}
-            </>
-          )}
-          {isClosed && (
-            <button
-              type="button"
-              onClick={() => navigate(returnTo)}
-              className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold"
-            >
-              Back to register
-            </button>
-          )}
+            )}
+            {isClosed && (
+              <button
+                type="button"
+                onClick={() => navigate(returnTo)}
+                className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold"
+              >
+                Back to register
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Close modal */}
       {showCloseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 max-h-[90dvh] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
             <h3 className="font-bold text-slate-800">Close Incident</h3>
             <p className="text-sm text-slate-500">This will mark the incident as closed. This action cannot be undone.</p>
             <div>

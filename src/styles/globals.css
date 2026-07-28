@@ -9,40 +9,40 @@
     /* Core Colors */
     --background: 0 0% 100%;
     --foreground: 0 0% 4%;
-    --card: 210 17% 98%;
+    --card: 0 0% 100%;
     --card-foreground: 0 0% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 4%;
-    --primary: 25 95% 53%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 19% 27%;
+    --secondary: 292 83% 58%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 17% 95%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
+    --muted: 264 45% 98%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 82 83% 58%;
+    --accent-foreground: 0 0% 34%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 25 95% 53%;
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 262 83% 58%;
 
     /* Extended Colors */
-    --chart-1: 25 95% 83%;
-    --chart-2: 25 95% 68%;
-    --chart-3: 25 95% 53%;
-    --chart-4: 25 95% 38%;
-    --chart-5: 25 95% 23%;
+    --chart-1: 262 84% 88%;
+    --chart-2: 262 83% 73%;
+    --chart-3: 262 83% 58%;
+    --chart-4: 262 83% 43%;
+    --chart-5: 262 83% 28%;
 
     /* Sidebar Colors */
-    --sidebar: 210 17% 95%;
+    --sidebar: 264 45% 98%;
     --sidebar-foreground: 0 0% 4%;
-    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary: 262 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 25 95% 53%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 25 95% 53%;
+    --sidebar-accent: 82 83% 58%;
+    --sidebar-accent-foreground: 0 0% 34%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 262 83% 58%;
 
     /* Typography */
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -110,16 +110,36 @@
   }
 }
 
-/* Unless told otherwise, keep it for smooth scrolling */
+/* ── Global box-sizing reset ─────────────────────────────────────────────────
+   Ensures padding and borders are included in element widths.
+   Prevents any element from accidentally exceeding its container width.
+*/
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ── Root overflow strategy ──────────────────────────────────────────────────
+   IMPORTANT: We use overflow-x: clip (not hidden) on html/body/#sos-root.
+
+   overflow-x: hidden creates a new scroll container, which:
+     - Breaks position: sticky children (they scroll with the container, not
+       the viewport) — a common iOS Safari bug
+     - Hides content that legitimately overflows (e.g. dropdown shadows)
+
+   overflow-x: clip does NOT create a scroll container. It clips content at
+   the padding edge without any of the sticky/scroll side-effects.
+   Supported in all modern browsers (Safari 16+, Chrome 90+, Firefox 81+).
+
+   width: 100% (not 100vw) avoids the scrollbar-width issue on desktop where
+   100vw includes the scrollbar and causes a 1–17px horizontal overflow.
+*/
 html {
   scroll-behavior: smooth;
-  /* Prevent horizontal overflow at the root */
-  overflow-x: hidden;
+  overflow-x: clip;
+  width: 100%;
   /* ── Fix min-h-screen on iOS Safari ─────────────────────────────────────
      100vh on iOS Safari = full screen height INCLUDING the area behind the
      status bar and home indicator. 100dvh = the actual visible viewport.
-     Overriding --vh here means Tailwind's min-h-screen resolves to 100dvh
-     on every page without touching any TSX file.
   */
   height: 100%;
 }
@@ -137,14 +157,140 @@ html {
 }
 
 /* ── Mobile overflow guard ───────────────────────────────────────────────────
-   Prevents any child from causing horizontal page scroll.
-   Applied to body so all portal pages benefit automatically.
+   overflow-x: clip — see html comment above for why clip not hidden.
+   width: 100% — avoids scrollbar-width issue on desktop.
+   Safe-area insets for notched phones (iPhone X+).
 */
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
+  width: 100%;
   /* Safe-area insets for notched phones (iPhone X+) */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+/* ── App root overflow guard ─────────────────────────────────────────────────
+   #sos-root is the React mount point. Clip overflow here too so any
+   component that accidentally overflows doesn't cause page-level scroll.
+   min-width: 0 prevents flex/grid children from overflowing their container.
+*/
+#sos-root {
+  overflow-x: clip;
+  width: 100%;
+  min-width: 0;
+}
+
+/* ── Universal width cap ─────────────────────────────────────────────────────
+   Media elements are capped at 100% of their container.
+   height: auto preserves aspect ratio when width is constrained.
+*/
+img, video, svg, canvas, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Table overflow containment ──────────────────────────────────────────────
+   Tables with many columns will overflow on mobile. Wrap them in a
+   horizontally-scrollable container rather than breaking the page layout.
+   Any element with class .table-scroll-wrap gets this treatment.
+   Direct <table> elements inside .portal-content also get it automatically.
+*/
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  /* Prevent the scroll container itself from overflowing its parent */
+  min-width: 0;
+}
+
+/* Ensure tables inside portal-content scroll horizontally, not the page */
+.portal-content table {
+  min-width: max-content;
+}
+.portal-content > .overflow-x-auto,
+.portal-content > div > .overflow-x-auto {
+  max-width: 100%;
+}
+
+/* ── Form field mobile stacking ──────────────────────────────────────────────
+   .form-row: a flex row that stacks vertically on mobile.
+   .form-grid-2: a 2-column grid that collapses to 1 column on mobile.
+   .form-grid-3: a 3-column grid that collapses to 1 column on mobile.
+*/
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.form-row > * {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Toolbar / button-group wrapping ─────────────────────────────────────────
+   .btn-toolbar: a flex row of buttons that wraps on mobile.
+   Prevents toolbars from overflowing the viewport width.
+*/
+.btn-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Modal / drawer mobile containment ───────────────────────────────────────
+   Radix Dialog and AlertDialog content panels.
+   The [role="dialog"] selector catches both Radix and any custom dialogs.
+   max-width uses min() so it never exceeds 32rem on desktop but shrinks to
+   fit on narrow phones with a 1rem margin on each side.
+   max-height uses 100dvh so the modal never taller than the visible viewport
+   (important on iOS where 100vh includes the area behind the browser chrome).
+*/
+[role="dialog"] {
+  max-width: min(calc(100dvw - 2rem), 32rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  [role="dialog"] {
+    max-width: calc(100dvw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+}
+
+/* ── Alert dialogs (confirmation modals) ─────────────────────────────────────
+   AlertDialog is typically narrower than a full dialog.
+   Same containment rules apply.
+*/
+[role="alertdialog"] {
+  max-width: min(calc(100dvw - 2rem), 28rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  [role="alertdialog"] {
+    max-width: calc(100dvw - 1rem);
+  }
 }
 
 /* ── iOS safe-area top inset ────────────────────────────────────────────────
@@ -154,6 +300,82 @@ body {
    max(var(--safe-top), 12px) ensures desktop gets a minimum 12px top padding. */
 .safe-top {
   padding-top: max(var(--safe-top), 12px);
+}
+
+/* ── Mobile page-level overflow guard ───────────────────────────────────────
+   Any page wrapper that uses .mobile-page-wrap will be constrained to the
+   viewport width and will not cause horizontal scroll.
+   Uses clip (not hidden) to avoid creating a scroll container.
+*/
+.mobile-page-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* ── Card / panel width cap ──────────────────────────────────────────────────
+   Cards, panels, and form containers should never exceed the viewport.
+   This prevents fixed-width desktop cards from overflowing on mobile.
+*/
+@media (max-width: 640px) {
+  .card-mobile-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* ── Input / select / textarea width cap ────────────────────────────────────
+   Prevent form fields from overflowing their container on mobile.
+   max-width: 100% ensures they shrink to fit their parent.
+   min-width: 0 allows them to shrink below their intrinsic size in flex/grid.
+*/
+input, select, textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* ── iOS font-size zoom prevention ──────────────────────────────────────────
+   iOS Safari zooms in when an input has font-size < 16px.
+   Setting font-size: 16px on focus prevents the zoom without changing the
+   visual appearance (the zoom is a browser behaviour, not a CSS effect).
+   We use max() so the font never goes below 16px on iOS but respects larger
+   sizes set by the component.
+*/
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* ── Flex children overflow guard ───────────────────────────────────────────
+   Flex children with text content must have min-width: 0 to allow truncation.
+   This is the most common cause of flex containers overflowing on mobile.
+
+   SCOPED to portal layout containers only — NOT applied globally.
+   A global `.flex > *` rule breaks Radix UI popovers, dropdowns, and tooltips
+   because those components rely on their natural min-width for sizing.
+
+   Add min-width: 0 directly on any flex child that needs text truncation,
+   or use the .min-w-0 Tailwind utility class.
+*/
+.portal-main > *,
+.portal-content > *,
+.portal-page > * {
+  min-width: 0;
 }
 
 /* ── Portal layout helpers ───────────────────────────────────────────────────
@@ -166,7 +388,9 @@ body {
   display: flex;
   height: 100dvh;          /* dynamic viewport height — correct on mobile */
   overflow: hidden;
-  background-color: #F4F5F7;
+  background-color: #f5f6f8;
+  width: 100%;             /* avoid scrollbar-width issue (100vw includes scrollbar) */
+  max-width: 100%;         /* hard cap — never wider than the viewport */
 }
 
 .portal-main {
@@ -178,11 +402,17 @@ body {
   min-height: 0;           /* allow flex children to shrink below content size */
 }
 
-/* On mobile, reserve space at the bottom for the fixed tab bar (~56px bar + safe area).
-   The top strip is rendered inside portal-main so no top padding needed here. */
+/* Mobile: reserve space at the bottom for the fixed tab bar (~64px bar + safe area). */
 @media (max-width: 767px) {
   .portal-main {
-    padding-bottom: calc(56px + var(--safe-bottom));
+    padding-bottom: calc(64px + var(--safe-bottom));
+  }
+}
+
+/* Desktop: reserve space at the top for the fixed TopBar (56px) + two-row dock (~90px). */
+@media (min-width: 768px) {
+  .portal-main {
+    padding-top: 112px;
   }
 }
 
@@ -194,9 +424,100 @@ body {
   padding: 0.75rem 0.75rem; /* tighter on mobile */
 }
 
+@media (min-width: 768px) {
+  .portal-content {
+    padding-top: 112px;
+  }
+}
+
 @media (min-width: 1024px) {
   .portal-content {
     padding: 1.5rem;
+    padding-top: 112px;
+  }
+}
+
+/* ── Compact desktop density utilities ──────────────────────────────────────
+   These classes tighten spacing on desktop list/table views only.
+   They have NO effect on mobile (< 768 px) — tap targets and readability
+   are preserved on small screens.
+
+   .compact-list    — wrapper for a dense list; tighter line-height, no extra gaps
+   .compact-row     — single-row item; flex, min-width:0, reduced vertical padding
+   .compact-meta    — muted inline metadata; small, truncating, no wrapping
+   .compact-toolbar — action bar that stays on one row, wraps only when forced
+   .compact-section — section wrapper with reduced padding on desktop
+*/
+@media (min-width: 768px) {
+  .compact-list {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.35;
+    gap: 0;
+  }
+
+  .compact-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-top: 0.375rem;    /* 6px */
+    padding-bottom: 0.375rem;
+    gap: 0.5rem;
+  }
+
+  .compact-meta {
+    font-size: 0.7rem;         /* ~11px */
+    color: var(--muted-foreground, #6b7280);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .compact-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .compact-section {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* ── Home icon grid ──────────────────────────────────────────────────────────
+   Single grid — no duplicate mobile/desktop DOM trees.
+   Mobile  (< 640 px): 4 fixed columns, 10 px col gap, 14 px row gap.
+   Desktop (≥ 640 px): auto-fill with 80 px min columns, 18 px row / 14 px col gap.
+*/
+.home-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: 10px;
+  row-gap: 7px;
+}
+
+@media (min-width: 640px) {
+  .home-icon-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 9px 14px;
+  }
+}
+
+/* Icon glyph: 21 px on mobile, 26 px on desktop — single element, no duplicate */
+.home-icon-glyph {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+@media (min-width: 640px) {
+  .home-icon-glyph {
+    width: 26px !important;
+    height: 26px !important;
   }
 }
 
@@ -243,6 +564,142 @@ body {
   pointer-events: none;
   font-style: italic;
   font-size: 0.875rem;
+}
+
+/* ── Viewer touch-action rules ───────────────────────────────────────────────
+   PDF viewers, drawing canvases, and map containers need precise touch control.
+
+   .viewer-canvas
+     The scrollable PDF / drawing area.
+     touch-action: none  → hand all touch events to JS (pinch-zoom, pan).
+     overscroll-behavior: contain  → stops the parent page from bouncing when
+       the user reaches the edge of the PDF canvas.
+
+   .viewer-toolbar
+     The toolbar row above the PDF.
+     touch-action: manipulation  → allows tap + double-tap but suppresses the
+       300 ms tap delay on iOS without disabling scroll.
+     overscroll-behavior: none  → toolbar row should never trigger pull-to-refresh.
+
+   .viewer-shell
+     The fixed-position full-screen wrapper (fixed inset-0).
+     overscroll-behavior: none  → prevents the OS rubber-band effect from
+       showing the page behind the viewer on iOS.
+
+   .map-container
+     Leaflet / Google Maps containers.
+     touch-action: none  → lets the map library own all touch events.
+     overscroll-behavior: contain  → stops the page scrolling when the user
+       pans to the edge of the map.
+*/
+.viewer-canvas {
+  touch-action: none;
+  overscroll-behavior: contain;
+  /* Momentum scrolling on iOS — still needed for the overflow:auto scroll
+     container that wraps the PDF page when the PDF is larger than the screen */
+  -webkit-overflow-scrolling: touch;
+}
+
+.viewer-toolbar {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+.viewer-shell {
+  overscroll-behavior: none;
+}
+
+.map-container {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+/* ── Viewer classes — overflow containment ───────────────────────────────────
+   Ensure viewer shells and toolbars never cause horizontal page scroll.
+   The viewer-shell is fixed/absolute positioned so it doesn't affect layout,
+   but its children (toolbars, canvases) must be contained.
+*/
+.viewer-shell {
+  max-width: 100dvw;
+  overflow-x: clip;
+}
+
+.viewer-toolbar {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* ── Mobile-specific layout fixes ───────────────────────────────────────────
+   Targeted fixes for pages in the validation list.
+   These are mobile-only rules that do not affect desktop.
+*/
+
+/* Incident severity grid — 4 short labels fit 2-per-row on very narrow phones */
+@media (max-width: 374px) {
+  .incident-severity-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Toolbar rows — prevent fixed-width button groups from overflowing */
+@media (max-width: 767px) {
+  /* Any flex row inside a sticky/fixed header should wrap rather than overflow */
+  .mobile-toolbar-row {
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  /* Breadcrumb rows — truncate the last segment, never let the row overflow */
+  .mobile-breadcrumb {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Bottom action bars — ensure they never exceed the viewport width */
+  .mobile-bottom-bar {
+    width: 100%;
+    max-width: 100dvw;
+    overflow-x: clip;
+  }
+
+  /* Fleet live map sidebar — on mobile it becomes a bottom sheet, not a sidebar */
+  .fleet-driver-list {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  /* Job photos bottom bar — the view-size toggle can get tight on 375px */
+  .photos-bottom-bar {
+    flex-wrap: nowrap;
+    overflow-x: clip;
+  }
+}
+
+/* ── Modal height — dvh upgrade ──────────────────────────────────────────────
+   Tailwind's max-h-[90vh] / max-h-[80vh] use vh, which on iOS Safari includes
+   the area behind the browser chrome (address bar + home indicator).
+   This means modals can be taller than the visible viewport and their bottom
+   buttons end up hidden behind the browser chrome.
+
+   We override these with dvh (dynamic viewport height) which tracks the
+   actual visible area. The @supports guard ensures we only apply this on
+   browsers that support dvh (Safari 16+, Chrome 108+, Firefox 116+).
+   Older browsers keep the vh fallback — acceptable since they don't have
+   the iOS Safari chrome-overlap problem.
+
+   We target the most common patterns used in this app:
+   - max-h-[90vh]  → max-h-[90dvh]
+   - max-h-[80vh]  → max-h-[80dvh]
+   - max-h-[85vh]  → max-h-[85dvh]
+   - max-h-[95vh]  → max-h-[95dvh]
+*/
+@supports (max-height: 1dvh) {
+  .max-h-\[90vh\] { max-height: 90dvh; }
+  .max-h-\[80vh\] { max-height: 80dvh; }
+  .max-h-\[85vh\] { max-height: 85dvh; }
+  .max-h-\[95vh\] { max-height: 95dvh; }
 }
 
 /* ── Studio Document Builder — Print styles ──────────────────────────────────
@@ -344,6 +801,408 @@ body {
   /* When print view is open, hide the rest of the page */
   body:has(.field-docs-print-view) *:not(.field-docs-print-view):not(.field-docs-print-view *) {
     visibility: hidden !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OFFICE PORTAL DESIGN SYSTEM
+   Desktop-only polish classes — Microsoft / SharePoint / Simpro style.
+   All rules are scoped to @media (min-width: 768px) so mobile is untouched.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens (desktop portal) ─────────────────────────────────────────
+   These CSS custom properties define the office-portal colour palette.
+   They are set on :root so any component can reference them.
+   On mobile they are overridden to the same values — no visual change.
+*/
+:root {
+  --op-bg:          #f5f6f8;   /* page background */
+  --op-surface:     #ffffff;   /* card / panel surface */
+  --op-border:      #e5e7eb;   /* dividers, table lines */
+  --op-border-soft: #f0f1f3;   /* very subtle dividers */
+  --op-text:        #111827;   /* primary text */
+  --op-text-2:      #374151;   /* secondary text */
+  --op-text-muted:  #6b7280;   /* muted / metadata */
+  --op-text-faint:  #9ca3af;   /* placeholder / disabled */
+  --op-orange:      #7c3aed;   /* primary action */
+  --op-orange-hover:#6d28d9;   /* primary action hover */
+  --op-header-h:    44px;      /* desktop page-header height */
+  --op-row-py:      6px;       /* table/list row vertical padding */
+}
+
+/* ── op-page-header ──────────────────────────────────────────────────────────
+   Tight one-row page header for desktop portal pages.
+   Contains: back button | icon + title | right-side actions.
+   Mobile: unchanged (uses its own h-16 header).
+*/
+@media (min-width: 768px) {
+  .op-page-header {
+    height: var(--op-header-h);
+    min-height: var(--op-header-h);
+    background: var(--op-surface);
+    border-bottom: 1px solid var(--op-border);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .op-page-title {
+    font-size: 0.875rem;       /* 14px */
+    font-weight: 700;
+    color: var(--op-text);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .op-page-subtitle {
+    font-size: 0.6875rem;      /* 11px */
+    color: var(--op-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ── op-toolbar ──────────────────────────────────────────────────────────────
+   Compact filter / action bar below the page header.
+   Stays on one row on desktop; wraps on mobile.
+*/
+@media (min-width: 768px) {
+  .op-toolbar {
+    background: var(--op-surface);
+    border-bottom: 1px solid var(--op-border);
+    padding: 0.375rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .op-toolbar-search {
+    height: 30px;
+    font-size: 0.8125rem;      /* 13px */
+    border: 1px solid var(--op-border);
+    border-radius: 4px;
+    padding: 0 0.625rem 0 2rem;
+    background: var(--op-bg);
+    color: var(--op-text);
+    min-width: 0;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .op-toolbar-search:focus {
+    border-color: var(--op-orange);
+    background: var(--op-surface);
+  }
+
+  .op-filter-pill {
+    height: 26px;
+    padding: 0 0.625rem;
+    font-size: 0.75rem;        /* 12px */
+    font-weight: 600;
+    border-radius: 3px;
+    border: 1px solid var(--op-border);
+    background: var(--op-surface);
+    color: var(--op-text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+  }
+  .op-filter-pill:hover {
+    background: var(--op-bg);
+    color: var(--op-text);
+    border-color: #d1d5db;
+  }
+  .op-filter-pill.active {
+    background: var(--op-orange);
+    color: #fff;
+    border-color: var(--op-orange);
+  }
+
+  .op-btn {
+    height: 30px;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+    transition: background 0.12s, color 0.12s;
+    line-height: 1;
+  }
+  .op-btn-primary {
+    background: var(--op-orange);
+    color: #fff;
+    border-color: var(--op-orange);
+  }
+  .op-btn-primary:hover { background: var(--op-orange-hover); border-color: var(--op-orange-hover); }
+  .op-btn-ghost {
+    background: transparent;
+    color: var(--op-text-muted);
+    border-color: var(--op-border);
+  }
+  .op-btn-ghost:hover { background: var(--op-bg); color: var(--op-text); }
+}
+
+/* ── op-list ─────────────────────────────────────────────────────────────────
+   Bordered list container — white surface, single outer border, no gap.
+   Rows are separated by a 1px border-top (not gap).
+*/
+@media (min-width: 768px) {
+  .op-list {
+    background: var(--op-surface);
+    border: 1px solid var(--op-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .op-list-row {
+    display: flex;
+    align-items: center;
+    padding: var(--op-row-py) 0.875rem;
+    min-height: 36px;
+    border-top: 1px solid var(--op-border-soft);
+    gap: 0.625rem;
+    min-width: 0;
+    transition: background 0.1s;
+  }
+  .op-list-row:first-child { border-top: none; }
+  .op-list-row:hover { background: #fafafa; }
+  .op-list-row.clickable { cursor: pointer; }
+  .op-list-row.clickable:hover { background: #f9fafb; }
+
+  .op-list-header {
+    display: flex;
+    align-items: center;
+    padding: 0.3125rem 0.875rem;
+    background: #f9fafb;
+    border-bottom: 1px solid var(--op-border);
+    gap: 0.625rem;
+    min-width: 0;
+  }
+
+  .op-col-label {
+    font-size: 0.6875rem;      /* 11px */
+    font-weight: 600;
+    color: var(--op-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .op-cell {
+    font-size: 0.8125rem;      /* 13px */
+    color: var(--op-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.35;
+  }
+  .op-cell-muted {
+    font-size: 0.75rem;        /* 12px */
+    color: var(--op-text-muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .op-cell-meta {
+    font-size: 0.6875rem;      /* 11px */
+    color: var(--op-text-faint);
+    white-space: nowrap;
+  }
+}
+
+/* ── op-card ─────────────────────────────────────────────────────────────────
+   Flat white card with a single border — no shadow, no rounded-xl.
+*/
+@media (min-width: 768px) {
+  .op-card {
+    background: var(--op-surface);
+    border: 1px solid var(--op-border);
+    border-radius: 6px;
+    padding: 0.875rem 1rem;
+  }
+
+  .op-card-title {
+    font-size: 0.75rem;        /* 12px */
+    font-weight: 700;
+    color: var(--op-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.625rem;
+  }
+}
+
+/* ── op-stat-row ─────────────────────────────────────────────────────────────
+   Horizontal summary stat strip — inline count + label pairs.
+*/
+@media (min-width: 768px) {
+  .op-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--op-surface);
+    border: 1px solid var(--op-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .op-stat-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-right: 1px solid var(--op-border);
+  }
+  .op-stat-cell:last-child { border-right: none; }
+
+  .op-stat-count {
+    font-size: 1.125rem;       /* 18px */
+    font-weight: 800;
+    line-height: 1;
+    color: var(--op-text);
+  }
+  .op-stat-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+  }
+}
+
+/* ── op-status-badge ─────────────────────────────────────────────────────────
+   Flat inline status indicator — no pill border-radius, just a coloured dot.
+*/
+@media (min-width: 768px) {
+  .op-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .op-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+}
+
+/* ── op-side-nav ─────────────────────────────────────────────────────────────
+   Compact left-side tab navigation inside a detail page (e.g. job-detail).
+*/
+@media (min-width: 768px) {
+  .op-side-nav {
+    width: 180px;
+    min-width: 180px;
+    background: var(--op-surface);
+    border-right: 1px solid var(--op-border);
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 0.5rem 0;
+  }
+
+  .op-side-nav-group-label {
+    padding: 0.625rem 0.75rem 0.25rem;
+    font-size: 0.625rem;       /* 10px */
+    font-weight: 700;
+    color: var(--op-text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    user-select: none;
+  }
+
+  .op-side-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3125rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--op-text-muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.1s, color 0.1s;
+    border-radius: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .op-side-nav-item:hover {
+    background: var(--op-bg);
+    color: var(--op-text);
+  }
+  .op-side-nav-item.active {
+    background: #fff7ed;
+    color: var(--op-orange);
+    font-weight: 600;
+    border-right: 2px solid var(--op-orange);
+  }
+}
+
+/* ── op-table ────────────────────────────────────────────────────────────────
+   Dense data table — used in scheduler, invoices, etc.
+*/
+@media (min-width: 768px) {
+  .op-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    color: var(--op-text);
+  }
+  .op-table thead tr {
+    background: #f9fafb;
+    border-bottom: 1px solid var(--op-border);
+  }
+  .op-table th {
+    padding: 0.3125rem 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--op-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .op-table td {
+    padding: 0.375rem 0.75rem;
+    border-top: 1px solid var(--op-border-soft);
+    vertical-align: middle;
+  }
+  .op-table tbody tr:hover td {
+    background: #fafafa;
+  }
+}
+
+/* ── Sidebar polish (desktop) ────────────────────────────────────────────────
+   Tighten the PortalSidebar nav items on desktop.
+*/
+@media (min-width: 768px) {
+  /* Tighter nav link rows */
+  .portal-sidebar-link {
+    padding-top: 0.3125rem !important;
+    padding-bottom: 0.3125rem !important;
+    font-size: 0.8125rem !important;
   }
 }
 

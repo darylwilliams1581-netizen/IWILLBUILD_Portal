@@ -22,14 +22,14 @@ const sections: HelpSection[] = [
   {
     icon: <KeyRound size={22} />,
     title: 'Forgot your password?',
-    color: 'text-orange-500',
+    color: 'text-violet-600',
     steps: [
       {
         heading: 'Reset via email',
         body: (
           <>
             Go to the{' '}
-            <Link to="/forgot-password" className="text-orange-500 underline font-medium">
+            <Link to="/forgot-password" className="text-violet-600 underline font-medium">
               Forgot Password
             </Link>{' '}
             page and enter your email address. You'll receive a reset link within a few minutes.
@@ -68,7 +68,7 @@ const sections: HelpSection[] = [
         body: (
           <>
             If you're waiting for a verification email, you can request a new one from the{' '}
-            <Link to="/login" className="text-orange-500 underline font-medium">
+            <Link to="/login" className="text-violet-600 underline font-medium">
               login page
             </Link>{' '}
             by clicking "Resend verification email".
@@ -145,14 +145,14 @@ export default function LoginHelpPage() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
-          <Link to="/login" className="flex items-center gap-2 text-slate-700 hover:text-orange-500 transition-colors">
+          <Link to="/login" className="flex items-center gap-2 text-slate-700 hover:text-violet-600 transition-colors">
             <span className="font-bold text-lg tracking-tight">
-              <span className="text-orange-500">IWB</span> Portal
+              <span className="text-violet-600">IWB</span> Portal
             </span>
           </Link>
           <Link
             to="/login"
-            className="text-sm text-slate-500 hover:text-orange-500 flex items-center gap-1 transition-colors"
+            className="text-sm text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors"
           >
             Back to login <ChevronRight size={14} />
           </Link>
@@ -162,7 +162,7 @@ export default function LoginHelpPage() {
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Title */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 text-orange-500 mb-2">
+          <div className="flex items-center gap-2 text-violet-600 mb-2">
             <HelpCircle size={20} />
             <span className="text-sm font-medium uppercase tracking-wide">Login help</span>
           </div>
@@ -176,9 +176,9 @@ export default function LoginHelpPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
           <Link
             to="/forgot-password"
-            className="flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl p-4 hover:bg-orange-100 transition-colors"
+            className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl p-4 hover:bg-violet-100 transition-colors"
           >
-            <div className="w-9 h-9 rounded-lg bg-orange-500 flex items-center justify-center text-white shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white shrink-0">
               <KeyRound size={16} />
             </div>
             <div>
@@ -247,11 +247,11 @@ export default function LoginHelpPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-slate-400">
-          <Link to="/login" className="hover:text-orange-500 transition-colors">Back to login</Link>
+          <Link to="/login" className="hover:text-violet-600 transition-colors">Back to login</Link>
           {' · '}
-          <Link to="/forgot-password" className="hover:text-orange-500 transition-colors">Reset password</Link>
+          <Link to="/forgot-password" className="hover:text-violet-600 transition-colors">Reset password</Link>
           {' · '}
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-orange-500 transition-colors">Contact support</a>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-violet-600 transition-colors">Contact support</a>
         </div>
       </div>
     </div>

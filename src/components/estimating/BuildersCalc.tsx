@@ -52,7 +52,7 @@ function ResultRow({ label, value, unit, highlight, copyText }: {
 }
 
 // ── Card wrapper ──────────────────────────────────────────────────────────────
-function CalcCard({ title, icon: Icon, children, accent = '#F97316' }: {
+function CalcCard({ title, icon: Icon, children, accent = '#7C3AED' }: {
   title: string; icon: React.ElementType; children: React.ReactNode; accent?: string;
 }) {
   const [open, setOpen] = useState(true);
@@ -519,7 +519,7 @@ function RunningMeasurementCalc() {
         </div>
         <div className="flex items-center justify-between">
           <button onClick={addRow}
-            className="text-xs font-semibold text-primary hover:text-orange-600 transition-colors">
+            className="text-xs font-semibold text-primary hover:text-violet-700 transition-colors">
             + Add row
           </button>
           <div className="flex gap-2">
