@@ -11,7 +11,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Users } from 'lucide-react';
+import { LogOut, Users, Terminal, Bot } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
@@ -19,7 +19,7 @@ import { signOut } from '@/lib/auth/auth-client.tsx';
 export const DESKTOP_TOPBAR_HEIGHT = 56;
 
 export default function DesktopTopBar() {
-  const { me } = usePermissions();
+  const { me, isPlatformOwner } = usePermissions();
   const navigate = useNavigate();
 
   const displayName =
@@ -91,7 +91,7 @@ export default function DesktopTopBar() {
         </span>
       </Link>
 
-      {/* ── Right: teams + user + logout + bell ── */}
+      {/* ── Right: nav links + user + logout + bell ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
         {/* Teams */}
@@ -122,6 +122,68 @@ export default function DesktopTopBar() {
           <Users size={15} />
           <span>Teams</span>
         </Link>
+
+        {/* Dazza AI — platform owner only */}
+        {isPlatformOwner && (
+          <Link
+            to="/dazza-ai"
+            title="Dazza AI"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 10px',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#64748b',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = '#f5f3ff';
+              (e.currentTarget as HTMLElement).style.color = '#7c3aed';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.color = '#64748b';
+            }}
+          >
+            <Bot size={15} />
+            <span>Dazza AI</span>
+          </Link>
+        )}
+
+        {/* Developer Console — platform owner only */}
+        {isPlatformOwner && (
+          <Link
+            to="/owner-console"
+            title="Developer Console"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 10px',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#64748b',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = '#f0fdf4';
+              (e.currentTarget as HTMLElement).style.color = '#16a34a';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.color = '#64748b';
+            }}
+          >
+            <Terminal size={15} />
+            <span>Dev Console</span>
+          </Link>
+        )}
 
         {/* Divider */}
         <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
