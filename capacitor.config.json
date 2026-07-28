@@ -1,0 +1,6 @@
+{
+  "appId": "com.iwillbuild.app",
+  "appName": "IWILLBUILD",
+  "webDir": "dist/client",
+  "bundledWebRuntime": false
+}
