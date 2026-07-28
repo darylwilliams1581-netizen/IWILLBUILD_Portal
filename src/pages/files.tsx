@@ -78,7 +78,7 @@ export default function FilesPage() {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-auto p-4 md:p-6">
-        <div className="max-w-4xl mx-auto w-full">
+        <div className="w-full">
 
           {/* Loading skeleton for stats */}
           {!loaded && (
