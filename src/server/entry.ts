@@ -3642,6 +3642,34 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.warn('[startup] developer_audit_log migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
+		// ── fleet_usage_logs ──────────────────────────────────────────────────
+		try {
+			await _db.execute(_sql`
+				CREATE TABLE IF NOT EXISTS fleet_usage_logs (
+					id               INT PRIMARY KEY AUTO_INCREMENT,
+					company_id       INT          NOT NULL,
+					fleet_id         INT          NOT NULL,
+					user_id          VARCHAR(36)  NULL,
+					job_id           INT          NULL,
+					actor_type       VARCHAR(30)  NOT NULL DEFAULT 'employee',
+					source           VARCHAR(30)  NOT NULL DEFAULT 'portal',
+					started_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					ended_at         TIMESTAMP    NULL,
+					duration_minutes INT          NULL,
+					note             TEXT         NULL,
+					created_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+					INDEX idx_ful_company (company_id),
+					INDEX idx_ful_fleet   (fleet_id),
+					INDEX idx_ful_user    (user_id),
+					INDEX idx_ful_started (started_at),
+					FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+			`);
+			console.log('[startup] fleet_usage_logs table ready');
+		} catch (e) {
+			console.warn('[startup] fleet_usage_logs migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
 		// ── Run the full self-healing migration suite (safetyTables loop etc.) ──
 		// NOTE: runStartupMigrations() is also called at module load time (line ~1922)
 		// for dev HMR. We skip the second call here to avoid duplicate concurrent

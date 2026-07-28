@@ -60,6 +60,7 @@ interface Stakeholder {
 // ── Job Picker ────────────────────────────────────────────────────────────────
 
 function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -158,6 +159,7 @@ function AddDocModal({ jobId, onClose, onAdded }: {
   onClose: () => void;
   onAdded: (docs: FieldDoc[]) => void;
 }) {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Array<{ id: number; title: string; status: string }>>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
@@ -241,7 +243,16 @@ function AddDocModal({ jobId, onClose, onAdded }: {
           {!loading && (
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               {filtered.length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-6">No templates found — create some in the SWMS Library first</p>
+                <div className="text-center py-6 px-4">
+                  <p className="text-sm text-slate-400 mb-3">No templates found — create some in the SWMS Library first</p>
+                  <button
+                    onClick={() => { onClose(); navigate('/safety'); }}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <FileText size={12} />
+                    Go to SWMS Library
+                  </button>
+                </div>
               )}
               {filtered.map(t => (
                 <button

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, Plus, Loader2, Users,
   Printer, Wand2, Trash2, ClipboardList, Link2, UserCheck,
-  ChevronDown, Library, FileText,
+  ChevronDown, Library, FileText, AlertTriangle,
 } from 'lucide-react';
 import { safeUrl } from '@/lib/html-escape';
 import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
@@ -521,6 +521,7 @@ function SignonsSubTab({ jobId }: { jobId: number }) {
 type SubTab = 'swms' | 'plans' | 'signons';
 
 export default function JobSafety({ jobId }: { jobId: number }) {
+  const navigate = useNavigate();
   const [subTab, setSubTab] = useState<SubTab>('swms');
   const [job, setJob] = useState<JobInfo | null>(null);
 
@@ -542,6 +543,21 @@ export default function JobSafety({ jobId }: { jobId: number }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ── Risky & Permits banner ─────────────────────────────────────── */}
+      <button
+        onClick={() => navigate(`/jobs/${jobId}/risky`)}
+        className="flex items-center gap-3 w-full bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 rounded-xl px-4 py-3 transition-colors group text-left"
+      >
+        <div className="w-9 h-9 bg-amber-100 group-hover:bg-amber-200 rounded-xl flex items-center justify-center shrink-0 transition-colors">
+          <AlertTriangle size={18} className="text-amber-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-amber-900">Risky &amp; Permits</p>
+          <p className="text-xs text-amber-700">Risk assessments and permit-to-work for this job</p>
+        </div>
+        <ChevronDown size={15} className="text-amber-500 -rotate-90 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+      </button>
+
       {/* Sub-tab bar */}
       <div className="flex gap-1 border-b border-slate-200 pb-0">
         {SUB_TABS.map(({ id, label, icon: Icon }) => (
