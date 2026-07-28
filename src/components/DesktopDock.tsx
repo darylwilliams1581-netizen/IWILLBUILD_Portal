@@ -106,20 +106,22 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: 30,
-          height: 30,
-          borderRadius: 8,
+          width: 34,
+          height: 34,
+          borderRadius: 9,
           backgroundColor: item.color,
           border: active
             ? '2px solid #ffffff'
             : '2px solid transparent',
           display: 'grid',
           placeItems: 'center',
-          transition: 'transform 110ms ease, box-shadow 110ms ease, border-color 110ms ease',
+          transition: 'transform 150ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 150ms ease, border-color 110ms ease',
           boxShadow: active
             ? `0 0 0 2px ${item.color}, 0 2px 8px ${item.color}60`
             : '0 1px 3px rgba(15,23,42,0.25)',
           flexShrink: 0,
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         <Icon
@@ -135,7 +137,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         className="dock-tooltip"
         style={{
           position: 'absolute',
-          bottom: -28,
+          bottom: -32,
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(15,23,42,0.88)',
@@ -198,15 +200,19 @@ export default function DesktopDock() {
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.15);
-          box-shadow: 0 3px 10px rgba(15,23,42,0.30) !important;
+          transform: scale(1.35) translateY(-3px);
+          box-shadow: 0 6px 16px rgba(15,23,42,0.40) !important;
           filter: brightness(1.12);
+          z-index: 10;
         }
         .dock-icon-btn:hover .dock-tooltip {
           opacity: 1 !important;
         }
+        .dock-icon-btn {
+          overflow: visible !important;
+        }
         .dock-row::-webkit-scrollbar { display: none; }
-        .dock-row { scrollbar-width: none; }
+        .dock-row { scrollbar-width: none; overflow: visible; }
       `}</style>
 
       <nav
@@ -223,6 +229,7 @@ export default function DesktopDock() {
           boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
           padding: '4px 0 4px',
           alignItems: 'center',
+          overflow: 'visible',
         }}
       >
         <div
