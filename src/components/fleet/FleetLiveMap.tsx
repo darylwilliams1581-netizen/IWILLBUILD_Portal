@@ -54,9 +54,21 @@ type GoogleWindow = Window & typeof globalThis & {
 
 declare const window: GoogleWindow;
 
-const GOOGLE_MAPS_KEY = (import.meta as { env: Record<string, string> }).env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 const DEFAULT_CENTER  = { lat: -27.4698, lng: 153.0251 };
 const DEFAULT_ZOOM    = 11;
+
+// ── Google Maps key — fetched from backend (never from import.meta.env) ────────
+
+let _cachedKey: string | null = null;
+
+async function fetchMapsKey(): Promise<string> {
+  if (_cachedKey !== null) return _cachedKey;
+  const res = await fetch('/api/config/maps-key', { credentials: 'include' });
+  if (!res.ok) throw new Error('Maps API key not available');
+  const data = await res.json() as { key: string };
+  _cachedKey = data.key ?? '';
+  return _cachedKey;
+}
 
 // ── Google Maps script loader (singleton) ─────────────────────────────────────
 
@@ -64,13 +76,13 @@ function loadGoogleMaps(): Promise<void> {
   if (window.__gmapsLoaded) return Promise.resolve();
   if (window.__gmapsLoader) return window.__gmapsLoader;
 
-  window.__gmapsLoader = new Promise<void>((resolve, reject) => {
-    if (!GOOGLE_MAPS_KEY) {
-      reject(new Error('VITE_GOOGLE_MAPS_API_KEY is not set'));
+  window.__gmapsLoader = fetchMapsKey().then(key => new Promise<void>((resolve, reject) => {
+    if (!key) {
+      reject(new Error('VITE_GOOGLE_MAPS_API_KEY is not configured'));
       return;
     }
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=marker`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
@@ -79,7 +91,7 @@ function loadGoogleMaps(): Promise<void> {
     };
     script.onerror = () => reject(new Error('Failed to load Google Maps script'));
     document.head.appendChild(script);
-  });
+  }));
 
   return window.__gmapsLoader;
 }
@@ -507,7 +519,7 @@ export default function FleetLiveMap() {
                 <AlertCircle size={28} className="text-red-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700 mb-1">Map unavailable</p>
                 <p className="text-xs text-slate-500 break-words">{mapError}</p>
-                {!GOOGLE_MAPS_KEY && (
+                {mapError && mapError.includes('not configured') && (
                   <p className="text-xs text-amber-600 mt-2 font-medium">
                     Add VITE_GOOGLE_MAPS_API_KEY to your environment secrets.
                   </p>
