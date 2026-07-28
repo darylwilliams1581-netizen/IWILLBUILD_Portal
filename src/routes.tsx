@@ -68,6 +68,7 @@ const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
 const ListsPage          = lazy(() => import('./pages/lists'));
 const UserLogsPage       = lazy(() => import('./pages/user-logs'));
+const QuickLinksPage     = lazy(() => import('./pages/quick-links'));
 const JobCardsPage       = lazy(() => import('./pages/job-cards'));
 const JobCardDetailPage  = lazy(() => import('./pages/job-card-detail'));
 
@@ -242,6 +243,7 @@ export const routes: RouteObject[] = [
   { path: '/annette',       loader: () => redirect('/owner-console?tab=health-check') },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
   { path: '/team/schedule', loader: () => redirect('/scheduler?tab=team-shifts') },
+  { path: '/quick-links',   element: protect(<QuickLinksPage />),      errorElement: routeError },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/help',          element: protect(<Suspense fallback={<PageLoader />}><HelpPage /></Suspense>), errorElement: routeError },

@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   Navigation,
-  Radio,
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import {
@@ -37,8 +36,6 @@ import { lazy, Suspense } from 'react';
 
 // Google Maps-based live map
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
-// Phase-1 tracker portal viewport
-const TrackerPortalTab = lazy(() => import('@/components/fleet/TrackerPortalTab'));
 
 // ── Status icon map (reserved for future use) ─────────────────────────────────
 
@@ -285,7 +282,7 @@ export default function FleetPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
   const [successName, setSuccessName] = useState('');
-  const [view, setView] = useState<'assets' | 'live-map' | 'tracker'>('assets');
+  const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
   const { isAdmin } = usePermissions();
   const navigate = useNavigate();
@@ -399,17 +396,7 @@ export default function FleetPage() {
               </button>
 
               {/* Tracker Portal tab — desktop only */}
-              <button
-                onClick={() => setView('tracker')}
-                title="Your tracker portal"
-                className={[
-                  'hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'tracker' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Radio size={13} />
-                <span>Your Tracker Portal</span>
-              </button>
+              {/* REMOVED — replaced by Quick Links sidebar module */}
 
               {/* Divider + Add Asset — only shown on assets tab */}
               {view === 'assets' && (
@@ -449,19 +436,7 @@ export default function FleetPage() {
               </PortalErrorBoundary>
           )}
 
-          {/* ── Tracker Portal view — desktop only ── */}
-          {view === 'tracker' && (
-            <PortalErrorBoundary inline>
-              <Suspense fallback={
-                <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
-                  <Loader2 size={20} className="animate-spin" />
-                  <span className="text-sm">Loading…</span>
-                </div>
-              }>
-                <TrackerPortalTab isAdmin={isAdmin} />
-              </Suspense>
-            </PortalErrorBoundary>
-          )}
+          {/* ── Tracker Portal view — REMOVED, replaced by Quick Links ── */}
 
           {/* ── Assets view ── */}
           {view === 'assets' && (

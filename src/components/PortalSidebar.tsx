@@ -29,6 +29,7 @@ import {
   TableProperties,
   ScrollText,
   Zap,
+  Link2,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -97,6 +98,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'User Logs',    icon: ScrollText,      href: '/user-logs',            permKey: null },
     { label: 'Contacts',     icon: Users,           href: '/customers',            permKey: 'jobs' },
     { label: 'Team',         icon: UserCircle,      href: '/team',                 permKey: null },
+    { label: 'Quick Links',  icon: Link2,           href: '/quick-links',          permKey: null },
   ];
 }
 
