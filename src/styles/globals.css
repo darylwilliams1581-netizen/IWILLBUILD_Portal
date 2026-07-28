@@ -409,10 +409,10 @@ input, select, textarea {
   }
 }
 
-/* Desktop: reserve space at the top for the floating dock (single-row pill ~46px + 10px gap). */
+/* Desktop: reserve space at the top for the fixed TopBar + dock (44px strip). */
 @media (min-width: 768px) {
   .portal-main {
-    padding-top: 64px;
+    padding-top: 52px;
   }
 }
 

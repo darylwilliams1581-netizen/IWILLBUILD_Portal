@@ -8,6 +8,7 @@
  * Fits comfortably on 1280px+ viewports. Scrollable on narrower screens.
  */
 
+import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 import {
@@ -33,6 +34,8 @@ import {
   Link2,
   FileStack,
   History,
+  Settings,
+  CreditCard,
 } from 'lucide-react';
 
 interface DockItem {
@@ -43,6 +46,7 @@ interface DockItem {
   bg: string;
   adminOnly?: boolean;
   ownerOnly?: boolean;
+  dividerBefore?: boolean; // render a thin separator before this item
 }
 
 const ALL_ITEMS: DockItem[] = [
@@ -68,7 +72,26 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Quick Links',     icon: Link2,           href: '/quick-links',        color: '#6366f1', bg: '#eef2ff' },
   { label: 'Job Field Docs',  icon: FileStack,       href: '/job-docs',           color: '#0891b2', bg: '#ecfeff' },
   { label: 'Sign-in History', icon: History,         href: '/signin-history',     color: '#64748b', bg: '#f8fafc', adminOnly: true },
+  // ── Utility ──
+  { label: 'Settings',        icon: Settings,        href: '/settings',           color: '#475569', bg: '#f8fafc', adminOnly: true, dividerBefore: true },
+  { label: 'Billing',         icon: CreditCard,      href: '/billing',            color: '#475569', bg: '#f8fafc', adminOnly: true },
 ];
+
+// ── Vertical divider between icon groups ─────────────────────────────────────
+function DockDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        width: 1,
+        height: 22,
+        background: 'rgba(226,232,240,0.9)',
+        flexShrink: 0,
+        margin: '0 4px',
+      }}
+    />
+  );
+}
 
 // ── Single icon ───────────────────────────────────────────────────────────────
 function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
@@ -169,9 +192,9 @@ export default function DesktopDock() {
         className="hidden md:flex"
         style={{
           position: 'fixed',
-          top: 10,
+          top: 22,                          // centre of the 44px TopBar strip
           left: '50%',
-          transform: 'translateX(-50%)',
+          transform: 'translateX(-50%) translateY(-50%)',
           zIndex: 1050,
           background: 'rgba(255,255,255,0.98)',
           backdropFilter: 'blur(16px)',
@@ -184,7 +207,7 @@ export default function DesktopDock() {
             '0 12px 32px rgba(15,23,42,0.06)',
             '0 0 0 0.5px rgba(15,23,42,0.03)',
           ].join(', '),
-          padding: '6px 8px',
+          padding: '4px 8px',
           alignItems: 'center',
           gap: 1,
           // Scrollable on narrow viewports — never clips
@@ -193,7 +216,10 @@ export default function DesktopDock() {
         }}
       >
         {items.map((item) => (
-          <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+          <React.Fragment key={item.href + item.label}>
+            {item.dividerBefore && <DockDivider />}
+            <DockIcon item={item} active={isActive(item.href)} />
+          </React.Fragment>
         ))}
       </nav>
     </>
