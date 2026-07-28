@@ -230,6 +230,7 @@ export default function DesktopDock() {
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 4,
             width: '100%',
             paddingLeft: 8,
