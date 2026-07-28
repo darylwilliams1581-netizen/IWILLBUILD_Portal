@@ -1148,11 +1148,11 @@ function RiskyJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
 }
 
 // ── Phone Job Card creation sheet ─────────────────────────────────────────────
-// Field-first: customer → site → work → hours → materials → done.
-// Tapping "View all Job Cards" navigates to the desktop register.
+// 3-step flow: form → completion (photos + sign-off) → done
+// Keeps each step focused and field-first.
 function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState<'form' | 'done'>('form');
+  const [step, setStep] = useState<'form' | 'completion' | 'done'>('form');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [createdId, setCreatedId] = useState<number | null>(null);
@@ -1160,19 +1160,25 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
   const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
 
+  // Step 1: core fields
   const [form, setForm] = useState({
     customerId: '',
     customerNameOverride: '',
     siteAddress: '',
-    contactPerson: '',
     serviceDate: new Date().toISOString().slice(0, 10),
     assignedUserId: '',
     workDescription: '',
     labourHours: '',
     labourRate: '',
-    notes: '',
   });
-  const [materials, setMaterials] = useState<{ description: string; cost: string }[]>([]);
+
+  // Step 2: completion fields
+  const [completionSummary, setCompletionSummary] = useState('');
+  const [authorisedBy, setAuthorisedBy] = useState('');
+  const [approvalDate, setApprovalDate] = useState(new Date().toISOString().slice(0, 10));
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -1181,12 +1187,16 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
     setCreatedId(null);
     setCreatedNum('');
     setForm({
-      customerId: '', customerNameOverride: '', siteAddress: '', contactPerson: '',
+      customerId: '', customerNameOverride: '', siteAddress: '',
       serviceDate: new Date().toISOString().slice(0, 10),
-      assignedUserId: '', workDescription: '', labourHours: '', labourRate: '', notes: '',
+      assignedUserId: '', workDescription: '', labourHours: '', labourRate: '',
     });
-    setMaterials([]);
-    fetch('/api/customers?status=active', { credentials: 'include' })
+    setCompletionSummary('');
+    setAuthorisedBy('');
+    setApprovalDate(new Date().toISOString().slice(0, 10));
+    setPhotoFiles([]);
+    setPhotoPreviewUrls([]);
+    fetch('/api/customers?status=active&limit=200', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((d: { customers?: { id: number; name: string }[] } | null) => setCustomers(d?.customers ?? []))
       .catch(() => {});
@@ -1198,6 +1208,22 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
 
   function setF(k: keyof typeof form, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
+  function handlePhotoFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const newFiles = Array.from(files);
+    setPhotoFiles(prev => [...prev, ...newFiles]);
+    newFiles.forEach(f => {
+      const url = URL.createObjectURL(f);
+      setPhotoPreviewUrls(prev => [...prev, url]);
+    });
+  }
+
+  function removePhoto(i: number) {
+    URL.revokeObjectURL(photoPreviewUrls[i]);
+    setPhotoFiles(prev => prev.filter((_, idx) => idx !== i));
+    setPhotoPreviewUrls(prev => prev.filter((_, idx) => idx !== i));
+  }
+
   async function handleCreate() {
     if (!form.workDescription.trim()) { setError('Work description is required'); return; }
     setSaving(true);
@@ -1206,14 +1232,11 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
       const body: Record<string, unknown> = {
         workDescription: form.workDescription,
         siteAddress: form.siteAddress || undefined,
-        contactPerson: form.contactPerson || undefined,
         serviceDate: form.serviceDate || undefined,
-        notes: form.notes || undefined,
-        status: 'draft',
-        materials: materials.filter(m => m.description.trim()).map(m => ({
-          description: m.description,
-          cost: Number(m.cost) || 0,
-        })),
+        completionSummary: completionSummary || undefined,
+        authorisedBy: authorisedBy || undefined,
+        approvalDate: approvalDate || undefined,
+        status: completionSummary || authorisedBy ? 'complete' : 'draft',
       };
       if (form.customerId) body.customerId = Number(form.customerId);
       else if (form.customerNameOverride) body.customerNameOverride = form.customerNameOverride;
@@ -1232,8 +1255,19 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
       });
       const data = await res.json() as { jobCard?: { id: number; card_number: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');
-      setCreatedId(data.jobCard!.id);
+      const newId = data.jobCard!.id;
+      setCreatedId(newId);
       setCreatedNum(data.jobCard!.card_number);
+
+      // Upload photos if any
+      if (photoFiles.length > 0) {
+        const fd = new FormData();
+        photoFiles.forEach(f => fd.append('photos', f));
+        await fetch(`/api/job-cards/${newId}/photos`, {
+          method: 'POST', credentials: 'include', body: fd,
+        }).catch(() => {}); // non-fatal
+      }
+
       setStep('done');
     } catch (err) {
       setError(String((err as Error).message));
@@ -1248,6 +1282,7 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <Sheet open={open} onClose={onClose} title="New Job Card" titleIcon={Zap} titleIconClass="text-yellow-500">
       {step === 'done' ? (
+        /* ── Done ── */
         <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
             <CheckCircle2 size={28} className="text-green-600" />
@@ -1255,6 +1290,9 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           <div>
             <p className="text-[17px] font-bold text-gray-900">Job Card created</p>
             <p className="text-[13px] text-gray-400 mt-1 font-mono">{createdNum}</p>
+            {photoFiles.length > 0 && (
+              <p className="text-[12px] text-gray-400 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>
+            )}
           </div>
           <div className="flex flex-col gap-2 w-full max-w-xs">
             <button
@@ -1277,7 +1315,114 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </button>
           </div>
         </div>
+
+      ) : step === 'completion' ? (
+        /* ── Step 2: Completion + Photos ── */
+        <div className="flex flex-col gap-4 pb-6">
+          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-100 rounded-xl text-[12px] text-yellow-700">
+            <CheckCircle2 size={13} className="shrink-0" />
+            <span>Optional — add completion details and photos before saving</span>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              <AlertTriangle size={14} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Labour */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Labour hours</label>
+              <input type="number" min="0" step="0.25" value={form.labourHours} onChange={e => setF('labourHours', e.target.value)}
+                placeholder="0.00" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Rate ($/hr)</label>
+              <input type="number" min="0" step="0.01" value={form.labourRate} onChange={e => setF('labourRate', e.target.value)}
+                placeholder="0.00" className={inputCls} />
+            </div>
+          </div>
+
+          {/* Completion summary */}
+          <div>
+            <label className={labelCls}>Work completed / report</label>
+            <textarea value={completionSummary} onChange={e => setCompletionSummary(e.target.value)}
+              rows={3} placeholder="Summary of work completed…"
+              className={`${inputCls} resize-none`} />
+          </div>
+
+          {/* Authorised by + date */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Authorised by</label>
+              <input type="text" value={authorisedBy} onChange={e => setAuthorisedBy(e.target.value)}
+                placeholder="Customer name" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Sign date</label>
+              <input type="date" value={approvalDate} onChange={e => setApprovalDate(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+
+          {/* Photos */}
+          <div>
+            <label className={labelCls}>Photos</label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              capture="environment"
+              className="hidden"
+              onChange={e => handlePhotoFiles(e.target.files)}
+            />
+            {photoPreviewUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {photoPreviewUrls.map((url, i) => (
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-[13px] font-medium flex items-center justify-center gap-2 hover:border-yellow-300 hover:text-yellow-600 transition-colors"
+            >
+              <Camera size={16} />
+              {photoPreviewUrls.length > 0 ? 'Add more photos' : 'Take or choose photos'}
+            </button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => void handleCreate()}
+              disabled={saving}
+              className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
+              Save Job Card
+            </button>
+            <button
+              onClick={() => setStep('form')}
+              className="w-full py-2 text-gray-400 text-[13px] font-medium hover:text-gray-600 transition-colors"
+            >
+              ← Back to details
+            </button>
+          </div>
+        </div>
+
       ) : (
+        /* ── Step 1: Core form ── */
         <div className="flex flex-col gap-4 pb-6">
           {error && (
             <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
@@ -1286,16 +1431,16 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
           )}
 
-          {/* Customer */}
+          {/* Customer — prefer existing record */}
           <div>
             <label className={labelCls}>Customer</label>
             <select value={form.customerId} onChange={e => setF('customerId', e.target.value)} className={inputCls}>
-              <option value="">— Select or type below —</option>
+              <option value="">— Select customer —</option>
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             {!form.customerId && (
               <input type="text" value={form.customerNameOverride} onChange={e => setF('customerNameOverride', e.target.value)}
-                placeholder="Or type customer name…" className={`${inputCls} mt-2`} />
+                placeholder="Or type a one-off name…" className={`${inputCls} mt-2`} />
             )}
           </div>
 
@@ -1304,13 +1449,6 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
             <label className={labelCls}>Site address</label>
             <input type="text" value={form.siteAddress} onChange={e => setF('siteAddress', e.target.value)}
               placeholder="123 Main St" className={inputCls} />
-          </div>
-
-          {/* Contact */}
-          <div>
-            <label className={labelCls}>Contact person</label>
-            <input type="text" value={form.contactPerson} onChange={e => setF('contactPerson', e.target.value)}
-              placeholder="John Smith" className={inputCls} />
           </div>
 
           {/* Service date */}
@@ -1327,49 +1465,6 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
               className={`${inputCls} resize-none`} />
           </div>
 
-          {/* Labour */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Labour hours</label>
-              <input type="number" min="0" step="0.25" value={form.labourHours} onChange={e => setF('labourHours', e.target.value)}
-                placeholder="0.00" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Rate ($/hr)</label>
-              <input type="number" min="0" step="0.01" value={form.labourRate} onChange={e => setF('labourRate', e.target.value)}
-                placeholder="0.00" className={inputCls} />
-            </div>
-          </div>
-
-          {/* Materials */}
-          <div>
-            <label className={labelCls}>Materials</label>
-            <div className="flex flex-col gap-2">
-              {materials.map((m, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input type="text" value={m.description}
-                    onChange={e => setMaterials(ms => ms.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))}
-                    placeholder="Description" className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-[15px] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" />
-                  <div className="relative w-24 shrink-0">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                    <input type="number" min="0" step="0.01" value={m.cost}
-                      onChange={e => setMaterials(ms => ms.map((x, idx) => idx === i ? { ...x, cost: e.target.value } : x))}
-                      className="w-full pl-6 pr-2 py-3 border border-gray-200 rounded-xl text-[15px] focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" />
-                  </div>
-                  <button onClick={() => setMaterials(ms => ms.filter((_, idx) => idx !== i))}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => setMaterials(ms => [...ms, { description: '', cost: '' }])}
-                className="flex items-center gap-1.5 text-[13px] font-semibold text-yellow-600 hover:text-yellow-700 transition-colors py-1">
-                <Plus size={14} />
-                Add material
-              </button>
-            </div>
-          </div>
-
           {/* Assigned worker */}
           <div>
             <label className={labelCls}>Assigned worker</label>
@@ -1379,22 +1474,30 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </select>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className={labelCls}>Notes</label>
-            <textarea value={form.notes} onChange={e => setF('notes', e.target.value)}
-              rows={2} placeholder="Internal notes…"
-              className={`${inputCls} resize-none`} />
-          </div>
-
-          {/* Create button */}
+          {/* Next: completion step */}
           <button
-            onClick={() => void handleCreate()}
-            disabled={saving}
-            className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+            onClick={() => {
+              if (!form.workDescription.trim()) { setError('Work description is required'); return; }
+              setError('');
+              setStep('completion');
+            }}
+            className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors flex items-center justify-center gap-2 mt-2"
           >
-            {saving ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
-            Create Job Card
+            <CheckCircle2 size={18} />
+            Next: Completion &amp; Photos
+          </button>
+
+          <button
+            onClick={() => {
+              if (!form.workDescription.trim()) { setError('Work description is required'); return; }
+              setError('');
+              void handleCreate();
+            }}
+            disabled={saving}
+            className="w-full py-3 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-[14px] transition-colors hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
+            Save as Draft
           </button>
         </div>
       )}
@@ -1970,11 +2073,11 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
 
 // ── Profile sheet ─────────────────────────────────────────────────────────────
 function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: sessionData } = useSession();
+  const { session } = useSession();
   const { me } = usePermissions();
   const navigate = useNavigate();
-  const name = sessionData?.user?.name ?? me?.user?.name ?? 'User';
-  const email = sessionData?.user?.email ?? me?.user?.email ?? '';
+  const name = session?.user?.name ?? me?.user?.name ?? 'User';
+  const email = session?.user?.email ?? me?.user?.email ?? '';
   const company = me?.company?.name ?? '';
 
   async function handleSignOut() {
@@ -2101,24 +2204,22 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, onNaviga
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { can, isAdmin, isPlatformOwner, me, loading, role } = usePermissions();
-  const { data: sessionData } = useSession();
+  const { isPlatformOwner, me, loading, role } = usePermissions();
+  const { session } = useSession();
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
-  const [iconPermsLoaded, setIconPermsLoaded] = useState(false);
 
   useEffect(() => {
-    const userId = me?.user?.id ?? sessionData?.user?.id;
+    const userId = me?.user?.id ?? session?.user?.id;
     if (!userId || loading) return;
     fetch(`/api/team/members/${userId}/icon-permissions`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((data: { allowedKeys?: string[] | null } | null) => {
         setIconPermissions(data?.allowedKeys ?? null);
       })
-      .catch(() => setIconPermissions(null))
-      .finally(() => setIconPermsLoaded(true));
-  }, [me?.user?.id, sessionData?.user?.id, loading]);
+      .catch(() => setIconPermissions(null));
+  }, [me?.user?.id, session?.user?.id, loading]);
 
   // Determine if this is a solo user (only member of their company)
   const [isSolo, setIsSolo] = useState(false);
@@ -2154,7 +2255,7 @@ export default function HomeScreen() {
   const [activeStatusKey, setActiveStatusKey] = useState(0);
   const activeStatus = useActiveStatus(activeStatusKey);
 
-  const name = sessionData?.user?.name ?? me?.user?.name ?? '';
+  const name = session?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
 
   const hour = new Date().getHours();
@@ -2338,7 +2439,7 @@ export default function HomeScreen() {
         titleIcon={LayoutDashboard}
         titleIconClass="text-orange-500"
       >
-        <DashboardBanner userId={sessionData?.user?.id ?? 'anon'} />
+        <DashboardBanner userId={session?.user?.id ?? 'anon'} />
         <div className="mt-4">
           <KpiWidgets />
         </div>

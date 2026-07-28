@@ -702,6 +702,8 @@ import job_cards_id_put from "./api/job-cards/[id]/PUT.js";
 import job_cards_id_delete from "./api/job-cards/[id]/DELETE.js";
 import job_cards_id_invoice_post from "./api/job-cards/[id]/invoice/POST.js";
 import job_cards_id_convert_post from "./api/job-cards/[id]/convert/POST.js";
+import job_cards_id_photos_post from "./api/job-cards/[id]/photos/POST.js";
+import job_cards_id_photos_photoid_delete from "./api/job-cards/[id]/photos/[photoId]/DELETE.js";
 // New endpoints — sign-in history, fleet usage export, supervisor force-close
 import signin_history_get from "./api/signin-history/GET.js";
 import fleet_id_usage_export_get from "./api/fleet/[id]/usage-export/GET.js";
@@ -3090,6 +3092,8 @@ app.put("/api/job-cards/:id", job_cards_id_put);
 app.delete("/api/job-cards/:id", job_cards_id_delete);
 app.post("/api/job-cards/:id/invoice", job_cards_id_invoice_post);
 app.post("/api/job-cards/:id/convert", job_cards_id_convert_post);
+app.post("/api/job-cards/:id/photos", job_cards_id_photos_post);
+app.delete("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoid_delete);
 app.get("/api/secure-share", secure_share_get_590);
 app.post("/api/secure-share", secure_share_post_591);
 app.delete("/api/secure-share/:id", secure_share_id_delete_592);

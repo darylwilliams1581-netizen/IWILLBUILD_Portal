@@ -10,8 +10,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import PortalSidebar from '@/components/PortalSidebar';
 import {
   Zap, Plus, Search, X, ChevronRight, RefreshCw,
-  FileText, CheckCircle2, Clock, AlertCircle, Receipt,
-  ArrowRightLeft, Filter, Download,
+  CheckCircle2, Clock, AlertCircle, Receipt,
+  ArrowRightLeft, Camera,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -85,16 +85,9 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
     customerId: '',
     customerNameOverride: '',
     siteAddress: '',
-    contactPerson: '',
-    contactPhone: '',
-    poNumber: '',
-    serviceDate: '',
+    serviceDate: new Date().toISOString().slice(0, 10),
     assignedUserId: '',
-    assignedName: '',
     workDescription: '',
-    labourHours: '',
-    labourRate: '',
-    notes: '',
   });
 
   useEffect(() => {
@@ -122,11 +115,7 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
       const body: Record<string, unknown> = {
         workDescription: form.workDescription,
         siteAddress: form.siteAddress || undefined,
-        contactPerson: form.contactPerson || undefined,
-        contactPhone: form.contactPhone || undefined,
-        poNumber: form.poNumber || undefined,
         serviceDate: form.serviceDate || undefined,
-        notes: form.notes || undefined,
         status: 'draft',
       };
       if (form.customerId) body.customerId = Number(form.customerId);
@@ -136,8 +125,6 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
         const m = team.find(t => t.id === form.assignedUserId);
         if (m) body.assignedName = m.name;
       }
-      if (form.labourHours) body.labourHours = Number(form.labourHours);
-      if (form.labourRate) body.labourRate = Number(form.labourRate);
 
       const res = await fetch('/api/job-cards', {
         method: 'POST',
@@ -149,7 +136,7 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
       if (!res.ok) throw new Error(data.error ?? 'Failed to create');
       onCreated(data.jobCard!.id);
       onClose();
-      setForm({ customerId: '', customerNameOverride: '', siteAddress: '', contactPerson: '', contactPhone: '', poNumber: '', serviceDate: '', assignedUserId: '', assignedName: '', workDescription: '', labourHours: '', labourRate: '', notes: '' });
+      setForm({ customerId: '', customerNameOverride: '', siteAddress: '', serviceDate: new Date().toISOString().slice(0, 10), assignedUserId: '', workDescription: '' });
     } catch (err) {
       setError(String((err as Error).message));
     } finally {
@@ -176,7 +163,7 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
           </button>
         </div>
 
-        {/* Body */}
+        {/* Body — lean create: customer + site + work + worker. Labour/materials added after in edit. */}
         <form id="create-jc-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
           {error && (
             <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -185,33 +172,29 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
             </div>
           )}
 
-          {/* Customer */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Customer</label>
-              <select
-                value={form.customerId}
-                onChange={e => set('customerId', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              >
-                <option value="">— Select customer —</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Or type name</label>
+          {/* Customer — prefer existing record */}
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Customer</label>
+            <select
+              value={form.customerId}
+              onChange={e => set('customerId', e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+            >
+              <option value="">— Select customer —</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {!form.customerId && (
               <input
                 type="text"
                 value={form.customerNameOverride}
                 onChange={e => set('customerNameOverride', e.target.value)}
-                placeholder="Free-text customer name"
-                disabled={!!form.customerId}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent disabled:opacity-40"
+                placeholder="Or type a one-off customer name…"
+                className="mt-2 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
-            </div>
+            )}
           </div>
 
-          {/* Site + Contact */}
+          {/* Site + Service date */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Site address</label>
@@ -220,30 +203,6 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
                 value={form.siteAddress}
                 onChange={e => set('siteAddress', e.target.value)}
                 placeholder="123 Main St"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Contact person</label>
-              <input
-                type="text"
-                value={form.contactPerson}
-                onChange={e => set('contactPerson', e.target.value)}
-                placeholder="John Smith"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* PO + Service date */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">PO number</label>
-              <input
-                type="text"
-                value={form.poNumber}
-                onChange={e => set('poNumber', e.target.value)}
-                placeholder="Optional"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
@@ -272,34 +231,6 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
             />
           </div>
 
-          {/* Labour */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Labour hours</label>
-              <input
-                type="number"
-                min="0"
-                step="0.25"
-                value={form.labourHours}
-                onChange={e => set('labourHours', e.target.value)}
-                placeholder="0.00"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Labour rate ($/hr)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.labourRate}
-                onChange={e => set('labourRate', e.target.value)}
-                placeholder="0.00"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
-            </div>
-          </div>
-
           {/* Assigned worker */}
           <div>
             <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Assigned worker</label>
@@ -313,17 +244,7 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
             </select>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={e => set('notes', e.target.value)}
-              rows={2}
-              placeholder="Internal notes…"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none"
-            />
-          </div>
+          <p className="text-[11px] text-gray-400 -mt-1">Labour, materials, PO number and completion details can be added after creation.</p>
         </form>
 
         {/* Footer */}
@@ -353,7 +274,6 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function JobCardsPage() {
   const navigate = useNavigate();
-  const { isAdmin } = usePermissions();
 
   const [cards, setCards] = useState<JobCard[]>([]);
   const [total, setTotal] = useState(0);
@@ -541,6 +461,7 @@ export default function JobCardsPage() {
                   <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden xl:table-cell">Worker</th>
                   <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Status</th>
                   <th className="text-right px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden md:table-cell">Total</th>
+                  <th className="text-center px-3 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden lg:table-cell w-12">Photos</th>
                   <th className="w-8" />
                 </tr>
               </thead>
@@ -588,6 +509,14 @@ export default function JobCardsPage() {
                         <span className="text-[13px] font-semibold text-gray-700">
                           {total > 0 ? fmtCurrency(total) : '—'}
                         </span>
+                      </td>
+                      <td className="px-3 py-3 text-center hidden lg:table-cell">
+                        {card.photo_count > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                            <Camera size={11} />
+                            {card.photo_count}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-2 py-3">
                         <ChevronRight size={14} className="text-gray-300" />
