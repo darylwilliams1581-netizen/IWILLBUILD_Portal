@@ -1,8 +1,8 @@
 /**
  * GET /api/scheduler/tasks
  *
- * Returns all non-cancelled job tasks for the caller's company,
- * joined with job name and job number. Used by the Scheduler Tasks view.
+ * Returns all non-cancelled tasks for the caller's company.
+ * Tasks may be linked to a job (jobId set) or general (jobId null).
  *
  * Response: { tasks: SchedulerTask[] }
  *
@@ -15,8 +15,9 @@
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
-import { jobTodos, jobs, profiles } from '../../../db/schema.js';
-import { eq, and, ne, asc } from 'drizzle-orm';
+import { profiles } from '../../../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -34,33 +35,33 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const rows = await db
-      .select({
-        id:             jobTodos.id,
-        jobId:          jobTodos.jobId,
-        jobName:        jobs.name,
-        jobNumber:      jobs.jobNumber,
-        title:          jobTodos.title,
-        description:    jobTodos.description,
-        startDate:      jobTodos.startDate,
-        dueDate:        jobTodos.dueDate,
-        status:         jobTodos.status,
-        assignedUserId: jobTodos.assignedUserId,
-        assignedName:   jobTodos.assignedName,
-        notes:          jobTodos.notes,
-        createdAt:      jobTodos.createdAt,
-      })
-      .from(jobTodos)
-      .innerJoin(jobs, eq(jobTodos.jobId, jobs.id))
-      .where(
-        and(
-          eq(jobTodos.companyId, profile.companyId),
-          ne(jobTodos.status, 'Cancelled'),
-        )
-      )
-      .orderBy(asc(jobTodos.dueDate), asc(jobTodos.startDate), asc(jobTodos.id));
+    // LEFT JOIN so tasks with no job_id are included
+    const [rows] = await db.execute(sql`
+      SELECT
+        t.id,
+        t.job_id          AS jobId,
+        j.name            AS jobName,
+        j.job_number      AS jobNumber,
+        t.title,
+        t.description,
+        t.start_date      AS startDate,
+        t.due_date        AS dueDate,
+        t.status,
+        t.assigned_user_id AS assignedUserId,
+        t.assigned_name   AS assignedName,
+        t.notes,
+        t.created_at      AS createdAt
+      FROM job_todos t
+      LEFT JOIN jobs j ON j.id = t.job_id
+      WHERE t.company_id = ${profile.companyId}
+        AND t.status != 'Cancelled'
+      ORDER BY
+        t.due_date   ASC,
+        t.start_date ASC,
+        t.id         ASC
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    return res.json({ tasks: rows });
+    return res.json({ tasks: rows ?? [] });
   } catch (err) {
     console.error('GET /api/scheduler/tasks error:', err);
     return res.status(500).json({ error: 'Failed to load tasks' });

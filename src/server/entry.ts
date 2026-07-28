@@ -622,6 +622,8 @@ import scheduler_crew_get_586 from "./api/scheduler/crew/GET";
 import scheduler_jobs_get_587 from "./api/scheduler/jobs/GET";
 import scheduler_jobs_id_reschedule_patch_588 from "./api/scheduler/jobs/[id]/reschedule/PATCH";
 import scheduler_tasks_get_589 from "./api/scheduler/tasks/GET";
+import tasks_post from "./api/tasks/POST";
+import tasks_id_put from "./api/tasks/[id]/PUT";
 import secure_share_get_590 from "./api/secure-share/GET";
 import secure_share_post_591 from "./api/secure-share/POST";
 import secure_share_id_delete_592 from "./api/secure-share/[id]/DELETE";
@@ -1308,6 +1310,10 @@ async function runStartupMigrations() {
     { table: 'job_todos', column: 'start_date',        definition: 'VARCHAR(20) NULL' },
     { table: 'job_todos', column: 'assigned_user_id',  definition: 'VARCHAR(36) NULL' },
     { table: 'job_todos', column: 'assigned_name',     definition: 'VARCHAR(255) NULL' },
+    { table: 'job_todos', column: 'notes',             definition: 'TEXT NULL' },
+    // ── job_todos: general tasks — job_id becomes optional ───────────────────
+    // We cannot ALTER a NOT NULL FK column to NULL via colsToEnsure (it's ADD COLUMN only).
+    // The actual nullable migration runs in the dedicated block below.
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1333,6 +1339,47 @@ async function runStartupMigrations() {
         console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, msg);
       }
     }
+  }
+
+  // ── 2b. Make job_todos.job_id nullable (general tasks support) ───────────────
+  // This is an ALTER COLUMN (not ADD COLUMN) so it can't go through colsToEnsure.
+  // We check the current IS_NULLABLE state and only run if still NOT NULL.
+  try {
+    const [colInfo] = await db.execute(sql.raw(
+      "SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS " +
+      "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_todos' AND COLUMN_NAME = 'job_id'"
+    )) as unknown as [Array<{ IS_NULLABLE: string }>, unknown];
+    if (colInfo?.[0]?.IS_NULLABLE === 'NO') {
+      // Drop the FK constraint first (MySQL requires this before making the column nullable)
+      // Find the FK name dynamically
+      const [fkRows] = await db.execute(sql.raw(
+        "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_todos' " +
+        "AND COLUMN_NAME = 'job_id' AND REFERENCED_TABLE_NAME IS NOT NULL"
+      )) as unknown as [Array<{ CONSTRAINT_NAME: string }>, unknown];
+      if (fkRows?.length) {
+        for (const row of fkRows) {
+          try {
+            await db.execute(sql.raw(`ALTER TABLE \`job_todos\` DROP FOREIGN KEY \`${row.CONSTRAINT_NAME}\``));
+            console.log(`[startup-migration] Dropped FK ${row.CONSTRAINT_NAME} from job_todos`);
+          } catch { /* ignore if already gone */ }
+        }
+      }
+      // Now make job_id nullable and re-add FK with ON DELETE SET NULL
+      await db.execute(sql.raw(
+        "ALTER TABLE `job_todos` MODIFY COLUMN `job_id` INT NULL"
+      ));
+      // Re-add FK with SET NULL so deleting a job nullifies tasks rather than cascading
+      try {
+        await db.execute(sql.raw(
+          "ALTER TABLE `job_todos` ADD CONSTRAINT `fk_job_todos_job_id` " +
+          "FOREIGN KEY (`job_id`) REFERENCES `jobs`(`id`) ON DELETE SET NULL"
+        ));
+      } catch { /* FK may already exist or jobs table may not exist yet */ }
+      console.log('[startup-migration] job_todos.job_id is now nullable (general tasks enabled)');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] job_todos nullable migration warning:', String((e as Error)?.message ?? e));
   }
 
   // ── 3. Ensure performance indexes exist (idempotent — checks INFORMATION_SCHEMA first) ──
@@ -2915,6 +2962,9 @@ app.get("/api/scheduler/crew", scheduler_crew_get_586);
 app.get("/api/scheduler/jobs", scheduler_jobs_get_587);
 app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_patch_588);
 app.get("/api/scheduler/tasks", scheduler_tasks_get_589);
+// General tasks (job-optional)
+app.post("/api/tasks", tasks_post);
+app.put("/api/tasks/:id", tasks_id_put);
 app.get("/api/secure-share", secure_share_get_590);
 app.post("/api/secure-share", secure_share_post_591);
 app.delete("/api/secure-share/:id", secure_share_id_delete_592);
