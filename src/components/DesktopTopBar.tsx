@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Terminal, Bot, HelpCircle, UserCircle, CreditCard } from 'lucide-react';
+import { LogOut, Terminal, Bot, UserCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
@@ -37,7 +37,7 @@ function getGreeting(name: string): { eyebrow: string; headline: string } {
 }
 
 export default function DesktopTopBar() {
-  const { me, isAdmin, isOwner, isPlatformOwner, loading: permsLoading } = usePermissions();
+  const { me, isPlatformOwner } = usePermissions();
   const navigate = useNavigate();
 
   const firstName =
@@ -51,7 +51,6 @@ export default function DesktopTopBar() {
     '';
 
   const isOwnerEmail = me?.user?.email?.toLowerCase() === OWNER_EMAIL;
-  const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
 
   const { eyebrow, headline } = getGreeting(firstName);
 
@@ -170,31 +169,6 @@ export default function DesktopTopBar() {
           </>
         )}
 
-        {/* Admin tools */}
-        {canSeeAdmin && (
-          <>
-            <Link
-              to="/team"
-              title="Team"
-              style={pillLink}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
-            >
-              <UserCircle size={13} /><span>Team</span>
-            </Link>
-            <Link
-              to="/billing"
-              title="Billing"
-              style={pillLink}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
-            >
-              <CreditCard size={13} /><span>Billing</span>
-            </Link>
-            {divider}
-          </>
-        )}
-
         {/* Notification bell */}
         <NotificationBell collapsed={false} onTopBar={false} />
 
@@ -231,25 +205,6 @@ export default function DesktopTopBar() {
         >
           <LogOut size={15} />
         </button>
-
-        {/* Help — accent pill */}
-        <Link
-          to="/help"
-          title="Help & Support"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '6px 13px', borderRadius: 9, textDecoration: 'none',
-            fontSize: 12, fontWeight: 800, color: '#ffffff',
-            background: '#7c3aed',
-            border: '1px solid rgba(167,139,250,0.4)',
-            transition: 'background 0.15s', flexShrink: 0,
-            letterSpacing: '-0.01em',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#6d28d9'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#7c3aed'; }}
-        >
-          <HelpCircle size={13} /><span>Help</span>
-        </Link>
       </div>
     </div>
   );

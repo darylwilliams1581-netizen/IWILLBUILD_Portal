@@ -32,6 +32,9 @@ import {
   History,
   Truck,
   ShieldAlert,
+  UserCircle,
+  CreditCard,
+  HelpCircle,
 } from 'lucide-react';
 
 interface DockItem {
@@ -41,6 +44,7 @@ interface DockItem {
   color: string;
   adminOnly?: boolean;
   ownerOnly?: boolean;
+  dividerBefore?: boolean;
 }
 
 const ALL_ITEMS: DockItem[] = [
@@ -66,6 +70,10 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Lists',           icon: TableProperties, href: '/lists',                color: '#0891b2' },
   { label: 'User Logs',       icon: ScrollText,      href: '/user-logs',            color: '#64748b', adminOnly: true },
   { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#64748b', adminOnly: true },
+  // ── account / help ────────────────────────────────────────────────────────
+  { label: 'Team',    icon: UserCircle,  href: '/team',    color: '#7c3aed', adminOnly: true,  dividerBefore: true },
+  { label: 'Billing', icon: CreditCard,  href: '/billing', color: '#0284c7', adminOnly: true },
+  { label: 'Help',    icon: HelpCircle,  href: '/help',    color: '#059669' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -226,7 +234,19 @@ export default function DesktopDock() {
           }}
         >
           {items.map((item) => (
-            <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+            <React.Fragment key={item.href + item.label}>
+              {item.dividerBefore && (
+                <div style={{
+                  width: 1,
+                  height: 22,
+                  background: 'rgba(255,255,255,0.25)',
+                  flexShrink: 0,
+                  marginLeft: 4,
+                  marginRight: 4,
+                }} aria-hidden="true" />
+              )}
+              <DockIcon item={item} active={isActive(item.href)} />
+            </React.Fragment>
           ))}
         </div>
       </nav>
