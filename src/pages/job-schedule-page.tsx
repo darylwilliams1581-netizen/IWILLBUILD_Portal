@@ -14,6 +14,8 @@ import {
   ChevronRight, Flag, Calendar, Home,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -322,7 +324,9 @@ export default function JobSchedulePage() {
   const progress = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage the milestone schedule for this job." />
