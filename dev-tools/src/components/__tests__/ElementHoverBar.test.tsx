@@ -71,11 +71,16 @@ vi.mock('../../hooks/useTextFix', () => ({
 vi.mock('../TextFixPopover', () => ({ default: () => null, TextFixPopover: () => null }));
 vi.mock('../TextFixButton', () => ({ default: () => null }));
 vi.mock('../QuickEditBar', () => ({ QuickEditBar: () => null }));
-vi.mock('../TextAlignButton', () => ({ default: () => null }));
-vi.mock('../BoldButton', () => ({ default: () => null }));
-vi.mock('../ItalicButton', () => ({ default: () => null }));
-vi.mock('../TextColorButton', () => ({ default: () => null }));
-vi.mock('../TextSizeStepperButton', () => ({ default: () => null }));
+// Text-formatting buttons are stubbed as titled buttons (not null) so their
+// presence/absence is assertable — this is how the loop-rendered gating tests
+// observe whether the formatting group renders.
+vi.mock('../TextAlignButton', () => ({ default: () => <button title="mock-textalign" /> }));
+vi.mock('../BoldButton', () => ({ default: () => <button title="mock-bold" /> }));
+vi.mock('../ItalicButton', () => ({ default: () => <button title="mock-italic" /> }));
+vi.mock('../TextColorButton', () => ({ default: () => <button title="mock-textcolor" /> }));
+vi.mock('../TextSizeStepperButton', () => ({ default: () => <button title="mock-textsize" /> }));
+vi.mock('../FontFamilyButton', () => ({ default: () => <button title="mock-fontfamily" /> }));
+vi.mock('../ListTypeButton', () => ({ default: () => <button title="mock-listtype" /> }));
 vi.mock('../FormatOverrideControls', () => ({
   default: (props: unknown) => {
     formatOverrideControlsMock.render(props);
@@ -373,6 +378,66 @@ describe('ElementHoverBar - bound text formatting gating', () => {
 
     expect(await screen.findByRole('button', { name: 'Add as reference' })).not.toBeNull();
     expect(screen.queryByTitle('Bound format controls')).toBeNull();
+  });
+});
+
+// AIROBUILD-4419: clicking a list item in a .map()-rendered list must still
+// show the text-formatting toolbar. Previously the loop-rendered guard
+// suppressed it (all mapped <li> share one data-dev-id/line).
+describe('ElementHoverBar - loop-rendered text formatting (AIROBUILD-4419)', () => {
+  function appendLoopLis(): HTMLElement {
+    const first = document.createElement('li');
+    const second = document.createElement('li');
+    (['First item', 'Second item'] as const).forEach((text, i) => {
+      const li = i === 0 ? first : second;
+      li.textContent = text;
+      li.setAttribute('data-dev-id', 'loopid');
+      li.setAttribute('data-dev-line', '9');
+      li.setAttribute('data-dev-file', '/app/src/pages/index.tsx');
+      li.getBoundingClientRect = vi.fn(() => ({
+        top: 100, left: 100, width: 200, height: 50, right: 300, bottom: 150, x: 100, y: 100, toJSON: () => {},
+      } as DOMRect));
+      document.body.appendChild(li);
+    });
+    return first;
+  }
+
+  it('shows the text-formatting toolbar for a loop-rendered <li>', async () => {
+    const detection = await import('../../utils/element-detection');
+    vi.mocked(detection.isTextElement).mockReturnValue(true);
+    vi.mocked(detection.isTextBlockElement).mockReturnValue(true);
+
+    const first: HTMLElement = appendLoopLis();
+    renderHoverBar({ type: 'content', element: first });
+    openToolbar(first);
+
+    expect(await screen.findByTitle('mock-bold')).not.toBeNull();
+    expect(screen.getByTitle('mock-italic')).not.toBeNull();
+    expect(screen.getByTitle('mock-textcolor')).not.toBeNull();
+    expect(screen.getByTitle('mock-textsize')).not.toBeNull();
+    expect(screen.getByTitle('mock-fontfamily')).not.toBeNull();
+    expect(screen.getByTitle('mock-textalign')).not.toBeNull();
+  });
+
+  it('still shows the toolbar for a single-instance (non-loop) <li>', async () => {
+    const detection = await import('../../utils/element-detection');
+    vi.mocked(detection.isTextElement).mockReturnValue(true);
+    vi.mocked(detection.isTextBlockElement).mockReturnValue(true);
+
+    const li: HTMLElement = document.createElement('li');
+    li.textContent = 'Only item';
+    li.setAttribute('data-dev-id', 'uniqueid');
+    li.setAttribute('data-dev-line', '9');
+    li.setAttribute('data-dev-file', '/app/src/pages/index.tsx');
+    li.getBoundingClientRect = vi.fn(() => ({
+      top: 100, left: 100, width: 200, height: 50, right: 300, bottom: 150, x: 100, y: 100, toJSON: () => {},
+    } as DOMRect));
+    document.body.appendChild(li);
+
+    renderHoverBar({ type: 'content', element: li });
+    openToolbar(li);
+
+    expect(await screen.findByTitle('mock-bold')).not.toBeNull();
   });
 });
 

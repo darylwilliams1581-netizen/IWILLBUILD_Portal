@@ -824,11 +824,13 @@ export default function ElementHoverBar({
 
   // Bold/Italic: show for any text-bearing element (less strict than isTextEditable
   // which also rejects data-dev-dynamic — we only need class toggle, not text editing).
-  // Suppress for loop-rendered elements (multiple DOM nodes from one source element).
+  // Loop-rendered text (e.g. list items from one .map source) formats all
+  // instances uniformly — the shared source node is edited and HMR re-renders
+  // every sibling — so allow it rather than hiding the toolbar (AIROBUILD-4419).
   const isLoopRendered = isLoopRenderedElement(element);
   const boundFormatElement = !isImage ? findFormatOverrideElement(element) : null;
   const isBoundTextFormatEligible = !isCommerceMutationBlocked && !!boundFormatElement && !!boundFormatElement.textContent?.trim();
-  const elementIsText = !isCommerceMutationBlocked && !isImage && !isLoopRendered && !isBoundTextFormatEligible && isTextElement(element) && !!element.textContent?.trim();
+  const elementIsText = !isCommerceMutationBlocked && !isImage && !isBoundTextFormatEligible && isTextElement(element) && !!element.textContent?.trim();
   const targetEl = toolbarElementRef.current || element;
   // Fix is available on any text element with non-trivial text content. The
   // agent prompt handles HTML preservation, and the commit always goes
