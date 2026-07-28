@@ -600,7 +600,7 @@ export default function BillingPage() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div className="w-full px-4 sm:px-6 py-8">
 
           {/* Banners */}
           <AnimatePresence>
