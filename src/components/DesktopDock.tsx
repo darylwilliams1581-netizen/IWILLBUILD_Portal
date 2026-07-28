@@ -191,10 +191,9 @@ export default function DesktopDock() {
         className="hidden md:flex"
         style={{
           position: 'fixed',
-          top: 22,
+          top: 56,
           left: 12,
           right: 12,
-          transform: 'translateY(-50%)',
           zIndex: 1050,
           background: 'rgba(124,58,237,0.97)',
           backdropFilter: 'blur(16px)',
