@@ -3338,12 +3338,6 @@ app.get("/sitemap.xml", (req, res) => {
 
 app.get("/llms.txt", llmsTxtHandler);
 
-// ── Risk Register ─────────────────────────────────────────────────────────────
-app.get("/api/risk-register",     risk_register_get);
-app.post("/api/risk-register",    risk_register_post);
-app.get("/api/risk-register/:id", risk_register_id_get);
-app.put("/api/risk-register/:id", risk_register_id_put);
-
 if (import.meta.env.PROD && !process.env.VITEST) {
 	const __dirname = dirname(fileURLToPath(import.meta.url));
 	const clientDir = join(__dirname, "client");
