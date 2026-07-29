@@ -76,6 +76,16 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (!request.url.startsWith('http')) return;
 
+  // ── Skip entirely when running inside a Capacitor native shell ───────────
+  // Capacitor WebViews use capacitor://localhost as their origin. The SW
+  // should never intercept or cache those requests — doing so can cause a
+  // white screen on cold launch by serving a stale shell or failing the
+  // navigate fetch against an origin the SW can't reach.
+  if (
+    request.url.startsWith('capacitor://') ||
+    self.location.origin === 'capacitor://localhost'
+  ) return;
+
   // ── Frozen snapshot rewrite ──────────────────────────────────────────────
   // Intercept ANY src/*.tsx HMR URL with the frozen ?t= param and strip it
   // so Vite serves the current (fixed) version of the file.

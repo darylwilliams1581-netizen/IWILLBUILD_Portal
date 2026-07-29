@@ -11,6 +11,7 @@ import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import RootLayout from './layouts/RootLayout';
 import { routes } from './routes';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
+import CapacitorInit from '@/components/CapacitorInit';
 
 const CookieBanner = lazy(() =>
   import('@/components/CookieBanner').catch((error) => {
@@ -119,6 +120,7 @@ export default function App() {
 
   return (
     <>
+      <CapacitorInit />
       <ImpersonationBanner />
       <StaleShimBoundary>
         <RouterProvider router={router} />
