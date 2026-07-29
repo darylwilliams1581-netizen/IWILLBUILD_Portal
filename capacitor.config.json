@@ -4,11 +4,11 @@
   "webDir": "dist/client",
   "bundledWebRuntime": false,
   "ios": {
-    "buildNumber": "3"
+    "buildNumber": "4"
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 0,
+      "launchShowDuration": 3000,
       "launchAutoHide": false,
       "backgroundColor": "#111827",
       "androidSplashResourceName": "splash",
