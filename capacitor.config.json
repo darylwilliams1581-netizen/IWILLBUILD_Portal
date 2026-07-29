@@ -2,5 +2,11 @@
   "appId": "com.iwillbuild.portal",
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "Geolocation": {
+      "NSLocationAlwaysAndWhenInUseUsageDescription": "IWILLBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.",
+      "NSLocationWhenInUseUsageDescription": "IWILLBUILD uses your location to show your position on the live map and record job site check-ins."
+    }
+  }
 }
