@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement } from 'react'
 
 vi.mock('../../utils/translations', () => ({
@@ -55,6 +55,22 @@ function submitQuickEdit(prompt: string): void {
 beforeEach(function setup() {
   cleanup()
   vi.clearAllMocks()
+  vi.stubGlobal('ResizeObserver', class ResizeObserver {
+    observe = vi.fn()
+    disconnect = vi.fn()
+  })
+  // jsdom (>=26) ships no PointerEvent; the drag helper needs clientX to
+  // propagate through pointer events.
+  vi.stubGlobal('PointerEvent', class PointerEvent extends MouseEvent {
+    pointerId: number
+    constructor(type: string, params: MouseEventInit & { pointerId?: number } = {}) {
+      super(type, params)
+      this.pointerId = params.pointerId ?? 0
+    }
+  })
+  // jsdom has no elementsFromPoint; pointer-up now resolves the boxed element.
+  // Default to empty; tests that assert resolution override this per-test.
+  document.elementsFromPoint = vi.fn(() => []) as typeof document.elementsFromPoint
   document.body.innerHTML = ''
   Object.defineProperty(document.documentElement, 'scrollWidth', { value: 1000, configurable: true })
   Object.defineProperty(document.documentElement, 'scrollHeight', { value: 800, configurable: true })
@@ -77,6 +93,13 @@ describe('AnnotationMode', function annotationModeTests() {
         number: 1,
         rect: { x: 10, y: 10, width: 100, height: 100 },
         prompt: 'fix this area',
+        // No element under the box (elementsFromPoint stubbed empty) → unresolved.
+        resolvedElement: {
+          resolved: false,
+          kind: null,
+          elementInfo: { tagName: '', className: '', id: '', textContent: '', selector: '' },
+          devContext: { fileName: '', componentName: '', lineNumber: 0 },
+        },
       },
     })
   })
@@ -87,7 +110,9 @@ describe('AnnotationMode', function annotationModeTests() {
     dragSelection(getOverlay(), 10, 10, 60, 60)
     submitQuickEdit('remove me')
 
-    const badge = document.querySelector('[data-airo-dev-tools=""]') as HTMLElement | null
+    // Target the badge by title — the annotation overlay now also carries
+    // data-airo-dev-tools (so hit-testing skips it), so that attr is ambiguous.
+    const badge = document.querySelector('[title="Remove selection"]') as HTMLElement | null
     if (!badge) throw new Error('selection badge not found')
     fireEvent.click(badge)
 
@@ -104,10 +129,13 @@ describe('AnnotationMode', function annotationModeTests() {
     dragSelection(getOverlay(), 10, 10, 60, 60)
     submitQuickEdit('first')
 
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'REMOVE_SELECTION', data: { number: 1 } },
-      source: window,
-    }))
+    // act() so React flushes the message-handler state update before asserting.
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'REMOVE_SELECTION', data: { number: 1 } },
+        source: window,
+      }))
+    })
 
     expect(document.querySelectorAll('[data-airo-annotation-overlay="true"] rect')).toHaveLength(0)
   })
@@ -118,10 +146,12 @@ describe('AnnotationMode', function annotationModeTests() {
     dragSelection(getOverlay(), 10, 10, 60, 60)
     submitQuickEdit('first')
 
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'CLEAR_ALL_SELECTIONS' },
-      source: window,
-    }))
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'CLEAR_ALL_SELECTIONS' },
+        source: window,
+      }))
+    })
 
     expect(document.querySelectorAll('[data-airo-annotation-overlay="true"] rect')).toHaveLength(0)
   })
@@ -132,14 +162,72 @@ describe('AnnotationMode', function annotationModeTests() {
     dragSelection(getOverlay(), 10, 300, 60, 360)
     submitQuickEdit('scroll target')
 
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'SCROLL_TO_SELECTION', data: { number: 1 } },
-      source: window,
-    }))
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'SCROLL_TO_SELECTION', data: { number: 1 } },
+        source: window,
+      }))
+    })
 
     expect(window.scrollTo).toHaveBeenCalledWith({
       top: 130,
       behavior: 'smooth',
     })
+  })
+
+  it('attaches a resolved image identity to the emitted payload', function resolvedImage() {
+    // A real media-slot <img> under an ancestor with dev source markers.
+    const wrapper: HTMLDivElement = document.createElement('div')
+    wrapper.setAttribute('data-dev-file', 'src/components/Hero.tsx')
+    wrapper.setAttribute('data-dev-line', '12')
+    const img: HTMLImageElement = document.createElement('img')
+    img.src = '/airo-assets/images/pages/home/hero'
+    wrapper.appendChild(img)
+    document.body.appendChild(wrapper)
+    document.elementsFromPoint = vi.fn(() => [img]) as typeof document.elementsFromPoint
+
+    render(createElement(AnnotationMode, { isActive: true }))
+    dragSelection(getOverlay(), 10, 10, 110, 110)
+    submitQuickEdit('make the hero bigger')
+
+    const call = sendMock.mock.calls.find(
+      (c) => (c[0] as { type?: string }).type === 'ANNOTATION_SELECTION_CREATED',
+    )
+    expect(call).toBeDefined()
+    const payload = (call![0] as {
+      data: {
+        resolvedElement?: {
+          resolved: boolean
+          kind: string | null
+          imageInfo?: { slotPath?: string | null }
+          elementInfo?: { selector?: string }
+        }
+      }
+    }).data
+    expect(payload.resolvedElement).toBeDefined()
+    expect(payload.resolvedElement?.resolved).toBe(true)
+    expect(payload.resolvedElement?.kind).toBe('image')
+    expect(payload.resolvedElement?.imageInfo?.slotPath).toBe('pages/home/hero')
+    expect(typeof payload.resolvedElement?.elementInfo?.selector).toBe('string')
+    expect(payload.resolvedElement?.elementInfo?.selector).not.toBe('')
+  })
+
+  it('emits an unresolved resolvedElement when the box is over empty space', function emptySpace() {
+    document.elementsFromPoint = vi.fn(() => []) as typeof document.elementsFromPoint
+
+    render(createElement(AnnotationMode, { isActive: true }))
+    dragSelection(getOverlay(), 10, 10, 110, 110)
+    submitQuickEdit('fix this area')
+
+    const call = sendMock.mock.calls.find(
+      (c) => (c[0] as { type?: string }).type === 'ANNOTATION_SELECTION_CREATED',
+    )
+    expect(call).toBeDefined()
+    const payload = (call![0] as {
+      data: { resolvedElement?: { resolved: boolean; kind: string | null } }
+    }).data
+    expect(payload.resolvedElement).toBeDefined()
+    expect(payload.resolvedElement?.resolved).toBe(false)
+    expect(payload.resolvedElement?.kind).toBeNull()
   })
 })

@@ -193,6 +193,17 @@ export interface RouteSnapshot {
   snapshot: unknown;
 }
 
+/** Serializable identity of the element under an annotation box. The media
+ *  slot path disambiguates repeated elements (e.g. mapped cards sharing a
+ *  source line). `resolved: false` means nothing was found under the box. */
+export interface ResolvedAnnotationElement {
+  resolved: boolean;
+  kind: "image" | "content" | null;
+  elementInfo: { tagName: string; className: string; id: string; textContent: string; selector: string };
+  devContext: { fileName: string; componentName: string; lineNumber: number };
+  imageInfo?: { type: "img" | "background"; currentUrl: string; alt: string; slotPath: string | null; isMediaSlot: boolean };
+}
+
 // ── Event map ─────────────────────────────────────────────────────────────
 
 export interface BusEventMap {
@@ -263,6 +274,8 @@ export interface BusEventMap {
       number: number;
       rect: { x: number; y: number; width: number; height: number };
       prompt: string;
+      // Absent on older dev-tools bundles (version skew).
+      resolvedElement?: ResolvedAnnotationElement | null;
     };
   };
   /** Sent when the user clicks a `.map`-backed element that is not yet content-backed.

@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { isOriginAllowed } from '../utils/postMessage'
-import { send } from '../utils/eventBus'
+import { send, type ResolvedAnnotationElement } from '../utils/eventBus'
+import { resolveAnchorInRect, type HoveredElement } from '../hooks/useImageHoverDetection'
+import { extractDevContext, generatePreciseSelector, getElementClassName } from '../utils/element-helpers'
 import { QuickEditBar } from './QuickEditBar'
 
 interface Box {
@@ -82,6 +84,49 @@ function getDocSize(): DocSize {
   }
 }
 
+// Serializable identity of the boxed element. Mirrors the click-to-select
+// path's buildContextData, plus the media slot path.
+function buildResolvedElement(hovered: HoveredElement | null): ResolvedAnnotationElement {
+  if (!hovered) {
+    return {
+      resolved: false,
+      kind: null,
+      elementInfo: { tagName: '', className: '', id: '', textContent: '', selector: '' },
+      devContext: { fileName: '', componentName: '', lineNumber: 0 },
+    }
+  }
+  const el = hovered.element
+  const dev = extractDevContext(el)
+  const isImg = hovered.type === 'image'
+  const resolved: ResolvedAnnotationElement = {
+    resolved: true,
+    kind: hovered.type,
+    elementInfo: {
+      tagName: el.tagName.toLowerCase(),
+      className: getElementClassName(el),
+      id: el.id,
+      textContent: isImg ? '' : (el.textContent || '').substring(0, 500),
+      selector: generatePreciseSelector(el),
+    },
+    devContext: {
+      fileName: dev?.fileName || '',
+      componentName: dev?.componentName || '',
+      lineNumber: dev?.lineNumber || 0,
+    },
+  }
+  if (hovered.type === 'image') {
+    const imgEl = el.tagName.toLowerCase() === 'img' ? (el as HTMLImageElement) : null
+    resolved.imageInfo = {
+      type: imgEl ? 'img' : 'background',
+      currentUrl: hovered.imageUrl,
+      alt: imgEl?.alt || '',
+      slotPath: hovered.slotPath,
+      isMediaSlot: hovered.isMediaSlot,
+    }
+  }
+  return resolved
+}
+
 interface BadgeProps {
   number: number
   onRemove: () => void
@@ -112,6 +157,8 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
   const [draft, setDraft] = useState<DraftBox | null>(null)
   const [docSize, setDocSize] = useState<DocSize>({ width: 0, height: 0 })
   const overlayRef = useRef<SVGSVGElement | null>(null)
+  // Element resolved under the current pending box, captured at pointer-up.
+  const pendingResolvedRef = useRef<HoveredElement | null>(null)
   // nextIdRef tracks the next internal ID (unique per component lifetime)
   const nextIdRef = useRef(1)
   // nextNumberRef tracks the next user-visible selection number
@@ -122,6 +169,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
       setSelections([])
       setPendingRect(null)
       setDraft(null)
+      pendingResolvedRef.current = null
       nextNumberRef.current = 1
       return
     }
@@ -206,6 +254,8 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
         currentY: event.clientY + window.scrollY,
       })
       if (finalized.width < MIN_BOX_SIZE || finalized.height < MIN_BOX_SIZE) return null
+      // Resolve now, while the DOM still matches what the user boxed (before typing).
+      pendingResolvedRef.current = resolveAnchorInRect(finalized, window.scrollX, window.scrollY)
       // Show QuickEditBar for this rect (don't finalize to selections yet)
       setPendingRect(finalized)
       return null
@@ -214,6 +264,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     overlayRef.current?.releasePointerCapture(event.pointerId)
+    pendingResolvedRef.current = null
     setDraft(null)
   }, [])
 
@@ -228,12 +279,15 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
         number: selNumber,
         rect: { x: pendingRect.x, y: pendingRect.y, width: pendingRect.width, height: pendingRect.height },
         prompt,
+        resolvedElement: buildResolvedElement(pendingResolvedRef.current),
       },
     })
+    pendingResolvedRef.current = null
     setPendingRect(null)
   }, [pendingRect])
 
   const handleQuickEditDismiss = useCallback(() => {
+    pendingResolvedRef.current = null
     setPendingRect(null)
   }, [])
 
@@ -274,6 +328,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
             pointerEvents: 'all',
           }}
           data-airo-annotation-overlay="true"
+          data-airo-dev-tools=""
         >
           {selections.map((sel) => (
             <rect

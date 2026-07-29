@@ -32,7 +32,7 @@ function deferToAbsorber(el: HTMLElement): HTMLElement {
   return absorber as HTMLElement;
 }
 
-function resolveHoverableAnchor(target: HTMLElement): HoveredElement | null {
+export function resolveHoverableAnchor(target: HTMLElement): HoveredElement | null {
   if (isDevToolsElement(target)) return null;
 
   const tag = target.tagName.toLowerCase();
@@ -77,7 +77,7 @@ function resolveHoverableAnchor(target: HTMLElement): HoveredElement | null {
 }
 
 // Wrapper that adds a stack-scan fallback when the direct target is a container (not direct text). Fixes the common "full-bleed content overlay covers hero carousel" pattern — the overlay absorbs the click and the image beneath is unreachable, so we probe elementsFromPoint for an image lower in the stack. Direct-text targets (h1, p, a, button, etc.) preserve their content-edit path — we only override on container-shaped hits.
-function resolveHoverableAnchorAtPoint(
+export function resolveHoverableAnchorAtPoint(
   target: HTMLElement,
   clientX: number,
   clientY: number,
@@ -99,6 +99,67 @@ function resolveHoverableAnchorAtPoint(
     if (anchor?.type === "image") return anchor;
   }
   return primary;
+}
+
+/**
+ * Resolve the element under a drawn annotation box. Boxes are sloppy, so we
+ * sample 9 points and take a majority vote instead of trusting one point.
+ * `box` is document coords; elementsFromPoint needs client coords (subtract
+ * scroll). Image hits beat content hits; within a kind the most-hit element
+ * wins, center (sampled first) breaking ties.
+ */
+export function resolveAnchorInRect(
+  box: { x: number; y: number; width: number; height: number },
+  scrollX: number,
+  scrollY: number,
+): HoveredElement | null {
+  const left = box.x - scrollX;
+  const top = box.y - scrollY;
+  const w = box.width;
+  const h = box.height;
+  const insetX = w * 0.15;
+  const insetY = h * 0.15;
+  const cx = left + w / 2;
+  const cy = top + h / 2;
+  // Center first so it wins ties; then edge-midpoints and inset corners.
+  const points: Array<[number, number]> = [
+    [cx, cy],
+    [cx, top + insetY],
+    [cx, top + h - insetY],
+    [left + insetX, cy],
+    [left + w - insetX, cy],
+    [left + insetX, top + insetY],
+    [left + w - insetX, top + insetY],
+    [left + insetX, top + h - insetY],
+    [left + w - insetX, top + h - insetY],
+  ];
+
+  const images = new Map<HTMLElement, { anchor: HoveredElement; count: number }>();
+  const contents = new Map<HTMLElement, { anchor: HoveredElement; count: number }>();
+
+  for (const [px, py] of points) {
+    const stack = document.elementsFromPoint(px, py);
+    const topEl = stack.find(
+      (el): el is HTMLElement => el instanceof HTMLElement && !isDevToolsElement(el),
+    );
+    if (!topEl) continue;
+    const anchor = resolveHoverableAnchorAtPoint(topEl, px, py);
+    if (!anchor) continue;
+    const bucket = anchor.type === "image" ? images : contents;
+    const existing = bucket.get(anchor.element);
+    if (existing) existing.count += 1;
+    else bucket.set(anchor.element, { anchor, count: 1 });
+  }
+
+  const pickTop = (m: Map<HTMLElement, { anchor: HoveredElement; count: number }>): HoveredElement | null => {
+    let best: { anchor: HoveredElement; count: number } | null = null;
+    for (const entry of m.values()) {
+      if (!best || entry.count > best.count) best = entry;
+    }
+    return best ? best.anchor : null;
+  };
+
+  return pickTop(images) ?? pickTop(contents);
 }
 
 function pointerLeftDocument(relatedTarget: EventTarget | null): boolean {
