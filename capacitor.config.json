@@ -1,4 +1,5 @@
 {
+  "_note": "This file is kept in sync with capacitor.config.ts for reference. cap sync reads capacitor.config.ts — edit that file, not this one.",
   "appId": "com.iwillbuild.portal",
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
@@ -11,8 +12,6 @@
       "launchShowDuration": 3000,
       "launchAutoHide": false,
       "backgroundColor": "#111827",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
       "showSpinner": false,
       "splashFullScreen": true,
       "splashImmersive": true

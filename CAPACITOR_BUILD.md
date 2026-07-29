@@ -64,17 +64,65 @@ npm run cap:run:android
 
 ## Production Configuration
 
-Before submitting to App Store / Play Store, update `capacitor.config.ts`:
+### ⚠️ server.url must be COMMENTED OUT for App Store builds
+
+`capacitor.config.ts` has `server.url` commented out by default. **Keep it that way.**
+
+When `server.url` is set, the WebView loads the app shell from the network on every
+cold launch. This causes a white screen on slow connections and violates App Store
+guidelines for apps that require a network connection to launch.
+
+For App Store / TestFlight builds: the app loads bundled assets from `dist/client`.
+API calls to `https://iwillbuild.com` still work normally via `fetch()`.
+
+For local LAN development only: uncomment `server.url` in `capacitor.config.ts`
+and set it to your machine's LAN IP (e.g. `http://192.168.1.x:5173`).
+
+---
+
+## iOS Build Number — How to Increment
+
+Apple rejects any upload where `CFBundleVersion` (CURRENT_PROJECT_VERSION) is ≤
+the last accepted build. You must increment it before every upload.
+
+### Build number history
+
+| Build | CFBundleVersion | Result |
+|-------|----------------|--------|
+| 1 | 1 | Rejected — missing NSLocation strings |
+| 2 | 2 | Accepted by App Store Connect |
+| 3 | 2 | Rejected — duplicate CFBundleVersion |
+| 3 (retry) | 3 | Accepted |
+| **4** | **4** | **Next upload — current value in config** |
+
+### How to increment for future uploads
+
+**One file to edit:** `capacitor.config.ts`, line with `const IOS_BUILD_NUMBER = N`
 
 ```ts
-server: {
-  url: 'https://iwillbuild.com',  // ← uncomment this line
-  cleartext: false,
-}
+// Before upload 5:
+const IOS_BUILD_NUMBER = 5;
+
+// Before upload 6:
+const IOS_BUILD_NUMBER = 6;
 ```
 
-This makes the native app load your live server rather than bundled assets,
-so you can update the app without going through App Store review for most changes.
+Then:
+```bash
+npm run build:cap   # rebuilds web assets + runs cap sync
+# cap sync writes the new buildNumber into ios/App/App.xcodeproj/project.pbxproj
+```
+
+Then archive in Xcode → Distribute → App Store Connect.
+
+### Why this works
+
+`capacitor.config.ts` is the **single source of truth**. When `cap sync` runs, it
+reads `ios.buildNumber` from this config and writes it into:
+- `ios/App/App.xcodeproj/project.pbxproj` → `CURRENT_PROJECT_VERSION`
+- `ios/App/App/Info.plist` → `CFBundleVersion`
+
+You never need to edit `project.pbxproj` or `Info.plist` manually.
 
 ---
 

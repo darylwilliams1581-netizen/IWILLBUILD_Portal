@@ -3,8 +3,31 @@ import type { CapacitorConfig } from '@capacitor/cli';
 /**
  * Capacitor configuration for IWILLBUILD Portal
  *
- * For local development: set server.url to your local dev server
- * For production builds: remove server.url so the app uses bundled assets
+ * ── Build number management ───────────────────────────────────────────────────
+ * CURRENT_PROJECT_VERSION (CFBundleVersion) must increase with every App Store
+ * upload. Apple rejects any build where this number is ≤ the last accepted build.
+ *
+ * History:
+ *   Build 1 — rejected (missing NSLocation strings)
+ *   Build 2 — accepted by App Store Connect
+ *   Build 3 — rejected (duplicate CFBundleVersion=2, then fixed and re-uploaded)
+ *   Build 4 — NEXT UPLOAD (current value below)
+ *
+ * ── How to increment for future uploads ──────────────────────────────────────
+ * Before every new Appflow / Xcode archive:
+ *   1. Increase IOS_BUILD_NUMBER by 1
+ *   2. Commit the change
+ *   3. Run: npm run build:cap  (builds web assets + cap sync)
+ *   4. Archive in Xcode → Distribute → App Store Connect
+ *
+ * MARKETING_VERSION stays 1.0 unless the user explicitly requests a version bump.
+ *
+ * ── Server config note ───────────────────────────────────────────────────────
+ * For App Store / TestFlight builds: server.url must be ABSENT (commented out).
+ * The native app loads bundled assets from dist/client — no network dependency
+ * on first paint. API calls go to https://iwillbuild.com via normal fetch().
+ *
+ * For local development only: uncomment server.url and set to your LAN IP.
  *
  * Build steps:
  *   npm run build:cap        — builds web assets for Capacitor
@@ -12,6 +35,11 @@ import type { CapacitorConfig } from '@capacitor/cli';
  *   npx cap open ios         — opens Xcode
  *   npx cap open android     — opens Android Studio
  */
+
+// ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
+// Increment this before every App Store / TestFlight upload.
+// Current: 4 (next after last accepted build 2, with build 3 having been rejected)
+const IOS_BUILD_NUMBER = 4;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
@@ -22,24 +50,32 @@ const config: CapacitorConfig = {
   webDir: 'dist/client',
 
   // ── Server config ─────────────────────────────────────────────────────────
-  // During development, point at your live server so API calls work.
-  // Comment this out for production App Store / Play Store builds.
-  server: {
-    url: 'https://iwillbuild.com',        // ← live URL mode: app shell loads from production
-    // url: 'http://192.168.1.x:5173',  // ← uncomment for local dev (use your LAN IP)
-    cleartext: false,                   // disallow plain HTTP in production
-    allowNavigation: ['iwillbuild.com', '*.iwillbuild.com'],
-  },
+  // ⚠️  PRODUCTION / APP STORE BUILDS: keep server.url commented out.
+  //     The app must load bundled assets — not a remote URL — so the WebView
+  //     paints immediately without a network round-trip. A live server.url
+  //     causes a white screen on slow networks and is rejected by App Store
+  //     review guidelines for apps that require a network connection to launch.
+  //
+  // server: {
+  //   url: 'https://iwillbuild.com',     // ← LOCAL DEV ONLY — uncomment for LAN testing
+  //   cleartext: false,
+  //   allowNavigation: ['iwillbuild.com', '*.iwillbuild.com'],
+  // },
 
   // ── iOS specific ──────────────────────────────────────────────────────────
   ios: {
     contentInset: 'automatic',
     backgroundColor: '#111827',
 
+    // ── Build number — MUST increase with every App Store upload ─────────────
+    // This sets CURRENT_PROJECT_VERSION / CFBundleVersion in project.pbxproj
+    // when `npx cap sync` runs. MARKETING_VERSION (CFBundleShortVersionString)
+    // stays 1.0 and is controlled in Xcode / Appflow separately.
+    buildNumber: String(IOS_BUILD_NUMBER),
+
     // ── Info.plist usage description strings ─────────────────────────────────
-    // These are injected by Capacitor / Appflow into Info.plist during `cap sync`.
-    // Apple requires every permission your app requests to have a usage string.
-    // Strings must explain WHY the app needs the permission — vague strings cause
+    // Injected into Info.plist by `cap sync`. Apple requires every permission
+    // to have a usage string explaining the user benefit — vague strings cause
     // App Store review rejection.
     infoPlist: {
       // Camera — job photos, receipts, incidents, site records
@@ -97,16 +133,22 @@ const config: CapacitorConfig = {
       overlaysWebView: false,
     },
 
-    // Splash screen — shown while app loads
+    // Splash screen — manual hide mode
+    // launchAutoHide: false means the native layer will NOT auto-dismiss.
+    // CapacitorInit.tsx calls SplashScreen.hide() at ~400ms after first React
+    // paint, giving the UI time to render before the splash fades out.
+    // launchShowDuration: 3000 is a safety net only — if React never mounts
+    // (e.g. a JS crash), the splash auto-hides after 3s so the user is never
+    // stuck on a black screen forever.
     SplashScreen: {
-      launchShowDuration: 1500,
-      launchAutoHide: true,
+      launchShowDuration: 3000,
+      launchAutoHide: false,
       backgroundColor: '#111827',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
-      iosSpinnerStyle: 'small',
-      spinnerColor: '#ff6b00',
+      splashFullScreen: true,
+      splashImmersive: true,
     },
 
     // Push notifications
