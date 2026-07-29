@@ -3,6 +3,9 @@
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
   "bundledWebRuntime": false,
+  "ios": {
+    "buildNumber": "3"
+  },
   "plugins": {
     "Geolocation": {
       "NSLocationAlwaysAndWhenInUseUsageDescription": "IWILLBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.",
