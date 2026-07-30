@@ -1296,6 +1296,18 @@ export default function CameraPage() {
   const attached = captures.filter(c => c.status === 'done' && c.jobId).length;
   const uploading = captures.filter(c => c.status === 'uploading' || c.status === 'pending').length;
 
+  // ── Tray overlay state ────────────────────────────────────────────────────
+  const [trayCollapsed, setTrayCollapsed] = useState(true);
+  const prevCapturesLenRef = useRef(captures.length);
+
+  // Auto-expand tray when a new capture is added
+  useEffect(() => {
+    if (captures.length > prevCapturesLenRef.current) {
+      setTrayCollapsed(false);
+    }
+    prevCapturesLenRef.current = captures.length;
+  }, [captures.length]);
+
   if (!settingsLoaded) {
     return (
       <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0d0d12' }}>
@@ -1305,7 +1317,7 @@ export default function CameraPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: '#0d0d12' }}>
+    <div className="fixed inset-0" style={{ background: '#0d0d12' }}>
       <Helmet>
         <title>Camera — IWILLBUILD</title>
         <meta name="description" content="Field camera — capture job site photos instantly, then attach to jobs." />
@@ -1317,26 +1329,30 @@ export default function CameraPage() {
       {/* Hidden file inputs — managed by useIosMediaPicker */}
       <IosMediaInputs picker={pickerExt} />
 
-      {/* Offline banner */}
-      <AnimatePresence>
-        {!isOnline && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden shrink-0 z-10"
-          >
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border-b border-amber-500/30">
-              <WifiOff size={12} className="text-amber-400 shrink-0" />
-              <span className="text-amber-300 text-xs font-medium">Offline — photos will upload when you reconnect</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ═══ FULL SCREEN DARK VIEWFINDER ═══ */}
+      <div className="fixed inset-0 z-0 flex flex-col" style={{ background: '#0d0d12' }}>
 
-      {/* ═══ VIEWFINDER ZONE ═══ */}
-      <div className="shrink-0 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+        {/* Offline banner — top of screen below safe area */}
+        <AnimatePresence>
+          {!isOnline && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden shrink-0 z-10"
+              style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+            >
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border-b border-amber-500/30">
+                <WifiOff size={12} className="text-amber-400 shrink-0" />
+                <span className="text-amber-300 text-xs font-medium">Offline — photos will upload when you reconnect</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 pb-4">
+        <div
+          className="flex items-center justify-between px-4 shrink-0"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: '12px' }}
+        >
           <button
             onClick={() => navigate('/home')}
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
@@ -1365,7 +1381,6 @@ export default function CameraPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Settings gear */}
             <button
               onClick={() => setSettingsOpen(true)}
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors relative"
@@ -1378,7 +1393,6 @@ export default function CameraPage() {
                 }`} />
               )}
             </button>
-
             {selectMode && (
               <button
                 onClick={() => setSelectedIds(new Set())}
@@ -1391,153 +1405,120 @@ export default function CameraPage() {
           </div>
         </div>
 
-        {/* Active settings indicators */}
-        {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
-          <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
-            {settings.overlayEnabled && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-300 bg-violet-900/40 border border-violet-700/40 rounded-full px-2 py-0.5">
-                <Check size={9} />
-                Overlay on
-              </span>
-            )}
-            {settings.backupToRoll && !backupPermDenied && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-green-300 bg-green-900/40 border border-green-700/40 rounded-full px-2 py-0.5">
-                <Check size={9} />
-                Backup on
-              </span>
-            )}
-            {settings.backupToRoll && backupPermDenied && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
-                <AlertCircle size={9} />
-                Backup unavailable
-              </span>
-            )}
-            {settings.quality !== 'high' && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
-                {settings.quality === 'low' ? 'Low quality' : 'Med quality'}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Permission checking spinner */}
-        {picker.checkingPermission && (
-          <div className="flex items-center justify-center gap-2 pb-3">
-            <Loader2 size={14} className="animate-spin text-white/50" />
-            <span className="text-white/50 text-xs">Checking permissions…</span>
-          </div>
-        )}
-
-        {/* Shutter row */}
-        <div className="flex items-center justify-center gap-6 pb-6 px-4">
-          {/* Library */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => void picker.openLibrary()}
-            className="flex flex-col items-center gap-1.5"
-            aria-label="Choose from photo library"
-            disabled={!settingsLoaded}
-          >
-            <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
-              <Images size={22} className="text-white/70" />
-            </div>
-            <span className="text-white/40 text-[10px] font-semibold tracking-wide">Library</span>
-          </motion.button>
-
-          {/* Main shutter */}
-          <motion.button
-            whileTap={{ scale: 0.90 }}
-            whileHover={{ scale: 1.03 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-            onClick={() => void picker.openCamera()}
-            className="relative flex items-center justify-center"
-            aria-label="Take photo"
-            disabled={picker.checkingPermission || !settingsLoaded}
-          >
-            <div className={`w-[80px] h-[80px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
-              (picker.checkingPermission || !settingsLoaded) ? 'border-white/15' : 'border-white/35'
-            }`}>
-              <div
-                className={`w-[66px] h-[66px] rounded-full flex items-center justify-center transition-colors ${
-                  (picker.checkingPermission || !settingsLoaded) ? 'bg-white/50' : 'bg-white'
-                }`}
-                style={{ boxShadow: '0 0 28px rgba(255,255,255,0.22)' }}
-              >
-                {(picker.checkingPermission || !settingsLoaded)
-                  ? <Loader2 size={24} className="text-gray-400 animate-spin" />
-                  : <Camera size={28} className="text-gray-900" />
-                }
-              </div>
-            </div>
-          </motion.button>
-
-          {/* Assign — opens job picker for unassigned photos, or shows count */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => {
-              const firstUnassigned = captures.find(c => c.status === 'done' && !c.jobId);
-              if (firstUnassigned) {
-                setJobPickerForClientId(firstUnassigned.clientId);
-              } else {
-                // No unassigned — open bulk select mode hint by selecting all done items
-                const doneIds = captures.filter(c => c.status === 'done').map(c => c.clientId);
-                if (doneIds.length > 0) setSelectedIds(new Set(doneIds));
-              }
-            }}
-            className="flex flex-col items-center gap-1.5"
-            aria-label="Assign photos to a job"
-          >
-            <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
-              <FolderOpen size={22} className="text-white/70" />
-              {/* Badge: count of unassigned done photos */}
-              {captures.filter(c => c.status === 'done' && !c.jobId).length > 0 && (
-                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
-                  <span className="text-white text-[9px] font-bold">
-                    {captures.filter(c => c.status === 'done' && !c.jobId).length > 99
-                      ? '99+'
-                      : captures.filter(c => c.status === 'done' && !c.jobId).length}
-                  </span>
-                </div>
+        {/* Active settings pills */}
+        <AnimatePresence>
+          {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              className="flex items-center gap-1.5 px-4 pb-3 flex-wrap overflow-hidden shrink-0"
+            >
+              {settings.overlayEnabled && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-300 bg-violet-900/40 border border-violet-700/40 rounded-full px-2 py-0.5">
+                  <Check size={9} />
+                  Overlay on
+                </span>
               )}
+              {settings.backupToRoll && !backupPermDenied && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-green-300 bg-green-900/40 border border-green-700/40 rounded-full px-2 py-0.5">
+                  <Check size={9} />
+                  Backup on
+                </span>
+              )}
+              {settings.backupToRoll && backupPermDenied && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
+                  <AlertCircle size={9} />
+                  Backup unavailable
+                </span>
+              )}
+              {settings.quality !== 'high' && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
+                  {settings.quality === 'low' ? 'Low quality' : 'Med quality'}
+                </span>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Permission checking spinner — centre of screen */}
+        {picker.checkingPermission && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 bg-black/50 rounded-2xl px-4 py-3">
+              <Loader2 size={16} className="animate-spin text-white/70" />
+              <span className="text-white/70 text-xs font-medium">Checking permissions…</span>
             </div>
-            <span className="text-white/40 text-[10px] font-semibold tracking-wide">Assign</span>
-          </motion.button>
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* ═══ CAPTURED TRAY ═══ */}
-      <div
-        className="flex-1 flex flex-col overflow-hidden"
-        style={{ background: '#f5f5f7', borderRadius: '24px 24px 0 0' }}
+      {/* ═══ CAPTURED TRAY OVERLAY ═══ */}
+      {/* z-20, fixed bottom-0, height 70dvh. Slides up/down via translateY */}
+      <motion.div
+        className="fixed bottom-0 left-0 right-0 z-20 flex flex-col bg-white rounded-t-3xl"
+        style={{ height: '70dvh', boxShadow: '0 -4px 40px rgba(0,0,0,0.28)' }}
+        animate={{ y: trayCollapsed ? 'calc(70dvh - 120px)' : '0px' }}
+        transition={{ type: 'spring', damping: 32, stiffness: 340 }}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.12}
+        onDragEnd={(_e, info) => {
+          if (info.velocity.y < -40 || info.offset.y < -40) {
+            setTrayCollapsed(false);
+          } else if (info.velocity.y > 40 || info.offset.y > 40) {
+            setTrayCollapsed(true);
+          }
+        }}
       >
-        {/* Permission denied banner — shown in tray when camera/photos denied */}
+        {/* Drag handle area — tapping toggles collapsed/expanded */}
+        <button
+          className="w-full flex flex-col items-center pt-3 pb-2 shrink-0 cursor-pointer"
+          onClick={() => setTrayCollapsed(c => !c)}
+          aria-label={trayCollapsed ? 'Expand captures tray' : 'Collapse captures tray'}
+        >
+          <div className="w-10 h-1 rounded-full bg-gray-200 mb-2" />
+          {/* Count chip */}
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 font-bold text-sm">
+              {captures.length === 0 ? 'Captured' : `${captures.length} photo${captures.length !== 1 ? 's' : ''}`}
+            </span>
+            {unassigned > 0 && (
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                {unassigned} need a job
+              </span>
+            )}
+            {unassigned === 0 && attached > 0 && (
+              <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                All assigned
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* Permission denied banner */}
         {picker.permissionDenied && (
-          <div className="px-3 pt-3 shrink-0">
+          <div className="px-3 pb-2 shrink-0">
             <IosPermissionBanner
               type={picker.permissionDenied}
               onDismiss={() => {
-                // Can't clear permissionDenied from outside the hook,
-                // but the banner will naturally go away on next successful open
+                // Banner clears naturally on next successful open
               }}
             />
           </div>
         )}
 
-        {/* Tray header */}
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between shrink-0">
+        {/* Tray header (select-all) */}
+        <div className="px-4 pb-2 flex items-center justify-between shrink-0">
           <div>
-            <p className="text-gray-900 font-bold text-sm">
-              {captures.length === 0 ? 'Captured' : `Captured (${captures.length})`}
-            </p>
             {captures.length > 0 && (
-              <p className="text-gray-400 text-[11px] mt-0.5">
+              <p className="text-gray-400 text-[11px]">
                 {unassigned > 0
                   ? `${unassigned} need${unassigned === 1 ? 's' : ''} a job · ${attached} assigned`
+                  : captures.length === 0
+                  ? 'Tap the shutter — assign to a job later'
                   : `All ${attached} photo${attached !== 1 ? 's' : ''} assigned`}
               </p>
             )}
             {captures.length === 0 && !loadingInitial && (
-              <p className="text-gray-400 text-[11px] mt-0.5">Tap the shutter — assign to a job later</p>
+              <p className="text-gray-400 text-[11px]">Tap the shutter — assign to a job later</p>
             )}
           </div>
           {captures.length > 1 && (
@@ -1553,10 +1534,10 @@ export default function CameraPage() {
           )}
         </div>
 
-        {/* List */}
+        {/* Scrollable list */}
         <div
           className="flex-1 overflow-y-auto px-3 space-y-1.5"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)' }}
         >
           {loadingInitial ? (
             <div className="flex items-center justify-center py-10">
@@ -1615,16 +1596,104 @@ export default function CameraPage() {
             </AnimatePresence>
           )}
         </div>
+      </motion.div>
+
+      {/* ═══ SHUTTER BAND ═══ */}
+      {/* z-30 — always above tray */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-6"
+        style={{
+          height: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}
+      >
+        {/* Library */}
+        <motion.button
+          whileTap={{ scale: 0.88 }}
+          onClick={() => void picker.openLibrary()}
+          className="flex flex-col items-center gap-1.5"
+          aria-label="Choose from photo library"
+          disabled={!settingsLoaded}
+        >
+          <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
+            <Images size={22} className="text-white/70" />
+          </div>
+          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Library</span>
+        </motion.button>
+
+        {/* Main shutter */}
+        <motion.button
+          whileTap={{ scale: 0.90 }}
+          whileHover={{ scale: 1.03 }}
+          transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+          onClick={() => void picker.openCamera()}
+          className="relative flex items-center justify-center"
+          aria-label="Take photo"
+          disabled={picker.checkingPermission || !settingsLoaded}
+        >
+          <div className={`w-[80px] h-[80px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+            (picker.checkingPermission || !settingsLoaded) ? 'border-white/15' : 'border-white/35'
+          }`}>
+            <div
+              className={`w-[66px] h-[66px] rounded-full flex items-center justify-center transition-colors ${
+                (picker.checkingPermission || !settingsLoaded) ? 'bg-white/50' : 'bg-white'
+              }`}
+              style={{ boxShadow: '0 0 28px rgba(255,255,255,0.22)' }}
+            >
+              {(picker.checkingPermission || !settingsLoaded)
+                ? <Loader2 size={24} className="text-gray-400 animate-spin" />
+                : <Camera size={28} className="text-gray-900" />
+              }
+            </div>
+          </div>
+        </motion.button>
+
+        {/* Assign */}
+        <motion.button
+          whileTap={{ scale: 0.88 }}
+          onClick={() => {
+            const firstUnassigned = captures.find(c => c.status === 'done' && !c.jobId);
+            if (firstUnassigned) {
+              setJobPickerForClientId(firstUnassigned.clientId);
+            } else {
+              const doneIds = captures.filter(c => c.status === 'done').map(c => c.clientId);
+              if (doneIds.length > 0) setSelectedIds(new Set(doneIds));
+            }
+          }}
+          className="flex flex-col items-center gap-1.5"
+          aria-label="Assign photos to a job"
+        >
+          <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
+            <FolderOpen size={22} className="text-white/70" />
+            {captures.filter(c => c.status === 'done' && !c.jobId).length > 0 && (
+              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
+                <span className="text-white text-[9px] font-bold">
+                  {captures.filter(c => c.status === 'done' && !c.jobId).length > 99
+                    ? '99+'
+                    : captures.filter(c => c.status === 'done' && !c.jobId).length}
+                </span>
+              </div>
+            )}
+          </div>
+          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Assign</span>
+        </motion.button>
       </div>
 
       {/* ═══ BULK ACTION BAR ═══ */}
+      {/* z-25 — above tray (z-20), below shutter band (z-30) */}
       <AnimatePresence>
         {selectMode && (
           <motion.div
             initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="absolute left-0 right-0 z-20 px-4"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+            className="fixed left-0 right-0 px-4"
+            style={{
+              bottom: 'calc(100px + env(safe-area-inset-bottom, 0px) + 0.5rem)',
+              zIndex: 25,
+            }}
           >
             <div
               className="flex items-center gap-3 bg-gray-900 rounded-2xl px-4 py-3"
@@ -1659,7 +1728,6 @@ export default function CameraPage() {
       </AnimatePresence>
 
       {/* ═══ PERMISSION EXPLAINER MODAL ═══ */}
-      {/* Shown before first camera/photos permission request, and in denied state */}
       {picker.explainer && (
         <PermissionExplainerModal
           type={picker.explainer.type}
