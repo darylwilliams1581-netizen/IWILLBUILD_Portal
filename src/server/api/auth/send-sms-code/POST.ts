@@ -16,6 +16,7 @@ import { getAuth } from '../../../../lib/auth/auth.js';
 import { profiles } from '../../../db/schema.js';
 import { isSmsConfigured, sendSms } from '../../../lib/sms.js';
 import { checkSmsRate } from '../../../lib/signup-rate-limiter.js';
+import { normalisePhone } from '../../../lib/normalise-phone.js';
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -53,14 +54,8 @@ export default async function handler(req: Request, res: Response) {
 
     const normalised = phone.trim().replace(/\s+/g, '');
 
-    // Normalise Australian local numbers (0x xxxx xxxx → +61x xxxx xxxx)
-    // Twilio requires E.164 format. If the number starts with 0 and has no
-    // country code prefix, convert it to +61.
-    const e164 = normalised.startsWith('+')
-      ? normalised
-      : normalised.startsWith('0')
-        ? `+61${normalised.slice(1)}`
-        : normalised;
+    // Normalise AU (04xx) and NZ (02x) local formats to E.164 for Twilio
+    const e164 = normalisePhone(normalised);
 
     const code = generateCode();
     const hashed = hashCode(code);

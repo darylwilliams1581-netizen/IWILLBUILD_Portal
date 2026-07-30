@@ -13,6 +13,7 @@ import { eq } from 'drizzle-orm';
 import { randomBytes, createHash } from 'node:crypto';
 import { isSmsConfigured, sendSms } from '../../../lib/sms.js';
 import { checkPasswordResetRate } from '../../../lib/signup-rate-limiter.js';
+import { normalisePhone } from '../../../lib/normalise-phone.js';
 
 const TOKEN_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -49,12 +50,8 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const normalised = phone.trim().replace(/\s+/g, '');
-    // Normalise Australian local numbers → E.164 for Twilio
-    const e164 = normalised.startsWith('+')
-      ? normalised
-      : normalised.startsWith('0')
-        ? `+61${normalised.slice(1)}`
-        : normalised;
+    // Normalise AU (04xx) and NZ (02x) local formats to E.164 for Twilio
+    const e164 = normalisePhone(normalised);
 
     // Look up user by phone number — try both stored formats
     const [row] = await db

@@ -337,7 +337,7 @@ export default function VerifyRequiredPage() {
                         </div>
                       ) : !smsSent ? (
                         <form onSubmit={handleSendSms} className="flex flex-col gap-3">
-                          <p className="text-white/40 text-xs">Enter your mobile number to receive a 6-digit code. Australian numbers: <span className="font-mono">04xx xxx xxx</span> or <span className="font-mono">+61 4xx xxx xxx</span>.</p>
+                          <p className="text-white/40 text-xs">AU: <span className="font-mono">04xx xxx xxx</span> · NZ: <span className="font-mono">02x xxx xxxx</span> · or full international <span className="font-mono">+xx...</span></p>
                           <input
                             type="tel"
                             value={phone}
