@@ -94,8 +94,8 @@ export default function JobPickerSheet({
                 </button>
               </div>
 
-              {/* Search */}
-              {jobs.length > 4 && (
+              {/* Search — always visible */}
+              {!loading && (
                 <div className="px-4 pb-2 shrink-0">
                   <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
                     <Search size={14} className="text-gray-400 shrink-0" />

@@ -13,7 +13,7 @@ import {
   Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
   Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
   LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
-  Zap, RefreshCw, AlertTriangle,
+  Zap, RefreshCw, AlertTriangle, Search,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -184,54 +184,40 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     setLoading(true);
     fetch('/api/jobs?status=active&limit=100')
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        const list = Array.isArray(data) ? data : (data.jobs ?? []);
-        setJobs(list);
+        setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
       })
       .catch(() => setJobs([]))
       .finally(() => setLoading(false));
   }, [open]);
 
-  function handleSelect(job: JobOption) {
-    onClose();
-    navigate(`/jobs/${job.id}?tab=photos`);
-  }
+  const filtered = query.trim()
+    ? jobs.filter(j => j.name.toLowerCase().includes(query.toLowerCase()) || (j.jobNumber ?? '').toLowerCase().includes(query.toLowerCase()))
+    : jobs;
+
+  function handleSelect(job: JobOption) { onClose(); navigate(`/jobs/${job.id}?tab=photos`); }
 
   return (
     <AnimatePresence>
       {open && (
         <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)', maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)' }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-
-            {/* Header */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
@@ -242,48 +228,44 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
                   <p className="text-gray-400 text-xs">Choose a job to add photos to</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-              >
-                <X size={14} />
-              </button>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
             </div>
-
-            {/* Job list */}
+            {/* Search */}
+            {!loading && (
+              <div className="px-4 pt-3 pb-1 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Search jobs, clients, locations…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                  {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
+                </div>
+              </div>
+            )}
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="w-6 h-6 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
                 </div>
-              ) : jobs.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
                   <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No active jobs found</p>
+                  <p className="text-gray-400 text-sm">{query ? 'No jobs match your search' : 'No active jobs found'}</p>
                 </div>
-              ) : (
-                jobs.map(job => (
-                  <button
-                    key={job.id}
-                    onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                      <Camera size={16} className="text-violet-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                ))
-              )}
+              ) : filtered.map(job => (
+                <button key={job.id} onClick={() => handleSelect(job)}
+                  className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 rounded-2xl px-4 py-3.5 text-left transition-colors">
+                  <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <Camera size={16} className="text-violet-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                    {job.jobNumber && <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>}
+                  </div>
+                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
             </div>
-
-            {/* Safe area spacer — clears iPhone home indicator */}
             <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
@@ -298,47 +280,40 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     setLoading(true);
     fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        const list = Array.isArray(data) ? data : (data.jobs ?? []);
-        setJobs(list);
+        setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
       })
       .catch(() => setJobs([]))
       .finally(() => setLoading(false));
   }, [open]);
 
-  function handleSelect(job: JobOption) {
-    onClose();
-    navigate(`/jobs/${job.id}/notes`);
-  }
+  const filtered = query.trim()
+    ? jobs.filter(j => j.name.toLowerCase().includes(query.toLowerCase()) || (j.jobNumber ?? '').toLowerCase().includes(query.toLowerCase()))
+    : jobs;
+
+  function handleSelect(job: JobOption) { onClose(); navigate(`/jobs/${job.id}/notes`); }
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)', maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)' }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
+            <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
@@ -349,43 +324,42 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
                   <p className="text-gray-400 text-xs">Choose a job to view notes</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-              >
-                <X size={14} />
-              </button>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
             </div>
+            {!loading && (
+              <div className="px-4 pt-3 pb-1 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Search jobs, clients, locations…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                  {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
+                </div>
+              </div>
+            )}
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="w-6 h-6 border-2 border-yellow-300 border-t-yellow-500 rounded-full animate-spin" />
                 </div>
-              ) : jobs.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
                   <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No active jobs found</p>
+                  <p className="text-gray-400 text-sm">{query ? 'No jobs match your search' : 'No active jobs found'}</p>
                 </div>
-              ) : (
-                jobs.map(job => (
-                  <button
-                    key={job.id}
-                    onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 active:bg-yellow-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
-                      <StickyNote size={16} className="text-yellow-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                ))
-              )}
+              ) : filtered.map(job => (
+                <button key={job.id} onClick={() => handleSelect(job)}
+                  className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 active:bg-yellow-100 rounded-2xl px-4 py-3.5 text-left transition-colors">
+                  <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+                    <StickyNote size={16} className="text-yellow-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                    {job.jobNumber && <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>}
+                  </div>
+                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
             </div>
             <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
@@ -401,47 +375,40 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     setLoading(true);
     fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        const list = Array.isArray(data) ? data : (data.jobs ?? []);
-        setJobs(list);
+        setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
       })
       .catch(() => setJobs([]))
       .finally(() => setLoading(false));
   }, [open]);
 
-  function handleSelect(job: JobOption) {
-    onClose();
-    navigate(`/jobs/${job.id}/delays`);
-  }
+  const filtered = query.trim()
+    ? jobs.filter(j => j.name.toLowerCase().includes(query.toLowerCase()) || (j.jobNumber ?? '').toLowerCase().includes(query.toLowerCase()))
+    : jobs;
+
+  function handleSelect(job: JobOption) { onClose(); navigate(`/jobs/${job.id}/delays`); }
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)', maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)' }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
+            <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
@@ -452,43 +419,42 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
                   <p className="text-gray-400 text-xs">Choose a job to view delays</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-              >
-                <X size={14} />
-              </button>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
             </div>
+            {!loading && (
+              <div className="px-4 pt-3 pb-1 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Search jobs, clients, locations…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                  {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
+                </div>
+              </div>
+            )}
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="w-6 h-6 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" />
                 </div>
-              ) : jobs.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
                   <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No active jobs found</p>
+                  <p className="text-gray-400 text-sm">{query ? 'No jobs match your search' : 'No active jobs found'}</p>
                 </div>
-              ) : (
-                jobs.map(job => (
-                  <button
-                    key={job.id}
-                    onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-red-50 hover:border-red-200 active:bg-red-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                      <Clock size={16} className="text-red-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                ))
-              )}
+              ) : filtered.map(job => (
+                <button key={job.id} onClick={() => handleSelect(job)}
+                  className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-red-50 hover:border-red-200 active:bg-red-100 rounded-2xl px-4 py-3.5 text-left transition-colors">
+                  <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                    <Clock size={16} className="text-red-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                    {job.jobNumber && <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>}
+                  </div>
+                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
             </div>
             <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
@@ -1634,6 +1600,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
+  const [jobQuery, setJobQuery] = useState('');
 
   const [status, setStatus] = useState<SignInStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -1661,6 +1628,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (!open) {
       setSelectedJob(null);
+      setJobQuery('');
       setStatus(null);
       setResult(null);
       setError('');
@@ -1817,25 +1785,50 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                     <Loader2 size={14} className="animate-spin" /> Loading jobs…
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                    {jobs.map(job => (
-                      <button
-                        key={job.id}
-                        onClick={() => handleSelectJob(job)}
-                        className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border transition-colors ${
-                          selectedJob?.id === job.id
-                            ? 'bg-indigo-50 border-indigo-300'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                          {job.jobNumber && <p className="text-gray-400 text-xs font-mono">{job.jobNumber}</p>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    {/* Search */}
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5 mb-2">
+                      <Search size={14} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        value={jobQuery}
+                        onChange={e => setJobQuery(e.target.value)}
+                        placeholder="Search jobs, clients, locations…"
+                        className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                      />
+                      {jobQuery && (
+                        <button onClick={() => setJobQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                      {(() => {
+                        const q = jobQuery.trim().toLowerCase();
+                        const filtered = q
+                          ? jobs.filter(j => j.name.toLowerCase().includes(q) || (j.jobNumber ?? '').toLowerCase().includes(q))
+                          : jobs;
+                        if (filtered.length === 0) {
+                          return <p className="text-center text-gray-400 text-sm py-3">{jobQuery ? 'No jobs match your search' : 'No active jobs found'}</p>;
+                        }
+                        return filtered.map(job => (
+                          <button
+                            key={job.id}
+                            onClick={() => handleSelectJob(job)}
+                            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border transition-colors ${
+                              selectedJob?.id === job.id
+                                ? 'bg-indigo-50 border-indigo-300'
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                              {job.jobNumber && <p className="text-gray-400 text-xs font-mono">{job.jobNumber}</p>}
+                            </div>
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                  </>
                 )}
               </div>
 
