@@ -121,7 +121,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const hasPdf = Boolean(drawing.source_file_path);
 
   return (
-    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-950" style={{ overflowX: 'clip' }}>
+    <div className="viewer-shell fixed inset-0 flex flex-col bg-slate-950" style={{ overflowX: 'clip', zIndex: 1200 }}>
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div
         className="viewer-toolbar flex items-center gap-2 px-3 bg-slate-900 border-b border-slate-700 flex-shrink-0"
