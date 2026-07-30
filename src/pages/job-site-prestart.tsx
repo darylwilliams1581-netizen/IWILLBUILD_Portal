@@ -478,6 +478,8 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
     fitForWork: true,
     signature: '',
   });
+  const [rolePickerOpen, setRolePickerOpen] = useState(false);
+  const [roleDraft, setRoleDraft] = useState<SiteRole | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -699,22 +701,18 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
             )}
 
             <Field label="Role *">
-              <div className="flex flex-wrap gap-2 pt-0.5">
-                {SITE_ROLES.map(role => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, roleTrade: role }))}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                      form.roleTrade === role
-                        ? 'bg-violet-500 border-violet-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400 hover:text-violet-600'
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => setRolePickerOpen(true)}
+                className={`w-full h-12 rounded-xl border px-4 text-sm font-medium flex items-center justify-between gap-2 transition-colors ${
+                  form.roleTrade
+                    ? 'border-violet-400 bg-violet-50 text-violet-800'
+                    : 'border-slate-300 bg-white text-slate-400 hover:border-violet-400'
+                }`}
+              >
+                <span>{form.roleTrade || 'Select role…'}</span>
+                <ChevronRight size={15} className="shrink-0 text-slate-400" />
+              </button>
             </Field>
 
             <CheckRow
@@ -786,6 +784,61 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
           </div>
         )}
       </div>
+
+      {/* ── Role picker sheet ── */}
+      {rolePickerOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-t-2xl overflow-hidden" style={{ maxHeight: '70dvh' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => { setRolePickerOpen(false); setRoleDraft(''); }}
+                className="text-sm text-slate-500 font-medium"
+              >
+                Cancel
+              </button>
+              <span className="text-sm font-semibold text-slate-800">Select Role</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (roleDraft) setForm(f => ({ ...f, roleTrade: roleDraft }));
+                  setRolePickerOpen(false);
+                  setRoleDraft('');
+                }}
+                className="text-sm font-bold text-violet-600"
+              >
+                Done
+              </button>
+            </div>
+            {/* Role list */}
+            <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: 'calc(70dvh - 60px)' }}>
+              {SITE_ROLES.map((role, i) => {
+                const active = (roleDraft || form.roleTrade) === role;
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => {
+                      setRoleDraft(role);
+                      setForm(f => ({ ...f, roleTrade: role }));
+                      setRolePickerOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${
+                      i > 0 ? 'border-t border-slate-100' : ''
+                    } ${active ? 'bg-violet-50' : 'bg-white active:bg-slate-50'}`}
+                  >
+                    <span className={`text-base ${active ? 'font-semibold text-violet-700' : 'text-slate-800'}`}>
+                      {role}
+                    </span>
+                    {active && <Check size={18} className="text-violet-500 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
