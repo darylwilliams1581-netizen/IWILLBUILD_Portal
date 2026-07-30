@@ -36,7 +36,7 @@ export default function JobDrawingsPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="min-h-screen bg-[#F4F5F7] flex flex-col">
+      <div className="flex-1 bg-[#F4F5F7] flex flex-col overflow-hidden">
         {/* Header — desktop: back+home left, title center; mobile: title only, safe-area padded */}
         <div
           className="bg-white border-b border-slate-200 shrink-0"

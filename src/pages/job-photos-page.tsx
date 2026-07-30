@@ -170,7 +170,7 @@ export default function JobPhotosPage() {
   const title = job ? `${job.name} — Photos` : 'Job Photos';
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage photos for this job." />

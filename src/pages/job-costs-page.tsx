@@ -43,7 +43,7 @@ export default function JobCostsPage() {
   const title = job ? `${job.name} — Job Costs` : 'Job Costs';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage cost ledger entries for this job." />

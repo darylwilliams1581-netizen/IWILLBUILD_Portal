@@ -113,7 +113,7 @@ export default function JobFormsPage() {
   const title = job ? `${job.name} — Forms` : 'Job Forms';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage form submissions for this job." />

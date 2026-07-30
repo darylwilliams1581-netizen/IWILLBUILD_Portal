@@ -645,7 +645,7 @@ export default function RiskRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden lg:pt-[96px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -655,7 +655,7 @@ export default function RiskRegisterPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="flex flex-col min-h-screen bg-slate-50">
+      <div className="flex flex-col flex-1 bg-slate-50 overflow-hidden">
         {/* Header */}
         <div className="bg-orange-600 text-white px-4 safe-top pb-3">
           <div className="flex items-center gap-1.5 text-xs text-orange-300 mb-2 pt-1">

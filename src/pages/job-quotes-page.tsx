@@ -231,7 +231,7 @@ export default function JobQuotesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>{job ? `Quotes — ${job.name}` : 'Quotes'} — IWILLBUILD</title>
         <meta name="description" content="View and manage quotes for this job." />

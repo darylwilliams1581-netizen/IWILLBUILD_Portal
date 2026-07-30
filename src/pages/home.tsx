@@ -2290,14 +2290,14 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#edf0f5' }}>
+      <div className="flex-1 flex items-center justify-center" style={{ background: '#edf0f5' }}>
         <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden"
+    <div className="flex-1 flex flex-col relative overflow-hidden"
       style={{ background: '#edf0f5' }}
     >
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}

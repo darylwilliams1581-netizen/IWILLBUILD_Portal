@@ -139,7 +139,7 @@ export default function IncidentsPage() {
     : incidents;
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden lg:pt-[96px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

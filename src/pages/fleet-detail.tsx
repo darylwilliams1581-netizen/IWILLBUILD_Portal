@@ -745,7 +745,7 @@ export default function FleetDetailPage() {
   const statusStyle = asset ? getAssetStatusStyle(asset.status) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>{asset ? `${asset.name} — Fleet` : 'Fleet Asset'} — IWILLBUILD Portal</title>
         <meta name="description" content="View asset details, daily prestarts, service dates and rego for this fleet asset." />

@@ -384,7 +384,7 @@ export default function PrestartPage() {
   const stepTitle = step === 'pick' ? 'Select Equipment' : step === 'form' ? 'Daily Prestart' : 'Prestart Done';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>Prestart Check — IWILLBUILD</title>
         <meta name="description" content="Complete a daily prestart check for fleet equipment." />

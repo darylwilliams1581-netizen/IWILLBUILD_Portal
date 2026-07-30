@@ -517,7 +517,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
       {/* Locked summary */}
       <div className="bg-violet-500 text-white px-4 pt-3 pb-4 safe-top">
         <div className="flex items-center justify-between mb-3">
