@@ -132,7 +132,7 @@ export default function JobPickerSheet({
                 ) : filtered.map(job => (
                   <button
                     key={job.id}
-                    onClick={() => { onClose(); onSelect(job); }}
+                    onClick={() => { onSelect(job); }}
                     className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
                   >
                     <div className={`w-2 h-2 rounded-full shrink-0 ${iconBg.replace('-100', '-400')}`} />
