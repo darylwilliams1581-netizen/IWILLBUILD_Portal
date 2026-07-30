@@ -6,6 +6,7 @@ import { parseJson } from './parse';
 
 const VIRTUAL_ID = 'virtual:content';
 const RESOLVED_VIRTUAL_ID = '\0' + VIRTUAL_ID;
+const AIRO_CONTENT_ID = '@airo/content';
 
 function directImportError(rel: string): Error {
   return new Error(
@@ -111,6 +112,10 @@ export function contentPlugin(options: Options = {}): Plugin {
 
     resolveId(source, importer) {
       if (source === VIRTUAL_ID) return RESOLVED_VIRTUAL_ID;
+
+      if (source === AIRO_CONTENT_ID) {
+        return path.resolve(projectRoot, 'content-lib/src/index.ts');
+      }
 
       // The virtual module's own import of schemas.ts must pass through.
       if (importer === RESOLVED_VIRTUAL_ID) return undefined;
