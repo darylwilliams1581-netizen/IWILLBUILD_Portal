@@ -2205,7 +2205,7 @@ export default function CameraPage() {
             <button
               onClick={() => saveSettings({ noteMode: settings.noteMode === 'none' ? 'lock' : 'none' })}
               className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                settings.noteMode !== 'none' ? 'bg-green-500/25 text-green-300' : 'bg-white/8 text-white/25'
+                settings.noteMode !== 'none' ? 'bg-white/20 text-white' : 'bg-white/10 text-white/50'
               }`}
               aria-label={settings.noteMode !== 'none' ? 'Note on' : 'Note off'}
               aria-pressed={settings.noteMode !== 'none'}
@@ -2226,10 +2226,10 @@ export default function CameraPage() {
                 placeholder={settings.noteMode !== 'none' ? 'Type watermark note…' : 'Note off — tap to enable'}
                 maxLength={40}
                 readOnly={settings.noteMode === 'none'}
-                className={`w-full h-7 rounded-lg px-3 text-[11px] font-medium placeholder-white/20 bg-white/6 border focus:outline-none transition-colors ${
+                className={`w-full h-7 rounded-lg px-3 text-[11px] font-medium placeholder-white/40 bg-white/10 border focus:outline-none transition-colors ${
                   settings.noteMode !== 'none'
-                    ? 'text-white/80 border-white/12 focus:border-white/28 focus:bg-white/9'
-                    : 'text-white/20 border-white/6 cursor-default'
+                    ? 'text-white border-white/20 focus:border-white/40 focus:bg-white/15'
+                    : 'text-white/50 border-white/10 cursor-default'
                 }`}
                 aria-label="Watermark note"
               />
@@ -2250,7 +2250,7 @@ export default function CameraPage() {
             <div className="flex-1 flex items-center gap-2">
               <button
                 onClick={() => navigate('/home')}
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/55 active:bg-white/20 transition-colors shrink-0"
+                className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:bg-white/25 transition-colors shrink-0"
                 aria-label="Back"
               >
                 <ChevronLeft size={17} />
@@ -2259,7 +2259,7 @@ export default function CameraPage() {
               <button
                 onClick={() => setJobBarPickerOpen(true)}
                 className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                  activeJob ? 'bg-violet-500/25 text-violet-300' : 'bg-white/10 text-white/45'
+                  activeJob ? 'bg-white/25 text-white' : 'bg-white/15 text-white'
                 }`}
                 aria-label={activeJob ? `Job: ${activeJob.name}` : 'Select job'}
               >
@@ -2308,7 +2308,7 @@ export default function CameraPage() {
                 whileTap={{ scale: 0.88 }}
                 onClick={() => setFlashOn(f => !f)}
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                  flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/45'
+                  flashOn ? 'bg-amber-400/30 text-amber-200' : 'bg-white/15 text-white'
                 }`}
                 aria-label={flashOn ? 'Flash on' : 'Flash off'}
               >
@@ -2319,7 +2319,7 @@ export default function CameraPage() {
                 whileTap={{ scale: 0.88 }}
                 onClick={() => setFrontCamera(f => !f)}
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                  frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/45'
+                  frontCamera ? 'bg-white/25 text-white' : 'bg-white/15 text-white'
                 }`}
                 aria-label={frontCamera ? 'Switch to rear' : 'Switch to front'}
               >
@@ -2329,7 +2329,7 @@ export default function CameraPage() {
               <motion.button
                 whileTap={{ scale: 0.88 }}
                 onClick={() => setSettingsOpen(true)}
-                className="relative w-9 h-9 rounded-full flex items-center justify-center bg-white/10 text-white/45 active:bg-white/20 transition-colors shrink-0"
+                className="relative w-9 h-9 rounded-full flex items-center justify-center bg-white/15 text-white active:bg-white/25 transition-colors shrink-0"
                 aria-label="Camera settings"
               >
                 <Settings size={16} />
