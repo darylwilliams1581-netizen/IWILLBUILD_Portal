@@ -98,6 +98,13 @@ export interface IosMediaPickerState {
   checkingPermission: boolean;
   /** Set when the user has denied camera or photo library access */
   permissionDenied: 'camera' | 'photos' | null;
+  /**
+   * Set when iOS returns 'limited' photo library access.
+   * Limited = user selected specific photos only (iOS 14+).
+   * The picker still works — we can still open the library — but the user
+   * can only see the photos they explicitly allowed. This is NOT a denial.
+   */
+  photosLimited: boolean;
   openCamera: (opts?: NativeCameraOptions) => Promise<void>;
   openLibrary: () => Promise<void>;
   clear: () => void;
@@ -209,9 +216,14 @@ async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown
 
 /**
  * Check / request photo library permission via the real @capacitor/camera plugin.
- * Returns 'granted' | 'denied' | 'unknown'.
+ * Returns 'granted' | 'limited' | 'denied' | 'unknown'.
+ *
+ * 'limited' = iOS 14+ "Selected Photos" — the picker still works but the user
+ * can only see photos they explicitly allowed. This is NOT a denial; do not
+ * block the picker. Surface it in the UI so the user understands why they
+ * can't see all their photos.
  */
-async function ensurePhotosPermission(): Promise<'granted' | 'denied' | 'unknown'> {
+async function ensurePhotosPermission(): Promise<'granted' | 'limited' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
     const Camera = await getCameraPlugin();
@@ -221,14 +233,20 @@ async function ensurePhotosPermission(): Promise<'granted' | 'denied' | 'unknown
     const photos = (status as { photos?: string }).photos
       ?? (status as { camera?: string }).camera
       ?? 'prompt';
-    if (photos === 'granted' || photos === 'limited') return 'granted';
+
+    if (photos === 'granted') return 'granted';
+    if (photos === 'limited') return 'limited';   // ← surface distinctly
     if (photos === 'denied') return 'denied';
 
+    // 'prompt' — trigger the native dialog
     const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
     const rPhotos = (requested as { photos?: string }).photos
       ?? (requested as { camera?: string }).camera
       ?? 'denied';
-    return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
+
+    if (rPhotos === 'granted') return 'granted';
+    if (rPhotos === 'limited') return 'limited';
+    return 'denied';
   } catch {
     return 'unknown';
   }
@@ -242,6 +260,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   const [isHeic, setIsHeic]                 = useState(false);
   const [checkingPermission, setChecking]   = useState(false);
   const [permissionDenied, setDenied]       = useState<'camera' | 'photos' | null>(null);
+  const [photosLimited, setPhotosLimited]   = useState(false);
 
   // ── Explainer modal state ─────────────────────────────────────────────────
   type ExplainerState = {
@@ -421,6 +440,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         });
         return;
       }
+      // 'limited' = iOS "Selected Photos" — picker still works, just show a note
+      setPhotosLimited(perm === 'limited');
     } finally {
       setChecking(false);
     }
@@ -478,6 +499,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     setPreviewUrl(null);
     setIsHeic(false);
     setDenied(null);
+    setPhotosLimited(false);
     setExplainer(null);
   }, []);
 
@@ -487,6 +509,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     isHeic,
     checkingPermission,
     permissionDenied,
+    photosLimited,
     openCamera,
     openLibrary,
     clear,

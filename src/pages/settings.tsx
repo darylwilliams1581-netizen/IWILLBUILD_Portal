@@ -15,6 +15,7 @@ import {
   User,
   Truck,
   Home,
+  ShieldCheck,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
@@ -27,6 +28,7 @@ import AccountingTab from '@/components/settings/AccountingTab';
 import CompanyTab from '@/components/settings/CompanyTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
+import AppPermissionsTab from '@/components/settings/AppPermissionsTab';
 import { Skeleton } from '@/components/ui/skeleton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -39,9 +41,10 @@ const tabs = [
   { id: 'accounting',   label: 'Accounting',         icon: Receipt },
   { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications',label: 'Notifications',      icon: Bell },
+  { id: 'permissions',  label: 'App Permissions',    icon: ShieldCheck },
   { id: 'integrations', label: 'Integrations',       icon: Plug },
-  { id: 'fleet',        label: 'Fleet Analytics',     icon: Truck },
-  { id: 'data',         label: 'Data & Backup',       icon: Database },
+  { id: 'fleet',        label: 'Fleet Analytics',    icon: Truck },
+  { id: 'data',         label: 'Data & Backup',      icon: Database },
 ];
 
 interface Company {
@@ -186,6 +189,7 @@ export default function SettingsPage() {
                 {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}
                 {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
                 {activeTab === 'notifications' && <NotificationsTab />}
+                {activeTab === 'permissions'  && <AppPermissionsTab />}
                 {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
                 {activeTab === 'fleet'        && <FleetAnalyticsTab isAdmin={isAdmin} />}
                 {activeTab === 'data' && <DataBackupTab isAdmin={isAdmin} />}
