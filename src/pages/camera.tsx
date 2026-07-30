@@ -31,7 +31,7 @@ import {
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, AlertTriangle, Settings, Check, FolderOpen,
-  Zap, ZapOff, FlipHorizontal2, Upload,
+  Zap, FlipHorizontal2, Upload,
   Pencil, RotateCcw, RotateCw, Download, ZoomIn, Search,
 } from 'lucide-react';
 
@@ -2423,7 +2423,7 @@ export default function CameraPage() {
                 }`}
                 aria-label={flashOn ? 'Flash on' : 'Flash off'}
               >
-                {flashOn ? <Zap size={16} /> : <ZapOff size={16} />}
+                {flashOn ? <Zap size={16} /> : <Zap size={16} className="opacity-40" />}
               </motion.button>
 
               <motion.button
