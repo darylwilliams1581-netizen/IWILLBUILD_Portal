@@ -945,31 +945,51 @@ export default function JobSitePrestartPage() {
 
               {/* Section 1: Job Details */}
               <Section title="Job Details" icon={HardHat} defaultOpen accent="bg-violet-500">
-                <p className="text-xs text-slate-400 -mt-1">Check these job details are correct before starting the briefing.</p>
-                <Field label="Job Number">
+                <p className="text-xs text-slate-400 -mt-1">Pick the job — details will fill in automatically.</p>
+
+                {/* Job picker button */}
+                <Field label="Job">
                   <button
                     type="button"
                     disabled={isReadOnly}
                     onClick={() => setJobPickerOpen(true)}
-                    className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-left flex items-center justify-between gap-2 hover:border-violet-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full min-h-[2.75rem] rounded-xl border border-input bg-background px-3 py-2 text-sm text-left flex items-center justify-between gap-2 hover:border-violet-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <span className={prestart.job_number ? 'text-foreground font-mono' : 'text-muted-foreground'}>
-                      {prestart.job_number || 'Pick a job…'}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      {prestart.job_number || prestart.job_name ? (
+                        <>
+                          <p className="font-semibold text-foreground truncate">{prestart.job_name || '—'}</p>
+                          {prestart.job_number && <p className="text-xs font-mono text-muted-foreground">{prestart.job_number}</p>}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Pick a job…</span>
+                      )}
+                    </div>
                     {!isReadOnly && <ChevronRight size={13} className="text-muted-foreground shrink-0" />}
                   </button>
                 </Field>
+
+                {/* Auto-filled client — read-only display */}
+                {prestart.customer_name && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-xs text-slate-400 shrink-0">Client</span>
+                    <span className="text-sm font-medium text-slate-700 truncate">{prestart.customer_name}</span>
+                  </div>
+                )}
+
+                {/* Site address — editable, pre-filled from job */}
+                <Field label="Site Address">
+                  <Input
+                    value={prestart.site_address ?? ''}
+                    onChange={e => update('site_address', e.target.value)}
+                    disabled={isReadOnly}
+                    placeholder="Address auto-filled from job…"
+                    className="h-10 rounded-xl"
+                  />
+                </Field>
+
                 <Field label="Date">
                   <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                <Field label="Job Name">
-                  <Input value={prestart.job_name ?? ''} onChange={e => update('job_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                <Field label="Customer">
-                  <Input value={prestart.customer_name ?? ''} onChange={e => update('customer_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                <Field label="Site Address / Location">
-                  <Input value={prestart.site_address ?? ''} onChange={e => update('site_address', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Start Time">
@@ -1268,6 +1288,8 @@ export default function JobSitePrestartPage() {
           update('job_number', job.jobNumber ?? '');
           update('job_name', job.name);
           update('job_id', job.id);
+          if (job.client) update('customer_name', job.client);
+          if (job.address) update('site_address', job.address);
           setJobPickerOpen(false);
         }}
       />

@@ -6,6 +6,8 @@ interface JobOption {
   id: number;
   name: string;
   jobNumber?: string | null;
+  client?: string | null;
+  address?: string | null;
 }
 
 interface JobPickerSheetProps {
