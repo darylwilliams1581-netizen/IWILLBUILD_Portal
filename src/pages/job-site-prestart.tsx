@@ -12,7 +12,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
   AlertTriangle, Loader2, ClipboardCheck, Users, FileText,
   Pen, X, Check, Printer, HardHat, Shield, Info,
-  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays, Home,
+  ChevronRight, Clock, Wrench, Phone, CalendarDays, Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1176,53 +1176,6 @@ export default function JobSitePrestartPage() {
                 )}
               </Section>
               </div>
-
-              {/* Section 8: Weather / Delays */}
-              <Section title="Weather / Rainfall / Delays" icon={CloudRain} accent="bg-sky-500">
-                <p className="text-xs text-slate-400 -mt-1">Record today's weather and rainfall. If rain, heat, wind, or ground conditions caused a delay or changed the work, note the impact.</p>
-                <Field label="Weather Summary">
-                  <Input value={prestart.weather_summary ?? ''} onChange={e => update('weather_summary', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Rainfall (mm)">
-                    <Input type="number" value={prestart.rainfall_mm ?? ''} onChange={e => update('rainfall_mm', parseFloat(e.target.value) || null)} disabled={isReadOnly} placeholder="0" className="h-10 rounded-xl" />
-                  </Field>
-                  <Field label="Ground Condition">
-                    <select
-                      value={prestart.ground_condition ?? ''}
-                      onChange={e => update('ground_condition', e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="">Select...</option>
-                      {['Dry', 'Damp', 'Wet', 'Muddy', 'Flooded'].map(o => <option key={o} value={o.toLowerCase()}>{o}</option>)}
-                    </select>
-                  </Field>
-                </div>
-                {/* Delays — single Yes/No question only */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-300">Any delays recorded in Delay Register?</p>
-                  <div className="flex gap-2">
-                    {([{ label: 'No', value: false }, { label: 'Yes', value: true }] as const).map(opt => (
-                      <button
-                        key={String(opt.value)}
-                        type="button"
-                        disabled={isReadOnly}
-                        onClick={() => update('weather_delay', opt.value)}
-                        className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
-                          prestart.weather_delay === opt.value
-                            ? opt.value
-                              ? 'bg-violet-500 border-violet-600 text-white'
-                              : 'bg-slate-600 border-slate-600 text-white'
-                            : 'bg-transparent border-slate-600 text-slate-400 hover:border-slate-400'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </Section>
 
               {/* Section 9: Supervisor Sign-Off */}
               <Section title="Supervisor Sign-Off" icon={Pen} accent="bg-green-600">
