@@ -337,12 +337,12 @@ export default function VerifyRequiredPage() {
                         </div>
                       ) : !smsSent ? (
                         <form onSubmit={handleSendSms} className="flex flex-col gap-3">
-                          <p className="text-white/40 text-xs">Enter your mobile number to receive a 6-digit code.</p>
+                          <p className="text-white/40 text-xs">Enter your mobile number to receive a 6-digit code. Australian numbers: <span className="font-mono">04xx xxx xxx</span> or <span className="font-mono">+61 4xx xxx xxx</span>.</p>
                           <input
                             type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            placeholder="+61 4XX XXX XXX"
+                            placeholder="04xx xxx xxx"
                             required
                             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary transition-colors"
                           />

@@ -142,12 +142,13 @@ function PhoneVerificationSection() {
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Smartphone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+61 4xx xxx xxx" autoComplete="tel" className={`${inputClass} pl-9`} />
+              <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="04xx xxx xxx" autoComplete="tel" className={`${inputClass} pl-9`} />
             </div>
             <button type="submit" disabled={savingPhone || editPhone.trim().replace(/\s+/g, '') === savedPhone} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
               {savingPhone ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}Save
             </button>
           </div>
+          <p className="text-xs text-slate-400">Australian numbers: enter as <span className="font-mono">04xx xxx xxx</span> or <span className="font-mono">+61 4xx xxx xxx</span> — both work.</p>
           {savePhoneError && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{savePhoneError}</p>}
           {savePhoneOk && <p className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 size={11} />Phone number saved. Now verify it below.</p>}
         </form>
