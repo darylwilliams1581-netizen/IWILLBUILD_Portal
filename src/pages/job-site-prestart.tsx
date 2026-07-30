@@ -12,7 +12,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
   AlertTriangle, Loader2, ClipboardCheck, Users, FileText,
   Pen, X, Check, Printer, HardHat, Shield, Info,
-  ChevronRight, Clock, Wrench, Phone, CalendarDays, Home,
+  ChevronRight, Clock, Wrench, Phone, CalendarDays, Home, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -468,17 +468,36 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   onWorkerAdded: (w: Worker) => void;
   onClose: () => void;
 }) {
+  const [mode, setMode] = useState<'pick' | 'new'>('pick');
+  const [members, setMembers] = useState<{ userId: string; name: string }[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [memberQuery, setMemberQuery] = useState('');
   const [form, setForm] = useState({
     fullName: '',
-    companyEmployer: '',
     roleTrade: '' as SiteRole | '',
     fitForWork: true,
-    whiteCardNumber: '',
     signature: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Load team members once
+  useEffect(() => {
+    setMembersLoading(true);
+    fetch('/api/team/members', { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { members?: { userId: string; name: string }[] }) => setMembers(d.members ?? []))
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
+  }, []);
+
+  const filteredMembers = memberQuery.trim()
+    ? members.filter(m => m.name.toLowerCase().includes(memberQuery.toLowerCase()))
+    : members;
+
+  // Already signed on names for duplicate prevention in picker
+  const signedNames = new Set(workers.map(w => w.full_name.toLowerCase()));
 
   const swmsSnapshot = prestart.swms_snapshot
     ? (typeof prestart.swms_snapshot === 'string' ? JSON.parse(prestart.swms_snapshot) : prestart.swms_snapshot) as Array<{ id: number; title: string }>
@@ -496,10 +515,8 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: form.fullName,
-          companyEmployer: form.companyEmployer,
           roleTrade: form.roleTrade,
           fitForWork: form.fitForWork,
-          whiteCardNumber: form.whiteCardNumber,
           signature: form.signature,
         }),
       });
@@ -509,7 +526,9 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setForm({ fullName: '', companyEmployer: '', roleTrade: '', fitForWork: true, whiteCardNumber: '', signature: '' });
+        setForm({ fullName: '', roleTrade: '', fitForWork: true, signature: '' });
+        setMode('pick');
+        setMemberQuery('');
       }, 2000);
     } catch (e) {
       setError(String(e));
@@ -568,33 +587,116 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
               By signing, I confirm I attended today's prestart, am fit for work, understand today's work activities, hazards, controls, PPE requirements, emergency arrangements, and the relevant SWMS reviewed for today.
             </div>
 
-            <Field label="Full Name *">
-              <Input
-                value={form.fullName}
-                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                placeholder="Your full name"
-                className="h-12 text-base rounded-xl"
-              />
-            </Field>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Company / Employer">
-                <Input
-                  value={form.companyEmployer}
-                  onChange={e => setForm(f => ({ ...f, companyEmployer: e.target.value }))}
-                  placeholder="Company"
-                  className="h-11 rounded-xl"
-                />
-              </Field>
-              <Field label="White Card No. (optional)">
-                <Input
-                  value={form.whiteCardNumber}
-                  onChange={e => setForm(f => ({ ...f, whiteCardNumber: e.target.value }))}
-                  placeholder="White card"
-                  className="h-11 rounded-xl"
-                />
-              </Field>
+            {/* Pick from team / New person toggle */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setMode('pick'); setForm(f => ({ ...f, fullName: '' })); }}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
+                  mode === 'pick'
+                    ? 'bg-violet-500 border-violet-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400'
+                }`}
+              >
+                Pick from team
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('new'); setForm(f => ({ ...f, fullName: '' })); setMemberQuery(''); }}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
+                  mode === 'new'
+                    ? 'bg-violet-500 border-violet-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400'
+                }`}
+              >
+                New person
+              </button>
             </div>
+
+            {mode === 'pick' ? (
+              /* ── Team member picker ── */
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={memberQuery}
+                    onChange={e => setMemberQuery(e.target.value)}
+                    placeholder="Search team…"
+                    className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
+                  />
+                  {memberQuery && (
+                    <button onClick={() => setMemberQuery('')} className="text-slate-400">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                {membersLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-slate-400 text-sm">
+                    <Loader2 size={15} className="animate-spin" /> Loading team…
+                  </div>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="text-center text-slate-400 text-sm py-4">
+                    {memberQuery ? 'No matches' : 'No team members found'}
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                    {filteredMembers.map(m => {
+                      const alreadySigned = signedNames.has(m.name.toLowerCase());
+                      const selected = form.fullName === m.name;
+                      return (
+                        <button
+                          key={m.userId}
+                          type="button"
+                          disabled={alreadySigned}
+                          onClick={() => setForm(f => ({ ...f, fullName: m.name }))}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
+                            selected
+                              ? 'bg-violet-50 border-violet-300'
+                              : alreadySigned
+                              ? 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
+                              : 'bg-white border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+                          }`}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
+                            {m.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="flex-1 text-sm font-medium text-slate-800 truncate">{m.name}</span>
+                          {alreadySigned && <span className="text-xs text-slate-400">Signed</span>}
+                          {selected && <Check size={14} className="text-violet-500 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ── New person — manual name entry ── */
+              <Field label="Full Name *">
+                <Input
+                  value={form.fullName}
+                  onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
+                  placeholder="Visitor or subcontractor name"
+                  className="h-12 text-base rounded-xl"
+                  autoFocus
+                />
+              </Field>
+            )}
+
+            {/* Selected name confirmation */}
+            {form.fullName && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl">
+                <Check size={14} className="text-violet-500 shrink-0" />
+                <span className="text-sm font-semibold text-violet-800 truncate">{form.fullName}</span>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, fullName: '' }))}
+                  className="ml-auto text-violet-400 hover:text-violet-600"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
 
             <Field label="Role *">
               <div className="flex flex-wrap gap-2 pt-0.5">
