@@ -2623,6 +2623,40 @@ async function runStartupMigrations() {
       }
     }
   }
+
+  // ── sms_verification_codes: phone column ──────────────────────────────────────
+  // Added after initial table creation — stores the phone number the code was sent to
+  try {
+    const [smsPhoneRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sms_verification_codes' AND COLUMN_NAME = 'phone'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(smsPhoneRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(`ALTER TABLE \`sms_verification_codes\` ADD COLUMN \`phone\` VARCHAR(30) NOT NULL DEFAULT ''`));
+      console.log('[startup-migration] sms_verification_codes.phone added');
+    }
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      console.warn('[startup-migration] sms_verification_codes.phone alter failed:', msg);
+    }
+  }
+
+  // ── profiles: white_card_number column ────────────────────────────────────────
+  // Construction Induction (White Card) number — used in SWMS/safety sign-on
+  try {
+    const [wcRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'white_card_number'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(wcRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(`ALTER TABLE \`profiles\` ADD COLUMN \`white_card_number\` VARCHAR(100) NULL`));
+      console.log('[startup-migration] profiles.white_card_number added');
+    }
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      console.warn('[startup-migration] profiles.white_card_number alter failed:', msg);
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
