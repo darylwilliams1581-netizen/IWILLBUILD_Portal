@@ -62,6 +62,19 @@ import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 
 export type PickerMode = 'camera' | 'library';
 
+/**
+ * Native camera options passed to openCamera().
+ * On native (Capacitor) these map directly to Camera.getPhoto() options.
+ * On web, `direction` maps to the `capture` attribute (user/environment).
+ * `flashMode` has no web equivalent and is silently ignored on web.
+ */
+export interface NativeCameraOptions {
+  /** 'front' uses the selfie camera; 'rear' (default) uses the main camera. */
+  direction?: 'front' | 'rear';
+  /** 'on' forces flash; 'off' disables it; 'auto' (default) lets the OS decide. */
+  flashMode?: 'on' | 'off' | 'auto';
+}
+
 export interface IosMediaPickerState {
   file: File | null;
   /** Safe blob URL for preview — null for HEIC/HEIF (cannot be decoded in WebView) */
@@ -72,7 +85,7 @@ export interface IosMediaPickerState {
   checkingPermission: boolean;
   /** Set when the user has denied camera or photo library access */
   permissionDenied: 'camera' | 'photos' | null;
-  openCamera: () => Promise<void>;
+  openCamera: (opts?: NativeCameraOptions) => Promise<void>;
   openLibrary: () => Promise<void>;
   clear: () => void;
   /** Render this inside your component — the hidden file inputs */
@@ -227,7 +240,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, [handleFile]);
 
   // ── Internal: check camera permission + open input ────────────────────────
-  const doOpenCamera = useCallback(async () => {
+  const doOpenCamera = useCallback(async (opts?: NativeCameraOptions) => {
     setDenied(null);
     setChecking(true);
     try {
@@ -245,8 +258,52 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     } finally {
       setChecking(false);
     }
-    cameraInputRef.current?.click();
-  }, []);
+
+    // ── Native path: use Capacitor Camera.getPhoto() so flash + direction work ──
+    if (isNative()) {
+      try {
+        const CameraPlugin = await getCameraPlugin();
+        if (CameraPlugin) {
+          const {
+            CameraResultType,
+            CameraSource,
+            CameraDirection,
+          } = await import('@capacitor/camera');
+
+          const photo = await CameraPlugin.getPhoto({
+            quality: 90,
+            allowEditing: false,
+            resultType: CameraResultType.DataUrl,
+            source: CameraSource.Camera,
+            direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
+            // flashMode is a valid runtime option on iOS even if the TS types
+            // for this version don't expose it — pass as string literal via cast
+            flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+          } as any);
+
+          if (photo.dataUrl) {
+            // Convert data URL → Blob → File so the existing pipeline is unchanged
+            const res = await fetch(photo.dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
+            handleFile(file);
+          }
+          return;
+        }
+      } catch {
+        // Plugin call failed (e.g. user cancelled) — do not fall through to input
+        return;
+      }
+    }
+
+    // ── Web / fallback path: file input with capture attribute ────────────────
+    // Dynamically set capture direction so front/rear works on Android Chrome too
+    const input = cameraInputRef.current;
+    if (input) {
+      input.setAttribute('capture', opts?.direction === 'front' ? 'user' : 'environment');
+      input.click();
+    }
+  }, [handleFile]);
 
   // ── Internal: check photos permission + open input ────────────────────────
   const doOpenLibrary = useCallback(async () => {
@@ -271,7 +328,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, []);
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
-  const openCamera = useCallback(async () => {
+  const openCamera = useCallback(async (opts?: NativeCameraOptions) => {
     if (isNative() && permExplainer.shouldShow('camera')) {
       setExplainer({
         type: 'camera',
@@ -283,12 +340,12 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         onEnable: async () => {
           permExplainer.markShown('camera');
           setExplainer(null);
-          await doOpenCamera();
+          await doOpenCamera(opts);
         },
       });
       return;
     }
-    await doOpenCamera();
+    await doOpenCamera(opts);
   }, [permExplainer, doOpenCamera]);
 
   // ── Public: openLibrary — shows explainer first if not yet seen ───────────

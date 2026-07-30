@@ -31,7 +31,7 @@ import {
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, Settings, Check, FolderOpen,
-  Zap, ZapOff, FlipHorizontal2, Upload, Lock,
+  Zap, ZapOff, FlipHorizontal2, Upload,
   Pencil, RotateCcw, RotateCw, Download, ZoomIn,
 } from 'lucide-react';
 
@@ -54,6 +54,12 @@ interface CaptureItem {
   note: string | null;
   jobId: number | null;
   jobName: string | null;
+  /**
+   * true  — user explicitly chose "No job" for this capture.
+   *         Do NOT show the "Needs job" amber badge.
+   * false — no job assigned yet; badge is appropriate.
+   */
+  noJob: boolean;
   status: UploadStatus;
   errorMsg: string | null;
   capturedAt: string;
@@ -1060,8 +1066,17 @@ function CaptureEditModal({ item, onClose, onSaved }: CaptureEditModalProps) {
   const busy = saving || rotating !== null || replacing;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+    <motion.div
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+    >
+      <motion.div
+        className="absolute inset-0 bg-black/70"
+        onClick={onClose}
+      />
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1184,7 +1199,7 @@ function CaptureEditModal({ item, onClose, onSaved }: CaptureEditModalProps) {
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1385,8 +1400,11 @@ function CaptureRow({
               {item.jobName ?? 'Attached'}
             </span>
           )}
-          {item.status === 'done' && !item.jobId && (
+          {item.status === 'done' && !item.jobId && !item.noJob && (
             <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5">Needs job</span>
+          )}
+          {item.status === 'done' && !item.jobId && item.noJob && (
+            <span className="text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-0.5">No job</span>
           )}
           <span className="text-[10px] text-gray-400">{formatTime(item.capturedAt)}</span>
         </div>
@@ -1452,6 +1470,14 @@ function CaptureRow({
 // ─────────────────────────────────────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * DOCK_HEIGHT_PX — approximate pixel height of the two-row camera dock
+ * (note row ~40px + icon row ~70px + top padding ~10px = ~120px).
+ * Used for tray scroll padding and bulk-action bar positioning so there
+ * is one source of truth instead of magic numbers scattered through JSX.
+ */
+const DOCK_HEIGHT_PX = 120;
 
 export default function CameraPage() {
   const navigate = useNavigate();
@@ -1602,6 +1628,7 @@ export default function CameraPage() {
           note: c.note,
           jobId: c.jobId,
           jobName: c.jobName,
+          noJob: false,
           status: 'done' as UploadStatus,
           errorMsg: null,
           capturedAt: c.capturedAt,
@@ -1672,6 +1699,7 @@ export default function CameraPage() {
       note: noteForCapture,
       jobId: job?.id ?? null,
       jobName: job?.name ?? null,
+      noJob: false,
       status: 'pending', errorMsg: null, capturedAt,
     }, ...prev]);
 
@@ -1717,20 +1745,23 @@ export default function CameraPage() {
   }
 
   // ── Attach single job ─────────────────────────────────────────────────────
-  async function handleAttachJob(clientId: string, job: JobOption) {
+  // job === null means the user explicitly chose "No job" — set noJob: true
+  async function handleAttachJob(clientId: string, job: JobOption | null) {
     let serverId: number | null = null;
     setCaptures(prev => {
       const item = prev.find(c => c.clientId === clientId);
       serverId = item?.id ?? null;
       return prev.map(c =>
-        c.clientId === clientId ? { ...c, jobId: job.id, jobName: job.name } : c
+        c.clientId === clientId
+          ? { ...c, jobId: job?.id ?? null, jobName: job?.name ?? null, noJob: job === null }
+          : c
       );
     });
     if (serverId) {
       await fetch(`/api/camera-captures/${serverId}`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: job.id }),
+        body: JSON.stringify({ jobId: job?.id ?? null }),
       }).catch(() => {});
     }
   }
@@ -1738,27 +1769,23 @@ export default function CameraPage() {
   // ── Bulk attach ───────────────────────────────────────────────────────────
   async function handleBulkAttachJob(job: JobOption) {
     const ids = Array.from(selectedIds);
-    // Snapshot current captures inside the state updater to avoid stale closure
     let serverItems: CaptureItem[] = [];
     setCaptures(prev => {
       serverItems = prev.filter(c => ids.includes(c.clientId) && c.id != null);
       return prev.map(c =>
-        ids.includes(c.clientId) ? { ...c, jobId: job.id, jobName: job.name } : c
+        ids.includes(c.clientId) ? { ...c, jobId: job.id, jobName: job.name, noJob: false } : c
       );
     });
     setSelectedIds(new Set());
-    // Fire PATCHes after state update — serverItems captured above
-    setTimeout(async () => {
-      await Promise.allSettled(
-        serverItems.map(c =>
-          fetch(`/api/camera-captures/${c.id}`, {
-            method: 'PATCH', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobId: job.id }),
-          })
-        )
-      );
-    }, 0);
+    await Promise.allSettled(
+      serverItems.map(c =>
+        fetch(`/api/camera-captures/${c.id}`, {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId: job.id }),
+        })
+      )
+    );
   }
 
   // ── Save note ─────────────────────────────────────────────────────────────
@@ -1796,15 +1823,15 @@ export default function CameraPage() {
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const unassigned = captures.filter(c => c.status === 'done' && !c.jobId).length;
+  const unassigned = captures.filter(c => c.status === 'done' && !c.jobId && !c.noJob).length;
   const attached = captures.filter(c => c.status === 'done' && c.jobId).length;
-  const uploading = captures.filter(c => c.status === 'uploading' || c.status === 'pending').length;
 
   // ── Tray overlay state ────────────────────────────────────────────────────
   const [trayCollapsed, setTrayCollapsed] = useState(true);
   const prevCapturesLenRef = useRef(captures.length);
 
-  // ── Flash / flip state (UI toggles — passed to native picker when supported) ─
+  // ── Flash / flip state — declared here (above early return) so hook order is stable ─
+  // These are passed to picker.openCamera() on every shutter tap.
   const [flashOn, setFlashOn] = useState(false);
   const [frontCamera, setFrontCamera] = useState(false);
 
@@ -1868,7 +1895,7 @@ export default function CameraPage() {
             className="fixed pointer-events-none"
             style={{
               /* dock = note row ~44px + icon row ~70px + padding + safe-area-bottom */
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px + 16px)',
+              bottom: `calc(env(safe-area-inset-bottom, 0px) + ${DOCK_HEIGHT_PX}px + 16px)`,
               right: 'calc(env(safe-area-inset-right, 0px) + 14px)',
               zIndex: 15,
             }}
@@ -1922,7 +1949,7 @@ export default function CameraPage() {
       <motion.div
         className="fixed bottom-0 left-0 right-0 z-20 flex flex-col bg-white rounded-t-3xl"
         style={{ height: '70dvh', boxShadow: '0 -4px 40px rgba(0,0,0,0.28)' }}
-        animate={{ y: trayCollapsed ? 'calc(70dvh - 120px)' : '0px' }}
+        animate={{ y: trayCollapsed ? `calc(70dvh - ${DOCK_HEIGHT_PX}px)` : '0px' }}
         transition={{ type: 'spring', damping: 32, stiffness: 340 }}
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
@@ -2006,7 +2033,7 @@ export default function CameraPage() {
         {/* Scrollable list */}
         <div
           className="flex-1 overflow-y-auto px-3 space-y-1.5"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)' }}
+          style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${DOCK_HEIGHT_PX}px)` }}
         >
           {loadingInitial ? (
             <div className="flex items-center justify-center py-10">
@@ -2169,7 +2196,10 @@ export default function CameraPage() {
                 whileTap={{ scale: 0.91 }}
                 whileHover={{ scale: 1.03 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-                onClick={() => void picker.openCamera()}
+                onClick={() => void picker.openCamera({
+                  direction: frontCamera ? 'front' : 'rear',
+                  flashMode: flashOn ? 'on' : 'off',
+                })}
                 className="relative flex items-center justify-center"
                 aria-label="Take photo"
                 disabled={picker.checkingPermission || !settingsLoaded}
@@ -2243,7 +2273,7 @@ export default function CameraPage() {
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             className="fixed left-0 right-0 px-4"
             style={{
-              bottom: 'calc(104px + env(safe-area-inset-bottom, 0px) + 0.5rem)',
+              bottom: `calc(${DOCK_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 0.5rem)`,
               zIndex: 25,
             }}
           >
@@ -2319,9 +2349,10 @@ export default function CameraPage() {
       <JobPickerSheet
         open={jobPickerForClientId !== null}
         title="Attach to Job"
+        allowNone
         onClose={() => setJobPickerForClientId(null)}
         onSelect={(job) => {
-          if (job && jobPickerForClientId) void handleAttachJob(jobPickerForClientId, job);
+          if (jobPickerForClientId) void handleAttachJob(jobPickerForClientId, job);
           setJobPickerForClientId(null);
         }}
       />
