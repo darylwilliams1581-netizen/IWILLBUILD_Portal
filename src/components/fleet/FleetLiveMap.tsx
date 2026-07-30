@@ -927,7 +927,9 @@ export default function FleetLiveMap() {
 
           {/* ── Map overlay: mode indicator chip ── */}
           {mapReady && !mapError && mapMode !== 'live' && (
-            <div className="absolute top-3 left-3 z-10 pointer-events-none">
+            <div className={`absolute left-3 z-10 pointer-events-none ${
+              (mapMode === 'last-known' && lastKnown.length > 0) ? 'bottom-40 sm:bottom-3' : 'bottom-3'
+            }`}>
               {mapMode === 'last-known' && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-600">
                   <Clock size={11} className="text-slate-400" />
