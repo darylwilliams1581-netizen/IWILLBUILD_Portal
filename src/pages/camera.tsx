@@ -2068,41 +2068,40 @@ export default function CameraPage() {
           borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
-        {/* ══ SINGLE DOCK ROW ══ */}
-        {/* Back | Job | Note toggle+input | Flash | Flip | Shutter | Settings */}
+        {/* ══ SINGLE DOCK ROW — three zones so shutter is always dead-centre ══ */}
         <div
-          className="flex items-center gap-2 px-3 pt-2.5 pb-3"
+          className="flex items-center px-3 pt-2.5 pb-3"
           style={{
             paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 10px)',
             paddingRight: 'calc(env(safe-area-inset-right, 0px) + 10px)',
           }}
         >
-          {/* Back */}
-          <button
-            onClick={() => navigate('/home')}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/55 active:bg-white/20 transition-colors shrink-0"
-            aria-label="Back"
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          {/* Job icon — violet dot when active */}
-          <button
-            onClick={() => setJobBarPickerOpen(true)}
-            className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-              activeJob ? 'bg-violet-500/25 text-violet-300' : 'bg-white/10 text-white/45'
-            }`}
-            aria-label={activeJob ? `Job: ${activeJob.name}` : 'Select job'}
-          >
-            <Briefcase size={15} />
-            {activeJob && (
-              <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-violet-400 border border-black/40" />
-            )}
-          </button>
-
-          {/* Note toggle + inline input — flex-1 */}
+          {/* ── LEFT ZONE (flex-1): Back | Job | Note toggle+input ── */}
           <div className="flex-1 min-w-0 flex items-center gap-1.5">
-            {/* Toggle dot */}
+            {/* Back */}
+            <button
+              onClick={() => navigate('/home')}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/55 active:bg-white/20 transition-colors shrink-0"
+              aria-label="Back"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Job icon — violet dot when active */}
+            <button
+              onClick={() => setJobBarPickerOpen(true)}
+              className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                activeJob ? 'bg-violet-500/25 text-violet-300' : 'bg-white/10 text-white/45'
+              }`}
+              aria-label={activeJob ? `Job: ${activeJob.name}` : 'Select job'}
+            >
+              <Briefcase size={15} />
+              {activeJob && (
+                <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-violet-400 border border-black/40" />
+              )}
+            </button>
+
+            {/* Note toggle */}
             <button
               onClick={() => saveSettings({ noteMode: settings.noteMode === 'none' ? 'lock' : 'none' })}
               className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
@@ -2114,7 +2113,7 @@ export default function CameraPage() {
               <StickyNote size={11} />
             </button>
 
-            {/* Inline input — always rendered, dims when off */}
+            {/* Inline note input — fills remaining left-zone space */}
             <div className="flex-1 min-w-0 relative">
               <input
                 type="text"
@@ -2145,71 +2144,76 @@ export default function CameraPage() {
             </div>
           </div>
 
-          {/* Flash */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => setFlashOn(f => !f)}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-              flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/45'
-            }`}
-            aria-label={flashOn ? 'Flash on' : 'Flash off'}
-          >
-            {flashOn ? <Zap size={15} /> : <ZapOff size={15} />}
-          </motion.button>
-
-          {/* Flip */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => setFrontCamera(f => !f)}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-              frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/45'
-            }`}
-            aria-label={frontCamera ? 'Switch to rear' : 'Switch to front'}
-          >
-            <FlipHorizontal2 size={15} />
-          </motion.button>
-
-          {/* Shutter */}
-          <motion.button
-            whileTap={{ scale: 0.91 }}
-            whileHover={{ scale: 1.03 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-            onClick={() => void picker.openCamera()}
-            className="relative flex items-center justify-center shrink-0"
-            aria-label="Take photo"
-            disabled={picker.checkingPermission || !settingsLoaded}
-          >
-            <div className={`w-[58px] h-[58px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
-              (picker.checkingPermission || !settingsLoaded) ? 'border-white/12' : 'border-white/30'
-            }`}>
-              <div
-                className={`w-[46px] h-[46px] rounded-full flex items-center justify-center transition-colors ${
-                  (picker.checkingPermission || !settingsLoaded) ? 'bg-white/40' : 'bg-white'
-                }`}
-                style={{ boxShadow: (picker.checkingPermission || !settingsLoaded) ? 'none' : '0 0 18px rgba(255,255,255,0.18)' }}
-              >
-                {(picker.checkingPermission || !settingsLoaded)
-                  ? <Loader2 size={18} className="text-gray-400 animate-spin" />
-                  : <Camera size={18} className="text-gray-900" />
-                }
+          {/* ── CENTRE ZONE (shrink-0): Shutter — always dead-centre ── */}
+          <div className="shrink-0 flex items-center justify-center px-3">
+            <motion.button
+              whileTap={{ scale: 0.91 }}
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+              onClick={() => void picker.openCamera()}
+              className="relative flex items-center justify-center"
+              aria-label="Take photo"
+              disabled={picker.checkingPermission || !settingsLoaded}
+            >
+              <div className={`w-[58px] h-[58px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+                (picker.checkingPermission || !settingsLoaded) ? 'border-white/12' : 'border-white/30'
+              }`}>
+                <div
+                  className={`w-[46px] h-[46px] rounded-full flex items-center justify-center transition-colors ${
+                    (picker.checkingPermission || !settingsLoaded) ? 'bg-white/40' : 'bg-white'
+                  }`}
+                  style={{ boxShadow: (picker.checkingPermission || !settingsLoaded) ? 'none' : '0 0 18px rgba(255,255,255,0.18)' }}
+                >
+                  {(picker.checkingPermission || !settingsLoaded)
+                    ? <Loader2 size={18} className="text-gray-400 animate-spin" />
+                    : <Camera size={18} className="text-gray-900" />
+                  }
+                </div>
               </div>
-            </div>
-          </motion.button>
+            </motion.button>
+          </div>
 
-          {/* Settings */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => setSettingsOpen(true)}
-            className="relative w-8 h-8 rounded-full flex items-center justify-center bg-white/10 text-white/45 active:bg-white/20 transition-colors shrink-0"
-            aria-label="Camera settings"
-          >
-            <Settings size={15} />
-            {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
-              <span className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full border border-black/40 ${
-                backupPermDenied ? 'bg-amber-400' : 'bg-violet-400/80'
-              }`} />
-            )}
-          </motion.button>
+          {/* ── RIGHT ZONE (flex-1): Flash | Flip | Settings — mirrored width of left ── */}
+          <div className="flex-1 flex items-center justify-end gap-1.5">
+            {/* Flash */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setFlashOn(f => !f)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/45'
+              }`}
+              aria-label={flashOn ? 'Flash on' : 'Flash off'}
+            >
+              {flashOn ? <Zap size={15} /> : <ZapOff size={15} />}
+            </motion.button>
+
+            {/* Flip */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setFrontCamera(f => !f)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/45'
+              }`}
+              aria-label={frontCamera ? 'Switch to rear' : 'Switch to front'}
+            >
+              <FlipHorizontal2 size={15} />
+            </motion.button>
+
+            {/* Settings */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setSettingsOpen(true)}
+              className="relative w-8 h-8 rounded-full flex items-center justify-center bg-white/10 text-white/45 active:bg-white/20 transition-colors shrink-0"
+              aria-label="Camera settings"
+            >
+              <Settings size={15} />
+              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+                <span className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full border border-black/40 ${
+                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400/80'
+                }`} />
+              )}
+            </motion.button>
+          </div>
         </div>
       </div>
 
