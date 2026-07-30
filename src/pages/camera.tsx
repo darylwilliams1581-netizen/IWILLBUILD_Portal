@@ -38,6 +38,7 @@ import {
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
+import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 import { isNative } from '@/lib/capacitor-plugins';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -458,6 +459,7 @@ function SettingsSheet({
   activeJobNumber,
   onClose,
   onChange,
+  onBackupEnable,
 }: {
   open: boolean;
   settings: CameraSettings;
@@ -468,6 +470,8 @@ function SettingsSheet({
   activeJobNumber: string | null;
   onClose: () => void;
   onChange: (patch: Partial<CameraSettings>) => void;
+  /** Called instead of onChange when backup is toggled ON for the first time — lets parent show explainer */
+  onBackupEnable?: () => void;
 }) {
   async function openNativeSettings() {
     if (!isNative()) return;
@@ -537,6 +541,8 @@ function SettingsSheet({
                   onChange={v => {
                     if (backupUnavailable) return;
                     if (backupPermDenied && v) { void openNativeSettings(); return; }
+                    // If enabling and parent wants to show a pre-explainer first, delegate
+                    if (v && onBackupEnable) { onBackupEnable(); return; }
                     onChange({ backupToRoll: v });
                   }}
                 />
@@ -1590,6 +1596,9 @@ const DOCK_HEIGHT_PX = 120;
 export default function CameraPage() {
   const navigate = useNavigate();
 
+  // Permission explainer — used for backup-to-roll pre-prompt
+  const permExplainer = usePermissionExplainer();
+
   // Settings ref — keeps handleFileFromPicker stable while always reading
   // the latest settings. Required because the picker callback is passed to
   // useIosMediaPicker before settings state is declared.
@@ -1623,6 +1632,8 @@ export default function CameraPage() {
   // Camera roll permission state
   const [backupPermDenied, setBackupPermDenied] = useState(false);
   const [backupUnavailable, setBackupUnavailable] = useState(false);
+  // Pre-explainer for backup-to-roll photos permission
+  const [showBackupPhotosExplainer, setShowBackupPhotosExplainer] = useState(false);
 
   // ── Workflow B: active job (pre-selected before capture) ──────────────────
   // Stored in a ref so handleFileFromPicker always reads the latest value
@@ -2147,6 +2158,23 @@ export default function CameraPage() {
           </div>
         )}
 
+        {/* Photos limited banner — iOS "Selected Photos Only" */}
+        {picker.photosLimited && !picker.permissionDenied && (
+          <div className="px-3 pb-2 shrink-0">
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              <span className="text-amber-500 shrink-0 mt-0.5 text-sm">⚠</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-amber-800 text-[11px] font-semibold leading-snug">
+                  Limited photo access
+                </p>
+                <p className="text-amber-700 text-[10px] mt-0.5 leading-snug">
+                  You've allowed access to selected photos only. To see all photos, go to iPhone Settings → IWILLBUILD → Photos → All Photos.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tray header (select-all) */}
         <div className="px-4 pb-2 flex items-center justify-between shrink-0">
           <div>
@@ -2476,6 +2504,24 @@ export default function CameraPage() {
         />
       )}
 
+      {/* Backup-to-roll pre-explainer — shown the first time the user enables backup */}
+      <PermissionExplainerModal
+        type="photos"
+        open={showBackupPhotosExplainer}
+        denied={false}
+        onNotNow={() => {
+          permExplainer.markShown('photos');
+          setShowBackupPhotosExplainer(false);
+          // Don't enable backup — user tapped Not Now
+        }}
+        onEnable={() => {
+          permExplainer.markShown('photos');
+          setShowBackupPhotosExplainer(false);
+          // Now actually enable backup — iOS will prompt for photos on first capture
+          void saveSettings({ backupToRoll: true });
+        }}
+      />
+
       {/* ═══ SHEETS ═══ */}
       <SettingsSheet
         open={settingsOpen}
@@ -2487,6 +2533,12 @@ export default function CameraPage() {
         activeJobNumber={activeJob?.jobNumber ?? null}
         onClose={() => setSettingsOpen(false)}
         onChange={saveSettings}
+        onBackupEnable={
+          // Only intercept if the explainer hasn't been shown yet
+          isNative() && permExplainer.shouldShow('photos')
+            ? () => setShowBackupPhotosExplainer(true)
+            : undefined
+        }
       />
 
 
