@@ -999,17 +999,6 @@ export default function JobSitePrestartPage() {
                     <Input value={prestart.weather ?? ''} onChange={e => update('weather', e.target.value)} disabled={isReadOnly} placeholder="e.g. Sunny" className="h-10 rounded-xl" />
                   </Field>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Supervisor">
-                    <Input value={prestart.supervisor_name ?? ''} onChange={e => update('supervisor_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                  <Field label="First Aid Person">
-                    <Input value={prestart.first_aid_person ?? ''} onChange={e => update('first_aid_person', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                </div>
-                <Field label="Rainfall (mm)">
-                  <Input type="number" value={prestart.rainfall_mm ?? ''} onChange={e => update('rainfall_mm', parseFloat(e.target.value) || null)} disabled={isReadOnly} placeholder="0" className="h-10 rounded-xl" />
-                </Field>
               </Section>
 
               {/* Section 2: Situation */}
