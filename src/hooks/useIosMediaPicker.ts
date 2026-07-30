@@ -55,7 +55,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { isNative, getPlatform } from '@/lib/capacitor-plugins';
+import { isNative, getPlatform, getCameraPlugin } from '@/lib/capacitor-plugins';
 import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -114,63 +114,58 @@ function safePreviewUrl(file: File): string | null {
   }
 }
 
-// ── Capacitor Camera plugin access via globals (NO dynamic imports) ───────────
-// Dynamic imports of @capacitor/* are resolved at Vite build time and can
-// produce broken chunks in the iOS Capacitor bundle. Always use the global.
-
-type CapCameraPlugin = {
-  checkPermissions: () => Promise<{ camera?: string; photos?: string }>;
-  requestPermissions: (opts: { permissions: string[] }) => Promise<{ camera?: string; photos?: string }>;
-};
-
-function getCapCamera(): CapCameraPlugin | null {
-  if (typeof window === 'undefined') return null;
-  const cap = (window as {
-    Capacitor?: { Plugins?: { Camera?: CapCameraPlugin } }
-  }).Capacitor;
-  return cap?.Plugins?.Camera ?? null;
-}
+// ── Capacitor Camera permission helpers ───────────────────────────────────────
+// Uses getCameraPlugin() from capacitor-plugins.ts which dynamically imports
+// @capacitor/camera — a real installed package. This gives us the actual
+// Capacitor permission API instead of falling back to 'unknown' every time.
 
 /**
- * Check / request camera permission via Capacitor on native iOS/Android.
+ * Check / request camera permission via the real @capacitor/camera plugin.
  * Returns 'granted' | 'denied' | 'unknown' (web / non-native / plugin missing).
  */
 async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = getCapCamera();
+    const Camera = await getCameraPlugin();
     if (!Camera) return 'unknown';
 
     const status = await Camera.checkPermissions();
-    const cam = status.camera ?? 'prompt';
+    // @capacitor/camera v5+ returns { camera: PermissionState, photos: PermissionState }
+    const cam = (status as { camera?: string }).camera ?? 'prompt';
     if (cam === 'granted') return 'granted';
     if (cam === 'denied') return 'denied';
 
-    // 'prompt' or 'prompt-with-rationale' — request it
-    const requested = await Camera.requestPermissions({ permissions: ['camera'] });
-    return (requested.camera === 'granted') ? 'granted' : 'denied';
+    // 'prompt' or 'prompt-with-rationale' — trigger the native dialog
+    const requested = await Camera.requestPermissions({ permissions: ['camera'] as never });
+    const grantedCam = (requested as { camera?: string }).camera ?? 'denied';
+    return grantedCam === 'granted' ? 'granted' : 'denied';
   } catch {
-    // Plugin unavailable — fall back to browser input (no permission needed on web)
+    // Plugin unavailable at runtime — fall back to browser input
     return 'unknown';
   }
 }
 
 /**
- * Check / request photo library permission via Capacitor on native iOS/Android.
+ * Check / request photo library permission via the real @capacitor/camera plugin.
+ * Returns 'granted' | 'denied' | 'unknown'.
  */
 async function ensurePhotosPermission(): Promise<'granted' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = getCapCamera();
+    const Camera = await getCameraPlugin();
     if (!Camera) return 'unknown';
 
     const status = await Camera.checkPermissions();
-    const photos = status.photos ?? status.camera ?? 'prompt';
+    const photos = (status as { photos?: string }).photos
+      ?? (status as { camera?: string }).camera
+      ?? 'prompt';
     if (photos === 'granted' || photos === 'limited') return 'granted';
     if (photos === 'denied') return 'denied';
 
-    const requested = await Camera.requestPermissions({ permissions: ['photos'] });
-    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
+    const rPhotos = (requested as { photos?: string }).photos
+      ?? (requested as { camera?: string }).camera
+      ?? 'denied';
     return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
   } catch {
     return 'unknown';

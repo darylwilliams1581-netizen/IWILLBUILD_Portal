@@ -247,29 +247,27 @@ function blobToBase64(blob: Blob): Promise<string> {
 /**
  * Check whether save-to-photos permission is available.
  * Returns 'granted' | 'denied' | 'unavailable'.
- * Uses @capacitor/camera via window.Capacitor.Plugins to avoid Vite resolution.
+ * Uses @capacitor/camera via dynamic import (getCameraPlugin).
  */
 async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'unavailable'> {
   if (!isNative()) return 'unavailable';
   try {
-    const cap = (window as {
-      Capacitor?: { Plugins?: { Camera?: {
-        checkPermissions: () => Promise<{ photos?: string; camera?: string }>;
-        requestPermissions: (opts: { permissions: string[] }) => Promise<{ photos?: string; camera?: string }>;
-      } } }
-    }).Capacitor;
+    const { getCameraPlugin } = await import('@/lib/capacitor-plugins');
+    const Camera = await getCameraPlugin();
+    if (!Camera) return 'unavailable';
 
-    const CameraPlugin = cap?.Plugins?.Camera;
-    if (!CameraPlugin) return 'unavailable';
-
-    const status = await CameraPlugin.checkPermissions();
-    const photos = status.photos ?? status.camera ?? 'prompt';
+    const status = await Camera.checkPermissions();
+    const photos = (status as { photos?: string }).photos
+      ?? (status as { camera?: string }).camera
+      ?? 'prompt';
     if (photos === 'granted' || photos === 'limited') return 'granted';
     if (photos === 'denied') return 'denied';
 
     // 'prompt' — request it
-    const requested = await CameraPlugin.requestPermissions({ permissions: ['photos'] });
-    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
+    const rPhotos = (requested as { photos?: string }).photos
+      ?? (requested as { camera?: string }).camera
+      ?? 'denied';
     return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
   } catch {
     return 'unavailable';
@@ -277,9 +275,19 @@ async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'un
 }
 
 /**
- * Save a blob to the device camera roll via Capacitor Plugins global.
- * Silently no-ops if permission is denied or plugin is unavailable.
- * Returns 'saved' | 'permission_denied' | 'unavailable'.
+ * Save a blob to the device camera roll via @capacitor/camera savePhoto().
+ *
+ * Strategy:
+ *   1. Write the JPEG blob to the Capacitor CACHE directory as a temp file.
+ *   2. Call Camera.savePhoto({ path: uri }) — the correct @capacitor/camera API
+ *      for saving to the iOS Photos library.
+ *   3. If Camera.savePhoto is not available (plugin not synced to native project
+ *      yet), return 'unavailable' — never pretend the save succeeded.
+ *
+ * Returns:
+ *   'saved'            — photo is genuinely in the device camera roll
+ *   'permission_denied'— user denied Photos access
+ *   'unavailable'      — not on native, plugin missing, or save failed
  */
 async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission_denied' | 'unavailable'> {
   if (!isNative()) return 'unavailable';
@@ -295,8 +303,8 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
             path: string; data: string; directory: string; recursive?: boolean;
           }) => Promise<{ uri: string }>;
         };
-        Media?: {
-          savePhoto: (opts: { path: string }) => Promise<void>;
+        Camera?: {
+          savePhoto?: (opts: { path: string }) => Promise<void>;
         };
       } }
     }).Capacitor;
@@ -304,9 +312,9 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
     const Filesystem = cap?.Plugins?.Filesystem;
     if (!Filesystem) return 'unavailable';
 
+    // Write to CACHE as a temp file — CACHE is writable and not user-visible
     const base64 = await blobToBase64(blob);
     const fileName = `iwillbuild_${Date.now()}.jpg`;
-
     const writeResult = await Filesystem.writeFile({
       path: fileName,
       data: base64,
@@ -314,19 +322,19 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
       recursive: true,
     });
 
-    const Media = cap?.Plugins?.Media;
-    if (Media?.savePhoto) {
-      await Media.savePhoto({ path: writeResult.uri });
-    } else {
-      // Fallback: write to Documents/DCIM
-      await Filesystem.writeFile({
-        path: `DCIM/${fileName}`,
-        data: base64,
-        directory: 'DOCUMENTS',
-        recursive: true,
-      });
+    // Use Camera.savePhoto() — the correct @capacitor/camera API for camera roll
+    const CameraPlugin = cap?.Plugins?.Camera;
+    if (CameraPlugin?.savePhoto) {
+      await CameraPlugin.savePhoto({ path: writeResult.uri });
+      return 'saved';
     }
-    return 'saved';
+
+    // savePhoto not available — the native project has not been synced with
+    // @capacitor/camera yet (or the plugin version doesn't support savePhoto).
+    // Do NOT fall back to writing to DOCUMENTS/DCIM — that is not the camera roll
+    // and would silently mislead the user. Return unavailable so the UI is honest.
+    console.warn('[camera-roll] Camera.savePhoto not available — run npx cap sync to register the plugin');
+    return 'unavailable';
   } catch (e) {
     console.warn('[camera-roll] save failed:', e);
     return 'unavailable';
@@ -342,6 +350,7 @@ function SettingsSheet({
   settings,
   saving,
   backupPermDenied,
+  backupUnavailable,
   onClose,
   onChange,
 }: {
@@ -350,6 +359,13 @@ function SettingsSheet({
   saving: boolean;
   /** True when save-to-photos was denied — show warning in backup row */
   backupPermDenied: boolean;
+  /**
+   * True when Camera.savePhoto is not available in the current native build.
+   * This means @capacitor/camera has been installed in JS but the native project
+   * has not yet been synced (npx cap sync not run since install). The toggle is
+   * shown as disabled with an honest explanation rather than pretending it works.
+   */
+  backupUnavailable: boolean;
   onClose: () => void;
   onChange: (patch: Partial<CameraSettings>) => void;
 }) {
@@ -409,18 +425,30 @@ function SettingsSheet({
                 <SettingsToggleRow
                   label="Back up to Camera Roll"
                   description={
-                    backupPermDenied
+                    backupUnavailable
+                      ? 'Not available in this build — run cap sync'
+                      : backupPermDenied
                       ? 'Photos access denied — tap to open Settings'
                       : 'Save photos to your device gallery'
                   }
-                  value={settings.backupToRoll}
+                  value={settings.backupToRoll && !backupUnavailable}
                   warning={backupPermDenied}
+                  disabled={backupUnavailable}
                   onChange={v => {
+                    if (backupUnavailable) return;
                     if (backupPermDenied && v) { void openNativeSettings(); return; }
                     onChange({ backupToRoll: v });
                   }}
                 />
-                {backupPermDenied && (
+                {backupUnavailable && (
+                  <div className="mx-3 mb-2 flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                    <AlertCircle size={13} className="text-gray-400 shrink-0 mt-0.5" />
+                    <p className="text-gray-500 text-[10px] leading-snug">
+                      Camera roll backup requires <span className="font-mono font-semibold">npx cap sync</span> to be run after installing the camera plugin. This will be available in the next build.
+                    </p>
+                  </div>
+                )}
+                {!backupUnavailable && backupPermDenied && (
                   <div className="mx-3 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                     <AlertCircle size={13} className="text-amber-500 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
@@ -553,18 +581,22 @@ function SettingsSection({ label, children }: { label: string; children: React.R
 }
 
 function SettingsToggleRow({
-  label, description, value, warning, onChange,
+  label, description, value, warning, disabled, onChange,
 }: {
   label: string;
   description?: string;
   value: boolean;
   warning?: boolean;
+  disabled?: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
     <button
-      onClick={() => onChange(!value)}
-      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-left"
+      onClick={() => { if (!disabled) onChange(!value); }}
+      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors text-left ${
+        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+      }`}
+      disabled={disabled}
     >
       <div className="flex-1 min-w-0 pr-3">
         <p className={`text-sm font-medium ${warning ? 'text-amber-700' : 'text-gray-900'}`}>{label}</p>
@@ -1000,6 +1032,9 @@ export default function CameraPage() {
   // Camera roll permission state — tracked separately from picker
   // so we can show a warning in settings without blocking capture
   const [backupPermDenied, setBackupPermDenied] = useState(false);
+  // True when Camera.savePhoto is not registered in the native build yet.
+  // Set on first backup attempt that returns 'unavailable' on native.
+  const [backupUnavailable, setBackupUnavailable] = useState(false);
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1150,6 +1185,9 @@ export default function CameraPage() {
           const result = await saveToDeviceCameraRoll(blob);
           if (result === 'permission_denied') {
             setBackupPermDenied(true);
+          } else if (result === 'unavailable' && isNative()) {
+            // Plugin not yet registered in native build — mark honestly
+            setBackupUnavailable(true);
           }
         }
 
@@ -1398,6 +1436,7 @@ export default function CameraPage() {
             onClick={() => void picker.openLibrary()}
             className="flex flex-col items-center gap-1.5"
             aria-label="Choose from photo library"
+            disabled={!settingsLoaded}
           >
             <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
               <Images size={22} className="text-white/70" />
@@ -1413,18 +1452,18 @@ export default function CameraPage() {
             onClick={() => void picker.openCamera()}
             className="relative flex items-center justify-center"
             aria-label="Take photo"
-            disabled={picker.checkingPermission}
+            disabled={picker.checkingPermission || !settingsLoaded}
           >
             <div className={`w-[80px] h-[80px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
-              picker.checkingPermission ? 'border-white/15' : 'border-white/35'
+              (picker.checkingPermission || !settingsLoaded) ? 'border-white/15' : 'border-white/35'
             }`}>
               <div
                 className={`w-[66px] h-[66px] rounded-full flex items-center justify-center transition-colors ${
-                  picker.checkingPermission ? 'bg-white/50' : 'bg-white'
+                  (picker.checkingPermission || !settingsLoaded) ? 'bg-white/50' : 'bg-white'
                 }`}
                 style={{ boxShadow: '0 0 28px rgba(255,255,255,0.22)' }}
               >
-                {picker.checkingPermission
+                {(picker.checkingPermission || !settingsLoaded)
                   ? <Loader2 size={24} className="text-gray-400 animate-spin" />
                   : <Camera size={28} className="text-gray-900" />
                 }
@@ -1637,6 +1676,7 @@ export default function CameraPage() {
         settings={settings}
         saving={settingsSaving}
         backupPermDenied={backupPermDenied}
+        backupUnavailable={backupUnavailable}
         onClose={() => setSettingsOpen(false)}
         onChange={saveSettings}
       />
