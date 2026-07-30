@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -666,6 +667,7 @@ export default function JobSitePrestartPage() {
   const [prestart, setPrestart] = useState<SitePrestart | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [delayModalOpen, setDelayModalOpen] = useState(false);
+  const [jobPickerOpen, setJobPickerOpen] = useState(false);
   const [delays, setDelays] = useState<DelayEntry[]>([]);
   const [jobSwms, setJobSwms] = useState<JobSwms[]>([]);
   const [saving, setSaving] = useState(false);
@@ -946,7 +948,17 @@ export default function JobSitePrestartPage() {
                 <p className="text-xs text-slate-400 -mt-1">Check these job details are correct before starting the briefing.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Job Number">
-                    <Input value={prestart.job_number ?? ''} onChange={e => update('job_number', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
+                    <button
+                      type="button"
+                      disabled={isReadOnly}
+                      onClick={() => setJobPickerOpen(true)}
+                      className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-left flex items-center justify-between gap-2 hover:border-violet-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <span className={prestart.job_number ? 'text-foreground font-mono' : 'text-muted-foreground'}>
+                        {prestart.job_number || 'Pick a job…'}
+                      </span>
+                      {!isReadOnly && <ChevronRight size={13} className="text-muted-foreground shrink-0" />}
+                    </button>
                   </Field>
                   <Field label="Date">
                     <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
@@ -1244,6 +1256,23 @@ export default function JobSitePrestartPage() {
           button, .sticky { display: none !important; }
         }
       `}</style>
+
+      {/* Job picker */}
+      <JobPickerSheet
+        open={jobPickerOpen}
+        onClose={() => setJobPickerOpen(false)}
+        title="Pick a Job"
+        subtitle="Select the job for this prestart"
+        iconBg="bg-violet-100"
+        iconFg="text-violet-700"
+        Icon={HardHat}
+        onSelect={(job) => {
+          update('job_number', job.jobNumber ?? '');
+          update('job_name', job.name);
+          update('job_id', job.id);
+          setJobPickerOpen(false);
+        }}
+      />
     </>
   );
 }
