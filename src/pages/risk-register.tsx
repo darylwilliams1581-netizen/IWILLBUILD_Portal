@@ -16,6 +16,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import {
   ShieldAlert, Plus, Filter, X, ChevronRight, Loader2,
   Search, Home, AlertTriangle, CheckCircle2, Clock,
@@ -125,11 +126,17 @@ export function statusStyle(status: string) {
 interface NewRiskModalProps {
   onClose: () => void;
   onSaved: (entry: RiskEntry) => void;
+  preselectedJob?: { id: number; name: string; jobNumber?: string | null } | null;
 }
 
-function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
+function NewRiskModal({ onClose, onSaved, preselectedJob }: NewRiskModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Job linkage — pre-filled from picker, can be cleared
+  const [linkedJob, setLinkedJob] = useState<{ id: number; name: string; jobNumber?: string | null } | null>(
+    preselectedJob ?? null
+  );
 
   const [form, setForm] = useState({
     title: '',
@@ -163,7 +170,7 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
       const r = await fetch('/api/risk-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, risk_level: riskLevel }),
+        body: JSON.stringify({ ...form, risk_level: riskLevel, job_id: linkedJob?.id ?? null }),
       });
       if (!r.ok) {
         const d = await r.json() as { error?: string };
@@ -196,6 +203,25 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-xl">{error}</div>
           )}
+
+          {/* Linked job */}
+          <div>
+            <label className="text-xs font-semibold text-slate-600 mb-1 block">Linked job</label>
+            {linkedJob ? (
+              <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <Briefcase size={13} className="text-orange-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{linkedJob.name}</p>
+                  {linkedJob.jobNumber && <p className="text-xs text-slate-500 font-mono">{linkedJob.jobNumber}</p>}
+                </div>
+                <button type="button" onClick={() => setLinkedJob(null)} className="text-slate-400 hover:text-slate-600 shrink-0">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic px-1">No job linked — company-wide risk</p>
+            )}
+          </div>
 
           {/* Title */}
           <div>
@@ -282,7 +308,7 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
                   onChange={e => set('likelihood', e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
-                  {risk_register.LIKELIHOOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {LIKELIHOOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
@@ -292,7 +318,7 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
                   onChange={e => set('consequence', e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
-                  {risk_register.CONSEQUENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {CONSEQUENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             </div>
@@ -583,6 +609,8 @@ export default function RiskRegisterPage() {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showJobPicker, setShowJobPicker] = useState(false);
+  const [pendingJob, setPendingJob] = useState<{ id: number; name: string; jobNumber?: string | null } | null | 'none'>('none');
   const [search, setSearch] = useState('');
 
   // Filters
@@ -677,7 +705,7 @@ export default function RiskRegisterPage() {
             </div>
             <button
               type="button"
-              onClick={() => setShowNewModal(true)}
+              onClick={() => { setPendingJob('none'); setShowJobPicker(true); }}
               className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors"
             >
               <Plus size={14} /> New risk
@@ -848,10 +876,39 @@ export default function RiskRegisterPage() {
         </div>
       </div>
 
+      {/* Job picker — shown before new entry modal */}
+      <JobPickerSheet
+        open={showJobPicker}
+        onClose={() => setShowJobPicker(false)}
+        title="Link to a job?"
+        subtitle="Select a job or skip to log a company-wide risk"
+        iconBg="bg-orange-100"
+        iconFg="text-orange-600"
+        Icon={Briefcase}
+        onSelect={job => {
+          setPendingJob({ id: job.id, name: job.name, jobNumber: job.jobNumber });
+          setShowJobPicker(false);
+          setShowNewModal(true);
+        }}
+      />
+      {/* No-job option rendered below the picker via a footer — handled by skip button */}
+      {showJobPicker && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <button
+            type="button"
+            onClick={() => { setPendingJob(null); setShowJobPicker(false); setShowNewModal(true); }}
+            className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            No job — company-wide risk
+          </button>
+        </div>
+      )}
+
       {/* New risk modal */}
       {showNewModal && (
         <NewRiskModal
           onClose={() => setShowNewModal(false)}
+          preselectedJob={pendingJob === 'none' ? null : pendingJob}
           onSaved={entry => {
             setEntries(prev => [entry, ...prev]);
             setShowNewModal(false);

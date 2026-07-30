@@ -341,6 +341,7 @@ export default function FleetPage() {
         <meta name="twitter:description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
+      <h1 className="sr-only">Fleet</h1>
 
       <PortalErrorBoundary inline>
       <div className="flex flex-col flex-1">

@@ -9,9 +9,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import {
   AlertTriangle, Plus, Filter, X, ChevronRight,
-  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft,
+  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft, Briefcase,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showJobPicker, setShowJobPicker] = useState(false);
   const [search, setSearch] = useState('');
 
   // Filter state
@@ -171,7 +173,7 @@ export default function IncidentsPage() {
             </div>
             <button
               type="button"
-              onClick={() => navigate('/incidents/new')}
+              onClick={() => setShowJobPicker(true)}
               className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold"
             >
               <Plus size={14} /> New
@@ -375,6 +377,32 @@ export default function IncidentsPage() {
           )}
         </div>
       </div>
+
+      {/* Job picker — shown before creating a new incident */}
+      <JobPickerSheet
+        open={showJobPicker}
+        onClose={() => setShowJobPicker(false)}
+        title="Link to a job?"
+        subtitle="Select a job or skip to log a standalone incident"
+        iconBg="bg-red-100"
+        iconFg="text-red-600"
+        Icon={Briefcase}
+        onSelect={job => {
+          setShowJobPicker(false);
+          navigate(`/incidents/new?jobId=${job.id}&jobName=${encodeURIComponent(job.name)}`);
+        }}
+      />
+      {showJobPicker && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <button
+            type="button"
+            onClick={() => { setShowJobPicker(false); navigate('/incidents/new'); }}
+            className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            No job — standalone incident
+          </button>
+        </div>
+      )}
     </div>
   );
 }
