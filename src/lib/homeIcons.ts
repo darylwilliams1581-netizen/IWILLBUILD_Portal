@@ -49,8 +49,10 @@ export interface HomeIconDef {
 // ── FIELD ─────────────────────────────────────────────────────────────────────
 // Palette: orange (primary actions), blue (navigation/drive), green (money/progress)
 // Rule: each tile has a unique hue so icons are instantly distinguishable at a glance.
+// Order mirrors the desktop sidebar: Dashboard first, Camera second, then field tools.
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
-  { key: 'camera',        label: 'Camera',          icon: Camera,           href: '/camera',                     bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
+  { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-violet-600',  fg: 'text-white', group: 'field' },
+  { key: 'camera',        label: 'Camera',           icon: Camera,           href: '/camera',                     bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'sign_in',       label: 'Sign In',          icon: LogIn,            href: '?panel=signin',               bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
   { key: 'drive',         label: 'Drive',            icon: Car,              href: '?panel=drive-picker',         bg: 'bg-sky-500',     fg: 'text-white', group: 'field' },
   { key: 'log_cost',      label: 'Log Cost',         icon: DollarSign,       href: '?panel=log-cost',             bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
@@ -78,7 +80,6 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // Palette: purple / violet (calculation), cyan / sky (data/view), indigo (scheduling).
 // Each tool tile uses a distinct shade — no two adjacent tiles share the same hue.
 export const TOOLS_ICON_DEFS: HomeIconDef[] = [
-  { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-violet-600',  fg: 'text-white', group: 'tools' },
   { key: 'notes',         label: 'Notes',            icon: StickyNote,       href: '?panel=notes-picker',         bg: 'bg-cyan-500',    fg: 'text-white', group: 'tools' },
   { key: 'builders_calc', label: 'Builders Calc',    icon: Ruler,            href: '/builders-calc',              bg: 'bg-purple-600',  fg: 'text-white', group: 'tools' },
   { key: 'takeoff_pad',   label: 'Takeoff Pad',      icon: ClipboardList,    href: '/takeoff-pad',                bg: 'bg-sky-600',     fg: 'text-white', group: 'tools' },
@@ -90,16 +91,15 @@ export const TOOLS_ICON_DEFS: HomeIconDef[] = [
 ];
 
 // ── MANAGEMENT ────────────────────────────────────────────────────────────────
-// Palette: orange (primary business), teal (finance), slate (admin/settings).
-// Avoid repeating the same shade — use the 400/500/600/700 steps to differentiate.
+// Order mirrors the desktop sidebar: Jobs → Scheduler → Fleet → Invoices → Files → Contacts → Team → admin
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'jobs',          label: 'Jobs',           icon: HardHat,          href: '/jobs',                   bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'quotes',        label: 'Quotes',         icon: FileText,         href: '?panel=quotes-picker',    bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
+  { key: 'fleet',         label: 'Fleet',          icon: Truck,            href: '/fleet',                  bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'invoices_mgmt', label: 'Invoices',       icon: Receipt,          href: '/invoices',               bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
+  { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-violet-700',  fg: 'text-white', group: 'management' },
   { key: 'stakeholders',  label: 'Stakeholders',   icon: Users,            href: '/customers',              bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'ledger',        label: 'Ledger',         icon: BookOpen,         href: '?panel=costs-picker',     bg: 'bg-emerald-600', fg: 'text-white', group: 'management' },
-  { key: 'fleet',         label: 'Fleet',          icon: Truck,            href: '/fleet',                  bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
-  { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-violet-700',  fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
