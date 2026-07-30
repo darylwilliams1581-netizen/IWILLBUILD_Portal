@@ -1844,125 +1844,16 @@ export default function CameraPage() {
           )}
         </AnimatePresence>
 
-        {/* Top bar — respects safe areas on all sides (portrait notch top, landscape notch left/right) */}
-        <div
-          className="flex items-center justify-between shrink-0"
-          style={{
-            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 14px)',
-            paddingBottom: '10px',
-            paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 16px)',
-            paddingRight: 'calc(env(safe-area-inset-right, 0px) + 16px)',
-          }}
-        >
-          <button
-            onClick={() => navigate('/home')}
-            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
-            aria-label="Back"
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          <div className="flex flex-col items-center gap-1 min-w-0 flex-1 px-2">
-            {/* Active job bar — Workflow B */}
-            <button
-              onClick={() => setJobBarPickerOpen(true)}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors max-w-full ${
-                activeJob
-                  ? 'bg-violet-600/30 border border-violet-500/50 text-violet-200'
-                  : 'bg-white/8 border border-white/15 text-white/40 hover:bg-white/12'
-              }`}
-              aria-label={activeJob ? `Active job: ${activeJob.name}` : 'Select job for capture'}
-            >
-              <Briefcase size={11} className={activeJob ? 'text-violet-300 shrink-0' : 'text-white/30 shrink-0'} />
-              <span className="text-[11px] font-semibold truncate max-w-[140px]">
-                {activeJob ? activeJob.name : 'No job selected'}
-              </span>
-              {activeJob && (
-                <button
-                  onClick={e => { e.stopPropagation(); setActiveJobBoth(null); }}
-                  className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-white/60 hover:bg-white/30 shrink-0 ml-0.5"
-                  aria-label="Clear active job"
-                >
-                  <X size={9} />
-                </button>
-              )}
-            </button>
-
-            {/* Status subtitle */}
-            {uploading > 0 && (
-              <p className="text-white/40 text-[10px]">
-                Saving {uploading} photo{uploading !== 1 ? 's' : ''}…
-              </p>
-            )}
-            {uploading === 0 && unassigned > 0 && (
-              <p className="text-amber-400/80 text-[10px]">
-                {unassigned} need{unassigned === 1 ? 's' : ''} a job
-              </p>
-            )}
-            {uploading === 0 && unassigned === 0 && attached > 0 && (
-              <p className="text-white/25 text-[10px]">
-                {attached} assigned
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Flash toggle */}
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => setFlashOn(f => !f)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/50'
-              }`}
-              aria-label={flashOn ? 'Flash on' : 'Flash off'}
-            >
-              {flashOn ? <Zap size={16} /> : <ZapOff size={16} />}
-            </motion.button>
-            {/* Flip camera */}
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => setFrontCamera(f => !f)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/50'
-              }`}
-              aria-label={frontCamera ? 'Switch to rear camera' : 'Switch to front camera'}
-            >
-              <FlipHorizontal2 size={16} />
-            </motion.button>
-            {selectMode && (
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
-                aria-label="Clear selection"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Settings state — backup-unavailable warning only; all other indicators live in the dock */}
-        <AnimatePresence>
-          {settings.backupToRoll && backupPermDenied && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden shrink-0 px-4 pb-2"
-            >
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300/70">
-                <AlertCircle size={9} />
-                Backup unavailable — check permissions in Settings
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Safe-area spacer — keeps viewfinder clear of notch with no top bar */}
+        <div style={{ height: 'max(env(safe-area-inset-top, 0px), 44px)' }} />
 
         {/* ── Live viewfinder watermark — mirrors what gets burned into the photo ── */}
         {settings.overlayEnabled && settingsLoaded && (
           <div
             className="fixed pointer-events-none"
             style={{
-              /* dock = note row ~36px + shutter row ~88px + safe-area-bottom + extra breathing room */
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px + 16px)',
+              /* dock = job row ~48px + note row ~36px + shutter row ~88px + safe-area-bottom + breathing room */
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 192px + 16px)',
               right: 'calc(env(safe-area-inset-right, 0px) + 14px)',
               zIndex: 15,
             }}
@@ -2178,6 +2069,94 @@ export default function CameraPage() {
           borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
+        {/* ── Row 0: Back | Job pill + status | Flash + Flip ── */}
+        <div
+          className="flex items-center gap-2 px-3 pt-2 pb-1"
+          style={{ paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 12px)', paddingRight: 'calc(env(safe-area-inset-right, 0px) + 12px)' }}
+        >
+          {/* Back */}
+          <button
+            onClick={() => navigate('/home')}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 active:bg-white/20 transition-colors shrink-0"
+            aria-label="Back"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* Job pill + status — centre */}
+          <div className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
+            <button
+              onClick={() => setJobBarPickerOpen(true)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors max-w-full ${
+                activeJob
+                  ? 'bg-violet-600/30 border border-violet-500/50 text-violet-200'
+                  : 'bg-white/8 border border-white/12 text-white/35 active:bg-white/12'
+              }`}
+              aria-label={activeJob ? `Active job: ${activeJob.name}` : 'Select job'}
+            >
+              <Briefcase size={10} className={activeJob ? 'text-violet-300 shrink-0' : 'text-white/25 shrink-0'} />
+              <span className="text-[11px] font-semibold truncate max-w-[160px]">
+                {activeJob ? activeJob.name : 'No job selected'}
+              </span>
+              {activeJob && (
+                <button
+                  onClick={e => { e.stopPropagation(); setActiveJobBoth(null); }}
+                  className="w-3.5 h-3.5 rounded-full bg-white/20 flex items-center justify-center text-white/50 active:bg-white/30 shrink-0 ml-0.5"
+                  aria-label="Clear job"
+                >
+                  <X size={8} />
+                </button>
+              )}
+            </button>
+            {/* Status line */}
+            {uploading > 0 && <p className="text-white/35 text-[9px]">Saving {uploading} photo{uploading !== 1 ? 's' : ''}…</p>}
+            {uploading === 0 && unassigned > 0 && <p className="text-amber-400/70 text-[9px]">{unassigned} need{unassigned === 1 ? 's' : ''} a job</p>}
+            {uploading === 0 && unassigned === 0 && attached > 0 && <p className="text-white/20 text-[9px]">{attached} assigned</p>}
+            {/* Backup warning */}
+            {settings.backupToRoll && backupPermDenied && (
+              <p className="text-amber-400/60 text-[9px] flex items-center gap-0.5">
+                <AlertCircle size={8} />Backup unavailable
+              </p>
+            )}
+          </div>
+
+          {/* Flash + Flip */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setFlashOn(f => !f)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/45'
+              }`}
+              aria-label={flashOn ? 'Flash on' : 'Flash off'}
+            >
+              {flashOn ? <Zap size={15} /> : <ZapOff size={15} />}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setFrontCamera(f => !f)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/45'
+              }`}
+              aria-label={frontCamera ? 'Switch to rear' : 'Switch to front'}
+            >
+              <FlipHorizontal2 size={15} />
+            </motion.button>
+            {selectMode && (
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 active:bg-white/20 transition-colors"
+                aria-label="Clear selection"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Hairline between row 0 and note row */}
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginLeft: '12px', marginRight: '12px' }} />
+
         {/* ── Row 1: Note toggle + note pill ── */}
         {!selectMode && (
           <div className="flex items-center justify-center gap-2 pt-2 pb-1.5 px-4">
