@@ -31,7 +31,7 @@ import {
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, Settings, Check, FolderOpen,
-  Zap, ZapOff, FlipHorizontal2, Upload,
+  Zap, ZapOff, FlipHorizontal2, Upload, Lock,
   Pencil, RotateCcw, RotateCw, Download, ZoomIn,
 } from 'lucide-react';
 
@@ -1921,37 +1921,6 @@ export default function CameraPage() {
               )}
             </button>
 
-            {/* Note mode bar */}
-            {settings.noteMode !== 'none' && (
-              <button
-                onClick={() => setNoteBarOpen(true)}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 transition-colors max-w-full ${
-                  lockedNote
-                    ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-200'
-                    : 'bg-white/6 border border-white/12 text-white/30 hover:bg-white/10'
-                }`}
-                aria-label={lockedNote ? `Note: ${lockedNote}` : 'Set note for capture'}
-              >
-                <StickyNote size={10} className={lockedNote ? 'text-yellow-300 shrink-0' : 'text-white/25 shrink-0'} />
-                <span className="text-[10px] font-semibold truncate max-w-[130px]">
-                  {lockedNote
-                    ? lockedNote
-                    : settings.noteMode === 'lock'
-                    ? 'Tap to set note'
-                    : 'Ask each time'}
-                </span>
-                {settings.noteMode === 'lock' && lockedNote && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
-                    className="w-3.5 h-3.5 rounded-full bg-white/15 flex items-center justify-center text-white/50 hover:bg-white/25 shrink-0 ml-0.5"
-                    aria-label="Clear locked note"
-                  >
-                    <X size={8} />
-                  </button>
-                )}
-              </button>
-            )}
-
             {/* Status subtitle */}
             {uploading > 0 && (
               <p className="text-white/40 text-[10px]">
@@ -2202,6 +2171,136 @@ export default function CameraPage() {
           )}
         </div>
       </motion.div>
+
+      {/* ═══ NOTE MODE TOGGLE STRIP ═══ */}
+      {/* z-28 — above tray (z-20) and bulk bar (z-25), below shutter band (z-30) */}
+      {/* Always visible unless select mode is active */}
+      <AnimatePresence>
+        {!selectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="fixed left-0 right-0 flex flex-col items-center gap-1.5 px-4"
+            style={{
+              bottom: 'calc(100px + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+              zIndex: 28,
+            }}
+          >
+            {/* 3-segment mode toggle */}
+            <div
+              className="flex items-center rounded-2xl overflow-hidden"
+              style={{
+                background: 'rgba(0,0,0,0.72)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}
+            >
+              {(
+                [
+                  { value: 'ask',  label: 'Ask',  icon: <StickyNote size={11} /> },
+                  { value: 'lock', label: 'Lock', icon: <Lock size={11} /> },
+                  { value: 'none', label: 'Off',  icon: <X size={11} /> },
+                ] as const
+              ).map((seg, i) => {
+                const active = settings.noteMode === seg.value;
+                return (
+                  <motion.button
+                    key={seg.value}
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => saveSettings({ noteMode: seg.value })}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold transition-colors relative ${
+                      i > 0 ? 'border-l border-white/8' : ''
+                    } ${
+                      active
+                        ? seg.value === 'lock'
+                          ? 'text-yellow-300 bg-yellow-500/20'
+                          : seg.value === 'ask'
+                          ? 'text-violet-300 bg-violet-500/20'
+                          : 'text-white/40 bg-white/8'
+                        : 'text-white/30 hover:text-white/50 hover:bg-white/5'
+                    }`}
+                    aria-label={`Note mode: ${seg.label}`}
+                    aria-pressed={active}
+                  >
+                    {seg.icon}
+                    <span>{seg.label}</span>
+                    {active && (
+                      <motion.div
+                        layoutId="note-mode-indicator"
+                        className={`absolute inset-0 rounded-none pointer-events-none ${
+                          seg.value === 'lock' ? 'ring-1 ring-inset ring-yellow-500/30'
+                          : seg.value === 'ask' ? 'ring-1 ring-inset ring-violet-500/30'
+                          : 'ring-1 ring-inset ring-white/10'
+                        }`}
+                        transition={{ type: 'spring', damping: 30, stiffness: 380 }}
+                      />
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* Locked note pill — shown when mode is lock */}
+            <AnimatePresence>
+              {settings.noteMode === 'lock' && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.92, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: -4 }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+                  onClick={() => setNoteBarOpen(true)}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-1.5 transition-colors ${
+                    lockedNote
+                      ? 'bg-yellow-500/25 border border-yellow-500/40 text-yellow-200'
+                      : 'bg-white/8 border border-white/15 text-white/35'
+                  }`}
+                  style={{
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                  }}
+                  aria-label={lockedNote ? `Locked note: ${lockedNote} — tap to change` : 'Tap to set locked note'}
+                >
+                  <Lock size={10} className={lockedNote ? 'text-yellow-400 shrink-0' : 'text-white/25 shrink-0'} />
+                  <span className="text-[11px] font-semibold truncate max-w-[180px]">
+                    {lockedNote ? lockedNote : 'Tap to set note…'}
+                  </span>
+                  {lockedNote && (
+                    <>
+                      <span className="text-white/20 text-[10px] shrink-0">·</span>
+                      <span className="text-yellow-400/60 text-[10px] shrink-0">change</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
+                        className="w-4 h-4 rounded-full bg-white/15 flex items-center justify-center text-white/50 hover:bg-white/25 shrink-0 ml-0.5"
+                        aria-label="Clear locked note"
+                      >
+                        <X size={8} />
+                      </button>
+                    </>
+                  )}
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Ask mode hint — shown when mode is ask */}
+            <AnimatePresence>
+              {settings.noteMode === 'ask' && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 0.5, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18 }}
+                  className="text-white text-[10px] font-medium"
+                >
+                  You'll be prompted after each photo
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ SHUTTER BAND ═══ */}
       {/* z-30 — always above tray */}
