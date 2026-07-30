@@ -6,6 +6,8 @@
  * Print and Copy Link actions.
  */
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
   X, QrCode, Loader2, AlertCircle, Copy, Printer,
   CheckCircle2, RefreshCw, LogIn, LogOut,
@@ -46,6 +48,8 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [copied, setCopied]       = useState(false);
+
+  useBodyScrollLock(true);
 
   async function generate() {
     setLoading(true);
@@ -133,45 +137,57 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: 'min(88dvh, 640px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            {action === 'signin'
-              ? <LogIn size={18} className="text-green-600" />
-              : <LogOut size={18} className="text-slate-600" />}
-            <h2 className="font-bold text-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${action === 'signin' ? 'bg-green-50' : 'bg-slate-100'}`}>
+              {action === 'signin'
+                ? <LogIn size={15} className="text-green-600" />
+                : <LogOut size={15} className="text-slate-600" />}
+            </div>
+            <h2 className="font-bold text-slate-800 text-base">
               QR {action === 'signin' ? 'Sign In' : 'Sign Out'}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-600 hover:text-slate-800 transition-colors"
-          >
-            <X size={18} />
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors">
+            <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Job name */}
+        {/* Scrollable body */}
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4 flex flex-col gap-4">
           {jobName && (
             <p className="text-sm text-slate-500 text-center">{jobName}</p>
           )}
 
           {/* Actor type selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Actor type
-            </label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Actor type</label>
             <select
               value={actorType}
               onChange={(e) => {
                 const v = e.target.value;
                 if (VALID_ACTOR_TYPES.has(v)) setActorType(v as ActorTypeValue);
               }}
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400/30"
+              className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400/30 bg-white"
             >
               {ACTOR_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -179,11 +195,11 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
             </select>
           </div>
 
-          {/* Regenerate button */}
+          {/* Generate button */}
           <button
             onClick={generate}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             {loading ? 'Generating…' : 'Generate QR'}
@@ -201,36 +217,18 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
           {qrData && qrImgUrl && (
             <div className="flex flex-col items-center gap-3">
               <div className="border-2 border-slate-200 rounded-xl p-3 bg-white">
-                <img
-                  src={qrImgUrl}
-                  alt="QR Code"
-                  width={280}
-                  height={280}
-                  className="block"
-                />
+                <img src={qrImgUrl} alt="QR Code" width={280} height={280} className="block" />
               </div>
-
-              {/* Expiry */}
               <p className="text-xs text-slate-400 flex items-center gap-1">
                 <AlertCircle size={11} />
-                Expires {new Date(qrData.expiresAt).toLocaleTimeString('en-AU', {
-                  hour: '2-digit', minute: '2-digit',
-                })} — regenerate if expired
+                Expires {new Date(qrData.expiresAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })} — regenerate if expired
               </p>
-
-              {/* Actions */}
               <div className="flex gap-2 w-full">
-                <button
-                  onClick={copyLink}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-                >
+                <button onClick={copyLink} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors">
                   {copied ? <CheckCircle2 size={13} className="text-green-600" /> : <Copy size={13} />}
                   {copied ? 'Copied!' : 'Copy link'}
                 </button>
-                <button
-                  onClick={printQr}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-                >
+                <button onClick={printQr} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors">
                   <Printer size={13} />
                   Print
                 </button>
@@ -238,7 +236,7 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

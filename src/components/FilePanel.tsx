@@ -12,6 +12,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
   Upload, Download, Trash2, FolderOpen, FileText, FileImage,
   File, AlertCircle, X, Loader2, Search, Filter,
@@ -343,6 +344,8 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useBodyScrollLock(true);
+
   // Load jobs for picker (only when not already scoped to a job)
   useEffect(() => {
     if (initialJobId) return;
@@ -385,95 +388,143 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-          <h2 className="font-heading font-bold text-base">Upload File</h2>
-          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxHeight: 'min(88dvh, 640px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
+              <Upload size={15} className="text-primary" />
+            </div>
+            <h2 className="font-heading font-bold text-base">Upload File</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
-          <div
-            className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-violet-50 transition-colors"
-            onClick={() => inputRef.current?.click()}
-          >
-            <input ref={inputRef} type="file" accept={ALLOWED_EXTENSIONS} className="hidden" onChange={handleFileChange} />
-            {file ? (
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
-                <FileText size={16} className="text-primary shrink-0" />
-                <span className="font-medium truncate max-w-[240px]">{file.name}</span>
-                <span className="text-slate-400 shrink-0">({formatBytes(file.size)})</span>
-              </div>
-            ) : (
-              <>
-                <Upload size={24} className="text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Click to select a file</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, DOC, XLS, CSV, TXT, ZIP · max 25 MB</p>
-              </>
-            )}
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="up-label" className="text-xs font-semibold text-slate-600">Label</Label>
-            <Input id="up-label" value={label} onChange={e => setLabel(e.target.value)} placeholder="Optional label" className="h-9 text-sm" />
-          </div>
+        {/* Scrollable form */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 flex flex-col gap-4">
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="up-cat" className="text-xs font-semibold text-slate-600">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="up-cat" className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FILE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Job picker — only shown on main Files page (not scoped to a job) */}
-          {!initialJobId && jobs.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="up-job" className="text-xs font-semibold text-slate-600">Link to Job <span className="font-normal text-slate-400">(optional)</span></Label>
-              <Select
-                value={selectedJobId ? String(selectedJobId) : 'none'}
-                onValueChange={(v) => {
-                  setSelectedJobId(v === 'none' ? undefined : Number(v));
-                  if (v !== 'none') setCategory('Job');
-                }}
+            {/* Tap-to-select file button — no dashed drop zone on mobile */}
+            <div>
+              <input ref={inputRef} type="file" accept={ALLOWED_EXTENSIONS} className="hidden" onChange={handleFileChange} />
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-colors text-left ${
+                  file
+                    ? 'border-primary bg-violet-50'
+                    : 'border-border bg-muted/30 hover:border-primary hover:bg-violet-50'
+                }`}
               >
-                <SelectTrigger id="up-job" className="h-9 text-sm">
-                  <SelectValue placeholder="No job" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${file ? 'bg-primary/10' : 'bg-white border border-border'}`}>
+                  {file ? <FileText size={18} className="text-primary" /> : <Upload size={18} className="text-slate-400" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {file ? (
+                    <>
+                      <p className="text-sm font-semibold text-foreground truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-foreground">Tap to select a file</p>
+                      <p className="text-xs text-muted-foreground">PDF, JPG, PNG, DOC, XLS, CSV · max 25 MB</p>
+                    </>
+                  )}
+                </div>
+                {file && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setFile(null); setLabel(''); }}
+                    className="p-1 rounded-md text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="up-label" className="text-xs font-semibold text-slate-600">Label</Label>
+              <Input id="up-label" value={label} onChange={e => setLabel(e.target.value)} placeholder="Optional label" className="h-10 text-sm" />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="up-cat" className="text-xs font-semibold text-slate-600">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="up-cat" className="h-10 text-sm">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No job</SelectItem>
-                  {jobs.map((j) => (
-                    <SelectItem key={j.id} value={String(j.id)}>
-                      #{j.jobNumber} — {j.name}
-                    </SelectItem>
-                  ))}
+                  {FILE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="up-notes" className="text-xs font-semibold text-slate-600">Notes</Label>
-            <Textarea id="up-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes" rows={2} className="text-sm resize-none" />
+            {/* Job picker — only shown on main Files page */}
+            {!initialJobId && jobs.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="up-job" className="text-xs font-semibold text-slate-600">Link to Job <span className="font-normal text-slate-400">(optional)</span></Label>
+                <Select
+                  value={selectedJobId ? String(selectedJobId) : 'none'}
+                  onValueChange={(v) => {
+                    setSelectedJobId(v === 'none' ? undefined : Number(v));
+                    if (v !== 'none') setCategory('Job');
+                  }}
+                >
+                  <SelectTrigger id="up-job" className="h-10 text-sm">
+                    <SelectValue placeholder="No job" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No job</SelectItem>
+                    {jobs.map((j) => (
+                      <SelectItem key={j.id} value={String(j.id)}>
+                        #{j.jobNumber} — {j.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="up-notes" className="text-xs font-semibold text-slate-600">Notes</Label>
+              <Textarea id="up-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes" rows={2} className="text-sm resize-none" />
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertCircle size={14} className="shrink-0" />{error}
+              </div>
+            )}
           </div>
 
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <AlertCircle size={14} className="shrink-0" />{error}
-            </div>
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-9 text-sm" disabled={uploading}>Cancel</Button>
-            <Button type="submit" className="flex-1 h-9 text-sm" disabled={uploading || !file}>
+          {/* Sticky footer */}
+          <div className="flex gap-2.5 px-5 py-4 border-t border-slate-200 bg-white shrink-0">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-10 text-sm" disabled={uploading}>Cancel</Button>
+            <Button type="submit" className="flex-1 h-10 text-sm" disabled={uploading || !file}>
               {uploading ? <><Loader2 size={14} className="animate-spin mr-1.5" />Uploading…</> : 'Upload'}
             </Button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -489,6 +540,8 @@ function DeleteConfirm({ file, onClose, onDeleted }: DeleteConfirmProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
+  useBodyScrollLock(true);
+
   async function handleDelete() {
     setDeleting(true);
     try {
@@ -502,21 +555,42 @@ function DeleteConfirm({ file, onClose, onDeleted }: DeleteConfirmProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-        <h2 className="font-heading font-bold text-base mb-2">Delete File?</h2>
-        <p className="text-sm text-slate-600 mb-1">
-          This will permanently delete <span className="font-semibold">{file.originalName}</span>.
-        </p>
-        <p className="text-xs text-slate-400 mb-4">This action cannot be undone.</p>
-        {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onClose} className="flex-1 h-9 text-sm" disabled={deleting}>Cancel</Button>
-          <Button variant="destructive" onClick={handleDelete} className="flex-1 h-9 text-sm" disabled={deleting}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.18, ease: 'easeOut' as const }}
+        className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 pt-5 pb-4">
+          {/* Icon */}
+          <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3">
+            <Trash2 size={18} className="text-red-600" />
+          </div>
+          <h2 className="font-heading font-bold text-base mb-1">Delete file?</h2>
+          <p className="text-sm text-slate-600 mb-0.5">
+            <span className="font-semibold">{file.originalName}</span> will be permanently deleted.
+          </p>
+          <p className="text-xs text-slate-400">This action cannot be undone.</p>
+          {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+        </div>
+        <div className="flex gap-2.5 px-5 pb-5">
+          <Button variant="outline" onClick={onClose} className="flex-1 h-10 text-sm" disabled={deleting}>Cancel</Button>
+          <Button variant="destructive" onClick={handleDelete} className="flex-1 h-10 text-sm" disabled={deleting}>
             {deleting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}Delete
           </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

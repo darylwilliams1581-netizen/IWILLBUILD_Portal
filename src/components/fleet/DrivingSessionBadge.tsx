@@ -13,6 +13,7 @@ import { Car, X, Loader2, StopCircle } from 'lucide-react';
 import type { DriverSession } from '@/lib/useDriverSession';
 import { useFleetAnalytics } from '@/lib/useFleetAnalytics';
 import { useSessionTelemetry } from '@/lib/useSessionTelemetry';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import SessionSummaryCard, { type SessionSummary } from './SessionSummaryCard';
 
 interface Props {
@@ -41,6 +42,9 @@ export default function DrivingSessionBadge({ session, onStopped }: Props) {
 
   // Start GPS telemetry collection for this session
   useSessionTelemetry(session.id, settings);
+
+  // Lock body scroll when summary is showing
+  useBodyScrollLock(showSummary);
 
   async function handleStop() {
     setStopping(true);
@@ -163,15 +167,29 @@ export default function DrivingSessionBadge({ session, onStopped }: Props) {
       {/* Session summary modal — shown after stop */}
       <AnimatePresence>
         {showSummary && summary && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleSummaryClose} />
-            <div className="relative w-full max-w-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 bg-black/50"
+              onClick={handleSummaryClose}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.22, ease: 'easeOut' as const }}
+              className="relative w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
               <SessionSummaryCard
                 assetName={session.asset_name}
                 summary={summary}
                 onClose={handleSummaryClose}
               />
-            </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, HardHat, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { JOB_STATUSES, createJob, type Job } from '@/lib/jobs-api';
 import { useTerminology } from '@/lib/useTerminology';
 import CustomerSelector from '@/components/CustomerSelector';
@@ -27,6 +28,9 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const { workSingular } = useTerminology();
+
+  // Lock body scroll while open
+  useBodyScrollLock(open);
 
   function set(field: keyof typeof INITIAL, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -81,7 +85,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
           {/* Backdrop */}
           <motion.div
             key="backdrop"
@@ -90,38 +94,39 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 z-40"
+            className="absolute inset-0 bg-black/50"
           />
 
           {/* Modal */}
           <motion.div
             key="modal"
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: 'easeOut' as const }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            style={{ maxHeight: 'min(88dvh, 680px)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mobile-sheet">
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-violet-50 rounded-md">
-                    <HardHat size={16} className="text-primary" />
-                  </div>
-                  <h2 className="font-heading font-bold text-base">New {workSingular}</h2>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
+                  <HardHat size={15} className="text-primary" />
                 </div>
-                <button
-                  onClick={handleClose}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <X size={16} />
-                </button>
+                <h2 className="font-heading font-bold text-base">New {workSingular}</h2>
               </div>
+              <button
+                onClick={handleClose}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            {/* Scrollable form body */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 flex flex-col gap-4">
                 {/* Job title */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground mb-1.5">
@@ -237,10 +242,12 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
                     {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : `Create ${workSingular}`}
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+
+              {/* Sticky footer spacer — actions live inside scroll body above */}
+            </form>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

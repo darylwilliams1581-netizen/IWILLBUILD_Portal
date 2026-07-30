@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
   AlertCircle, FileText, Download, ChevronDown, X, Loader2,
   CheckCircle2, Clock, Send, DollarSign, Ban, Pencil,
@@ -133,6 +135,8 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  useBodyScrollLock(true);
+
   const filteredContractors = tradeType ? contractors.filter((c) => !c.trade_type || c.trade_type === tradeType) : contractors;
 
   async function handleCreate() {
@@ -157,17 +161,38 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxHeight: 'min(88dvh, 700px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><FileText size={14} className="text-primary" /></div>
-          <div className="flex-1">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <FileText size={14} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
             <p className="font-bold text-sm text-foreground">Generate Purchase Order / Work Order</p>
             <p className="text-xs text-muted-foreground">{selectedLines.length} scope line{selectedLines.length !== 1 ? 's' : ''} selected</p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"><X size={16} /></button>
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4 flex flex-col gap-4">
           {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"><AlertCircle size={12} />{error}</div>}
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-2">Assign To</label>
@@ -183,7 +208,7 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
           </div>
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Trade Type</label>
-            <select value={tradeType} onChange={(e) => { setTradeType(e.target.value); setContractorId(null); }} className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <select value={tradeType} onChange={(e) => { setTradeType(e.target.value); setContractorId(null); }} className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
               <option value="">All trades</option>
               {TRADE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -191,7 +216,7 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
           {assignType === 'contractor' ? (
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Contractor {filteredContractors.length === 0 && tradeType ? `(no ${tradeType} contractors found)` : ''}</label>
-              <select value={contractorId ?? ''} onChange={(e) => setContractorId(e.target.value ? Number(e.target.value) : null)} className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <select value={contractorId ?? ''} onChange={(e) => setContractorId(e.target.value ? Number(e.target.value) : null)} className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
                 <option value="">Select contractor…</option>
                 {filteredContractors.map((c) => <option key={c.id} value={c.id}>{c.name}{c.trade_type ? ` (${c.trade_type})` : ''}</option>)}
               </select>
@@ -237,14 +262,16 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border bg-muted/30 shrink-0">
+
+        {/* Sticky footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border bg-white shrink-0">
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl transition-colors">Cancel</button>
           <button onClick={() => void handleCreate()} disabled={saving || (assignType === 'contractor' && !contractorId && filteredContractors.length > 0)}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
             {saving ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}Generate PO
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -265,6 +292,8 @@ export function PODetailModal({ po, jobId, onClose, onUpdated, onDeleted }: PODe
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelNote, setCancelNote] = useState(po.cancelled_note ?? 'Please note this Purchase Order / Work Order has been cancelled.');
   const [statusDropOpen, setStatusDropOpen] = useState(false);
+
+  useBodyScrollLock(true);
 
   async function updateStatus(newStatus: string) {
     setSaving(true); setError(''); setStatusDropOpen(false);
@@ -302,22 +331,41 @@ export function PODetailModal({ po, jobId, onClose, onUpdated, onDeleted }: PODe
   const total = parseFloat(po.total) || 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxHeight: 'min(88dvh, 720px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-bold text-sm text-foreground">{po.po_number}</p>
               <POStatusBadge status={po.status} />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{po.title}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">{po.title}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => window.open(`/api/jobs/${jobId}/purchase-orders/${po.id}/pdf`, '_blank')} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"><Download size={12} />PDF</button>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"><X size={16} /></button>
           </div>
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4 flex flex-col gap-4">
           {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"><AlertCircle size={12} />{error}</div>}
           {isCancelled && (
             <div className="bg-red-50 border-2 border-red-300 rounded-xl px-4 py-3 text-center">
@@ -358,14 +406,14 @@ export function PODetailModal({ po, jobId, onClose, onUpdated, onDeleted }: PODe
                 ))}
               </tbody>
             </table>
-            <div className="border-t border-border px-3 py-2 space-y-1 bg-muted/20">
+            <div className="border-t border-border px-3 py-2 flex flex-col gap-1 bg-muted/20">
               <div className="flex justify-between text-xs text-muted-foreground"><span>Subtotal (ex GST)</span><span className="font-mono">{fmt(subtotal)}</span></div>
               <div className="flex justify-between text-xs text-muted-foreground"><span>GST (10%)</span><span className="font-mono">{fmt(gst)}</span></div>
               <div className="flex justify-between text-sm font-bold text-foreground pt-1 border-t border-border"><span>Total</span><span className="font-mono">{fmt(total)}</span></div>
             </div>
           </div>
           {showCancelForm && !isCancelled && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex flex-col gap-3">
               <p className="text-xs font-bold text-red-700">Cancel this Purchase Order</p>
               <textarea value={cancelNote} onChange={(e) => setCancelNote(e.target.value)} rows={3} className="w-full border border-red-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-300 resize-y bg-white" />
               <div className="flex gap-2">
@@ -377,7 +425,9 @@ export function PODetailModal({ po, jobId, onClose, onUpdated, onDeleted }: PODe
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-border bg-muted/20 shrink-0 flex-wrap">
+
+        {/* Sticky footer */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-border bg-white shrink-0 flex-wrap">
           <div className="flex items-center gap-2">
             {!isCancelled && <button onClick={() => setShowCancelForm(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 bg-red-50 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors"><Ban size={11} />Cancel PO</button>}
             <button onClick={() => void handleDelete()} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-muted-foreground rounded-lg text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50"><Trash2 size={11} />Delete</button>
@@ -399,7 +449,7 @@ export function PODetailModal({ po, jobId, onClose, onUpdated, onDeleted }: PODe
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
