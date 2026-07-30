@@ -946,24 +946,22 @@ export default function JobSitePrestartPage() {
               {/* Section 1: Job Details */}
               <Section title="Job Details" icon={HardHat} defaultOpen accent="bg-violet-500">
                 <p className="text-xs text-slate-400 -mt-1">Check these job details are correct before starting the briefing.</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Job Number">
-                    <button
-                      type="button"
-                      disabled={isReadOnly}
-                      onClick={() => setJobPickerOpen(true)}
-                      className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-left flex items-center justify-between gap-2 hover:border-violet-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <span className={prestart.job_number ? 'text-foreground font-mono' : 'text-muted-foreground'}>
-                        {prestart.job_number || 'Pick a job…'}
-                      </span>
-                      {!isReadOnly && <ChevronRight size={13} className="text-muted-foreground shrink-0" />}
-                    </button>
-                  </Field>
-                  <Field label="Date">
-                    <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                </div>
+                <Field label="Job Number">
+                  <button
+                    type="button"
+                    disabled={isReadOnly}
+                    onClick={() => setJobPickerOpen(true)}
+                    className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-left flex items-center justify-between gap-2 hover:border-violet-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <span className={prestart.job_number ? 'text-foreground font-mono' : 'text-muted-foreground'}>
+                      {prestart.job_number || 'Pick a job…'}
+                    </span>
+                    {!isReadOnly && <ChevronRight size={13} className="text-muted-foreground shrink-0" />}
+                  </button>
+                </Field>
+                <Field label="Date">
+                  <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
+                </Field>
                 <Field label="Job Name">
                   <Input value={prestart.job_name ?? ''} onChange={e => update('job_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                 </Field>
