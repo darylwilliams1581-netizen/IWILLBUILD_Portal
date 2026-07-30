@@ -30,7 +30,7 @@ import {
   Camera, Images, ChevronLeft, X, Trash2, Briefcase,
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
-  AlertCircle, Plus, Settings, Check,
+  AlertCircle, Settings, Check, FolderOpen,
 } from 'lucide-react';
 
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
@@ -904,7 +904,7 @@ function CaptureRow({
             </span>
           )}
           {item.status === 'done' && !item.jobId && (
-            <span className="text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-0.5">Unassigned</span>
+            <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5">Needs job</span>
           )}
           <span className="text-[10px] text-gray-400">{formatTime(item.capturedAt)}</span>
         </div>
@@ -914,28 +914,41 @@ function CaptureRow({
 
       {!selectMode && item.status !== 'uploading' && (
         <div className="flex items-center gap-1 shrink-0">
+          {/* Assign to job — most important action, slightly larger */}
           <button
             onClick={() => onAttachJob(item.clientId)}
-            className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600 hover:bg-violet-100 transition-colors"
-            title="Attach to job"
+            className={`h-8 rounded-xl flex items-center gap-1 px-2 transition-colors ${
+              item.jobId
+                ? 'bg-violet-100 border border-violet-200 text-violet-700'
+                : 'bg-violet-50 border border-violet-100 text-violet-600 hover:bg-violet-100'
+            }`}
+            title={item.jobId ? 'Change job' : 'Assign to job'}
+            aria-label={item.jobId ? 'Change job assignment' : 'Assign to job'}
           >
             <Briefcase size={12} />
+            <span className="text-[10px] font-bold">{item.jobId ? 'Job' : 'Assign'}</span>
           </button>
           {notesEnabled && (
             <button
               onClick={() => onAddNote(item.clientId)}
-              className="w-7 h-7 rounded-lg bg-yellow-50 border border-yellow-100 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 transition-colors"
-              title="Add note"
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                item.note
+                  ? 'bg-yellow-100 border border-yellow-200 text-yellow-700'
+                  : 'bg-yellow-50 border border-yellow-100 text-yellow-600 hover:bg-yellow-100'
+              }`}
+              title={item.note ? 'Edit note' : 'Add note'}
+              aria-label={item.note ? 'Edit note' : 'Add note'}
             >
-              <StickyNote size={12} />
+              <StickyNote size={13} />
             </button>
           )}
           <button
             onClick={() => onDelete(item.clientId)}
-            className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 transition-colors"
-            title="Delete"
+            className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 active:bg-red-200 transition-colors"
+            title="Delete photo"
+            aria-label="Delete photo"
           >
-            <Trash2 size={12} />
+            <Trash2 size={13} />
           </button>
         </div>
       )}
@@ -1253,11 +1266,19 @@ export default function CameraPage() {
 
           <div className="text-center">
             <p className="text-white font-bold text-base tracking-tight">Camera</p>
-            {(uploading > 0 || captures.length > 0) && (
+            {uploading > 0 && (
               <p className="text-white/40 text-[11px] mt-0.5">
-                {uploading > 0
-                  ? `Saving ${uploading} photo${uploading !== 1 ? 's' : ''}…`
-                  : `${unassigned} unassigned · ${attached} attached`}
+                Saving {uploading} photo{uploading !== 1 ? 's' : ''}…
+              </p>
+            )}
+            {uploading === 0 && unassigned > 0 && (
+              <p className="text-amber-400/80 text-[11px] mt-0.5">
+                {unassigned} need{unassigned === 1 ? 's' : ''} a job
+              </p>
+            )}
+            {uploading === 0 && unassigned === 0 && attached > 0 && (
+              <p className="text-white/30 text-[11px] mt-0.5">
+                {attached} assigned
               </p>
             )}
           </div>
@@ -1301,7 +1322,7 @@ export default function CameraPage() {
             {settings.backupToRoll && !backupPermDenied && (
               <span className="flex items-center gap-1 text-[10px] font-semibold text-green-300 bg-green-900/40 border border-green-700/40 rounded-full px-2 py-0.5">
                 <Check size={9} />
-                Camera roll
+                Backup on
               </span>
             )}
             {settings.backupToRoll && backupPermDenied && (
@@ -1327,65 +1348,77 @@ export default function CameraPage() {
         )}
 
         {/* Shutter row */}
-        <div className="flex items-center justify-center gap-8 pb-6 px-4">
+        <div className="flex items-center justify-center gap-6 pb-6 px-4">
           {/* Library */}
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={() => void picker.openLibrary()}
             className="flex flex-col items-center gap-1.5"
-            aria-label="Choose from library"
+            aria-label="Choose from photo library"
           >
-            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center hover:bg-white/20 transition-colors">
+            <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
               <Images size={22} className="text-white/70" />
             </div>
-            <span className="text-white/40 text-[10px] font-medium">Library</span>
+            <span className="text-white/40 text-[10px] font-semibold tracking-wide">Library</span>
           </motion.button>
 
           {/* Main shutter */}
           <motion.button
             whileTap={{ scale: 0.90 }}
-            whileHover={{ scale: 1.04 }}
+            whileHover={{ scale: 1.03 }}
             transition={{ type: 'spring', stiffness: 420, damping: 22 }}
             onClick={() => void picker.openCamera()}
             className="relative flex items-center justify-center"
             aria-label="Take photo"
             disabled={picker.checkingPermission}
           >
-            <div className={`w-[76px] h-[76px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
-              picker.checkingPermission ? 'border-white/15' : 'border-white/30'
+            <div className={`w-[80px] h-[80px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+              picker.checkingPermission ? 'border-white/15' : 'border-white/35'
             }`}>
               <div
-                className={`w-[62px] h-[62px] rounded-full flex items-center justify-center transition-colors ${
+                className={`w-[66px] h-[66px] rounded-full flex items-center justify-center transition-colors ${
                   picker.checkingPermission ? 'bg-white/50' : 'bg-white'
                 }`}
-                style={{ boxShadow: '0 0 24px rgba(255,255,255,0.25)' }}
+                style={{ boxShadow: '0 0 28px rgba(255,255,255,0.22)' }}
               >
                 {picker.checkingPermission
                   ? <Loader2 size={24} className="text-gray-400 animate-spin" />
-                  : <Camera size={26} className="text-gray-900" />
+                  : <Camera size={28} className="text-gray-900" />
                 }
               </div>
             </div>
           </motion.button>
 
-          {/* More / count */}
+          {/* Assign — opens job picker for unassigned photos, or shows count */}
           <motion.button
             whileTap={{ scale: 0.88 }}
-            onClick={() => void picker.openCamera()}
+            onClick={() => {
+              const firstUnassigned = captures.find(c => c.status === 'done' && !c.jobId);
+              if (firstUnassigned) {
+                setJobPickerForClientId(firstUnassigned.clientId);
+              } else {
+                // No unassigned — open bulk select mode hint by selecting all done items
+                const doneIds = captures.filter(c => c.status === 'done').map(c => c.clientId);
+                if (doneIds.length > 0) setSelectedIds(new Set(doneIds));
+              }
+            }}
             className="flex flex-col items-center gap-1.5"
-            aria-label="Take another photo"
+            aria-label="Assign photos to a job"
           >
-            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center hover:bg-white/20 transition-colors relative">
-              <Plus size={22} className="text-white/70" />
-              {captures.length > 0 && (
-                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+            <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
+              <FolderOpen size={22} className="text-white/70" />
+              {/* Badge: count of unassigned done photos */}
+              {captures.filter(c => c.status === 'done' && !c.jobId).length > 0 && (
+                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
                   <span className="text-white text-[9px] font-bold">
-                    {captures.length > 99 ? '99+' : captures.length}
+                    {captures.filter(c => c.status === 'done' && !c.jobId).length > 99
+                      ? '99+'
+                      : captures.filter(c => c.status === 'done' && !c.jobId).length}
                   </span>
                 </div>
               )}
             </div>
-            <span className="text-white/40 text-[10px] font-medium">More</span>
+            <span className="text-white/40 text-[10px] font-semibold tracking-wide">Assign</span>
           </motion.button>
         </div>
       </div>
@@ -1414,11 +1447,18 @@ export default function CameraPage() {
             <p className="text-gray-900 font-bold text-sm">
               {captures.length === 0 ? 'Captured' : `Captured (${captures.length})`}
             </p>
+            {captures.length > 0 && (
+              <p className="text-gray-400 text-[11px] mt-0.5">
+                {unassigned > 0
+                  ? `${unassigned} need${unassigned === 1 ? 's' : ''} a job · ${attached} assigned`
+                  : `All ${attached} photo${attached !== 1 ? 's' : ''} assigned`}
+              </p>
+            )}
             {captures.length === 0 && !loadingInitial && (
-              <p className="text-gray-400 text-[11px] mt-0.5">Tap the shutter — no job needed yet</p>
+              <p className="text-gray-400 text-[11px] mt-0.5">Tap the shutter — assign to a job later</p>
             )}
           </div>
-          {captures.length > 0 && (
+          {captures.length > 1 && (
             <button
               onClick={() => {
                 if (selectedIds.size === captures.length) setSelectedIds(new Set());
@@ -1441,12 +1481,39 @@ export default function CameraPage() {
               <Loader2 size={20} className="animate-spin text-violet-400" />
             </div>
           ) : captures.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-gray-200 flex items-center justify-center mb-3">
-                <Camera size={24} className="text-gray-400" />
+            <div className="flex flex-col items-center justify-center py-10 text-center px-6">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: 'linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%)' }}
+              >
+                <Camera size={28} className="text-violet-400" />
               </div>
-              <p className="text-gray-500 font-semibold text-sm">No photos yet</p>
-              <p className="text-gray-400 text-xs mt-1">Tap the shutter above to start capturing</p>
+              <p className="text-gray-800 font-bold text-base">Ready to capture</p>
+              <p className="text-gray-400 text-sm mt-1.5 leading-snug max-w-[220px]">
+                Tap the shutter to take a photo. Assign it to a job whenever you're ready — no rush.
+              </p>
+              <div className="mt-5 flex items-center gap-4">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <Camera size={16} className="text-gray-400" />
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium">Capture</span>
+                </div>
+                <ChevronRight size={12} className="text-gray-300" />
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <FolderOpen size={16} className="text-gray-400" />
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium">Assign</span>
+                </div>
+                <ChevronRight size={12} className="text-gray-300" />
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <CheckCircle2 size={16} className="text-gray-400" />
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium">Done</span>
+                </div>
+              </div>
             </div>
           ) : (
             <AnimatePresence initial={false}>
