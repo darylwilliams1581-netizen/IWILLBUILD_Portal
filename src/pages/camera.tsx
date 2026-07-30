@@ -774,12 +774,13 @@ function OverlayPreview({ settings, lockedNote, activeJobNumber }: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function JobPickerSheet({
-  open, title = 'Attach to Job', onClose, onSelect,
+  open, title = 'Attach to Job', onClose, onSelect, allowNone = false,
 }: {
   open: boolean;
   title?: string;
   onClose: () => void;
-  onSelect: (job: JobOption) => void;
+  onSelect: (job: JobOption | null) => void;
+  allowNone?: boolean;
 }) {
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -845,6 +846,21 @@ function JobPickerSheet({
               />
             </div>
             <div className="overflow-y-auto flex-1 px-4 pb-3 space-y-1.5">
+              {/* No job option */}
+              {allowNone && (
+                <button
+                  onClick={() => { onSelect(null); onClose(); }}
+                  className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-red-50 hover:border-red-200 active:bg-red-100 rounded-2xl px-4 py-3 text-left transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                    <X size={14} className="text-gray-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-500 font-semibold text-sm">No job</p>
+                    <p className="text-gray-400 text-[11px]">Clear job selection</p>
+                  </div>
+                </button>
+              )}
               {loading ? (
                 <div className="flex items-center justify-center py-10">
                   <Loader2 size={20} className="animate-spin text-violet-400" />
@@ -2292,6 +2308,7 @@ export default function CameraPage() {
       <JobPickerSheet
         open={jobBarPickerOpen}
         title="Capture to Job"
+        allowNone
         onClose={() => setJobBarPickerOpen(false)}
         onSelect={(job) => {
           setActiveJobBoth(job);
@@ -2304,7 +2321,7 @@ export default function CameraPage() {
         title="Attach to Job"
         onClose={() => setJobPickerForClientId(null)}
         onSelect={(job) => {
-          if (jobPickerForClientId) void handleAttachJob(jobPickerForClientId, job);
+          if (job && jobPickerForClientId) void handleAttachJob(jobPickerForClientId, job);
           setJobPickerForClientId(null);
         }}
       />
@@ -2314,7 +2331,7 @@ export default function CameraPage() {
         title={`Move ${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''} to Job`}
         onClose={() => setBulkJobPickerOpen(false)}
         onSelect={(job) => {
-          void handleBulkAttachJob(job);
+          if (job) void handleBulkAttachJob(job);
           setBulkJobPickerOpen(false);
         }}
       />
