@@ -86,8 +86,8 @@ export interface CameraSettings {
   overlayTextColor: 'white' | 'black';
   overlayFontSize: 10 | 12 | 14 | 16;
   overlayLabel: string;              // custom label burned into every photo
-  overlayIncludeNote: boolean;       // include the photo note in the watermark
-  overlayIncludeJobNumber: boolean;  // include the job number when a job is active
+  // Note and job number are always burned when present — controlled by the dock,
+  // not by settings toggles. These fields are intentionally absent.
   overlayShowDate: boolean;          // show date as its own watermark line
   overlayShowTime: boolean;          // show time as its own watermark line
 }
@@ -103,8 +103,7 @@ const DEFAULT_SETTINGS: CameraSettings = {
   overlayTextColor: 'white',
   overlayFontSize: 12,
   overlayLabel: '',
-  overlayIncludeNote: true,
-  overlayIncludeJobNumber: true,
+  // Note and job number always burn when present — no toggle needed
   overlayShowDate: true,
   overlayShowTime: true,
 };
@@ -156,8 +155,8 @@ function formatOverlayTime(d: Date, fmt: '24h' | '12h'): string {
  * Watermark line order (bottom-right, stacked upward — lines[0] = bottom):
  *   Line 0 (bottom): time              (if overlayShowTime)
  *   Line 1:          date              (if overlayShowDate)
- *   Line 2:          photo note        (if overlayIncludeNote && note present)
- *   Line 3:          #job number       (if overlayIncludeJobNumber && jobNumber present)
+ *   Line 2:          photo note        (if note present — controlled by dock note input)
+ *   Line 3:          #job number       (if job active — controlled by dock job picker)
  *   Line 4 (top):    custom label      (if overlayLabel non-empty)
  *
  * Background: semi-transparent dark pill — readable over any field surface
@@ -251,8 +250,8 @@ async function processImage(
         const lines: string[] = [];
         if (settings.overlayShowTime) lines.push(timeStr);
         if (settings.overlayShowDate) lines.push(dateStr);
-        if (settings.overlayIncludeNote && note?.trim()) lines.push(note.trim());
-        if (settings.overlayIncludeJobNumber && jobNumber?.trim()) lines.push(`#${jobNumber.trim()}`);
+        if (note?.trim()) lines.push(note.trim());
+        if (jobNumber?.trim()) lines.push(`#${jobNumber.trim()}`);
         if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
 
         if (lines.length > 0) {
@@ -643,20 +642,6 @@ function SettingsSheet({
                         value={settings.overlayShowTime}
                         onChange={v => onChange({ overlayShowTime: v })}
                       />
-                      {/* Include job number */}
-                      <SettingsToggleRow
-                        label="Include job number"
-                        description="Burn job number when a job is active"
-                        value={settings.overlayIncludeJobNumber}
-                        onChange={v => onChange({ overlayIncludeJobNumber: v })}
-                      />
-                      {/* Include note */}
-                      <SettingsToggleRow
-                        label="Include photo note"
-                        description="Burn the note text into the watermark"
-                        value={settings.overlayIncludeNote}
-                        onChange={v => onChange({ overlayIncludeNote: v })}
-                      />
                       {settings.overlayShowDate && (
                         <SettingsSelectRow
                           label="Date format"
@@ -829,8 +814,8 @@ function OverlayPreview({ settings, lockedNote, activeJobNumber }: {
   const lines: string[] = [];
   if (settings.overlayShowTime) lines.push(timeStr);
   if (settings.overlayShowDate) lines.push(dateStr);
-  if (settings.overlayIncludeNote && lockedNote?.trim()) lines.push(lockedNote.trim());
-  if (settings.overlayIncludeJobNumber && activeJobNumber?.trim()) lines.push(`#${activeJobNumber.trim()}`);
+  if (lockedNote?.trim()) lines.push(lockedNote.trim());
+  if (activeJobNumber?.trim()) lines.push(`#${activeJobNumber.trim()}`);
   if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
 
   const lineH = fontSize * 1.5;
@@ -2064,8 +2049,8 @@ export default function CameraPage() {
               // Mirrors processImage burn order rendered in reverse
               const lines: string[] = [];
               if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
-              if (settings.overlayIncludeJobNumber && activeJob?.jobNumber?.trim()) lines.push(`#${activeJob.jobNumber.trim()}`);
-              if (settings.overlayIncludeNote && lockedNote?.trim() && settings.noteMode !== 'none') lines.push(lockedNote.trim());
+              if (activeJob?.jobNumber?.trim()) lines.push(`#${activeJob.jobNumber.trim()}`);
+              if (lockedNote?.trim() && settings.noteMode !== 'none') lines.push(lockedNote.trim());
               if (settings.overlayShowDate) lines.push(dateStr);
               if (settings.overlayShowTime) lines.push(timeStr);
               if (lines.length === 0) return null;
