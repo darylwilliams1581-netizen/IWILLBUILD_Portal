@@ -792,7 +792,7 @@ export default function FleetLiveMap() {
       </div>
 
       {/* ── Body: sidebar + map ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
         {/* Sidebar — desktop only */}
         <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
@@ -925,32 +925,6 @@ export default function FleetLiveMap() {
             )}
           </div>
 
-          {/* ── Map overlay: mode indicator chip ── */}
-          {mapReady && !mapError && mapMode !== 'live' && (
-            <div className={`absolute left-3 z-10 pointer-events-none ${
-              (mapMode === 'last-known' && lastKnown.length > 0) ? 'bottom-40 sm:bottom-3' : 'bottom-3'
-            }`}>
-              {mapMode === 'last-known' && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-600">
-                  <Clock size={11} className="text-slate-400" />
-                  Last known positions
-                </div>
-              )}
-              {mapMode === 'office' && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-xl shadow-sm text-[11px] font-semibold text-blue-600">
-                  <Building2 size={11} />
-                  Base location
-                </div>
-              )}
-              {mapMode === 'empty' && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-500">
-                  <Truck size={11} className="text-slate-400" />
-                  No active drivers
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ── Live mode: GPS status overlay (all drivers have no GPS) ── */}
           {!loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
@@ -1037,6 +1011,30 @@ export default function FleetLiveMap() {
             </div>
           )}
         </div>
+
+        {/* ── Mode indicator chip — outside overflow-hidden map container ── */}
+        {mapReady && !mapError && mapMode !== 'live' && (
+          <div className="absolute bottom-3 left-3 sm:left-[calc(14rem+12px)] md:left-[calc(16rem+12px)] z-20 pointer-events-none">
+            {mapMode === 'last-known' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-600">
+                <Clock size={11} className="text-slate-400" />
+                Last known positions
+              </div>
+            )}
+            {mapMode === 'office' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-xl shadow-sm text-[11px] font-semibold text-blue-600">
+                <Building2 size={11} />
+                Base location
+              </div>
+            )}
+            {mapMode === 'empty' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-500">
+                <Truck size={11} className="text-slate-400" />
+                No active drivers
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
