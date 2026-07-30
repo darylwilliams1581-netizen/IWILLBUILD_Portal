@@ -2172,208 +2172,147 @@ export default function CameraPage() {
         </div>
       </motion.div>
 
-      {/* ═══ NOTE MODE TOGGLE STRIP ═══ */}
-      {/* z-28 — above tray (z-20) and bulk bar (z-25), below shutter band (z-30) */}
-      {/* Always visible unless select mode is active */}
-      <AnimatePresence>
+      {/* ═══ SHUTTER BAND ═══ */}
+      {/* z-30 — always above tray. Two-row layout: note selector row + shutter row */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 flex flex-col items-stretch"
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+          background: 'rgba(0,0,0,0.88)',
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+        }}
+      >
+        {/* ── Note row ── */}
         {!selectMode && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed left-0 right-0 flex flex-col items-center gap-1.5 px-4"
-            style={{
-              bottom: 'calc(100px + env(safe-area-inset-bottom, 0px) + 0.75rem)',
-              zIndex: 28,
-            }}
-          >
-            {/* 3-segment mode toggle */}
+          <div className="flex items-center justify-center gap-2 pt-2.5 pb-1 px-4">
+            {/* 3-segment note mode toggle */}
             <div
-              className="flex items-center rounded-2xl overflow-hidden"
-              style={{
-                background: 'rgba(0,0,0,0.72)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.10)',
-              }}
+              className="flex items-center rounded-lg overflow-hidden"
+              style={{ border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.06)' }}
             >
               {(
                 [
-                  { value: 'ask',  label: 'Ask',  icon: <StickyNote size={11} /> },
-                  { value: 'lock', label: 'Lock', icon: <Lock size={11} /> },
-                  { value: 'none', label: 'Off',  icon: <X size={11} /> },
+                  { value: 'ask',  label: 'Ask',  activeClass: 'bg-violet-500/30 text-violet-200', dotClass: 'bg-violet-400' },
+                  { value: 'lock', label: 'Lock', activeClass: 'bg-yellow-500/25 text-yellow-200', dotClass: 'bg-yellow-400' },
+                  { value: 'none', label: 'Off',  activeClass: 'bg-white/10 text-white/50',        dotClass: 'bg-white/30' },
                 ] as const
               ).map((seg, i) => {
                 const active = settings.noteMode === seg.value;
                 return (
                   <motion.button
                     key={seg.value}
-                    whileTap={{ scale: 0.93 }}
+                    whileTap={{ scale: 0.92 }}
                     onClick={() => saveSettings({ noteMode: seg.value })}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold transition-colors relative ${
+                    className={`flex items-center gap-1 px-3 h-8 text-[11px] font-bold transition-colors relative ${
                       i > 0 ? 'border-l border-white/8' : ''
-                    } ${
-                      active
-                        ? seg.value === 'lock'
-                          ? 'text-yellow-300 bg-yellow-500/20'
-                          : seg.value === 'ask'
-                          ? 'text-violet-300 bg-violet-500/20'
-                          : 'text-white/40 bg-white/8'
-                        : 'text-white/30 hover:text-white/50 hover:bg-white/5'
-                    }`}
+                    } ${active ? seg.activeClass : 'text-white/25 hover:text-white/40'}`}
                     aria-label={`Note mode: ${seg.label}`}
                     aria-pressed={active}
                   >
-                    {seg.icon}
+                    {active && <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${seg.dotClass}`} />}
                     <span>{seg.label}</span>
-                    {active && (
-                      <motion.div
-                        layoutId="note-mode-indicator"
-                        className={`absolute inset-0 rounded-none pointer-events-none ${
-                          seg.value === 'lock' ? 'ring-1 ring-inset ring-yellow-500/30'
-                          : seg.value === 'ask' ? 'ring-1 ring-inset ring-violet-500/30'
-                          : 'ring-1 ring-inset ring-white/10'
-                        }`}
-                        transition={{ type: 'spring', damping: 30, stiffness: 380 }}
-                      />
-                    )}
                   </motion.button>
                 );
               })}
             </div>
 
-            {/* Locked note pill — shown when mode is lock */}
+            {/* Locked note pill — only when Lock is active */}
             <AnimatePresence>
               {settings.noteMode === 'lock' && (
                 <motion.button
-                  initial={{ opacity: 0, scale: 0.92, y: -4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.92, y: -4 }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+                  initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 360 }}
                   onClick={() => setNoteBarOpen(true)}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-1.5 transition-colors ${
+                  className={`flex items-center gap-1.5 h-8 rounded-lg px-2.5 transition-colors shrink-0 max-w-[160px] ${
                     lockedNote
-                      ? 'bg-yellow-500/25 border border-yellow-500/40 text-yellow-200'
-                      : 'bg-white/8 border border-white/15 text-white/35'
+                      ? 'bg-yellow-500/20 border border-yellow-500/35 text-yellow-200'
+                      : 'bg-white/6 border border-white/12 text-white/30'
                   }`}
-                  style={{
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                  }}
-                  aria-label={lockedNote ? `Locked note: ${lockedNote} — tap to change` : 'Tap to set locked note'}
+                  aria-label={lockedNote ? `Note: ${lockedNote} — tap to change` : 'Tap to set note'}
                 >
-                  <Lock size={10} className={lockedNote ? 'text-yellow-400 shrink-0' : 'text-white/25 shrink-0'} />
-                  <span className="text-[11px] font-semibold truncate max-w-[180px]">
-                    {lockedNote ? lockedNote : 'Tap to set note…'}
+                  <Lock size={9} className={lockedNote ? 'text-yellow-400 shrink-0' : 'text-white/20 shrink-0'} />
+                  <span className="text-[10px] font-semibold truncate">
+                    {lockedNote ?? 'Set note…'}
                   </span>
                   {lockedNote && (
-                    <>
-                      <span className="text-white/20 text-[10px] shrink-0">·</span>
-                      <span className="text-yellow-400/60 text-[10px] shrink-0">change</span>
-                      <button
-                        onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
-                        className="w-4 h-4 rounded-full bg-white/15 flex items-center justify-center text-white/50 hover:bg-white/25 shrink-0 ml-0.5"
-                        aria-label="Clear locked note"
-                      >
-                        <X size={8} />
-                      </button>
-                    </>
+                    <button
+                      onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
+                      className="w-3.5 h-3.5 rounded-full bg-white/15 flex items-center justify-center text-white/40 hover:bg-white/25 shrink-0"
+                      aria-label="Clear note"
+                    >
+                      <X size={7} />
+                    </button>
                   )}
                 </motion.button>
               )}
             </AnimatePresence>
-
-            {/* Ask mode hint — shown when mode is ask */}
-            <AnimatePresence>
-              {settings.noteMode === 'ask' && (
-                <motion.p
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 0.5, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-white text-[10px] font-medium"
-                >
-                  You'll be prompted after each photo
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* ═══ SHUTTER BAND ═══ */}
-      {/* z-30 — always above tray */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-8"
-        style={{
-          height: 'calc(100px + env(safe-area-inset-bottom, 0px))',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          paddingLeft: 'env(safe-area-inset-left, 0px)',
-          paddingRight: 'env(safe-area-inset-right, 0px)',
-          background: 'rgba(0,0,0,0.85)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-        }}
-      >
-        {/* Upload from library */}
-        <motion.button
-          whileTap={{ scale: 0.88 }}
-          onClick={() => void picker.openLibrary()}
-          className="flex flex-col items-center gap-1.5"
-          aria-label="Upload from photo library"
-          disabled={!settingsLoaded}
-        >
-          <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
-            <Upload size={22} className="text-white/70" />
-          </div>
-          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Upload</span>
-        </motion.button>
-
-        {/* Main shutter */}
-        <motion.button
-          whileTap={{ scale: 0.90 }}
-          whileHover={{ scale: 1.03 }}
-          transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-          onClick={() => void picker.openCamera()}
-          className="relative flex items-center justify-center"
-          aria-label="Take photo"
-          disabled={picker.checkingPermission || !settingsLoaded}
-        >
-          <div className={`w-[80px] h-[80px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
-            (picker.checkingPermission || !settingsLoaded) ? 'border-white/15' : 'border-white/35'
-          }`}>
-            <div
-              className={`w-[66px] h-[66px] rounded-full flex items-center justify-center transition-colors ${
-                (picker.checkingPermission || !settingsLoaded) ? 'bg-white/50' : 'bg-white'
-              }`}
-              style={{ boxShadow: '0 0 28px rgba(255,255,255,0.22)' }}
-            >
-              {(picker.checkingPermission || !settingsLoaded)
-                ? <Loader2 size={24} className="text-gray-400 animate-spin" />
-                : <Camera size={28} className="text-gray-900" />
-              }
+        {/* ── Shutter row ── */}
+        <div className="flex items-center justify-center gap-8 py-3">
+          {/* Upload from library */}
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => void picker.openLibrary()}
+            className="flex flex-col items-center gap-1"
+            aria-label="Upload from photo library"
+            disabled={!settingsLoaded}
+          >
+            <div className="w-[48px] h-[48px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
+              <Upload size={19} className="text-white/70" />
             </div>
-          </div>
-        </motion.button>
+            <span className="text-white/35 text-[9px] font-semibold tracking-wide">Upload</span>
+          </motion.button>
 
-        {/* Settings */}
-        <motion.button
-          whileTap={{ scale: 0.88 }}
-          onClick={() => setSettingsOpen(true)}
-          className="flex flex-col items-center gap-1.5"
-          aria-label="Camera settings"
-        >
-          <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
-            <Settings size={22} className="text-white/70" />
-            {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
-              <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
-                backupPermDenied ? 'bg-amber-400' : 'bg-violet-400'
-              }`} />
-            )}
-          </div>
-          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Settings</span>
-        </motion.button>
+          {/* Main shutter */}
+          <motion.button
+            whileTap={{ scale: 0.90 }}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+            onClick={() => void picker.openCamera()}
+            className="relative flex items-center justify-center"
+            aria-label="Take photo"
+            disabled={picker.checkingPermission || !settingsLoaded}
+          >
+            <div className={`w-[70px] h-[70px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+              (picker.checkingPermission || !settingsLoaded) ? 'border-white/15' : 'border-white/35'
+            }`}>
+              <div
+                className={`w-[58px] h-[58px] rounded-full flex items-center justify-center transition-colors ${
+                  (picker.checkingPermission || !settingsLoaded) ? 'bg-white/50' : 'bg-white'
+                }`}
+                style={{ boxShadow: '0 0 24px rgba(255,255,255,0.20)' }}
+              >
+                {(picker.checkingPermission || !settingsLoaded)
+                  ? <Loader2 size={22} className="text-gray-400 animate-spin" />
+                  : <Camera size={24} className="text-gray-900" />
+                }
+              </div>
+            </div>
+          </motion.button>
+
+          {/* Settings */}
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => setSettingsOpen(true)}
+            className="flex flex-col items-center gap-1"
+            aria-label="Camera settings"
+          >
+            <div className="w-[48px] h-[48px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
+              <Settings size={19} className="text-white/70" />
+              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+                <div className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
+                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400'
+                }`} />
+              )}
+            </div>
+            <span className="text-white/35 text-[9px] font-semibold tracking-wide">Settings</span>
+          </motion.button>
+        </div>
       </div>
 
       {/* ═══ BULK ACTION BAR ═══ */}
@@ -2385,7 +2324,7 @@ export default function CameraPage() {
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             className="fixed left-0 right-0 px-4"
             style={{
-              bottom: 'calc(100px + env(safe-area-inset-bottom, 0px) + 0.5rem)',
+              bottom: 'calc(120px + env(safe-area-inset-bottom, 0px) + 0.5rem)',
               zIndex: 25,
             }}
           >
