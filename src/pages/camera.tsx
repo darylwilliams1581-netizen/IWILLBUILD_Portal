@@ -76,7 +76,6 @@ export interface CameraSettings {
   quality: 'low' | 'medium' | 'high';
   notesEnabled: boolean;
   // ── Note mode ──────────────────────────────────────────────────────────────
-  // ask  — prompt user to confirm/edit note after each capture
   // lock — keep the same note across all captures until manually changed
   // none — no per-photo note; only default watermark content
   noteMode: 'lock' | 'none';
@@ -86,9 +85,11 @@ export interface CameraSettings {
   overlayTimeFormat: '24h' | '12h';
   overlayTextColor: 'white' | 'black';
   overlayFontSize: 10 | 12 | 14 | 16;
-  overlayLabel: string;           // custom label burned into every photo
-  overlayIncludeNote: boolean;    // include the photo note in the watermark
-  overlayIncludeJobNumber: boolean; // include the job number when a job is active
+  overlayLabel: string;              // custom label burned into every photo
+  overlayIncludeNote: boolean;       // include the photo note in the watermark
+  overlayIncludeJobNumber: boolean;  // include the job number when a job is active
+  overlayShowDate: boolean;          // show date as its own watermark line
+  overlayShowTime: boolean;          // show time as its own watermark line
 }
 
 const DEFAULT_SETTINGS: CameraSettings = {
@@ -97,13 +98,15 @@ const DEFAULT_SETTINGS: CameraSettings = {
   notesEnabled: true,
   noteMode: 'none',
   overlayEnabled: false,
-  overlayDateFormat: 'dd MM yyyy',
+  overlayDateFormat: 'dd/MM/yyyy',
   overlayTimeFormat: '24h',
   overlayTextColor: 'white',
   overlayFontSize: 12,
   overlayLabel: '',
   overlayIncludeNote: true,
   overlayIncludeJobNumber: true,
+  overlayShowDate: true,
+  overlayShowTime: true,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,11 +153,15 @@ function formatOverlayTime(d: Date, fmt: '24h' | '12h'): string {
  * Process a File through canvas: resize + optional overlay burn.
  * HEIC files are returned as-is (canvas cannot decode HEIC in WKWebView).
  *
- * Watermark line order (bottom-right, stacked upward):
- *   Line 1 (bottom): date  time
- *   Line 2:          photo note          (if overlayIncludeNote && note present)
- *   Line 3:          job number          (if overlayIncludeJobNumber && jobNumber present)
- *   Line 4 (top):    custom label        (if overlayLabel non-empty)
+ * Watermark line order (bottom-right, stacked upward — lines[0] = bottom):
+ *   Line 0 (bottom): time              (if overlayShowTime)
+ *   Line 1:          date              (if overlayShowDate)
+ *   Line 2:          photo note        (if overlayIncludeNote && note present)
+ *   Line 3:          #job number       (if overlayIncludeJobNumber && jobNumber present)
+ *   Line 4 (top):    custom label      (if overlayLabel non-empty)
+ *
+ * Background: semi-transparent dark pill — readable over any field surface
+ * without being a heavy solid block.
  */
 async function processImage(
   file: File,
@@ -203,54 +210,63 @@ async function processImage(
         const dateStr = formatOverlayDate(capturedAt, settings.overlayDateFormat);
         const timeStr = formatOverlayTime(capturedAt, settings.overlayTimeFormat);
 
-        // Build watermark lines — bottom-most first
+        // Build watermark lines — bottom-most first (index 0 = bottom of stack)
         const lines: string[] = [];
-        lines.push(`${dateStr}  ${timeStr}`);
+        if (settings.overlayShowTime) lines.push(timeStr);
+        if (settings.overlayShowDate) lines.push(dateStr);
         if (settings.overlayIncludeNote && note?.trim()) lines.push(note.trim());
         if (settings.overlayIncludeJobNumber && jobNumber?.trim()) lines.push(`#${jobNumber.trim()}`);
         if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
 
-        ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
-        ctx.textBaseline = 'bottom';
+        if (lines.length === 0) {
+          // Nothing to burn — skip overlay entirely
+        } else {
+          ctx.font = `600 ${fontSize}px 'Courier New', monospace`;
+          ctx.textBaseline = 'bottom';
 
-        const padding = Math.round(fontSize * 0.6);
-        const lineGap = Math.round(fontSize * 0.3);
-        const lineH = fontSize + lineGap;
+          const padding = Math.round(fontSize * 0.7);
+          const lineGap = Math.round(fontSize * 0.35);
+          const lineH = fontSize + lineGap;
 
-        // Measure widest line for the pill width
-        const maxTextW = lines.reduce((mx, l) => Math.max(mx, ctx.measureText(l).width), 0);
-        const pillPad = Math.round(fontSize * 0.35);
-        const pillW = maxTextW + pillPad * 2;
-        const pillH = lines.length * lineH + pillPad * 2 - lineGap;
+          // Measure widest line for pill width
+          const maxTextW = lines.reduce((mx, l) => Math.max(mx, ctx.measureText(l).width), 0);
+          const pillPadX = Math.round(fontSize * 0.55);
+          const pillPadY = Math.round(fontSize * 0.4);
+          const pillW = maxTextW + pillPadX * 2;
+          const pillH = lines.length * lineH + pillPadY * 2 - lineGap;
 
-        const pillX = width - pillW - padding;
-        const pillY = height - pillH - padding;
-        const r = Math.round(fontSize * 0.4);
+          const pillX = width - pillW - padding;
+          const pillY = height - pillH - padding;
+          const r = Math.round(fontSize * 0.45);
 
-        // Background pill
-        ctx.fillStyle = settings.overlayTextColor === 'white'
-          ? 'rgba(0,0,0,0.55)'
-          : 'rgba(255,255,255,0.55)';
-        ctx.beginPath();
-        ctx.moveTo(pillX + r, pillY);
-        ctx.lineTo(pillX + pillW - r, pillY);
-        ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
-        ctx.lineTo(pillX + pillW, pillY + pillH - r);
-        ctx.quadraticCurveTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH);
-        ctx.lineTo(pillX + r, pillY + pillH);
-        ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
-        ctx.lineTo(pillX, pillY + r);
-        ctx.quadraticCurveTo(pillX, pillY, pillX + r, pillY);
-        ctx.closePath();
-        ctx.fill();
+          // Semi-transparent background pill — dark for white text, light for black text
+          // Opacity kept at 0.45 so the pill reads clearly without blocking the image
+          const bgColor = settings.overlayTextColor === 'white'
+            ? 'rgba(0,0,0,0.45)'
+            : 'rgba(255,255,255,0.45)';
 
-        // Text lines — draw bottom-up (lines[0] = bottom)
-        ctx.fillStyle = settings.overlayTextColor === 'white' ? '#ffffff' : '#000000';
-        lines.forEach((line, i) => {
-          const textX = pillX + pillPad;
-          const textY = pillY + pillH - pillPad - i * lineH;
-          ctx.fillText(line, textX, textY);
-        });
+          ctx.fillStyle = bgColor;
+          ctx.beginPath();
+          ctx.moveTo(pillX + r, pillY);
+          ctx.lineTo(pillX + pillW - r, pillY);
+          ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
+          ctx.lineTo(pillX + pillW, pillY + pillH - r);
+          ctx.quadraticCurveTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH);
+          ctx.lineTo(pillX + r, pillY + pillH);
+          ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
+          ctx.lineTo(pillX, pillY + r);
+          ctx.quadraticCurveTo(pillX, pillY, pillX + r, pillY);
+          ctx.closePath();
+          ctx.fill();
+
+          // Text lines — draw bottom-up (lines[0] = bottom)
+          ctx.fillStyle = settings.overlayTextColor === 'white' ? '#ffffff' : '#111111';
+          lines.forEach((line, i) => {
+            const textX = pillX + pillPadX;
+            const textY = pillY + pillH - pillPadY - i * lineH;
+            ctx.fillText(line, textX, textY);
+          });
+        }
       }
 
       const jpegQuality = settings.quality === 'low' ? 0.72
@@ -562,6 +578,20 @@ function SettingsSheet({
                           onClick={e => e.stopPropagation()}
                         />
                       </div>
+                      {/* Date on/off */}
+                      <SettingsToggleRow
+                        label="Show date"
+                        description="Burn capture date as its own line"
+                        value={settings.overlayShowDate}
+                        onChange={v => onChange({ overlayShowDate: v })}
+                      />
+                      {/* Time on/off */}
+                      <SettingsToggleRow
+                        label="Show time"
+                        description="Burn capture time as its own line"
+                        value={settings.overlayShowTime}
+                        onChange={v => onChange({ overlayShowTime: v })}
+                      />
                       {/* Include job number */}
                       <SettingsToggleRow
                         label="Include job number"
@@ -576,31 +606,36 @@ function SettingsSheet({
                         value={settings.overlayIncludeNote}
                         onChange={v => onChange({ overlayIncludeNote: v })}
                       />
-                      <SettingsSelectRow
-                        label="Date format"
-                        value={settings.overlayDateFormat}
-                        options={[
-                          { value: 'dd MM yyyy', label: 'DD MM YYYY' },
-                          { value: 'MM/dd/yyyy', label: 'MM/DD/YYYY' },
-                          { value: 'yyyy-MM-dd', label: 'YYYY-MM-DD' },
-                        ]}
-                        onChange={v => onChange({ overlayDateFormat: v })}
-                      />
-                      <SettingsSelectRow
-                        label="Time format"
-                        value={settings.overlayTimeFormat}
-                        options={[
-                          { value: '24h', label: '24 hour' },
-                          { value: '12h', label: '12 hour (AM/PM)' },
-                        ]}
-                        onChange={v => onChange({ overlayTimeFormat: v as CameraSettings['overlayTimeFormat'] })}
-                      />
+                      {settings.overlayShowDate && (
+                        <SettingsSelectRow
+                          label="Date format"
+                          value={settings.overlayDateFormat}
+                          options={[
+                            { value: 'dd/MM/yyyy', label: 'DD/MM/YYYY' },
+                            { value: 'MM/dd/yyyy', label: 'MM/DD/YYYY' },
+                            { value: 'yyyy-MM-dd', label: 'YYYY-MM-DD' },
+                            { value: 'dd MM yyyy', label: 'DD MM YYYY' },
+                          ]}
+                          onChange={v => onChange({ overlayDateFormat: v })}
+                        />
+                      )}
+                      {settings.overlayShowTime && (
+                        <SettingsSelectRow
+                          label="Time format"
+                          value={settings.overlayTimeFormat}
+                          options={[
+                            { value: '24h', label: '24 hour' },
+                            { value: '12h', label: '12 hour (AM/PM)' },
+                          ]}
+                          onChange={v => onChange({ overlayTimeFormat: v as CameraSettings['overlayTimeFormat'] })}
+                        />
+                      )}
                       <SettingsSelectRow
                         label="Text colour"
                         value={settings.overlayTextColor}
                         options={[
-                          { value: 'white', label: 'White' },
-                          { value: 'black', label: 'Black' },
+                          { value: 'white', label: 'White on dark' },
+                          { value: 'black', label: 'Black on light' },
                         ]}
                         onChange={v => onChange({ overlayTextColor: v as CameraSettings['overlayTextColor'] })}
                       />
@@ -739,38 +774,66 @@ function OverlayPreview({ settings, lockedNote, activeJobNumber }: {
   const timeStr = formatOverlayTime(now, settings.overlayTimeFormat);
   const fontSize = settings.overlayFontSize;
 
-  // Build preview lines — same order as processImage (bottom-most first)
+  // Build preview lines — same order as processImage (bottom-most first, index 0 = bottom)
   const lines: string[] = [];
-  lines.push(`${dateStr}  ${timeStr}`);
+  if (settings.overlayShowTime) lines.push(timeStr);
+  if (settings.overlayShowDate) lines.push(dateStr);
   if (settings.overlayIncludeNote && lockedNote?.trim()) lines.push(lockedNote.trim());
   if (settings.overlayIncludeJobNumber && activeJobNumber?.trim()) lines.push(`#${activeJobNumber.trim()}`);
   if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
 
   const lineH = fontSize * 1.5;
-  const pillPad = fontSize * 0.35;
-  const pillH = lines.length * lineH + pillPad * 2 - fontSize * 0.3;
+  const pillPadX = fontSize * 0.55;
+  const pillPadY = fontSize * 0.4;
+  const pillH = lines.length > 0 ? lines.length * lineH + pillPadY * 2 - fontSize * 0.35 : 0;
+
+  const isWhite = settings.overlayTextColor === 'white';
 
   return (
-    <div className="mx-3 mb-2 rounded-xl overflow-hidden bg-gray-800 relative" style={{ height: Math.max(72, pillH + 24) }}>
-      <div className="absolute inset-0 opacity-40"
-        style={{ background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' }} />
-      <div
-        className="absolute bottom-2 right-2 px-2 py-1 rounded-md flex flex-col items-end gap-0.5"
-        style={{
-          background: settings.overlayTextColor === 'white' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)',
-          fontFamily: "'Courier New', monospace",
-          fontSize: `${fontSize}px`,
-          fontWeight: 'bold',
-          color: settings.overlayTextColor === 'white' ? '#fff' : '#000',
-          lineHeight: 1.5,
-        }}
-      >
-        {/* Render lines top-to-bottom (reversed from bottom-up burn order) */}
-        {[...lines].reverse().map((line, i) => (
-          <span key={i}>{line}</span>
-        ))}
-      </div>
-      <p className="absolute top-2 left-3 text-white/40 text-[10px]">Preview</p>
+    <div
+      className="mx-3 mb-2 rounded-xl overflow-hidden relative"
+      style={{
+        height: Math.max(72, pillH + 28),
+        background: 'linear-gradient(135deg, #2d3748 0%, #1a202c 50%, #2d4a3e 100%)',
+      }}
+    >
+      {/* Simulated photo texture — subtle noise overlay */}
+      <div className="absolute inset-0 opacity-20"
+        style={{ background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'1\'/%3E%3C/svg%3E")' }}
+      />
+
+      {lines.length > 0 && (
+        <div
+          className="absolute bottom-2 right-2 rounded-md flex flex-col items-end"
+          style={{
+            // Semi-transparent pill — matches canvas burn at 0.45 opacity
+            background: isWhite ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.45)',
+            paddingLeft: `${pillPadX}px`,
+            paddingRight: `${pillPadX}px`,
+            paddingTop: `${pillPadY}px`,
+            paddingBottom: `${pillPadY}px`,
+            fontFamily: "'Courier New', monospace",
+            fontSize: `${fontSize}px`,
+            fontWeight: '600',
+            color: isWhite ? '#ffffff' : '#111111',
+            lineHeight: 1.5,
+            gap: `${fontSize * 0.1}px`,
+          }}
+        >
+          {/* Render top-to-bottom (reversed from bottom-up burn order) */}
+          {[...lines].reverse().map((line, i) => (
+            <span key={i} className="block whitespace-nowrap">{line}</span>
+          ))}
+        </div>
+      )}
+
+      {lines.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <p className="text-white/30 text-[11px]">No fields enabled</p>
+        </div>
+      )}
+
+      <p className="absolute top-2 left-3 text-white/35 text-[10px] font-medium tracking-wide">Preview</p>
     </div>
   );
 }
@@ -1903,23 +1966,29 @@ export default function CameraPage() {
             {(() => {
               const dateStr = formatOverlayDate(liveNow, settings.overlayDateFormat);
               const timeStr = formatOverlayTime(liveNow, settings.overlayTimeFormat);
+              // Build lines top-to-bottom (label at top, time at bottom)
+              // Mirrors processImage burn order rendered in reverse
               const lines: string[] = [];
               if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
               if (settings.overlayIncludeJobNumber && activeJob?.jobNumber?.trim()) lines.push(`#${activeJob.jobNumber.trim()}`);
               if (settings.overlayIncludeNote && lockedNote?.trim() && settings.noteMode !== 'none') lines.push(lockedNote.trim());
-              lines.push(`${dateStr}  ${timeStr}`);
-              const fs = Math.max(10, settings.overlayFontSize ?? 13);
+              if (settings.overlayShowDate) lines.push(dateStr);
+              if (settings.overlayShowTime) lines.push(timeStr);
+              if (lines.length === 0) return null;
+              const fs = Math.max(10, settings.overlayFontSize ?? 12);
+              const isWhite = settings.overlayTextColor === 'white';
               return (
                 <div
                   style={{
                     fontFamily: "'Courier New', monospace",
                     fontSize: `${fs}px`,
-                    fontWeight: 'bold',
-                    lineHeight: 1.55,
-                    color: settings.overlayTextColor === 'white' ? '#fff' : '#000',
-                    background: settings.overlayTextColor === 'white' ? 'rgba(0,0,0,0.52)' : 'rgba(255,255,255,0.52)',
-                    padding: '4px 7px',
-                    borderRadius: '4px',
+                    fontWeight: '600',
+                    lineHeight: 1.5,
+                    color: isWhite ? '#ffffff' : '#111111',
+                    // Semi-transparent pill — 0.45 matches canvas burn
+                    background: isWhite ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.45)',
+                    padding: `${fs * 0.4}px ${fs * 0.55}px`,
+                    borderRadius: `${fs * 0.45}px`,
                     textAlign: 'right',
                     whiteSpace: 'nowrap',
                   }}
