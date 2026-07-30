@@ -471,7 +471,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   const [form, setForm] = useState({
     fullName: '',
     companyEmployer: '',
-    roleTrade: '',
+    roleTrade: '' as SiteRole | '',
     fitForWork: true,
     whiteCardNumber: '',
     signature: '',
@@ -486,6 +486,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
 
   async function submit() {
     if (!form.fullName.trim()) { setError('Full name is required'); return; }
+    if (!form.roleTrade) { setError('Please select a role'); return; }
     if (!form.signature) { setError('Signature is required'); return; }
     setSubmitting(true);
     setError('');
@@ -585,23 +586,33 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
                   className="h-11 rounded-xl"
                 />
               </Field>
-              <Field label="Role / Trade">
+              <Field label="White Card No. (optional)">
                 <Input
-                  value={form.roleTrade}
-                  onChange={e => setForm(f => ({ ...f, roleTrade: e.target.value }))}
-                  placeholder="Trade"
+                  value={form.whiteCardNumber}
+                  onChange={e => setForm(f => ({ ...f, whiteCardNumber: e.target.value }))}
+                  placeholder="White card"
                   className="h-11 rounded-xl"
                 />
               </Field>
             </div>
 
-            <Field label="White Card No. (optional)">
-              <Input
-                value={form.whiteCardNumber}
-                onChange={e => setForm(f => ({ ...f, whiteCardNumber: e.target.value }))}
-                placeholder="White card number"
-                className="h-11 rounded-xl"
-              />
+            <Field label="Role *">
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {SITE_ROLES.map(role => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, roleTrade: role }))}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                      form.roleTrade === role
+                        ? 'bg-violet-500 border-violet-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400 hover:text-violet-600'
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
             </Field>
 
             <CheckRow
@@ -632,19 +643,44 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
 
         {workers.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Signed on ({workers.length})</p>
-            {workers.map(w => (
-              <div key={w.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
-                <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
-                  <p className="text-xs text-slate-500 truncate">{w.role_trade || w.company_employer || '—'}</p>
+            {/* Role summary */}
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              <span className="text-xs font-semibold text-slate-500">{workers.length} on site</span>
+              {Object.entries(
+                workers.reduce<Record<string, number>>((acc, w) => {
+                  const r = w.role_trade || 'Unspecified';
+                  acc[r] = (acc[r] ?? 0) + 1;
+                  return acc;
+                }, {})
+              )
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([role, count]) => (
+                  <span key={role} className="text-xs text-slate-400">· {count} {role}</span>
+                ))}
+            </div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Signed on</p>
+            {workers.map(w => {
+              const badge = ROLE_BADGE[w.role_trade];
+              return (
+                <div key={w.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
+                  <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {badge ? (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>{badge.label}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">{w.role_trade || 'Unspecified'}</span>
+                      )}
+                      {w.company_employer && <span className="text-xs text-slate-400 truncate">{w.company_employer}</span>}
+                    </div>
+                  </div>
+                  {!w.fit_for_work && (
+                    <Badge variant="destructive" className="text-xs">Not fit</Badge>
+                  )}
                 </div>
-                {!w.fit_for_work && (
-                  <Badge variant="destructive" className="text-xs">Not fit</Badge>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -652,7 +688,28 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Role constants ────────────────────────────────────────────────────────────
+
+const SITE_ROLES = [
+  'Worker',
+  'Apprentice',
+  'Operator',
+  'Supervisor',
+  'Person in Charge of Construction',
+  'First Aid Officer',
+  'Safety Observer',
+  'Visitor',
+  'Delivery Driver',
+] as const;
+
+type SiteRole = typeof SITE_ROLES[number];
+
+// Roles that get a highlighted badge in the signed-on list
+const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  'First Aid Officer':               { bg: 'bg-green-100',  text: 'text-green-700',  label: 'First Aid' },
+  'Supervisor':                      { bg: 'bg-violet-100', text: 'text-violet-700', label: 'Supervisor' },
+  'Person in Charge of Construction':{ bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'PIC' },
+};
 
 type View = 'list' | 'new' | 'form' | 'signon';
 
@@ -1207,16 +1264,37 @@ export default function JobSitePrestartPage() {
                 </Button>
                 {workers.length > 0 && (
                   <div className="space-y-2 mt-2">
-                    {workers.map(w => (
-                      <div key={w.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <CheckCircle2 size={15} className="text-green-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
-                          <p className="text-xs text-slate-500 truncate">{w.role_trade || w.company_employer || '—'}</p>
+                    {/* Key role highlights */}
+                    {(['First Aid Officer', 'Supervisor', 'Person in Charge of Construction'] as const).map(role => {
+                      const match = workers.find(w => w.role_trade === role);
+                      const badge = ROLE_BADGE[role];
+                      return match ? (
+                        <div key={role} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${badge.bg} border-transparent`}>
+                          <span className={`text-xs font-bold ${badge.text}`}>{badge.label}</span>
+                          <span className="text-xs text-slate-600 truncate">{match.full_name}</span>
                         </div>
-                        {!w.fit_for_work && <Badge variant="destructive" className="text-xs">Not fit</Badge>}
-                      </div>
-                    ))}
+                      ) : null;
+                    })}
+                    {/* All workers */}
+                    {workers.map(w => {
+                      const badge = ROLE_BADGE[w.role_trade];
+                      return (
+                        <div key={w.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <CheckCircle2 size={15} className="text-green-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {badge ? (
+                                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>{badge.label}</span>
+                              ) : (
+                                <span className="text-xs text-slate-400">{w.role_trade || 'Unspecified'}</span>
+                              )}
+                            </div>
+                          </div>
+                          {!w.fit_for_work && <Badge variant="destructive" className="text-xs">Not fit</Badge>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Section>
