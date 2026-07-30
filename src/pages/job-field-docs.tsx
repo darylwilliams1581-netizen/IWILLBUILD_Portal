@@ -8,14 +8,15 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Search, Plus, Loader2, FileCheck, Building2, Users,
-  ChevronDown, ChevronUp, CheckCircle2, Clock, X,
+  Search, Plus, Loader2, FileCheck, Users,
+  ChevronUp, CheckCircle2, Clock, X,
   AlertCircle, Check, CheckSquare, Square, Copy, Link2,
-  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight, Home,
+  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ArrowLeft,
 } from 'lucide-react';
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import JobPickerSheet from '@/components/JobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,103 +64,30 @@ interface Stakeholder {
 
 function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/jobs', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setJobs((d.jobs ?? []).filter((j: Job) => j.status !== 'archived')))
-      .catch(() => setFetchError(true))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filtered = jobs.filter(j =>
-    !search ||
-    j.name.toLowerCase().includes(search.toLowerCase()) ||
-    (j.job_number ?? '').toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
-      <DesktopTopBar />
-      <DesktopDock />
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-        <Helmet>
+    <>
+      <Helmet>
         <title>Field Docs | IWILLBUILD</title>
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      {/* Home button */}
-      <div className="w-full max-w-md mb-2 flex">
-        <button
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
-        >
-          <Home size={14} />
-          Home
-        </button>
+      <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
+        <DesktopTopBar />
+        <DesktopDock />
       </div>
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
-            <FileCheck size={28} className="text-teal-600" />
-          </div>
-          <h1 className="font-heading font-bold text-2xl text-slate-800 mb-1">Field Docs</h1>
-          <p className="text-sm text-slate-500 text-center">Select a job to view its documents</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search jobs, job numbers…"
-                autoFocus
-                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 bg-slate-50"
-              />
-            </div>
-          </div>
-
-          <div className="max-h-80 overflow-y-auto">
-            {loading && (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 size={20} className="animate-spin text-teal-600" />
-              </div>
-            )}
-            {!loading && filtered.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">
-                {fetchError
-                  ? "Couldn't load jobs — check your connection"
-                  : search ? 'No jobs match your search' : 'No active jobs found'}
-              </p>
-            )}
-            {!loading && filtered.map(j => (
-              <button
-                key={j.id}
-                onClick={() => onSelect(j)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-teal-50 transition-colors border-b border-slate-100 last:border-0 group"
-              >
-                <div className="w-9 h-9 bg-slate-100 group-hover:bg-teal-100 rounded-xl flex items-center justify-center shrink-0 transition-colors">
-                  <Building2 size={15} className="text-slate-500 group-hover:text-teal-600 transition-colors" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{j.name}</p>
-                  {j.job_number && <p className="text-xs text-slate-400">{j.job_number}</p>}
-                </div>
-                <ChevronDown size={14} className="text-slate-300 group-hover:text-teal-500 -rotate-90 transition-colors shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      </div>
-    </div>
+      <JobPickerSheet
+        open
+        onClose={() => navigate('/home')}
+        title="Field Docs"
+        subtitle="Select a job to view its documents"
+        iconBg="bg-teal-100"
+        iconFg="text-teal-600"
+        Icon={FileCheck}
+        onSelect={job => onSelect({ id: job.id, name: job.name, job_number: job.jobNumber ?? null, status: 'active' })}
+      />
+    </>
   );
 }
 
@@ -1148,44 +1076,6 @@ export default function JobFieldDocsPage() {
     <div className="flex flex-col h-full lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
-      {/* Top bar */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
-        <button
-          onClick={() => navigate('/home')}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          title="Home"
-        >
-          <Home size={16} />
-        </button>
-        <button
-          onClick={() => { setSelectedJob(null); setDocs([]); setSignons([]); }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          title="Back to job picker"
-        >
-          <ChevronDown size={16} className="rotate-90" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
-              <FileCheck size={14} className="text-teal-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-400 leading-none mb-0.5">Field Docs</p>
-              <h1 className="font-heading font-bold text-sm text-slate-800 truncate leading-tight">
-                {selectedJob.name}
-                {selectedJob.job_number && <span className="font-normal text-slate-400 ml-1.5">{selectedJob.job_number}</span>}
-              </h1>
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors shrink-0"
-        >
-          <Plus size={13} />
-          Add
-        </button>
-      </div>
 
       {/* Tabs */}
       <div className="bg-white border-b border-slate-200 px-4 flex gap-1 shrink-0">
@@ -1311,6 +1201,34 @@ export default function JobFieldDocsPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Footer bar */}
+      <div
+        className="bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 safe-bottom"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+      >
+        <button
+          onClick={() => navigate('/home')}
+          className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
+          aria-label="Home"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-slate-400 leading-none mb-0.5">Field Docs</p>
+          <p className="font-heading font-bold text-sm text-slate-800 truncate leading-tight">
+            {selectedJob.name}
+            {selectedJob.job_number && <span className="font-normal text-slate-400 ml-1.5">{selectedJob.job_number}</span>}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors shrink-0"
+        >
+          <Plus size={13} />
+          Add
+        </button>
       </div>
 
       {/* Add doc modal */}
