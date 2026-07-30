@@ -1069,6 +1069,24 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1a-cc-cols. Ensure camera_captures has all expected columns
+  // (ALTER TABLE is idempotent via the duplicate-column error guard below)
+  for (const [colDef, colName] of [
+    [`original_name VARCHAR(500) NULL`, 'original_name'],
+    [`bucket VARCHAR(100) NULL`, 'bucket'],
+  ] as [string, string][]) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN ${colDef}`));
+      console.log(`[startup-migration] camera_captures: added column ${colName}`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      // ER_DUP_FIELDNAME = column already exists — expected on every run after first
+      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, msg);
+      }
+    }
+  }
+
   // 1a-cs. Ensure camera_settings table exists
   try {
     await db.execute(sql`
