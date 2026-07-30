@@ -1177,31 +1177,6 @@ export default function JobSitePrestartPage() {
               </Section>
               </div>
 
-              {/* Section 9: Supervisor Sign-Off */}
-              <Section title="Supervisor Sign-Off" icon={Pen} accent="bg-green-600">
-                <Field label="Supervisor Name">
-                  <Input value={prestart.supervisor_signoff_name ?? prestart.supervisor_name ?? ''} onChange={e => update('supervisor_signoff_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                {!isReadOnly && (
-                  <Field label="Supervisor Signature">
-                    <SignaturePad
-                      onSave={sig => { setSupervisorSig(sig); update('supervisor_signature', sig); }}
-                      onClear={() => { setSupervisorSig(''); update('supervisor_signature', ''); }}
-                    />
-                  </Field>
-                )}
-                {isReadOnly && prestart.supervisor_signature && (
-                  <div className="border border-slate-200 rounded-xl p-2 bg-white">
-                    <img src={prestart.supervisor_signature} alt="Supervisor signature" className="max-h-20 w-auto" />
-                  </div>
-                )}
-                {prestart.submitted_at && (
-                  <p className="text-xs text-slate-500">
-                    Finalised: {new Date(prestart.submitted_at).toLocaleString('en-AU')}
-                  </p>
-                )}
-              </Section>
-
               {/* Worker sign-on summary */}
               <Section title={`Worker Sign-On (${workers.length})`} icon={Users} accent="bg-violet-500">
                 <Button
