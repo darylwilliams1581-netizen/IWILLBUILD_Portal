@@ -1343,7 +1343,11 @@ export default function CameraPage() {
             <motion.div
               initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden shrink-0 z-10"
-              style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+              style={{
+                paddingTop: 'env(safe-area-inset-top, 0px)',
+                paddingLeft: 'env(safe-area-inset-left, 0px)',
+                paddingRight: 'env(safe-area-inset-right, 0px)',
+              }}
             >
               <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border-b border-amber-500/30">
                 <WifiOff size={12} className="text-amber-400 shrink-0" />
@@ -1353,10 +1357,15 @@ export default function CameraPage() {
           )}
         </AnimatePresence>
 
-        {/* Top bar */}
+        {/* Top bar — respects safe areas on all sides (portrait notch top, landscape notch left/right) */}
         <div
-          className="flex items-center justify-between px-4 shrink-0"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: '12px' }}
+          className="flex items-center justify-between shrink-0"
+          style={{
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            paddingBottom: '12px',
+            paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 16px)',
+            paddingRight: 'calc(env(safe-area-inset-right, 0px) + 16px)',
+          }}
         >
           <button
             onClick={() => navigate('/home')}
@@ -1620,6 +1629,8 @@ export default function CameraPage() {
         style={{
           height: 'calc(100px + env(safe-area-inset-bottom, 0px))',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
           background: 'rgba(0,0,0,0.85)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
