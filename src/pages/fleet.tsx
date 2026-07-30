@@ -370,7 +370,7 @@ export default function FleetPage() {
               </span>
             )}
 
-            {/* Centre: view toggle + add asset — absolutely centred */}
+            {/* Centre: view toggle — absolutely centred, clean two-tab pill */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
               {/* Assets tab */}
               <button
@@ -397,29 +397,22 @@ export default function FleetPage() {
                 <Navigation size={13} />
                 <span>Live Map</span>
               </button>
-
-              {/* Tracker Portal tab — desktop only */}
-              {/* REMOVED — replaced by Quick Links sidebar module */}
-
-              {/* Divider + Add Asset — only shown on assets tab */}
-              {view === 'assets' && (
-                <>
-                  <span className="w-px h-5 bg-slate-300 mx-0.5 shrink-0" />
-                  <button
-                    onClick={() => !isViewOnly && setShowModal(true)}
-                    disabled={isViewOnly}
-                    title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus size={13} />
-                    <span>Add Asset</span>
-                  </button>
-                </>
-              )}
             </div>
 
-            {/* Right spacer — keeps left content from overlapping centre */}
-            <div className="ml-auto" />
+            {/* Right: Add Asset — icon-only on mobile, label on sm+ */}
+            <div className="ml-auto shrink-0">
+              {view === 'assets' && (
+                <button
+                  onClick={() => !isViewOnly && setShowModal(true)}
+                  disabled={isViewOnly}
+                  title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus size={14} />
+                  <span className="hidden sm:inline">Add Asset</span>
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
