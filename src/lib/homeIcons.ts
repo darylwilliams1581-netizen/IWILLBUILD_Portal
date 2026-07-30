@@ -98,7 +98,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'fleet',         label: 'Fleet',          icon: Truck,            href: '/fleet',                  bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'invoices_mgmt', label: 'Invoices',       icon: Receipt,          href: '/invoices',               bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
   { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-violet-700',  fg: 'text-white', group: 'management' },
-  { key: 'stakeholders',  label: 'Stakeholders',   icon: Users,            href: '/customers',              bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
+  { key: 'stakeholders',  label: 'Contacts',   icon: Users,            href: '/customers',              bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'ledger',        label: 'Ledger',         icon: BookOpen,         href: '?panel=costs-picker',     bg: 'bg-emerald-600', fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
