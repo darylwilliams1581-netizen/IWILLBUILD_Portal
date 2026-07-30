@@ -53,6 +53,13 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
+    // Only owner, admin, accounts, or users with invoice permission may export job packs
+    const isOwner = profile.role === 'owner';
+    const isAdmin = isOwner || profile.role === 'admin' || profile.permAdmin === true;
+    const isAccounts = profile.role === 'accounts';
+    const canExport = isAdmin || isAccounts || profile.permInvoices !== false;
+    if (!canExport) return res.status(403).json({ error: 'You do not have permission to export job packs.' });
+
     const jobId = parseInt(req.params.id, 10);
     if (!jobId) return res.status(400).json({ error: 'Invalid job id' });
 
@@ -75,7 +82,7 @@ export default async function handler(req: Request, res: Response) {
     const [
       tasks, notes, attendance, delays, costs,
       estimates, estimateLines, forms,
-      photos, files, drawings,
+      photos, files, drawings, invoices, invoiceLines,
     ] = await Promise.all([
       safeQuery(sql`
         SELECT id, title, description, status, assigned_to_name, due_date, created_at
@@ -128,6 +135,19 @@ export default async function handler(req: Request, res: Response) {
       safeQuery(sql`
         SELECT id, name AS drawing_name, original_name, mime_type, size_bytes, created_at
         FROM job_drawings WHERE job_id = ${jobId} AND company_id = ${cid} ORDER BY created_at`),
+
+      safeQuery(sql`
+        SELECT id, invoice_number, title, status, issue_date, due_date,
+               subtotal, gst_amount, total_inc_gst, paid_at, created_at
+        FROM invoices WHERE job_id = ${jobId} AND company_id = ${cid} ORDER BY created_at`),
+
+      safeQuery(sql`
+        SELECT il.id, il.invoice_id, i.invoice_number, il.description,
+               il.quantity, il.rate, il.amount, il.sort_order
+        FROM invoice_lines il
+        JOIN invoices i ON i.id = il.invoice_id
+        WHERE i.job_id = ${jobId} AND i.company_id = ${cid}
+        ORDER BY il.invoice_id, il.sort_order`),
     ]);
 
     const exportedAt = new Date().toISOString();
@@ -171,6 +191,8 @@ export default async function handler(req: Request, res: Response) {
       `costs.csv               — costs / expenses (${costs.length} records)`,
       `estimates.csv           — estimates / quotes (${estimates.length} records)`,
       `estimate-lines.csv      — estimate line items (${estimateLines.length} records)`,
+      `invoices.csv            — invoices for this job (${invoices.length} records)`,
+      `invoice-lines.csv       — invoice line items (${invoiceLines.length} records)`,
       `forms-submitted.csv     — completed site forms (${forms.length} records)`,
       `photos-manifest.csv     — index of uploaded photos (${photos.length} files)`,
       `files-manifest.csv      — index of uploaded documents (${files.length} files)`,
@@ -203,6 +225,8 @@ export default async function handler(req: Request, res: Response) {
     zip.file('costs.csv', toCsv(costs as Record<string, unknown>[]));
     zip.file('estimates.csv', toCsv(estimates as Record<string, unknown>[]));
     zip.file('estimate-lines.csv', toCsv(estimateLines as Record<string, unknown>[]));
+    zip.file('invoices.csv', toCsv(invoices as Record<string, unknown>[]));
+    zip.file('invoice-lines.csv', toCsv(invoiceLines as Record<string, unknown>[]));
     zip.file('forms-submitted.csv', toCsv(forms as Record<string, unknown>[]));
     zip.file('photos-manifest.csv', toCsv(photos as Record<string, unknown>[]));
     zip.file('files-manifest.csv', toCsv(files as Record<string, unknown>[]));

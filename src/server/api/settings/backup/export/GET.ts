@@ -61,8 +61,13 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
-    if (!['owner', 'admin'].includes(profile.role ?? '')) {
-      return res.status(403).json({ error: 'Owner or Admin access required' });
+
+    const isOwner = profile.role === 'owner';
+    const isAdmin = isOwner || profile.role === 'admin' || profile.permAdmin === true;
+    const isAccounts = profile.role === 'accounts';
+    const canBackup = isAdmin || isAccounts;
+    if (!canBackup) {
+      return res.status(403).json({ error: 'Owner, Admin, or Accounts access required to export company data.' });
     }
 
     const cid = profile.companyId;
