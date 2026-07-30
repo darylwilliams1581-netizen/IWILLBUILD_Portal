@@ -150,10 +150,11 @@ export default function EstimateEditorPage() {
     if (est && !isLocked && dirty) {
       await save(est, currentLines);
     }
-    if (est) {
+    if (est?.jobId) {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
-      navigate('/home');
+      // No estimate loaded — go back in history, or fall back to jobs list
+      navigate(-1);
     }
   }
 
@@ -378,7 +379,7 @@ export default function EstimateEditorPage() {
               <ChevronLeft size={18} />
             </button>
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/')}
               className="hidden sm:flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors shrink-0"
               aria-label="Home"
             >
