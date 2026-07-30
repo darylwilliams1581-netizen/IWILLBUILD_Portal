@@ -1033,6 +1033,35 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1a-cc. Ensure camera_captures table exists
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS camera_captures (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        company_id    INT NOT NULL,
+        user_id       VARCHAR(36) NOT NULL,
+        storage_key   VARCHAR(500) NOT NULL,
+        mime_type     VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
+        size_bytes    INT NULL,
+        original_name VARCHAR(500) NULL,
+        note          TEXT NULL,
+        job_id        INT NULL,
+        status        VARCHAR(30) NOT NULL DEFAULT 'captured',
+        captured_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cc_company_user (company_id, user_id),
+        INDEX idx_cc_status (company_id, user_id, status),
+        INDEX idx_cc_job (job_id)
+      )
+    `);
+    console.log('[startup-migration] camera_captures table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] camera_captures CREATE failed:', msg);
+    }
+  }
+
   // 1b. Ensure notifications table exists (must be before column migrations below)
   try {
     await db.execute(sql`
@@ -3232,6 +3261,15 @@ app.put("/api/team/:id", team_id_put_676);
 app.get("/api/usage", usage_get_677);
 app.get("/api/user-logs", user_logs_get_678);
 app.get("/api/user-logs/users", user_logs_users_get_679);
+// Camera captures — field camera inbox
+import cameraCapturesGet from "./api/camera-captures/GET.js";
+import cameraCapturesPost from "./api/camera-captures/POST.js";
+import cameraCapturesIdPatch from "./api/camera-captures/[id]/PATCH.js";
+import cameraCapturesIdDelete from "./api/camera-captures/[id]/DELETE.js";
+app.get("/api/camera-captures", cameraCapturesGet);
+app.post("/api/camera-captures", cameraCapturesPost);
+app.patch("/api/camera-captures/:id", cameraCapturesIdPatch);
+app.delete("/api/camera-captures/:id", cameraCapturesIdDelete);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

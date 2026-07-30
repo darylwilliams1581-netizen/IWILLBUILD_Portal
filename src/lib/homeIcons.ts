@@ -50,7 +50,7 @@ export interface HomeIconDef {
 // Palette: orange (primary actions), blue (navigation/drive), green (money/progress)
 // Rule: each tile has a unique hue so icons are instantly distinguishable at a glance.
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
-  { key: 'camera',        label: 'Camera',          icon: Camera,           href: '?panel=camera',               bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
+  { key: 'camera',        label: 'Camera',          icon: Camera,           href: '/camera',                     bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'sign_in',       label: 'Sign In',          icon: LogIn,            href: '?panel=signin',               bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
   { key: 'drive',         label: 'Drive',            icon: Car,              href: '?panel=drive-picker',         bg: 'bg-sky-500',     fg: 'text-white', group: 'field' },
   { key: 'log_cost',      label: 'Log Cost',         icon: DollarSign,       href: '?panel=log-cost',             bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },

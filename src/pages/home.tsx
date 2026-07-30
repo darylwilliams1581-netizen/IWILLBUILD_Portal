@@ -2283,7 +2283,7 @@ export default function HomeScreen() {
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
     if (href === '?panel=job-card') { setJobCardOpen(true); return; }
-    if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
+    if (href === '?panel=camera') { navigate('/camera'); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
   }
