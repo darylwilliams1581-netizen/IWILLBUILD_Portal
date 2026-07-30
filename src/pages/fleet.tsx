@@ -444,7 +444,7 @@ export default function FleetPage() {
 
           {/* ── Assets view ── */}
           {view === 'assets' && (
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-28 flex flex-col gap-5">
 
           {/* Success banner */}
           <AnimatePresence>
@@ -497,33 +497,16 @@ export default function FleetPage() {
                 ))}
               </div>
 
-              {/* Search + filter */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search name, rego, type…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  />
-                </div>
-                <div className="scroll-x-hide flex items-center gap-2 pb-0.5">
-                  {FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => setFilter(f.value)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
-                        filter === f.value
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+              {/* Search */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search name, rego, type…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                />
               </div>
 
               {/* Empty state */}
@@ -619,6 +602,30 @@ export default function FleetPage() {
           </div>
           )}
         </div>
+
+        {/* ── Sticky bottom filter bar (assets view only) ── */}
+        {view === 'assets' && (
+          <div
+            className="shrink-0 bg-white/95 backdrop-blur-sm border-t border-slate-200"
+            style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+          >
+            <div className="scroll-x-hide flex items-center gap-2 px-4 pt-3 pb-1">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setFilter(f.value)}
+                  className={`text-xs font-bold px-3.5 py-2 rounded-full border transition-colors whitespace-nowrap ${
+                    filter === f.value
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* New Asset Modal */}
         <AnimatePresence>
