@@ -2134,64 +2134,49 @@ export default function CameraPage() {
           borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
-        {/* ── Row 1: Note mode selector — always visible, never floating ── */}
+        {/* ── Row 1: Note toggle + note pill ── */}
         {!selectMode && (
           <div className="flex items-center justify-center gap-2 pt-2 pb-1.5 px-4">
-            {/* Segmented control — slim, flat, part of the dock surface */}
-            <div
-              className="flex items-center rounded-md overflow-hidden"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              {(
-                [
-                  { value: 'ask',  label: 'Ask',  activeText: 'text-violet-300', activeBg: 'bg-violet-500/20' },
-                  { value: 'lock', label: 'Lock', activeText: 'text-yellow-300', activeBg: 'bg-yellow-500/18' },
-                  { value: 'none', label: 'Off',  activeText: 'text-white/45',   activeBg: 'bg-white/8' },
-                ] as const
-              ).map((seg, i) => {
-                const active = settings.noteMode === seg.value;
-                return (
-                  <motion.button
-                    key={seg.value}
-                    whileTap={{ scale: 0.94 }}
-                    onClick={() => saveSettings({ noteMode: seg.value })}
-                    className={`h-7 px-3.5 text-[10px] font-bold tracking-wide transition-colors ${
-                      i > 0 ? 'border-l border-white/6' : ''
-                    } ${active ? `${seg.activeText} ${seg.activeBg}` : 'text-white/20 hover:text-white/35'}`}
-                    aria-label={`Note mode: ${seg.label}`}
-                    aria-pressed={active}
-                  >
-                    {seg.label}
-                  </motion.button>
-                );
-              })}
-            </div>
 
-            {/* Locked note value — inline, only when Lock active */}
+            {/* Note on/off toggle */}
+            <motion.button
+              whileTap={{ scale: 0.93 }}
+              onClick={() => saveSettings({ noteMode: settings.noteMode === 'none' ? 'lock' : 'none' })}
+              className={`flex items-center gap-1.5 h-7 rounded-md px-3 text-[10px] font-bold tracking-wide transition-colors ${
+                settings.noteMode !== 'none'
+                  ? 'bg-green-500/20 border border-green-500/30 text-green-300'
+                  : 'bg-white/5 border border-white/8 text-white/25'
+              }`}
+              aria-label={settings.noteMode !== 'none' ? 'Note on — tap to turn off' : 'Note off — tap to turn on'}
+              aria-pressed={settings.noteMode !== 'none'}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                settings.noteMode !== 'none' ? 'bg-green-400' : 'bg-white/20'
+              }`} />
+              Note
+            </motion.button>
+
+            {/* Note pill — slides in when Note is on */}
             <AnimatePresence>
-              {settings.noteMode === 'lock' && (
+              {settings.noteMode !== 'none' && (
                 <motion.button
                   initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
                   transition={{ type: 'spring', damping: 28, stiffness: 360 }}
                   onClick={() => setNoteBarOpen(true)}
                   className={`flex items-center gap-1 h-7 rounded-md px-2 overflow-hidden whitespace-nowrap transition-colors ${
                     lockedNote
-                      ? 'bg-yellow-500/15 border border-yellow-500/25 text-yellow-200/80'
+                      ? 'bg-white/8 border border-white/12 text-white/60'
                       : 'bg-white/5 border border-white/8 text-white/25'
                   }`}
                   aria-label={lockedNote ? `Note: ${lockedNote} — tap to change` : 'Tap to set note'}
                 >
-                  <Lock size={8} className={lockedNote ? 'text-yellow-400/70 shrink-0' : 'text-white/15 shrink-0'} />
-                  <span className="text-[10px] font-semibold truncate max-w-[120px]">
+                  <span className="text-[10px] font-semibold truncate max-w-[140px]">
                     {lockedNote ?? 'Set note…'}
                   </span>
                   {lockedNote && (
                     <button
                       onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
-                      className="w-3 h-3 rounded-full bg-white/10 flex items-center justify-center text-white/30 hover:bg-white/20 shrink-0 ml-0.5"
+                      className="w-3 h-3 rounded-full bg-white/10 flex items-center justify-center text-white/25 hover:bg-white/20 shrink-0 ml-0.5"
                       aria-label="Clear note"
                     >
                       <X size={6} />
@@ -2201,25 +2186,17 @@ export default function CameraPage() {
               )}
             </AnimatePresence>
 
-            {/* Active state micro-indicators — overlay & backup dots, far right */}
+            {/* Micro-indicators — far right */}
             <div className="flex items-center gap-1 ml-auto">
               {settings.overlayEnabled && (
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-violet-400/60"
-                  title="Overlay on"
-                />
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400/60" title="Overlay on" />
               )}
               {settings.backupToRoll && !backupPermDenied && (
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-green-400/60"
-                  title="Backup on"
-                />
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400/60" title="Backup on" />
               )}
               {settings.quality !== 'high' && (
-                <span
-                  className="text-[9px] font-bold text-amber-400/50 leading-none"
-                  title={settings.quality === 'low' ? 'Low quality' : 'Medium quality'}
-                >
+                <span className="text-[9px] font-bold text-amber-400/50 leading-none"
+                  title={settings.quality === 'low' ? 'Low quality' : 'Medium quality'}>
                   {settings.quality === 'low' ? 'LQ' : 'MQ'}
                 </span>
               )}
