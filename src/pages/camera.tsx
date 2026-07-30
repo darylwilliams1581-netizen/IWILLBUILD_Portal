@@ -2176,25 +2176,30 @@ export default function CameraPage() {
       </motion.div>
 
       {/* ═══ UNIFIED CAMERA DOCK ═══ */}
-      {/* z-30 — one surface, two internal rows. No floating layers. */}
+      {/* z-30 — floating dock panel, rounded top corners, theme-tinted surface */}
       <div
         className="fixed bottom-0 left-0 right-0 z-30 flex flex-col"
         style={{
+          /* Rounded top corners — feels like an intentional app control panel */
+          borderRadius: '22px 22px 0 0',
+          /* Theme-tinted dark surface — violet undertone, not flat black */
+          background: 'rgba(14,10,26,0.93)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          /* Soft top border with violet tint */
+          borderTop: '1px solid rgba(124,58,237,0.22)',
+          /* Lift shadow — separates dock from viewfinder cleanly */
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.45), 0 -1px 0 rgba(124,58,237,0.12)',
+          /* Safe-area bottom padding lives on the outer shell */
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          paddingLeft: 'env(safe-area-inset-left, 0px)',
-          paddingRight: 'env(safe-area-inset-right, 0px)',
-          background: 'rgba(10,10,14,0.92)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
         {/* ══ DOCK: two rows ══ */}
         <div
-          className="flex flex-col gap-0 pt-2 pb-3"
+          className="flex flex-col gap-0 pt-2.5 pb-3"
           style={{
-            paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 12px)',
-            paddingRight: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+            paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 14px)',
+            paddingRight: 'calc(env(safe-area-inset-right, 0px) + 14px)',
           }}
         >
           {/* ── ROW 1: Note toggle + full-width input ── */}
@@ -2224,7 +2229,7 @@ export default function CameraPage() {
                 placeholder={settings.noteMode !== 'none' ? 'Type watermark note…' : 'Note off — tap to enable'}
                 maxLength={40}
                 readOnly={settings.noteMode === 'none'}
-                className={`w-full h-8 rounded-lg px-3 text-[11px] font-medium placeholder-white/20 bg-white/6 border focus:outline-none transition-colors ${
+                className={`w-full h-7 rounded-lg px-3 text-[11px] font-medium placeholder-white/20 bg-white/6 border focus:outline-none transition-colors ${
                   settings.noteMode !== 'none'
                     ? 'text-white/80 border-white/12 focus:border-white/28 focus:bg-white/9'
                     : 'text-white/20 border-white/6 cursor-default'
