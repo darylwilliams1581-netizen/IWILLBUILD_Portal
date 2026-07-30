@@ -1844,16 +1844,15 @@ export default function CameraPage() {
           )}
         </AnimatePresence>
 
-        {/* Safe-area spacer — keeps viewfinder clear of notch with no top bar */}
-        <div style={{ height: 'max(env(safe-area-inset-top, 0px), 44px)' }} />
+
 
         {/* ── Live viewfinder watermark — mirrors what gets burned into the photo ── */}
         {settings.overlayEnabled && settingsLoaded && (
           <div
             className="fixed pointer-events-none"
             style={{
-              /* dock = job row ~48px + note row ~36px + shutter row ~88px + safe-area-bottom + breathing room */
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 192px + 16px)',
+              /* dock = single row ~76px + safe-area-bottom + breathing room */
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px + 16px)',
               right: 'calc(env(safe-area-inset-right, 0px) + 14px)',
               zIndex: 15,
             }}
@@ -2069,210 +2068,129 @@ export default function CameraPage() {
           borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
-        {/* ── Row 0: Back | Job pill + status | Flash + Flip ── */}
+        {/* ══ SINGLE DOCK ROW ══ */}
+        {/* Back | Job | Note toggle+input | Flash | Flip | Shutter | Settings */}
         <div
-          className="flex items-center gap-2 px-3 pt-2 pb-1"
-          style={{ paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 12px)', paddingRight: 'calc(env(safe-area-inset-right, 0px) + 12px)' }}
+          className="flex items-center gap-2 px-3 pt-2.5 pb-3"
+          style={{
+            paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 10px)',
+            paddingRight: 'calc(env(safe-area-inset-right, 0px) + 10px)',
+          }}
         >
           {/* Back */}
           <button
             onClick={() => navigate('/home')}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 active:bg-white/20 transition-colors shrink-0"
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/55 active:bg-white/20 transition-colors shrink-0"
             aria-label="Back"
           >
             <ChevronLeft size={16} />
           </button>
 
-          {/* Job pill + status — centre */}
-          <div className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
+          {/* Job icon — violet dot when active */}
+          <button
+            onClick={() => setJobBarPickerOpen(true)}
+            className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+              activeJob ? 'bg-violet-500/25 text-violet-300' : 'bg-white/10 text-white/45'
+            }`}
+            aria-label={activeJob ? `Job: ${activeJob.name}` : 'Select job'}
+          >
+            <Briefcase size={15} />
+            {activeJob && (
+              <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-violet-400 border border-black/40" />
+            )}
+          </button>
+
+          {/* Note toggle + inline input — flex-1 */}
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            {/* Toggle dot */}
             <button
-              onClick={() => setJobBarPickerOpen(true)}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors max-w-full ${
-                activeJob
-                  ? 'bg-violet-600/30 border border-violet-500/50 text-violet-200'
-                  : 'bg-white/8 border border-white/12 text-white/35 active:bg-white/12'
-              }`}
-              aria-label={activeJob ? `Active job: ${activeJob.name}` : 'Select job'}
-            >
-              <Briefcase size={10} className={activeJob ? 'text-violet-300 shrink-0' : 'text-white/25 shrink-0'} />
-              <span className="text-[11px] font-semibold truncate max-w-[160px]">
-                {activeJob ? activeJob.name : 'No job selected'}
-              </span>
-              {activeJob && (
-                <button
-                  onClick={e => { e.stopPropagation(); setActiveJobBoth(null); }}
-                  className="w-3.5 h-3.5 rounded-full bg-white/20 flex items-center justify-center text-white/50 active:bg-white/30 shrink-0 ml-0.5"
-                  aria-label="Clear job"
-                >
-                  <X size={8} />
-                </button>
-              )}
-            </button>
-            {/* Status line */}
-            {uploading > 0 && <p className="text-white/35 text-[9px]">Saving {uploading} photo{uploading !== 1 ? 's' : ''}…</p>}
-            {uploading === 0 && unassigned > 0 && <p className="text-amber-400/70 text-[9px]">{unassigned} need{unassigned === 1 ? 's' : ''} a job</p>}
-            {uploading === 0 && unassigned === 0 && attached > 0 && <p className="text-white/20 text-[9px]">{attached} assigned</p>}
-            {/* Backup warning */}
-            {settings.backupToRoll && backupPermDenied && (
-              <p className="text-amber-400/60 text-[9px] flex items-center gap-0.5">
-                <AlertCircle size={8} />Backup unavailable
-              </p>
-            )}
-          </div>
-
-          {/* Flash + Flip */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => setFlashOn(f => !f)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/45'
-              }`}
-              aria-label={flashOn ? 'Flash on' : 'Flash off'}
-            >
-              {flashOn ? <Zap size={15} /> : <ZapOff size={15} />}
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => setFrontCamera(f => !f)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/45'
-              }`}
-              aria-label={frontCamera ? 'Switch to rear' : 'Switch to front'}
-            >
-              <FlipHorizontal2 size={15} />
-            </motion.button>
-            {selectMode && (
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 active:bg-white/20 transition-colors"
-                aria-label="Clear selection"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Hairline between row 0 and note row */}
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginLeft: '12px', marginRight: '12px' }} />
-
-        {/* ── Row 1: Note toggle + note pill ── */}
-        {!selectMode && (
-          <div className="flex items-center justify-center gap-2 pt-2 pb-1.5 px-4">
-
-            {/* Note on/off toggle */}
-            <motion.button
-              whileTap={{ scale: 0.93 }}
               onClick={() => saveSettings({ noteMode: settings.noteMode === 'none' ? 'lock' : 'none' })}
-              className={`flex items-center gap-1.5 h-7 rounded-md px-3 text-[10px] font-bold tracking-wide transition-colors ${
-                settings.noteMode !== 'none'
-                  ? 'bg-green-500/20 border border-green-500/30 text-green-300'
-                  : 'bg-white/5 border border-white/8 text-white/25'
+              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                settings.noteMode !== 'none' ? 'bg-green-500/25 text-green-300' : 'bg-white/8 text-white/25'
               }`}
-              aria-label={settings.noteMode !== 'none' ? 'Note on — tap to turn off' : 'Note off — tap to turn on'}
+              aria-label={settings.noteMode !== 'none' ? 'Note on' : 'Note off'}
               aria-pressed={settings.noteMode !== 'none'}
             >
-              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                settings.noteMode !== 'none' ? 'bg-green-400' : 'bg-white/20'
-              }`} />
-              Note
-            </motion.button>
+              <StickyNote size={11} />
+            </button>
 
-            {/* Note pill — slides in when Note is on: inline input, no popup */}
-            <AnimatePresence>
-              {settings.noteMode !== 'none' && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 360 }}
-                  className="flex-1 min-w-0 flex items-center gap-1 relative"
-                >
-                  <input
-                    type="text"
-                    value={lockedNote ?? ''}
-                    onChange={e => {
-                      const val = e.target.value.slice(0, 40);
-                      setLockedNoteBoth(val || null);
-                    }}
-                    placeholder="Type note…"
-                    maxLength={40}
-                    className="w-full h-7 rounded-md px-2 text-[10px] font-semibold text-white/70 placeholder-white/20 bg-white/5 border border-white/8 focus:border-white/20 focus:outline-none focus:bg-white/8 transition-colors"
-                    style={{ minWidth: 0 }}
-                    aria-label="Watermark note"
-                  />
-                  {/* Char counter — only when close to limit */}
-                  {(lockedNote?.length ?? 0) >= 30 && (
-                    <span className={`absolute right-1.5 text-[8px] font-bold pointer-events-none ${
-                      (lockedNote?.length ?? 0) >= 38 ? 'text-red-400/70' : 'text-white/20'
-                    }`}>
-                      {40 - (lockedNote?.length ?? 0)}
-                    </span>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Micro-indicators — far right */}
-            <div className="flex items-center gap-1 ml-auto">
-              {settings.overlayEnabled && (
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400/60" title="Overlay on" />
-              )}
-              {settings.backupToRoll && !backupPermDenied && (
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400/60" title="Backup on" />
-              )}
-              {settings.quality !== 'high' && (
-                <span className="text-[9px] font-bold text-amber-400/50 leading-none"
-                  title={settings.quality === 'low' ? 'Low quality' : 'Medium quality'}>
-                  {settings.quality === 'low' ? 'LQ' : 'MQ'}
+            {/* Inline input — always rendered, dims when off */}
+            <div className="flex-1 min-w-0 relative">
+              <input
+                type="text"
+                value={lockedNote ?? ''}
+                onChange={e => {
+                  const val = e.target.value.slice(0, 40);
+                  setLockedNoteBoth(val || null);
+                  if (settings.noteMode === 'none') saveSettings({ noteMode: 'lock' });
+                }}
+                placeholder={settings.noteMode !== 'none' ? 'Type note…' : 'Note off'}
+                maxLength={40}
+                readOnly={settings.noteMode === 'none'}
+                className={`w-full h-7 rounded-md px-2 text-[10px] font-semibold placeholder-white/15 bg-white/5 border focus:outline-none transition-colors ${
+                  settings.noteMode !== 'none'
+                    ? 'text-white/70 border-white/10 focus:border-white/25 focus:bg-white/8'
+                    : 'text-white/20 border-white/6 cursor-default'
+                }`}
+                style={{ minWidth: 0 }}
+                aria-label="Watermark note"
+              />
+              {(lockedNote?.length ?? 0) >= 30 && settings.noteMode !== 'none' && (
+                <span className={`absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold pointer-events-none ${
+                  (lockedNote?.length ?? 0) >= 38 ? 'text-red-400/70' : 'text-white/20'
+                }`}>
+                  {40 - (lockedNote?.length ?? 0)}
                 </span>
               )}
             </div>
           </div>
-        )}
 
-        {/* Hairline divider between rows */}
-        {!selectMode && (
-          <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }} />
-        )}
-
-        {/* ── Row 2: Upload | Shutter | Settings ── */}
-        <div className="flex items-center justify-center gap-10 pt-3 pb-3.5">
-          {/* Upload from library */}
+          {/* Flash */}
           <motion.button
             whileTap={{ scale: 0.88 }}
-            onClick={() => void picker.openLibrary()}
-            className="flex flex-col items-center gap-1"
-            aria-label="Upload from photo library"
-            disabled={!settingsLoaded}
+            onClick={() => setFlashOn(f => !f)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+              flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/45'
+            }`}
+            aria-label={flashOn ? 'Flash on' : 'Flash off'}
           >
-            <div className="w-[46px] h-[46px] rounded-xl bg-white/8 border border-white/10 flex items-center justify-center active:bg-white/15 transition-colors">
-              <Upload size={18} className="text-white/55" />
-            </div>
-            <span className="text-white/25 text-[9px] font-semibold tracking-wide">Library</span>
+            {flashOn ? <Zap size={15} /> : <ZapOff size={15} />}
           </motion.button>
 
-          {/* Main shutter — hero */}
+          {/* Flip */}
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => setFrontCamera(f => !f)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+              frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/45'
+            }`}
+            aria-label={frontCamera ? 'Switch to rear' : 'Switch to front'}
+          >
+            <FlipHorizontal2 size={15} />
+          </motion.button>
+
+          {/* Shutter */}
           <motion.button
             whileTap={{ scale: 0.91 }}
             whileHover={{ scale: 1.03 }}
             transition={{ type: 'spring', stiffness: 420, damping: 22 }}
             onClick={() => void picker.openCamera()}
-            className="relative flex items-center justify-center"
+            className="relative flex items-center justify-center shrink-0"
             aria-label="Take photo"
             disabled={picker.checkingPermission || !settingsLoaded}
           >
-            <div className={`w-[66px] h-[66px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+            <div className={`w-[58px] h-[58px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
               (picker.checkingPermission || !settingsLoaded) ? 'border-white/12' : 'border-white/30'
             }`}>
               <div
-                className={`w-[54px] h-[54px] rounded-full flex items-center justify-center transition-colors ${
+                className={`w-[46px] h-[46px] rounded-full flex items-center justify-center transition-colors ${
                   (picker.checkingPermission || !settingsLoaded) ? 'bg-white/40' : 'bg-white'
                 }`}
-                style={{ boxShadow: (picker.checkingPermission || !settingsLoaded) ? 'none' : '0 0 20px rgba(255,255,255,0.18)' }}
+                style={{ boxShadow: (picker.checkingPermission || !settingsLoaded) ? 'none' : '0 0 18px rgba(255,255,255,0.18)' }}
               >
                 {(picker.checkingPermission || !settingsLoaded)
-                  ? <Loader2 size={20} className="text-gray-400 animate-spin" />
-                  : <Camera size={22} className="text-gray-900" />
+                  ? <Loader2 size={18} className="text-gray-400 animate-spin" />
+                  : <Camera size={18} className="text-gray-900" />
                 }
               </div>
             </div>
@@ -2282,18 +2200,15 @@ export default function CameraPage() {
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={() => setSettingsOpen(true)}
-            className="flex flex-col items-center gap-1"
+            className="relative w-8 h-8 rounded-full flex items-center justify-center bg-white/10 text-white/45 active:bg-white/20 transition-colors shrink-0"
             aria-label="Camera settings"
           >
-            <div className="w-[46px] h-[46px] rounded-xl bg-white/8 border border-white/10 flex items-center justify-center active:bg-white/15 transition-colors relative">
-              <Settings size={18} className="text-white/55" />
-              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
-                <div className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
-                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400/80'
-                }`} />
-              )}
-            </div>
-            <span className="text-white/25 text-[9px] font-semibold tracking-wide">Settings</span>
+            <Settings size={15} />
+            {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+              <span className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full border border-black/40 ${
+                backupPermDenied ? 'bg-amber-400' : 'bg-violet-400/80'
+              }`} />
+            )}
           </motion.button>
         </div>
       </div>
