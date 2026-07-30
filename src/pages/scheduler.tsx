@@ -1340,7 +1340,7 @@ export default function SchedulerPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pt-[96px]">
 
         {/* ── Top bar ── */}
-        <div className="op-page-header flex items-center gap-2 shrink-0 min-w-0">
+        <div className="op-page-header flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0 min-w-0">
 
           {/* Back + Home */}
           <button type="button" onClick={() => rrNavigate(-1)} title="Back"
@@ -1356,7 +1356,7 @@ export default function SchedulerPage() {
           <h1 className="op-page-title shrink-0">Scheduler</h1>
 
           {/* ── Top-level page tabs ── */}
-          <div className="ml-3 flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+          <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5 shrink-0">
             <button onClick={() => setSearchParams({})}
               className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${activeTab === 'jobs' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               Jobs
@@ -1374,20 +1374,21 @@ export default function SchedulerPage() {
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-semibold text-green-700"
+              className="flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-semibold text-green-700 shrink-0"
             >
               <CheckCircle2 size={11} />
               {saveMsg}
             </motion.div>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          {/* Time window + view toggles — pushed right on desktop, wraps to new row on mobile */}
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
             {/* Time window and view toggle — jobs tab only */}
             {activeTab === 'jobs' && (
               <>
                 {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
                 {view !== 'table' && view !== 'assets' && (
-                  <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+                  <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5 shrink-0">
                     {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
                       <button key={key} onClick={() => switchWindow(key)}
                         className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${timeWindow === key ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -1397,10 +1398,10 @@ export default function SchedulerPage() {
                   </div>
                 )}
 
-                <div className="h-4 w-px bg-gray-200" />
+                <div className="h-4 w-px bg-gray-200 hidden sm:block" />
 
                 {/* View toggle */}
-                <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+                <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5 shrink-0">
                   {([
                     { key: 'table',    icon: <List size={12} />,        label: 'Table' },
                     { key: 'timeline', icon: <BarChart2 size={12} />,   label: 'Timeline' },
