@@ -10,7 +10,7 @@ import {
   Search, FileText, Archive, RotateCcw, Trash2, Loader2, HardHat,
   GitBranch, ChevronDown, FolderOpen,
   Eye, Briefcase, AlertCircle, ChevronRight, Lock,
-  Share2, Mail,
+  Share2, Mail, Download,
 } from 'lucide-react';
 import type { Drawing } from './types';
 import ShareModal from './ShareModal';
@@ -188,27 +188,76 @@ function JobGroupSection({
   onShareClick: (target: ShareTarget) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [downloading, setDownloading] = useState(false);
+
+  const hasPdfs = group.drawings.some(d => d.source_file_path);
+
+  async function handleDownloadZip(e: React.MouseEvent) {
+    e.stopPropagation(); // don't toggle accordion
+    if (downloading || !hasPdfs) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/plan-manager/jobs/${group.jobId}/drawings-zip`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Download failed' }));
+        alert(err.error ?? 'Download failed');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      // Use filename from Content-Disposition if available
+      const cd = res.headers.get('Content-Disposition') ?? '';
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? `drawings-${group.jobId}.zip`;
+      a.href = url;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
       {/* Job header — compact */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors text-left"
-      >
-        <div className="w-5 h-5 rounded bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
-          <Briefcase size={10} className="text-violet-600" />
-        </div>
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-800 truncate">
-            {group.jobNumber ? `${group.jobNumber} — ` : ''}{group.jobName}
-          </span>
-          <span className="text-[10px] text-slate-500 shrink-0">
-            {group.drawings.length} drawing{group.drawings.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <ChevronRight size={12} className={`text-slate-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} />
-      </button>
+      <div className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+        >
+          <div className="w-5 h-5 rounded bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+            <Briefcase size={10} className="text-violet-600" />
+          </div>
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-800 truncate">
+              {group.jobNumber ? `${group.jobNumber} — ` : ''}{group.jobName}
+            </span>
+            <span className="text-[10px] text-slate-500 shrink-0">
+              {group.drawings.length} drawing{group.drawings.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <ChevronRight size={12} className={`text-slate-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} />
+        </button>
+
+        {/* Download ZIP button */}
+        <button
+          onClick={handleDownloadZip}
+          disabled={downloading || !hasPdfs}
+          title={hasPdfs ? 'Download all PDFs as ZIP' : 'No PDFs uploaded yet'}
+          className={[
+            'flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-semibold transition-colors shrink-0',
+            hasPdfs && !downloading
+              ? 'border-violet-300 text-violet-600 hover:bg-violet-50 hover:border-violet-400'
+              : 'border-slate-200 text-slate-400 cursor-not-allowed',
+          ].join(' ')}
+        >
+          {downloading
+            ? <Loader2 size={11} className="animate-spin" />
+            : <Download size={11} />}
+          <span className="hidden sm:inline">ZIP</span>
+        </button>
+      </div>
 
       {/* Drawings list */}
       <AnimatePresence initial={false}>

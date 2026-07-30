@@ -575,6 +575,7 @@ import plan_manager_drawings_id_revisions_post_541 from "./api/plan-manager/draw
 import plan_manager_drawings_id_revisions_revisionId_finalize_post_542 from "./api/plan-manager/drawings/[id]/revisions/[revisionId]/finalize/POST";
 import plan_manager_drawings_id_upload_post_543 from "./api/plan-manager/drawings/[id]/upload/POST";
 import plan_manager_jobs_with_drawings_get_544 from "./api/plan-manager/jobs-with-drawings/GET";
+import plan_manager_jobs_jobId_drawings_zip_get from "./api/plan-manager/jobs/[jobId]/drawings-zip/GET";
 import plan_manager_share_post_545 from "./api/plan-manager/share/POST";
 import plan_manager_share_validate_get_546 from "./api/plan-manager/share/validate/GET";
 import portal_estimates_id_approve_post_547 from "./api/portal/estimates/[id]/approve/POST";
@@ -3264,6 +3265,7 @@ app.post("/api/plan-manager/drawings/:id/revisions", plan_manager_drawings_id_re
 app.post("/api/plan-manager/drawings/:id/revisions/:revisionId/finalize", plan_manager_drawings_id_revisions_revisionId_finalize_post_542);
 app.post("/api/plan-manager/drawings/:id/upload", plan_manager_drawings_id_upload_post_543);
 app.get("/api/plan-manager/jobs-with-drawings", plan_manager_jobs_with_drawings_get_544);
+app.get("/api/plan-manager/jobs/:jobId/drawings-zip", plan_manager_jobs_jobId_drawings_zip_get);
 app.post("/api/plan-manager/share", plan_manager_share_post_545);
 app.get("/api/plan-manager/share/validate", plan_manager_share_validate_get_546);
 app.post("/api/portal/estimates/:id/approve", portal_estimates_id_approve_post_547);
