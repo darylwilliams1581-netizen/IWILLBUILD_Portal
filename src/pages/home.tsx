@@ -11,7 +11,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Car, FileText, StickyNote, BookOpen,
   Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
+  Navigation, ClipboardCheck, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
   LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
   Zap, RefreshCw, AlertTriangle, Search,
 } from 'lucide-react';
@@ -39,8 +39,7 @@ import {
 // These local arrays remain for the PLATFORM section (platform owner only, not permission-controlled)
 
 const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
-  { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',    fg: 'text-white' },
-  { label: 'Old View',  icon: History,     href: '/dashboard',     bg: 'bg-slate-500',  fg: 'text-white' },
+  { label: 'Console', icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600', fg: 'text-white' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
