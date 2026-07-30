@@ -241,7 +241,7 @@ export default function JobQuotesPage() {
       <h1 className="sr-only">{job ? `Quotes — ${job.name}` : 'Quotes'}</h1>
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+      <div className="bg-white border-b border-gray-100 px-4 pb-4 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => navigate(`/jobs/${id}`)}

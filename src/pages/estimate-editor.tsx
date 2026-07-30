@@ -369,7 +369,7 @@ export default function EstimateEditorPage() {
       <h1 className="sr-only">{estimate ? `${estimate.title} — Estimate` : 'Estimate Editor'}</h1>
 
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3 h-16" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+        <header className="bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)', minHeight: 64 }}>
           <div className="flex items-center gap-3 min-w-0">
             {/* Back button — saves if dirty before navigating */}
             <button
