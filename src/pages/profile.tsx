@@ -189,7 +189,7 @@ export default function ProfilePage() {
   const isOwner = me?.profile?.role === 'owner';
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[96px]">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

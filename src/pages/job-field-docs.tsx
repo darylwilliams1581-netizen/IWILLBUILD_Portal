@@ -83,7 +83,7 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
   );
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[96px]">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
@@ -1145,7 +1145,7 @@ export default function JobFieldDocsPage() {
 
   // ── Job selected → docs view ──
   return (
-    <div className="flex flex-col h-full lg:pt-[96px]">
+    <div className="flex flex-col h-full lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       {/* Top bar */}

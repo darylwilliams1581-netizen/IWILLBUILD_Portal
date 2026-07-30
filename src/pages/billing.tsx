@@ -565,7 +565,7 @@ export default function BillingPage() {
   const canManage = isAdmin || isOwner;
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden lg:pt-[96px]">
+    <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
