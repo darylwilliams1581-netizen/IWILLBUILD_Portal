@@ -1342,13 +1342,14 @@ export default function SchedulerPage() {
         {/* ── Top bar ── */}
         <div className="op-page-header flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0 min-w-0">
 
-          {/* Back + Home */}
+          {/* Back — mobile only (desktop navigates via sidebar) */}
           <button type="button" onClick={() => rrNavigate(-1)} title="Back"
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            className="lg:hidden shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
             <ArrowLeft size={14} />
           </button>
+          {/* Home — mobile only */}
           <Link to="/home" title="Home"
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            className="lg:hidden shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
             <Home size={14} />
           </Link>
 
