@@ -2180,18 +2180,17 @@ export default function CameraPage() {
       <div
         className="fixed bottom-0 left-0 right-0 z-30 flex flex-col"
         style={{
-          /* Rounded top corners — feels like an intentional app control panel */
-          borderRadius: '22px 22px 0 0',
+          /* Pill shape — rounded all corners; margin lifts it off the screen edge */
+          borderRadius: '22px',
+          margin: '0 8px calc(env(safe-area-inset-bottom, 8px) + 6px)',
           /* Brand violet surface — solid, intentional, matches primary #7C3AED */
           background: 'rgba(124,58,237,0.92)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          /* Lighter violet top edge — subtle separation from viewfinder */
-          borderTop: '1px solid rgba(167,120,255,0.35)',
+          /* Lighter violet border all around — pill outline */
+          border: '1px solid rgba(167,120,255,0.35)',
           /* Lift shadow with violet glow */
-          boxShadow: '0 -8px 32px rgba(124,58,237,0.35), 0 -1px 0 rgba(167,120,255,0.20)',
-          /* Safe-area bottom padding lives on the outer shell */
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          boxShadow: '0 -8px 32px rgba(124,58,237,0.35), 0 4px 16px rgba(0,0,0,0.30)',
         }}
       >
         {/* ══ DOCK: two rows ══ */}
