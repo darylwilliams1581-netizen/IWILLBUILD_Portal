@@ -1062,6 +1062,33 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1a-cs. Ensure camera_settings table exists
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS camera_settings (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        company_id    INT NOT NULL,
+        user_id       VARCHAR(36) NOT NULL,
+        backup_to_roll TINYINT(1) NOT NULL DEFAULT 0,
+        quality       VARCHAR(10) NOT NULL DEFAULT 'high',
+        notes_enabled TINYINT(1) NOT NULL DEFAULT 1,
+        overlay_enabled TINYINT(1) NOT NULL DEFAULT 0,
+        overlay_date_format VARCHAR(20) NOT NULL DEFAULT 'dd MM yyyy',
+        overlay_time_format VARCHAR(10) NOT NULL DEFAULT '24h',
+        overlay_text_color VARCHAR(10) NOT NULL DEFAULT 'white',
+        overlay_font_size  INT NOT NULL DEFAULT 12,
+        updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_cs_user (company_id, user_id)
+      )
+    `);
+    console.log('[startup-migration] camera_settings table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] camera_settings CREATE failed:', msg);
+    }
+  }
+
   // 1b. Ensure notifications table exists (must be before column migrations below)
   try {
     await db.execute(sql`
@@ -3270,6 +3297,11 @@ app.get("/api/camera-captures", cameraCapturesGet);
 app.post("/api/camera-captures", cameraCapturesPost);
 app.patch("/api/camera-captures/:id", cameraCapturesIdPatch);
 app.delete("/api/camera-captures/:id", cameraCapturesIdDelete);
+
+import cameraSettingsGet from "./api/camera-settings/GET.js";
+import cameraSettingsPut from "./api/camera-settings/PUT.js";
+app.get("/api/camera-settings", cameraSettingsGet);
+app.put("/api/camera-settings", cameraSettingsPut);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

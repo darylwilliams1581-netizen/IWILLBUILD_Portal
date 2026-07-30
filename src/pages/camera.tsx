@@ -1,24 +1,15 @@
 /**
- * /camera — Field Camera Module (Prompt 2 refinement)
+ * /camera — Field Camera Module (Prompt 3: Settings)
  *
- * UX model:
- *   ┌─────────────────────────────────┐
- *   │  Dark viewfinder zone           │  ← always visible
- *   │  [Camera btn]  [Library btn]    │
- *   ├─────────────────────────────────┤
- *   │  Captured tray  (light)         │  ← slides up as photos accumulate
- *   │  [compact rows]                 │
- *   │  [bulk action bar when selected]│
- *   └─────────────────────────────────┘
+ * Settings are loaded once on mount and applied to every capture:
+ *   - Quality (low/medium/high) → canvas resize before upload
+ *   - Overlay → canvas timestamp burn (date + time) baked into the image
+ *   - Backup to camera roll → Capacitor Filesystem + Media save (native only)
+ *   - Notes enabled → shows/hides the note prompt affordance per row
  *
- * Key behaviours:
- * - Camera button uses capture="environment" → opens native camera directly on iOS/Android
- * - Library button opens full photo picker
- * - Each photo appears in the tray immediately (optimistic) with a per-item upload spinner
- * - Shutter stays accessible at all times — no modal blocking re-shoot
- * - Compact rows: 56px, thumbnail + time + status chip + action buttons
- * - Long-press or checkbox → select mode → bulk "Move to Job"
- * - camera_captures table is a transitional workflow layer, not a long-term silo
+ * Settings persist per-user via GET/PUT /api/camera-settings.
+ * The settings sheet is a compact bottom drawer behind a gear icon — secondary
+ * to capture, never blocking the shutter.
  */
 
 import {
@@ -31,7 +22,7 @@ import {
   Camera, Images, ChevronLeft, X, Trash2, Briefcase,
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
-  AlertCircle, Plus,
+  AlertCircle, Plus, Settings, Check,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,13 +32,9 @@ import {
 type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
 
 interface CaptureItem {
-  /** Temporary client-side ID used before the server responds */
   clientId: string;
-  /** Server-assigned ID (null while uploading) */
   id: number | null;
-  /** Object URL for the local preview (revoked after server URL arrives) */
   localUrl: string | null;
-  /** Server-signed URL (available after upload completes) */
   serverUrl: string | null;
   note: string | null;
   jobId: number | null;
@@ -62,6 +49,28 @@ interface JobOption {
   name: string;
   jobNumber?: string | null;
 }
+
+export interface CameraSettings {
+  backupToRoll: boolean;
+  quality: 'low' | 'medium' | 'high';
+  notesEnabled: boolean;
+  overlayEnabled: boolean;
+  overlayDateFormat: string;
+  overlayTimeFormat: '24h' | '12h';
+  overlayTextColor: 'white' | 'black';
+  overlayFontSize: 10 | 12 | 14 | 16;
+}
+
+const DEFAULT_SETTINGS: CameraSettings = {
+  backupToRoll: false,
+  quality: 'high',
+  notesEnabled: true,
+  overlayEnabled: false,
+  overlayDateFormat: 'dd MM yyyy',
+  overlayTimeFormat: '24h',
+  overlayTextColor: 'white',
+  overlayFontSize: 12,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -83,8 +92,520 @@ function makeClientId() {
   return `c_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/** Format a date for the overlay stamp */
+function formatOverlayDate(d: Date, fmt: string): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MMM = months[d.getMonth()];
+
+  return fmt
+    .replace('dd', dd)
+    .replace('MM', mm)
+    .replace('MMM', MMM)
+    .replace('yyyy', yyyy);
+}
+
+function formatOverlayTime(d: Date, fmt: '24h' | '12h'): string {
+  if (fmt === '24h') {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  const h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
+}
+
+/**
+ * Process a File through canvas:
+ *  1. Resize according to quality setting
+ *  2. Optionally burn a timestamp overlay
+ * Returns a new Blob (JPEG).
+ */
+async function processImage(
+  file: File,
+  settings: CameraSettings,
+  capturedAt: Date,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      // Quality → max dimension
+      const maxDim = settings.quality === 'low' ? 1280
+        : settings.quality === 'medium' ? 2048
+        : 4096; // high — effectively no resize for most phones
+
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not available')); return; }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Overlay
+      if (settings.overlayEnabled) {
+        const fontSize = settings.overlayFontSize;
+        const dateStr = formatOverlayDate(capturedAt, settings.overlayDateFormat);
+        const timeStr = formatOverlayTime(capturedAt, settings.overlayTimeFormat);
+        const stampText = `${dateStr}  ${timeStr}`;
+
+        ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+        ctx.textBaseline = 'bottom';
+
+        const padding = Math.round(fontSize * 0.6);
+        const textMetrics = ctx.measureText(stampText);
+        const textW = textMetrics.width;
+        const textH = fontSize;
+
+        const x = width - textW - padding * 2;
+        const y = height - padding;
+
+        // Semi-transparent backing pill
+        const bgAlpha = 0.55;
+        ctx.fillStyle = settings.overlayTextColor === 'white'
+          ? `rgba(0,0,0,${bgAlpha})`
+          : `rgba(255,255,255,${bgAlpha})`;
+        const pillPad = Math.round(fontSize * 0.35);
+        ctx.beginPath();
+        const rx = x - pillPad;
+        const ry = y - textH - pillPad;
+        const rw = textW + pillPad * 2;
+        const rh = textH + pillPad * 2;
+        const r = Math.round(fontSize * 0.4);
+        ctx.moveTo(rx + r, ry);
+        ctx.lineTo(rx + rw - r, ry);
+        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + r);
+        ctx.lineTo(rx + rw, ry + rh - r);
+        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - r, ry + rh);
+        ctx.lineTo(rx + r, ry + rh);
+        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - r);
+        ctx.lineTo(rx, ry + r);
+        ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+        ctx.closePath();
+        ctx.fill();
+
+        // Text
+        ctx.fillStyle = settings.overlayTextColor === 'white' ? '#ffffff' : '#000000';
+        ctx.fillText(stampText, x, y);
+      }
+
+      const jpegQuality = settings.quality === 'low' ? 0.72
+        : settings.quality === 'medium' ? 0.84
+        : 0.92;
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Canvas toBlob failed'));
+        },
+        'image/jpeg',
+        jpegQuality,
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Image load failed'));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
+ * Save a blob to the device camera roll via Capacitor.
+ * Silently no-ops in browser environments.
+ */
+async function saveToDeviceCameraRoll(blob: Blob): Promise<void> {
+  try {
+    // Only run inside Capacitor native shell
+    const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    if (!cap?.isNativePlatform?.()) return;
+
+    // Dynamic import — only available in native builds
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    const base64 = await blobToBase64(blob);
+    const fileName = `iwillbuild_${Date.now()}.jpg`;
+
+    // Write to temp location
+    const writeResult = await Filesystem.writeFile({
+      path: fileName,
+      data: base64,
+      directory: Directory.Cache,
+    });
+
+    // Try to save to media gallery (requires @capacitor/media or similar)
+    // Fallback: just write to Documents if Media plugin not available
+    try {
+      const { Media } = await import('@capacitor/media' as string) as {
+        Media: { savePhoto: (opts: { path: string }) => Promise<void> }
+      };
+      await Media.savePhoto({ path: writeResult.uri });
+    } catch {
+      // Media plugin not installed — write to Documents as fallback
+      await Filesystem.writeFile({
+        path: `DCIM/${fileName}`,
+        data: base64,
+        directory: Directory.Documents,
+      });
+    }
+  } catch (e) {
+    console.warn('[camera-roll] save failed:', e);
+  }
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Strip the data URL prefix — Capacitor wants raw base64
+      resolve(result.split(',')[1] ?? result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Job picker bottom sheet
+// Settings sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SettingsSheet({
+  open,
+  settings,
+  saving,
+  onClose,
+  onChange,
+}: {
+  open: boolean;
+  settings: CameraSettings;
+  saving: boolean;
+  onClose: () => void;
+  onChange: (patch: Partial<CameraSettings>) => void;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-black/50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 32, stiffness: 340 }}
+            className="fixed bottom-0 left-0 right-0 z-[90] bg-white rounded-t-3xl flex flex-col"
+            style={{
+              boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
+              maxHeight: 'calc(100dvh - 5rem)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <Settings size={15} className="text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-gray-900 font-bold text-sm">Camera Settings</p>
+                  <p className="text-gray-400 text-[11px]">Applies to this device only</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {saving && <Loader2 size={13} className="animate-spin text-violet-400" />}
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Settings list */}
+            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+            >
+
+              {/* ── Backup to Camera Roll ── */}
+              <SettingsSection label="Backup">
+                <SettingsToggleRow
+                  label="Back up to Camera Roll"
+                  description="Save photos to your device gallery"
+                  value={settings.backupToRoll}
+                  onChange={v => onChange({ backupToRoll: v })}
+                />
+              </SettingsSection>
+
+              {/* ── Photo Quality ── */}
+              <SettingsSection label="Photo Quality">
+                <SettingsSegmentRow
+                  options={[
+                    { value: 'low',    label: 'Low' },
+                    { value: 'medium', label: 'Med' },
+                    { value: 'high',   label: 'High' },
+                  ]}
+                  value={settings.quality}
+                  onChange={v => onChange({ quality: v as CameraSettings['quality'] })}
+                />
+                <p className="text-gray-400 text-[10px] px-1 pb-1">
+                  {settings.quality === 'low'
+                    ? 'Max 1280px — smaller files, faster upload'
+                    : settings.quality === 'medium'
+                    ? 'Max 2048px — balanced quality and size'
+                    : 'Max 4096px — full resolution, larger files'}
+                </p>
+              </SettingsSection>
+
+              {/* ── Notes ── */}
+              <SettingsSection label="Notes">
+                <SettingsToggleRow
+                  label="Enable notes on captures"
+                  description="Show Add Note button on each photo"
+                  value={settings.notesEnabled}
+                  onChange={v => onChange({ notesEnabled: v })}
+                />
+              </SettingsSection>
+
+              {/* ── Camera Overlay ── */}
+              <SettingsSection label="Camera Overlay">
+                <SettingsToggleRow
+                  label="Stamp date & time on photos"
+                  description="Burned into the image — visible in any viewer"
+                  value={settings.overlayEnabled}
+                  onChange={v => onChange({ overlayEnabled: v })}
+                />
+
+                {settings.overlayEnabled && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-1 pt-1">
+                      {/* Date format */}
+                      <SettingsSelectRow
+                        label="Date format"
+                        value={settings.overlayDateFormat}
+                        options={[
+                          { value: 'dd MM yyyy', label: 'DD MM YYYY' },
+                          { value: 'MM/dd/yyyy', label: 'MM/DD/YYYY' },
+                          { value: 'yyyy-MM-dd', label: 'YYYY-MM-DD' },
+                        ]}
+                        onChange={v => onChange({ overlayDateFormat: v })}
+                      />
+
+                      {/* Time format */}
+                      <SettingsSelectRow
+                        label="Time format"
+                        value={settings.overlayTimeFormat}
+                        options={[
+                          { value: '24h', label: '24 hour' },
+                          { value: '12h', label: '12 hour (AM/PM)' },
+                        ]}
+                        onChange={v => onChange({ overlayTimeFormat: v as CameraSettings['overlayTimeFormat'] })}
+                      />
+
+                      {/* Text colour */}
+                      <SettingsSelectRow
+                        label="Text colour"
+                        value={settings.overlayTextColor}
+                        options={[
+                          { value: 'white', label: 'White' },
+                          { value: 'black', label: 'Black' },
+                        ]}
+                        onChange={v => onChange({ overlayTextColor: v as CameraSettings['overlayTextColor'] })}
+                      />
+
+                      {/* Font size */}
+                      <SettingsSelectRow
+                        label="Font size"
+                        value={String(settings.overlayFontSize)}
+                        options={[
+                          { value: '10', label: '10 pt' },
+                          { value: '12', label: '12 pt' },
+                          { value: '14', label: '14 pt' },
+                          { value: '16', label: '16 pt' },
+                        ]}
+                        onChange={v => onChange({ overlayFontSize: Number(v) as CameraSettings['overlayFontSize'] })}
+                      />
+
+                      {/* Live preview */}
+                      <OverlayPreview settings={settings} />
+                    </div>
+                  </motion.div>
+                )}
+              </SettingsSection>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ── Settings sub-components ───────────────────────────────────────────────────
+
+function SettingsSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden">
+      <div className="px-4 pt-3 pb-1">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
+      </div>
+      <div className="px-1 pb-2 space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function SettingsToggleRow({
+  label,
+  description,
+  value,
+  onChange,
+}: {
+  label: string;
+  description?: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!value)}
+      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-left"
+    >
+      <div className="flex-1 min-w-0 pr-3">
+        <p className="text-gray-900 text-sm font-medium">{label}</p>
+        {description && <p className="text-gray-400 text-[11px] mt-0.5">{description}</p>}
+      </div>
+      {/* Toggle pill */}
+      <div
+        className={`w-11 h-6 rounded-full transition-colors shrink-0 relative ${
+          value ? 'bg-violet-600' : 'bg-gray-200'
+        }`}
+      >
+        <div
+          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+            value ? 'translate-x-5' : 'translate-x-0.5'
+          }`}
+        />
+      </div>
+    </button>
+  );
+}
+
+function SettingsSegmentRow({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex gap-1 px-3 py-2">
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={`flex-1 h-8 rounded-xl text-xs font-bold transition-colors ${
+            value === opt.value
+              ? 'bg-violet-600 text-white'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SettingsSelectRow({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors">
+      <p className="text-gray-700 text-sm">{label}</p>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="text-sm text-gray-900 font-semibold bg-transparent border-none focus:outline-none focus:ring-0 text-right cursor-pointer"
+        onClick={e => e.stopPropagation()}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** Small live preview of what the overlay will look like */
+function OverlayPreview({ settings }: { settings: CameraSettings }) {
+  const now = new Date();
+  const dateStr = formatOverlayDate(now, settings.overlayDateFormat);
+  const timeStr = formatOverlayTime(now, settings.overlayTimeFormat);
+  const stamp = `${dateStr}  ${timeStr}`;
+  const fontSize = settings.overlayFontSize;
+
+  return (
+    <div className="mx-3 mb-2 rounded-xl overflow-hidden bg-gray-800 relative" style={{ height: 72 }}>
+      {/* Fake photo bg */}
+      <div className="absolute inset-0 opacity-40"
+        style={{ background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' }}
+      />
+      {/* Stamp */}
+      <div
+        className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md"
+        style={{
+          background: settings.overlayTextColor === 'white' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)',
+          fontFamily: "'Courier New', monospace",
+          fontSize: `${fontSize}px`,
+          fontWeight: 'bold',
+          color: settings.overlayTextColor === 'white' ? '#fff' : '#000',
+          lineHeight: 1.4,
+        }}
+      >
+        {stamp}
+      </div>
+      <p className="absolute top-2 left-3 text-white/40 text-[10px]">Preview</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Job picker sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 function JobPickerSheet({
@@ -132,18 +653,12 @@ function JobPickerSheet({
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 340 }}
             className="fixed bottom-0 left-0 right-0 z-[90] bg-white rounded-t-3xl flex flex-col"
-            style={{
-              boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
-              maxHeight: 'calc(100dvh - 4rem)',
-            }}
+            style={{ boxShadow: '0 -4px 40px rgba(0,0,0,0.18)', maxHeight: 'calc(100dvh - 4rem)' }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
-
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
@@ -154,15 +669,10 @@ function JobPickerSheet({
                   <p className="text-gray-400 text-[11px]">Active jobs</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
-              >
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                 <X size={14} />
               </button>
             </div>
-
-            {/* Search */}
             <div className="px-4 pt-3 pb-2 shrink-0">
               <input
                 type="search"
@@ -172,8 +682,6 @@ function JobPickerSheet({
                 className="w-full h-9 bg-gray-100 rounded-xl px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300"
               />
             </div>
-
-            {/* List */}
             <div className="overflow-y-auto flex-1 px-4 pb-3 space-y-1.5">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
@@ -182,9 +690,7 @@ function JobPickerSheet({
               ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
                   <HardHat size={28} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">
-                    {q ? 'No matching jobs' : 'No active jobs found'}
-                  </p>
+                  <p className="text-gray-400 text-sm">{q ? 'No matching jobs' : 'No active jobs found'}</p>
                 </div>
               ) : filtered.map(job => (
                 <button
@@ -197,15 +703,12 @@ function JobPickerSheet({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                    {job.jobNumber && (
-                      <p className="text-gray-400 text-[11px] font-mono">{job.jobNumber}</p>
-                    )}
+                    {job.jobNumber && <p className="text-gray-400 text-[11px] font-mono">{job.jobNumber}</p>}
                   </div>
                   <ChevronRight size={14} className="text-gray-300 shrink-0" />
                 </button>
               ))}
             </div>
-
             <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
@@ -256,14 +759,9 @@ function NoteSheet({
                 <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
                   <StickyNote size={15} className="text-yellow-500" />
                 </div>
-                <p className="text-gray-900 font-bold text-sm">
-                  {initialNote ? 'Edit Note' : 'Add Note'}
-                </p>
+                <p className="text-gray-900 font-bold text-sm">{initialNote ? 'Edit Note' : 'Add Note'}</p>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
-              >
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                 <X size={14} />
               </button>
             </div>
@@ -292,13 +790,14 @@ function NoteSheet({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compact capture row  (56px target height)
+// Compact capture row
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CaptureRow({
   item,
   selected,
   selectMode,
+  notesEnabled,
   onToggleSelect,
   onDelete,
   onAttachJob,
@@ -307,6 +806,7 @@ function CaptureRow({
   item: CaptureItem;
   selected: boolean;
   selectMode: boolean;
+  notesEnabled: boolean;
   onToggleSelect: (clientId: string) => void;
   onDelete: (clientId: string) => void;
   onAttachJob: (clientId: string) => void;
@@ -321,13 +821,11 @@ function CaptureRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -24, transition: { duration: 0.18 } }}
       className={`flex items-center gap-2.5 rounded-2xl px-2.5 py-2 transition-colors ${
-        selected
-          ? 'bg-violet-50 border border-violet-200'
-          : 'bg-white border border-gray-100'
+        selected ? 'bg-violet-50 border border-violet-200' : 'bg-white border border-gray-100'
       }`}
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
     >
-      {/* Select checkbox */}
+      {/* Checkbox */}
       <button
         onClick={() => onToggleSelect(item.clientId)}
         className="shrink-0 w-5 h-5 flex items-center justify-center"
@@ -342,19 +840,12 @@ function CaptureRow({
       {/* Thumbnail */}
       <div className="w-11 h-11 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
         {imgUrl ? (
-          <img
-            src={imgUrl}
-            alt="Captured"
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+          <img src={imgUrl} alt="Captured" className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ImageIcon size={16} className="text-gray-300" />
           </div>
         )}
-
-        {/* Upload overlay */}
         {item.status === 'uploading' && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <Loader2 size={14} className="text-white animate-spin" />
@@ -370,16 +861,11 @@ function CaptureRow({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Status chip */}
           {item.status === 'uploading' && (
-            <span className="text-[10px] font-semibold text-blue-500 bg-blue-50 border border-blue-100 rounded-md px-1.5 py-0.5">
-              Saving…
-            </span>
+            <span className="text-[10px] font-semibold text-blue-500 bg-blue-50 border border-blue-100 rounded-md px-1.5 py-0.5">Saving…</span>
           )}
           {item.status === 'error' && (
-            <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-100 rounded-md px-1.5 py-0.5">
-              Failed
-            </span>
+            <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-100 rounded-md px-1.5 py-0.5">Failed</span>
           )}
           {item.status === 'done' && item.jobId && (
             <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 rounded-md px-1.5 py-0.5 truncate max-w-[120px]">
@@ -387,9 +873,7 @@ function CaptureRow({
             </span>
           )}
           {item.status === 'done' && !item.jobId && (
-            <span className="text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-0.5">
-              Unassigned
-            </span>
+            <span className="text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-0.5">Unassigned</span>
           )}
           <span className="text-[10px] text-gray-400">{formatTime(item.capturedAt)}</span>
         </div>
@@ -401,7 +885,7 @@ function CaptureRow({
         )}
       </div>
 
-      {/* Action buttons — hidden in select mode */}
+      {/* Actions */}
       {!selectMode && item.status !== 'uploading' && (
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -411,13 +895,15 @@ function CaptureRow({
           >
             <Briefcase size={12} />
           </button>
-          <button
-            onClick={() => onAddNote(item.clientId)}
-            className="w-7 h-7 rounded-lg bg-yellow-50 border border-yellow-100 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 transition-colors"
-            title="Add note"
-          >
-            <StickyNote size={12} />
-          </button>
+          {notesEnabled && (
+            <button
+              onClick={() => onAddNote(item.clientId)}
+              className="w-7 h-7 rounded-lg bg-yellow-50 border border-yellow-100 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 transition-colors"
+              title="Add note"
+            >
+              <StickyNote size={12} />
+            </button>
+          )}
           <button
             onClick={() => onDelete(item.clientId)}
             className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 transition-colors"
@@ -446,7 +932,14 @@ export default function CameraPage() {
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
 
-  // Selection state
+  // Settings
+  const [settings, setSettings] = useState<CameraSettings>(DEFAULT_SETTINGS);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectMode = selectedIds.size > 0;
 
@@ -464,19 +957,50 @@ export default function CameraPage() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // ── Load existing captures from server on mount ───────────────────────────
+  // ── Load settings on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/camera-settings', { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { settings?: CameraSettings }) => {
+        if (d.settings) setSettings(s => ({ ...s, ...d.settings }));
+      })
+      .catch(() => {})
+      .finally(() => setSettingsLoaded(true));
+  }, []);
+
+  // ── Debounced settings save ───────────────────────────────────────────────
+  const saveSettings = useCallback((patch: Partial<CameraSettings>) => {
+    setSettings(prev => {
+      const next = { ...prev, ...patch };
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(async () => {
+        setSettingsSaving(true);
+        try {
+          await fetch('/api/camera-settings', {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(next),
+          });
+        } catch {
+          // silently ignore — settings will re-sync on next load
+        } finally {
+          setSettingsSaving(false);
+        }
+      }, 600);
+      return next;
+    });
+  }, []);
+
+  // ── Load existing captures ────────────────────────────────────────────────
   const loadCaptures = useCallback(async () => {
     try {
       const res = await fetch('/api/camera-captures', { credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json() as {
         captures: Array<{
-          id: number;
-          url: string;
-          note: string | null;
-          jobId: number | null;
-          status: string;
-          capturedAt: string;
+          id: number; url: string; note: string | null;
+          jobId: number | null; status: string; capturedAt: string;
         }>;
       };
       setCaptures(
@@ -494,7 +1018,7 @@ export default function CameraPage() {
         }))
       );
     } catch {
-      // silently ignore — user can still shoot
+      // silently ignore
     } finally {
       setLoadingInitial(false);
     }
@@ -502,18 +1026,15 @@ export default function CameraPage() {
 
   useEffect(() => { void loadCaptures(); }, [loadCaptures]);
 
-  // ── Upload a single file ──────────────────────────────────────────────────
-  async function uploadFile(file: File, clientId: string) {
-    const capturedAt = new Date().toISOString();
-
-    // Mark uploading
+  // ── Upload a single processed blob ───────────────────────────────────────
+  async function uploadBlob(blob: Blob, clientId: string, capturedAt: string) {
     setCaptures(prev => prev.map(c =>
       c.clientId === clientId ? { ...c, status: 'uploading' } : c
     ));
 
     try {
       const fd = new FormData();
-      fd.append('photos', file);
+      fd.append('photos', blob, 'capture.jpg');
       fd.append('capturedAt', capturedAt);
 
       const res = await fetch('/api/camera-captures', {
@@ -527,57 +1048,58 @@ export default function CameraPage() {
         throw new Error(d.error ?? 'Upload failed');
       }
 
-      const d = await res.json() as { captures: Array<{ id: number; storageKey: string; url: string }> };
+      const d = await res.json() as { captures: Array<{ id: number; url: string }> };
       const saved = d.captures[0];
 
       setCaptures(prev => prev.map(c => {
         if (c.clientId !== clientId) return c;
-        // Revoke the object URL now that we have a server URL
         if (c.localUrl) URL.revokeObjectURL(c.localUrl);
-        return {
-          ...c,
-          id: saved.id,
-          serverUrl: saved.url,
-          localUrl: null,
-          status: 'done',
-          errorMsg: null,
-        };
+        return { ...c, id: saved.id, serverUrl: saved.url, localUrl: null, status: 'done', errorMsg: null };
       }));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Upload failed';
       setCaptures(prev => prev.map(c =>
-        c.clientId === clientId ? { ...c, status: 'error', errorMsg: msg } : c
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: e instanceof Error ? e.message : 'Upload failed' }
+          : c
       ));
     }
   }
 
-  // ── Handle file selection (camera or library) ─────────────────────────────
+  // ── Handle file selection ─────────────────────────────────────────────────
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
 
     for (const file of Array.from(files)) {
       const clientId = makeClientId();
       const localUrl = URL.createObjectURL(file);
+      const capturedAt = new Date().toISOString();
 
-      // Add optimistic item immediately
+      // Optimistic item
       setCaptures(prev => [{
-        clientId,
-        id: null,
-        localUrl,
-        serverUrl: null,
-        note: null,
-        jobId: null,
-        jobName: null,
-        status: 'pending',
-        errorMsg: null,
-        capturedAt: new Date().toISOString(),
+        clientId, id: null, localUrl, serverUrl: null,
+        note: null, jobId: null, jobName: null,
+        status: 'pending', errorMsg: null, capturedAt,
       }, ...prev]);
 
-      // Upload in background
-      void uploadFile(file, clientId);
+      // Process (resize + overlay) then upload
+      const capturedDate = new Date(capturedAt);
+      void (async () => {
+        try {
+          const blob = await processImage(file, settings, capturedDate);
+
+          // Camera roll backup (native only, non-blocking)
+          if (settings.backupToRoll) {
+            void saveToDeviceCameraRoll(blob);
+          }
+
+          await uploadBlob(blob, clientId, capturedAt);
+        } catch {
+          // processImage failed — fall back to raw file
+          await uploadBlob(file, clientId, capturedAt);
+        }
+      })();
     }
 
-    // Reset inputs so the same file can be re-selected
     if (cameraInputRef.current) cameraInputRef.current.value = '';
     if (libraryInputRef.current) libraryInputRef.current.value = '';
   }
@@ -586,58 +1108,41 @@ export default function CameraPage() {
   async function handleDelete(clientId: string) {
     const item = captures.find(c => c.clientId === clientId);
     if (!item) return;
-
-    // Revoke local URL if present
     if (item.localUrl) URL.revokeObjectURL(item.localUrl);
-
     setCaptures(prev => prev.filter(c => c.clientId !== clientId));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(clientId); return s; });
-
     if (item.id) {
-      await fetch(`/api/camera-captures/${item.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      }).catch(() => {});
+      await fetch(`/api/camera-captures/${item.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => {});
     }
   }
 
   // ── Attach single job ─────────────────────────────────────────────────────
   async function handleAttachJob(clientId: string, job: JobOption) {
     setCaptures(prev => prev.map(c =>
-      c.clientId === clientId
-        ? { ...c, jobId: job.id, jobName: job.name }
-        : c
+      c.clientId === clientId ? { ...c, jobId: job.id, jobName: job.name } : c
     ));
-
     const item = captures.find(c => c.clientId === clientId);
     if (item?.id) {
       await fetch(`/api/camera-captures/${item.id}`, {
-        method: 'PATCH',
-        credentials: 'include',
+        method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.id }),
       }).catch(() => {});
     }
   }
 
-  // ── Bulk attach job ───────────────────────────────────────────────────────
+  // ── Bulk attach ───────────────────────────────────────────────────────────
   async function handleBulkAttachJob(job: JobOption) {
     const ids = Array.from(selectedIds);
-
     setCaptures(prev => prev.map(c =>
-      ids.includes(c.clientId)
-        ? { ...c, jobId: job.id, jobName: job.name }
-        : c
+      ids.includes(c.clientId) ? { ...c, jobId: job.id, jobName: job.name } : c
     ));
     setSelectedIds(new Set());
-
-    // Fire PATCH for each server-persisted item
     const serverItems = captures.filter(c => ids.includes(c.clientId) && c.id != null);
     await Promise.allSettled(
       serverItems.map(c =>
         fetch(`/api/camera-captures/${c.id}`, {
-          method: 'PATCH',
-          credentials: 'include',
+          method: 'PATCH', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobId: job.id }),
         })
@@ -650,19 +1155,16 @@ export default function CameraPage() {
     setCaptures(prev => prev.map(c =>
       c.clientId === clientId ? { ...c, note: note || null } : c
     ));
-
     const item = captures.find(c => c.clientId === clientId);
     if (item?.id) {
       await fetch(`/api/camera-captures/${item.id}`, {
-        method: 'PATCH',
-        credentials: 'include',
+        method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: note || null }),
       }).catch(() => {});
     }
   }
 
-  // ── Toggle select ─────────────────────────────────────────────────────────
   function toggleSelect(clientId: string) {
     setSelectedIds(prev => {
       const s = new Set(prev);
@@ -677,11 +1179,17 @@ export default function CameraPage() {
   const attached = captures.filter(c => c.status === 'done' && c.jobId).length;
   const uploading = captures.filter(c => c.status === 'uploading' || c.status === 'pending').length;
 
+  // Don't render until settings are loaded (avoids flash of wrong quality/overlay)
+  if (!settingsLoaded) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0d0d12' }}>
+        <Loader2 size={24} className="animate-spin text-violet-400" />
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="fixed inset-0 flex flex-col overflow-hidden"
-      style={{ background: '#0d0d12' }}
-    >
+    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: '#0d0d12' }}>
       <Helmet>
         <title>Camera — IWILLBUILD</title>
         <meta name="description" content="Field camera — capture job site photos instantly, then attach to jobs." />
@@ -690,63 +1198,36 @@ export default function CameraPage() {
       </Helmet>
       <h1 className="sr-only">Camera Inbox</h1>
 
-      {/* ── Hidden file inputs ── */}
-      {/* Camera input: capture="environment" → opens native camera on iOS/Android */}
-      <input
-        ref={cameraInputRef}
-        id={cameraId}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        className="sr-only"
-        onChange={e => handleFiles(e.target.files)}
-        aria-label="Take photo with camera"
-      />
-      {/* Library input: no capture= → shows full photo picker */}
-      <input
-        ref={libraryInputRef}
-        id={libraryId}
-        type="file"
-        accept="image/*"
-        multiple
-        className="sr-only"
-        onChange={e => handleFiles(e.target.files)}
-        aria-label="Choose from photo library"
-      />
+      {/* Hidden file inputs */}
+      <input ref={cameraInputRef} id={cameraId} type="file" accept="image/*" capture="environment"
+        multiple className="sr-only" onChange={e => handleFiles(e.target.files)} aria-label="Take photo" />
+      <input ref={libraryInputRef} id={libraryId} type="file" accept="image/*"
+        multiple className="sr-only" onChange={e => handleFiles(e.target.files)} aria-label="Choose from library" />
 
-      {/* ── Offline banner ── */}
+      {/* Offline banner */}
       <AnimatePresence>
         {!isOnline && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden shrink-0 z-10"
           >
             <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border-b border-amber-500/30">
               <WifiOff size={12} className="text-amber-400 shrink-0" />
-              <span className="text-amber-300 text-xs font-medium">
-                Offline — photos will upload when you reconnect
-              </span>
+              <span className="text-amber-300 text-xs font-medium">Offline — photos will upload when you reconnect</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          VIEWFINDER ZONE  (dark, top ~40% of screen)
-      ════════════════════════════════════════════════════════════════════════ */}
-      <div
-        className="shrink-0 flex flex-col"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
-      >
+      {/* ═══ VIEWFINDER ZONE ═══ */}
+      <div className="shrink-0 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 pb-4">
           <button
             onClick={() => navigate('/home')}
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
-            aria-label="Back to home"
+            aria-label="Back"
           >
             <ChevronLeft size={18} />
           </button>
@@ -757,29 +1238,63 @@ export default function CameraPage() {
               <p className="text-white/40 text-[11px] mt-0.5">
                 {uploading > 0
                   ? `Saving ${uploading} photo${uploading !== 1 ? 's' : ''}…`
-                  : `${unassigned} unassigned · ${attached} attached`
-                }
+                  : `${unassigned} unassigned · ${attached} attached`}
               </p>
             )}
           </div>
 
-          {/* Clear selection or spacer */}
-          {selectMode ? (
+          <div className="flex items-center gap-2">
+            {/* Settings gear */}
             <button
-              onClick={() => setSelectedIds(new Set())}
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
-              aria-label="Clear selection"
+              onClick={() => setSettingsOpen(true)}
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors relative"
+              aria-label="Camera settings"
             >
-              <X size={16} />
+              <Settings size={16} />
+              {/* Dot indicator when non-default settings are active */}
+              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high') && (
+                <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-400" />
+              )}
             </button>
-          ) : (
-            <div className="w-9" />
-          )}
+
+            {selectMode && (
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
+                aria-label="Clear selection"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* ── Shutter row ── */}
+        {/* Active settings indicators */}
+        {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high') && (
+          <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
+            {settings.overlayEnabled && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-300 bg-violet-900/40 border border-violet-700/40 rounded-full px-2 py-0.5">
+                <Check size={9} />
+                Overlay on
+              </span>
+            )}
+            {settings.backupToRoll && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-green-300 bg-green-900/40 border border-green-700/40 rounded-full px-2 py-0.5">
+                <Check size={9} />
+                Camera roll
+              </span>
+            )}
+            {settings.quality !== 'high' && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
+                {settings.quality === 'low' ? 'Low quality' : 'Med quality'}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Shutter row */}
         <div className="flex items-center justify-center gap-8 pb-6 px-4">
-          {/* Library button */}
+          {/* Library */}
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={() => libraryInputRef.current?.click()}
@@ -792,7 +1307,7 @@ export default function CameraPage() {
             <span className="text-white/40 text-[10px] font-medium">Library</span>
           </motion.button>
 
-          {/* Main shutter button */}
+          {/* Main shutter */}
           <motion.button
             whileTap={{ scale: 0.90 }}
             whileHover={{ scale: 1.04 }}
@@ -801,9 +1316,7 @@ export default function CameraPage() {
             className="relative flex items-center justify-center"
             aria-label="Take photo"
           >
-            {/* Outer ring */}
             <div className="w-[76px] h-[76px] rounded-full border-[3px] border-white/30 flex items-center justify-center">
-              {/* Inner disc */}
               <div
                 className="w-[62px] h-[62px] rounded-full bg-white flex items-center justify-center"
                 style={{ boxShadow: '0 0 24px rgba(255,255,255,0.25)' }}
@@ -813,7 +1326,7 @@ export default function CameraPage() {
             </div>
           </motion.button>
 
-          {/* Add another / count badge */}
+          {/* More / count */}
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={() => cameraInputRef.current?.click()}
@@ -835,15 +1348,10 @@ export default function CameraPage() {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          CAPTURED TRAY  (light, scrollable, fills remaining height)
-      ════════════════════════════════════════════════════════════════════════ */}
+      {/* ═══ CAPTURED TRAY ═══ */}
       <div
         className="flex-1 flex flex-col overflow-hidden"
-        style={{
-          background: '#f5f5f7',
-          borderRadius: '24px 24px 0 0',
-        }}
+        style={{ background: '#f5f5f7', borderRadius: '24px 24px 0 0' }}
       >
         {/* Tray header */}
         <div className="px-4 pt-4 pb-2 flex items-center justify-between shrink-0">
@@ -852,21 +1360,14 @@ export default function CameraPage() {
               {captures.length === 0 ? 'Captured' : `Captured (${captures.length})`}
             </p>
             {captures.length === 0 && !loadingInitial && (
-              <p className="text-gray-400 text-[11px] mt-0.5">
-                Tap the shutter — no job needed yet
-              </p>
+              <p className="text-gray-400 text-[11px] mt-0.5">Tap the shutter — no job needed yet</p>
             )}
           </div>
-
-          {/* Select all / deselect all when items exist */}
           {captures.length > 0 && (
             <button
               onClick={() => {
-                if (selectedIds.size === captures.length) {
-                  setSelectedIds(new Set());
-                } else {
-                  setSelectedIds(new Set(captures.map(c => c.clientId)));
-                }
+                if (selectedIds.size === captures.length) setSelectedIds(new Set());
+                else setSelectedIds(new Set(captures.map(c => c.clientId)));
               }}
               className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 transition-colors"
             >
@@ -890,9 +1391,7 @@ export default function CameraPage() {
                 <Camera size={24} className="text-gray-400" />
               </div>
               <p className="text-gray-500 font-semibold text-sm">No photos yet</p>
-              <p className="text-gray-400 text-xs mt-1">
-                Tap the shutter above to start capturing
-              </p>
+              <p className="text-gray-400 text-xs mt-1">Tap the shutter above to start capturing</p>
             </div>
           ) : (
             <AnimatePresence initial={false}>
@@ -902,6 +1401,7 @@ export default function CameraPage() {
                   item={item}
                   selected={selectedIds.has(item.clientId)}
                   selectMode={selectMode}
+                  notesEnabled={settings.notesEnabled}
                   onToggleSelect={toggleSelect}
                   onDelete={handleDelete}
                   onAttachJob={(id) => setJobPickerForClientId(id)}
@@ -913,15 +1413,11 @@ export default function CameraPage() {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          BULK ACTION BAR  (floats above tray when items selected)
-      ════════════════════════════════════════════════════════════════════════ */}
+      {/* ═══ BULK ACTION BAR ═══ */}
       <AnimatePresence>
         {selectMode && (
           <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
+            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             className="absolute left-0 right-0 z-20 px-4"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
@@ -931,12 +1427,9 @@ export default function CameraPage() {
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}
             >
               <div className="flex-1">
-                <p className="text-white font-bold text-sm">
-                  {selectedIds.size} selected
-                </p>
+                <p className="text-white font-bold text-sm">{selectedIds.size} selected</p>
                 <p className="text-white/40 text-[11px]">Choose an action</p>
               </div>
-
               <button
                 onClick={() => setBulkJobPickerOpen(true)}
                 className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl px-3.5 py-2 text-xs font-bold transition-colors"
@@ -945,7 +1438,6 @@ export default function CameraPage() {
                 Move to Job
                 <ArrowRight size={11} />
               </button>
-
               <button
                 onClick={async () => {
                   const ids = Array.from(selectedIds);
@@ -962,13 +1454,11 @@ export default function CameraPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Attached confirmation strip (non-blocking, bottom) ── */}
+      {/* Attached confirmation strip */}
       <AnimatePresence>
         {!selectMode && attached > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
             className="absolute left-0 right-0 z-10 px-4"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
           >
@@ -991,7 +1481,15 @@ export default function CameraPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Sheets ── */}
+      {/* ═══ SHEETS ═══ */}
+      <SettingsSheet
+        open={settingsOpen}
+        settings={settings}
+        saving={settingsSaving}
+        onClose={() => setSettingsOpen(false)}
+        onChange={saveSettings}
+      />
+
       <JobPickerSheet
         open={jobPickerForClientId !== null}
         title="Attach to Job"
