@@ -532,10 +532,10 @@ function SettingsSheet({
                 />
                 <p className="text-gray-400 text-[10px] px-1 pb-1">
                   {settings.quality === 'low'
-                    ? 'Max 1280px — smaller files, faster upload'
+                    ? 'Max 1280px — smallest files, fastest upload'
                     : settings.quality === 'medium'
                     ? 'Max 2048px — balanced quality and size'
-                    : 'Max 4096px — full resolution, larger files'}
+                    : 'Max 4096px — large detailed image, heavier files'}
                 </p>
               </SettingsSection>
 
