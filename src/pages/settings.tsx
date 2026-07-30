@@ -1,8 +1,7 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Settings,
   Building2,
   Bell,
   Database,
@@ -47,17 +46,6 @@ const tabs = [
   { id: 'data',         label: 'Data & Backup',      icon: Database },
 ];
 
-interface Company {
-  id: number;
-  name: string;
-  abn: string | null;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  address: string | null;
-  industry: string | null;
-}
-
 /** Fallback shown while a settings sub-tab is loading */
 function TabSkeleton() {
   return (
@@ -86,13 +74,6 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState(validTab);
   const { me, isAdmin } = usePermissions();
   const isOwner = me?.profile?.role === 'owner';
-
-  // Run migration once on mount to ensure company_settings table exists
-  useEffect(() => {
-    if (!isAdmin) return;
-    fetch('/api/migrate-company-settings', { method: 'POST', credentials: 'include' })
-      .catch(() => { /* silent — table may already exist */ });
-  }, [isAdmin]);
 
   return (
     <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[96px]">

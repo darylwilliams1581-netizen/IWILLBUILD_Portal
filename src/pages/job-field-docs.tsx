@@ -66,12 +66,13 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     fetch('/api/jobs', { credentials: 'include' })
       .then(r => r.json())
       .then(d => setJobs((d.jobs ?? []).filter((j: Job) => j.status !== 'archived')))
-      .catch(() => {})
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -133,7 +134,9 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
             )}
             {!loading && filtered.length === 0 && (
               <p className="text-sm text-slate-400 text-center py-8">
-                {search ? 'No jobs match your search' : 'No active jobs found'}
+                {fetchError
+                  ? "Couldn't load jobs — check your connection"
+                  : search ? 'No jobs match your search' : 'No active jobs found'}
               </p>
             )}
             {!loading && filtered.map(j => (

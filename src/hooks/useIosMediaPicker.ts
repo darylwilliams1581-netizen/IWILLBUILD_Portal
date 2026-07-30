@@ -29,8 +29,9 @@
  *    Settings rather than silently failing.
  *
  * 6. VITE BUILD SAFETY — All Capacitor plugin access uses window.Capacitor.Plugins
- *    globals, NOT dynamic imports. Dynamic imports of @capacitor/* packages are
- *    resolved at Vite build time and can produce broken chunks in the iOS bundle.
+ *    globals, NOT dynamic imports. Dynamic imports of @capacitor/* plugin instances
+ *    are resolved at Vite build time and can produce broken chunks in the iOS bundle.
+ *    Static enum/constant imports at module level are safe.
  *
  * Usage:
  *   const picker = useIosMediaPicker();
@@ -57,6 +58,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { isNative, getPlatform, getCameraPlugin } from '@/lib/capacitor-plugins';
 import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
+// Camera enum constants — static values safe to import at module level.
+// These are NOT plugin instances, so they do not violate Rule 6.
+import { CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -185,7 +189,7 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
     }
     chunks.push(chunk);
   }
-  return new Blob(chunks, { type: mimeType });
+  return new Blob(chunks as BlobPart[], { type: mimeType });
 }
 
 /**
@@ -332,12 +336,6 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       try {
         const CameraPlugin = await getCameraPlugin();
         if (CameraPlugin) {
-          const {
-            CameraResultType,
-            CameraSource,
-            CameraDirection,
-          } = await import('@capacitor/camera');
-
           // Use Base64 instead of DataUrl on native.
           // DataUrl requires an extra fetch() round-trip to convert to a Blob,
           // adding latency and a second full-image memory copy in the WKWebView heap.

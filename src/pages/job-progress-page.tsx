@@ -54,6 +54,7 @@ export default function JobProgressPage() {
   const [lines, setLines] = useState<ProgressLine[]>([]);
   const [dirty, setDirty] = useState<Map<number, Partial<ProgressLine>>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -93,7 +94,7 @@ export default function JobProgressPage() {
           }
         }),
     ])
-      .catch(() => {})
+      .catch(() => setError('Failed to load progress data. Check your connection.'))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -291,6 +292,13 @@ export default function JobProgressPage() {
           </div>
         ) : (
           <div className="px-4 py-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full space-y-4">
+
+            {error && (
+              <div className="flex items-center gap-2 mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                <AlertTriangle size={14} className="shrink-0" />
+                {error}
+              </div>
+            )}
 
             {/* ── Report header form ── */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>

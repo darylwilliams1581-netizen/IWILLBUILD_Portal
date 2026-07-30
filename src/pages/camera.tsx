@@ -30,7 +30,7 @@ import {
   Camera, ChevronLeft, X, Trash2, Briefcase,
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
-  AlertCircle, Settings, Check, FolderOpen,
+  AlertCircle, AlertTriangle, Settings, Check, FolderOpen,
   Zap, ZapOff, FlipHorizontal2, Upload,
   Pencil, RotateCcw, RotateCw, Download, ZoomIn, Search,
 } from 'lucide-react';
@@ -895,16 +895,18 @@ function JobPickerSheet({
 }) {
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [q, setQ] = useState('');
 
   useEffect(() => {
-    if (!open) { setQ(''); return; }
+    if (!open) { setQ(''); setFetchError(false); return; }
     setLoading(true);
+    setFetchError(false);
     fetch('/api/jobs?status=active&limit=200', { credentials: 'include' })
       .then(r => r.json())
       .then((d: { jobs?: JobOption[] } | JobOption[]) =>
         setJobs(Array.isArray(d) ? d : (d.jobs ?? [])))
-      .catch(() => setJobs([]))
+      .catch(() => { setJobs([]); setFetchError(true); })
       .finally(() => setLoading(false));
   }, [open]);
 
@@ -984,6 +986,11 @@ function JobPickerSheet({
               {loading ? (
                 <div className="flex items-center justify-center py-10">
                   <Loader2 size={20} className="animate-spin text-violet-400" />
+                </div>
+              ) : fetchError ? (
+                <div className="text-center py-10">
+                  <AlertTriangle size={28} className="text-red-300 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">Couldn't load jobs — check connection</p>
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
