@@ -14,6 +14,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, MoreHorizontal } from 'lucide-react';
 import PdfViewer from './PdfViewer';
+import { resolveNativeUrl } from '@/lib/native-url';
 import AnnotationToolbar from './AnnotationToolbar';
 import RevisionPanel from './RevisionPanel';
 import ShareModal from './ShareModal';
@@ -245,7 +246,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
         {/* PDF viewer (center) */}
         {hasPdf ? (
           <PdfViewer
-            fileUrl={drawing.source_file_path!}
+            fileUrl={resolveNativeUrl(drawing.source_file_path!)}
             currentPage={viewer.currentPage}
             totalPages={viewer.totalPages}
             scale={viewer.scale}

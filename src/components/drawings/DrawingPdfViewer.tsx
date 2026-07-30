@@ -23,9 +23,11 @@ import {
   MoreHorizontal, Shrink,
 } from 'lucide-react';
 import { useMobileViewer } from '@/lib/useMobileViewer';
+import { resolveNativeUrl } from '@/lib/native-url';
 
-// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
+// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly.
+// On Capacitor native the worker path must be absolute (capacitor://localhost can't serve it).
+pdfjs.GlobalWorkerOptions.workerSrc = resolveNativeUrl('/pdf.worker.5.4.296.min.mjs');
 
 type ToolType = 'none' | 'text' | 'arrow' | 'rect' | 'highlight' | 'pen';
 
@@ -183,7 +185,8 @@ function MarkupCanvas({ items, currentPage, pageWidth, pageHeight, activeTool, o
   );
 }
 
-export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, onMarkupSaved }: Props) {
+export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title, onClose, onMarkupSaved }: Props) {
+  const fileUrl = resolveNativeUrl(fileUrlRaw);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);

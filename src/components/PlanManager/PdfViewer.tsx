@@ -25,9 +25,11 @@ import {
 import AnnotationCanvas from './AnnotationCanvas';
 import type { Annotation, AnnotationStyle, ToolType } from './types';
 import { useMobileViewer } from '@/lib/useMobileViewer';
+import { resolveNativeUrl } from '@/lib/native-url';
 
-// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
+// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly.
+// On Capacitor native the worker path must be absolute (capacitor://localhost can't serve it).
+pdfjs.GlobalWorkerOptions.workerSrc = resolveNativeUrl('/pdf.worker.5.4.296.min.mjs');
 
 interface Props {
   fileUrl: string;

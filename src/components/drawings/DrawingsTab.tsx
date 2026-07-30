@@ -16,6 +16,7 @@ import {
   fileServePath, fileIsPdf, fileIsDwg,
   DRAWING_DISCIPLINES, DRAWING_STATUSES, STATUS_BADGE,
 } from './drawing-utils';
+import { resolveNativeUrl } from '@/lib/native-url';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface DrawingRecord {
@@ -404,12 +405,12 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
                                 {dwg && !pdf && (
                                   <span className="text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-100 rounded-lg">DWG</span>
                                 )}
-                                <a href={fileServePath(drawing.original_file_id)} download title="Download original"
+                                <a href={resolveNativeUrl(fileServePath(drawing.original_file_id))} download title="Download original"
                                   className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
                                   <Download size={13} />
                                 </a>
                                 {hasMarkup && drawing.marked_up_file_id && (
-                                  <a href={fileServePath(drawing.marked_up_file_id)} download title="Download marked-up copy"
+                                  <a href={resolveNativeUrl(fileServePath(drawing.marked_up_file_id))} download title="Download marked-up copy"
                                     className="p-1.5 rounded-lg text-violet-600 hover:bg-violet-50 transition-colors">
                                     <Download size={13} />
                                   </a>
@@ -453,7 +454,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}>
           <DrawingPdfViewer
             drawingId={viewerDrawing.id}
-            fileUrl={fileServePath(viewerDrawing.original_file_id)}
+            fileUrl={resolveNativeUrl(fileServePath(viewerDrawing.original_file_id))}
             title={`${viewerDrawing.drawing_number ? viewerDrawing.drawing_number + ' — ' : ''}${viewerDrawing.title} Rev ${viewerDrawing.revision}`}
             onClose={() => setViewerDrawing(null)}
             onMarkupSaved={() => void load()}

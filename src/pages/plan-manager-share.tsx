@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import AnnotationCanvas from '@/components/PlanManager/AnnotationCanvas';
 import type { Annotation } from '@/components/PlanManager/types';
+import { resolveNativeUrl } from '@/lib/native-url';
 
-// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
+// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly.
+// On Capacitor native the worker path must be absolute.
+pdfjs.GlobalWorkerOptions.workerSrc = resolveNativeUrl('/pdf.worker.5.4.296.min.mjs');
 
 interface ShareData {
   drawing: {
@@ -177,7 +179,7 @@ export default function PlanManagerSharePage() {
         {/* PDF */}
         <div className="flex-1 overflow-auto bg-slate-950 flex justify-center p-6">
           <Document
-            file={data.drawing.source_file_path}
+            file={resolveNativeUrl(data.drawing.source_file_path)}
             onLoadSuccess={({ numPages }) => setTotalPages(numPages)}
             loading={
               <div className="flex items-center gap-2 text-slate-400 mt-20">
