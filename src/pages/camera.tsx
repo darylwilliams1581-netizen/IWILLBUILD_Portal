@@ -69,22 +69,35 @@ export interface CameraSettings {
   backupToRoll: boolean;
   quality: 'low' | 'medium' | 'high';
   notesEnabled: boolean;
+  // ── Note mode ──────────────────────────────────────────────────────────────
+  // ask  — prompt user to confirm/edit note after each capture
+  // lock — keep the same note across all captures until manually changed
+  // none — no per-photo note; only default watermark content
+  noteMode: 'ask' | 'lock' | 'none';
+  // ── Overlay / watermark ────────────────────────────────────────────────────
   overlayEnabled: boolean;
   overlayDateFormat: string;
   overlayTimeFormat: '24h' | '12h';
   overlayTextColor: 'white' | 'black';
   overlayFontSize: 10 | 12 | 14 | 16;
+  overlayLabel: string;           // custom label burned into every photo
+  overlayIncludeNote: boolean;    // include the photo note in the watermark
+  overlayIncludeJobNumber: boolean; // include the job number when a job is active
 }
 
 const DEFAULT_SETTINGS: CameraSettings = {
   backupToRoll: false,
   quality: 'high',
   notesEnabled: true,
+  noteMode: 'ask',
   overlayEnabled: false,
   overlayDateFormat: 'dd MM yyyy',
   overlayTimeFormat: '24h',
   overlayTextColor: 'white',
   overlayFontSize: 12,
+  overlayLabel: '',
+  overlayIncludeNote: true,
+  overlayIncludeJobNumber: true,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,11 +143,19 @@ function formatOverlayTime(d: Date, fmt: '24h' | '12h'): string {
 /**
  * Process a File through canvas: resize + optional overlay burn.
  * HEIC files are returned as-is (canvas cannot decode HEIC in WKWebView).
+ *
+ * Watermark line order (bottom-right, stacked upward):
+ *   Line 1 (bottom): date  time
+ *   Line 2:          photo note          (if overlayIncludeNote && note present)
+ *   Line 3:          job number          (if overlayIncludeJobNumber && jobNumber present)
+ *   Line 4 (top):    custom label        (if overlayLabel non-empty)
  */
 async function processImage(
   file: File,
   settings: CameraSettings,
   capturedAt: Date,
+  note?: string | null,
+  jobNumber?: string | null,
 ): Promise<Blob> {
   // HEIC guard — WKWebView cannot decode HEIC in canvas; skip processing
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -147,8 +168,6 @@ async function processImage(
     const objectUrl = URL.createObjectURL(file);
 
     img.onload = () => {
-      // Draw BEFORE revoking — some iOS versions blank the canvas if the
-      // objectUrl is revoked before drawImage completes
       const maxDim = settings.quality === 'low' ? 1280
         : settings.quality === 'medium' ? 2048
         : 4096;
@@ -171,51 +190,61 @@ async function processImage(
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-
-      // Safe to revoke now — drawImage has consumed the image data
       URL.revokeObjectURL(objectUrl);
 
       if (settings.overlayEnabled) {
         const fontSize = settings.overlayFontSize;
         const dateStr = formatOverlayDate(capturedAt, settings.overlayDateFormat);
         const timeStr = formatOverlayTime(capturedAt, settings.overlayTimeFormat);
-        const stampText = `${dateStr}  ${timeStr}`;
+
+        // Build watermark lines — bottom-most first
+        const lines: string[] = [];
+        lines.push(`${dateStr}  ${timeStr}`);
+        if (settings.overlayIncludeNote && note?.trim()) lines.push(note.trim());
+        if (settings.overlayIncludeJobNumber && jobNumber?.trim()) lines.push(`#${jobNumber.trim()}`);
+        if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
 
         ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
         ctx.textBaseline = 'bottom';
 
         const padding = Math.round(fontSize * 0.6);
-        const textMetrics = ctx.measureText(stampText);
-        const textW = textMetrics.width;
-        const textH = fontSize;
-        const x = width - textW - padding * 2;
-        const y = height - padding;
+        const lineGap = Math.round(fontSize * 0.3);
+        const lineH = fontSize + lineGap;
 
-        const bgAlpha = 0.55;
-        ctx.fillStyle = settings.overlayTextColor === 'white'
-          ? `rgba(0,0,0,${bgAlpha})`
-          : `rgba(255,255,255,${bgAlpha})`;
+        // Measure widest line for the pill width
+        const maxTextW = lines.reduce((mx, l) => Math.max(mx, ctx.measureText(l).width), 0);
         const pillPad = Math.round(fontSize * 0.35);
-        const rx = x - pillPad;
-        const ry = y - textH - pillPad;
-        const rw = textW + pillPad * 2;
-        const rh = textH + pillPad * 2;
+        const pillW = maxTextW + pillPad * 2;
+        const pillH = lines.length * lineH + pillPad * 2 - lineGap;
+
+        const pillX = width - pillW - padding;
+        const pillY = height - pillH - padding;
         const r = Math.round(fontSize * 0.4);
+
+        // Background pill
+        ctx.fillStyle = settings.overlayTextColor === 'white'
+          ? 'rgba(0,0,0,0.55)'
+          : 'rgba(255,255,255,0.55)';
         ctx.beginPath();
-        ctx.moveTo(rx + r, ry);
-        ctx.lineTo(rx + rw - r, ry);
-        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + r);
-        ctx.lineTo(rx + rw, ry + rh - r);
-        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - r, ry + rh);
-        ctx.lineTo(rx + r, ry + rh);
-        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - r);
-        ctx.lineTo(rx, ry + r);
-        ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+        ctx.moveTo(pillX + r, pillY);
+        ctx.lineTo(pillX + pillW - r, pillY);
+        ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
+        ctx.lineTo(pillX + pillW, pillY + pillH - r);
+        ctx.quadraticCurveTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH);
+        ctx.lineTo(pillX + r, pillY + pillH);
+        ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
+        ctx.lineTo(pillX, pillY + r);
+        ctx.quadraticCurveTo(pillX, pillY, pillX + r, pillY);
         ctx.closePath();
         ctx.fill();
 
+        // Text lines — draw bottom-up (lines[0] = bottom)
         ctx.fillStyle = settings.overlayTextColor === 'white' ? '#ffffff' : '#000000';
-        ctx.fillText(stampText, x, y);
+        lines.forEach((line, i) => {
+          const textX = pillX + pillPad;
+          const textY = pillY + pillH - pillPad - i * lineH;
+          ctx.fillText(line, textX, textY);
+        });
       }
 
       const jpegQuality = settings.quality === 'low' ? 0.72
@@ -353,21 +382,18 @@ function SettingsSheet({
   saving,
   backupPermDenied,
   backupUnavailable,
+  lockedNote,
+  activeJobNumber,
   onClose,
   onChange,
 }: {
   open: boolean;
   settings: CameraSettings;
   saving: boolean;
-  /** True when save-to-photos was denied — show warning in backup row */
   backupPermDenied: boolean;
-  /**
-   * True when Camera.savePhoto is not available in the current native build.
-   * This means @capacitor/camera has been installed in JS but the native project
-   * has not yet been synced (npx cap sync not run since install). The toggle is
-   * shown as disabled with an honest explanation rather than pretending it works.
-   */
   backupUnavailable: boolean;
+  lockedNote: string | null;
+  activeJobNumber: string | null;
   onClose: () => void;
   onChange: (patch: Partial<CameraSettings>) => void;
 }) {
@@ -495,10 +521,43 @@ function SettingsSheet({
               <SettingsSection label="Notes">
                 <SettingsToggleRow
                   label="Enable notes on captures"
-                  description="Show Add Note button on each photo"
+                  description="Show note button on each photo in the tray"
                   value={settings.notesEnabled}
                   onChange={v => onChange({ notesEnabled: v })}
                 />
+              </SettingsSection>
+
+              {/* Note mode */}
+              <SettingsSection label="Note mode">
+                <div className="px-3 pt-1 pb-2 space-y-1">
+                  {(
+                    [
+                      { value: 'ask', label: 'Ask every time', desc: 'Prompt to confirm or edit the note after each photo' },
+                      { value: 'lock', label: 'Lock note', desc: 'Keep the same note across multiple photos — change it when you move to a new area' },
+                      { value: 'none', label: 'No note', desc: 'No per-photo note — only date, time, and watermark label' },
+                    ] as const
+                  ).map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => onChange({ noteMode: opt.value })}
+                      className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                        settings.noteMode === opt.value
+                          ? 'bg-violet-50 border border-violet-200'
+                          : 'hover:bg-gray-100 border border-transparent'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
+                        settings.noteMode === opt.value ? 'border-violet-600 bg-violet-600' : 'border-gray-300'
+                      }`}>
+                        {settings.noteMode === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold ${settings.noteMode === opt.value ? 'text-violet-700' : 'text-gray-800'}`}>{opt.label}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </SettingsSection>
 
               {/* Overlay */}
@@ -517,6 +576,33 @@ function SettingsSheet({
                     className="overflow-hidden"
                   >
                     <div className="space-y-0.5 pt-1">
+                      {/* Watermark label */}
+                      <div className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors">
+                        <p className="text-gray-700 text-sm">Watermark label</p>
+                        <input
+                          type="text"
+                          value={settings.overlayLabel}
+                          onChange={e => onChange({ overlayLabel: e.target.value })}
+                          placeholder="e.g. IWILLBUILD"
+                          maxLength={32}
+                          className="text-sm text-gray-900 font-semibold bg-transparent border-none focus:outline-none focus:ring-0 text-right w-36 placeholder-gray-300"
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
+                      {/* Include job number */}
+                      <SettingsToggleRow
+                        label="Include job number"
+                        description="Burn job number when a job is active"
+                        value={settings.overlayIncludeJobNumber}
+                        onChange={v => onChange({ overlayIncludeJobNumber: v })}
+                      />
+                      {/* Include note */}
+                      <SettingsToggleRow
+                        label="Include photo note"
+                        description="Burn the note text into the watermark"
+                        value={settings.overlayIncludeNote}
+                        onChange={v => onChange({ overlayIncludeNote: v })}
+                      />
                       <SettingsSelectRow
                         label="Date format"
                         value={settings.overlayDateFormat}
@@ -556,7 +642,11 @@ function SettingsSheet({
                         ]}
                         onChange={v => onChange({ overlayFontSize: Number(v) as CameraSettings['overlayFontSize'] })}
                       />
-                      <OverlayPreview settings={settings} />
+                      <OverlayPreview
+                        settings={settings}
+                        lockedNote={lockedNote}
+                        activeJobNumber={activeJobNumber}
+                      />
                     </div>
                   </motion.div>
                 )}
@@ -666,28 +756,46 @@ function SettingsSelectRow({
   );
 }
 
-function OverlayPreview({ settings }: { settings: CameraSettings }) {
+function OverlayPreview({ settings, lockedNote, activeJobNumber }: {
+  settings: CameraSettings;
+  lockedNote?: string | null;
+  activeJobNumber?: string | null;
+}) {
   const now = new Date();
   const dateStr = formatOverlayDate(now, settings.overlayDateFormat);
   const timeStr = formatOverlayTime(now, settings.overlayTimeFormat);
-  const stamp = `${dateStr}  ${timeStr}`;
   const fontSize = settings.overlayFontSize;
+
+  // Build preview lines — same order as processImage (bottom-most first)
+  const lines: string[] = [];
+  lines.push(`${dateStr}  ${timeStr}`);
+  if (settings.overlayIncludeNote && lockedNote?.trim()) lines.push(lockedNote.trim());
+  if (settings.overlayIncludeJobNumber && activeJobNumber?.trim()) lines.push(`#${activeJobNumber.trim()}`);
+  if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
+
+  const lineH = fontSize * 1.5;
+  const pillPad = fontSize * 0.35;
+  const pillH = lines.length * lineH + pillPad * 2 - fontSize * 0.3;
+
   return (
-    <div className="mx-3 mb-2 rounded-xl overflow-hidden bg-gray-800 relative" style={{ height: 72 }}>
+    <div className="mx-3 mb-2 rounded-xl overflow-hidden bg-gray-800 relative" style={{ height: Math.max(72, pillH + 24) }}>
       <div className="absolute inset-0 opacity-40"
         style={{ background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' }} />
       <div
-        className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md"
+        className="absolute bottom-2 right-2 px-2 py-1 rounded-md flex flex-col items-end gap-0.5"
         style={{
           background: settings.overlayTextColor === 'white' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)',
           fontFamily: "'Courier New', monospace",
           fontSize: `${fontSize}px`,
           fontWeight: 'bold',
           color: settings.overlayTextColor === 'white' ? '#fff' : '#000',
-          lineHeight: 1.4,
+          lineHeight: 1.5,
         }}
       >
-        {stamp}
+        {/* Render lines top-to-bottom (reversed from bottom-up burn order) */}
+        {[...lines].reverse().map((line, i) => (
+          <span key={i}>{line}</span>
+        ))}
       </div>
       <p className="absolute top-2 left-3 text-white/40 text-[10px]">Preview</p>
     </div>
@@ -809,15 +917,22 @@ function JobPickerSheet({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function NoteSheet({
-  open, initialNote, onClose, onSave,
+  open, initialNote, title, placeholder, saveLabel, onClose, onSave,
 }: {
   open: boolean;
   initialNote: string | null;
+  title?: string;
+  placeholder?: string;
+  saveLabel?: string;
   onClose: () => void;
   onSave: (note: string) => void;
 }) {
   const [text, setText] = useState(initialNote ?? '');
   useEffect(() => { if (open) setText(initialNote ?? ''); }, [open, initialNote]);
+
+  const heading = title ?? (initialNote ? 'Edit Note' : 'Add Note');
+  const ph = placeholder ?? 'Short note for this photo…';
+  const btnLabel = saveLabel ?? 'Save Note';
 
   return (
     <AnimatePresence>
@@ -843,7 +958,7 @@ function NoteSheet({
                 <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
                   <StickyNote size={15} className="text-yellow-500" />
                 </div>
-                <p className="text-gray-900 font-bold text-sm">{initialNote ? 'Edit Note' : 'Add Note'}</p>
+                <p className="text-gray-900 font-bold text-sm">{heading}</p>
               </div>
               <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                 <X size={14} />
@@ -854,16 +969,24 @@ function NoteSheet({
                 value={text}
                 onChange={e => setText(e.target.value)}
                 rows={3}
-                placeholder="Short note for this photo…"
+                placeholder={ph}
                 className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 resize-none"
                 autoFocus
               />
-              <button
-                onClick={() => { onSave(text.trim()); onClose(); }}
-                className="w-full h-11 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm transition-colors"
-              >
-                Save Note
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { onSave(''); onClose(); }}
+                  className="flex-1 h-11 rounded-2xl border border-gray-200 text-gray-500 font-semibold text-sm transition-colors hover:bg-gray-50"
+                >
+                  No note
+                </button>
+                <button
+                  onClick={() => { onSave(text.trim()); onClose(); }}
+                  className="flex-[2] h-11 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm transition-colors"
+                >
+                  {btnLabel}
+                </button>
+              </div>
             </div>
             <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }} />
           </motion.div>
@@ -1391,6 +1514,21 @@ export default function CameraPage() {
     activeJobRef.current = job;
   }
 
+  // ── Note mode state ───────────────────────────────────────────────────────
+  // lockedNote: the note that is stamped on every photo in 'lock' mode.
+  // Stored in a ref so handleFileFromPicker always reads the latest value.
+  // In 'ask' mode, the note bar shows the last-used note as a suggestion.
+  const [lockedNote, setLockedNote] = useState<string | null>(null);
+  const lockedNoteRef = useRef<string | null>(null);
+  const [noteBarOpen, setNoteBarOpen] = useState(false);
+  // 'ask' mode: after each capture, show a quick note prompt
+  const [askNoteClientId, setAskNoteClientId] = useState<string | null>(null);
+
+  function setLockedNoteBoth(note: string | null) {
+    setLockedNote(note);
+    lockedNoteRef.current = note;
+  }
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectMode = selectedIds.size > 0;
@@ -1524,45 +1662,53 @@ export default function CameraPage() {
   }
 
   // ── Handle a file from the picker (called by useIosMediaPicker) ───────────
-  // Uses settingsRef.current and activeJobRef.current — not state — so this
-  // function never closes over stale values even though it's defined before
-  // those state declarations in the component body.
+  // Uses settingsRef.current, activeJobRef.current, and lockedNoteRef.current
+  // — not state — so this function never closes over stale values even though
+  // it's defined before those state declarations in the component body.
   function handleFileFromPicker(file: File) {
     const clientId = makeClientId();
     const capturedAt = new Date().toISOString();
     const capturedDate = new Date(capturedAt);
     const currentSettings = settingsRef.current;
-    // Snapshot active job at capture time — offline-safe: stored on item,
-    // sent to server when upload completes (or retried when back online)
     const job = activeJobRef.current;
 
-    // Optimistic item — use blob URL for preview (safe, no HEIC decode)
+    // Determine note to stamp based on note mode:
+    //   lock → use lockedNoteRef.current (may be null if not yet set)
+    //   ask  → use lockedNoteRef.current as a starting suggestion; prompt after capture
+    //   none → no note
+    const noteMode = currentSettings.noteMode;
+    const noteForCapture = noteMode === 'none' ? null : (lockedNoteRef.current ?? null);
+
     const localUrl = URL.createObjectURL(file);
     setCaptures(prev => [{
       clientId, id: null, localUrl, serverUrl: null,
-      note: null,
+      note: noteForCapture,
       jobId: job?.id ?? null,
       jobName: job?.name ?? null,
       status: 'pending', errorMsg: null, capturedAt,
     }, ...prev]);
 
+    // In 'ask' mode, open the note prompt after the capture is queued
+    if (noteMode === 'ask') {
+      setAskNoteClientId(clientId);
+    }
+
     void (async () => {
       try {
-        const blob = await processImage(file, currentSettings, capturedDate);
+        const blob = await processImage(
+          file, currentSettings, capturedDate,
+          noteForCapture,
+          job?.jobNumber ?? null,
+        );
 
-        // Camera roll backup — non-blocking, failure never stops capture
         if (currentSettings.backupToRoll) {
           const result = await saveToDeviceCameraRoll(blob);
-          if (result === 'permission_denied') {
-            setBackupPermDenied(true);
-          } else if (result === 'unavailable' && isNative()) {
-            setBackupUnavailable(true);
-          }
+          if (result === 'permission_denied') setBackupPermDenied(true);
+          else if (result === 'unavailable' && isNative()) setBackupUnavailable(true);
         }
 
         await uploadBlob(blob, clientId, capturedAt, job?.id ?? null);
       } catch {
-        // processImage failed — fall back to raw file
         await uploadBlob(file, clientId, capturedAt, job?.id ?? null);
       }
     })();
@@ -1774,6 +1920,38 @@ export default function CameraPage() {
                 </button>
               )}
             </button>
+
+            {/* Note mode bar */}
+            {settings.noteMode !== 'none' && (
+              <button
+                onClick={() => setNoteBarOpen(true)}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 transition-colors max-w-full ${
+                  lockedNote
+                    ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-200'
+                    : 'bg-white/6 border border-white/12 text-white/30 hover:bg-white/10'
+                }`}
+                aria-label={lockedNote ? `Note: ${lockedNote}` : 'Set note for capture'}
+              >
+                <StickyNote size={10} className={lockedNote ? 'text-yellow-300 shrink-0' : 'text-white/25 shrink-0'} />
+                <span className="text-[10px] font-semibold truncate max-w-[130px]">
+                  {lockedNote
+                    ? lockedNote
+                    : settings.noteMode === 'lock'
+                    ? 'Tap to set note'
+                    : 'Ask each time'}
+                </span>
+                {settings.noteMode === 'lock' && lockedNote && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
+                    className="w-3.5 h-3.5 rounded-full bg-white/15 flex items-center justify-center text-white/50 hover:bg-white/25 shrink-0 ml-0.5"
+                    aria-label="Clear locked note"
+                  >
+                    <X size={8} />
+                  </button>
+                )}
+              </button>
+            )}
+
             {/* Status subtitle */}
             {uploading > 0 && (
               <p className="text-white/40 text-[10px]">
@@ -2162,8 +2340,49 @@ export default function CameraPage() {
         saving={settingsSaving}
         backupPermDenied={backupPermDenied}
         backupUnavailable={backupUnavailable}
+        lockedNote={lockedNote}
+        activeJobNumber={activeJob?.jobNumber ?? null}
         onClose={() => setSettingsOpen(false)}
         onChange={saveSettings}
+      />
+
+      {/* Note bar sheet — set/change the locked note (or suggestion for ask mode) */}
+      <NoteSheet
+        open={noteBarOpen}
+        initialNote={lockedNote}
+        title={settings.noteMode === 'lock' ? 'Set locked note' : 'Note suggestion'}
+        placeholder={settings.noteMode === 'lock'
+          ? 'e.g. Pits, Fence line, North wall…'
+          : 'Default note for next photo…'}
+        saveLabel={settings.noteMode === 'lock' ? 'Lock note' : 'Set suggestion'}
+        onClose={() => setNoteBarOpen(false)}
+        onSave={(note) => {
+          setLockedNoteBoth(note || null);
+          setNoteBarOpen(false);
+        }}
+      />
+
+      {/* Ask-mode prompt — shown after each capture so user can confirm/edit the note */}
+      <NoteSheet
+        open={askNoteClientId !== null}
+        initialNote={lockedNote}
+        title="Add note to this photo"
+        placeholder="e.g. Pits, Fence line, North wall…"
+        saveLabel="Save note"
+        onClose={() => {
+          // Dismissed without saving — keep whatever note was stamped (may be null)
+          setAskNoteClientId(null);
+        }}
+        onSave={(note) => {
+          const cid = askNoteClientId;
+          if (cid) {
+            // Update the optimistic item note and persist
+            void handleSaveNote(cid, note);
+            // Also update lockedNote so next photo starts with this suggestion
+            setLockedNoteBoth(note || null);
+          }
+          setAskNoteClientId(null);
+        }}
       />
 
       {/* Job bar picker — Workflow B: select job before capture */}
