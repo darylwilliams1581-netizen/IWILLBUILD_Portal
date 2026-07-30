@@ -2182,14 +2182,14 @@ export default function CameraPage() {
         style={{
           /* Rounded top corners — feels like an intentional app control panel */
           borderRadius: '22px 22px 0 0',
-          /* Theme-tinted dark surface — violet undertone, not flat black */
-          background: 'rgba(14,10,26,0.93)',
+          /* Brand violet surface — solid, intentional, matches primary #7C3AED */
+          background: 'rgba(124,58,237,0.92)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          /* Soft top border with violet tint */
-          borderTop: '1px solid rgba(124,58,237,0.22)',
-          /* Lift shadow — separates dock from viewfinder cleanly */
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.45), 0 -1px 0 rgba(124,58,237,0.12)',
+          /* Lighter violet top edge — subtle separation from viewfinder */
+          borderTop: '1px solid rgba(167,120,255,0.35)',
+          /* Lift shadow with violet glow */
+          boxShadow: '0 -8px 32px rgba(124,58,237,0.35), 0 -1px 0 rgba(167,120,255,0.20)',
           /* Safe-area bottom padding lives on the outer shell */
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
