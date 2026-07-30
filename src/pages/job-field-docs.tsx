@@ -9,9 +9,9 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Search, Plus, Loader2, FileCheck, Users,
-  ChevronUp, CheckCircle2, Clock, X,
+  ChevronDown, ChevronUp, CheckCircle2, Clock, X,
   AlertCircle, Check, CheckSquare, Square, Copy, Link2,
-  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ArrowLeft,
+  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight, ArrowLeft,
 } from 'lucide-react';
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -60,36 +60,7 @@ interface Stakeholder {
   record_type: string | null;
 }
 
-// ── Job Picker ────────────────────────────────────────────────────────────────
-
-function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <Helmet>
-        <title>Field Docs | IWILLBUILD</title>
-        <meta name="description" content="View, review and sign on to job documents in the field." />
-        <link rel="canonical" href="https://iwillbuild.com/job-docs" />
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
-      <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
-        <DesktopTopBar />
-        <DesktopDock />
-      </div>
-      <JobPickerSheet
-        open
-        onClose={() => navigate('/home')}
-        title="Field Docs"
-        subtitle="Select a job to view its documents"
-        iconBg="bg-teal-100"
-        iconFg="text-teal-600"
-        Icon={FileCheck}
-        onSelect={job => onSelect({ id: job.id, name: job.name, job_number: job.jobNumber ?? null, status: 'active' })}
-      />
-    </>
-  );
-}
+// JobPicker is now inlined into the main page component as an overlay sheet.
 
 // ── Add Doc Modal ─────────────────────────────────────────────────────────────
 
@@ -1066,16 +1037,44 @@ export default function JobFieldDocsPage() {
     !search || d.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── No job selected → picker ──
-  if (!selectedJob) {
-    return <JobPicker onSelect={job => { setSelectedJob(job); }} />;
-  }
-
-  // ── Job selected → docs view ──
+  // ── Always render the docs shell; picker overlays when no job selected ──
   return (
     <div className="flex flex-col h-full lg:pt-[104px]">
+      <Helmet>
+        <title>Field Docs | IWILLBUILD</title>
+        <meta name="description" content="View, review and sign on to job documents in the field." />
+        <link rel="canonical" href="https://iwillbuild.com/job-docs" />
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <DesktopTopBar />
       <DesktopDock />
+
+      {/* Job picker sheet — open when no job selected */}
+      <JobPickerSheet
+        open={!selectedJob}
+        onClose={() => navigate('/home')}
+        title="Field Docs"
+        subtitle="Select a job to view its documents"
+        iconBg="bg-teal-100"
+        iconFg="text-teal-600"
+        Icon={FileCheck}
+        onSelect={job => {
+          setSelectedJob({ id: job.id, name: job.name, job_number: job.jobNumber ?? null, status: 'active' });
+        }}
+      />
+
+      {/* Empty state while no job chosen */}
+      {!selectedJob && (
+        <div className="flex-1 bg-gray-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 text-slate-400">
+            <FileCheck size={32} className="text-teal-200" />
+            <p className="text-sm">Select a job to get started</p>
+          </div>
+        </div>
+      )}
+
+      {/* Docs view — only shown once a job is selected */}
+      {selectedJob && (<>
 
       {/* Tabs */}
       <div className="bg-white border-b border-slate-200 px-4 flex gap-1 shrink-0">
@@ -1244,6 +1243,7 @@ export default function JobFieldDocsPage() {
           />
         )}
       </AnimatePresence>
+      </>)}
     </div>
   );
 }
