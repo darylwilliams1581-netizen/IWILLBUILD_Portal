@@ -18,7 +18,6 @@ import {
   Users,
   Receipt,
   Bot,
-  Layers,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -104,8 +103,6 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'Safety',     icon: ShieldCheck,     href: '/safety',      permKey: null },
     { label: 'Incidents',  icon: AlertCircle,     href: '/incidents',   permKey: null },
     { label: 'Contacts',   icon: Users,           href: '/customers',   permKey: 'jobs' },
-    // Studio (legacy tab hub) — owner-only until templates are migrated to Library
-    { label: 'Studio (legacy)', icon: Layers,     href: '/studio',      permKey: null, ownerOnly: true },
   ];
 }
 

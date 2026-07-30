@@ -541,7 +541,7 @@ export default function CustomersPage() {
           <div className="flex items-center gap-3">
             <MobileMenuButton onClick={openMobileMenu} />
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Contacts</h1>
+              <h1 className="font-heading font-bold text-base text-foreground">Contacts</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
               </p>

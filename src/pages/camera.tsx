@@ -2444,7 +2444,7 @@ export default function CameraPage() {
                 aria-label="Camera settings"
               >
                 <Settings size={16} />
-                {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+                {(settings.overlayEnabled || settings.backupToRoll || backupPermDenied) && (
                   <span className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full border border-black/40 ${
                     backupPermDenied ? 'bg-amber-400' : 'bg-violet-400/80'
                   }`} />

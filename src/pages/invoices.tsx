@@ -165,7 +165,7 @@ export default function InvoicesPage() {
           <div className="flex items-center gap-3">
             <MobileMenuButton onClick={openMobileMenu} />
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Ledger</h1>
+              <h1 className="font-heading font-bold text-base text-foreground">Ledger</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{invoices.length} total</p>
             </div>
           </div>
