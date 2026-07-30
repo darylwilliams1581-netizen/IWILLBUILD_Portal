@@ -118,7 +118,7 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search jobs…"
+                placeholder="Search jobs, job numbers…"
                 autoFocus
                 className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 bg-slate-50"
               />
@@ -132,7 +132,9 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
               </div>
             )}
             {!loading && filtered.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">No active jobs found</p>
+              <p className="text-sm text-slate-400 text-center py-8">
+                {search ? 'No jobs match your search' : 'No active jobs found'}
+              </p>
             )}
             {!loading && filtered.map(j => (
               <button
@@ -665,7 +667,7 @@ interface FullDoc extends FieldDoc {
   training_competency?: string | null;
   emergency_controls?: string | null;
   environmental_controls?: string | null;
-  sign_off_requirements?: string | null;
+  sign_off_requirements: string | null;
   hazards?: string | null;
 }
 

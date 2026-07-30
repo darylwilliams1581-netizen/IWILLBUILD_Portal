@@ -32,7 +32,7 @@ import {
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, Settings, Check, FolderOpen,
   Zap, ZapOff, FlipHorizontal2, Upload,
-  Pencil, RotateCcw, RotateCw, Download, ZoomIn,
+  Pencil, RotateCcw, RotateCw, Download, ZoomIn, Search,
 } from 'lucide-react';
 
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
@@ -905,14 +905,23 @@ function JobPickerSheet({
                 <X size={14} />
               </button>
             </div>
+            {/* Search — always visible */}
             <div className="px-4 pt-3 pb-2 shrink-0">
-              <input
-                type="search"
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                placeholder="Search jobs…"
-                className="w-full h-9 bg-gray-100 rounded-xl px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300"
-              />
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input
+                  type="text"
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                  placeholder="Search jobs, job numbers…"
+                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                />
+                {q && (
+                  <button onClick={() => setQ('')} className="text-gray-400 hover:text-gray-600">
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="overflow-y-auto flex-1 px-4 pb-3 space-y-1.5">
               {/* No job option */}
@@ -937,7 +946,7 @@ function JobPickerSheet({
               ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
                   <HardHat size={28} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">{q ? 'No matching jobs' : 'No active jobs found'}</p>
+                  <p className="text-gray-400 text-sm">{q ? 'No jobs match your search' : 'No active jobs found'}</p>
                 </div>
               ) : filtered.map(job => (
                 <button

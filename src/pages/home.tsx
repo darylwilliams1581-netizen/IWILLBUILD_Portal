@@ -230,18 +230,16 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
               </div>
               <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
             </div>
-            {/* Search */}
-            {!loading && (
-              <div className="px-4 pt-3 pb-1 shrink-0">
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-                  <Search size={14} className="text-gray-400 shrink-0" />
-                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-                    placeholder="Search jobs, clients, locations…"
-                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
-                  {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
-                </div>
+            {/* Search — always visible */}
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="Search jobs, job numbers…"
+                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
               </div>
-            )}
+            </div>
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
@@ -326,17 +324,16 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
               </div>
               <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
             </div>
-            {!loading && (
-              <div className="px-4 pt-3 pb-1 shrink-0">
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-                  <Search size={14} className="text-gray-400 shrink-0" />
-                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-                    placeholder="Search jobs, clients, locations…"
-                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
-                  {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
-                </div>
+            {/* Search — always visible */}
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="Search jobs, job numbers…"
+                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
               </div>
-            )}
+            </div>
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
@@ -421,17 +418,16 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
               </div>
               <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
             </div>
-            {!loading && (
-              <div className="px-4 pt-3 pb-1 shrink-0">
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-                  <Search size={14} className="text-gray-400 shrink-0" />
-                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-                    placeholder="Search jobs, clients, locations…"
-                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
-                  {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
-                </div>
+            {/* Search — always visible */}
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="Search jobs, job numbers…"
+                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
               </div>
-            )}
+            </div>
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
@@ -1793,7 +1789,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                         type="text"
                         value={jobQuery}
                         onChange={e => setJobQuery(e.target.value)}
-                        placeholder="Search jobs, clients, locations…"
+                        placeholder="Search jobs, job numbers…"
                         className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
                       />
                       {jobQuery && (
