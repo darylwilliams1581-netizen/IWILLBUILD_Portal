@@ -67,6 +67,10 @@ export default function PdfViewer({
   onAnnotationsChange, onUndoAvailableChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // outerColRef observes the fixed-size column wrapper (not the scroll container)
+  // so the ResizeObserver for fit-width only fires on true layout changes
+  // (window resize, revision panel open/close) — not on PDF content overflow.
+  const outerColRef = useRef<HTMLDivElement>(null);
   const [pageWidth, setPageWidth] = useState(0);
   const [pageHeight, setPageHeight] = useState(0);
   // Thumbnail strip: hidden on mobile by default, togglable on desktop
@@ -88,16 +92,23 @@ export default function PdfViewer({
   // On mobile we trigger it once the first page dimensions are known.
   const fittedOnMount = useRef(false);
 
-  // ── Fit-width: measure container and set scale accordingly ─────────────────
+  // ── Fit-width: re-fit when the layout column resizes ──────────────────────
+  // Observe outerColRef (the fixed-size flex column) NOT the scroll container.
+  // The scroll container grows with content (minWidth: min-content), so
+  // observing it creates a feedback loop: zoom in → container widens →
+  // observer fires → scale recalculated → zoom in further.
   useEffect(() => {
-    if (!fitWidth || !containerRef.current) return;
-    const obs = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width ?? 0;
+    if (!fitWidth || !outerColRef.current) return;
+    const obs = new ResizeObserver(() => {
+      // Read available width from the scroll container's client width
+      // (which is constrained by the outer column, not by content overflow).
+      const w = containerRef.current?.clientWidth ?? 0;
       if (w > 0 && pageWidth > 0) {
-        onScaleChange(Math.round((w / pageWidth) * 100) / 100);
+        const padding = 48; // p-6 = 24px each side
+        onScaleChange(Math.round(((w - padding) / pageWidth) * 100) / 100);
       }
     });
-    obs.observe(containerRef.current);
+    obs.observe(outerColRef.current);
     return () => obs.disconnect();
   }, [fitWidth, pageWidth, onScaleChange]);
 
