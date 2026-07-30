@@ -31,7 +31,6 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
 import NotesPanel from '@/components/notes/NotesPanel';
@@ -348,7 +347,6 @@ export default function JobDetailPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <FleetHeaderIcon />
           {job && !editing && (
             <>
               <OutlookEmailButton
@@ -392,7 +390,6 @@ export default function JobDetailPage() {
             {job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : 'Loading…'}
           </span>
           <div className="ml-auto flex items-center gap-2 shrink-0">
-            <FleetHeaderIcon />
             {job && !editing && (
               <>
                 <OutlookEmailButton
