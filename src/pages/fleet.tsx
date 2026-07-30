@@ -346,71 +346,70 @@ export default function FleetPage() {
       <div className="flex flex-col flex-1">
         {/* Header — back/title left · view toggle centre · add asset right */}
         <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
-          <div className="flex items-center gap-2 px-4 h-12">
-            {/* Left: back + title */}
+          <div className="flex items-center gap-2 px-3 h-12 min-w-0">
+            {/* Left: back + icon — fixed width, never grows */}
             <button
               onClick={() => navigate('/home')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
               aria-label="Back to Home"
             >
               <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Home</span>
             </button>
-            <span className="text-gray-300 shrink-0">|</span>
-            <Truck size={17} className="text-primary shrink-0" />
+            <Truck size={16} className="text-primary shrink-0" />
             {!loading && (
-              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
-                {assets.length} asset{assets.length !== 1 ? 's' : ''}
+              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-1.5 py-0.5 rounded-full shrink-0">
+                {assets.length}
               </span>
             )}
             {attentionCount > 0 && (
-              <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
+              <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">
                 <AlertTriangle size={10} />
                 {attentionCount}
               </span>
             )}
 
-            {/* Centre: view toggle — absolutely centred, clean two-tab pill */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
-              {/* Assets tab */}
-              <button
-                onClick={() => setView('assets')}
-                title="Assets list"
-                className={[
-                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Truck size={13} />
-                <span>Assets</span>
-              </button>
-
-              {/* Live Map tab */}
-              <button
-                onClick={() => setView('live-map')}
-                title="Live GPS map"
-                className={[
-                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Navigation size={13} />
-                <span>Live Map</span>
-              </button>
+            {/* Centre: toggle pill — flex-1 so it takes remaining space, never overlaps */}
+            <div className="flex-1 flex items-center justify-center min-w-0">
+              <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-1 border border-slate-200">
+                <button
+                  onClick={() => setView('assets')}
+                  title="Assets list"
+                  className={[
+                    'flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                    view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                  ].join(' ')}
+                >
+                  <Truck size={12} />
+                  <span>Assets</span>
+                </button>
+                <button
+                  onClick={() => setView('live-map')}
+                  title="Live GPS map"
+                  className={[
+                    'flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                    view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                  ].join(' ')}
+                >
+                  <Navigation size={12} />
+                  <span>Live Map</span>
+                </button>
+              </div>
             </div>
 
-            {/* Right: Add Asset — icon-only on mobile, label on sm+ */}
-            <div className="ml-auto shrink-0">
-              {view === 'assets' && (
+            {/* Right: Add Asset — shrink-0, icon-only on mobile */}
+            <div className="shrink-0">
+              {view === 'assets' ? (
                 <button
                   onClick={() => !isViewOnly && setShowModal(true)}
                   disabled={isViewOnly}
                   title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} />
-                  <span className="hidden sm:inline">Add Asset</span>
+                  <span className="hidden sm:inline">Add</span>
                 </button>
+              ) : (
+                <div className="w-8" /> 
               )}
             </div>
           </div>
