@@ -1444,6 +1444,13 @@ async function runStartupMigrations() {
     // ── job_todos: general tasks — job_id becomes optional ───────────────────
     // We cannot ALTER a NOT NULL FK column to NULL via colsToEnsure (it's ADD COLUMN only).
     // The actual nullable migration runs in the dedicated block below.
+    // ── job_delays: hybrid delay / condition record fields ───────────────────
+    { table: 'job_delays', column: 'category',        definition: "VARCHAR(50) NULL" },
+    { table: 'job_delays', column: 'entry_type',      definition: "VARCHAR(20) NOT NULL DEFAULT 'delay'" },
+    { table: 'job_delays', column: 'impact_summary',  definition: 'TEXT NULL' },
+    { table: 'job_delays', column: 'work_condition',  definition: 'VARCHAR(100) NULL' },
+    { table: 'job_delays', column: 'rainfall_mm',     definition: 'DECIMAL(6,1) NULL' },
+    { table: 'job_delays', column: 'ground_condition',definition: 'VARCHAR(100) NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
