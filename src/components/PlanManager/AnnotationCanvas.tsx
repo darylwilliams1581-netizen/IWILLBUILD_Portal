@@ -361,7 +361,14 @@ export default function AnnotationCanvas({
       height={height}
       // viewBox uses unscaled page dimensions — browser scales the SVG to fill width×height
       viewBox={`0 0 ${pageW} ${pageH}`}
-      style={{ position: 'absolute', top: 0, left: 0, cursor, touchAction: 'none' }}
+      style={{
+        position: 'absolute', top: 0, left: 0,
+        cursor,
+        touchAction: 'none',
+        // Pan tool: let mouse events fall through to the scroll container so
+        // the drag-to-pan handler in PdfViewer can receive them.
+        pointerEvents: activeTool === 'pan' ? 'none' : 'auto',
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

@@ -12,7 +12,7 @@
  * - Safe-area bottom padding via env(safe-area-inset-bottom)
  * - Tested at 375 / 390 / 430 px viewport widths
  */
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -130,10 +130,47 @@ export default function PdfViewer({
   const scaledW = Math.round(pageWidth * scale);
   const scaledH = Math.round(pageHeight * scale);
 
+  // ── Mouse drag-to-pan (desktop hand tool) ─────────────────────────────────
+  const isPanTool = activeTool === 'pan';
+  const panRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
+
+  const handleMouseDown = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!isPanTool || e.button !== 0) return;
+    const el = containerRef.current;
+    if (!el) return;
+    panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop };
+    el.style.cursor = 'grabbing';
+    e.preventDefault();
+  }, [isPanTool]);
+
+  const handleMouseMove = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!panRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const dx = e.clientX - panRef.current.startX;
+    const dy = e.clientY - panRef.current.startY;
+    el.scrollLeft = panRef.current.scrollLeft - dx;
+    el.scrollTop = panRef.current.scrollTop - dy;
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    if (!panRef.current) return;
+    panRef.current = null;
+    if (containerRef.current) containerRef.current.style.cursor = '';
+  }, []);
+
+  // Release pan if mouse leaves the container mid-drag
+  const handleMouseLeave = useCallback(() => {
+    if (panRef.current) {
+      panRef.current = null;
+      if (containerRef.current) containerRef.current.style.cursor = '';
+    }
+  }, []);
+
   return (
-    // overflow-x: clip on the outer shell prevents the viewer from causing
-    // horizontal page scroll without creating a new scroll container
-    <div className="flex flex-1 min-h-0 overflow-hidden" style={{ overflowX: 'clip' }}>
+    // The viewer shell is fixed inset-0 so there's no risk of causing page scroll.
+    // We need both axes free so the user can scroll/pan when zoomed in.
+    <div className="flex flex-1 min-h-0 overflow-hidden">
 
       {/* Thumbnail strip — hidden on mobile (md: show) */}
       {thumbnailsOpen && (
@@ -162,7 +199,7 @@ export default function PdfViewer({
       )}
 
       {/* Main viewer */}
-      <div className="flex flex-col flex-1 min-w-0" style={{ overflowX: 'clip' }}>
+      <div className="flex flex-col flex-1 min-w-0">
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-2 bg-slate-900 border-b border-slate-700 flex-shrink-0">
@@ -296,13 +333,25 @@ export default function PdfViewer({
         {/* PDF canvas area */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-auto bg-slate-950 flex justify-center p-4 md:p-6"
+          className="flex-1 overflow-auto bg-slate-950 p-4 md:p-6"
           style={{
             ...mobileViewer.containerStyle,
             // Safe-area bottom padding for iPhone home indicator
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+            // Hand tool: show grab cursor; inline style is overridden to grabbing on mousedown
+            cursor: isPanTool ? 'grab' : undefined,
+            // Use min-content sizing so the scroll container grows to fit the PDF
+            // when zoomed in, rather than clipping it
+            minWidth: 'min-content',
           }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
         >
+          {/* Inner wrapper centres the PDF when it's smaller than the container,
+              but lets it overflow naturally when zoomed in */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%' }}>
           {loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
               <AlertCircle size={32} className="text-red-400" />
@@ -348,6 +397,7 @@ export default function PdfViewer({
               </div>
             </Document>
           )}
+          </div>
         </div>
       </div>
     </div>

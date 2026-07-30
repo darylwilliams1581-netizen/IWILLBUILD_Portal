@@ -243,7 +243,6 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
       <div
         className="flex flex-1 min-h-0 overflow-hidden"
         style={{
-          overflowX: 'clip',
           // Safe-area bottom: home indicator on iPhone
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
