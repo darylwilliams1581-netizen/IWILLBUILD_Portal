@@ -527,39 +527,6 @@ function SettingsSheet({
                 />
               </SettingsSection>
 
-              {/* Note mode */}
-              <SettingsSection label="Note mode">
-                <div className="px-3 pt-1 pb-2 space-y-1">
-                  {(
-                    [
-                      { value: 'ask', label: 'Ask every time', desc: 'Prompt to confirm or edit the note after each photo' },
-                      { value: 'lock', label: 'Lock note', desc: 'Keep the same note across multiple photos — change it when you move to a new area' },
-                      { value: 'none', label: 'No note', desc: 'No per-photo note — only date, time, and watermark label' },
-                    ] as const
-                  ).map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => onChange({ noteMode: opt.value })}
-                      className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                        settings.noteMode === opt.value
-                          ? 'bg-violet-50 border border-violet-200'
-                          : 'hover:bg-gray-100 border border-transparent'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
-                        settings.noteMode === opt.value ? 'border-violet-600 bg-violet-600' : 'border-gray-300'
-                      }`}>
-                        {settings.noteMode === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold ${settings.noteMode === opt.value ? 'text-violet-700' : 'text-gray-800'}`}>{opt.label}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </SettingsSection>
-
               {/* Overlay */}
               <SettingsSection label="Camera Overlay">
                 <SettingsToggleRow
