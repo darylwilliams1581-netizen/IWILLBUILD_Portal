@@ -26,13 +26,15 @@ export default async function handler(req: Request, res: Response) {
 
     const rows = await db.execute(sql`
       SELECT
-        id, company_id, user_id, storage_key, mime_type, size_bytes,
-        original_name, note, job_id, status, captured_at, created_at
-      FROM camera_captures
-      WHERE company_id = ${profile.companyId}
-        AND user_id    = ${session.user.id}
-        AND status     != 'deleted'
-      ORDER BY captured_at DESC
+        cc.id, cc.company_id, cc.user_id, cc.storage_key, cc.mime_type, cc.size_bytes,
+        cc.original_name, cc.note, cc.job_id, cc.status, cc.captured_at, cc.created_at,
+        j.name AS job_name
+      FROM camera_captures cc
+      LEFT JOIN jobs j ON j.id = cc.job_id
+      WHERE cc.company_id = ${profile.companyId}
+        AND cc.user_id    = ${session.user.id}
+        AND cc.status     != 'deleted'
+      ORDER BY cc.captured_at DESC
       LIMIT 200
     `) as unknown as [Array<{
       id: number;
@@ -44,6 +46,7 @@ export default async function handler(req: Request, res: Response) {
       original_name: string | null;
       note: string | null;
       job_id: number | null;
+      job_name: string | null;
       status: string;
       captured_at: string;
       created_at: string;
@@ -59,6 +62,7 @@ export default async function handler(req: Request, res: Response) {
         originalName: r.original_name,
         note: r.note,
         jobId: r.job_id,
+        jobName: r.job_name,
         status: r.status,
         capturedAt: r.captured_at,
         createdAt: r.created_at,

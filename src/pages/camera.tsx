@@ -1065,7 +1065,8 @@ export default function CameraPage() {
       const data = await res.json() as {
         captures: Array<{
           id: number; url: string; note: string | null;
-          jobId: number | null; status: string; capturedAt: string;
+          jobId: number | null; jobName: string | null;
+          status: string; capturedAt: string;
         }>;
       };
       setCaptures(
@@ -1076,7 +1077,7 @@ export default function CameraPage() {
           serverUrl: c.url,
           note: c.note,
           jobId: c.jobId,
-          jobName: null,
+          jobName: c.jobName,
           status: 'done' as UploadStatus,
           errorMsg: null,
           capturedAt: c.capturedAt,
@@ -1162,13 +1163,18 @@ export default function CameraPage() {
 
   // ── Delete ────────────────────────────────────────────────────────────────
   async function handleDelete(clientId: string) {
-    const item = captures.find(c => c.clientId === clientId);
-    if (!item) return;
-    if (item.localUrl) URL.revokeObjectURL(item.localUrl);
-    setCaptures(prev => prev.filter(c => c.clientId !== clientId));
+    let serverId: number | null = null;
+    let localUrl: string | null = null;
+    setCaptures(prev => {
+      const item = prev.find(c => c.clientId === clientId);
+      serverId = item?.id ?? null;
+      localUrl = item?.localUrl ?? null;
+      return prev.filter(c => c.clientId !== clientId);
+    });
     setSelectedIds(prev => { const s = new Set(prev); s.delete(clientId); return s; });
-    if (item.id) {
-      await fetch(`/api/camera-captures/${item.id}`, {
+    if (localUrl) URL.revokeObjectURL(localUrl);
+    if (serverId) {
+      await fetch(`/api/camera-captures/${serverId}`, {
         method: 'DELETE', credentials: 'include',
       }).catch(() => {});
     }
@@ -1176,12 +1182,16 @@ export default function CameraPage() {
 
   // ── Attach single job ─────────────────────────────────────────────────────
   async function handleAttachJob(clientId: string, job: JobOption) {
-    setCaptures(prev => prev.map(c =>
-      c.clientId === clientId ? { ...c, jobId: job.id, jobName: job.name } : c
-    ));
-    const item = captures.find(c => c.clientId === clientId);
-    if (item?.id) {
-      await fetch(`/api/camera-captures/${item.id}`, {
+    let serverId: number | null = null;
+    setCaptures(prev => {
+      const item = prev.find(c => c.clientId === clientId);
+      serverId = item?.id ?? null;
+      return prev.map(c =>
+        c.clientId === clientId ? { ...c, jobId: job.id, jobName: job.name } : c
+      );
+    });
+    if (serverId) {
+      await fetch(`/api/camera-captures/${serverId}`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.id }),
@@ -1217,12 +1227,16 @@ export default function CameraPage() {
 
   // ── Save note ─────────────────────────────────────────────────────────────
   async function handleSaveNote(clientId: string, note: string) {
-    setCaptures(prev => prev.map(c =>
-      c.clientId === clientId ? { ...c, note: note || null } : c
-    ));
-    const item = captures.find(c => c.clientId === clientId);
-    if (item?.id) {
-      await fetch(`/api/camera-captures/${item.id}`, {
+    let serverId: number | null = null;
+    setCaptures(prev => {
+      const item = prev.find(c => c.clientId === clientId);
+      serverId = item?.id ?? null;
+      return prev.map(c =>
+        c.clientId === clientId ? { ...c, note: note || null } : c
+      );
+    });
+    if (serverId) {
+      await fetch(`/api/camera-captures/${serverId}`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: note || null }),
