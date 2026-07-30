@@ -3300,10 +3300,12 @@ import cameraCapturesGet from "./api/camera-captures/GET.js";
 import cameraCapturesPost from "./api/camera-captures/POST.js";
 import cameraCapturesIdPatch from "./api/camera-captures/[id]/PATCH.js";
 import cameraCapturesIdDelete from "./api/camera-captures/[id]/DELETE.js";
+import cameraCapturesIdReplacePost from "./api/camera-captures/[id]/replace/POST.js";
 app.get("/api/camera-captures", cameraCapturesGet);
 app.post("/api/camera-captures", cameraCapturesPost);
 app.patch("/api/camera-captures/:id", cameraCapturesIdPatch);
 app.delete("/api/camera-captures/:id", cameraCapturesIdDelete);
+app.post("/api/camera-captures/:id/replace", cameraCapturesIdReplacePost);
 
 import cameraSettingsGet from "./api/camera-settings/GET.js";
 import cameraSettingsPut from "./api/camera-settings/PUT.js";

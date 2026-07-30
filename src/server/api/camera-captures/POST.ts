@@ -77,6 +77,9 @@ export default async function handler(req: Request, res: Response) {
     const capturedAt = typeof parsed.fields?.capturedAt === 'string'
       ? parsed.fields.capturedAt
       : new Date().toISOString();
+    const jobIdRaw = typeof parsed.fields?.jobId === 'string' ? parseInt(parsed.fields.jobId, 10) : null;
+    const jobId = jobIdRaw && !isNaN(jobIdRaw) ? jobIdRaw : null;
+    const initialStatus = jobId ? 'assigned' : 'captured';
 
     const saved: Array<{ id: number; storageKey: string; url: string }> = [];
 
@@ -104,10 +107,10 @@ export default async function handler(req: Request, res: Response) {
 
       await db.execute(sql`
         INSERT INTO camera_captures
-          (company_id, user_id, storage_key, mime_type, size_bytes, original_name, note, status, captured_at)
+          (company_id, user_id, storage_key, mime_type, size_bytes, original_name, note, job_id, status, captured_at)
         VALUES
           (${profile.companyId}, ${session.user.id}, ${result.storageKey}, ${outMime},
-           ${result.sizeBytes}, ${file.originalname}, ${note}, 'captured', ${capturedAt})
+           ${result.sizeBytes}, ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
       `);
 
       const [idRow] = await db.execute(sql`SELECT LAST_INSERT_ID() as id`) as unknown as [Array<{ id: number }>, unknown];

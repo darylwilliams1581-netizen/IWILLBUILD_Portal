@@ -21,7 +21,7 @@
  */
 
 import {
-  useState, useEffect, useRef, useCallback,
+  useState, useEffect, useRef, useCallback, memo,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,6 +32,7 @@ import {
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, Settings, Check, FolderOpen,
   Zap, ZapOff, FlipHorizontal2, Upload,
+  Pencil, RotateCcw, RotateCw, Download, ZoomIn,
 } from 'lucide-react';
 
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
@@ -873,12 +874,334 @@ function NoteSheet({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Capture edit modal — rotate, label, replace (mirrors JobPhotos EditModal)
+// Works on camera_captures via /api/camera-captures/:id
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CaptureEditModalProps {
+  item: CaptureItem;
+  onClose: () => void;
+  onSaved: (patch: Partial<CaptureItem>) => void;
+}
+
+function CaptureEditModal({ item, onClose, onSaved }: CaptureEditModalProps) {
+  const [label, setLabel] = useState(item.note ?? '');
+  const [saving, setSaving] = useState(false);
+  const [rotating, setRotating] = useState<'left' | 'right' | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  const [error, setError] = useState('');
+  const [localBust, setLocalBust] = useState(Date.now());
+  const replaceRef = useRef<HTMLInputElement>(null);
+
+  const imgUrl = item.serverUrl ?? item.localUrl;
+  const bustedUrl = imgUrl ? `${imgUrl}${imgUrl.includes('?') ? '&' : '?'}v=${localBust}` : null;
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  async function doRotate(dir: 'left' | 'right') {
+    if (!item.id) return;
+    setRotating(dir); setError('');
+    try {
+      const res = await fetch(`/api/camera-captures/${item.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ rotate: dir }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Rotation failed');
+      const bust = Date.now();
+      setLocalBust(bust);
+      onSaved({});
+    } catch (e) { setError(e instanceof Error ? e.message : 'Rotation failed'); }
+    finally { setRotating(null); }
+  }
+
+  async function doSave() {
+    if (!item.id) { onClose(); return; }
+    setSaving(true); setError('');
+    try {
+      const res = await fetch(`/api/camera-captures/${item.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ note: label || null }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Save failed');
+      onSaved({ note: label || null });
+      onClose();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Save failed'); }
+    finally { setSaving(false); }
+  }
+
+  async function doReplace(file: File) {
+    if (!item.id) return;
+    setReplacing(true); setError('');
+    try {
+      const fd = new FormData(); fd.append('photo', file);
+      const res = await fetch(`/api/camera-captures/${item.id}/replace`, {
+        method: 'POST', credentials: 'include', body: fd,
+      });
+      const data = await res.json() as { ok?: boolean; capture?: { url: string }; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Replace failed');
+      setLocalBust(Date.now());
+      if (data.capture?.url) onSaved({ serverUrl: data.capture.url });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Replace failed'); }
+    finally { setReplacing(false); if (replaceRef.current) replaceRef.current.value = ''; }
+  }
+
+  const busy = saving || rotating !== null || replacing;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col"
+        style={{ maxHeight: 'min(92dvh, 680px)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Drag handle */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+              <Pencil size={14} className="text-violet-600" />
+            </div>
+            <p className="text-gray-900 font-bold text-sm">Edit Photo</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 overscroll-contain">
+          {/* Preview */}
+          <div className="bg-gray-900 flex items-center justify-center" style={{ height: 'min(200px, 32dvh)' }}>
+            {bustedUrl ? (
+              <img
+                key={localBust}
+                src={bustedUrl}
+                alt="Capture preview"
+                className="max-w-full max-h-full object-contain"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full">
+                <ImageIcon size={32} className="text-gray-600" />
+              </div>
+            )}
+          </div>
+
+          {/* Rotate */}
+          <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50">
+            <span className="text-xs font-semibold text-gray-500 mr-1">Rotate:</span>
+            <button onClick={() => doRotate('left')} disabled={busy || !item.id}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-xs font-semibold text-gray-700 disabled:opacity-40 transition-colors">
+              {rotating === 'left' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />} Left 90°
+            </button>
+            <button onClick={() => doRotate('right')} disabled={busy || !item.id}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-xs font-semibold text-gray-700 disabled:opacity-40 transition-colors">
+              {rotating === 'right' ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Right 90°
+            </button>
+          </div>
+
+          {/* Fields */}
+          <div className="px-5 py-4 flex flex-col gap-3">
+            {!item.id && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <AlertCircle size={13} className="text-amber-500 shrink-0" />
+                <p className="text-amber-700 text-xs">Photo is still uploading — rotate and replace will be available once it saves.</p>
+              </div>
+            )}
+            {error && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                <AlertCircle size={12} /> {error}
+              </p>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Note / Caption</label>
+              <input
+                type="text"
+                value={label}
+                onChange={e => setLabel(e.target.value)}
+                placeholder="e.g. North wall framing"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-colors"
+                onKeyDown={e => { if (e.key === 'Enter' && !busy) void doSave(); }}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-semibold text-gray-700">Replace photo</p>
+              <p className="text-[11px] text-gray-400 leading-snug">Upload a new version to replace this photo in the inbox.</p>
+              <button type="button" onClick={() => replaceRef.current?.click()} disabled={busy || !item.id}
+                className="flex items-center gap-2 self-start mt-1 px-3 py-2 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-sm font-semibold text-gray-700 rounded-xl transition-colors">
+                {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                {replacing ? 'Replacing…' : 'Choose file to replace'}
+              </button>
+              <input ref={replaceRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          className="flex items-center justify-between gap-2 px-5 py-4 border-t border-gray-100 bg-gray-50 shrink-0"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)' }}
+        >
+          {item.serverUrl ? (
+            <a
+              href={item.serverUrl}
+              download="capture.jpg"
+              className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 bg-white hover:bg-gray-100 text-sm font-semibold text-gray-600 rounded-xl transition-colors"
+            >
+              <Download size={13} /> Download
+            </a>
+          ) : <div />}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} disabled={busy}
+              className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700 disabled:opacity-40 transition-colors">
+              Cancel
+            </button>
+            <button type="button" onClick={() => void doSave()} disabled={busy}
+              className="flex items-center gap-1.5 px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Capture lightbox — full-screen dark viewer with edit + delete actions
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CaptureLightboxProps {
+  items: CaptureItem[];
+  index: number;
+  onClose: () => void;
+  onNavigate: (i: number) => void;
+  onEdit: (item: CaptureItem) => void;
+  onDelete: (clientId: string) => void;
+}
+
+const CaptureLightbox = memo(function CaptureLightbox({
+  items, index, onClose, onNavigate, onEdit, onDelete,
+}: CaptureLightboxProps) {
+  const item = items[index];
+  const imgUrl = item?.serverUrl ?? item?.localUrl;
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' && index > 0) onNavigate(index - 1);
+      if (e.key === 'ArrowRight' && index < items.length - 1) onNavigate(index + 1);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [index, items.length, onClose, onNavigate]);
+
+  if (!item) return null;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/95">
+      <div className="absolute inset-0 pointer-events-none" />
+
+      {/* Top action bar */}
+      <div
+        className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 z-10 pointer-events-auto"
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 8px)', paddingBottom: '12px' }}
+      >
+        <button onClick={onClose}
+          className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
+          aria-label="Close">
+          <X size={18} />
+        </button>
+        <div className="flex items-center gap-2">
+          {item.id && (
+            <button onClick={() => onEdit(item)}
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
+              aria-label="Edit photo">
+              <Pencil size={16} />
+            </button>
+          )}
+          {item.serverUrl && (
+            <a href={item.serverUrl} download="capture.jpg"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
+              aria-label="Download">
+              <Download size={16} />
+            </a>
+          )}
+          <button onClick={() => { onDelete(item.clientId); onClose(); }}
+            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors"
+            aria-label="Delete photo">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Prev / Next */}
+      {index > 0 && (
+        <button onClick={() => onNavigate(index - 1)}
+          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+          aria-label="Previous photo">
+          <ChevronLeft size={22} />
+        </button>
+      )}
+      {index < items.length - 1 && (
+        <button onClick={() => onNavigate(index + 1)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+          aria-label="Next photo">
+          <ChevronRight size={22} />
+        </button>
+      )}
+
+      {/* Image */}
+      <div className="relative z-10 max-w-[92vw] max-h-[80dvh] flex flex-col items-center gap-3 pointer-events-none">
+        {imgUrl ? (
+          <img
+            src={imgUrl}
+            alt={item.note ?? 'Captured photo'}
+            className="max-w-full max-h-[72dvh] object-contain rounded-xl shadow-2xl"
+            loading="eager"
+          />
+        ) : (
+          <div className="w-48 h-48 rounded-2xl bg-white/5 flex items-center justify-center">
+            <ImageIcon size={40} className="text-white/20" />
+          </div>
+        )}
+        {/* Caption strip */}
+        <div className="text-center">
+          {item.note && <p className="text-white font-semibold text-sm mb-0.5">{item.note}</p>}
+          {item.jobName && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-300 bg-violet-900/50 border border-violet-700/40 rounded-full px-2.5 py-0.5">
+              <Briefcase size={9} /> {item.jobName}
+            </span>
+          )}
+          <p className="text-white/30 text-xs mt-1">{index + 1} / {items.length}</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Compact capture row
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CaptureRow({
   item, selected, selectMode, notesEnabled,
-  onToggleSelect, onDelete, onAttachJob, onAddNote,
+  onToggleSelect, onDelete, onAttachJob, onAddNote, onTapPhoto,
 }: {
   item: CaptureItem;
   selected: boolean;
@@ -888,6 +1211,7 @@ function CaptureRow({
   onDelete: (clientId: string) => void;
   onAttachJob: (clientId: string) => void;
   onAddNote: (clientId: string) => void;
+  onTapPhoto: (clientId: string) => void;
 }) {
   const imgUrl = item.serverUrl ?? item.localUrl;
 
@@ -912,7 +1236,12 @@ function CaptureRow({
           : <Square size={16} className="text-gray-300" />}
       </button>
 
-      <div className="w-11 h-11 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
+      {/* Thumbnail — tappable to open lightbox */}
+      <button
+        onClick={() => onTapPhoto(item.clientId)}
+        className="w-11 h-11 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative group"
+        aria-label="View photo"
+      >
         {imgUrl ? (
           <img src={imgUrl} alt="Captured" className="w-full h-full object-cover" loading="lazy" />
         ) : (
@@ -930,7 +1259,12 @@ function CaptureRow({
             <AlertCircle size={14} className="text-red-300" />
           </div>
         )}
-      </div>
+        {item.status === 'done' && (
+          <div className="absolute inset-0 bg-black/0 group-active:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-active:opacity-100">
+            <ZoomIn size={14} className="text-white" />
+          </div>
+        )}
+      </button>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -968,7 +1302,7 @@ function CaptureRow({
             aria-label={item.jobId ? 'Change job assignment' : 'Assign to job'}
           >
             <Briefcase size={12} />
-            <span className="text-[10px] font-bold">{item.jobId ? 'Job' : 'Job'}</span>
+            <span className="text-[10px] font-bold">Job</span>
           </button>
           {notesEnabled && (
             <button
@@ -982,6 +1316,17 @@ function CaptureRow({
               aria-label={item.note ? 'Edit note' : 'Add note'}
             >
               <StickyNote size={13} />
+            </button>
+          )}
+          {/* Edit photo — only available once uploaded */}
+          {item.id && (
+            <button
+              onClick={() => onTapPhoto(item.clientId)}
+              className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+              title="View / edit photo"
+              aria-label="View or edit photo"
+            >
+              <Pencil size={13} />
             </button>
           )}
           <button
@@ -1030,12 +1375,21 @@ export default function CameraPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Camera roll permission state — tracked separately from picker
-  // so we can show a warning in settings without blocking capture
+  // Camera roll permission state
   const [backupPermDenied, setBackupPermDenied] = useState(false);
-  // True when Camera.savePhoto is not registered in the native build yet.
-  // Set on first backup attempt that returns 'unavailable' on native.
   const [backupUnavailable, setBackupUnavailable] = useState(false);
+
+  // ── Workflow B: active job (pre-selected before capture) ──────────────────
+  // Stored in a ref so handleFileFromPicker always reads the latest value
+  // without needing to be re-created on every job change.
+  const [activeJob, setActiveJob] = useState<JobOption | null>(null);
+  const activeJobRef = useRef<JobOption | null>(null);
+  const [jobBarPickerOpen, setJobBarPickerOpen] = useState(false);
+
+  function setActiveJobBoth(job: JobOption | null) {
+    setActiveJob(job);
+    activeJobRef.current = job;
+  }
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1045,6 +1399,15 @@ export default function CameraPage() {
   const [jobPickerForClientId, setJobPickerForClientId] = useState<string | null>(null);
   const [bulkJobPickerOpen, setBulkJobPickerOpen] = useState(false);
   const [noteForClientId, setNoteForClientId] = useState<string | null>(null);
+
+  // ── Lightbox + Edit ───────────────────────────────────────────────────────
+  const [lightboxClientId, setLightboxClientId] = useState<string | null>(null);
+  const [editClientId, setEditClientId] = useState<string | null>(null);
+
+  const lightboxIndex = lightboxClientId
+    ? captures.findIndex(c => c.clientId === lightboxClientId)
+    : -1;
+  const editItem = editClientId ? captures.find(c => c.clientId === editClientId) ?? null : null;
 
   // ── Network ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1126,7 +1489,7 @@ export default function CameraPage() {
   useEffect(() => { void loadCaptures(); }, [loadCaptures]);
 
   // ── Upload a single processed blob ───────────────────────────────────────
-  async function uploadBlob(blob: Blob, clientId: string, capturedAt: string) {
+  async function uploadBlob(blob: Blob, clientId: string, capturedAt: string, jobId?: number | null) {
     setCaptures(prev => prev.map(c =>
       c.clientId === clientId ? { ...c, status: 'uploading' } : c
     ));
@@ -1134,6 +1497,7 @@ export default function CameraPage() {
       const fd = new FormData();
       fd.append('photos', blob, 'capture.jpg');
       fd.append('capturedAt', capturedAt);
+      if (jobId) fd.append('jobId', String(jobId));
 
       const res = await fetch('/api/camera-captures', {
         method: 'POST', credentials: 'include', body: fd,
@@ -1160,20 +1524,25 @@ export default function CameraPage() {
   }
 
   // ── Handle a file from the picker (called by useIosMediaPicker) ───────────
-  // Uses settingsRef.current — not settings state — so this function never
-  // closes over a stale settings value even though it's defined before the
-  // settings state is declared in the component body.
+  // Uses settingsRef.current and activeJobRef.current — not state — so this
+  // function never closes over stale values even though it's defined before
+  // those state declarations in the component body.
   function handleFileFromPicker(file: File) {
     const clientId = makeClientId();
     const capturedAt = new Date().toISOString();
     const capturedDate = new Date(capturedAt);
     const currentSettings = settingsRef.current;
+    // Snapshot active job at capture time — offline-safe: stored on item,
+    // sent to server when upload completes (or retried when back online)
+    const job = activeJobRef.current;
 
     // Optimistic item — use blob URL for preview (safe, no HEIC decode)
     const localUrl = URL.createObjectURL(file);
     setCaptures(prev => [{
       clientId, id: null, localUrl, serverUrl: null,
-      note: null, jobId: null, jobName: null,
+      note: null,
+      jobId: job?.id ?? null,
+      jobName: job?.name ?? null,
       status: 'pending', errorMsg: null, capturedAt,
     }, ...prev]);
 
@@ -1187,15 +1556,14 @@ export default function CameraPage() {
           if (result === 'permission_denied') {
             setBackupPermDenied(true);
           } else if (result === 'unavailable' && isNative()) {
-            // Plugin not yet registered in native build — mark honestly
             setBackupUnavailable(true);
           }
         }
 
-        await uploadBlob(blob, clientId, capturedAt);
+        await uploadBlob(blob, clientId, capturedAt, job?.id ?? null);
       } catch {
         // processImage failed — fall back to raw file
-        await uploadBlob(file, clientId, capturedAt);
+        await uploadBlob(file, clientId, capturedAt, job?.id ?? null);
       }
     })();
   }
@@ -1291,8 +1659,14 @@ export default function CameraPage() {
     });
   }
 
+  // ── Edit saved callback ───────────────────────────────────────────────────
+  function handleEditSaved(clientId: string, patch: Partial<CaptureItem>) {
+    setCaptures(prev => prev.map(c =>
+      c.clientId === clientId ? { ...c, ...patch } : c
+    ));
+  }
+
   // ── Derived ───────────────────────────────────────────────────────────────
-  const noteItem = captures.find(c => c.clientId === noteForClientId) ?? null;
   const unassigned = captures.filter(c => c.status === 'done' && !c.jobId).length;
   const attached = captures.filter(c => c.status === 'done' && c.jobId).length;
   const uploading = captures.filter(c => c.status === 'uploading' || c.status === 'pending').length;
@@ -1375,20 +1749,44 @@ export default function CameraPage() {
             <ChevronLeft size={18} />
           </button>
 
-          <div className="text-center">
-            <p className="text-white font-bold text-base tracking-tight">Camera</p>
+          <div className="flex flex-col items-center gap-1 min-w-0 flex-1 px-2">
+            {/* Active job bar — Workflow B */}
+            <button
+              onClick={() => setJobBarPickerOpen(true)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors max-w-full ${
+                activeJob
+                  ? 'bg-violet-600/30 border border-violet-500/50 text-violet-200'
+                  : 'bg-white/8 border border-white/15 text-white/40 hover:bg-white/12'
+              }`}
+              aria-label={activeJob ? `Active job: ${activeJob.name}` : 'Select job for capture'}
+            >
+              <Briefcase size={11} className={activeJob ? 'text-violet-300 shrink-0' : 'text-white/30 shrink-0'} />
+              <span className="text-[11px] font-semibold truncate max-w-[140px]">
+                {activeJob ? activeJob.name : 'No job selected'}
+              </span>
+              {activeJob && (
+                <button
+                  onClick={e => { e.stopPropagation(); setActiveJobBoth(null); }}
+                  className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-white/60 hover:bg-white/30 shrink-0 ml-0.5"
+                  aria-label="Clear active job"
+                >
+                  <X size={9} />
+                </button>
+              )}
+            </button>
+            {/* Status subtitle */}
             {uploading > 0 && (
-              <p className="text-white/40 text-[11px] mt-0.5">
+              <p className="text-white/40 text-[10px]">
                 Saving {uploading} photo{uploading !== 1 ? 's' : ''}…
               </p>
             )}
             {uploading === 0 && unassigned > 0 && (
-              <p className="text-amber-400/80 text-[11px] mt-0.5">
+              <p className="text-amber-400/80 text-[10px]">
                 {unassigned} need{unassigned === 1 ? 's' : ''} a job
               </p>
             )}
             {uploading === 0 && unassigned === 0 && attached > 0 && (
-              <p className="text-white/30 text-[11px] mt-0.5">
+              <p className="text-white/25 text-[10px]">
                 {attached} assigned
               </p>
             )}
@@ -1542,7 +1940,9 @@ export default function CameraPage() {
               </p>
             )}
             {captures.length === 0 && !loadingInitial && (
-              <p className="text-gray-400 text-[11px]">Tap the shutter — assign to a job later</p>
+              <p className="text-gray-400 text-[11px]">
+                {activeJob ? `Tap the shutter — photos go to ${activeJob.name}` : 'Tap the shutter — assign to a job later'}
+              </p>
             )}
           </div>
           {captures.length > 1 && (
@@ -1577,7 +1977,9 @@ export default function CameraPage() {
               </div>
               <p className="text-gray-800 font-bold text-base">Ready to capture</p>
               <p className="text-gray-400 text-sm mt-1.5 leading-snug max-w-[220px]">
-                Tap the shutter to take a photo. Assign it to a job whenever you're ready — no rush.
+                {activeJob
+                  ? `Photos will auto-attach to ${activeJob.name}. Tap the job pill above to change.`
+                  : 'Tap the shutter to take a photo. Assign it to a job whenever you\'re ready — no rush.'}
               </p>
               <div className="mt-5 flex items-center gap-4">
                 <div className="flex flex-col items-center gap-1">
@@ -1615,6 +2017,7 @@ export default function CameraPage() {
                   onDelete={handleDelete}
                   onAttachJob={(id) => setJobPickerForClientId(id)}
                   onAddNote={(id) => setNoteForClientId(id)}
+                  onTapPhoto={(id) => setLightboxClientId(id)}
                 />
               ))}
             </AnimatePresence>
@@ -1763,6 +2166,17 @@ export default function CameraPage() {
         onChange={saveSettings}
       />
 
+      {/* Job bar picker — Workflow B: select job before capture */}
+      <JobPickerSheet
+        open={jobBarPickerOpen}
+        title="Capture to Job"
+        onClose={() => setJobBarPickerOpen(false)}
+        onSelect={(job) => {
+          setActiveJobBoth(job);
+          setJobBarPickerOpen(false);
+        }}
+      />
+
       <JobPickerSheet
         open={jobPickerForClientId !== null}
         title="Attach to Job"
@@ -1785,13 +2199,53 @@ export default function CameraPage() {
 
       <NoteSheet
         open={noteForClientId !== null}
-        initialNote={noteItem?.note ?? null}
+        initialNote={captures.find(c => c.clientId === noteForClientId)?.note ?? null}
         onClose={() => setNoteForClientId(null)}
         onSave={(note) => {
           if (noteForClientId) void handleSaveNote(noteForClientId, note);
           setNoteForClientId(null);
         }}
       />
+
+      {/* ═══ LIGHTBOX ═══ */}
+      <AnimatePresence>
+        {lightboxClientId !== null && lightboxIndex >= 0 && (
+          <motion.div
+            key="lightbox"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <CaptureLightbox
+              items={captures}
+              index={lightboxIndex}
+              onClose={() => setLightboxClientId(null)}
+              onNavigate={(i) => setLightboxClientId(captures[i]?.clientId ?? null)}
+              onEdit={(item) => {
+                setLightboxClientId(null);
+                setEditClientId(item.clientId);
+              }}
+              onDelete={(clientId) => {
+                void handleDelete(clientId);
+                setLightboxClientId(null);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ EDIT MODAL ═══ */}
+      <AnimatePresence>
+        {editItem && (
+          <CaptureEditModal
+            key={editItem.clientId}
+            item={editItem}
+            onClose={() => setEditClientId(null)}
+            onSaved={(patch) => {
+              if (editClientId) handleEditSaved(editClientId, patch);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
