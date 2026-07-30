@@ -228,38 +228,58 @@ async function processImage(
 /**
  * Save a blob to the device camera roll via Capacitor.
  * Silently no-ops in browser environments.
+ *
+ * Capacitor plugins are accessed via the global `Capacitor.Plugins` object
+ * rather than ES imports so Vite doesn't try to resolve native-only packages
+ * at build time.
  */
 async function saveToDeviceCameraRoll(blob: Blob): Promise<void> {
   try {
     // Only run inside Capacitor native shell
-    const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    const cap = (window as {
+      Capacitor?: {
+        isNativePlatform?: () => boolean;
+        Plugins?: {
+          Filesystem?: {
+            writeFile: (opts: {
+              path: string; data: string;
+              directory: string; recursive?: boolean;
+            }) => Promise<{ uri: string }>;
+          };
+          Media?: {
+            savePhoto: (opts: { path: string }) => Promise<void>;
+          };
+        };
+      };
+    }).Capacitor;
+
     if (!cap?.isNativePlatform?.()) return;
 
-    // Dynamic import — only available in native builds
-    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    const Filesystem = cap.Plugins?.Filesystem;
+    if (!Filesystem) return;
+
     const base64 = await blobToBase64(blob);
     const fileName = `iwillbuild_${Date.now()}.jpg`;
 
-    // Write to temp location
+    // Write to Cache directory first
     const writeResult = await Filesystem.writeFile({
       path: fileName,
       data: base64,
-      directory: Directory.Cache,
+      directory: 'CACHE',
+      recursive: true,
     });
 
-    // Try to save to media gallery (requires @capacitor/media or similar)
-    // Fallback: just write to Documents if Media plugin not available
-    try {
-      const { Media } = await import('@capacitor/media' as string) as {
-        Media: { savePhoto: (opts: { path: string }) => Promise<void> }
-      };
+    // Try Media plugin (saves to gallery) — gracefully skip if not available
+    const Media = cap.Plugins?.Media;
+    if (Media?.savePhoto) {
       await Media.savePhoto({ path: writeResult.uri });
-    } catch {
-      // Media plugin not installed — write to Documents as fallback
+    } else {
+      // Fallback: write to Documents/DCIM
       await Filesystem.writeFile({
         path: `DCIM/${fileName}`,
         data: base64,
-        directory: Directory.Documents,
+        directory: 'DOCUMENTS',
+        recursive: true,
       });
     }
   } catch (e) {
