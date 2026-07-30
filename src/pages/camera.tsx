@@ -1,15 +1,23 @@
 /**
- * /camera — Field Camera Module (Prompt 3: Settings)
+ * /camera — Field Camera Module (Prompt 4: Permissions + Native Polish)
  *
- * Settings are loaded once on mount and applied to every capture:
- *   - Quality (low/medium/high) → canvas resize before upload
- *   - Overlay → canvas timestamp burn (date + time) baked into the image
- *   - Backup to camera roll → Capacitor Filesystem + Media save (native only)
- *   - Notes enabled → shows/hides the note prompt affordance per row
+ * Permission strategy:
+ *   - Camera: checked via useIosMediaPicker before every shutter tap.
+ *     First use shows PermissionExplainerModal (pre-prompt). Denied shows
+ *     the denied variant with "Open iPhone Settings".
+ *   - Photo Library: same flow via useIosMediaPicker for the Library button.
+ *   - Save to Photos / Camera Roll: checked separately before backup.
+ *     If denied or unavailable, backup is silently skipped — capture continues.
  *
- * Settings persist per-user via GET/PUT /api/camera-settings.
- * The settings sheet is a compact bottom drawer behind a gear icon — secondary
- * to capture, never blocking the shutter.
+ * Crash-safe rules:
+ *   - All Capacitor plugin calls are wrapped in try/catch.
+ *   - Plugins are accessed via window.Capacitor.Plugins (no dynamic imports
+ *     that Vite would try to resolve at build time).
+ *   - HEIC files are handled: no canvas decode attempted on HEIC.
+ *   - Every async path that touches native APIs has a fallback.
+ *
+ * Settings (from Prompt 3) are loaded once on mount and applied to every
+ * capture: quality resize, overlay burn, backup to camera roll.
  */
 
 import {
@@ -24,6 +32,11 @@ import {
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, Plus, Settings, Check,
 } from 'lucide-react';
+
+import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
+import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
+import PermissionExplainerModal from '@/components/PermissionExplainerModal';
+import { isNative } from '@/lib/capacitor-plugins';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -92,18 +105,13 @@ function makeClientId() {
   return `c_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Format a date for the overlay stamp */
 function formatOverlayDate(d: Date, fmt: string): string {
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yyyy = String(d.getFullYear());
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const MMM = months[d.getMonth()];
-
   return fmt
     .replace('dd', dd)
     .replace('MM', mm)
-    .replace('MMM', MMM)
     .replace('yyyy', yyyy);
 }
 
@@ -118,16 +126,20 @@ function formatOverlayTime(d: Date, fmt: '24h' | '12h'): string {
 }
 
 /**
- * Process a File through canvas:
- *  1. Resize according to quality setting
- *  2. Optionally burn a timestamp overlay
- * Returns a new Blob (JPEG).
+ * Process a File through canvas: resize + optional overlay burn.
+ * HEIC files are returned as-is (canvas cannot decode HEIC in WKWebView).
  */
 async function processImage(
   file: File,
   settings: CameraSettings,
   capturedAt: Date,
 ): Promise<Blob> {
+  // HEIC guard — WKWebView cannot decode HEIC in canvas; skip processing
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const isHeic = file.type.startsWith('image/heic') || file.type.startsWith('image/heif')
+    || ext === 'heic' || ext === 'heif';
+  if (isHeic) return file;
+
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -135,10 +147,9 @@ async function processImage(
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
 
-      // Quality → max dimension
       const maxDim = settings.quality === 'low' ? 1280
         : settings.quality === 'medium' ? 2048
-        : 4096; // high — effectively no resize for most phones
+        : 4096;
 
       let { width, height } = img;
       if (width > maxDim || height > maxDim) {
@@ -155,7 +166,6 @@ async function processImage(
 
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Overlay
       if (settings.overlayEnabled) {
         const fontSize = settings.overlayFontSize;
         const dateStr = formatOverlayDate(capturedAt, settings.overlayDateFormat);
@@ -169,22 +179,20 @@ async function processImage(
         const textMetrics = ctx.measureText(stampText);
         const textW = textMetrics.width;
         const textH = fontSize;
-
         const x = width - textW - padding * 2;
         const y = height - padding;
 
-        // Semi-transparent backing pill
         const bgAlpha = 0.55;
         ctx.fillStyle = settings.overlayTextColor === 'white'
           ? `rgba(0,0,0,${bgAlpha})`
           : `rgba(255,255,255,${bgAlpha})`;
         const pillPad = Math.round(fontSize * 0.35);
-        ctx.beginPath();
         const rx = x - pillPad;
         const ry = y - textH - pillPad;
         const rw = textW + pillPad * 2;
         const rh = textH + pillPad * 2;
         const r = Math.round(fontSize * 0.4);
+        ctx.beginPath();
         ctx.moveTo(rx + r, ry);
         ctx.lineTo(rx + rw - r, ry);
         ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + r);
@@ -197,7 +205,6 @@ async function processImage(
         ctx.closePath();
         ctx.fill();
 
-        // Text
         ctx.fillStyle = settings.overlayTextColor === 'white' ? '#ffffff' : '#000000';
         ctx.fillText(stampText, x, y);
       }
@@ -207,61 +214,92 @@ async function processImage(
         : 0.92;
 
       canvas.toBlob(
-        (blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Canvas toBlob failed'));
-        },
+        (blob) => { if (blob) resolve(blob); else reject(new Error('Canvas toBlob failed')); },
         'image/jpeg',
         jpegQuality,
       );
     };
 
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Image load failed'));
-    };
-
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')); };
     img.src = objectUrl;
   });
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1] ?? result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 /**
- * Save a blob to the device camera roll via Capacitor.
- * Silently no-ops in browser environments.
- *
- * Capacitor plugins are accessed via the global `Capacitor.Plugins` object
- * rather than ES imports so Vite doesn't try to resolve native-only packages
- * at build time.
+ * Check whether save-to-photos permission is available.
+ * Returns 'granted' | 'denied' | 'unavailable'.
+ * Uses @capacitor/camera via window.Capacitor.Plugins to avoid Vite resolution.
  */
-async function saveToDeviceCameraRoll(blob: Blob): Promise<void> {
+async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'unavailable'> {
+  if (!isNative()) return 'unavailable';
   try {
-    // Only run inside Capacitor native shell
     const cap = (window as {
-      Capacitor?: {
-        isNativePlatform?: () => boolean;
-        Plugins?: {
-          Filesystem?: {
-            writeFile: (opts: {
-              path: string; data: string;
-              directory: string; recursive?: boolean;
-            }) => Promise<{ uri: string }>;
-          };
-          Media?: {
-            savePhoto: (opts: { path: string }) => Promise<void>;
-          };
-        };
-      };
+      Capacitor?: { Plugins?: { Camera?: {
+        checkPermissions: () => Promise<{ photos?: string; camera?: string }>;
+        requestPermissions: (opts: { permissions: string[] }) => Promise<{ photos?: string; camera?: string }>;
+      } } }
     }).Capacitor;
 
-    if (!cap?.isNativePlatform?.()) return;
+    const CameraPlugin = cap?.Plugins?.Camera;
+    if (!CameraPlugin) return 'unavailable';
 
-    const Filesystem = cap.Plugins?.Filesystem;
-    if (!Filesystem) return;
+    const status = await CameraPlugin.checkPermissions();
+    const photos = status.photos ?? status.camera ?? 'prompt';
+    if (photos === 'granted' || photos === 'limited') return 'granted';
+    if (photos === 'denied') return 'denied';
+
+    // 'prompt' — request it
+    const requested = await CameraPlugin.requestPermissions({ permissions: ['photos'] });
+    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
+    return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
+  } catch {
+    return 'unavailable';
+  }
+}
+
+/**
+ * Save a blob to the device camera roll via Capacitor Plugins global.
+ * Silently no-ops if permission is denied or plugin is unavailable.
+ * Returns 'saved' | 'permission_denied' | 'unavailable'.
+ */
+async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission_denied' | 'unavailable'> {
+  if (!isNative()) return 'unavailable';
+  try {
+    const perm = await checkSaveToPhotosPermission();
+    if (perm === 'denied') return 'permission_denied';
+    if (perm === 'unavailable') return 'unavailable';
+
+    const cap = (window as {
+      Capacitor?: { Plugins?: {
+        Filesystem?: {
+          writeFile: (opts: {
+            path: string; data: string; directory: string; recursive?: boolean;
+          }) => Promise<{ uri: string }>;
+        };
+        Media?: {
+          savePhoto: (opts: { path: string }) => Promise<void>;
+        };
+      } }
+    }).Capacitor;
+
+    const Filesystem = cap?.Plugins?.Filesystem;
+    if (!Filesystem) return 'unavailable';
 
     const base64 = await blobToBase64(blob);
     const fileName = `iwillbuild_${Date.now()}.jpg`;
 
-    // Write to Cache directory first
     const writeResult = await Filesystem.writeFile({
       path: fileName,
       data: base64,
@@ -269,8 +307,7 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<void> {
       recursive: true,
     });
 
-    // Try Media plugin (saves to gallery) — gracefully skip if not available
-    const Media = cap.Plugins?.Media;
+    const Media = cap?.Plugins?.Media;
     if (Media?.savePhoto) {
       await Media.savePhoto({ path: writeResult.uri });
     } else {
@@ -282,22 +319,11 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<void> {
         recursive: true,
       });
     }
+    return 'saved';
   } catch (e) {
     console.warn('[camera-roll] save failed:', e);
+    return 'unavailable';
   }
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Strip the data URL prefix — Capacitor wants raw base64
-      resolve(result.split(',')[1] ?? result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -308,15 +334,27 @@ function SettingsSheet({
   open,
   settings,
   saving,
+  backupPermDenied,
   onClose,
   onChange,
 }: {
   open: boolean;
   settings: CameraSettings;
   saving: boolean;
+  /** True when save-to-photos was denied — show warning in backup row */
+  backupPermDenied: boolean;
   onClose: () => void;
   onChange: (patch: Partial<CameraSettings>) => void;
 }) {
+  async function openNativeSettings() {
+    if (!isNative()) return;
+    try {
+      const { App } = await import('@capacitor/app');
+      // @ts-expect-error openSettings available on some Capacitor versions
+      await App.openSettings?.();
+    } catch { /* silent */ }
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -330,18 +368,12 @@ function SettingsSheet({
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 340 }}
             className="fixed bottom-0 left-0 right-0 z-[90] bg-white rounded-t-3xl flex flex-col"
-            style={{
-              boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
-              maxHeight: 'calc(100dvh - 5rem)',
-            }}
+            style={{ boxShadow: '0 -4px 40px rgba(0,0,0,0.18)', maxHeight: 'calc(100dvh - 5rem)' }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
-
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
@@ -354,37 +386,59 @@ function SettingsSheet({
               </div>
               <div className="flex items-center gap-2">
                 {saving && <Loader2 size={13} className="animate-spin text-violet-400" />}
-                <button
-                  onClick={onClose}
-                  className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
-                >
+                <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                   <X size={14} />
                 </button>
               </div>
             </div>
 
-            {/* Settings list */}
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
             >
-
-              {/* ── Backup to Camera Roll ── */}
+              {/* Backup */}
               <SettingsSection label="Backup">
                 <SettingsToggleRow
                   label="Back up to Camera Roll"
-                  description="Save photos to your device gallery"
+                  description={
+                    backupPermDenied
+                      ? 'Photos access denied — tap to open Settings'
+                      : 'Save photos to your device gallery'
+                  }
                   value={settings.backupToRoll}
-                  onChange={v => onChange({ backupToRoll: v })}
+                  warning={backupPermDenied}
+                  onChange={v => {
+                    if (backupPermDenied && v) { void openNativeSettings(); return; }
+                    onChange({ backupToRoll: v });
+                  }}
                 />
+                {backupPermDenied && (
+                  <div className="mx-3 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                    <AlertCircle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-amber-800 text-[11px] font-semibold">Photos access denied</p>
+                      <p className="text-amber-700 text-[10px] mt-0.5">
+                        Go to iPhone Settings → IWILLBUILD → Photos to allow saving.
+                      </p>
+                      {isNative() && (
+                        <button
+                          onClick={() => void openNativeSettings()}
+                          className="mt-1.5 text-[11px] font-bold text-amber-700 underline underline-offset-2"
+                        >
+                          Open Settings →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </SettingsSection>
 
-              {/* ── Photo Quality ── */}
+              {/* Quality */}
               <SettingsSection label="Photo Quality">
                 <SettingsSegmentRow
                   options={[
-                    { value: 'low',    label: 'Low' },
+                    { value: 'low', label: 'Low' },
                     { value: 'medium', label: 'Med' },
-                    { value: 'high',   label: 'High' },
+                    { value: 'high', label: 'High' },
                   ]}
                   value={settings.quality}
                   onChange={v => onChange({ quality: v as CameraSettings['quality'] })}
@@ -398,7 +452,7 @@ function SettingsSheet({
                 </p>
               </SettingsSection>
 
-              {/* ── Notes ── */}
+              {/* Notes */}
               <SettingsSection label="Notes">
                 <SettingsToggleRow
                   label="Enable notes on captures"
@@ -408,7 +462,7 @@ function SettingsSheet({
                 />
               </SettingsSection>
 
-              {/* ── Camera Overlay ── */}
+              {/* Overlay */}
               <SettingsSection label="Camera Overlay">
                 <SettingsToggleRow
                   label="Stamp date & time on photos"
@@ -416,7 +470,6 @@ function SettingsSheet({
                   value={settings.overlayEnabled}
                   onChange={v => onChange({ overlayEnabled: v })}
                 />
-
                 {settings.overlayEnabled && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -424,8 +477,7 @@ function SettingsSheet({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="space-y-1 pt-1">
-                      {/* Date format */}
+                    <div className="space-y-0.5 pt-1">
                       <SettingsSelectRow
                         label="Date format"
                         value={settings.overlayDateFormat}
@@ -436,8 +488,6 @@ function SettingsSheet({
                         ]}
                         onChange={v => onChange({ overlayDateFormat: v })}
                       />
-
-                      {/* Time format */}
                       <SettingsSelectRow
                         label="Time format"
                         value={settings.overlayTimeFormat}
@@ -447,8 +497,6 @@ function SettingsSheet({
                         ]}
                         onChange={v => onChange({ overlayTimeFormat: v as CameraSettings['overlayTimeFormat'] })}
                       />
-
-                      {/* Text colour */}
                       <SettingsSelectRow
                         label="Text colour"
                         value={settings.overlayTextColor}
@@ -458,8 +506,6 @@ function SettingsSheet({
                         ]}
                         onChange={v => onChange({ overlayTextColor: v as CameraSettings['overlayTextColor'] })}
                       />
-
-                      {/* Font size */}
                       <SettingsSelectRow
                         label="Font size"
                         value={String(settings.overlayFontSize)}
@@ -471,8 +517,6 @@ function SettingsSheet({
                         ]}
                         onChange={v => onChange({ overlayFontSize: Number(v) as CameraSettings['overlayFontSize'] })}
                       />
-
-                      {/* Live preview */}
                       <OverlayPreview settings={settings} />
                     </div>
                   </motion.div>
@@ -500,14 +544,12 @@ function SettingsSection({ label, children }: { label: string; children: React.R
 }
 
 function SettingsToggleRow({
-  label,
-  description,
-  value,
-  onChange,
+  label, description, value, warning, onChange,
 }: {
   label: string;
   description?: string;
   value: boolean;
+  warning?: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
@@ -516,29 +558,24 @@ function SettingsToggleRow({
       className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-left"
     >
       <div className="flex-1 min-w-0 pr-3">
-        <p className="text-gray-900 text-sm font-medium">{label}</p>
-        {description && <p className="text-gray-400 text-[11px] mt-0.5">{description}</p>}
+        <p className={`text-sm font-medium ${warning ? 'text-amber-700' : 'text-gray-900'}`}>{label}</p>
+        {description && (
+          <p className={`text-[11px] mt-0.5 ${warning ? 'text-amber-600' : 'text-gray-400'}`}>{description}</p>
+        )}
       </div>
-      {/* Toggle pill */}
-      <div
-        className={`w-11 h-6 rounded-full transition-colors shrink-0 relative ${
-          value ? 'bg-violet-600' : 'bg-gray-200'
-        }`}
-      >
-        <div
-          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-            value ? 'translate-x-5' : 'translate-x-0.5'
-          }`}
-        />
+      <div className={`w-11 h-6 rounded-full transition-colors shrink-0 relative ${
+        value ? (warning ? 'bg-amber-400' : 'bg-violet-600') : 'bg-gray-200'
+      }`}>
+        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+          value ? 'translate-x-5' : 'translate-x-0.5'
+        }`} />
       </div>
     </button>
   );
 }
 
 function SettingsSegmentRow({
-  options,
-  value,
-  onChange,
+  options, value, onChange,
 }: {
   options: { value: string; label: string }[];
   value: string;
@@ -551,9 +588,7 @@ function SettingsSegmentRow({
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={`flex-1 h-8 rounded-xl text-xs font-bold transition-colors ${
-            value === opt.value
-              ? 'bg-violet-600 text-white'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            value === opt.value ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
           }`}
         >
           {opt.label}
@@ -564,10 +599,7 @@ function SettingsSegmentRow({
 }
 
 function SettingsSelectRow({
-  label,
-  value,
-  options,
-  onChange,
+  label, value, options, onChange,
 }: {
   label: string;
   value: string;
@@ -591,21 +623,16 @@ function SettingsSelectRow({
   );
 }
 
-/** Small live preview of what the overlay will look like */
 function OverlayPreview({ settings }: { settings: CameraSettings }) {
   const now = new Date();
   const dateStr = formatOverlayDate(now, settings.overlayDateFormat);
   const timeStr = formatOverlayTime(now, settings.overlayTimeFormat);
   const stamp = `${dateStr}  ${timeStr}`;
   const fontSize = settings.overlayFontSize;
-
   return (
     <div className="mx-3 mb-2 rounded-xl overflow-hidden bg-gray-800 relative" style={{ height: 72 }}>
-      {/* Fake photo bg */}
       <div className="absolute inset-0 opacity-40"
-        style={{ background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' }}
-      />
-      {/* Stamp */}
+        style={{ background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' }} />
       <div
         className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md"
         style={{
@@ -629,10 +656,7 @@ function OverlayPreview({ settings }: { settings: CameraSettings }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function JobPickerSheet({
-  open,
-  title = 'Attach to Job',
-  onClose,
-  onSelect,
+  open, title = 'Attach to Job', onClose, onSelect,
 }: {
   open: boolean;
   title?: string;
@@ -742,10 +766,7 @@ function JobPickerSheet({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function NoteSheet({
-  open,
-  initialNote,
-  onClose,
-  onSave,
+  open, initialNote, onClose, onSave,
 }: {
   open: boolean;
   initialNote: string | null;
@@ -814,14 +835,8 @@ function NoteSheet({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CaptureRow({
-  item,
-  selected,
-  selectMode,
-  notesEnabled,
-  onToggleSelect,
-  onDelete,
-  onAttachJob,
-  onAddNote,
+  item, selected, selectMode, notesEnabled,
+  onToggleSelect, onDelete, onAttachJob, onAddNote,
 }: {
   item: CaptureItem;
   selected: boolean;
@@ -845,7 +860,6 @@ function CaptureRow({
       }`}
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
     >
-      {/* Checkbox */}
       <button
         onClick={() => onToggleSelect(item.clientId)}
         className="shrink-0 w-5 h-5 flex items-center justify-center"
@@ -853,11 +867,9 @@ function CaptureRow({
       >
         {selected
           ? <CheckSquare size={16} className="text-violet-600" />
-          : <Square size={16} className="text-gray-300" />
-        }
+          : <Square size={16} className="text-gray-300" />}
       </button>
 
-      {/* Thumbnail */}
       <div className="w-11 h-11 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
         {imgUrl ? (
           <img src={imgUrl} alt="Captured" className="w-full h-full object-cover" loading="lazy" />
@@ -878,7 +890,6 @@ function CaptureRow({
         )}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           {item.status === 'uploading' && (
@@ -897,15 +908,10 @@ function CaptureRow({
           )}
           <span className="text-[10px] text-gray-400">{formatTime(item.capturedAt)}</span>
         </div>
-        {item.note && (
-          <p className="text-gray-500 text-[11px] mt-0.5 truncate">{item.note}</p>
-        )}
-        {item.errorMsg && (
-          <p className="text-red-400 text-[10px] mt-0.5 truncate">{item.errorMsg}</p>
-        )}
+        {item.note && <p className="text-gray-500 text-[11px] mt-0.5 truncate">{item.note}</p>}
+        {item.errorMsg && <p className="text-red-400 text-[10px] mt-0.5 truncate">{item.errorMsg}</p>}
       </div>
 
-      {/* Actions */}
       {!selectMode && item.status !== 'uploading' && (
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -943,14 +949,21 @@ function CaptureRow({
 
 export default function CameraPage() {
   const navigate = useNavigate();
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const libraryInputRef = useRef<HTMLInputElement>(null);
-  const cameraId = useId();
-  const libraryId = useId();
+
+  // ── Permission-safe media picker ──────────────────────────────────────────
+  // Handles camera + photo library permissions, HEIC safety, denied-state UI.
+  // On web: falls back to plain file inputs with no permission checks.
+  const picker = useIosMediaPicker(handleFileFromPicker);
+  const pickerExt = picker as typeof picker & {
+    _cameraInputRef: React.RefObject<HTMLInputElement>;
+    _libraryInputRef: React.RefObject<HTMLInputElement>;
+    _handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
 
   const [captures, setCaptures] = useState<CaptureItem[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
-  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   // Settings
   const [settings, setSettings] = useState<CameraSettings>(DEFAULT_SETTINGS);
@@ -958,6 +971,10 @@ export default function CameraPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Camera roll permission state — tracked separately from picker
+  // so we can show a warning in settings without blocking capture
+  const [backupPermDenied, setBackupPermDenied] = useState(false);
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -968,7 +985,7 @@ export default function CameraPage() {
   const [bulkJobPickerOpen, setBulkJobPickerOpen] = useState(false);
   const [noteForClientId, setNoteForClientId] = useState<string | null>(null);
 
-  // ── Network ──────────────────────────────────────────────────────────────
+  // ── Network ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const on = () => setIsOnline(true);
     const off = () => setIsOnline(false);
@@ -977,7 +994,7 @@ export default function CameraPage() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // ── Load settings on mount ────────────────────────────────────────────────
+  // ── Load settings ─────────────────────────────────────────────────────────
   useEffect(() => {
     fetch('/api/camera-settings', { credentials: 'include' })
       .then(r => r.json())
@@ -1002,11 +1019,8 @@ export default function CameraPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(next),
           });
-        } catch {
-          // silently ignore — settings will re-sync on next load
-        } finally {
-          setSettingsSaving(false);
-        }
+        } catch { /* silently ignore */ }
+        finally { setSettingsSaving(false); }
       }, 600);
       return next;
     });
@@ -1037,11 +1051,8 @@ export default function CameraPage() {
           capturedAt: c.capturedAt,
         }))
       );
-    } catch {
-      // silently ignore
-    } finally {
-      setLoadingInitial(false);
-    }
+    } catch { /* silently ignore */ }
+    finally { setLoadingInitial(false); }
   }, []);
 
   useEffect(() => { void loadCaptures(); }, [loadCaptures]);
@@ -1051,23 +1062,18 @@ export default function CameraPage() {
     setCaptures(prev => prev.map(c =>
       c.clientId === clientId ? { ...c, status: 'uploading' } : c
     ));
-
     try {
       const fd = new FormData();
       fd.append('photos', blob, 'capture.jpg');
       fd.append('capturedAt', capturedAt);
 
       const res = await fetch('/api/camera-captures', {
-        method: 'POST',
-        credentials: 'include',
-        body: fd,
+        method: 'POST', credentials: 'include', body: fd,
       });
-
       if (!res.ok) {
         const d = await res.json() as { error?: string };
         throw new Error(d.error ?? 'Upload failed');
       }
-
       const d = await res.json() as { captures: Array<{ id: number; url: string }> };
       const saved = d.captures[0];
 
@@ -1085,43 +1091,38 @@ export default function CameraPage() {
     }
   }
 
-  // ── Handle file selection ─────────────────────────────────────────────────
-  function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
+  // ── Handle a file from the picker (called by useIosMediaPicker) ───────────
+  function handleFileFromPicker(file: File) {
+    const clientId = makeClientId();
+    const capturedAt = new Date().toISOString();
+    const capturedDate = new Date(capturedAt);
 
-    for (const file of Array.from(files)) {
-      const clientId = makeClientId();
-      const localUrl = URL.createObjectURL(file);
-      const capturedAt = new Date().toISOString();
+    // Optimistic item — use blob URL for preview (safe, no HEIC decode)
+    const localUrl = URL.createObjectURL(file);
+    setCaptures(prev => [{
+      clientId, id: null, localUrl, serverUrl: null,
+      note: null, jobId: null, jobName: null,
+      status: 'pending', errorMsg: null, capturedAt,
+    }, ...prev]);
 
-      // Optimistic item
-      setCaptures(prev => [{
-        clientId, id: null, localUrl, serverUrl: null,
-        note: null, jobId: null, jobName: null,
-        status: 'pending', errorMsg: null, capturedAt,
-      }, ...prev]);
+    void (async () => {
+      try {
+        const blob = await processImage(file, settings, capturedDate);
 
-      // Process (resize + overlay) then upload
-      const capturedDate = new Date(capturedAt);
-      void (async () => {
-        try {
-          const blob = await processImage(file, settings, capturedDate);
-
-          // Camera roll backup (native only, non-blocking)
-          if (settings.backupToRoll) {
-            void saveToDeviceCameraRoll(blob);
+        // Camera roll backup — non-blocking, failure never stops capture
+        if (settings.backupToRoll) {
+          const result = await saveToDeviceCameraRoll(blob);
+          if (result === 'permission_denied') {
+            setBackupPermDenied(true);
           }
-
-          await uploadBlob(blob, clientId, capturedAt);
-        } catch {
-          // processImage failed — fall back to raw file
-          await uploadBlob(file, clientId, capturedAt);
         }
-      })();
-    }
 
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
-    if (libraryInputRef.current) libraryInputRef.current.value = '';
+        await uploadBlob(blob, clientId, capturedAt);
+      } catch {
+        // processImage failed — fall back to raw file
+        await uploadBlob(file, clientId, capturedAt);
+      }
+    })();
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -1132,7 +1133,9 @@ export default function CameraPage() {
     setCaptures(prev => prev.filter(c => c.clientId !== clientId));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(clientId); return s; });
     if (item.id) {
-      await fetch(`/api/camera-captures/${item.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => {});
+      await fetch(`/api/camera-captures/${item.id}`, {
+        method: 'DELETE', credentials: 'include',
+      }).catch(() => {});
     }
   }
 
@@ -1199,7 +1202,6 @@ export default function CameraPage() {
   const attached = captures.filter(c => c.status === 'done' && c.jobId).length;
   const uploading = captures.filter(c => c.status === 'uploading' || c.status === 'pending').length;
 
-  // Don't render until settings are loaded (avoids flash of wrong quality/overlay)
   if (!settingsLoaded) {
     return (
       <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0d0d12' }}>
@@ -1218,11 +1220,8 @@ export default function CameraPage() {
       </Helmet>
       <h1 className="sr-only">Camera Inbox</h1>
 
-      {/* Hidden file inputs */}
-      <input ref={cameraInputRef} id={cameraId} type="file" accept="image/*" capture="environment"
-        multiple className="sr-only" onChange={e => handleFiles(e.target.files)} aria-label="Take photo" />
-      <input ref={libraryInputRef} id={libraryId} type="file" accept="image/*"
-        multiple className="sr-only" onChange={e => handleFiles(e.target.files)} aria-label="Choose from library" />
+      {/* Hidden file inputs — managed by useIosMediaPicker */}
+      <IosMediaInputs picker={pickerExt} />
 
       {/* Offline banner */}
       <AnimatePresence>
@@ -1271,9 +1270,10 @@ export default function CameraPage() {
               aria-label="Camera settings"
             >
               <Settings size={16} />
-              {/* Dot indicator when non-default settings are active */}
-              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high') && (
-                <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-400" />
+              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+                <div className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
+                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400'
+                }`} />
               )}
             </button>
 
@@ -1290,7 +1290,7 @@ export default function CameraPage() {
         </div>
 
         {/* Active settings indicators */}
-        {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high') && (
+        {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
           <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
             {settings.overlayEnabled && (
               <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-300 bg-violet-900/40 border border-violet-700/40 rounded-full px-2 py-0.5">
@@ -1298,10 +1298,16 @@ export default function CameraPage() {
                 Overlay on
               </span>
             )}
-            {settings.backupToRoll && (
+            {settings.backupToRoll && !backupPermDenied && (
               <span className="flex items-center gap-1 text-[10px] font-semibold text-green-300 bg-green-900/40 border border-green-700/40 rounded-full px-2 py-0.5">
                 <Check size={9} />
                 Camera roll
+              </span>
+            )}
+            {settings.backupToRoll && backupPermDenied && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
+                <AlertCircle size={9} />
+                Backup unavailable
               </span>
             )}
             {settings.quality !== 'high' && (
@@ -1312,12 +1318,20 @@ export default function CameraPage() {
           </div>
         )}
 
+        {/* Permission checking spinner */}
+        {picker.checkingPermission && (
+          <div className="flex items-center justify-center gap-2 pb-3">
+            <Loader2 size={14} className="animate-spin text-white/50" />
+            <span className="text-white/50 text-xs">Checking permissions…</span>
+          </div>
+        )}
+
         {/* Shutter row */}
         <div className="flex items-center justify-center gap-8 pb-6 px-4">
           {/* Library */}
           <motion.button
             whileTap={{ scale: 0.88 }}
-            onClick={() => libraryInputRef.current?.click()}
+            onClick={() => void picker.openLibrary()}
             className="flex flex-col items-center gap-1.5"
             aria-label="Choose from library"
           >
@@ -1332,16 +1346,24 @@ export default function CameraPage() {
             whileTap={{ scale: 0.90 }}
             whileHover={{ scale: 1.04 }}
             transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={() => void picker.openCamera()}
             className="relative flex items-center justify-center"
             aria-label="Take photo"
+            disabled={picker.checkingPermission}
           >
-            <div className="w-[76px] h-[76px] rounded-full border-[3px] border-white/30 flex items-center justify-center">
+            <div className={`w-[76px] h-[76px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+              picker.checkingPermission ? 'border-white/15' : 'border-white/30'
+            }`}>
               <div
-                className="w-[62px] h-[62px] rounded-full bg-white flex items-center justify-center"
+                className={`w-[62px] h-[62px] rounded-full flex items-center justify-center transition-colors ${
+                  picker.checkingPermission ? 'bg-white/50' : 'bg-white'
+                }`}
                 style={{ boxShadow: '0 0 24px rgba(255,255,255,0.25)' }}
               >
-                <Camera size={26} className="text-gray-900" />
+                {picker.checkingPermission
+                  ? <Loader2 size={24} className="text-gray-400 animate-spin" />
+                  : <Camera size={26} className="text-gray-900" />
+                }
               </div>
             </div>
           </motion.button>
@@ -1349,7 +1371,7 @@ export default function CameraPage() {
           {/* More / count */}
           <motion.button
             whileTap={{ scale: 0.88 }}
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={() => void picker.openCamera()}
             className="flex flex-col items-center gap-1.5"
             aria-label="Take another photo"
           >
@@ -1373,6 +1395,19 @@ export default function CameraPage() {
         className="flex-1 flex flex-col overflow-hidden"
         style={{ background: '#f5f5f7', borderRadius: '24px 24px 0 0' }}
       >
+        {/* Permission denied banner — shown in tray when camera/photos denied */}
+        {picker.permissionDenied && (
+          <div className="px-3 pt-3 shrink-0">
+            <IosPermissionBanner
+              type={picker.permissionDenied}
+              onDismiss={() => {
+                // Can't clear permissionDenied from outside the hook,
+                // but the banner will naturally go away on next successful open
+              }}
+            />
+          </div>
+        )}
+
         {/* Tray header */}
         <div className="px-4 pt-4 pb-2 flex items-center justify-between shrink-0">
           <div>
@@ -1501,11 +1536,24 @@ export default function CameraPage() {
         )}
       </AnimatePresence>
 
+      {/* ═══ PERMISSION EXPLAINER MODAL ═══ */}
+      {/* Shown before first camera/photos permission request, and in denied state */}
+      {picker.explainer && (
+        <PermissionExplainerModal
+          type={picker.explainer.type}
+          open
+          denied={picker.explainer.denied}
+          onNotNow={picker.explainer.onNotNow}
+          onEnable={() => void picker.explainer!.onEnable()}
+        />
+      )}
+
       {/* ═══ SHEETS ═══ */}
       <SettingsSheet
         open={settingsOpen}
         settings={settings}
         saving={settingsSaving}
+        backupPermDenied={backupPermDenied}
         onClose={() => setSettingsOpen(false)}
         onChange={saveSettings}
       />
