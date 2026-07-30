@@ -1461,6 +1461,11 @@ export default function CameraPage() {
   // Settings
   const [settings, setSettings] = useState<CameraSettings>(DEFAULT_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [liveNow, setLiveNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setLiveNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1955,6 +1960,49 @@ export default function CameraPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Live viewfinder watermark — mirrors what gets burned into the photo ── */}
+        {settings.overlayEnabled && settingsLoaded && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 104px + 1rem)',
+              right: '14px',
+              zIndex: 10,
+            }}
+          >
+            {(() => {
+              const dateStr = formatOverlayDate(liveNow, settings.overlayDateFormat);
+              const timeStr = formatOverlayTime(liveNow, settings.overlayTimeFormat);
+              const lines: string[] = [];
+              if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
+              if (settings.overlayIncludeJobNumber && activeJob?.jobNumber?.trim()) lines.push(`#${activeJob.jobNumber.trim()}`);
+              if (settings.overlayIncludeNote && lockedNote?.trim() && settings.noteMode !== 'none') lines.push(lockedNote.trim());
+              lines.push(`${dateStr}  ${timeStr}`);
+              const fs = Math.max(10, settings.overlayFontSize ?? 13);
+              return (
+                <div
+                  style={{
+                    fontFamily: "'Courier New', monospace",
+                    fontSize: `${fs}px`,
+                    fontWeight: 'bold',
+                    lineHeight: 1.55,
+                    color: settings.overlayTextColor === 'white' ? '#fff' : '#000',
+                    background: settings.overlayTextColor === 'white' ? 'rgba(0,0,0,0.52)' : 'rgba(255,255,255,0.52)',
+                    padding: '4px 7px',
+                    borderRadius: '4px',
+                    textAlign: 'right',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {lines.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Permission checking spinner — centre of screen */}
         {picker.checkingPermission && (
