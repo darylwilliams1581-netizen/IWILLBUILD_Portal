@@ -73,6 +73,19 @@ export interface NativeCameraOptions {
   direction?: 'front' | 'rear';
   /** 'on' forces flash; 'off' disables it; 'auto' (default) lets the OS decide. */
   flashMode?: 'on' | 'off' | 'auto';
+  /**
+   * JPEG quality hint passed to Camera.getPhoto() on native.
+   * Maps to the quality setting from CameraSettings:
+   *   low  → 72  (matches processImage JPEG quality for low)
+   *   med  → 84  (matches processImage JPEG quality for medium)
+   *   high → 92  (matches processImage JPEG quality for high)
+   * Defaults to 84 (medium) if not provided.
+   *
+   * Note: this controls the native capture quality, not the processImage
+   * resize cap. processImage still applies its own maxDim resize on top.
+   * Keeping these in sync avoids double-compressing at mismatched quality levels.
+   */
+  captureQuality?: number;
 }
 
 export interface IosMediaPickerState {
@@ -131,6 +144,42 @@ function safePreviewUrl(file: File): string | null {
 // Uses getCameraPlugin() from capacitor-plugins.ts which dynamically imports
 // @capacitor/camera — a real installed package. This gives us the actual
 // Capacitor permission API instead of falling back to 'unknown' every time.
+
+/**
+ * Decode a base64 string to a Blob in 64KB chunks.
+ *
+ * WHY chunked:
+ * A 12MP iPhone photo at quality 84 produces ~6–10MB of base64 data.
+ * The naive approach — atob() then a single char-by-char for loop over the
+ * resulting string — iterates over millions of chars synchronously on the
+ * main thread, blocking the UI for 200–500ms. In TestFlight this manifests
+ * as a visible freeze immediately after shutter press, which users report as
+ * a crash.
+ *
+ * The chunked approach keeps each JS tick short:
+ *   1. atob() the full string once (fast — native C, not JS iteration)
+ *   2. Slice the decoded string into 64KB chunks
+ *   3. Convert each chunk to a Uint8Array via charCodeAt (short loop per chunk)
+ *   4. Collect chunks into a Blob directly — no giant intermediate Uint8Array
+ *
+ * This avoids both the main-thread stall and the peak memory spike of
+ * allocating a single Uint8Array for the entire image at once.
+ */
+const BASE64_CHUNK = 65536; // 64KB per chunk — keeps each tick under ~1ms
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const decoded = atob(base64); // native C — fast, does not block JS
+  const chunks: Uint8Array[] = [];
+  for (let offset = 0; offset < decoded.length; offset += BASE64_CHUNK) {
+    const slice = decoded.slice(offset, offset + BASE64_CHUNK);
+    const chunk = new Uint8Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      chunk[i] = slice.charCodeAt(i);
+    }
+    chunks.push(chunk);
+  }
+  return new Blob(chunks, { type: mimeType });
+}
 
 /**
  * Check / request camera permission via the real @capacitor/camera plugin.
@@ -271,11 +320,17 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           } = await import('@capacitor/camera');
 
           // Use Base64 instead of DataUrl on native.
-          // DataUrl prepends a mime-type prefix that requires an extra fetch() round-trip
-          // to convert to a Blob, which adds latency and a second memory copy of the image.
-          // Base64 lets us decode directly without the extra fetch, reducing peak memory.
+          // DataUrl requires an extra fetch() round-trip to convert to a Blob,
+          // adding latency and a second full-image memory copy in the WKWebView heap.
+          // Base64 lets us decode directly, reducing peak memory.
+          //
+          // captureQuality: use the caller's quality hint (from CameraSettings) so
+          // the native capture matches the intended quality tier. Defaults to 84
+          // (medium) — never hardcode 90 which ignores the user's setting entirely.
+          const nativeQuality = opts?.captureQuality ?? 84;
+
           const photo = await CameraPlugin.getPhoto({
-            quality: 90,
+            quality: nativeQuality,
             allowEditing: false,
             resultType: CameraResultType.Base64,
             source: CameraSource.Camera,
@@ -286,23 +341,29 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           } as any);
 
           if (photo.base64String) {
-            // Decode base64 → Uint8Array → Blob without an intermediate fetch()
-            // This avoids a second full-image memory copy that DataUrl + fetch() would cause
+            // Decode base64 → Uint8Array → Blob.
+            //
+            // IMPORTANT: do NOT use a char-by-char atob loop here.
+            // A 12MP iPhone photo at quality 84 produces ~6–10MB of base64 data.
+            // Iterating over millions of chars synchronously on the main thread
+            // blocks the UI for 200–500ms, which looks like a freeze/crash in
+            // TestFlight. Use a chunked decode instead:
+            //   1. atob() the full string (fast — native C, not JS)
+            //   2. Slice into 64KB chunks and decode each chunk
+            //   3. Concatenate into a single Uint8Array
+            // This keeps each JS tick short and avoids the main-thread stall.
             try {
-              const byteChars = atob(photo.base64String);
-              const byteArr = new Uint8Array(byteChars.length);
-              for (let i = 0; i < byteChars.length; i++) {
-                byteArr[i] = byteChars.charCodeAt(i);
-              }
-              const mimeType = photo.format === 'png' ? 'image/png' : 'image/jpeg';
-              const blob = new Blob([byteArr], { type: mimeType });
-              const file = new File([blob], `capture.${photo.format ?? 'jpg'}`, { type: mimeType });
+              const blob = base64ToBlob(
+                photo.base64String,
+                photo.format === 'png' ? 'image/png' : 'image/jpeg',
+              );
+              const file = new File([blob], `capture.${photo.format ?? 'jpg'}`, { type: blob.type });
               handleFile(file);
             } catch (decodeErr) {
               console.warn('[camera] base64 decode failed, falling back to dataUrl path:', decodeErr);
-              // Fallback: re-request with DataUrl if base64 decode fails (should not happen)
+              // Fallback: re-request with DataUrl if chunked decode fails (should not happen)
               const photo2 = await CameraPlugin.getPhoto({
-                quality: 90,
+                quality: nativeQuality,
                 allowEditing: false,
                 resultType: CameraResultType.DataUrl,
                 source: CameraSource.Camera,
@@ -320,9 +381,9 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           return;
         }
       } catch (err) {
-        // Distinguish user-cancel from a real crash:
-        // Capacitor throws an error with message containing "cancelled" or "User cancelled"
-        // when the user dismisses the camera — this is not a crash, do not log it as an error.
+        // Distinguish user-cancel from a real crash.
+        // Capacitor throws with "cancelled" / "User cancelled" / "No image" when
+        // the user dismisses the camera — this is not a crash, do not log it.
         const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
         const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image');
         if (!isCancel) {

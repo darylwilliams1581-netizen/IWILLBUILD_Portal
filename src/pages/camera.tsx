@@ -2349,6 +2349,12 @@ export default function CameraPage() {
                 onClick={() => void picker.openCamera({
                   direction: frontCamera ? 'front' : 'rear',
                   flashMode: flashOn ? 'on' : 'off',
+                  // Pass quality hint so native capture matches the user's quality setting.
+                  // These values mirror the JPEG quality used in processImage so the two
+                  // stages stay in sync and we don't double-compress at mismatched levels.
+                  captureQuality: settings.quality === 'low' ? 72
+                    : settings.quality === 'high' ? 92
+                    : 84,
                 })}
                 className="relative flex items-center justify-center"
                 aria-label="Take photo"
