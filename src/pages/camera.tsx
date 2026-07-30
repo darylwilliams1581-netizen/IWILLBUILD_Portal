@@ -1243,7 +1243,7 @@ const CaptureLightbox = memo(function CaptureLightbox({
       {/* Top action bar */}
       <div
         className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 z-10 pointer-events-auto"
-        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 8px)', paddingBottom: '12px' }}
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 14px)', paddingBottom: '12px' }}
       >
         <button onClick={onClose}
           className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
@@ -1881,8 +1881,8 @@ export default function CameraPage() {
         <div
           className="flex items-center justify-between shrink-0"
           style={{
-            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 8px)',
-            paddingBottom: '8px',
+            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 14px)',
+            paddingBottom: '10px',
             paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 16px)',
             paddingRight: 'calc(env(safe-area-inset-right, 0px) + 16px)',
           }}
