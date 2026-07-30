@@ -358,7 +358,6 @@ export default function FleetPage() {
             </button>
             <span className="text-gray-300 shrink-0">|</span>
             <Truck size={17} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base truncate">Fleet</h1>
             {!loading && (
               <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
                 {assets.length} asset{assets.length !== 1 ? 's' : ''}
