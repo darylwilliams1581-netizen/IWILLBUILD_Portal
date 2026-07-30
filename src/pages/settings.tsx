@@ -4,6 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Building2,
   Bell,
+  Calculator,
   Database,
   ChevronRight,
   Layers,
@@ -28,6 +29,7 @@ import CompanyTab from '@/components/settings/CompanyTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
 import AppPermissionsTab from '@/components/settings/AppPermissionsTab';
+import CostingTab from '@/components/settings/CostingTab';
 import { Skeleton } from '@/components/ui/skeleton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -42,6 +44,7 @@ const tabs = [
   { id: 'notifications',label: 'Notifications',      icon: Bell },
   { id: 'permissions',  label: 'App Permissions',    icon: ShieldCheck },
   { id: 'integrations', label: 'Integrations',       icon: Plug },
+  { id: 'costing',      label: 'Costing',             icon: Calculator },
   { id: 'fleet',        label: 'Fleet Analytics',    icon: Truck },
   { id: 'data',         label: 'Data & Backup',      icon: Database },
 ];
@@ -172,6 +175,7 @@ export default function SettingsPage() {
                 {activeTab === 'notifications' && <NotificationsTab />}
                 {activeTab === 'permissions'  && <AppPermissionsTab />}
                 {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
+                {activeTab === 'costing'      && <CostingTab />}
                 {activeTab === 'fleet'        && <FleetAnalyticsTab isAdmin={isAdmin} />}
                 {activeTab === 'data' && <DataBackupTab isAdmin={isAdmin} />}
               </Suspense>

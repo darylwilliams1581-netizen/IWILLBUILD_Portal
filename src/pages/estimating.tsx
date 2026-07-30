@@ -836,13 +836,11 @@ export default function EstimatingPage() {
           <h1 className="font-heading font-bold text-lg flex-1">Costing</h1>
         </header>
 
-        {/* Tabs */}
+        {/* Tabs — Builders Calc and Take-off Pad are field tools accessible from the app directly */}
         <div className="bg-white border-b border-slate-200 px-4 md:px-6 flex gap-1 shrink-0 overflow-x-auto">
           {([
-            { key: 'cost-guide',    label: 'Cost Guide' },
-            { key: 'recipes',       label: 'Recipes' },
-            { key: 'builders-calc', label: 'Builders Calc' },
-            { key: 'takeoff-pad',   label: 'Take-off Pad' },
+            { key: 'cost-guide', label: 'Cost Guide' },
+            { key: 'recipes',    label: 'Recipes' },
           ] as const).map((t) => (
             <button
               key={t.key}

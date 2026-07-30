@@ -62,7 +62,7 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
   // ── Finance ───────────────────────────────────────────────────────────────
   { label: 'Invoices',        icon: Receipt,         href: '/invoices',             color: '#0ea5e9' },
-  { label: 'Estimating',      icon: Calculator,      href: '/estimating',           color: '#e11d48' },
+  // Estimating (Costing) is accessible via Settings → Costing
   // ── People ────────────────────────────────────────────────────────────────
   { label: 'Contacts',        icon: Users,           href: '/customers',            color: '#ec4899' },
   // ── Safety ────────────────────────────────────────────────────────────────
