@@ -77,6 +77,19 @@ const config: CapacitorConfig = {
     // Injected into Info.plist by `cap sync`. Apple requires every permission
     // to have a usage string explaining the user benefit — vague strings cause
     // App Store review rejection.
+    //
+    // ── Camera release checklist (required before every TestFlight/App Store build) ──
+    // 1. NSCameraUsageDescription must be present (below) — live camera will crash
+    //    at the OS level on first use if this string is missing from Info.plist.
+    // 2. NSPhotoLibraryUsageDescription must be present — library picker crashes without it.
+    // 3. NSPhotoLibraryAddUsageDescription must be present — camera roll backup fails without it.
+    // 4. @capacitor/camera must be listed in package.json AND synced to the native project
+    //    via `npx cap sync` — the plugin registers the native camera bridge. Without sync,
+    //    Camera.getPhoto() silently falls back to a file input that does nothing on iOS.
+    // 5. CameraResultType.Base64 is used (not DataUrl) — avoids the extra fetch() memory
+    //    copy that caused OOM crashes on large iPhone captures in earlier builds.
+    // 6. User-cancel is distinguished from real errors — "cancelled"/"dismiss" in the
+    //    error message is not logged as a crash; only genuine failures are warned.
     infoPlist: {
       // Camera — job photos, receipts, incidents, site records
       NSCameraUsageDescription:

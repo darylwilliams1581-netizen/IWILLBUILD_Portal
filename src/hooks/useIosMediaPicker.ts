@@ -270,10 +270,14 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
             CameraDirection,
           } = await import('@capacitor/camera');
 
+          // Use Base64 instead of DataUrl on native.
+          // DataUrl prepends a mime-type prefix that requires an extra fetch() round-trip
+          // to convert to a Blob, which adds latency and a second memory copy of the image.
+          // Base64 lets us decode directly without the extra fetch, reducing peak memory.
           const photo = await CameraPlugin.getPhoto({
             quality: 90,
             allowEditing: false,
-            resultType: CameraResultType.DataUrl,
+            resultType: CameraResultType.Base64,
             source: CameraSource.Camera,
             direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
             // flashMode is a valid runtime option on iOS even if the TS types
@@ -281,17 +285,52 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
             flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
           } as any);
 
-          if (photo.dataUrl) {
-            // Convert data URL → Blob → File so the existing pipeline is unchanged
-            const res = await fetch(photo.dataUrl);
-            const blob = await res.blob();
-            const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
-            handleFile(file);
+          if (photo.base64String) {
+            // Decode base64 → Uint8Array → Blob without an intermediate fetch()
+            // This avoids a second full-image memory copy that DataUrl + fetch() would cause
+            try {
+              const byteChars = atob(photo.base64String);
+              const byteArr = new Uint8Array(byteChars.length);
+              for (let i = 0; i < byteChars.length; i++) {
+                byteArr[i] = byteChars.charCodeAt(i);
+              }
+              const mimeType = photo.format === 'png' ? 'image/png' : 'image/jpeg';
+              const blob = new Blob([byteArr], { type: mimeType });
+              const file = new File([blob], `capture.${photo.format ?? 'jpg'}`, { type: mimeType });
+              handleFile(file);
+            } catch (decodeErr) {
+              console.warn('[camera] base64 decode failed, falling back to dataUrl path:', decodeErr);
+              // Fallback: re-request with DataUrl if base64 decode fails (should not happen)
+              const photo2 = await CameraPlugin.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: CameraResultType.DataUrl,
+                source: CameraSource.Camera,
+                direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
+                flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+              } as any);
+              if (photo2.dataUrl) {
+                const res = await fetch(photo2.dataUrl);
+                const blob = await res.blob();
+                const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
+                handleFile(file);
+              }
+            }
           }
           return;
         }
-      } catch {
-        // Plugin call failed (e.g. user cancelled) — do not fall through to input
+      } catch (err) {
+        // Distinguish user-cancel from a real crash:
+        // Capacitor throws an error with message containing "cancelled" or "User cancelled"
+        // when the user dismisses the camera — this is not a crash, do not log it as an error.
+        const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+        const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image');
+        if (!isCancel) {
+          console.warn('[camera] native Camera.getPhoto failed:', err);
+        }
+        // Do not fall through to the file input on native — the native camera either
+        // worked, was cancelled, or failed. Falling through to a file input on iOS
+        // would show the wrong UI (a file picker instead of the camera).
         return;
       }
     }

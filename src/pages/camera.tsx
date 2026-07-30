@@ -94,7 +94,7 @@ export interface CameraSettings {
 
 const DEFAULT_SETTINGS: CameraSettings = {
   backupToRoll: false,
-  quality: 'high',
+  quality: 'medium', // Med is the practical field default — fast enough for offline queuing, sharp enough for evidence
   notesEnabled: true,
   noteMode: 'none',
   overlayEnabled: false,
@@ -163,6 +163,22 @@ function formatOverlayTime(d: Date, fmt: '24h' | '12h'): string {
  * Background: semi-transparent dark pill — readable over any field surface
  * without being a heavy solid block.
  */
+/**
+ * processImage — resize + optional watermark burn.
+ *
+ * Hardening rules:
+ *  - HEIC guard: skip canvas entirely for HEIC/HEIF (WKWebView cannot decode them).
+ *  - Canvas size cap: never allocate a canvas larger than 4096×4096 regardless of
+ *    quality setting — prevents OOM crash on large iPhone captures.
+ *  - objectUrl is always revoked in both success and error paths.
+ *  - Canvas is explicitly sized to 0×0 after toBlob to release GPU memory immediately
+ *    (important on devices with limited VRAM — avoids accumulating canvas memory across
+ *    rapid burst captures).
+ *  - toBlob failure falls back to returning the original file rather than throwing,
+ *    so the upload pipeline always has something to send.
+ *  - 10-second timeout: if the image never loads (corrupt file, bad format on device),
+ *    we reject cleanly rather than hanging the upload queue forever.
+ */
 async function processImage(
   file: File,
   settings: CameraSettings,
@@ -170,20 +186,34 @@ async function processImage(
   note?: string | null,
   jobNumber?: string | null,
 ): Promise<Blob> {
-  // HEIC guard — WKWebView cannot decode HEIC in canvas; skip processing
+  // HEIC guard — WKWebView cannot decode HEIC in canvas; return as-is
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const isHeic = file.type.startsWith('image/heic') || file.type.startsWith('image/heif')
     || ext === 'heic' || ext === 'heif';
   if (isHeic) return file;
 
-  return new Promise((resolve, reject) => {
+  // Hard cap: never allocate a canvas larger than 4096px on either axis.
+  // This is the absolute ceiling regardless of quality setting.
+  const CANVAS_MAX = 4096;
+
+  const maxDim = Math.min(
+    settings.quality === 'low' ? 1280 : settings.quality === 'medium' ? 2048 : 4096,
+    CANVAS_MAX,
+  );
+
+  return new Promise((resolve) => {
     const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    let objectUrl: string | null = null;
+
+    // 10-second timeout — corrupt/unsupported files must not block the queue
+    const timeout = setTimeout(() => {
+      if (objectUrl) { try { URL.revokeObjectURL(objectUrl); } catch { /* ignore */ } }
+      console.warn('[processImage] timeout — returning original file');
+      resolve(file);
+    }, 10_000);
 
     img.onload = () => {
-      const maxDim = settings.quality === 'low' ? 1280
-        : settings.quality === 'medium' ? 2048
-        : 4096;
+      clearTimeout(timeout);
 
       let { width, height } = img;
       if (width > maxDim || height > maxDim) {
@@ -192,25 +222,32 @@ async function processImage(
         height = Math.round(height * ratio);
       }
 
+      // Clamp to CANVAS_MAX as a hard safety net
+      width  = Math.min(width,  CANVAS_MAX);
+      height = Math.min(height, CANVAS_MAX);
+
       const canvas = document.createElement('canvas');
-      canvas.width = width;
+      canvas.width  = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
+
       if (!ctx) {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error('Canvas not available'));
+        if (objectUrl) { try { URL.revokeObjectURL(objectUrl); } catch { /* ignore */ } }
+        console.warn('[processImage] canvas context unavailable — returning original file');
+        resolve(file);
         return;
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-      URL.revokeObjectURL(objectUrl);
+
+      // Revoke objectUrl now — img has been drawn, we no longer need the blob URL
+      if (objectUrl) { try { URL.revokeObjectURL(objectUrl); objectUrl = null; } catch { /* ignore */ } }
 
       if (settings.overlayEnabled) {
         const fontSize = settings.overlayFontSize;
         const dateStr = formatOverlayDate(capturedAt, settings.overlayDateFormat);
         const timeStr = formatOverlayTime(capturedAt, settings.overlayTimeFormat);
 
-        // Build watermark lines — bottom-most first (index 0 = bottom of stack)
         const lines: string[] = [];
         if (settings.overlayShowTime) lines.push(timeStr);
         if (settings.overlayShowDate) lines.push(dateStr);
@@ -218,32 +255,24 @@ async function processImage(
         if (settings.overlayIncludeJobNumber && jobNumber?.trim()) lines.push(`#${jobNumber.trim()}`);
         if (settings.overlayLabel.trim()) lines.push(settings.overlayLabel.trim());
 
-        if (lines.length === 0) {
-          // Nothing to burn — skip overlay entirely
-        } else {
+        if (lines.length > 0) {
           ctx.font = `600 ${fontSize}px 'Courier New', monospace`;
           ctx.textBaseline = 'bottom';
 
-          const padding = Math.round(fontSize * 0.7);
-          const lineGap = Math.round(fontSize * 0.35);
-          const lineH = fontSize + lineGap;
-
-          // Measure widest line for pill width
+          const padding  = Math.round(fontSize * 0.7);
+          const lineGap  = Math.round(fontSize * 0.35);
+          const lineH    = fontSize + lineGap;
           const maxTextW = lines.reduce((mx, l) => Math.max(mx, ctx.measureText(l).width), 0);
           const pillPadX = Math.round(fontSize * 0.55);
           const pillPadY = Math.round(fontSize * 0.4);
-          const pillW = maxTextW + pillPadX * 2;
-          const pillH = lines.length * lineH + pillPadY * 2 - lineGap;
+          const pillW    = maxTextW + pillPadX * 2;
+          const pillH    = lines.length * lineH + pillPadY * 2 - lineGap;
+          const pillX    = width  - pillW - padding;
+          const pillY    = height - pillH - padding;
+          const r        = Math.round(fontSize * 0.45);
 
-          const pillX = width - pillW - padding;
-          const pillY = height - pillH - padding;
-          const r = Math.round(fontSize * 0.45);
-
-          // Semi-transparent background pill — dark for white text, light for black text
-          // Opacity kept at 0.45 so the pill reads clearly without blocking the image
           const bgColor = settings.overlayTextColor === 'white'
-            ? 'rgba(0,0,0,0.45)'
-            : 'rgba(255,255,255,0.45)';
+            ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.45)';
 
           ctx.fillStyle = bgColor;
           ctx.beginPath();
@@ -259,12 +288,9 @@ async function processImage(
           ctx.closePath();
           ctx.fill();
 
-          // Text lines — draw bottom-up (lines[0] = bottom)
           ctx.fillStyle = settings.overlayTextColor === 'white' ? '#ffffff' : '#111111';
           lines.forEach((line, i) => {
-            const textX = pillX + pillPadX;
-            const textY = pillY + pillH - pillPadY - i * lineH;
-            ctx.fillText(line, textX, textY);
+            ctx.fillText(line, pillX + pillPadX, pillY + pillH - pillPadY - i * lineH);
           });
         }
       }
@@ -274,14 +300,39 @@ async function processImage(
         : 0.92;
 
       canvas.toBlob(
-        (blob) => { if (blob) resolve(blob); else reject(new Error('Canvas toBlob failed')); },
+        (blob) => {
+          // Release canvas GPU memory immediately after toBlob
+          canvas.width  = 0;
+          canvas.height = 0;
+          if (blob) {
+            resolve(blob);
+          } else {
+            // toBlob returned null — fall back to original file rather than crashing
+            console.warn('[processImage] toBlob returned null — returning original file');
+            resolve(file);
+          }
+        },
         'image/jpeg',
         jpegQuality,
       );
     };
 
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')); };
-    img.src = objectUrl;
+    img.onerror = () => {
+      clearTimeout(timeout);
+      if (objectUrl) { try { URL.revokeObjectURL(objectUrl); } catch { /* ignore */ } }
+      console.warn('[processImage] image load error — returning original file');
+      // Resolve with original file rather than rejecting — keeps upload queue alive
+      resolve(file);
+    };
+
+    try {
+      objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+    } catch {
+      clearTimeout(timeout);
+      console.warn('[processImage] createObjectURL failed — returning original file');
+      resolve(file);
+    }
   });
 }
 
@@ -1713,22 +1764,51 @@ export default function CameraPage() {
   useEffect(() => { void loadCaptures(); }, [loadCaptures]);
 
   // ── Upload a single processed blob ───────────────────────────────────────
+  // Offline-first: if the device is offline at the moment of upload, we mark
+  // the capture as 'error' with a clear "offline" message so the user knows
+  // it will need a manual retry — we do NOT silently drop the capture.
+  // On a network error (fetch throws), we retry once after 3 seconds before
+  // giving up, to handle brief signal drops common on construction sites.
   async function uploadBlob(blob: Blob, clientId: string, capturedAt: string, jobId?: number | null) {
+    // Offline check — fail fast with a clear message rather than hanging
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setCaptures(prev => prev.map(c =>
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: 'Offline — tap to retry when connected' }
+          : c
+      ));
+      return;
+    }
+
     setCaptures(prev => prev.map(c =>
       c.clientId === clientId ? { ...c, status: 'uploading' } : c
     ));
-    try {
+
+    const attemptUpload = async (): Promise<Response> => {
       const fd = new FormData();
       fd.append('photos', blob, 'capture.jpg');
       fd.append('capturedAt', capturedAt);
       if (jobId) fd.append('jobId', String(jobId));
-
-      const res = await fetch('/api/camera-captures', {
+      return fetch('/api/camera-captures', {
         method: 'POST', credentials: 'include', body: fd,
       });
+    };
+
+    try {
+      let res: Response;
+      try {
+        res = await attemptUpload();
+      } catch (networkErr) {
+        // First attempt failed with a network error — wait 3s and retry once.
+        // This handles brief signal drops without immediately showing an error.
+        console.warn('[uploadBlob] network error on first attempt, retrying in 3s:', networkErr);
+        await new Promise(r => setTimeout(r, 3000));
+        res = await attemptUpload(); // throws again if still offline → caught below
+      }
+
       if (!res.ok) {
         const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Upload failed');
+        throw new Error(d.error ?? `Upload failed (${res.status})`);
       }
       const d = await res.json() as { captures: Array<{ id: number; url: string }> };
       const saved = d.captures[0];
@@ -1739,9 +1819,11 @@ export default function CameraPage() {
         return { ...c, id: saved.id, serverUrl: saved.url, localUrl: null, status: 'done', errorMsg: null };
       }));
     } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      const isOffline = !navigator.onLine || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch');
       setCaptures(prev => prev.map(c =>
         c.clientId === clientId
-          ? { ...c, status: 'error', errorMsg: e instanceof Error ? e.message : 'Upload failed' }
+          ? { ...c, status: 'error', errorMsg: isOffline ? 'Offline — tap to retry when connected' : msg }
           : c
       ));
     }
@@ -1791,7 +1873,10 @@ export default function CameraPage() {
         }
 
         await uploadBlob(blob, clientId, capturedAt, job?.id ?? null);
-      } catch {
+      } catch (err) {
+        // processImage resolved (never rejects now), but uploadBlob could throw
+        // in an unexpected path. Fall back to uploading the raw file.
+        console.warn('[handleFileFromPicker] processing/upload error, retrying with raw file:', err);
         await uploadBlob(file, clientId, capturedAt, job?.id ?? null);
       }
     })();
