@@ -28,6 +28,10 @@
  *    photo library access, we surface a clear message with a deep-link to
  *    Settings rather than silently failing.
  *
+ * 6. VITE BUILD SAFETY — All Capacitor plugin access uses window.Capacitor.Plugins
+ *    globals, NOT dynamic imports. Dynamic imports of @capacitor/* packages are
+ *    resolved at Vite build time and can produce broken chunks in the iOS bundle.
+ *
  * Usage:
  *   const picker = useIosMediaPicker();
  *
@@ -76,17 +80,6 @@ export interface IosMediaPickerState {
   /**
    * Explainer modal state — set when the pre-permission explainer should be shown.
    * Callers render <PermissionExplainerModal> when this is non-null.
-   *
-   * Example:
-   *   {picker.explainer && (
-   *     <PermissionExplainerModal
-   *       type={picker.explainer.type}
-   *       open
-   *       denied={picker.explainer.denied}
-   *       onNotNow={picker.explainer.onNotNow}
-   *       onEnable={picker.explainer.onEnable}
-   *     />
-   *   )}
    */
   explainer: {
     type: 'camera' | 'photos';
@@ -121,24 +114,43 @@ function safePreviewUrl(file: File): string | null {
   }
 }
 
+// ── Capacitor Camera plugin access via globals (NO dynamic imports) ───────────
+// Dynamic imports of @capacitor/* are resolved at Vite build time and can
+// produce broken chunks in the iOS Capacitor bundle. Always use the global.
+
+type CapCameraPlugin = {
+  checkPermissions: () => Promise<{ camera?: string; photos?: string }>;
+  requestPermissions: (opts: { permissions: string[] }) => Promise<{ camera?: string; photos?: string }>;
+};
+
+function getCapCamera(): CapCameraPlugin | null {
+  if (typeof window === 'undefined') return null;
+  const cap = (window as {
+    Capacitor?: { Plugins?: { Camera?: CapCameraPlugin } }
+  }).Capacitor;
+  return cap?.Plugins?.Camera ?? null;
+}
+
 /**
  * Check / request camera permission via Capacitor on native iOS/Android.
- * Returns 'granted' | 'denied' | 'unknown' (web / non-native).
+ * Returns 'granted' | 'denied' | 'unknown' (web / non-native / plugin missing).
  */
 async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    // Dynamically import to avoid loading Capacitor on web
-    const { Camera, CameraPermissionState } = await import('@capacitor/camera');
+    const Camera = getCapCamera();
+    if (!Camera) return 'unknown';
+
     const status = await Camera.checkPermissions();
-    if (status.camera === 'granted') return 'granted';
-    if (status.camera === 'denied') return 'denied';
+    const cam = status.camera ?? 'prompt';
+    if (cam === 'granted') return 'granted';
+    if (cam === 'denied') return 'denied';
+
     // 'prompt' or 'prompt-with-rationale' — request it
     const requested = await Camera.requestPermissions({ permissions: ['camera'] });
-    if ((requested.camera as CameraPermissionState) === 'granted') return 'granted';
-    return 'denied';
+    return (requested.camera === 'granted') ? 'granted' : 'denied';
   } catch {
-    // @capacitor/camera may not be installed — fall back to browser input
+    // Plugin unavailable — fall back to browser input (no permission needed on web)
     return 'unknown';
   }
 }
@@ -149,15 +161,17 @@ async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown
 async function ensurePhotosPermission(): Promise<'granted' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    const { Camera, CameraPermissionState } = await import('@capacitor/camera');
+    const Camera = getCapCamera();
+    if (!Camera) return 'unknown';
+
     const status = await Camera.checkPermissions();
-    const photos = status.photos ?? status.camera; // Android uses 'camera' for both
+    const photos = status.photos ?? status.camera ?? 'prompt';
     if (photos === 'granted' || photos === 'limited') return 'granted';
     if (photos === 'denied') return 'denied';
+
     const requested = await Camera.requestPermissions({ permissions: ['photos'] });
-    const rPhotos = (requested.photos ?? requested.camera) as CameraPermissionState;
-    if (rPhotos === 'granted' || rPhotos === 'limited') return 'granted';
-    return 'denied';
+    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
+    return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
   } catch {
     return 'unknown';
   }
@@ -184,10 +198,9 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
 
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
-  // Wrapper div so callers can render both inputs with a single ref
   const inputsRef       = useRef<HTMLDivElement>(null);
 
-  // Revoke previous blob URL when a new file is selected
+  // Revoke previous blob URL on unmount
   const prevUrlRef = useRef<string | null>(null);
   useEffect(() => {
     return () => {
@@ -196,7 +209,6 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, []);
 
   const handleFile = useCallback((f: File) => {
-    // Revoke previous blob URL
     if (prevUrlRef.current) {
       URL.revokeObjectURL(prevUrlRef.current);
       prevUrlRef.current = null;
@@ -215,11 +227,11 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) handleFile(f);
-    // Reset input so the same file can be re-selected
+    // Reset so the same file can be re-selected
     e.target.value = '';
   }, [handleFile]);
 
-  // ── Internal: actually request camera permission + open input ─────────────
+  // ── Internal: check camera permission + open input ────────────────────────
   const doOpenCamera = useCallback(async () => {
     setDenied(null);
     setChecking(true);
@@ -227,7 +239,6 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       const perm = await ensureCameraPermission();
       if (perm === 'denied') {
         setDenied('camera');
-        // Show denied variant of explainer
         setExplainer({
           type: 'camera',
           denied: true,
@@ -242,7 +253,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     cameraInputRef.current?.click();
   }, []);
 
-  // ── Internal: actually request photos permission + open input ─────────────
+  // ── Internal: check photos permission + open input ────────────────────────
   const doOpenLibrary = useCallback(async () => {
     setDenied(null);
     setChecking(true);
@@ -266,7 +277,6 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
   const openCamera = useCallback(async () => {
-    // Only show explainer on native iOS/Android — browser doesn't need it
     if (isNative() && permExplainer.shouldShow('camera')) {
       setExplainer({
         type: 'camera',
@@ -319,15 +329,6 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     setExplainer(null);
   }, []);
 
-  // Attach event listeners to the inputs once the wrapper div mounts
-  // (We can't use JSX here since this is a .ts file — callers render the inputs)
-  useEffect(() => {
-    const cam = cameraInputRef.current;
-    const lib = libraryInputRef.current;
-    if (!cam || !lib) return;
-    // The onChange handler is attached via the ref in the returned inputsRef
-  }, []);
-
   return {
     file,
     previewUrl,
@@ -339,7 +340,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     clear,
     inputsRef,
     explainer,
-    // Expose refs so callers can render the inputs
+    // Expose refs so callers can render the inputs via IosMediaInputs
     _cameraInputRef: cameraInputRef,
     _libraryInputRef: libraryInputRef,
     _handleInputChange: handleInputChange,

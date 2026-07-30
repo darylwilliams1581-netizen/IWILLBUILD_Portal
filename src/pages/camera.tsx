@@ -21,7 +21,7 @@
  */
 
 import {
-  useState, useEffect, useRef, useCallback, useId,
+  useState, useEffect, useRef, useCallback,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -145,8 +145,8 @@ async function processImage(
     const objectUrl = URL.createObjectURL(file);
 
     img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-
+      // Draw BEFORE revoking — some iOS versions blank the canvas if the
+      // objectUrl is revoked before drawImage completes
       const maxDim = settings.quality === 'low' ? 1280
         : settings.quality === 'medium' ? 2048
         : 4096;
@@ -162,9 +162,16 @@ async function processImage(
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('Canvas not available')); return; }
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Canvas not available'));
+        return;
+      }
 
       ctx.drawImage(img, 0, 0, width, height);
+
+      // Safe to revoke now — drawImage has consumed the image data
+      URL.revokeObjectURL(objectUrl);
 
       if (settings.overlayEnabled) {
         const fontSize = settings.overlayFontSize;
@@ -349,9 +356,11 @@ function SettingsSheet({
   async function openNativeSettings() {
     if (!isNative()) return;
     try {
-      const { App } = await import('@capacitor/app');
-      // @ts-expect-error openSettings available on some Capacitor versions
-      await App.openSettings?.();
+      // Use window.Capacitor.Plugins global — avoids Vite dynamic import resolution
+      const cap = (window as {
+        Capacitor?: { Plugins?: { App?: { openUrl: (opts: { url: string }) => Promise<void> } } }
+      }).Capacitor;
+      await cap?.Plugins?.App?.openUrl({ url: 'app-settings:' });
     } catch { /* silent */ }
   }
 
@@ -963,9 +972,12 @@ function CaptureRow({
 export default function CameraPage() {
   const navigate = useNavigate();
 
+  // Settings ref — keeps handleFileFromPicker stable while always reading
+  // the latest settings. Required because the picker callback is passed to
+  // useIosMediaPicker before settings state is declared.
+  const settingsRef = useRef<CameraSettings>(DEFAULT_SETTINGS);
+
   // ── Permission-safe media picker ──────────────────────────────────────────
-  // Handles camera + photo library permissions, HEIC safety, denied-state UI.
-  // On web: falls back to plain file inputs with no permission checks.
   const picker = useIosMediaPicker(handleFileFromPicker);
   const pickerExt = picker as typeof picker & {
     _cameraInputRef: React.RefObject<HTMLInputElement>;
@@ -1012,7 +1024,11 @@ export default function CameraPage() {
     fetch('/api/camera-settings', { credentials: 'include' })
       .then(r => r.json())
       .then((d: { settings?: CameraSettings }) => {
-        if (d.settings) setSettings(s => ({ ...s, ...d.settings }));
+        if (d.settings) {
+          const merged = { ...DEFAULT_SETTINGS, ...d.settings };
+          setSettings(merged);
+          settingsRef.current = merged;
+        }
       })
       .catch(() => {})
       .finally(() => setSettingsLoaded(true));
@@ -1022,6 +1038,8 @@ export default function CameraPage() {
   const saveSettings = useCallback((patch: Partial<CameraSettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...patch };
+      // Keep ref in sync so handleFileFromPicker always reads current settings
+      settingsRef.current = next;
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(async () => {
         setSettingsSaving(true);
@@ -1105,10 +1123,14 @@ export default function CameraPage() {
   }
 
   // ── Handle a file from the picker (called by useIosMediaPicker) ───────────
+  // Uses settingsRef.current — not settings state — so this function never
+  // closes over a stale settings value even though it's defined before the
+  // settings state is declared in the component body.
   function handleFileFromPicker(file: File) {
     const clientId = makeClientId();
     const capturedAt = new Date().toISOString();
     const capturedDate = new Date(capturedAt);
+    const currentSettings = settingsRef.current;
 
     // Optimistic item — use blob URL for preview (safe, no HEIC decode)
     const localUrl = URL.createObjectURL(file);
@@ -1120,10 +1142,10 @@ export default function CameraPage() {
 
     void (async () => {
       try {
-        const blob = await processImage(file, settings, capturedDate);
+        const blob = await processImage(file, currentSettings, capturedDate);
 
         // Camera roll backup — non-blocking, failure never stops capture
-        if (settings.backupToRoll) {
+        if (currentSettings.backupToRoll) {
           const result = await saveToDeviceCameraRoll(blob);
           if (result === 'permission_denied') {
             setBackupPermDenied(true);
@@ -1170,20 +1192,27 @@ export default function CameraPage() {
   // ── Bulk attach ───────────────────────────────────────────────────────────
   async function handleBulkAttachJob(job: JobOption) {
     const ids = Array.from(selectedIds);
-    setCaptures(prev => prev.map(c =>
-      ids.includes(c.clientId) ? { ...c, jobId: job.id, jobName: job.name } : c
-    ));
+    // Snapshot current captures inside the state updater to avoid stale closure
+    let serverItems: CaptureItem[] = [];
+    setCaptures(prev => {
+      serverItems = prev.filter(c => ids.includes(c.clientId) && c.id != null);
+      return prev.map(c =>
+        ids.includes(c.clientId) ? { ...c, jobId: job.id, jobName: job.name } : c
+      );
+    });
     setSelectedIds(new Set());
-    const serverItems = captures.filter(c => ids.includes(c.clientId) && c.id != null);
-    await Promise.allSettled(
-      serverItems.map(c =>
-        fetch(`/api/camera-captures/${c.id}`, {
-          method: 'PATCH', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId: job.id }),
-        })
-      )
-    );
+    // Fire PATCHes after state update — serverItems captured above
+    setTimeout(async () => {
+      await Promise.allSettled(
+        serverItems.map(c =>
+          fetch(`/api/camera-captures/${c.id}`, {
+            method: 'PATCH', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId: job.id }),
+          })
+        )
+      );
+    }, 0);
   }
 
   // ── Save note ─────────────────────────────────────────────────────────────
@@ -1570,33 +1599,6 @@ export default function CameraPage() {
                 aria-label="Delete selected"
               >
                 <Trash2 size={13} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Attached confirmation strip */}
-      <AnimatePresence>
-        {!selectMode && attached > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
-            className="absolute left-0 right-0 z-10 px-4"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-          >
-            <div
-              className="flex items-center gap-2 bg-violet-600 rounded-2xl px-4 py-2.5"
-              style={{ boxShadow: '0 4px 20px rgba(124,58,237,0.4)' }}
-            >
-              <CheckCircle2 size={14} className="text-white shrink-0" />
-              <p className="text-white text-xs font-semibold flex-1">
-                {attached} photo{attached !== 1 ? 's' : ''} attached to jobs
-              </p>
-              <button
-                onClick={() => navigate('/jobs')}
-                className="text-violet-200 text-xs font-bold hover:text-white transition-colors shrink-0"
-              >
-                View →
               </button>
             </div>
           </motion.div>

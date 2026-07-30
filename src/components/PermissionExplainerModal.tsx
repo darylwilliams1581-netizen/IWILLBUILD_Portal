@@ -139,9 +139,11 @@ export default function PermissionExplainerModal({
   async function handleOpenSettings() {
     if (isNative()) {
       try {
-        const { App } = await import('@capacitor/app');
-        // @ts-expect-error openSettings may not be typed in all versions
-        await App.openSettings?.();
+        // Use window.Capacitor.Plugins global — avoids Vite dynamic import resolution
+        const cap = (window as {
+          Capacitor?: { Plugins?: { App?: { openUrl: (opts: { url: string }) => Promise<void> } } }
+        }).Capacitor;
+        await cap?.Plugins?.App?.openUrl({ url: 'app-settings:' });
       } catch { /* silent */ }
     }
     onNotNow();
