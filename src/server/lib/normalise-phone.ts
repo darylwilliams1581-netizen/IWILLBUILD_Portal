@@ -1,31 +1,32 @@
 /**
- * normalisePhone — convert a local-format mobile number to E.164.
+ * normalisePhone — ensure a phone number is in E.164 format.
  *
- * Supported local formats:
- *   Australia  04xx xxx xxx  →  +614xxxxxxxx  (country code +61)
- *   New Zealand  02x xxx xxxx  →  +642xxxxxxxx  (country code +64)
+ * The frontend PhoneInput component always emits E.164 (+countryDialLocalNumber),
+ * so this is primarily a safety net for direct API calls or legacy stored values.
  *
- * Numbers already in E.164 (starting with +) are returned unchanged.
- * Anything else is returned as-is and Twilio will reject it with a clear error.
+ * Supported local-format fallbacks (no leading +):
+ *   Australia  04xx xxxxxxx  (10 digits, starts with 04)  →  +614xxxxxxxx
+ *   New Zealand  02x xxxxxxx/xxxxxxxx  (9-10 digits, starts with 02)  →  +642xxxxxxx
  *
- * Spaces and hyphens are stripped before matching.
+ * Everything else starting with 0 is left as-is — Twilio will surface a clear error
+ * rather than silently misrouting to the wrong country.
  */
 export function normalisePhone(raw: string): string {
-  const stripped = raw.trim().replace(/[\s\-]/g, '');
+  const stripped = raw.trim().replace(/[\s\-().]/g, '');
 
   // Already E.164
   if (stripped.startsWith('+')) return stripped;
 
-  // Australian mobile: 04xx xxxxxxx  (10 digits starting with 04)
+  // Australian mobile: 04xx xxxxxxx (10 digits)
   if (/^04\d{8}$/.test(stripped)) {
-    return `+61${stripped.slice(1)}`; // drop leading 0, prepend +61
+    return `+61${stripped.slice(1)}`;
   }
 
-  // New Zealand mobile: 02x xxxxxxx  (9–10 digits starting with 02)
+  // New Zealand mobile: 02x xxxxxxx or 02x xxxxxxxx (9–10 digits)
   if (/^02\d{7,8}$/.test(stripped)) {
-    return `+64${stripped.slice(1)}`; // drop leading 0, prepend +64
+    return `+64${stripped.slice(1)}`;
   }
 
-  // Unknown format — return as-is; Twilio will surface a clear error
+  // Unknown — return as-is
   return stripped;
 }

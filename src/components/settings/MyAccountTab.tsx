@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -93,14 +94,13 @@ function PhoneVerificationSection() {
   async function handleSavePhone(e: React.FormEvent) {
     e.preventDefault();
     setSavePhoneError(''); setSavePhoneOk(false);
-    const trimmed = editPhone.trim().replace(/\s+/g, '');
-    if (!trimmed) { setSavePhoneError('Please enter a phone number.'); return; }
+    if (!editPhone || editPhone === '+') { setSavePhoneError('Please enter a phone number.'); return; }
     setSavingPhone(true);
     try {
-      const res = await fetch('/api/me/phone', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ phone: trimmed }) });
-      const data = await res.json() as { ok?: boolean; error?: string };
+      const res = await fetch('/api/me/phone', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ phone: editPhone }) });
+      const data = await res.json() as { ok?: boolean; error?: string; phoneNumber?: string };
       if (!res.ok) { setSavePhoneError(data.error ?? 'Failed to save phone number.'); }
-      else { setSavePhoneOk(true); setSavedPhone(trimmed); setPhoneVerified(false); setVerifyStep('idle'); setTimeout(() => setSavePhoneOk(false), 3000); }
+      else { setSavePhoneOk(true); setSavedPhone(data.phoneNumber ?? editPhone); setPhoneVerified(false); setVerifyStep('idle'); setTimeout(() => setSavePhoneOk(false), 3000); }
     } catch { setSavePhoneError('Network error. Please try again.'); } finally { setSavingPhone(false); }
   }
 
@@ -140,15 +140,17 @@ function PhoneVerificationSection() {
         <form onSubmit={handleSavePhone} className="flex flex-col gap-3">
           <label className={labelClass}><span className="flex items-center gap-1"><Phone size={11} /> Mobile Number</span></label>
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Smartphone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="04xx xxx xxx or 02x xxx xxxx" autoComplete="tel" className={`${inputClass} pl-9`} />
+            <div className="flex-1">
+              <PhoneInput
+                value={editPhone}
+                onChange={setEditPhone}
+                disabled={savingPhone}
+              />
             </div>
-            <button type="submit" disabled={savingPhone || editPhone.trim().replace(/\s+/g, '') === savedPhone} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+            <button type="submit" disabled={savingPhone || !editPhone || editPhone === savedPhone} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
               {savingPhone ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}Save
             </button>
           </div>
-          <p className="text-xs text-slate-400">AU: <span className="font-mono">04xx xxx xxx</span> · NZ: <span className="font-mono">02x xxx xxxx</span> · or full international <span className="font-mono">+xx...</span></p>
           {savePhoneError && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{savePhoneError}</p>}
           {savePhoneOk && <p className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 size={11} />Phone number saved. Now verify it below.</p>}
         </form>
