@@ -1361,7 +1361,7 @@ export default function CameraPage() {
         <div
           className="flex items-center justify-between shrink-0"
           style={{
-            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 12px)',
             paddingBottom: '12px',
             paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 16px)',
             paddingRight: 'calc(env(safe-area-inset-right, 0px) + 16px)',
