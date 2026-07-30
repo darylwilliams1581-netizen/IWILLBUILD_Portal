@@ -393,7 +393,8 @@ export default function PrestartPage() {
       </Helmet>
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+      <div className="bg-white border-b border-gray-100 px-4 flex items-center gap-3 shrink-0"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)', paddingBottom: '12px', boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
         <button
           onClick={() => {
             if (step === 'form') { setStep('pick'); setSelectedVehicle(null); }
@@ -426,7 +427,7 @@ export default function PrestartPage() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-lg mx-auto px-4 py-5 pb-12">
+        <div className="max-w-lg mx-auto px-4 py-5" style={{ paddingBottom: 'max(3rem, env(safe-area-inset-bottom))' }}>
           <AnimatePresence mode="wait">
             {step === 'pick' && (
               <motion.div key="pick" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
