@@ -1244,16 +1244,10 @@ export default function FleetDetailPage() {
         {asset && (
           <div className="shrink-0 px-4 py-3 bg-white border-t border-border flex items-center gap-2">
             <button
-              onClick={() => setShowPrestartModal(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-colors"
-            >
-              <ClipboardList size={15} /> Start Prestart
-            </button>
-            <button
               onClick={() => setShowEditModal(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-border hover:bg-muted text-sm font-semibold rounded-xl transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border hover:bg-muted text-sm font-semibold rounded-xl transition-colors"
             >
-              <Edit2 size={15} />
+              <Edit2 size={15} /> Edit Asset
             </button>
             {(isAdmin || isOwner) && (
               <button
