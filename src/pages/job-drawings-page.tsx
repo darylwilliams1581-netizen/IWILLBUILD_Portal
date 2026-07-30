@@ -77,7 +77,7 @@ export default function JobDrawingsPage() {
           style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="flex items-center gap-2 px-3 py-2">
-            <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+            <button onClick={() => navigate('/home')} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
               <ArrowLeft size={16} />
             </button>
             <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
