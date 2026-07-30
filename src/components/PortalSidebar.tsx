@@ -108,7 +108,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
 
 // ── Manage group ──────────────────────────────────────────────────────────────
 const adminItems = [
-  { label: 'Subscription', icon: CreditCard,  href: '/billing',  adminOnly: false, ownerOnly: false, permKey: null as string | null },
+  { label: 'My Billing', icon: CreditCard,  href: '/billing',  adminOnly: false, ownerOnly: false, permKey: null as string | null },
   { label: 'Settings',     icon: Settings,    href: '/settings', adminOnly: false, ownerOnly: false, permKey: null as string | null },
   { label: 'Dazza AI',     icon: Bot,         href: '/dazza-ai', adminOnly: false, ownerOnly: true,  permKey: null as string | null },
 ] as const;

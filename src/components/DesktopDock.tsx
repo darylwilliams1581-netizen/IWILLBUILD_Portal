@@ -81,7 +81,7 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#475569', adminOnly: true },
   // ── Account / Help ────────────────────────────────────────────────────────
   { label: 'Team',    icon: UserCircle, href: '/team',    color: '#8b5cf6', adminOnly: true, dividerBefore: true },
-  { label: 'Billing', icon: CreditCard, href: '/billing', color: '#0ea5e9', adminOnly: true },
+  { label: 'My Billing', icon: CreditCard, href: '/billing', color: '#0ea5e9', adminOnly: true },
   { label: 'Help',    icon: HelpCircle, href: '/help',    color: '#10b981' },
 ];
 
