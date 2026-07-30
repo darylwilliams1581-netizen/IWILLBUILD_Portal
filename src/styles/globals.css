@@ -515,13 +515,13 @@ input, select, textarea {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   column-gap: 10px;
-  row-gap: 7px;
+  row-gap: 4px;
 }
 
 @media (min-width: 640px) {
   .home-icon-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 9px 14px;
+    gap: 6px 14px;
   }
 }
 

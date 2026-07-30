@@ -59,7 +59,7 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
       transition={{ type: 'spring', stiffness: 440, damping: 20 }}
       onClick={() => onNavigate(item.href)}
       className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
-      style={{ gap: '5px' }}
+      style={{ gap: '3px' }}
     >
       {/* Icon tile — slightly smaller on mobile (54 px) vs desktop (66 px) */}
       <div
@@ -108,7 +108,7 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          minHeight: '23px',
+          minHeight: '20px',
           wordBreak: 'break-word',
           hyphens: 'auto',
         }}
