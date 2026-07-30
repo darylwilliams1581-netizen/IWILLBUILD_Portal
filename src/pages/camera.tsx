@@ -1959,11 +1959,12 @@ export default function CameraPage() {
         {/* ── Live viewfinder watermark — mirrors what gets burned into the photo ── */}
         {settings.overlayEnabled && settingsLoaded && (
           <div
-            className="absolute pointer-events-none"
+            className="fixed pointer-events-none"
             style={{
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 104px + 1rem)',
-              right: '14px',
-              zIndex: 10,
+              /* dock = note row ~36px + shutter row ~88px + safe-area-bottom + extra breathing room */
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px + 16px)',
+              right: 'calc(env(safe-area-inset-right, 0px) + 14px)',
+              zIndex: 15,
             }}
           >
             {(() => {
