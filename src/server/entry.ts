@@ -1040,6 +1040,24 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1a-rr-archive. Add archive columns to risk_register (idempotent)
+  for (const colDef of [
+    "archived_at    DATETIME NULL",
+    "archived_by    VARCHAR(255) NULL",
+    "archive_reason TEXT NULL",
+  ]) {
+    const colName = colDef.trim().split(/\s+/)[0];
+    try {
+      await db.execute(sql.raw(`ALTER TABLE risk_register ADD COLUMN ${colDef}`));
+      console.log(`[startup-migration] risk_register.${colName} added`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] risk_register.${colName} alter failed:`, msg);
+      }
+    }
+  }
+
   // 1a-cc. Ensure camera_captures table exists
   try {
     await db.execute(sql`
@@ -2422,6 +2440,24 @@ async function runStartupMigrations() {
     }
   }
 
+  // incidents-archive. Add archive columns to incidents (idempotent)
+  for (const colDef of [
+    "archived_at    DATETIME NULL",
+    "archived_by    VARCHAR(255) NULL",
+    "archive_reason TEXT NULL",
+  ]) {
+    const colName = colDef.trim().split(/\s+/)[0];
+    try {
+      await db.execute(sql.raw(`ALTER TABLE incidents ADD COLUMN ${colDef}`));
+      console.log(`[startup-migration] incidents.${colName} added`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] incidents.${colName} alter failed:`, msg);
+      }
+    }
+  }
+
   try {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS incident_corrective_actions (
@@ -2896,6 +2932,10 @@ app.post("/api/incidents/:incidentId/corrective-actions", incidents_incidentId_c
 app.put("/api/incidents/:incidentId/corrective-actions/:actionId", incidents_incidentId_corrective_actions_actionId_put_253);
 app.post("/api/incidents/:incidentId/third-parties", incidents_incidentId_third_parties_post_254);
 app.delete("/api/incidents/:incidentId/third-parties/:thirdPartyId", incidents_incidentId_third_parties_thirdPartyId_delete_255);
+import incidentsArchivePost from "./api/incidents/[id]/archive/POST.js";
+import incidentsUnarchivePost from "./api/incidents/[id]/unarchive/POST.js";
+app.post("/api/incidents/:incidentId/archive", incidentsArchivePost);
+app.post("/api/incidents/:incidentId/unarchive", incidentsUnarchivePost);
 app.get("/api/integrations/myob/auth-url", integrations_myob_auth_url_get_256);
 app.get("/api/integrations/myob/callback", integrations_myob_callback_get_257);
 app.post("/api/integrations/myob/disconnect", integrations_myob_disconnect_post_258);
@@ -3209,6 +3249,10 @@ app.get("/api/risk-register", risk_register_get_565);
 app.post("/api/risk-register", risk_register_post_566);
 app.get("/api/risk-register/:id", risk_register_id_get_567);
 app.put("/api/risk-register/:id", risk_register_id_put_568);
+import riskRegisterArchivePost from "./api/risk-register/[id]/archive/POST.js";
+import riskRegisterUnarchivePost from "./api/risk-register/[id]/unarchive/POST.js";
+app.post("/api/risk-register/:id/archive", riskRegisterArchivePost);
+app.post("/api/risk-register/:id/unarchive", riskRegisterUnarchivePost);
 app.post("/api/safety/ai/draft", safety_ai_draft_post_569);
 app.get("/api/safety/documents", safety_documents_get_570);
 app.post("/api/safety/documents", safety_documents_post_571);

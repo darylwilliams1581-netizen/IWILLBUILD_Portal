@@ -26,11 +26,15 @@ export default async function handler(req: Request, res: Response) {
       dateTo,
       jobLinked,
       jobId,
+      archived,
       limit = 100,
       offset = 0,
     } = req.query as Record<string, string | undefined>;
 
+    // By default show only active (non-archived) records; pass archived=1 to see the archive
+    const showArchived = archived === '1' || archived === 'true';
     let whereClause = `WHERE i.company_id = ${profile.companyId}`;
+    whereClause += showArchived ? ' AND i.archived_at IS NOT NULL' : ' AND i.archived_at IS NULL';
     if (status) whereClause += ` AND i.status = '${status}'`;
     if (severity) whereClause += ` AND i.severity = '${severity}'`;
     if (incidentType) whereClause += ` AND i.incident_type = '${incidentType}'`;
