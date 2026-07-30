@@ -829,9 +829,10 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
   const navigate = useNavigate();
   const [assets, setAssets] = useState<FleetOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     setLoading(true);
     fetch('/api/fleet?limit=100', { credentials: 'include' })
       .then(r => r.json())
@@ -841,6 +842,14 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
       .catch(() => setAssets([]))
       .finally(() => setLoading(false));
   }, [open]);
+
+  const filtered = query.trim()
+    ? assets.filter(a =>
+        a.name.toLowerCase().includes(query.toLowerCase()) ||
+        (a.rego ?? '').toLowerCase().includes(query.toLowerCase()) ||
+        (a.type ?? '').toLowerCase().includes(query.toLowerCase())
+      )
+    : assets;
 
   return (
     <AnimatePresence>
@@ -876,6 +885,25 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
                 </button>
               </div>
 
+              {/* Search */}
+              <div className="px-4 pb-2 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search vehicles, rego…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                  />
+                  {query && (
+                    <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="h-px bg-gray-100 shrink-0 mx-4" />
 
               {/* Vehicle list */}
@@ -885,9 +913,11 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
                     <Loader2 size={16} className="animate-spin" />
                     <span>Loading fleet…</span>
                   </div>
-                ) : assets.length === 0 ? (
-                  <p className="text-center text-gray-400 text-sm py-8">No fleet assets found</p>
-                ) : assets.map(asset => (
+                ) : filtered.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-8">
+                    {query ? 'No vehicles match your search' : 'No fleet assets found'}
+                  </p>
+                ) : filtered.map(asset => (
                   <button
                     key={asset.id}
                     onClick={() => { onClose(); navigate(`/driver?vehicleId=${asset.id}`); }}
