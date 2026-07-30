@@ -117,89 +117,111 @@ function AddDocModal({ jobId, onClose, onAdded }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <>
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 12 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+        className="pointer-events-auto bg-white rounded-3xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden"
+        style={{ maxHeight: 'min(560px, calc(100dvh - 80px))' }}
+        onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-teal-50 rounded-lg"><FileCheck size={16} className="text-teal-600" /></div>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-teal-100 flex items-center justify-center shrink-0">
+              <FileCheck size={17} className="text-teal-600" />
+            </div>
             <div>
-              <h2 className="font-heading font-bold text-base">Add Document to Job</h2>
-              <p className="text-xs text-slate-400">Select from your SWMS library</p>
+              <h2 className="text-gray-900 font-bold text-base leading-tight">Add Document</h2>
+              <p className="text-gray-400 text-xs leading-tight mt-0.5">Select from your SWMS library</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+            aria-label="Close"
+          >
+            <X size={15} />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        {/* Search */}
+        <div className="px-4 pb-2 shrink-0">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+            <Search size={14} className="text-gray-400 shrink-0" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search documents…"
-              className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+              className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
             />
+            {search && <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
           </div>
-
-          {loading && <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-teal-600" /></div>}
-
-          {!loading && (
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              {filtered.length === 0 && (
-                <div className="text-center py-6 px-4">
-                  <p className="text-sm text-slate-400 mb-3">No templates found — create some in the SWMS Library first</p>
-                  <button
-                    onClick={() => { onClose(); navigate('/safety'); }}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <FileText size={12} />
-                    Go to SWMS Library
-                  </button>
-                </div>
-              )}
-              {filtered.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => toggle(t.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selected.has(t.id) ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
-                >
-                  {selected.has(t.id)
-                    ? <CheckSquare size={14} className="text-teal-600 shrink-0" />
-                    : <Square size={14} className="text-slate-300 shrink-0" />}
-                  <span className="flex-1 truncate font-medium text-slate-800">{t.title}</span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${statusBadge(t.status)}`}>{t.status}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm">
-              <AlertCircle size={14} className="shrink-0" />{error}
-            </div>
-          )}
         </div>
 
-        <div className="px-5 pb-5 flex gap-3 border-t border-slate-100 pt-4 shrink-0">
-          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
+        <div className="h-px bg-gray-100 shrink-0 mx-4" />
+
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+          {loading && <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-teal-600" /></div>}
+
+          {!loading && filtered.length === 0 && (
+            <div className="text-center py-6 px-4">
+              <p className="text-sm text-gray-400 mb-3">No templates found — create some in the SWMS Library first</p>
+              <button
+                onClick={() => { onClose(); navigate('/safety'); }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <FileText size={12} />Go to SWMS Library
+              </button>
+            </div>
+          )}
+
+          {!loading && filtered.map(t => (
+            <button
+              key={t.id}
+              onClick={() => toggle(t.id)}
+              className={`w-full flex items-center gap-3 border rounded-2xl px-4 py-3 text-left transition-colors ${
+                selected.has(t.id)
+                  ? 'bg-teal-50 border-teal-200'
+                  : 'bg-gray-50 hover:bg-teal-50 hover:border-teal-200 border-gray-200'
+              }`}
+            >
+              {selected.has(t.id)
+                ? <CheckSquare size={14} className="text-teal-600 shrink-0" />
+                : <Square size={14} className="text-gray-300 shrink-0" />}
+              <span className="flex-1 truncate font-semibold text-sm text-gray-900">{t.title}</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${statusBadge(t.status)}`}>{t.status}</span>
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div className="mx-4 mb-2 flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm shrink-0">
+            <AlertCircle size={14} className="shrink-0" />{error}
+          </div>
+        )}
+
+        <div className="px-4 pb-4 pt-3 flex gap-3 border-t border-gray-100 shrink-0">
+          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">Cancel</button>
           <button
             onClick={() => void handleAdd()}
             disabled={saving || selected.size === 0}
-            className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             Add {selected.size > 0 ? `${selected.size} Doc${selected.size > 1 ? 's' : ''}` : 'Docs'}
           </button>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -1076,8 +1098,34 @@ export default function JobFieldDocsPage() {
       {/* Docs view — only shown once a job is selected */}
       {selectedJob && (<>
 
+      {/* ── Top bar (matches forms layout) ── */}
+      <div
+        className="bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 sticky top-0 z-10"
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)', paddingTop: 'max(env(safe-area-inset-top), 0px)' }}
+      >
+        <div className="flex items-center gap-3 w-full px-4 py-3">
+          <button onClick={() => navigate('/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
+            <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{selectedJob.name}</h1>
+            <div className="hidden md:flex items-center gap-1 text-xs text-gray-400 leading-tight">
+              <span className="text-gray-500 font-medium">Field Docs</span>
+              {selectedJob.job_number && <><span>/</span><span className="font-mono">{selectedJob.job_number}</span></>}
+            </div>
+          </div>
+          {/* Desktop + Add */}
+          <button
+            onClick={() => setShowAdd(true)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
+          >
+            <Plus size={13} />Add Doc
+          </button>
+        </div>
+      </div>
+
       {/* Tabs */}
-      <div className="bg-white border-b border-slate-200 px-4 flex gap-1 shrink-0">
+      <div className="bg-white border-b border-gray-100 px-4 flex gap-1 shrink-0">
         {([
           { key: 'docs',    label: 'Documents', icon: FileText,  count: docs.length },
           { key: 'signons', label: 'Sign-ons',  icon: UserCheck, count: signons.length },
@@ -1088,14 +1136,14 @@ export default function JobFieldDocsPage() {
             className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition-colors ${
               activeTab === tab.key
                 ? 'border-teal-600 text-teal-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             <tab.icon size={13} />
             {tab.label}
             {tab.count > 0 && (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                activeTab === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-500'
+                activeTab === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'
               }`}>
                 {tab.count}
               </span>
@@ -1108,36 +1156,35 @@ export default function JobFieldDocsPage() {
       <div className="flex-1 overflow-y-auto">
         {/* ── Documents tab ── */}
         {activeTab === 'docs' && (
-          <div className="p-4 flex flex-col gap-3">
-            {/* Search */}
+          <div className="px-4 py-5 pb-24 max-w-3xl mx-auto w-full space-y-3">
             {docs.length > 3 && (
               <div className="relative">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search documents…"
-                  className="w-full pl-8 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
                 />
               </div>
             )}
 
             {loading && (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 size={22} className="animate-spin text-teal-600" />
+              <div className="flex items-center justify-center py-20">
+                <Loader2 size={24} className="animate-spin text-teal-500" />
               </div>
             )}
 
             {!loading && filteredDocs.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
-                  <FileCheck size={24} className="text-teal-600" />
+              <div className="bg-white rounded-2xl border border-gray-100 px-6 py-14 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                  <FileCheck size={24} className="text-teal-500" />
                 </div>
-                <p className="font-heading font-bold text-slate-700 mb-1">No documents yet</p>
-                <p className="text-sm text-slate-400 mb-5 max-w-xs">Add SWMS documents to this job so workers can review and sign on.</p>
+                <p className="font-bold text-gray-800 mb-1">No documents yet</p>
+                <p className="text-sm text-gray-400 mb-5 max-w-xs mx-auto">Add SWMS documents to this job so workers can review and sign on.</p>
                 <button
                   onClick={() => setShowAdd(true)}
-                  className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
+                  className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
                 >
                   <Plus size={15} />Add Document
                 </button>
@@ -1152,20 +1199,20 @@ export default function JobFieldDocsPage() {
 
         {/* ── Sign-ons tab ── */}
         {activeTab === 'signons' && (
-          <div className="p-4 flex flex-col gap-3">
+          <div className="px-4 py-5 pb-24 max-w-3xl mx-auto w-full space-y-3">
             {loading && (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 size={22} className="animate-spin text-teal-600" />
+              <div className="flex items-center justify-center py-20">
+                <Loader2 size={24} className="animate-spin text-teal-500" />
               </div>
             )}
 
             {!loading && signons.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
-                  <Users size={24} className="text-slate-400" />
+              <div className="bg-white rounded-2xl border border-gray-100 px-6 py-14 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                  <Users size={24} className="text-gray-400" />
                 </div>
-                <p className="font-heading font-bold text-slate-700 mb-1">No sign-ons yet</p>
-                <p className="text-sm text-slate-400 max-w-xs">Workers sign on via the share link on each document.</p>
+                <p className="font-bold text-gray-800 mb-1">No sign-ons yet</p>
+                <p className="text-sm text-gray-400 max-w-xs mx-auto">Workers sign on via the share link on each document.</p>
               </div>
             )}
 
@@ -1173,25 +1220,25 @@ export default function JobFieldDocsPage() {
               <>
                 <div className="flex items-center gap-2 mb-1">
                   <CheckCircle2 size={14} className="text-emerald-500" />
-                  <p className="text-sm font-semibold text-slate-700">{signons.length} sign-on{signons.length !== 1 ? 's' : ''} recorded</p>
+                  <p className="text-sm font-semibold text-gray-700">{signons.length} sign-on{signons.length !== 1 ? 's' : ''} recorded</p>
                 </div>
                 {signons.map(s => (
-                  <div key={s.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <div key={s.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
                       <CheckCircle2 size={15} className="text-emerald-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800">{s.worker_name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-sm font-semibold text-gray-800">{s.worker_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {[s.role, s.company_name, s.white_card_number ? `WC: ${s.white_card_number}` : null].filter(Boolean).join(' · ')}
                       </p>
                       {s.doc_title && (
-                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                        <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
                           <FileText size={9} />{s.doc_title}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 shrink-0 mt-0.5">
+                    <div className="flex items-center gap-1 text-[10px] text-gray-400 shrink-0 mt-0.5">
                       <Clock size={9} />{fmtDate(s.signed_at)}
                     </div>
                   </div>
@@ -1202,35 +1249,34 @@ export default function JobFieldDocsPage() {
         )}
       </div>
 
-      {/* Footer bar */}
+      {/* ── Mobile bottom bar (matches forms layout exactly) ── */}
       <div
-        className="bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 safe-bottom"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+        className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100"
+        style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <button
-          onClick={() => navigate('/home')}
-          className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
-          aria-label="Home"
-        >
-          <ArrowLeft size={16} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] text-slate-400 leading-none mb-0.5">Field Docs</p>
-          <p className="font-heading font-bold text-sm text-slate-800 truncate leading-tight">
-            {selectedJob.name}
-            {selectedJob.job_number && <span className="font-normal text-slate-400 ml-1.5">{selectedJob.job_number}</span>}
-          </p>
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            onClick={() => navigate('/home')}
+            aria-label="Home"
+            className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-gray-900 font-bold text-sm leading-tight truncate">{selectedJob.name}</p>
+            {selectedJob.job_number && <p className="text-gray-400 text-xs font-mono leading-tight">{selectedJob.job_number}</p>}
+          </div>
+          <button
+            onClick={() => setShowAdd(true)}
+            aria-label="Add Document"
+            className="w-10 h-10 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 flex items-center justify-center text-white transition-colors touch-manipulation shrink-0 shadow-sm"
+          >
+            <Plus size={18} />
+          </button>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors shrink-0"
-        >
-          <Plus size={13} />
-          Add
-        </button>
       </div>
 
-      {/* Add doc modal */}
+      {/* Add doc sheet */}
       <AnimatePresence>
         {showAdd && (
           <AddDocModal
