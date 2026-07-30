@@ -73,7 +73,7 @@ export interface CameraSettings {
   // ask  — prompt user to confirm/edit note after each capture
   // lock — keep the same note across all captures until manually changed
   // none — no per-photo note; only default watermark content
-  noteMode: 'ask' | 'lock' | 'none';
+  noteMode: 'lock' | 'none';
   // ── Overlay / watermark ────────────────────────────────────────────────────
   overlayEnabled: boolean;
   overlayDateFormat: string;
@@ -89,7 +89,7 @@ const DEFAULT_SETTINGS: CameraSettings = {
   backupToRoll: false,
   quality: 'high',
   notesEnabled: true,
-  noteMode: 'ask',
+  noteMode: 'none',
   overlayEnabled: false,
   overlayDateFormat: 'dd MM yyyy',
   overlayTimeFormat: '24h',
@@ -1489,12 +1489,11 @@ export default function CameraPage() {
   // ── Note mode state ───────────────────────────────────────────────────────
   // lockedNote: the note that is stamped on every photo in 'lock' mode.
   // Stored in a ref so handleFileFromPicker always reads the latest value.
-  // In 'ask' mode, the note bar shows the last-used note as a suggestion.
+  // In 'lock' mode, the note bar shows the current locked note.
   const [lockedNote, setLockedNote] = useState<string | null>(null);
   const lockedNoteRef = useRef<string | null>(null);
 
-  // 'ask' mode: after each capture, show a quick note prompt
-  const [askNoteClientId, setAskNoteClientId] = useState<string | null>(null);
+
 
   function setLockedNoteBoth(note: string | null) {
     setLockedNote(note);
@@ -1660,10 +1659,6 @@ export default function CameraPage() {
       status: 'pending', errorMsg: null, capturedAt,
     }, ...prev]);
 
-    // In 'ask' mode, open the note prompt after the capture is queued
-    if (noteMode === 'ask') {
-      setAskNoteClientId(clientId);
-    }
 
     void (async () => {
       try {
@@ -2392,29 +2387,6 @@ export default function CameraPage() {
         onChange={saveSettings}
       />
 
-
-      {/* Ask-mode prompt — shown after each capture so user can confirm/edit the note */}
-      <NoteSheet
-        open={askNoteClientId !== null}
-        initialNote={lockedNote}
-        title="Add note to this photo"
-        placeholder="e.g. Pits, Fence line, North wall…"
-        saveLabel="Save note"
-        onClose={() => {
-          // Dismissed without saving — keep whatever note was stamped (may be null)
-          setAskNoteClientId(null);
-        }}
-        onSave={(note) => {
-          const cid = askNoteClientId;
-          if (cid) {
-            // Update the optimistic item note and persist
-            void handleSaveNote(cid, note);
-            // Also update lockedNote so next photo starts with this suggestion
-            setLockedNoteBoth(note || null);
-          }
-          setAskNoteClientId(null);
-        }}
-      />
 
       {/* Job bar picker — Workflow B: select job before capture */}
       <JobPickerSheet
