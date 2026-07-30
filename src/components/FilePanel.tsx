@@ -343,6 +343,9 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Searchable job picker state
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobPickerOpen, setJobPickerOpen] = useState(false);
 
   useBodyScrollLock(true);
 
@@ -478,29 +481,117 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
               </Select>
             </div>
 
-            {/* Job picker — only shown on main Files page */}
+            {/* Searchable job picker — only shown on main Files page */}
             {!initialJobId && jobs.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="up-job" className="text-xs font-semibold text-slate-600">Link to Job <span className="font-normal text-slate-400">(optional)</span></Label>
-                <Select
-                  value={selectedJobId ? String(selectedJobId) : 'none'}
-                  onValueChange={(v) => {
-                    setSelectedJobId(v === 'none' ? undefined : Number(v));
-                    if (v !== 'none') setCategory('Job');
-                  }}
+                <Label className="text-xs font-semibold text-slate-600">
+                  Link to Job <span className="font-normal text-slate-400">(optional)</span>
+                </Label>
+
+                {/* Selected job chip or open-picker button */}
+                <button
+                  type="button"
+                  onClick={() => { setJobPickerOpen((v) => !v); setJobSearch(''); }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left ${
+                    selectedJobId
+                      ? 'border-primary bg-violet-50 text-foreground'
+                      : 'border-border bg-white text-muted-foreground hover:border-primary hover:bg-violet-50'
+                  }`}
                 >
-                  <SelectTrigger id="up-job" className="h-10 text-sm">
-                    <SelectValue placeholder="No job" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No job</SelectItem>
-                    {jobs.map((j) => (
-                      <SelectItem key={j.id} value={String(j.id)}>
-                        #{j.jobNumber} — {j.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <span className="truncate">
+                    {selectedJobId
+                      ? (() => { const j = jobs.find((x) => x.id === selectedJobId); return j ? `#${j.jobNumber} — ${j.name}` : 'Job selected'; })()
+                      : 'No job linked'}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {selectedJobId && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); setSelectedJobId(undefined); setJobPickerOpen(false); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setSelectedJobId(undefined); setJobPickerOpen(false); } }}
+                        className="p-0.5 rounded text-muted-foreground hover:text-foreground"
+                      >
+                        <X size={12} />
+                      </span>
+                    )}
+                    <ChevronDown size={13} className={`transition-transform ${jobPickerOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                {/* Inline dropdown with search */}
+                {jobPickerOpen && (
+                  <div className="border border-border rounded-xl overflow-hidden shadow-md bg-white">
+                    {/* Search input */}
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20">
+                      <Search size={13} className="text-muted-foreground shrink-0" />
+                      <input
+                        type="text"
+                        value={jobSearch}
+                        onChange={(e) => setJobSearch(e.target.value)}
+                        placeholder="Search by name or number…"
+                        autoFocus
+                        className="flex-1 bg-transparent text-sm text-foreground placeholder-muted-foreground outline-none min-w-0"
+                      />
+                      {jobSearch && (
+                        <button type="button" onClick={() => setJobSearch('')} className="text-muted-foreground hover:text-foreground">
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Job list */}
+                    <div className="max-h-48 overflow-y-auto overscroll-contain">
+                      {/* No-job option */}
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedJobId(undefined); setJobPickerOpen(false); setJobSearch(''); }}
+                        className="w-full flex items-center px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors text-left"
+                      >
+                        No job
+                      </button>
+                      {(() => {
+                        const q = jobSearch.trim().toLowerCase();
+                        const filtered = q
+                          ? jobs.filter((j) =>
+                              j.name.toLowerCase().includes(q) ||
+                              j.jobNumber.toLowerCase().includes(q)
+                            )
+                          : jobs;
+                        if (filtered.length === 0) {
+                          return (
+                            <p className="text-center text-xs text-muted-foreground py-4">
+                              No jobs match "{jobSearch}"
+                            </p>
+                          );
+                        }
+                        return filtered.map((j) => (
+                          <button
+                            key={j.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedJobId(j.id);
+                              setCategory('Job');
+                              setJobPickerOpen(false);
+                              setJobSearch('');
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors text-left hover:bg-violet-50 ${
+                              selectedJobId === j.id ? 'bg-violet-50 text-primary font-semibold' : 'text-foreground'
+                            }`}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="truncate block">{j.name}</span>
+                              {j.jobNumber && (
+                                <span className="text-xs text-muted-foreground font-mono">{j.jobNumber}</span>
+                              )}
+                            </div>
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
