@@ -515,7 +515,7 @@ input, select, textarea {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   column-gap: 10px;
-  row-gap: 2px;
+  row-gap: 1px;
 }
 
 @media (min-width: 640px) {
