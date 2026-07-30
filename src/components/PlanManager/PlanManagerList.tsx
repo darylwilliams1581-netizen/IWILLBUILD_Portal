@@ -109,7 +109,7 @@ function DrawingRow({
       </div>
 
       {/* Actions — always visible on mobile, hover on desktop */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-0.5 shrink-0">
         {busy ? (
           <Loader2 size={12} className="animate-spin text-slate-400 mx-1" />
         ) : (
