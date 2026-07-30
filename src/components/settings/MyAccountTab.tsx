@@ -291,6 +291,8 @@ export default function MyAccountTab() {
         </div>
       </div>
 
+      <PhoneVerificationSection />
+
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4 flex items-center gap-2"><KeyRound size={16} className="text-slate-400" />Change Password</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6">
@@ -337,8 +339,6 @@ export default function MyAccountTab() {
           </form>
         </div>
       </div>
-
-      <PhoneVerificationSection />
 
       {/* ── Two-Factor Authentication ─────────────────────────────────── */}
       <div>
