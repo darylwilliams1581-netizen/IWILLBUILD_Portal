@@ -43,7 +43,7 @@ const tabs = [
   { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications',label: 'Notifications',      icon: Bell },
   { id: 'permissions',  label: 'App Permissions',    icon: ShieldCheck },
-  { id: 'integrations', label: 'Integrations',       icon: Plug },
+  // Integrations hidden from normal users — accessible via direct URL ?tab=integrations
   { id: 'costing',      label: 'Costing',             icon: Calculator },
   { id: 'fleet',        label: 'Fleet Analytics',    icon: Truck },
   { id: 'data',         label: 'Data & Backup',      icon: Database },

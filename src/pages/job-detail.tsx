@@ -29,6 +29,7 @@ import {
   Loader2,
   AlertCircle,
   CheckSquare,
+  Download,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import JobEstimates from '@/components/JobEstimates';
@@ -128,6 +129,28 @@ export default function JobDetailPage() {
   const [linkedAssetName, setLinkedAssetName] = useState<string>('');
   const [editingAssetId, setEditingAssetId] = useState<number | null>(null);
   const [jobSummary, setJobSummary] = useState<JobSummary | null>(null);
+  const [downloadingZip, setDownloadingZip] = useState(false);
+
+  const handleDownloadJobZip = async () => {
+    if (!job) return;
+    setDownloadingZip(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/export-zip`);
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') ?? '';
+      const match = /filename="([^"]+)"/.exec(disposition);
+      const filename = match?.[1] ?? `iwillbuild-job-${job.jobNumber ?? job.id}-${new Date().toISOString().slice(0, 10)}.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — user will see no download
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
@@ -364,6 +387,15 @@ export default function JobDetailPage() {
             <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded transition-colors shrink-0">
               <Edit2 size={13} /><span className="hidden sm:inline">Edit</span>
             </button>
+            <button
+              onClick={() => void handleDownloadJobZip()}
+              disabled={downloadingZip}
+              title="Download job ZIP"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 px-2.5 py-1.5 rounded transition-colors shrink-0 disabled:opacity-50"
+            >
+              {downloadingZip ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              <span className="hidden sm:inline">ZIP</span>
+            </button>
             </>
           )}
           {editing && (
@@ -406,6 +438,14 @@ export default function JobDetailPage() {
                 />
                 <button onClick={() => setEditing(true)} className="op-btn op-btn-ghost">
                   <Edit2 size={12} />Edit
+                </button>
+                <button
+                  onClick={() => void handleDownloadJobZip()}
+                  disabled={downloadingZip}
+                  title="Download job ZIP"
+                  className="op-btn op-btn-ghost disabled:opacity-50"
+                >
+                  {downloadingZip ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}ZIP
                 </button>
               </>
             )}
