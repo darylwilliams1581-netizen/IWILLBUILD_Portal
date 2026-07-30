@@ -75,6 +75,24 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
     }
   }, [drawing.id, drawing.current_revision_id, viewer.currentPage, annotations, loadPageAnnotations]);
 
+  // ── iOS swipe-back / hardware-back interception ──────────────────────────
+  // Push a dummy history entry so the native back gesture closes this overlay
+  // instead of navigating the router away from the plan manager page.
+  useEffect(() => {
+    window.history.pushState({ drawingViewer: true }, '');
+    function onPopState(e: PopStateEvent) {
+      if (!(e.state as Record<string, unknown> | null)?.drawingViewer) return;
+      onClose();
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      if (window.history.state && (window.history.state as Record<string, unknown>).drawingViewer) {
+        window.history.back();
+      }
+    };
+  }, [onClose]);
+
   const handleStyleChange = useCallback((partial: Partial<AnnotationStyle>) => {
     setActiveStyle(s => ({ ...s, ...partial }));
   }, []);

@@ -234,6 +234,28 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // ── iOS swipe-back / hardware-back interception ──────────────────────────
+  // Push a dummy history entry so the native back gesture pops it instead of
+  // navigating the router away from the job page.
+  useEffect(() => {
+    window.history.pushState({ drawingViewer: true }, '');
+    function onPopState(e: PopStateEvent) {
+      // If the popped state is NOT our sentinel, the user navigated further
+      // back — let it through. Otherwise intercept and close the overlay.
+      if (!(e.state as Record<string, unknown> | null)?.drawingViewer) return;
+      onClose();
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      // If the viewer is closed via the X button (not back gesture), the
+      // dummy entry is still in the stack — go back to clean it up.
+      if (window.history.state && (window.history.state as Record<string, unknown>).drawingViewer) {
+        window.history.back();
+      }
+    };
+  }, [onClose]);
+
   function fitToWidth() {
     if (containerRef.current) {
       const w = containerRef.current.clientWidth - 80;
