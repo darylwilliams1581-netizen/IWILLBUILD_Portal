@@ -1881,8 +1881,8 @@ export default function CameraPage() {
         <div
           className="flex items-center justify-between shrink-0"
           style={{
-            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 12px)',
-            paddingBottom: '12px',
+            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 8px)',
+            paddingBottom: '8px',
             paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 16px)',
             paddingRight: 'calc(env(safe-area-inset-right, 0px) + 16px)',
           }}
@@ -1974,36 +1974,17 @@ export default function CameraPage() {
           </div>
         </div>
 
-        {/* Active settings pills */}
+        {/* Settings state — backup-unavailable warning only; all other indicators live in the dock */}
         <AnimatePresence>
-          {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+          {settings.backupToRoll && backupPermDenied && (
             <motion.div
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              className="flex items-center gap-1.5 px-4 pb-3 flex-wrap overflow-hidden shrink-0"
+              className="overflow-hidden shrink-0 px-4 pb-2"
             >
-              {settings.overlayEnabled && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-300 bg-violet-900/40 border border-violet-700/40 rounded-full px-2 py-0.5">
-                  <Check size={9} />
-                  Overlay on
-                </span>
-              )}
-              {settings.backupToRoll && !backupPermDenied && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-green-300 bg-green-900/40 border border-green-700/40 rounded-full px-2 py-0.5">
-                  <Check size={9} />
-                  Backup on
-                </span>
-              )}
-              {settings.backupToRoll && backupPermDenied && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
-                  <AlertCircle size={9} />
-                  Backup unavailable
-                </span>
-              )}
-              {settings.quality !== 'high' && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded-full px-2 py-0.5">
-                  {settings.quality === 'low' ? 'Low quality' : 'Med quality'}
-                </span>
-              )}
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300/70">
+                <AlertCircle size={9} />
+                Backup unavailable — check permissions in Settings
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -2172,88 +2153,120 @@ export default function CameraPage() {
         </div>
       </motion.div>
 
-      {/* ═══ SHUTTER BAND ═══ */}
-      {/* z-30 — always above tray. Two-row layout: note selector row + shutter row */}
+      {/* ═══ UNIFIED CAMERA DOCK ═══ */}
+      {/* z-30 — one surface, two internal rows. No floating layers. */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 flex flex-col items-stretch"
+        className="fixed bottom-0 left-0 right-0 z-30 flex flex-col"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           paddingLeft: 'env(safe-area-inset-left, 0px)',
           paddingRight: 'env(safe-area-inset-right, 0px)',
-          background: 'rgba(0,0,0,0.88)',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
+          background: 'rgba(10,10,14,0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
-        {/* ── Note row ── */}
+        {/* ── Row 1: Note mode selector — always visible, never floating ── */}
         {!selectMode && (
-          <div className="flex items-center justify-center gap-2 pt-2.5 pb-1 px-4">
-            {/* 3-segment note mode toggle */}
+          <div className="flex items-center justify-center gap-2 pt-2 pb-1.5 px-4">
+            {/* Segmented control — slim, flat, part of the dock surface */}
             <div
-              className="flex items-center rounded-lg overflow-hidden"
-              style={{ border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.06)' }}
+              className="flex items-center rounded-md overflow-hidden"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
             >
               {(
                 [
-                  { value: 'ask',  label: 'Ask',  activeClass: 'bg-violet-500/30 text-violet-200', dotClass: 'bg-violet-400' },
-                  { value: 'lock', label: 'Lock', activeClass: 'bg-yellow-500/25 text-yellow-200', dotClass: 'bg-yellow-400' },
-                  { value: 'none', label: 'Off',  activeClass: 'bg-white/10 text-white/50',        dotClass: 'bg-white/30' },
+                  { value: 'ask',  label: 'Ask',  activeText: 'text-violet-300', activeBg: 'bg-violet-500/20' },
+                  { value: 'lock', label: 'Lock', activeText: 'text-yellow-300', activeBg: 'bg-yellow-500/18' },
+                  { value: 'none', label: 'Off',  activeText: 'text-white/45',   activeBg: 'bg-white/8' },
                 ] as const
               ).map((seg, i) => {
                 const active = settings.noteMode === seg.value;
                 return (
                   <motion.button
                     key={seg.value}
-                    whileTap={{ scale: 0.92 }}
+                    whileTap={{ scale: 0.94 }}
                     onClick={() => saveSettings({ noteMode: seg.value })}
-                    className={`flex items-center gap-1 px-3 h-8 text-[11px] font-bold transition-colors relative ${
-                      i > 0 ? 'border-l border-white/8' : ''
-                    } ${active ? seg.activeClass : 'text-white/25 hover:text-white/40'}`}
+                    className={`h-7 px-3.5 text-[10px] font-bold tracking-wide transition-colors ${
+                      i > 0 ? 'border-l border-white/6' : ''
+                    } ${active ? `${seg.activeText} ${seg.activeBg}` : 'text-white/20 hover:text-white/35'}`}
                     aria-label={`Note mode: ${seg.label}`}
                     aria-pressed={active}
                   >
-                    {active && <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${seg.dotClass}`} />}
-                    <span>{seg.label}</span>
+                    {seg.label}
                   </motion.button>
                 );
               })}
             </div>
 
-            {/* Locked note pill — only when Lock is active */}
+            {/* Locked note value — inline, only when Lock active */}
             <AnimatePresence>
               {settings.noteMode === 'lock' && (
                 <motion.button
-                  initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                  initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
                   transition={{ type: 'spring', damping: 28, stiffness: 360 }}
                   onClick={() => setNoteBarOpen(true)}
-                  className={`flex items-center gap-1.5 h-8 rounded-lg px-2.5 transition-colors shrink-0 max-w-[160px] ${
+                  className={`flex items-center gap-1 h-7 rounded-md px-2 overflow-hidden whitespace-nowrap transition-colors ${
                     lockedNote
-                      ? 'bg-yellow-500/20 border border-yellow-500/35 text-yellow-200'
-                      : 'bg-white/6 border border-white/12 text-white/30'
+                      ? 'bg-yellow-500/15 border border-yellow-500/25 text-yellow-200/80'
+                      : 'bg-white/5 border border-white/8 text-white/25'
                   }`}
                   aria-label={lockedNote ? `Note: ${lockedNote} — tap to change` : 'Tap to set note'}
                 >
-                  <Lock size={9} className={lockedNote ? 'text-yellow-400 shrink-0' : 'text-white/20 shrink-0'} />
-                  <span className="text-[10px] font-semibold truncate">
+                  <Lock size={8} className={lockedNote ? 'text-yellow-400/70 shrink-0' : 'text-white/15 shrink-0'} />
+                  <span className="text-[10px] font-semibold truncate max-w-[120px]">
                     {lockedNote ?? 'Set note…'}
                   </span>
                   {lockedNote && (
                     <button
                       onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
-                      className="w-3.5 h-3.5 rounded-full bg-white/15 flex items-center justify-center text-white/40 hover:bg-white/25 shrink-0"
+                      className="w-3 h-3 rounded-full bg-white/10 flex items-center justify-center text-white/30 hover:bg-white/20 shrink-0 ml-0.5"
                       aria-label="Clear note"
                     >
-                      <X size={7} />
+                      <X size={6} />
                     </button>
                   )}
                 </motion.button>
               )}
             </AnimatePresence>
+
+            {/* Active state micro-indicators — overlay & backup dots, far right */}
+            <div className="flex items-center gap-1 ml-auto">
+              {settings.overlayEnabled && (
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-violet-400/60"
+                  title="Overlay on"
+                />
+              )}
+              {settings.backupToRoll && !backupPermDenied && (
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-green-400/60"
+                  title="Backup on"
+                />
+              )}
+              {settings.quality !== 'high' && (
+                <span
+                  className="text-[9px] font-bold text-amber-400/50 leading-none"
+                  title={settings.quality === 'low' ? 'Low quality' : 'Medium quality'}
+                >
+                  {settings.quality === 'low' ? 'LQ' : 'MQ'}
+                </span>
+              )}
+            </div>
           </div>
         )}
 
-        {/* ── Shutter row ── */}
-        <div className="flex items-center justify-center gap-8 py-3">
+        {/* Hairline divider between rows */}
+        {!selectMode && (
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }} />
+        )}
+
+        {/* ── Row 2: Upload | Shutter | Settings ── */}
+        <div className="flex items-center justify-center gap-10 pt-3 pb-3.5">
           {/* Upload from library */}
           <motion.button
             whileTap={{ scale: 0.88 }}
@@ -2262,15 +2275,15 @@ export default function CameraPage() {
             aria-label="Upload from photo library"
             disabled={!settingsLoaded}
           >
-            <div className="w-[48px] h-[48px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
-              <Upload size={19} className="text-white/70" />
+            <div className="w-[46px] h-[46px] rounded-xl bg-white/8 border border-white/10 flex items-center justify-center active:bg-white/15 transition-colors">
+              <Upload size={18} className="text-white/55" />
             </div>
-            <span className="text-white/35 text-[9px] font-semibold tracking-wide">Upload</span>
+            <span className="text-white/25 text-[9px] font-semibold tracking-wide">Library</span>
           </motion.button>
 
-          {/* Main shutter */}
+          {/* Main shutter — hero */}
           <motion.button
-            whileTap={{ scale: 0.90 }}
+            whileTap={{ scale: 0.91 }}
             whileHover={{ scale: 1.03 }}
             transition={{ type: 'spring', stiffness: 420, damping: 22 }}
             onClick={() => void picker.openCamera()}
@@ -2278,18 +2291,18 @@ export default function CameraPage() {
             aria-label="Take photo"
             disabled={picker.checkingPermission || !settingsLoaded}
           >
-            <div className={`w-[70px] h-[70px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
-              (picker.checkingPermission || !settingsLoaded) ? 'border-white/15' : 'border-white/35'
+            <div className={`w-[66px] h-[66px] rounded-full border-[3px] flex items-center justify-center transition-colors ${
+              (picker.checkingPermission || !settingsLoaded) ? 'border-white/12' : 'border-white/30'
             }`}>
               <div
-                className={`w-[58px] h-[58px] rounded-full flex items-center justify-center transition-colors ${
-                  (picker.checkingPermission || !settingsLoaded) ? 'bg-white/50' : 'bg-white'
+                className={`w-[54px] h-[54px] rounded-full flex items-center justify-center transition-colors ${
+                  (picker.checkingPermission || !settingsLoaded) ? 'bg-white/40' : 'bg-white'
                 }`}
-                style={{ boxShadow: '0 0 24px rgba(255,255,255,0.20)' }}
+                style={{ boxShadow: (picker.checkingPermission || !settingsLoaded) ? 'none' : '0 0 20px rgba(255,255,255,0.18)' }}
               >
                 {(picker.checkingPermission || !settingsLoaded)
-                  ? <Loader2 size={22} className="text-gray-400 animate-spin" />
-                  : <Camera size={24} className="text-gray-900" />
+                  ? <Loader2 size={20} className="text-gray-400 animate-spin" />
+                  : <Camera size={22} className="text-gray-900" />
                 }
               </div>
             </div>
@@ -2302,15 +2315,15 @@ export default function CameraPage() {
             className="flex flex-col items-center gap-1"
             aria-label="Camera settings"
           >
-            <div className="w-[48px] h-[48px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
-              <Settings size={19} className="text-white/70" />
+            <div className="w-[46px] h-[46px] rounded-xl bg-white/8 border border-white/10 flex items-center justify-center active:bg-white/15 transition-colors relative">
+              <Settings size={18} className="text-white/55" />
               {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
                 <div className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
-                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400'
+                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400/80'
                 }`} />
               )}
             </div>
-            <span className="text-white/35 text-[9px] font-semibold tracking-wide">Settings</span>
+            <span className="text-white/25 text-[9px] font-semibold tracking-wide">Settings</span>
           </motion.button>
         </div>
       </div>
@@ -2324,7 +2337,7 @@ export default function CameraPage() {
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             className="fixed left-0 right-0 px-4"
             style={{
-              bottom: 'calc(120px + env(safe-area-inset-bottom, 0px) + 0.5rem)',
+              bottom: 'calc(104px + env(safe-area-inset-bottom, 0px) + 0.5rem)',
               zIndex: 25,
             }}
           >
