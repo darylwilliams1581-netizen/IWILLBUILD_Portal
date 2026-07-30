@@ -406,6 +406,8 @@ export default function FleetLiveMap() {
   const [lastRefresh,    setLastRefresh]    = useState<Date>(new Date());
   const [mapReady,       setMapReady]       = useState(false);
   const [mapError,       setMapError]       = useState<string | null>(null);
+  // Incrementing this triggers a fresh map-init attempt after a failure
+  const [mapRetryKey,    setMapRetryKey]    = useState(0);
 
   // ── Derive map mode ─────────────────────────────────────────────────────────
   const withGps = sessions.filter(s => s.lat != null && s.lng != null);
@@ -423,16 +425,27 @@ export default function FleetLiveMap() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/fleet/driver-sessions/live', { credentials: 'include' });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Failed to load');
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 15_000);
+      let res: Response;
+      try {
+        res = await fetch('/api/fleet/driver-sessions/live', { credentials: 'include', signal: ac.signal });
+      } finally {
+        clearTimeout(timer);
       }
-      const data = await res.json() as { sessions: LiveSession[] };
+      // Parse body ONCE — reading it twice throws "body already used"
+      const data = await res.json() as { sessions?: LiveSession[]; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? `Failed to load (HTTP ${res.status})`);
+      }
       setSessions(data.sessions ?? []);
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load live sessions');
+      if ((err as Error).name === 'AbortError') {
+        setError('Request timed out — check your connection');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load live sessions');
+      }
     } finally {
       setLoading(false);
     }
@@ -465,12 +478,24 @@ export default function FleetLiveMap() {
   }, []);
 
   // ── Init Google Map ─────────────────────────────────────────────────────────
+  // Re-runs when mapRetryKey increments (user tapped Retry after a failure).
   useEffect(() => {
     if (!mapRef.current || gMapRef.current) return;
     let disposed = false;
 
+    // 30s hard timeout — if loadGoogleMaps never resolves (e.g. script blocked
+    // by a corporate proxy or the key fetch hangs), surface an error instead of
+    // leaving the user on a blank spinner forever.
+    const initTimer = setTimeout(() => {
+      if (!disposed && !gMapRef.current) {
+        window.__gmapsLoader = undefined; // reset so retry works
+        setMapError('Map took too long to load. Check your connection and tap Retry.');
+      }
+    }, 30_000);
+
     loadGoogleMaps()
       .then(() => {
+        clearTimeout(initTimer);
         if (disposed || !mapRef.current || gMapRef.current) return;
         const map = new window.google!.maps!.Map(mapRef.current, {
           center: DEFAULT_CENTER,
@@ -486,11 +511,13 @@ export default function FleetLiveMap() {
         setMapReady(true);
       })
       .catch((err: unknown) => {
+        clearTimeout(initTimer);
         if (!disposed) setMapError(err instanceof Error ? err.message : 'Map failed to load');
       });
 
     return () => {
       disposed = true;
+      clearTimeout(initTimer);
       liveMarkersRef.current.forEach(m => m.setMap(null));
       liveMarkersRef.current.clear();
       staticMarkersRef.current.forEach(m => m.setMap(null));
@@ -498,7 +525,9 @@ export default function FleetLiveMap() {
       infoWinRef.current?.close();
       gMapRef.current = null;
     };
-  }, []);
+  // mapRetryKey intentionally included — incrementing it re-runs this effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapRetryKey]);
 
   // ── Update LIVE markers ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -841,7 +870,7 @@ export default function FleetLiveMap() {
         >
           <div ref={mapRef} className="absolute inset-0" />
 
-          {/* Map load error — shows exact diagnostic reason */}
+          {/* Map load error — shows exact diagnostic reason + clean retry */}
           {mapError && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10 p-4">
               <div className="bg-white border border-red-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-sm w-full">
@@ -850,33 +879,15 @@ export default function FleetLiveMap() {
                 <p className="text-xs text-slate-500 break-words leading-relaxed">{mapError}</p>
                 <button
                   onClick={() => {
-                    setMapError(null);
-                    // Clear the loader singleton so the next attempt retries from scratch
+                    // Reset all singleton state so loadGoogleMaps retries from scratch
                     window.__gmapsLoader = undefined;
-                    // Re-trigger the map init effect by forcing a re-render via a key change
-                    // We do this by clearing gMapRef and letting the effect re-run
+                    // Do NOT reset __gmapsLoaded — if the script already loaded,
+                    // we only need to re-init the Map instance, not re-fetch the script.
+                    setMapError(null);
+                    setMapReady(false);
                     gMapRef.current = null;
-                    if (mapRef.current) {
-                      loadGoogleMaps()
-                        .then(() => {
-                          if (!mapRef.current || gMapRef.current) return;
-                          const map = new window.google!.maps!.Map(mapRef.current, {
-                            center: DEFAULT_CENTER,
-                            zoom: DEFAULT_ZOOM,
-                            disableDefaultUI: true,
-                            gestureHandling: 'greedy',
-                            styles: [
-                              { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-                            ],
-                          });
-                          infoWinRef.current = new window.google!.maps!.InfoWindow({});
-                          gMapRef.current = map;
-                          setMapReady(true);
-                        })
-                        .catch((err: unknown) => {
-                          setMapError(err instanceof Error ? err.message : 'Map failed to load');
-                        });
-                    }
+                    // Increment key → triggers the map init useEffect to re-run
+                    setMapRetryKey(k => k + 1);
                   }}
                   className="mt-3 px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
                 >

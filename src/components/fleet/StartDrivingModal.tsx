@@ -57,30 +57,49 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
   const [error,    setError]    = useState('');
 
   useEffect(() => {
-    fetch('/api/fleet/vehicles', { credentials: 'include' })
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000); // 10s timeout
+
+    fetch('/api/fleet/vehicles', { credentials: 'include', signal: ac.signal })
       .then((r) => r.json())
       .then((d: { vehicles?: Vehicle[] }) => setVehicles(d.vehicles ?? []))
-      .catch(() => setError('Failed to load vehicles'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if ((err as Error).name !== 'AbortError') {
+          setError('Failed to load vehicles — check your connection');
+        }
+      })
+      .finally(() => { clearTimeout(timer); setLoading(false); });
+
+    return () => { ac.abort(); clearTimeout(timer); };
   }, []);
 
   async function handleStart() {
     if (!selected || starting) return;
     setError('');
     setStarting(true);
+
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 12_000); // 12s — generous for slow mobile
+
     try {
       const res = await fetch('/api/fleet/driver-sessions', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fleetAssetId: selected }),
+        signal: ac.signal,
       });
       const data = await res.json() as { ok?: boolean; session?: ActiveSession; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to start session');
       if (data.session) onStarted(data.session);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start driving session');
+      if ((err as Error).name === 'AbortError') {
+        setError('Request timed out — check your connection and try again');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to start driving session');
+      }
     } finally {
+      clearTimeout(timer);
       setStarting(false);
     }
   }

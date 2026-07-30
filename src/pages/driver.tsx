@@ -751,6 +751,15 @@ export default function DriverPage() {
                     {stopping ? <Loader2 size={18} className="animate-spin" /> : <Square size={18} className="fill-white" />}
                     {stopping ? 'Ending session…' : 'End Drive Session'}
                   </button>
+                ) : gpsPermStatus === 'checking' ? (
+                  /* ── Permission check in progress — brief spinner, no flicker ── */
+                  <button
+                    disabled
+                    className="w-full flex items-center justify-center gap-2.5 bg-gray-200 text-gray-400 font-bold py-4 rounded-2xl cursor-not-allowed"
+                  >
+                    <Loader2 size={18} className="animate-spin" />
+                    Checking location…
+                  </button>
                 ) : gpsPermStatus === 'prompt' || gpsPermStatus === 'unknown' ? (
                   /* ── Permission not yet requested — show Enable Location first ── */
                   <div className="space-y-3">

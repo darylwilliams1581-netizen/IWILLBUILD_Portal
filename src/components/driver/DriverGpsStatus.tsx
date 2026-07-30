@@ -79,8 +79,11 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
   const [errorMsg, setErrorMsg] = useState('');
   const [tick, setTick] = useState(0); // forces re-render for timeAgo
   const [requesting, setRequesting] = useState(false);
+  // Tracks whether we've been stuck in 'acquiring' for too long
+  const [acquiringTimedOut, setAcquiringTimedOut] = useState(false);
   const watchIdRef = useRef<number | string | null>(null);
   const nativeWatchRef = useRef<(() => void) | null>(null);
+  const acquiringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Tick every 5s to update "X seconds ago" label
   useEffect(() => {
@@ -113,6 +116,12 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
     latitude: number; longitude: number; accuracy: number;
     speed: number | null; heading: number | null; altitude: number | null;
   }; timestamp: number }) => {
+    // Clear acquiring timeout — we got a fix
+    if (acquiringTimerRef.current) {
+      clearTimeout(acquiringTimerRef.current);
+      acquiringTimerRef.current = null;
+    }
+    setAcquiringTimedOut(false);
     const r: GpsReading = {
       lat:      pos.coords.latitude,
       lng:      pos.coords.longitude,
@@ -129,6 +138,10 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
   }, [onPosition]);
 
   const handleError = useCallback((err: { code: number; message: string }) => {
+    if (acquiringTimerRef.current) {
+      clearTimeout(acquiringTimerRef.current);
+      acquiringTimerRef.current = null;
+    }
     if (err.code === 1) {
       setState('denied');
       setErrorMsg('Location permission denied. Enable in device settings.');
@@ -151,11 +164,29 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
       }
       nativeWatchRef.current?.();
       nativeWatchRef.current = null;
+      if (acquiringTimerRef.current) {
+        clearTimeout(acquiringTimerRef.current);
+        acquiringTimerRef.current = null;
+      }
       if (!active) setState('waiting');
       return;
     }
 
     setState('acquiring');
+    setAcquiringTimedOut(false);
+
+    // 20s acquiring timeout — if no fix arrives, show a retry path
+    acquiringTimerRef.current = setTimeout(() => {
+      // Only fire if still in acquiring state (no fix yet)
+      setState(prev => {
+        if (prev === 'acquiring') {
+          setAcquiringTimedOut(true);
+          setErrorMsg('No GPS fix after 20s. Move to an open area or check device settings.');
+          return 'error';
+        }
+        return prev;
+      });
+    }, 20_000);
 
     // Try native Capacitor GPS first (Android/iOS shell)
     if (isNative()) {
@@ -209,6 +240,10 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
       }
       nativeWatchRef.current?.();
       nativeWatchRef.current = null;
+      if (acquiringTimerRef.current) {
+        clearTimeout(acquiringTimerRef.current);
+        acquiringTimerRef.current = null;
+      }
     };
   }, [active, permStatus, handlePosition, handleError]);
 
@@ -217,6 +252,70 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
     setRequesting(true);
     await requestPerm();
     setRequesting(false);
+  }
+
+  // ── Retry GPS (after timeout or error) ───────────────────────────────────
+  function handleRetryGps() {
+    setAcquiringTimedOut(false);
+    setErrorMsg('');
+    setState('acquiring');
+    // Stop existing watch so the useEffect re-runs cleanly
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current as number);
+      watchIdRef.current = null;
+    }
+    nativeWatchRef.current?.();
+    nativeWatchRef.current = null;
+    // Re-trigger the watch effect by briefly toggling — use a direct call instead
+    // to avoid a React state cycle. Start a fresh watch immediately.
+    if (acquiringTimerRef.current) {
+      clearTimeout(acquiringTimerRef.current);
+    }
+    acquiringTimerRef.current = setTimeout(() => {
+      setState(prev => {
+        if (prev === 'acquiring') {
+          setAcquiringTimedOut(true);
+          setErrorMsg('Still no GPS fix. Move to an open area.');
+          return 'error';
+        }
+        return prev;
+      });
+    }, 20_000);
+
+    if (isNative()) {
+      getNativeGeo().then((geo) => {
+        if (!geo) {
+          startFreshBrowserWatch();
+          return;
+        }
+        geo.watchPosition(
+          { enableHighAccuracy: true, timeout: 15_000 },
+          (pos, err) => {
+            if (err || !pos) { handleError({ code: err?.code ?? 2, message: err?.message ?? '' }); return; }
+            handlePosition({
+              coords: {
+                latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy, speed: pos.coords.speed ?? null,
+                heading: pos.coords.heading ?? null, altitude: pos.coords.altitude ?? null,
+              },
+              timestamp: pos.timestamp,
+            });
+          }
+        ).then((watchId) => {
+          nativeWatchRef.current = () => void geo.clearWatch({ id: watchId });
+        }).catch(() => startFreshBrowserWatch());
+      }).catch(() => startFreshBrowserWatch());
+    } else {
+      startFreshBrowserWatch();
+    }
+
+    function startFreshBrowserWatch() {
+      if (!navigator.geolocation) { setState('error'); setErrorMsg('Geolocation not supported.'); return; }
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        handlePosition, handleError,
+        { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 }
+      );
+    }
   }
 
   // ── Pill variant ──────────────────────────────────────────────────────────
@@ -291,7 +390,9 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
     );
   }
 
-  // Permission checking
+  // Permission checking — show brief spinner with 5s escape to 'prompt'
+  // (useGpsPermission handles the timeout internally via its own effect, but
+  //  we add a UI-level escape so the card never stays stuck permanently)
   if (permStatus === 'checking') {
     return (
       <div className="rounded-2xl border border-gray-700 bg-gray-800 overflow-hidden">
@@ -410,10 +511,19 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
         )}
       </AnimatePresence>
 
-      {/* Error message */}
+      {/* Error message + retry button */}
       {errorMsg && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 space-y-2">
           <p className="text-xs text-red-400">{errorMsg}</p>
+          {(state === 'error' || acquiringTimedOut) && (
+            <button
+              onClick={handleRetryGps}
+              className="flex items-center gap-1.5 text-xs text-blue-400 font-semibold hover:text-blue-300 transition-colors"
+            >
+              <Crosshair size={11} />
+              Retry GPS
+            </button>
+          )}
         </div>
       )}
     </div>
