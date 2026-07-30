@@ -53,6 +53,15 @@ export default async function handler(req: Request, res: Response) {
 
     const normalised = phone.trim().replace(/\s+/g, '');
 
+    // Normalise Australian local numbers (0x xxxx xxxx → +61x xxxx xxxx)
+    // Twilio requires E.164 format. If the number starts with 0 and has no
+    // country code prefix, convert it to +61.
+    const e164 = normalised.startsWith('+')
+      ? normalised
+      : normalised.startsWith('0')
+        ? `+61${normalised.slice(1)}`
+        : normalised;
+
     const code = generateCode();
     const hashed = hashCode(code);
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS);
@@ -66,12 +75,12 @@ export default async function handler(req: Request, res: Response) {
       id,
       userId: session.user.id,
       codeHash: hashed,
-      phone: normalised,
+      phone: e164,
       expiresAt,
     });
 
     // Send SMS
-    const sent = await sendSms(normalised, `Your IWILLBUILD verification code is: ${code}. Expires in 10 minutes.`);
+    const sent = await sendSms(e164, `Your IWILLBUILD verification code is: ${code}. Expires in 10 minutes.`);
     if (!sent) {
       return res.status(500).json({ error: 'Failed to send SMS. Please try again or use a different verification method.' });
     }

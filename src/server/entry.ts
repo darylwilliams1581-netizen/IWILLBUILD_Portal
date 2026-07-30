@@ -455,6 +455,7 @@ import me_profile_attachments_post_422 from "./api/me/profile-attachments/POST";
 import me_profile_extras_get_423 from "./api/me/profile-extras/GET";
 import me_profile_extras_put_424 from "./api/me/profile-extras/PUT";
 import migrate_account_recovery_post_425 from "./api/migrate-account-recovery/POST";
+import migrate_sms_verified_at_post from "./api/migrate-sms-verified-at/POST";
 import migrate_asset_manager_post_426 from "./api/migrate-asset-manager/POST";
 import migrate_attendance_post_427 from "./api/migrate-attendance/POST";
 import migrate_company_settings_post_428 from "./api/migrate-company-settings/POST";
@@ -3143,6 +3144,7 @@ app.post("/api/me/profile-attachments", me_profile_attachments_post_422);
 app.get("/api/me/profile-extras", me_profile_extras_get_423);
 app.put("/api/me/profile-extras", me_profile_extras_put_424);
 app.post("/api/migrate-account-recovery", migrate_account_recovery_post_425);
+app.post("/api/migrate-sms-verified-at", migrate_sms_verified_at_post);
 app.post("/api/migrate-asset-manager", migrate_asset_manager_post_426);
 app.post("/api/migrate-attendance", migrate_attendance_post_427);
 app.post("/api/migrate-company-settings", migrate_company_settings_post_428);
@@ -4065,6 +4067,16 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.log('[startup] team_time_entries table ready');
 		} catch (e) {
 			console.warn('[startup] team_time_entries migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── sms_verification_codes.verified_at (missing column fix) ──────────
+		try {
+			await db.execute(sql.raw(
+				"ALTER TABLE sms_verification_codes ADD COLUMN verified_at TIMESTAMP NULL DEFAULT NULL AFTER attempts"
+			));
+			console.log('[startup] sms_verification_codes.verified_at column added');
+		} catch (e) {
+			console.warn('[startup] sms_verification_codes.verified_at migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
 		// ── All migrations done — now start accepting requests ─────────────────

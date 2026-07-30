@@ -49,12 +49,18 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const normalised = phone.trim().replace(/\s+/g, '');
+    // Normalise Australian local numbers → E.164 for Twilio
+    const e164 = normalised.startsWith('+')
+      ? normalised
+      : normalised.startsWith('0')
+        ? `+61${normalised.slice(1)}`
+        : normalised;
 
-    // Look up user by phone number — only verified phone numbers qualify
+    // Look up user by phone number — try both stored formats
     const [row] = await db
       .select({ id: user.id, name: user.name, email: user.email, verificationMethod: user.verificationMethod })
       .from(user)
-      .where(eq(user.phoneNumber, normalised))
+      .where(eq(user.phoneNumber, e164))
       .limit(1);
 
     // Silently succeed if not found or not verified via SMS
@@ -86,7 +92,7 @@ export default async function handler(req: Request, res: Response) {
 
     const message = `Hi ${firstName}, reset your IWILLBUILD Portal password here: ${resetUrl} — expires in 30 mins. If you didn't request this, ignore this message.`;
 
-    await sendSms(normalised, message);
+    await sendSms(e164, message);
 
     return res.json(GENERIC_OK);
   } catch (err) {

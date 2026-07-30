@@ -22,8 +22,13 @@ export default async function handler(req: Request, res: Response) {
     const { phone } = req.body as { phone?: string };
     if (!phone?.trim()) return res.status(400).json({ error: 'Phone number is required.' });
 
-    // Basic E.164 / Australian format normalisation
-    const normalised = phone.trim().replace(/\s+/g, '');
+    // Normalise to E.164 — Twilio requires this format
+    const raw = phone.trim().replace(/\s+/g, '');
+    const normalised = raw.startsWith('+')
+      ? raw
+      : raw.startsWith('0')
+        ? `+61${raw.slice(1)}`
+        : raw;
     if (normalised.length < 8 || normalised.length > 20) {
       return res.status(400).json({ error: 'Please enter a valid phone number.' });
     }
