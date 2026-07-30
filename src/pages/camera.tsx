@@ -27,10 +27,11 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Camera, Images, ChevronLeft, X, Trash2, Briefcase,
+  Camera, ChevronLeft, X, Trash2, Briefcase,
   StickyNote, Loader2, ImageIcon, HardHat, ChevronRight,
   WifiOff, CheckCircle2, CheckSquare, Square, ArrowRight,
   AlertCircle, Settings, Check, FolderOpen,
+  Zap, ZapOff, FlipHorizontal2, Upload,
 } from 'lucide-react';
 
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
@@ -955,7 +956,7 @@ function CaptureRow({
 
       {!selectMode && item.status !== 'uploading' && (
         <div className="flex items-center gap-1 shrink-0">
-          {/* Assign to job — most important action, slightly larger */}
+          {/* Assign to job */}
           <button
             onClick={() => onAttachJob(item.clientId)}
             className={`h-8 rounded-xl flex items-center gap-1 px-2 transition-colors ${
@@ -967,7 +968,7 @@ function CaptureRow({
             aria-label={item.jobId ? 'Change job assignment' : 'Assign to job'}
           >
             <Briefcase size={12} />
-            <span className="text-[10px] font-bold">{item.jobId ? 'Job' : 'Assign'}</span>
+            <span className="text-[10px] font-bold">{item.jobId ? 'Job' : 'Job'}</span>
           </button>
           {notesEnabled && (
             <button
@@ -1300,6 +1301,10 @@ export default function CameraPage() {
   const [trayCollapsed, setTrayCollapsed] = useState(true);
   const prevCapturesLenRef = useRef(captures.length);
 
+  // ── Flash / flip state (UI toggles — passed to native picker when supported) ─
+  const [flashOn, setFlashOn] = useState(false);
+  const [frontCamera, setFrontCamera] = useState(false);
+
   // Auto-expand tray when a new capture is added
   useEffect(() => {
     if (captures.length > prevCapturesLenRef.current) {
@@ -1381,18 +1386,28 @@ export default function CameraPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors relative"
-              aria-label="Camera settings"
+            {/* Flash toggle */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setFlashOn(f => !f)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                flashOn ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-white/50'
+              }`}
+              aria-label={flashOn ? 'Flash on' : 'Flash off'}
             >
-              <Settings size={16} />
-              {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
-                <div className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
-                  backupPermDenied ? 'bg-amber-400' : 'bg-violet-400'
-                }`} />
-              )}
-            </button>
+              {flashOn ? <Zap size={16} /> : <ZapOff size={16} />}
+            </motion.button>
+            {/* Flip camera */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setFrontCamera(f => !f)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                frontCamera ? 'bg-violet-400/20 text-violet-300' : 'bg-white/10 text-white/50'
+              }`}
+              aria-label={frontCamera ? 'Switch to rear camera' : 'Switch to front camera'}
+            >
+              <FlipHorizontal2 size={16} />
+            </motion.button>
             {selectMode && (
               <button
                 onClick={() => setSelectedIds(new Set())}
@@ -1601,7 +1616,7 @@ export default function CameraPage() {
       {/* ═══ SHUTTER BAND ═══ */}
       {/* z-30 — always above tray */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-6"
+        className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-8"
         style={{
           height: 'calc(100px + env(safe-area-inset-bottom, 0px))',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -1610,18 +1625,18 @@ export default function CameraPage() {
           WebkitBackdropFilter: 'blur(16px)',
         }}
       >
-        {/* Library */}
+        {/* Upload from library */}
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={() => void picker.openLibrary()}
           className="flex flex-col items-center gap-1.5"
-          aria-label="Choose from photo library"
+          aria-label="Upload from photo library"
           disabled={!settingsLoaded}
         >
           <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors">
-            <Images size={22} className="text-white/70" />
+            <Upload size={22} className="text-white/70" />
           </div>
-          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Library</span>
+          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Upload</span>
         </motion.button>
 
         {/* Main shutter */}
@@ -1651,34 +1666,22 @@ export default function CameraPage() {
           </div>
         </motion.button>
 
-        {/* Assign */}
+        {/* Settings */}
         <motion.button
           whileTap={{ scale: 0.88 }}
-          onClick={() => {
-            const firstUnassigned = captures.find(c => c.status === 'done' && !c.jobId);
-            if (firstUnassigned) {
-              setJobPickerForClientId(firstUnassigned.clientId);
-            } else {
-              const doneIds = captures.filter(c => c.status === 'done').map(c => c.clientId);
-              if (doneIds.length > 0) setSelectedIds(new Set(doneIds));
-            }
-          }}
+          onClick={() => setSettingsOpen(true)}
           className="flex flex-col items-center gap-1.5"
-          aria-label="Assign photos to a job"
+          aria-label="Camera settings"
         >
           <div className="w-[58px] h-[58px] rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center active:bg-white/20 transition-colors relative">
-            <FolderOpen size={22} className="text-white/70" />
-            {captures.filter(c => c.status === 'done' && !c.jobId).length > 0 && (
-              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
-                <span className="text-white text-[9px] font-bold">
-                  {captures.filter(c => c.status === 'done' && !c.jobId).length > 99
-                    ? '99+'
-                    : captures.filter(c => c.status === 'done' && !c.jobId).length}
-                </span>
-              </div>
+            <Settings size={22} className="text-white/70" />
+            {(settings.overlayEnabled || settings.backupToRoll || settings.quality !== 'high' || backupPermDenied) && (
+              <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
+                backupPermDenied ? 'bg-amber-400' : 'bg-violet-400'
+              }`} />
             )}
           </div>
-          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Assign</span>
+          <span className="text-white/40 text-[10px] font-semibold tracking-wide">Settings</span>
         </motion.button>
       </div>
 
