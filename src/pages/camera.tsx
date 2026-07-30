@@ -1487,7 +1487,7 @@ export default function CameraPage() {
   // In 'ask' mode, the note bar shows the last-used note as a suggestion.
   const [lockedNote, setLockedNote] = useState<string | null>(null);
   const lockedNoteRef = useRef<string | null>(null);
-  const [noteBarOpen, setNoteBarOpen] = useState(false);
+
   // 'ask' mode: after each capture, show a quick note prompt
   const [askNoteClientId, setAskNoteClientId] = useState<string | null>(null);
 
@@ -2156,33 +2156,36 @@ export default function CameraPage() {
               Note
             </motion.button>
 
-            {/* Note pill — slides in when Note is on */}
+            {/* Note pill — slides in when Note is on: inline input, no popup */}
             <AnimatePresence>
               {settings.noteMode !== 'none' && (
-                <motion.button
+                <motion.div
                   initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
                   transition={{ type: 'spring', damping: 28, stiffness: 360 }}
-                  onClick={() => setNoteBarOpen(true)}
-                  className={`flex items-center gap-1 h-7 rounded-md px-2 overflow-hidden whitespace-nowrap transition-colors ${
-                    lockedNote
-                      ? 'bg-white/8 border border-white/12 text-white/60'
-                      : 'bg-white/5 border border-white/8 text-white/25'
-                  }`}
-                  aria-label={lockedNote ? `Note: ${lockedNote} — tap to change` : 'Tap to set note'}
+                  className="flex-1 min-w-0 flex items-center gap-1 relative"
                 >
-                  <span className="text-[10px] font-semibold truncate max-w-[140px]">
-                    {lockedNote ?? 'Set note…'}
-                  </span>
-                  {lockedNote && (
-                    <button
-                      onClick={e => { e.stopPropagation(); setLockedNoteBoth(null); }}
-                      className="w-3 h-3 rounded-full bg-white/10 flex items-center justify-center text-white/25 hover:bg-white/20 shrink-0 ml-0.5"
-                      aria-label="Clear note"
-                    >
-                      <X size={6} />
-                    </button>
+                  <input
+                    type="text"
+                    value={lockedNote ?? ''}
+                    onChange={e => {
+                      const val = e.target.value.slice(0, 40);
+                      setLockedNoteBoth(val || null);
+                    }}
+                    placeholder="Type note…"
+                    maxLength={40}
+                    className="w-full h-7 rounded-md px-2 text-[10px] font-semibold text-white/70 placeholder-white/20 bg-white/5 border border-white/8 focus:border-white/20 focus:outline-none focus:bg-white/8 transition-colors"
+                    style={{ minWidth: 0 }}
+                    aria-label="Watermark note"
+                  />
+                  {/* Char counter — only when close to limit */}
+                  {(lockedNote?.length ?? 0) >= 30 && (
+                    <span className={`absolute right-1.5 text-[8px] font-bold pointer-events-none ${
+                      (lockedNote?.length ?? 0) >= 38 ? 'text-red-400/70' : 'text-white/20'
+                    }`}>
+                      {40 - (lockedNote?.length ?? 0)}
+                    </span>
                   )}
-                </motion.button>
+                </motion.div>
               )}
             </AnimatePresence>
 
@@ -2341,21 +2344,6 @@ export default function CameraPage() {
         onChange={saveSettings}
       />
 
-      {/* Note bar sheet — set/change the locked note (or suggestion for ask mode) */}
-      <NoteSheet
-        open={noteBarOpen}
-        initialNote={lockedNote}
-        title={settings.noteMode === 'lock' ? 'Set locked note' : 'Note suggestion'}
-        placeholder={settings.noteMode === 'lock'
-          ? 'e.g. Pits, Fence line, North wall…'
-          : 'Default note for next photo…'}
-        saveLabel={settings.noteMode === 'lock' ? 'Lock note' : 'Set suggestion'}
-        onClose={() => setNoteBarOpen(false)}
-        onSave={(note) => {
-          setLockedNoteBoth(note || null);
-          setNoteBarOpen(false);
-        }}
-      />
 
       {/* Ask-mode prompt — shown after each capture so user can confirm/edit the note */}
       <NoteSheet
