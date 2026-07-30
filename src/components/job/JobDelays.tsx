@@ -9,18 +9,12 @@
  *   Weather → rainfall, ground condition, work condition checkboxes
  *   Other   → custom explanation required
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Clock, Plus, Edit2, Trash2, Loader2, AlertCircle,
   CalendarDays, X, Check, CloudRain, ChevronDown,
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
