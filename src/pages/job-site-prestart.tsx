@@ -1203,7 +1203,7 @@ export default function JobSitePrestartPage() {
                 <Field label="Date">
                   <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                 </Field>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <Field label="Start Time">
                     <Input type="time" value={prestart.start_time ?? ''} onChange={e => update('start_time', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                   </Field>
@@ -1323,7 +1323,7 @@ export default function JobSitePrestartPage() {
               {/* Section 6: Command */}
               <Section title="C — Command / Communications" icon={Phone} accent="bg-slate-600">
                 <p className="text-xs text-slate-400 -mt-1">Record who is in charge, who is first aid, how the crew will communicate, where the assembly point is, and confirm everyone has stop-work authority.</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <Field label="Emergency Number">
                     <Input value={prestart.emergency_number ?? '000'} onChange={e => update('emergency_number', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                   </Field>
