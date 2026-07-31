@@ -4,10 +4,28 @@
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
   "bundledWebRuntime": false,
+  "server": {
+    "url": "https://iwillbuild.com",
+    "cleartext": false,
+    "allowNavigation": [
+      "iwillbuild.com",
+      "*.iwillbuild.com"
+    ]
+  },
   "ios": {
-    "buildNumber": "4"
+    "buildNumber": "10",
+    "contentInset": "automatic",
+    "backgroundColor": "#111827"
+  },
+  "android": {
+    "backgroundColor": "#111827"
   },
   "plugins": {
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#111827",
+      "overlaysWebView": false
+    },
     "SplashScreen": {
       "launchShowDuration": 3000,
       "launchAutoHide": false,
@@ -16,9 +34,8 @@
       "splashFullScreen": true,
       "splashImmersive": true
     },
-    "Geolocation": {
-      "NSLocationAlwaysAndWhenInUseUsageDescription": "IWILLBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.",
-      "NSLocationWhenInUseUsageDescription": "IWILLBUILD uses your location to show your position on the live map and record job site check-ins."
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
     }
   }
 }

@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 6 (white screen fix — removed top-level @capacitor/camera import from useIosMediaPicker)
-const IOS_BUILD_NUMBER = 6;
+// Current: 10 (Appflow/TestFlight deploy — server.url enabled for live-server mode)
+const IOS_BUILD_NUMBER = 10;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
@@ -52,17 +52,18 @@ const config: CapacitorConfig = {
   webDir: 'dist/client',
 
   // ── Server config ─────────────────────────────────────────────────────────
-  // ⚠️  PRODUCTION / APP STORE BUILDS: keep server.url commented out.
-  //     The app must load bundled assets — not a remote URL — so the WebView
-  //     paints immediately without a network round-trip. A live server.url
-  //     causes a white screen on slow networks and is rejected by App Store
-  //     review guidelines for apps that require a network connection to launch.
+  // ⚠️  BUILD 10: server.url is ENABLED — app loads from live server.
+  //     This is intentional for this Appflow/TestFlight build.
   //
-  // server: {
-  //   url: 'https://iwillbuild.com',     // ← LOCAL DEV ONLY — uncomment for LAN testing
-  //   cleartext: false,
-  //   allowNavigation: ['iwillbuild.com', '*.iwillbuild.com'],
-  // },
+  // ⚠️  BEFORE App Store submission: comment server.url back out.
+  //     A live server.url causes white screen on slow/no network and may
+  //     trigger App Store review rejection (apps must not require network to launch).
+  //
+  server: {
+    url: 'https://iwillbuild.com',
+    cleartext: false,
+    allowNavigation: ['iwillbuild.com', '*.iwillbuild.com'],
+  },
 
   // ── iOS specific ──────────────────────────────────────────────────────────
   ios: {
