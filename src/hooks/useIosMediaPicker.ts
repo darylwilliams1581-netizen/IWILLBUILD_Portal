@@ -58,9 +58,34 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { isNative, getPlatform, getCameraPlugin } from '@/lib/capacitor-plugins';
 import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
-// Camera enum constants — static values safe to import at module level.
-// These are NOT plugin instances, so they do not violate Rule 6.
-import { CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
+
+// ── Camera enum constants as inline literals ──────────────────────────────────
+// We intentionally do NOT import these from @capacitor/camera at module level.
+//
+// WHY: A top-level `import { CameraResultType } from '@capacitor/camera'` causes
+// the entire @capacitor/camera package to be evaluated when this module is first
+// parsed — which happens during the initial JS bundle load, BEFORE the Capacitor
+// bridge (window.Capacitor) is fully initialised on iOS. If the bridge isn't
+// ready, the plugin registration code inside @capacitor/camera can throw or
+// produce undefined values, crashing the module graph before React mounts.
+// That crash prevents CapacitorInit from running, so the splash screen never
+// hides → white screen in TestFlight.
+//
+// The enum values are pure string constants (verified from the package source):
+//   CameraResultType.Base64  = 'base64'
+//   CameraResultType.DataUrl = 'dataUrl'
+//   CameraSource.Camera      = 'CAMERA'
+//   CameraDirection.Rear     = 'REAR'
+//   CameraDirection.Front    = 'FRONT'
+//
+// Using inline literals is safe, zero-risk, and eliminates the startup crash.
+// The actual plugin instance is still lazy-loaded via getCameraPlugin() which
+// is already guarded by isNative() and wrapped in try/catch.
+const CAM_RESULT_BASE64  = 'base64'  as const;
+const CAM_RESULT_DATAURL = 'dataUrl' as const;
+const CAM_SOURCE_CAMERA  = 'CAMERA'  as const;
+const CAM_DIR_REAR       = 'REAR'    as const;
+const CAM_DIR_FRONT      = 'FRONT'   as const;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -349,9 +374,9 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           const photo = await CameraPlugin.getPhoto({
             quality: nativeQuality,
             allowEditing: false,
-            resultType: CameraResultType.Base64,
-            source: CameraSource.Camera,
-            direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
+            resultType: CAM_RESULT_BASE64,
+            source: CAM_SOURCE_CAMERA,
+            direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
             // flashMode is a valid runtime option on iOS even if the TS types
             // for this version don't expose it — pass as string literal via cast
             flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
@@ -382,9 +407,9 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
               const photo2 = await CameraPlugin.getPhoto({
                 quality: nativeQuality,
                 allowEditing: false,
-                resultType: CameraResultType.DataUrl,
-                source: CameraSource.Camera,
-                direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
+                resultType: CAM_RESULT_DATAURL,
+                source: CAM_SOURCE_CAMERA,
+                direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
                 flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
               } as any);
               if (photo2.dataUrl) {

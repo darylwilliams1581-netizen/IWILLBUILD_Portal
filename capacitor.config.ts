@@ -11,7 +11,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
  *   Build 1 — rejected (missing NSLocation strings)
  *   Build 2 — accepted by App Store Connect
  *   Build 3 — rejected (duplicate CFBundleVersion=2, then fixed and re-uploaded)
- *   Build 4 — NEXT UPLOAD (current value below)
+ *   Build 4 — submitted
+ *   Build 5 — white screen in TestFlight (top-level @capacitor/camera import crash)
+ *   Build 6 — NEXT UPLOAD (current value below)
  *
  * ── How to increment for future uploads ──────────────────────────────────────
  * Before every new Appflow / Xcode archive:
@@ -38,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 5 (native camera plugin fix pass — @capacitor/camera installed + wired)
-const IOS_BUILD_NUMBER = 5;
+// Current: 6 (white screen fix — removed top-level @capacitor/camera import from useIosMediaPicker)
+const IOS_BUILD_NUMBER = 6;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
