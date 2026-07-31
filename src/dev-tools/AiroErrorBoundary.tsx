@@ -1,33 +1,42 @@
 /**
- * Local-dev / E2E passthrough for AiroErrorBoundary.
+ * AiroErrorBoundary — production / Capacitor passthrough stub.
  *
- * In the builder sandbox the real component lives at
- * ../../dev-tools/src/AiroErrorBoundary (project root).
- * When that directory is present (local dev), src/main.tsx and src/App.tsx
- * import it directly via relative paths — this file is never loaded.
- *
- * This stub exists solely as the alias target for
+ * This file is the alias target for:
  *   { find: '@/dev-tools/AiroErrorBoundary', replacement: '...this file...' }
- * in vite.config.ts, so Vite does not 404 if any future import uses the
- * @-alias form instead of a relative path.
+ * in vite.config.ts.
  *
- * It re-exports the real component when available, otherwise falls back to a
- * plain React Fragment wrapper so the app still renders.
+ * WHY THIS IS A PASSTHROUGH:
+ * The real AiroErrorBoundary (dev-tools/src/AiroErrorBoundary.tsx) is a
+ * builder-sandbox-only component. It imports builder-internal modules
+ * (postMessage utils, HMR hooks, overlay UI, event bus, cycle state) that
+ * only exist inside the Airo builder iframe. In a production Capacitor build
+ * (npm run build:cap) or any standalone deployment, those modules don't exist
+ * and the import chain would crash the JS bundle at parse time → white screen.
+ *
+ * The previous version of this stub used a dynamic require() inside try/catch
+ * to attempt loading the real boundary. In a Vite ESM production build, Vite
+ * statically analyzes require() calls and tries to bundle the target — which
+ * pulls in the full builder boundary and all its internal deps, causing the
+ * same crash. The try/catch does NOT prevent Vite from bundling the require().
+ *
+ * This passthrough is the correct production form:
+ *   - Zero builder-internal imports
+ *   - No require() calls
+ *   - Renders children transparently
+ *   - Matches the interface expected by main.tsx (children + captureGlobalErrors)
+ *
+ * The builder sandbox injects the real AiroErrorBoundary via its own Vite
+ * plugin layer, which overrides this alias at build time in the sandbox only.
  */
 import React from 'react';
 
-let RealBoundary: React.ComponentType<{ children?: React.ReactNode; captureGlobalErrors?: boolean }> | null = null;
-
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  RealBoundary = require('../../dev-tools/src/AiroErrorBoundary').default;
-} catch {
-  // dev-tools directory absent — use passthrough below
-}
-
-function PassthroughBoundary({ children }: { children?: React.ReactNode }) {
+function AiroErrorBoundary({
+  children,
+}: {
+  children?: React.ReactNode;
+  captureGlobalErrors?: boolean;
+}) {
   return <>{children}</>;
 }
 
-const AiroErrorBoundary = RealBoundary ?? PassthroughBoundary;
 export default AiroErrorBoundary;
