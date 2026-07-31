@@ -1,0 +1,57 @@
+AIRO WHITE SCREEN / CAMERA FIX — BUILD 6+
+==========================================
+
+PROBLEM
+-------
+iOS build shows a white screen on launch, or crashes immediately after the
+splash screen dismisses. Root cause: top-level (module-scope) import of
+@capacitor/camera in useIosMediaPicker.ts caused the Capacitor plugin to be
+evaluated before the WebView was ready, crashing the JS runtime.
+
+FIX APPLIED (Build 6)
+---------------------
+1. Removed ALL top-level `import ... from '@capacitor/camera'` statements
+   from useIosMediaPicker.ts (and any other file that imported Capacitor
+   plugins at module scope).
+
+2. Replaced CameraResultType and CameraSource enum references with their
+   inline string literal equivalents:
+     CameraResultType.Uri  → 'uri'
+     CameraSource.Camera   → 'CAMERA'
+     CameraSource.Photos   → 'PHOTOS'
+
+3. All Capacitor plugin imports are now lazy-loaded inside functions,
+   guarded by isNative() + try/catch, via capacitor-plugins.ts:
+
+     async function someNativeAction() {
+       if (!isNative()) return;
+       try {
+         const { Camera } = await import('@capacitor/camera');
+         await Camera.getPhoto({ ... });
+       } catch (e) {
+         console.error('Camera error', e);
+       }
+     }
+
+4. AiroErrorBoundary.tsx (dev-tools/src/) replaced with a clean passthrough
+   stub so the alias @/dev-tools/AiroErrorBoundary resolves without pulling
+   in the full dev-tools error overlay on native builds.
+
+RULES — DO NOT BREAK THESE
+---------------------------
+- NEVER top-level import any @capacitor/* plugin at module scope.
+- ALWAYS lazy-load Capacitor plugins inside functions via capacitor-plugins.ts.
+- ALWAYS guard native calls with isNative() before calling any plugin.
+- ALWAYS use inline string literals instead of enum constants from Capacitor
+  packages (enums require the module to be evaluated at import time).
+- NEVER import ../dev-tools/src/AiroErrorBoundary directly — always use
+  the @/dev-tools/AiroErrorBoundary alias which resolves to the stub.
+
+VERIFICATION
+------------
+After applying this fix:
+1. npm run build:cap
+2. npx cap sync
+3. npx cap open ios
+4. Product → Run on a real device (not simulator)
+5. Confirm splash screen appears, then app loads without white screen.

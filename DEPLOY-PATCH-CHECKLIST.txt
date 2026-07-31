@@ -1,0 +1,67 @@
+IWILLBUILD iOS DEPLOY PATCH CHECKLIST
+======================================
+Build: 10
+Date:  2026-07-31
+Target: TestFlight / App Store Connect
+
+PRE-PATCH STEPS (on Mac)
+------------------------
+[ ] git pull  (pull latest workspace changes)
+[ ] Confirm capacitor.config.ts IOS_BUILD_NUMBER = 10
+[ ] Confirm capacitor.config.json ios.buildNumber = "10"
+
+PATCH FILES — COPY TO PROJECT ROOT
+------------------------------------
+[ ] capacitor.config.ts        → project root (overwrite)
+[ ] capacitor.config.json      → project root (overwrite)
+[ ] scripts/publish-build.mjs  → scripts/ folder (overwrite)
+
+PATCH FILES — DEV TOOLS
+------------------------
+[ ] dev-tools/src/AiroErrorBoundary.tsx  → overwrite with clean passthrough stub
+
+PATCH FILES — iOS NATIVE
+-------------------------
+[ ] ios/.gitignore
+[ ] ios/debug.xcconfig
+[ ] ios/App/App.xcodeproj/project.pbxproj          (CURRENT_PROJECT_VERSION = 10)
+[ ] ios/App/App.xcodeproj/project.xcworkspace/
+      contents.xcworkspacedata
+      xcshareddata/IDEWorkspaceChecks.plist
+[ ] ios/App/App/AppDelegate.swift
+[ ] ios/App/App/Info.plist
+[ ] ios/App/App/Assets.xcassets/
+      Contents.json
+      AppIcon.appiconset/Contents.json
+      AppIcon.appiconset/AppIcon-512@2x.png         ← real PNG required
+      Splash.imageset/Contents.json
+      Splash.imageset/splash-2732x2732.png           ← real PNG required
+      Splash.imageset/splash-2732x2732-1.png         ← real PNG required
+      Splash.imageset/splash-2732x2732-2.png         ← real PNG required
+[ ] ios/App/App/Base.lproj/LaunchScreen.storyboard
+[ ] ios/App/App/Base.lproj/Main.storyboard
+[ ] ios/App/CapApp-SPM/.gitignore
+[ ] ios/App/CapApp-SPM/Package.swift
+[ ] ios/App/CapApp-SPM/README.md
+[ ] ios/App/CapApp-SPM/Sources/CapApp-SPM/CapApp-SPM.swift
+
+POST-PATCH BUILD STEPS
+-----------------------
+[ ] npm run build:cap
+[ ] npx cap sync
+[ ] npx cap open ios
+[ ] In Xcode: verify CURRENT_PROJECT_VERSION = 10 in Build Settings
+[ ] Product → Archive
+[ ] Distribute App → App Store Connect → Upload
+
+FORBIDDEN (do not do before App Store submission)
+--------------------------------------------------
+[ ] Do NOT leave server.url uncommented in capacitor.config.ts for App Store
+    builds — comment it out before final App Store (not TestFlight) submission.
+    Current state: server.url = "https://iwillbuild.com" (TestFlight OK)
+
+BUILD NUMBER ALIGNMENT VERIFICATION
+-------------------------------------
+capacitor.config.ts    IOS_BUILD_NUMBER          = 10  ✅
+capacitor.config.json  ios.buildNumber           = "10" ✅
+project.pbxproj        CURRENT_PROJECT_VERSION   = 10  ✅ (Debug + Release)
