@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LIMITS } from '@/lib/limits';
-import SkipLogicEditor from '@/components/job/SkipLogicEditor';
+
 import {
   ChevronLeft,
   Plus,
@@ -490,8 +490,6 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
   const [required, setRequired] = useState(field.required);
   const [options, setOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
   const [settings, setSettings] = useState<Record<string, unknown>>(() => parseSettings(field.settingsJson));
-  const [logic, setLogic] = useState<FieldLogic>(() => parseLogic(field.logicJson));
-  const [newOption, setNewOption] = useState('');
   const [optionSaving, setOptionSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -500,7 +498,6 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
   useEffect(() => { setRequired(field.required); }, [field.required]);
   useEffect(() => { setOptions(parseOptions(field.optionsJson)); }, [field.optionsJson]);
   useEffect(() => { setSettings(parseSettings(field.settingsJson)); }, [field.settingsJson]);
-  useEffect(() => { setLogic(parseLogic(field.logicJson)); }, [field.logicJson]);
 
   async function saveLabel() {
     if (label === field.label) return;
@@ -551,19 +548,6 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
     await onUpdate({ settingsJson: JSON.stringify(newSettings) });
   }
 
-  async function saveLogic(newLogic: FieldLogic) {
-    setLogic(newLogic);
-    // Preserve existing skipRules when saving show/hide logic
-    let base: Record<string, unknown> = {};
-    try { base = JSON.parse(field.logicJson ?? '{}') as Record<string, unknown>; } catch { /* ignore */ }
-    const merged = { ...base, ...newLogic };
-    await onUpdate({ logicJson: JSON.stringify(merged) });
-  }
-
-  async function saveSkipLogicJson(newLogicJson: string) {
-    await onUpdate({ logicJson: newLogicJson });
-  }
-
   const currentDef = getTypeDef(fieldType);
   const showOptions = currentDef.hasOptions;
   const isLayout = currentDef.isLayout;
@@ -610,7 +594,6 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
               <p className="text-[11px] text-slate-400">
                 {currentDef.label}
                 {!isLayout && required ? ' · Required' : ''}
-                {logic.enabled ? <span className="text-primary/70"> · Logic on</span> : ''}
               </p>
             </div>
             <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -780,18 +763,6 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
                     </div>
                   )}
 
-                  {/* Divider + show/hide logic */}
-                  <div className="border-t border-slate-100" />
-                  <LogicEditor fieldId={field.id} logic={logic} allFields={allFields} onChange={saveLogic} />
-
-                  {/* Skip logic — only for non-layout fields */}
-                  {!isLayout && (
-                    <SkipLogicEditor
-                      field={field}
-                      allFields={allFields}
-                      onChange={(newLogicJson) => void saveSkipLogicJson(newLogicJson)}
-                    />
-                  )}
                 </div>
               </motion.div>
             )}
