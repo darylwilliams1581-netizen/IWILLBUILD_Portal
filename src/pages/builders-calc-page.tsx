@@ -9,7 +9,7 @@ export default function BuildersCalcPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Builders Calc — IWILLBUILD</title>
-        <meta name="description" content="Construction calculators — areas, volumes, materials and more." />
+        <meta name="description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform for Australian tradies." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/builders-calc" />
         <meta property="og:title" content="Builders Calc — IWILLBUILD" />
@@ -21,6 +21,16 @@ export default function BuildersCalcPage() {
         <meta name="twitter:title" content="Builders Calc — IWILLBUILD" />
         <meta name="twitter:description" content="Construction calculators for areas, volumes, materials and more." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "@id": "https://iwillbuild.com/builders-calc#webpage",
+          "name": "Builders Calc — IWILLBUILD",
+          "url": "https://iwillbuild.com/builders-calc",
+          "description": "Construction calculators for areas, volumes, materials and more.",
+          "isPartOf": { "@id": "https://iwillbuild.com/#website" },
+          "about": { "@id": "https://iwillbuild.com/#organization" }
+        })}</script>
       </Helmet>
       <h1 className="sr-only">Builders Calc</h1>
 

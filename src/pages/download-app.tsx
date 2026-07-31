@@ -74,7 +74,7 @@ export default function DownloadAppPage() {
               <Smartphone size={36} className="text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white">Get the App</h1>
+              <h1 className="text-2xl font-black text-white">Download the IWILLBUILD App</h1>
               <p className="text-gray-400 mt-1 text-sm leading-relaxed">
                 The full IWILLBUILD portal in your pocket — jobs, fleet tracking, forms, and more.
               </p>
