@@ -608,31 +608,29 @@ export default function EstimateEditorPage() {
 
               {/* Lines table */}
               <div className="bg-white rounded-xl border border-border overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Line Items</h2>
-                    {!isLocked && (
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                        lines.length >= LIMITS.ESTIMATE_LINES
-                          ? 'bg-red-50 text-red-600 border-red-200'
-                          : lines.length >= LIMITS.ESTIMATE_LINES * 0.9
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-muted text-muted-foreground border-border'
-                      }`}>{lines.length} / {LIMITS.ESTIMATE_LINES}</span>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-border overflow-x-auto">
+                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider whitespace-nowrap shrink-0">Line Items</h2>
                   {!isLocked && (
-                    <div className="flex items-center gap-1.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                      lines.length >= LIMITS.ESTIMATE_LINES
+                        ? 'bg-red-50 text-red-600 border-red-200'
+                        : lines.length >= LIMITS.ESTIMATE_LINES * 0.9
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-muted text-muted-foreground border-border'
+                    }`}>{lines.length} / {LIMITS.ESTIMATE_LINES}</span>
+                  )}
+                  {!isLocked && (
+                    <div className="flex items-center gap-1.5 ml-auto shrink-0">
                       <button
                         onClick={() => setShowCostPicker(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30 whitespace-nowrap"
                       >
                         <Calculator size={12} />
                         Cost Guide
                       </button>
                       <button
                         onClick={() => setShowRecipePicker(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30 whitespace-nowrap"
                       >
                         <BookOpen size={12} />
                         Recipe
@@ -641,33 +639,35 @@ export default function EstimateEditorPage() {
                         onClick={addLine}
                         disabled={isLocked || lines.length >= LIMITS.ESTIMATE_LINES}
                         title={lines.length >= LIMITS.ESTIMATE_LINES ? `Estimate line limit reached (${LIMITS.ESTIMATE_LINES} lines)` : undefined}
-                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Plus size={13} />
                         Add Line
                       </button>
-                      {/* CSV actions */}
-                      <div className="w-px h-4 bg-slate-200 mx-0.5" />
-                      <button
-                        onClick={downloadEstimateTemplate}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors"
-                        title="Download CSV import template"
-                      >
-                        <FileText size={12} />CSV Import Template
-                      </button>
-                      <button
-                        onClick={() => setShowCsvImport(true)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
-                      >
-                        <Upload size={12} />Import CSV
-                      </button>
-                      <button
-                        onClick={handleExportCsv}
-                        disabled={exportingCsv || lines.length === 0}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
-                      >
-                        {exportingCsv ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}Export CSV
-                      </button>
+                      {/* CSV actions — hidden on mobile to keep header clean */}
+                      <div className="hidden md:flex items-center gap-1.5">
+                        <div className="w-px h-4 bg-slate-200 mx-0.5" />
+                        <button
+                          onClick={downloadEstimateTemplate}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors"
+                          title="Download CSV import template"
+                        >
+                          <FileText size={12} />CSV Import Template
+                        </button>
+                        <button
+                          onClick={() => setShowCsvImport(true)}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        >
+                          <Upload size={12} />Import CSV
+                        </button>
+                        <button
+                          onClick={handleExportCsv}
+                          disabled={exportingCsv || lines.length === 0}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        >
+                          {exportingCsv ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}Export CSV
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -824,7 +824,7 @@ export default function EstimateEditorPage() {
                         onChange={(e) => updateLine(line._key, 'description', e.target.value)}
                         rows={2}
                         placeholder="Description"
-                        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none disabled:bg-muted"
+                        className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none disabled:bg-muted"
                       />
                       {/* Category — mobile */}
                       {estimateCategories.length > 0 && (
@@ -834,7 +834,7 @@ export default function EstimateEditorPage() {
                             value={line.category ?? ''}
                             disabled={isLocked}
                             onChange={(e) => updateLine(line._key, 'category', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-border rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted"
+                            className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted"
                           >
                             <option value="">— none —</option>
                             {estimateCategories.map((c) => (
@@ -843,21 +843,25 @@ export default function EstimateEditorPage() {
                           </select>
                         </div>
                       )}
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* Qty + Unit on one row, Rate full-width below — prevents 3-col overlap on narrow phones */}
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs text-muted-foreground">Qty</label>
-                          <input type="number" min="0" step="any" value={line.quantity} disabled={isLocked} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-2 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                          <input type="number" min="0" step="any" value={line.quantity} disabled={isLocked} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-3 py-2.5 border border-border rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted" />
                         </div>
                         <div>
                           <label className="text-xs text-muted-foreground">Unit</label>
-                          <input type="text" value={line.unit} disabled={isLocked} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-2 py-1.5 border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Rate</label>
-                          <input type="number" min="0" step="any" value={line.rate} disabled={isLocked} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-2 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                          <input type="text" value={line.unit} disabled={isLocked} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted" />
                         </div>
                       </div>
-                      <div className="text-right text-sm font-mono font-semibold">${lineCalc(line).toFixed(2)}</div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Rate ($)</label>
+                        <input type="number" min="0" step="any" value={line.rate} disabled={isLocked} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-3 py-2.5 border border-border rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted" />
+                      </div>
+                      <div className="flex items-center justify-between bg-muted/30 rounded-xl px-3 py-2">
+                        <span className="text-xs text-muted-foreground">Line total</span>
+                        <span className="text-sm font-mono font-bold text-foreground">${lineCalc(line).toFixed(2)}</span>
+                      </div>
                     </div>
                   ))}
                 </div>

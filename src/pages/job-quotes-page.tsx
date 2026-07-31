@@ -242,36 +242,39 @@ export default function JobQuotesPage() {
 
       {/* ── Top bar ── */}
       <div className="bg-white border-b border-gray-100 px-4 pb-4 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => navigate(`/jobs/${id}`)}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-            <p className="text-gray-900 font-bold text-xl leading-tight text-center">Quotes</p>
-            <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-              <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
-              <span>/</span>
-              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
-              <span>/</span>
-              <span className="text-gray-500 font-medium">Quotes</span>
-            </div>
-          </div>
-          {canEdit && (
+        <div className="max-w-2xl mx-auto">
+          {/* Row 1: back + home + title + new quote */}
+          <div className="flex items-center gap-2 h-14">
             <button
-              onClick={handleCreate}
-              disabled={creating}
-              className="flex items-center gap-2 bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold px-4 py-2.5 rounded-2xl transition-colors disabled:opacity-60 shrink-0"
+              onClick={() => navigate(`/jobs/${id}`)}
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
             >
-              {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-              New Quote
+              <ChevronLeft size={18} />
             </button>
-          )}
+            <button
+              onClick={() => navigate('/')}
+              className="w-9 h-9 rounded-xl bg-violet-500 text-white flex items-center justify-center hover:bg-violet-700 active:bg-violet-800 transition-colors shrink-0"
+              title="Dashboard"
+            >
+              <Home size={16} />
+            </button>
+            <div className="flex-1 min-w-0 text-center">
+              <p className="font-bold text-gray-900 text-lg leading-tight">Quotes</p>
+              <p className="text-xs text-gray-400 leading-tight truncate">
+                {job?.name ?? '…'}
+              </p>
+            </div>
+            {canEdit && (
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold px-4 py-2.5 rounded-2xl transition-colors disabled:opacity-60 shrink-0"
+              >
+                {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                New Quote
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -389,42 +392,42 @@ export default function JobQuotesPage() {
                         <a
                           href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
                           title="Email"
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Mail size={14} />
+                          <Mail size={15} />
                         </a>
                         <button
                           title="Copy share link"
                           onClick={() => navigator.clipboard.writeText(`${window.location.origin}/view/estimate/${est.id}`)}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                         >
-                          <Share2 size={14} />
+                          <Share2 size={15} />
                         </button>
                         <Link
                           to={`/estimates/${est.id}`}
                           title="Open editor"
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                         >
-                          <ExternalLink size={14} />
+                          <ExternalLink size={15} />
                         </Link>
                         <button
                           title="Duplicate"
                           onClick={() => handleDuplicate(est.id)}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                         >
-                          <Copy size={14} />
+                          <Copy size={15} />
                         </button>
                         {canEdit && (
                           <button
                             title="Delete"
                             onClick={() => handleDelete(est.id)}
                             disabled={deletingId === est.id}
-                            className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                           >
                             {deletingId === est.id
-                              ? <Loader2 size={14} className="animate-spin" />
-                              : <Trash2 size={14} />}
+                              ? <Loader2 size={15} className="animate-spin" />
+                              : <Trash2 size={15} />}
                           </button>
                         )}
                       </div>
