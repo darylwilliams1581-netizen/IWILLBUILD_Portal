@@ -3,7 +3,7 @@
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
   "ios": {
-    "buildNumber": "6"
+    "buildNumber": "7"
   },
   "bundledWebRuntime": false
 }
