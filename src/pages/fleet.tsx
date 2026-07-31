@@ -121,7 +121,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5">Asset / Rego Number</label>
+              <label className="block text-xs font-semibold mb-1.5">Asset Number</label>
               <input
                 type="text"
                 value={form.assetNumber}
@@ -165,7 +165,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5">Rego Plate</label>
+              <label className="block text-xs font-semibold mb-1.5">Rego Number</label>
               <input
                 type="text"
                 value={form.rego}
@@ -188,7 +188,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
               </label>
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-semibold mb-1.5">Service Due Date</label>
               <input
                 type="date"
@@ -198,7 +198,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
               />
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-semibold mb-1.5">Rego Expiry Date</label>
               <input
                 type="date"
