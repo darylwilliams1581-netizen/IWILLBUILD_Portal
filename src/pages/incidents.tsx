@@ -9,9 +9,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import {
   AlertTriangle, Plus, Filter, X, ChevronRight,
-  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft,
+  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft, Briefcase,
+  Archive, ArchiveRestore, Inbox,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -39,6 +41,9 @@ export interface Incident {
   corrective_actions_complete?: number;
   created_at: string;
   closed_at: string | null;
+  archived_at: string | null;
+  archived_by: string | null;
+  archive_reason: string | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -86,7 +91,13 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showJobPicker, setShowJobPicker] = useState(false);
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
+  const [archivingId, setArchivingId] = useState<number | null>(null);
+  const [restoringId, setRestoringId] = useState<number | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Incident | null>(null);
+  const [archiveReason, setArchiveReason] = useState('');
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') ?? '');
@@ -100,18 +111,22 @@ export default function IncidentsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterStatus) params.set('status', filterStatus);
-      if (filterSeverity) params.set('severity', filterSeverity);
-      if (filterType) params.set('incidentType', filterType);
-      if (filterJobLinked) params.set('jobLinked', filterJobLinked);
-      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
-      if (filterDateTo) params.set('dateTo', filterDateTo);
+      if (activeTab === 'archive') {
+        params.set('archived', '1');
+      } else {
+        if (filterStatus) params.set('status', filterStatus);
+        if (filterSeverity) params.set('severity', filterSeverity);
+        if (filterType) params.set('incidentType', filterType);
+        if (filterJobLinked) params.set('jobLinked', filterJobLinked);
+        if (filterDateFrom) params.set('dateFrom', filterDateFrom);
+        if (filterDateTo) params.set('dateTo', filterDateTo);
+      }
       const r = await fetch(`/api/incidents?${params.toString()}`);
       if (r.ok) setIncidents(await r.json() as Incident[]);
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterSeverity, filterType, filterJobLinked, filterDateFrom, filterDateTo]);
+  }, [activeTab, filterStatus, filterSeverity, filterType, filterJobLinked, filterDateFrom, filterDateTo]);
 
   useEffect(() => { void loadIncidents(); }, [loadIncidents]);
 
@@ -138,8 +153,36 @@ export default function IncidentsPage() {
       )
     : incidents;
 
+  async function handleArchive(incident: Incident) {
+    setArchivingId(incident.id);
+    try {
+      const r = await fetch(`/api/incidents/${incident.id}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: archiveReason }),
+      });
+      if (r.ok) {
+        setIncidents(prev => prev.filter(i => i.id !== incident.id));
+        setArchiveTarget(null);
+        setArchiveReason('');
+      }
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
+  async function handleRestore(id: number) {
+    setRestoringId(id);
+    try {
+      const r = await fetch(`/api/incidents/${id}/unarchive`, { method: 'POST' });
+      if (r.ok) setIncidents(prev => prev.filter(i => i.id !== id));
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -171,7 +214,7 @@ export default function IncidentsPage() {
             </div>
             <button
               type="button"
-              onClick={() => navigate('/incidents/new')}
+              onClick={() => setShowJobPicker(true)}
               className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold"
             >
               <Plus size={14} /> New
@@ -191,100 +234,130 @@ export default function IncidentsPage() {
           </div>
         </div>
 
-        {/* Filter bar */}
-        <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2">
+        {/* Active / Archive tab switcher */}
+        <div className="bg-white border-b border-slate-100 px-4 flex gap-1 pt-2">
           <button
             type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-              activeFilterCount > 0
-                ? 'bg-red-50 border-red-200 text-red-700'
-                : 'border-slate-200 text-slate-600'
+            onClick={() => setActiveTab('active')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${
+              activeTab === 'active'
+                ? 'border-red-500 text-red-700'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
           >
-            <Filter size={12} />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                {activeFilterCount}
-              </span>
-            )}
+            <AlertTriangle size={12} /> Active register
           </button>
-          {activeFilterCount > 0 && (
-            <button type="button" onClick={clearFilters} className="text-xs text-slate-400 flex items-center gap-1">
-              <X size={11} /> Clear
-            </button>
-          )}
-          <span className="ml-auto text-xs text-slate-400">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
+          <button
+            type="button"
+            onClick={() => setActiveTab('archive')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${
+              activeTab === 'archive'
+                ? 'border-slate-500 text-slate-700'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Archive size={12} /> Archive
+          </button>
         </div>
 
-        {/* Filter panel */}
-        {showFilters && (
-          <div className="bg-white border-b border-slate-100 px-4 py-3 grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Status</label>
-              <select
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+        {/* Filter bar — active tab only */}
+        {activeTab === 'active' && (
+          <>
+            <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                  activeFilterCount > 0
+                    ? 'bg-red-50 border-red-200 text-red-700'
+                    : 'border-slate-200 text-slate-600'
+                }`}
               >
-                <option value="">All statuses</option>
-                {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+                <Filter size={12} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              {activeFilterCount > 0 && (
+                <button type="button" onClick={clearFilters} className="text-xs text-slate-400 flex items-center gap-1">
+                  <X size={11} /> Clear
+                </button>
+              )}
+              <span className="ml-auto text-xs text-slate-400">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Severity</label>
-              <select
-                value={filterSeverity}
-                onChange={e => setFilterSeverity(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              >
-                <option value="">All severities</option>
-                {SEVERITY_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Type</label>
-              <select
-                value={filterType}
-                onChange={e => setFilterType(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              >
-                <option value="">All types</option>
-                {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Job linked</label>
-              <select
-                value={filterJobLinked}
-                onChange={e => setFilterJobLinked(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              >
-                <option value="">All</option>
-                <option value="yes">Linked to job</option>
-                <option value="no">No job</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Date from</label>
-              <input
-                type="date"
-                value={filterDateFrom}
-                onChange={e => setFilterDateFrom(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Date to</label>
-              <input
-                type="date"
-                value={filterDateTo}
-                onChange={e => setFilterDateTo(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              />
-            </div>
-          </div>
+
+            {/* Filter panel */}
+            {showFilters && (
+              <div className="bg-white border-b border-slate-100 px-4 py-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={e => setFilterStatus(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All statuses</option>
+                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Severity</label>
+                  <select
+                    value={filterSeverity}
+                    onChange={e => setFilterSeverity(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All severities</option>
+                    {SEVERITY_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Type</label>
+                  <select
+                    value={filterType}
+                    onChange={e => setFilterType(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All types</option>
+                    {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Job linked</label>
+                  <select
+                    value={filterJobLinked}
+                    onChange={e => setFilterJobLinked(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All</option>
+                    <option value="yes">Linked to job</option>
+                    <option value="no">No job</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Date from</label>
+                  <input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={e => setFilterDateFrom(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Date to</label>
+                  <input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={e => setFilterDateTo(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* List */}
@@ -295,12 +368,22 @@ export default function IncidentsPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16">
-              <AlertTriangle size={36} className="text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm font-medium">
-                {activeFilterCount > 0 || search ? 'No incidents match your filters' : 'No incidents recorded'}
-              </p>
-              {!activeFilterCount && !search && (
-                <p className="text-slate-300 text-xs mt-1">Tap New to record an incident</p>
+              {activeTab === 'archive' ? (
+                <>
+                  <Inbox size={36} className="text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">Archive is empty</p>
+                  <p className="text-slate-300 text-xs mt-1">Archived incidents appear here — they are never deleted</p>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle size={36} className="text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">
+                    {activeFilterCount > 0 || search ? 'No incidents match your filters' : 'No incidents recorded'}
+                  </p>
+                  {!activeFilterCount && !search && (
+                    <p className="text-slate-300 text-xs mt-1">Tap New to record an incident</p>
+                  )}
+                </>
               )}
             </div>
           ) : (
@@ -368,6 +451,37 @@ export default function IncidentsPage() {
                         )}
                       </div>
                     )}
+
+                    {/* Archive / Restore row */}
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-50">
+                      {activeTab === 'archive' ? (
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {incident.archive_reason && (
+                            <span className="text-xs text-slate-400 italic">{incident.archive_reason}</span>
+                          )}
+                          <button
+                            type="button"
+                            disabled={restoringId === incident.id}
+                            onClick={e => { e.stopPropagation(); void handleRestore(incident.id); }}
+                            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                          >
+                            {restoringId === incident.id ? <Loader2 size={10} className="animate-spin" /> : <ArchiveRestore size={10} />}
+                            Restore
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setArchiveTarget(incident); setArchiveReason(''); }}
+                          className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          <Archive size={10} /> Archive
+                        </button>
+                      )}
+                      {activeTab !== 'archive' && (
+                        <ChevronRight size={14} className="text-slate-300" />
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -375,6 +489,78 @@ export default function IncidentsPage() {
           )}
         </div>
       </div>
+
+      {/* Archive reason modal */}
+      {archiveTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setArchiveTarget(null)} />
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center">
+                <Archive size={16} className="text-slate-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">Archive incident</h3>
+                <p className="text-xs text-slate-400">Moves to archive — never deleted</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Reason (optional)</label>
+              <textarea
+                value={archiveReason}
+                onChange={e => setArchiveReason(e.target.value)}
+                placeholder="e.g. Investigation complete, corrective actions closed…"
+                rows={3}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setArchiveTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={archivingId === archiveTarget.id}
+                onClick={() => void handleArchive(archiveTarget)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {archivingId === archiveTarget.id ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Job picker — shown before creating a new incident */}
+      <JobPickerSheet
+        open={showJobPicker}
+        onClose={() => setShowJobPicker(false)}
+        title="Link to a job?"
+        subtitle="Select a job or skip to log a standalone incident"
+        iconBg="bg-red-100"
+        iconFg="text-red-600"
+        Icon={Briefcase}
+        onSelect={job => {
+          setShowJobPicker(false);
+          navigate(`/incidents/new?jobId=${job.id}&jobName=${encodeURIComponent(job.name)}`);
+        }}
+      />
+      {showJobPicker && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <button
+            type="button"
+            onClick={() => { setShowJobPicker(false); navigate('/incidents/new'); }}
+            className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            No job — standalone incident
+          </button>
+        </div>
+      )}
     </div>
   );
 }

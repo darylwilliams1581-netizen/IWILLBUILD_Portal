@@ -22,7 +22,7 @@ import SharePage from './pages/share';
 import ExternalFormPage from './pages/external-form';
 import LoginHelpPage from './pages/login-help';
 const DownloadAppPage = lazy(() => import('./pages/download-app'));
-const SiteEscapePage  = lazy(() => import('./pages/site-escape'));
+
 import { Navigate } from 'react-router-dom';
 
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
@@ -40,6 +40,7 @@ const StudioPage         = lazy(() => import('./pages/studio'));
 const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
 const StudioDocumentsPage = lazy(() => import('./pages/studio-documents'));
 const StudioFormsPage    = lazy(() => import('./pages/studio-forms'));
+const StudioGlobalListsPage = lazy(() => import('./pages/studio-global-lists'));
 const StudioLibraryPage  = lazy(() => import('./pages/studio-library'));
 const SafetyPostersPage  = lazy(() => import('./pages/safety-posters'));
 const JobFieldDocsPage   = lazy(() => import('./pages/job-field-docs'));
@@ -71,6 +72,7 @@ const ListsPage          = lazy(() => import('./pages/lists'));
 const UserLogsPage       = lazy(() => import('./pages/user-logs'));
 const QuickLinksPage     = lazy(() => import('./pages/quick-links'));
 const JobCardsPage       = lazy(() => import('./pages/job-cards'));
+const JobCardNewPage     = lazy(() => import('./pages/job-card-new'));
 const JobCardDetailPage  = lazy(() => import('./pages/job-card-detail'));
 
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
@@ -97,6 +99,7 @@ const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HelpPage                = lazy(() => import('./pages/help'));
+const CameraPage              = lazy(() => import('./pages/camera'));
 // HomeScreenPage is loaded inside ShellRouter (lazy, only when app shell is active)
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
@@ -162,7 +165,7 @@ export const routes: RouteObject[] = [
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
   { path: '/driver',       element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>,      errorElement: routeError },
   { path: '/prestart',     element: <ProtectedRoute><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></ProtectedRoute>,    errorElement: routeError },
-  { path: '/site-escape',  element: <ProtectedRoute><Suspense fallback={<PageLoader />}><SiteEscapePage /></Suspense></ProtectedRoute>,  errorElement: routeError },
+  { path: '/site-escape', element: <Navigate to="/home" replace />, errorElement: routeError },
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },
@@ -219,6 +222,7 @@ export const routes: RouteObject[] = [
   { path: '/studio/builder/:id',   element: protect(<StudioBuilderPage />),   errorElement: routeError },
   { path: '/studio/documents',     element: protect(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>), errorElement: routeError },
   { path: '/studio/forms',         element: protect(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>),     errorElement: routeError },
+  { path: '/studio/global-lists',  element: protect(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>), errorElement: routeError },
   { path: '/studio/library',       element: protect(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>),   errorElement: routeError },
   { path: '/safety/posters',       element: protect(<Suspense fallback={<PageLoader />}><SafetyPostersPage /></Suspense>),   errorElement: routeError },
   { path: '/job-docs',             element: protect(<Suspense fallback={<PageLoader />}><JobFieldDocsPage /></Suspense>),    errorElement: routeError },
@@ -249,14 +253,16 @@ export const routes: RouteObject[] = [
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/help',          element: protect(<Suspense fallback={<PageLoader />}><HelpPage /></Suspense>), errorElement: routeError },
+  { path: '/camera',        element: protect(<Suspense fallback={<PageLoader />}><CameraPage /></Suspense>), errorElement: routeError },
   { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/lists',         element: protect(<ListsPage />),           errorElement: routeError },
   { path: '/user-logs',     element: protect(<UserLogsPage />),        errorElement: routeError },
-  { path: '/job-cards',     element: protect(<JobCardsPage />),        errorElement: routeError },
-  { path: '/job-cards/:id', element: protect(<JobCardDetailPage />),   errorElement: routeError },
+  { path: '/job-cards',      element: protect(<Suspense fallback={<PageLoader />}><JobCardsPage /></Suspense>),     errorElement: routeError },
+  { path: '/job-cards/new',  element: protect(<Suspense fallback={<PageLoader />}><JobCardNewPage /></Suspense>),  errorElement: routeError },
+  { path: '/job-cards/:id',  element: protect(<Suspense fallback={<PageLoader />}><JobCardDetailPage /></Suspense>), errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)
   { path: '/view/file/:id',     element: protect(<ViewFilePage />),     errorElement: routeError },

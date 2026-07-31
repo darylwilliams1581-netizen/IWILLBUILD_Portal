@@ -48,7 +48,11 @@ export default async function handler(req: Request, res: Response) {
     const [invRows] = await db.execute(sql`
       SELECT id, invoice_number, title, status, total_inc_gst, due_date, paid_at, created_at
       FROM invoices
-      WHERE job_id = ${jobId} AND company_id = ${ctx.company_id}
+      WHERE job_id = ${jobId}
+        AND company_id = ${ctx.company_id}
+        AND customer_id = (
+          SELECT customer_id FROM jobs WHERE id = ${jobId} AND company_id = ${ctx.company_id} LIMIT 1
+        )
         AND status NOT IN ('draft', 'cancelled')
       ORDER BY created_at DESC
     `) as unknown as [Array<Record<string, unknown>>];

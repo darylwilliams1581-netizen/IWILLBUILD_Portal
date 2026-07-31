@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Car, X, AlertCircle, Loader2, CheckCircle2, MapPin, Navigation, ExternalLink } from 'lucide-react';
-import { isNative, getNativeGeo } from '@/lib/capacitor-plugins';
+import { Car, X, AlertCircle, Loader2, CheckCircle2, MapPin } from 'lucide-react';
 
 interface Vehicle {
   id: number;
@@ -29,123 +28,83 @@ export interface ActiveSession {
   source: string;
 }
 
-// ── Location permission helpers ───────────────────────────────────────────────
-
-type LocPermResult = 'granted' | 'denied' | 'unavailable';
-
-async function checkAndRequestLocationPermission(): Promise<LocPermResult> {
-  // ── Native Capacitor path ──────────────────────────────────────────────────
-  if (isNative()) {
-    const geo = await getNativeGeo();
-    if (!geo) return 'unavailable';
-    try {
-      const status = await geo.checkPermissions();
-      // 'granted' or 'limited' (iOS precise/approximate)
-      if (status.location === 'granted' || status.location === 'limited') return 'granted';
-      if (status.location === 'denied') return 'denied';
-      // 'prompt' — request it
-      const requested = await geo.requestPermissions();
-      if (requested.location === 'granted' || requested.location === 'limited') return 'granted';
-      return 'denied';
-    } catch {
-      return 'unavailable';
-    }
-  }
-
-  // ── Web browser path ───────────────────────────────────────────────────────
-  if (!navigator.geolocation) return 'unavailable';
-
-  // Use the Permissions API if available to check without prompting
-  if (navigator.permissions) {
-    try {
-      const perm = await navigator.permissions.query({ name: 'geolocation' });
-      if (perm.state === 'granted') return 'granted';
-      if (perm.state === 'denied') return 'denied';
-      // 'prompt' — fall through to trigger the browser prompt
-    } catch { /* Permissions API not supported */ }
-  }
-
-  // Trigger the browser geolocation prompt
-  return new Promise<LocPermResult>((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      () => resolve('granted'),
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) resolve('denied');
-        else resolve('unavailable');
-      },
-      { timeout: 8_000, maximumAge: 60_000 }
-    );
-  });
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
+//
+// Design decision (Build 8 fix):
+//   The modal's ONLY job is vehicle selection + session creation.
+//   Location permission is NOT checked here — it is handled entirely by the
+//   active Drive screen (driver.tsx) via useGpsPermission + DriverGpsStatus.
+//
+//   Reason: on iOS, calling geo.requestPermissions() inside a modal can block
+//   indefinitely if the Geolocation plugin is not fully registered, or if the
+//   user has already denied and the OS silently ignores the request. This caused
+//   the "Checking location…" hang that prevented sessions from ever starting.
+//
+//   The Drive screen already has the full permission state machine:
+//     - 'prompt'      → "Enable Location" button → triggers OS dialog
+//     - 'denied'      → "Open Settings" deep-link
+//     - 'waiting_fix' → "Waiting for GPS fix" indicator
+//     - 'granted'     → heartbeat loop starts
+//
+//   The session can exist and be useful (time tracking, job logging, costs)
+//   even when GPS is unavailable. Blocking session creation on GPS is wrong.
 
 export default function StartDrivingModal({ onClose, onStarted }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading,  setLoading]  = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState('');
-  const [locPermission, setLocPermission] = useState<LocPermResult | null>(null);
-  const [checkingLoc, setCheckingLoc] = useState(false);
+  const [error,    setError]    = useState('');
 
   useEffect(() => {
-    fetch('/api/fleet/vehicles', { credentials: 'include' })
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000); // 10s timeout
+
+    fetch('/api/fleet/vehicles', { credentials: 'include', signal: ac.signal })
       .then((r) => r.json())
       .then((d: { vehicles?: Vehicle[] }) => setVehicles(d.vehicles ?? []))
-      .catch(() => setError('Failed to load vehicles'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if ((err as Error).name !== 'AbortError') {
+          setError('Failed to load vehicles — check your connection');
+        }
+      })
+      .finally(() => { clearTimeout(timer); setLoading(false); });
+
+    return () => { ac.abort(); clearTimeout(timer); };
   }, []);
 
   async function handleStart() {
-    if (!selected) return;
+    if (!selected || starting) return;
     setError('');
-
-    // ── Step 1: ensure location permission ────────────────────────────────────
-    setCheckingLoc(true);
-    const perm = await checkAndRequestLocationPermission();
-    setCheckingLoc(false);
-    setLocPermission(perm);
-
-    if (perm === 'denied') {
-      // Don't block the session — GPS tracking just won't work.
-      // Show a warning but still allow the user to proceed.
-      setError('Location access denied — GPS tracking will be unavailable. You can still start driving.');
-      // Don't return — let them proceed
-    }
-
-    // ── Step 2: start the session ─────────────────────────────────────────────
     setStarting(true);
+
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 12_000); // 12s — generous for slow mobile
+
     try {
       const res = await fetch('/api/fleet/driver-sessions', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fleetAssetId: selected }),
+        signal: ac.signal,
       });
       const data = await res.json() as { ok?: boolean; session?: ActiveSession; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to start session');
       if (data.session) onStarted(data.session);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start driving session');
+      if ((err as Error).name === 'AbortError') {
+        setError('Request timed out — check your connection and try again');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to start driving session');
+      }
     } finally {
+      clearTimeout(timer);
       setStarting(false);
     }
   }
 
-  async function openSettings() {
-    if (isNative()) {
-      try {
-        const { App } = await import('@capacitor/app');
-        // @ts-expect-error openSettings available on some Capacitor versions
-        await App.openSettings?.();
-        return;
-      } catch { /* fall through */ }
-    }
-  }
-
   const selectedVehicle = vehicles.find((v) => v.id === selected);
-  const isBusy = starting || checkingLoc;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -172,37 +131,26 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
             </div>
             <h2 className="font-heading font-bold text-base">Start Driving</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
             <X size={16} />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1">
-          {/* Location permission denied — persistent warning */}
-          {locPermission === 'denied' && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-3 text-sm text-amber-800">
-              <Navigation size={14} className="shrink-0 mt-0.5 text-amber-500" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold">Location access denied</p>
-                <p className="text-xs text-amber-700 mt-0.5 leading-snug">GPS tracking won't work. Allow location access in Settings to enable tracking.</p>
-                {isNative() && (
-                  <button onClick={() => void openSettings()} className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-amber-700 underline underline-offset-2">
-                    Open Settings <ExternalLink size={10} />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {error && locPermission !== 'denied' && (
+          {error && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm text-red-700">
               <AlertCircle size={14} className="shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">Select an asset to start your driving session.</p>
+          <p className="text-sm text-muted-foreground">
+            Select an asset to start your driving session.
+          </p>
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -216,7 +164,7 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
               {vehicles.map((v) => {
                 const isCheckedOut = !!v.current_driver;
-                const isSelected = selected === v.id;
+                const isSelected   = selected === v.id;
                 return (
                   <button
                     key={v.id}
@@ -238,7 +186,9 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">{v.name}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {[v.make_model, v.rego_not_applicable ? null : v.rego].filter(Boolean).join(' · ') || 'No details'}
+                        {[v.make_model, v.rego_not_applicable ? null : v.rego]
+                          .filter(Boolean)
+                          .join(' · ') || 'No details'}
                       </p>
                     </div>
                     {isCheckedOut ? (
@@ -269,12 +219,10 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
           </button>
           <button
             onClick={() => void handleStart()}
-            disabled={!selected || isBusy}
+            disabled={!selected || starting}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {checkingLoc ? (
-              <><Loader2 size={14} className="animate-spin" /> Checking location…</>
-            ) : starting ? (
+            {starting ? (
               <><Loader2 size={14} className="animate-spin" /> Starting…</>
             ) : (
               <><Car size={14} /> {selectedVehicle ? `Drive ${selectedVehicle.name}` : 'Start Driving'}</>

@@ -53,10 +53,11 @@ export default function ProfilePage() {
   const [profileError,  setProfileError]  = useState('');
 
   // ── Extended fields ───────────────────────────────────────────────────────
-  const [licenses,       setLicenses]       = useState('');
-  const [notes,          setNotes]          = useState('');
-  const [emergencyName,  setEmergencyName]  = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [whiteCardNumber, setWhiteCardNumber] = useState('');
+  const [licenses,        setLicenses]        = useState('');
+  const [notes,           setNotes]           = useState('');
+  const [emergencyName,   setEmergencyName]   = useState('');
+  const [emergencyPhone,  setEmergencyPhone]  = useState('');
   const [extrasSaving,   setExtrasSaving]   = useState(false);
   const [extrasState,    setExtrasState]    = useState<'idle' | 'saved' | 'error'>('idle');
   const [extrasError,    setExtrasError]    = useState('');
@@ -96,7 +97,8 @@ export default function ProfilePage() {
   useEffect(() => {
     fetch('/api/me/profile-extras', { credentials: 'include' })
       .then((r) => r.json())
-      .then((d: { licenses?: string; profile_notes?: string; emergency_contact_name?: string; emergency_contact_phone?: string; attachments?: Attachment[] }) => {
+      .then((d: { licenses?: string; white_card_number?: string; profile_notes?: string; emergency_contact_name?: string; emergency_contact_phone?: string; attachments?: Attachment[] }) => {
+        setWhiteCardNumber(d.white_card_number ?? '');
         setLicenses(d.licenses ?? '');
         setNotes(d.profile_notes ?? '');
         setEmergencyName(d.emergency_contact_name ?? '');
@@ -132,7 +134,7 @@ export default function ProfilePage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ licenses, profile_notes: notes, emergency_contact_name: emergencyName, emergency_contact_phone: emergencyPhone }),
+        body: JSON.stringify({ licenses, white_card_number: whiteCardNumber, profile_notes: notes, emergency_contact_name: emergencyName, emergency_contact_phone: emergencyPhone }),
       });
       const data = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok) { setExtrasError(data.error ?? 'Failed to save.'); setExtrasState('error'); }
@@ -187,7 +189,7 @@ export default function ProfilePage() {
   const isOwner = me?.profile?.role === 'owner';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -286,16 +288,31 @@ export default function ProfilePage() {
             {/* Licenses */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6">
               <h2 className="font-bold text-sm text-slate-800 mb-4 flex items-center gap-2">
-                <FileText size={15} className="text-violet-400" />Licenses
+                <FileText size={15} className="text-violet-400" />Licences
               </h2>
-              <label className={labelClass}>Licence numbers / details</label>
-              <textarea
-                value={licenses}
-                onChange={(e) => setLicenses(e.target.value)}
-                rows={3}
-                placeholder="e.g. Builder's Licence: BLD123456, White Card: WC789..."
-                className={`${inputClass} resize-none`}
-              />
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className={labelClass}>White Card Number</label>
+                  <input
+                    value={whiteCardNumber}
+                    onChange={(e) => setWhiteCardNumber(e.target.value)}
+                    placeholder="e.g. WC123456789"
+                    maxLength={100}
+                    className={inputClass}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Your Construction Induction (White Card) number</p>
+                </div>
+                <div>
+                  <label className={labelClass}>Other licences &amp; details</label>
+                  <textarea
+                    value={licenses}
+                    onChange={(e) => setLicenses(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. Builder's Licence: BLD123456, Forklift: FL789, EWP..."
+                    className={`${inputClass} resize-none`}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Notes */}

@@ -1,32 +1,26 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
-  Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
-  ClipboardList, BookOpen, Library, Image, AlertCircle, ExternalLink,
-  Users, Calendar, Building2, ChevronDown, Wand2, Send,
-  Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
-  ChevronLeft, Share2, Pencil,
+  Loader2, Check, Download, Trash2, Copy,
+  BookOpen, Library, Image, AlertCircle,
+  Calendar, Building2, ChevronDown, Wand2,
+  FileDown, Package, Printer, Share2, Pencil,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
-import PPEBanner from '@/components/safety-posters/PPEBanner';
 import SwmsBodyBuilder from '@/components/safety/SwmsBodyBuilder';
 import PlanFormModal from '@/components/safety/PlanFormModal';
-import DazzaAiTab from '@/components/safety/DazzaAiTab';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
-import JobSwmsTab from '@/components/safety/JobSwmsTab';
 import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
 import UploadDocModal from '@/components/safety/UploadDocModal';
 import {
   type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster,
-  type GeneratedPoster, type SwmsPrintData,
-  SWMS_STATUSES, PLAN_STATUSES, JOB_SWMS_STATUSES,
-  HIGH_RISK_ACTIVITIES, POLICY_TYPES, POSTER_TYPES,
+  type GeneratedPoster,
+  POLICY_TYPES, POSTER_TYPES,
   fmtBytes, fmtDate, statusBadge,
 } from '@/components/safety/safety-types';
 
@@ -36,6 +30,7 @@ export function SwmsLibraryTab() {
   const [swmsList, setSwmsList] = useState<SwmsTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<SwmsTemplate | null>(null);
   const [duplicating, setDuplicating] = useState<number | null>(null);
@@ -55,7 +50,7 @@ export function SwmsLibraryTab() {
     fetch('/api/safety/swms', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setSwmsList(d.swms ?? []))
-      .catch(() => {})
+      .catch(() => setFetchError('Failed to load SWMS library.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -206,6 +201,13 @@ export function SwmsLibraryTab() {
       )}
 
       {loading && <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>}
+
+      {!loading && fetchError && (
+        <div className="flex items-center gap-2 mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+          <AlertCircle size={14} className="shrink-0" />
+          {fetchError}
+        </div>
+      )}
 
       {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -813,7 +815,7 @@ export function PostersTab() {
         {showGenerator && (
           <SafetyPosterGenerator
             onClose={() => setShowGenerator(false)}
-            onSaved={(p) => { setGenerated((prev) => [p as GeneratedPoster, ...prev]); setShowGenerator(false); }}
+            onSaved={(p) => { setGenerated((prev) => [p as unknown as GeneratedPoster, ...prev]); setShowGenerator(false); }}
           />
         )}
       </AnimatePresence>
@@ -928,7 +930,7 @@ import DesktopDock from '@/components/DesktopDock';
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return (
-    <div className="flex flex-col flex-1 min-h-0 lg:pt-[96px]">
+    <div className="flex flex-col flex-1 min-h-0 lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
   BookOpen, RefreshCw, Plus, Download, CheckCircle2, Clock,
   AlertCircle, Loader2, X, ChevronDown, Pencil, Trash2,
@@ -131,6 +133,9 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
   const [photoPreview, setPhotoPreview] = useState<string | null>(editEntry?.photo_url ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Lock body scroll while open
+  useBodyScrollLock(true);
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -213,17 +218,43 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
   const inputCls = 'w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+
+      {/* Sheet */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxHeight: 'min(88dvh, 700px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Sticky header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <BookOpen size={14} className="text-primary" />
           </div>
           <p className="font-bold text-sm flex-1">{editEntry ? 'Edit Ledger Entry' : 'Add Ledger Entry'}</p>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+        {/* Scrollable body */}
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4 flex flex-col gap-3">
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
               <AlertCircle size={12} />{error}
@@ -266,25 +297,15 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
 
           {/* Live total preview */}
           <div className="bg-muted/30 rounded-xl p-3 grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-xs text-muted-foreground">Subtotal</p>
-              <p className="text-sm font-bold font-mono">{fmt(subtotal)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">GST (10%)</p>
-              <p className="text-sm font-bold font-mono">{fmt(gst)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-primary">Total</p>
-              <p className="text-sm font-bold font-mono text-primary">{fmt(total)}</p>
-            </div>
+            <div><p className="text-xs text-muted-foreground">Subtotal</p><p className="text-sm font-bold font-mono">{fmt(subtotal)}</p></div>
+            <div><p className="text-xs text-muted-foreground">GST (10%)</p><p className="text-sm font-bold font-mono">{fmt(gst)}</p></div>
+            <div><p className="text-xs text-primary">Total</p><p className="text-sm font-bold font-mono text-primary">{fmt(total)}</p></div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Account Code</label>
-              <input type="text" value={form.accountCode} onChange={(e) => set('accountCode', e.target.value)}
-                placeholder="e.g. 5000" className={inputCls} />
+              <input type="text" value={form.accountCode} onChange={(e) => set('accountCode', e.target.value)} placeholder="e.g. 5000" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Tax Code</label>
@@ -300,13 +321,11 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Contact / Supplier</label>
-              <input type="text" value={form.contactName} onChange={(e) => set('contactName', e.target.value)}
-                placeholder="Supplier or contractor name" className={inputCls} />
+              <input type="text" value={form.contactName} onChange={(e) => set('contactName', e.target.value)} placeholder="Supplier or contractor name" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Reference</label>
-              <input type="text" value={form.reference} onChange={(e) => set('reference', e.target.value)}
-                placeholder="Invoice #, docket #…" className={inputCls} />
+              <input type="text" value={form.reference} onChange={(e) => set('reference', e.target.value)} placeholder="Invoice #, docket #…" className={inputCls} />
             </div>
           </div>
 
@@ -318,51 +337,46 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
             </select>
           </div>
 
-          {/* Photo attachment */}
+          {/* Photo attachment — tap-first row, no dashed border */}
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Receipt / Invoice Photo</label>
             {photoPreview ? (
               <div className="relative rounded-xl overflow-hidden border border-border">
                 <img src={photoPreview} alt="Receipt preview" className="w-full max-h-48 object-contain bg-muted/30" />
-                <button
-                  type="button"
-                  onClick={clearPhoto}
-                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
-                >
+                <button type="button" onClick={clearPhoto}
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors">
                   <X size={12} className="text-white" />
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-5 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-              >
-                <Camera size={20} />
-                <span className="text-xs font-medium">Tap to attach photo or file</span>
-                <span className="text-[10px] opacity-60">JPG, PNG, PDF up to 10 MB</span>
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-border bg-muted/30 hover:border-primary hover:bg-violet-50 transition-colors text-left">
+                <div className="w-10 h-10 rounded-lg bg-white border border-border flex items-center justify-center shrink-0">
+                  <Camera size={18} className="text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Tap to attach photo</p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG, PDF · max 10 MB</p>
+                </div>
               </button>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              capture="environment"
-              className="hidden"
-              onChange={handlePhotoChange}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handlePhotoChange} />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border bg-muted/20 shrink-0">
-          <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl">Cancel</button>
+        {/* Sticky footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border bg-white shrink-0">
+          <button onClick={onClose}
+            className="text-sm text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors">
+            Cancel
+          </button>
           <button onClick={() => void handleSave()} disabled={saving}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-xl disabled:opacity-50">
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-xl disabled:opacity-50 transition-colors">
             {saving ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
             {editEntry ? 'Save Changes' : 'Add Entry'}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

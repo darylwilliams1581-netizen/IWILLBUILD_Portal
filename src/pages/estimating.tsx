@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Calculator, Plus, Pencil, Trash2, Copy, Loader2, AlertCircle,
   BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X,
-  Upload, Download, FileText,
+  Upload, Download, FileText, ArrowLeft,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
@@ -789,6 +789,7 @@ const VALID_TABS: Tab[] = ['cost-guide', 'recipes', 'builders-calc', 'takeoff-pa
 
 export default function EstimatingPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const tabFromUrl = new URLSearchParams(location.search).get('tab') as Tab | null;
   const [tab, setTab] = useState<Tab>(
     tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'cost-guide'
@@ -801,10 +802,6 @@ export default function EstimatingPage() {
 
   function handleTabClick(key: Tab) {
     setTab(key);
-  }
-
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
   }
 
   return (
@@ -828,20 +825,22 @@ export default function EstimatingPage() {
       <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-          <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
-            <Calculator size={20} />
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={16} />
           </button>
           <Calculator size={18} className="text-primary shrink-0" />
-          <h1 className="font-heading font-bold text-lg flex-1">Tools</h1>
+          <h1 className="font-heading font-bold text-lg flex-1">Costing</h1>
         </header>
 
-        {/* Tabs */}
+        {/* Tabs — Builders Calc and Take-off Pad are field tools accessible from the app directly */}
         <div className="bg-white border-b border-slate-200 px-4 md:px-6 flex gap-1 shrink-0 overflow-x-auto">
           {([
-            { key: 'cost-guide',    label: 'Cost Guide' },
-            { key: 'recipes',       label: 'Recipes' },
-            { key: 'builders-calc', label: 'Builders Calc' },
-            { key: 'takeoff-pad',   label: 'Take-off Pad' },
+            { key: 'cost-guide', label: 'Cost Guide' },
+            { key: 'recipes',    label: 'Recipes' },
           ] as const).map((t) => (
             <button
               key={t.key}

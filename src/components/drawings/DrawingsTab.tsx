@@ -16,6 +16,7 @@ import {
   fileServePath, fileIsPdf, fileIsDwg,
   DRAWING_DISCIPLINES, DRAWING_STATUSES, STATUS_BADGE,
 } from './drawing-utils';
+import { resolveNativeUrl } from '@/lib/native-url';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface DrawingRecord {
@@ -165,6 +166,75 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Mobile inline edit card ───────────────────────────────────────────────────
+function MobileEditCard({ drawing, onSave, onCancel }: {
+  drawing: DrawingRecord;
+  onSave: (d: Partial<DrawingRecord>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [drawingNumber, setDrawingNumber] = useState(drawing.drawing_number ?? '');
+  const [title, setTitle] = useState(drawing.title);
+  const [revision, setRevision] = useState(drawing.revision);
+  const [discipline, setDiscipline] = useState(drawing.discipline);
+  const [status, setStatus] = useState(drawing.status);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await onSave({ drawingNumber, title, revision, discipline, status });
+    setSaving(false);
+  }
+
+  return (
+    <div className="bg-violet-50/40 px-4 py-3 flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">No.</label>
+          <input value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" placeholder="e.g. A-001" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Rev</label>
+          <input value={revision} onChange={(e) => setRevision(e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" placeholder="A" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Title</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)}
+          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Discipline</label>
+          <select value={discipline} onChange={(e) => setDiscipline(e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+            {DRAWING_DISCIPLINES.map((d) => <option key={d}>{d}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Status</label>
+          <select value={status} onChange={(e) => setStatus(e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+            {DRAWING_STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <button onClick={() => void save()} disabled={saving}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-50">
+          {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+          Save
+        </button>
+        <button onClick={onCancel}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-300">
+          <X size={12} /> Cancel
+        </button>
       </div>
     </div>
   );
@@ -334,7 +404,87 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
                   <div className="flex-1 h-px bg-slate-100" />
                 </div>
               )}
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              {/* ── Mobile card list (< md) ─────────────────────────────── */}
+              <div className="flex flex-col divide-y divide-slate-100 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm md:hidden">
+                {items.map((drawing) => {
+                  const isEditing = editingId === drawing.id;
+                  const isDeleting = deletingId === drawing.id;
+                  const pdf = fileIsPdf(drawing.file_mime, drawing.file_name);
+                  const dwg = fileIsDwg(drawing.file_mime, drawing.file_name);
+                  const hasMarkup = !!drawing.marked_up_file_id;
+
+                  if (isEditing) {
+                    return (
+                      <MobileEditCard key={drawing.id} drawing={drawing}
+                        onSave={(data) => handleEdit(drawing.id, data)}
+                        onCancel={() => setEditingId(null)} />
+                    );
+                  }
+
+                  return (
+                    <div key={drawing.id} className="flex items-center gap-3 px-4 py-3">
+                      {/* File icon */}
+                      <div className="shrink-0">
+                        {pdf
+                          ? <FileText size={20} className="text-red-500" />
+                          : <FileX size={20} className="text-slate-400" />}
+                      </div>
+                      {/* Main info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {drawing.drawing_number && (
+                            <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                              {drawing.drawing_number}
+                            </span>
+                          )}
+                          <span className="text-sm font-semibold text-slate-800 truncate">{drawing.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                            Rev {drawing.revision}
+                          </span>
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[drawing.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                            {drawing.status}
+                          </span>
+                          {hasMarkup && (
+                            <span className="text-[10px] bg-violet-100 text-violet-800 font-bold px-1.5 py-0.5 rounded-full">Marked up</span>
+                          )}
+                          <span className="text-[11px] text-slate-400">
+                            {new Date(drawing.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Actions */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {pdf && (
+                          <button onClick={() => setViewerDrawing(drawing)} title="Open viewer"
+                            className="p-2 rounded-lg text-slate-500 hover:bg-primary/10 hover:text-primary transition-colors">
+                            <Eye size={15} />
+                          </button>
+                        )}
+                        {dwg && !pdf && (
+                          <span className="text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-100 rounded-lg">DWG</span>
+                        )}
+                        <a href={resolveNativeUrl(fileServePath(drawing.original_file_id))} download title="Download"
+                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
+                          <Download size={15} />
+                        </a>
+                        <button onClick={() => setEditingId(drawing.id)} title="Edit"
+                          className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+                          <Pencil size={13} />
+                        </button>
+                        <button onClick={() => void handleDelete(drawing.id)} disabled={isDeleting} title="Remove"
+                          className="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-40 transition-colors">
+                          {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Desktop table (≥ md) ────────────────────────────────── */}
+              <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -404,12 +554,12 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
                                 {dwg && !pdf && (
                                   <span className="text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-100 rounded-lg">DWG</span>
                                 )}
-                                <a href={fileServePath(drawing.original_file_id)} download title="Download original"
+                                <a href={resolveNativeUrl(fileServePath(drawing.original_file_id))} download title="Download original"
                                   className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
                                   <Download size={13} />
                                 </a>
                                 {hasMarkup && drawing.marked_up_file_id && (
-                                  <a href={fileServePath(drawing.marked_up_file_id)} download title="Download marked-up copy"
+                                  <a href={resolveNativeUrl(fileServePath(drawing.marked_up_file_id))} download title="Download marked-up copy"
                                     className="p-1.5 rounded-lg text-violet-600 hover:bg-violet-50 transition-colors">
                                     <Download size={13} />
                                   </a>
@@ -453,7 +603,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}>
           <DrawingPdfViewer
             drawingId={viewerDrawing.id}
-            fileUrl={fileServePath(viewerDrawing.original_file_id)}
+            fileUrl={resolveNativeUrl(fileServePath(viewerDrawing.original_file_id))}
             title={`${viewerDrawing.drawing_number ? viewerDrawing.drawing_number + ' — ' : ''}${viewerDrawing.title} Rev ${viewerDrawing.revision}`}
             onClose={() => setViewerDrawing(null)}
             onMarkupSaved={() => void load()}

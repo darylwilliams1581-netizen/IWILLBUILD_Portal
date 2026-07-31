@@ -11,7 +11,7 @@ import {
   ArrowLeft, FileText, Loader2, Plus,
   CheckCircle2, Clock, Eye, EyeOff,
   Printer, Share2, Trash2, RotateCcw, ExternalLink,
-  ChevronRight, AlertCircle, Home,
+  ChevronRight, AlertCircle,
 } from 'lucide-react';
 
 interface Job { id: number; name: string; jobNumber?: string | null }
@@ -113,7 +113,7 @@ export default function JobFormsPage() {
   const title = job ? `${job.name} — Forms` : 'Job Forms';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage form submissions for this job." />
@@ -127,12 +127,9 @@ export default function JobFormsPage() {
         style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)', paddingTop: 'max(env(safe-area-inset-top), 0px)' }}
       >
         <div className="flex items-center gap-3 w-full px-4 py-3">
-        <button onClick={() => navigate(`/jobs/${id}`)} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
-          <ArrowLeft size={18} />
-        </button>
-          <div className="hidden md:flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
-          </div>
+          <button onClick={() => navigate('/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+            <ArrowLeft size={18} />
+          </button>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
               <>
@@ -155,13 +152,6 @@ export default function JobFormsPage() {
           {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
           {showCompleted ? 'Showing all' : 'Show completed'}
         </button>
-        {/* New Form */}
-        <button
-          onClick={() => setShowTemplates(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors"
-        >
-          <Plus size={13} /> New Form
-        </button>
         </div>
       </div>
 
@@ -171,17 +161,18 @@ export default function JobFormsPage() {
         style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => navigate('/home')} aria-label="Home" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
-          </button>
-          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
-            <Home size={16} />
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-gray-900 font-bold text-sm leading-tight truncate">{job?.name ?? 'Job Forms'}</p>
           </div>
-          <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
-            <Plus size={13} /> New Form
+          <button
+            onClick={() => setShowTemplates(true)}
+            aria-label="New Form"
+            className="w-10 h-10 rounded-xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors touch-manipulation shrink-0 shadow-sm"
+          >
+            <Plus size={18} />
           </button>
         </div>
       </div>
@@ -367,53 +358,67 @@ export default function JobFormsPage() {
           <>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
               onClick={() => setShowTemplates(false)}
             />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-              style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex justify-center pt-3 pb-1 shrink-0">
-                <div className="w-10 h-1 rounded-full bg-gray-200" />
-              </div>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-                <div>
-                  <h2 className="text-gray-900 font-bold text-base">Choose a Form</h2>
-                  <p className="text-gray-400 text-xs">Select a template to start</p>
-                </div>
-                <button onClick={() => setShowTemplates(false)} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                  <ArrowLeft size={14} />
-                </button>
-              </div>
-              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
-                {templates.length === 0 ? (
-                  <div className="text-center py-10">
-                    <AlertCircle size={24} className="text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">No form templates available.</p>
-                    <p className="text-gray-300 text-xs mt-1">Create templates in Studio → Forms.</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+                className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl flex flex-col overflow-hidden"
+                style={{ boxShadow: '0 8px 48px rgba(0,0,0,0.18)', maxHeight: 'min(520px, calc(100dvh - 80px))' }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+                      <FileText size={17} className="text-violet-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-gray-900 font-bold text-base leading-tight">Choose a Form</h2>
+                      <p className="text-gray-400 text-xs leading-tight mt-0.5">Select a template to start</p>
+                    </div>
                   </div>
-                ) : templates.map(t => (
                   <button
-                    key={t.id}
-                    onClick={() => { void startForm(t.id); }}
-                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-200 rounded-xl px-3 py-3 text-left transition-colors"
+                    onClick={() => setShowTemplates(false)}
+                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+                    aria-label="Close"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                      <FileText size={14} className="text-violet-700" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{t.name}</p>
-                      {t.category && <p className="text-gray-400 text-xs">{t.category}</p>}
-                    </div>
-                    <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                    <ArrowLeft size={15} />
                   </button>
-                ))}
-              </div>
-            </motion.div>
+                </div>
+
+                <div className="h-px bg-gray-100 shrink-0 mx-4" />
+
+                <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+                  {templates.length === 0 ? (
+                    <div className="text-center py-10">
+                      <AlertCircle size={24} className="text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-400 text-sm">No form templates available.</p>
+                      <p className="text-gray-300 text-xs mt-1">Create templates in Studio → Forms.</p>
+                    </div>
+                  ) : templates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { void startForm(t.id); }}
+                      className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
+                    >
+                      <div className="w-2 h-2 rounded-full shrink-0 bg-violet-400" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-900 font-semibold text-sm truncate">{t.name}</p>
+                        {t.category && <p className="text-gray-400 text-xs mt-0.5">{t.category}</p>}
+                      </div>
+                      <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="shrink-0" style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

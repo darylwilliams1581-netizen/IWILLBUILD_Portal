@@ -13,6 +13,7 @@ import { eq } from 'drizzle-orm';
 import { randomBytes, createHash } from 'node:crypto';
 import { isSmsConfigured, sendSms } from '../../../lib/sms.js';
 import { checkPasswordResetRate } from '../../../lib/signup-rate-limiter.js';
+import { normalisePhone } from '../../../lib/normalise-phone.js';
 
 const TOKEN_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -49,12 +50,14 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const normalised = phone.trim().replace(/\s+/g, '');
+    // Normalise AU (04xx) and NZ (02x) local formats to E.164 for Twilio
+    const e164 = normalisePhone(normalised);
 
-    // Look up user by phone number — only verified phone numbers qualify
+    // Look up user by phone number — try both stored formats
     const [row] = await db
       .select({ id: user.id, name: user.name, email: user.email, verificationMethod: user.verificationMethod })
       .from(user)
-      .where(eq(user.phoneNumber, normalised))
+      .where(eq(user.phoneNumber, e164))
       .limit(1);
 
     // Silently succeed if not found or not verified via SMS
@@ -86,7 +89,7 @@ export default async function handler(req: Request, res: Response) {
 
     const message = `Hi ${firstName}, reset your IWILLBUILD Portal password here: ${resetUrl} — expires in 30 mins. If you didn't request this, ignore this message.`;
 
-    await sendSms(normalised, message);
+    await sendSms(e164, message);
 
     return res.json(GENERIC_OK);
   } catch (err) {

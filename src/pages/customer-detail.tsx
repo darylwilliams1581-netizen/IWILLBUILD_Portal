@@ -145,7 +145,7 @@ export default function CustomerDetailPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="font-heading font-black text-xl text-foreground">{customer.name}</h1>
+                    <h1 className="font-heading font-bold text-base text-foreground">{customer.name}</h1>
                     {customer.status === 'archived' && (
                       <span className="flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                         <Archive size={10} />Archived

@@ -11,9 +11,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Car, FileText, StickyNote, BookOpen,
   Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
+  Navigation, ClipboardCheck, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
   LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
-  Zap, RefreshCw, AlertTriangle,
+  Zap, RefreshCw, AlertTriangle, Search,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -39,8 +39,7 @@ import {
 // These local arrays remain for the PLATFORM section (platform owner only, not permission-controlled)
 
 const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
-  { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',    fg: 'text-white' },
-  { label: 'Old View',  icon: History,     href: '/dashboard',     bg: 'bg-slate-500',  fg: 'text-white' },
+  { label: 'Console', icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600', fg: 'text-white' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -60,7 +59,7 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
       transition={{ type: 'spring', stiffness: 440, damping: 20 }}
       onClick={() => onNavigate(item.href)}
       className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
-      style={{ gap: '5px' }}
+      style={{ gap: '1px' }}
     >
       {/* Icon tile — slightly smaller on mobile (54 px) vs desktop (66 px) */}
       <div
@@ -109,7 +108,7 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          minHeight: '23px',
+          minHeight: '20px',
           wordBreak: 'break-word',
           hyphens: 'auto',
         }}
@@ -182,113 +181,17 @@ interface JobOption { id: number; name: string; jobNumber?: string | null; }
 
 function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<JobOption[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    fetch('/api/jobs?status=active&limit=100')
-      .then(r => r.json())
-      .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        const list = Array.isArray(data) ? data : (data.jobs ?? []);
-        setJobs(list);
-      })
-      .catch(() => setJobs([]))
-      .finally(() => setLoading(false));
-  }, [open]);
-
-  function handleSelect(job: JobOption) {
-    onClose();
-    navigate(`/jobs/${job.id}?tab=photos`);
-  }
-
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
-                  <Camera size={15} className="text-violet-600" />
-                </div>
-                <div>
-                  <h2 className="text-gray-900 font-bold text-base">Select Job</h2>
-                  <p className="text-gray-400 text-xs">Choose a job to add photos to</p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Job list */}
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
-              {loading ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="w-6 h-6 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
-                </div>
-              ) : jobs.length === 0 ? (
-                <div className="text-center py-10">
-                  <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No active jobs found</p>
-                </div>
-              ) : (
-                jobs.map(job => (
-                  <button
-                    key={job.id}
-                    onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                      <Camera size={16} className="text-violet-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                ))
-              )}
-            </div>
-
-            {/* Safe area spacer — clears iPhone home indicator */}
-            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <JobPickerSheet
+      open={open}
+      onClose={onClose}
+      title="Select Job"
+      subtitle="Choose a job to add photos to"
+      iconBg="bg-violet-100"
+      iconFg="text-violet-600"
+      Icon={Camera}
+      onSelect={(job) => navigate(`/jobs/${job.id}?tab=photos`)}
+    />
   );
 }
 
@@ -298,47 +201,40 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     setLoading(true);
     fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        const list = Array.isArray(data) ? data : (data.jobs ?? []);
-        setJobs(list);
+        setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
       })
       .catch(() => setJobs([]))
       .finally(() => setLoading(false));
   }, [open]);
 
-  function handleSelect(job: JobOption) {
-    onClose();
-    navigate(`/jobs/${job.id}/notes`);
-  }
+  const filtered = query.trim()
+    ? jobs.filter(j => j.name.toLowerCase().includes(query.toLowerCase()) || (j.jobNumber ?? '').toLowerCase().includes(query.toLowerCase()))
+    : jobs;
+
+  function handleSelect(job: JobOption) { onClose(); navigate(`/jobs/${job.id}/notes`); }
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)', maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)' }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
+            <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
@@ -349,43 +245,41 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
                   <p className="text-gray-400 text-xs">Choose a job to view notes</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-              >
-                <X size={14} />
-              </button>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={14} /></button>
+            </div>
+            {/* Search — always visible */}
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="Search jobs, job numbers…"
+                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0" />
+                {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
+              </div>
             </div>
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="w-6 h-6 border-2 border-yellow-300 border-t-yellow-500 rounded-full animate-spin" />
                 </div>
-              ) : jobs.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-10">
                   <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No active jobs found</p>
+                  <p className="text-gray-400 text-sm">{query ? 'No jobs match your search' : 'No active jobs found'}</p>
                 </div>
-              ) : (
-                jobs.map(job => (
-                  <button
-                    key={job.id}
-                    onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 active:bg-yellow-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
-                      <StickyNote size={16} className="text-yellow-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                ))
-              )}
+              ) : filtered.map(job => (
+                <button key={job.id} onClick={() => handleSelect(job)}
+                  className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 active:bg-yellow-100 rounded-2xl px-4 py-3.5 text-left transition-colors">
+                  <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+                    <StickyNote size={16} className="text-yellow-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                    {job.jobNumber && <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>}
+                  </div>
+                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
             </div>
             <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
@@ -399,102 +293,17 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
 
 function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<JobOption[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
-      .then(r => r.json())
-      .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        const list = Array.isArray(data) ? data : (data.jobs ?? []);
-        setJobs(list);
-      })
-      .catch(() => setJobs([]))
-      .finally(() => setLoading(false));
-  }, [open]);
-
-  function handleSelect(job: JobOption) {
-    onClose();
-    navigate(`/jobs/${job.id}/delays`);
-  }
-
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
-                  <Clock size={15} className="text-red-500" />
-                </div>
-                <div>
-                  <h2 className="text-gray-900 font-bold text-base">Select Job</h2>
-                  <p className="text-gray-400 text-xs">Choose a job to view delays</p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
-              {loading ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="w-6 h-6 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" />
-                </div>
-              ) : jobs.length === 0 ? (
-                <div className="text-center py-10">
-                  <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No active jobs found</p>
-                </div>
-              ) : (
-                jobs.map(job => (
-                  <button
-                    key={job.id}
-                    onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-red-50 hover:border-red-200 active:bg-red-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                      <Clock size={16} className="text-red-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                ))
-              )}
-            </div>
-            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <JobPickerSheet
+      open={open}
+      onClose={onClose}
+      title="Select Job"
+      subtitle="Choose a job to view delays"
+      iconBg="bg-red-100"
+      iconFg="text-red-500"
+      Icon={Clock}
+      onSelect={(job) => navigate(`/jobs/${job.id}/delays`)}
+    />
   );
 }
 
@@ -1020,9 +829,10 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
   const navigate = useNavigate();
   const [assets, setAssets] = useState<FleetOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     setLoading(true);
     fetch('/api/fleet?limit=100', { credentials: 'include' })
       .then(r => r.json())
@@ -1033,64 +843,99 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
       .finally(() => setLoading(false));
   }, [open]);
 
+  const filtered = query.trim()
+    ? assets.filter(a =>
+        a.name.toLowerCase().includes(query.toLowerCase()) ||
+        (a.rego ?? '').toLowerCase().includes(query.toLowerCase()) ||
+        (a.type ?? '').toLowerCase().includes(query.toLowerCase())
+      )
+    : assets;
+
   return (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
-          <motion.div
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Car size={15} className="text-blue-600" />
+          {/* Backdrop */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+
+          {/* Centred floating modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+              className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl flex flex-col overflow-hidden"
+              style={{ boxShadow: '0 8px 48px rgba(0,0,0,0.18)', maxHeight: 'min(520px, calc(100dvh - 120px))' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
+                    <Car size={17} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-gray-900 font-bold text-base leading-tight">Drive Log</h2>
+                    <p className="text-gray-400 text-xs leading-tight mt-0.5">Select a vehicle to view sessions</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-gray-900 font-bold text-base">Drive Log</h2>
-                  <p className="text-gray-400 text-xs">Select a vehicle to view sessions</p>
+                <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0" aria-label="Close">
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="px-4 pb-2 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search vehicles, rego…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                  />
+                  {query && (
+                    <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                      <X size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                <X size={14} />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
-              {loading ? (
-                <div className="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
-                  <Loader2 size={16} className="animate-spin" /> Loading fleet…
-                </div>
-              ) : assets.length === 0 ? (
-                <p className="text-center text-gray-400 text-sm py-8">No fleet assets found</p>
-              ) : assets.map(asset => (
-                <button
-                  key={asset.id}
-                  onClick={() => { onClose(); navigate(`/driver?vehicleId=${asset.id}`); }}
-                  className="w-full flex items-center gap-3 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-xl px-3 py-3 text-left transition-colors"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-                    <Car size={16} className="text-blue-500" />
+
+              <div className="h-px bg-gray-100 shrink-0 mx-4" />
+
+              {/* Vehicle list */}
+              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+                {loading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm py-6 justify-center">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Loading fleet…</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-900 font-semibold text-sm truncate">{asset.name}</p>
-                    <p className="text-gray-400 text-xs">
-                      {[asset.type, asset.rego].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} className="text-gray-300 shrink-0" />
-                </button>
-              ))}
-            </div>
-            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
-          </motion.div>
+                ) : filtered.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-8">
+                    {query ? 'No vehicles match your search' : 'No fleet assets found'}
+                  </p>
+                ) : filtered.map(asset => (
+                  <button
+                    key={asset.id}
+                    onClick={() => { onClose(); navigate(`/driver?vehicleId=${asset.id}`); }}
+                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
+                  >
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-blue-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-900 font-semibold text-sm truncate">{asset.name}</p>
+                      <p className="text-gray-400 text-xs mt-0.5">{[asset.type, asset.rego].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="shrink-0" style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
@@ -1280,7 +1125,42 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const labelCls = 'block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1';
 
   return (
-    <Sheet open={open} onClose={onClose} title="New Job Card" titleIcon={Zap} titleIconClass="text-yellow-500">
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-[65] bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Right-side sheet */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New Job Card"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0 safe-top">
+          <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+            <Zap size={17} className="text-yellow-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-gray-900 leading-tight">New Job Card</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {step === 'form' ? 'Step 1 of 2 — Details' : step === 'completion' ? 'Step 2 of 2 — Completion & Photos' : 'Created'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5">
       {step === 'done' ? (
         /* ── Done ── */
         <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
@@ -1501,7 +1381,9 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
       )}
-    </Sheet>
+        </div>{/* end scrollable body */}
+      </div>{/* end sheet */}
+    </>
   );
 }
 
@@ -1634,6 +1516,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
+  const [jobQuery, setJobQuery] = useState('');
 
   const [status, setStatus] = useState<SignInStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -1661,6 +1544,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (!open) {
       setSelectedJob(null);
+      setJobQuery('');
       setStatus(null);
       setResult(null);
       setError('');
@@ -1772,39 +1656,36 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-            style={{
-              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <LogIn size={15} className="text-indigo-600" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+              className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl flex flex-col overflow-hidden"
+              style={{ boxShadow: '0 8px 48px rgba(0,0,0,0.18)', maxHeight: 'min(640px, calc(100dvh - 80px))' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-indigo-100 flex items-center justify-center shrink-0">
+                    <LogIn size={17} className="text-indigo-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-gray-900 font-bold text-base leading-tight">Site Sign In / Out</h2>
+                    <p className="text-gray-400 text-xs leading-tight mt-0.5">Record your attendance on site</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-gray-900 font-bold text-base">Site Sign In / Out</h2>
-                  <p className="text-gray-400 text-xs">Record your attendance on site</p>
-                </div>
+                <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0">
+                  <X size={15} />
+                </button>
               </div>
-              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                <X size={14} />
-              </button>
-            </div>
+
+              <div className="h-px bg-gray-100 shrink-0 mx-4" />
 
             {/* Body */}
             <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
@@ -1817,25 +1698,50 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                     <Loader2 size={14} className="animate-spin" /> Loading jobs…
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                    {jobs.map(job => (
-                      <button
-                        key={job.id}
-                        onClick={() => handleSelectJob(job)}
-                        className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border transition-colors ${
-                          selectedJob?.id === job.id
-                            ? 'bg-indigo-50 border-indigo-300'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                          {job.jobNumber && <p className="text-gray-400 text-xs font-mono">{job.jobNumber}</p>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    {/* Search */}
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5 mb-2">
+                      <Search size={14} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        value={jobQuery}
+                        onChange={e => setJobQuery(e.target.value)}
+                        placeholder="Search jobs, job numbers…"
+                        className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                      />
+                      {jobQuery && (
+                        <button onClick={() => setJobQuery('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                      {(() => {
+                        const q = jobQuery.trim().toLowerCase();
+                        const filtered = q
+                          ? jobs.filter(j => j.name.toLowerCase().includes(q) || (j.jobNumber ?? '').toLowerCase().includes(q))
+                          : jobs;
+                        if (filtered.length === 0) {
+                          return <p className="text-center text-gray-400 text-sm py-3">{jobQuery ? 'No jobs match your search' : 'No active jobs found'}</p>;
+                        }
+                        return filtered.map(job => (
+                          <button
+                            key={job.id}
+                            onClick={() => handleSelectJob(job)}
+                            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border transition-colors ${
+                              selectedJob?.id === job.id
+                                ? 'bg-indigo-50 border-indigo-300'
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                              {job.jobNumber && <p className="text-gray-400 text-xs font-mono">{job.jobNumber}</p>}
+                            </div>
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1959,9 +1865,9 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                 </motion.div>
               )}
             </div>
-            {/* Safe area spacer — clears iPhone home indicator + tab bar */}
-            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
-          </motion.div>
+            <div className="shrink-0" style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
@@ -2282,22 +2188,22 @@ export default function HomeScreen() {
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
-    if (href === '?panel=job-card') { setJobCardOpen(true); return; }
-    if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
+    // job-card now navigates directly to /job-cards
+    if (href === '?panel=camera') { navigate('/camera'); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#edf0f5' }}>
+      <div className="flex-1 flex items-center justify-center" style={{ background: '#edf0f5' }}>
         <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden"
+    <div className="flex-1 flex flex-col relative overflow-hidden"
       style={{ background: '#edf0f5' }}
     >
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}

@@ -170,7 +170,7 @@ export default function JobPhotosPage() {
   const title = job ? `${job.name} — Photos` : 'Job Photos';
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage photos for this job." />
@@ -188,10 +188,10 @@ export default function JobPhotosPage() {
         >
           <ArrowLeft size={15} />
         </button>
-        {/* Home */}
+        {/* Home — mobile/tablet only; desktop uses sidebar */}
         <button
           onClick={() => navigate('/home')}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+          className="lg:hidden p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
           aria-label="Dashboard"
         >
           <Home size={15} />

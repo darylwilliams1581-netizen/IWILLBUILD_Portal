@@ -12,7 +12,7 @@
  * - Safe-area bottom padding via env(safe-area-inset-bottom)
  * - Tested at 375 / 390 / 430 px viewport widths
  */
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -25,9 +25,11 @@ import {
 import AnnotationCanvas from './AnnotationCanvas';
 import type { Annotation, AnnotationStyle, ToolType } from './types';
 import { useMobileViewer } from '@/lib/useMobileViewer';
+import { resolveNativeUrl } from '@/lib/native-url';
 
-// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
+// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly.
+// On Capacitor native the worker path must be absolute (capacitor://localhost can't serve it).
+pdfjs.GlobalWorkerOptions.workerSrc = resolveNativeUrl('/pdf.worker.5.4.296.min.mjs');
 
 interface Props {
   fileUrl: string;
@@ -65,6 +67,10 @@ export default function PdfViewer({
   onAnnotationsChange, onUndoAvailableChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // outerColRef observes the fixed-size column wrapper (not the scroll container)
+  // so the ResizeObserver for fit-width only fires on true layout changes
+  // (window resize, revision panel open/close) — not on PDF content overflow.
+  const outerColRef = useRef<HTMLDivElement>(null);
   const [pageWidth, setPageWidth] = useState(0);
   const [pageHeight, setPageHeight] = useState(0);
   // Thumbnail strip: hidden on mobile by default, togglable on desktop
@@ -86,16 +92,23 @@ export default function PdfViewer({
   // On mobile we trigger it once the first page dimensions are known.
   const fittedOnMount = useRef(false);
 
-  // ── Fit-width: measure container and set scale accordingly ─────────────────
+  // ── Fit-width: re-fit when the layout column resizes ──────────────────────
+  // Observe outerColRef (the fixed-size flex column) NOT the scroll container.
+  // The scroll container grows with content (minWidth: min-content), so
+  // observing it creates a feedback loop: zoom in → container widens →
+  // observer fires → scale recalculated → zoom in further.
   useEffect(() => {
-    if (!fitWidth || !containerRef.current) return;
-    const obs = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width ?? 0;
+    if (!fitWidth || !outerColRef.current) return;
+    const obs = new ResizeObserver(() => {
+      // Read available width from the scroll container's client width
+      // (which is constrained by the outer column, not by content overflow).
+      const w = containerRef.current?.clientWidth ?? 0;
       if (w > 0 && pageWidth > 0) {
-        onScaleChange(Math.round((w / pageWidth) * 100) / 100);
+        const padding = 48; // p-6 = 24px each side
+        onScaleChange(Math.round(((w - padding) / pageWidth) * 100) / 100);
       }
     });
-    obs.observe(containerRef.current);
+    obs.observe(outerColRef.current);
     return () => obs.disconnect();
   }, [fitWidth, pageWidth, onScaleChange]);
 
@@ -128,10 +141,47 @@ export default function PdfViewer({
   const scaledW = Math.round(pageWidth * scale);
   const scaledH = Math.round(pageHeight * scale);
 
+  // ── Mouse drag-to-pan (desktop hand tool) ─────────────────────────────────
+  const isPanTool = activeTool === 'pan';
+  const panRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
+
+  const handleMouseDown = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!isPanTool || e.button !== 0) return;
+    const el = containerRef.current;
+    if (!el) return;
+    panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop };
+    el.style.cursor = 'grabbing';
+    e.preventDefault();
+  }, [isPanTool]);
+
+  const handleMouseMove = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!panRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const dx = e.clientX - panRef.current.startX;
+    const dy = e.clientY - panRef.current.startY;
+    el.scrollLeft = panRef.current.scrollLeft - dx;
+    el.scrollTop = panRef.current.scrollTop - dy;
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    if (!panRef.current) return;
+    panRef.current = null;
+    if (containerRef.current) containerRef.current.style.cursor = '';
+  }, []);
+
+  // Release pan if mouse leaves the container mid-drag
+  const handleMouseLeave = useCallback(() => {
+    if (panRef.current) {
+      panRef.current = null;
+      if (containerRef.current) containerRef.current.style.cursor = '';
+    }
+  }, []);
+
   return (
-    // overflow-x: clip on the outer shell prevents the viewer from causing
-    // horizontal page scroll without creating a new scroll container
-    <div className="flex flex-1 min-h-0 overflow-hidden" style={{ overflowX: 'clip' }}>
+    // The viewer shell is fixed inset-0 so there's no risk of causing page scroll.
+    // We need both axes free so the user can scroll/pan when zoomed in.
+    <div className="flex flex-1 min-h-0 overflow-hidden">
 
       {/* Thumbnail strip — hidden on mobile (md: show) */}
       {thumbnailsOpen && (
@@ -160,7 +210,7 @@ export default function PdfViewer({
       )}
 
       {/* Main viewer */}
-      <div className="flex flex-col flex-1 min-w-0" style={{ overflowX: 'clip' }}>
+      <div className="flex flex-col flex-1 min-w-0">
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-2 bg-slate-900 border-b border-slate-700 flex-shrink-0">
@@ -294,13 +344,25 @@ export default function PdfViewer({
         {/* PDF canvas area */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-auto bg-slate-950 flex justify-center p-4 md:p-6"
+          className="flex-1 overflow-auto bg-slate-950 p-4 md:p-6"
           style={{
             ...mobileViewer.containerStyle,
             // Safe-area bottom padding for iPhone home indicator
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+            // Hand tool: show grab cursor; inline style is overridden to grabbing on mousedown
+            cursor: isPanTool ? 'grab' : undefined,
+            // Use min-content sizing so the scroll container grows to fit the PDF
+            // when zoomed in, rather than clipping it
+            minWidth: 'min-content',
           }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
         >
+          {/* Inner wrapper centres the PDF when it's smaller than the container,
+              but lets it overflow naturally when zoomed in */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%' }}>
           {loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
               <AlertCircle size={32} className="text-red-400" />
@@ -346,6 +408,7 @@ export default function PdfViewer({
               </div>
             </Document>
           )}
+          </div>
         </div>
       </div>
     </div>

@@ -323,7 +323,7 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -341,86 +341,78 @@ export default function FleetPage() {
         <meta name="twitter:description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
+      <h1 className="sr-only">Fleet</h1>
 
       <PortalErrorBoundary inline>
       <div className="flex flex-col flex-1">
         {/* Header — back/title left · view toggle centre · add asset right */}
         <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
-          <div className="flex items-center gap-2 px-4 h-12">
-            {/* Left: back + title */}
+          <div className="flex items-center gap-2 px-3 h-12 min-w-0">
+            {/* Left: back + icon — fixed width, never grows */}
             <button
               onClick={() => navigate('/home')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
               aria-label="Back to Home"
             >
               <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Home</span>
             </button>
-            <span className="text-gray-300 shrink-0">|</span>
-            <Truck size={17} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base truncate">Fleet</h1>
+            <Truck size={16} className="text-primary shrink-0" />
             {!loading && (
-              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
-                {assets.length} asset{assets.length !== 1 ? 's' : ''}
+              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-1.5 py-0.5 rounded-full shrink-0">
+                {assets.length}
               </span>
             )}
             {attentionCount > 0 && (
-              <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
+              <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">
                 <AlertTriangle size={10} />
                 {attentionCount}
               </span>
             )}
 
-            {/* Centre: view toggle + add asset — absolutely centred */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
-              {/* Assets tab */}
-              <button
-                onClick={() => setView('assets')}
-                title="Assets list"
-                className={[
-                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Truck size={13} />
-                <span>Assets</span>
-              </button>
-
-              {/* Live Map tab */}
-              <button
-                onClick={() => setView('live-map')}
-                title="Live GPS map"
-                className={[
-                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Navigation size={13} />
-                <span>Live Map</span>
-              </button>
-
-              {/* Tracker Portal tab — desktop only */}
-              {/* REMOVED — replaced by Quick Links sidebar module */}
-
-              {/* Divider + Add Asset — only shown on assets tab */}
-              {view === 'assets' && (
-                <>
-                  <span className="w-px h-5 bg-slate-300 mx-0.5 shrink-0" />
-                  <button
-                    onClick={() => !isViewOnly && setShowModal(true)}
-                    disabled={isViewOnly}
-                    title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus size={13} />
-                    <span>Add Asset</span>
-                  </button>
-                </>
-              )}
+            {/* Centre: toggle pill — flex-1 so it takes remaining space, never overlaps */}
+            <div className="flex-1 flex items-center justify-center min-w-0">
+              <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-1 border border-slate-200">
+                <button
+                  onClick={() => setView('assets')}
+                  title="Assets list"
+                  className={[
+                    'flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                    view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                  ].join(' ')}
+                >
+                  <Truck size={12} />
+                  <span>Assets</span>
+                </button>
+                <button
+                  onClick={() => setView('live-map')}
+                  title="Live GPS map"
+                  className={[
+                    'flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                    view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                  ].join(' ')}
+                >
+                  <Navigation size={12} />
+                  <span>Live Map</span>
+                </button>
+              </div>
             </div>
 
-            {/* Right spacer — keeps left content from overlapping centre */}
-            <div className="ml-auto" />
+            {/* Right: Add Asset — shrink-0, icon-only on mobile */}
+            <div className="shrink-0">
+              {view === 'assets' ? (
+                <button
+                  onClick={() => !isViewOnly && setShowModal(true)}
+                  disabled={isViewOnly}
+                  title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus size={14} />
+                  <span className="hidden sm:inline">Add</span>
+                </button>
+              ) : (
+                <div className="w-8" /> 
+              )}
+            </div>
           </div>
         </header>
 
@@ -444,7 +436,7 @@ export default function FleetPage() {
 
           {/* ── Assets view ── */}
           {view === 'assets' && (
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-28 flex flex-col gap-5">
 
           {/* Success banner */}
           <AnimatePresence>
@@ -497,33 +489,16 @@ export default function FleetPage() {
                 ))}
               </div>
 
-              {/* Search + filter */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search name, rego, type…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  />
-                </div>
-                <div className="scroll-x-hide flex items-center gap-2 pb-0.5">
-                  {FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => setFilter(f.value)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
-                        filter === f.value
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+              {/* Search */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search name, rego, type…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                />
               </div>
 
               {/* Empty state */}
@@ -619,6 +594,30 @@ export default function FleetPage() {
           </div>
           )}
         </div>
+
+        {/* ── Sticky bottom filter bar (assets view only) ── */}
+        {view === 'assets' && (
+          <div
+            className="shrink-0 bg-white/95 backdrop-blur-sm border-t border-slate-200"
+            style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+          >
+            <div className="scroll-x-hide flex items-center gap-2 px-4 pt-3 pb-1">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setFilter(f.value)}
+                  className={`text-xs font-bold px-3.5 py-2 rounded-full border transition-colors whitespace-nowrap ${
+                    filter === f.value
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* New Asset Modal */}
         <AnimatePresence>

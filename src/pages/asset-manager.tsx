@@ -3,9 +3,8 @@
  */
 import { useState, useEffect, Suspense } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Wrench, ChevronLeft, Menu, Loader2 } from 'lucide-react';
+import { Wrench, ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import PortalSidebar from '@/components/PortalSidebar';
 import AMAssetsTab from '@/components/AssetManager/AMAssetsTab';
 import EquipmentDetailPanel from '@/components/AssetManager/EquipmentDetailPanel';
 
@@ -43,7 +42,6 @@ export default function AssetManagerPage() {
         <link rel="canonical" href="https://iwillbuild.com/studio/asset-manager" />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <PortalSidebar />
       <div className="portal-main">
 
         {selectedAssetId !== null ? (
@@ -59,18 +57,11 @@ export default function AssetManagerPage() {
             <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 py-4">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => window.dispatchEvent(new Event('portal:open-menu'))}
-                  className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  aria-label="Open menu"
+                  onClick={() => navigate('/home')}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  aria-label="Back to Home"
                 >
-                  <Menu size={20} />
-                </button>
-                <button
-                  onClick={() => navigate('/studio')}
-                  className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors mr-1"
-                >
-                  <ChevronLeft size={14} />
-                  <span className="hidden sm:inline">Studio</span>
+                  <ArrowLeft size={16} />
                 </button>
                 <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
                   <Wrench size={18} className="text-violet-600" />

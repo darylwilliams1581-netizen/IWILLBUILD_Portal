@@ -23,9 +23,11 @@ import {
   MoreHorizontal, Shrink,
 } from 'lucide-react';
 import { useMobileViewer } from '@/lib/useMobileViewer';
+import { resolveNativeUrl } from '@/lib/native-url';
 
-// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
+// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly.
+// On Capacitor native the worker path must be absolute (capacitor://localhost can't serve it).
+pdfjs.GlobalWorkerOptions.workerSrc = resolveNativeUrl('/pdf.worker.5.4.296.min.mjs');
 
 type ToolType = 'none' | 'text' | 'arrow' | 'rect' | 'highlight' | 'pen';
 
@@ -183,7 +185,8 @@ function MarkupCanvas({ items, currentPage, pageWidth, pageHeight, activeTool, o
   );
 }
 
-export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, onMarkupSaved }: Props) {
+export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title, onClose, onMarkupSaved }: Props) {
+  const fileUrl = resolveNativeUrl(fileUrlRaw);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
@@ -230,6 +233,28 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // ── iOS swipe-back / hardware-back interception ──────────────────────────
+  // Push a dummy history entry so the native back gesture pops it instead of
+  // navigating the router away from the job page.
+  useEffect(() => {
+    window.history.pushState({ drawingViewer: true }, '');
+    function onPopState(e: PopStateEvent) {
+      // If the popped state is NOT our sentinel, the user navigated further
+      // back — let it through. Otherwise intercept and close the overlay.
+      if (!(e.state as Record<string, unknown> | null)?.drawingViewer) return;
+      onClose();
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      // If the viewer is closed via the X button (not back gesture), the
+      // dummy entry is still in the stack — go back to clean it up.
+      if (window.history.state && (window.history.state as Record<string, unknown>).drawingViewer) {
+        window.history.back();
+      }
+    };
+  }, [onClose]);
 
   function fitToWidth() {
     if (containerRef.current) {
@@ -316,7 +341,12 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
   return (
     <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-900" style={{ overflowX: 'clip' }}>
       {/* ── Top toolbar ──────────────────────────────────────────────────────── */}
-      <div className="viewer-toolbar flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 shrink-0" style={{ overflowX: 'clip' }}>
+      <div className="viewer-toolbar flex items-center gap-1.5 px-2 bg-slate-800 border-b border-slate-700 shrink-0"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top), 10px)',
+          paddingBottom: '8px',
+          overflowX: 'clip',
+        }}>
 
         {/* Title */}
         <div className="flex items-center gap-1.5 min-w-0 mr-1">

@@ -150,10 +150,11 @@ export default function EstimateEditorPage() {
     if (est && !isLocked && dirty) {
       await save(est, currentLines);
     }
-    if (est) {
+    if (est?.jobId) {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
-      navigate('/home');
+      // No estimate loaded — go back in history, or fall back to jobs list
+      navigate(-1);
     }
   }
 
@@ -358,7 +359,7 @@ export default function EstimateEditorPage() {
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <Helmet>
         <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
         <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
@@ -367,25 +368,17 @@ export default function EstimateEditorPage() {
       </Helmet>
       <h1 className="sr-only">{estimate ? `${estimate.title} — Estimate` : 'Estimate Editor'}</h1>
 
-        {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3 h-16" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Back button — saves if dirty before navigating */}
+        {/* Top bar — two rows on mobile, single row on desktop */}
+        <header className="bg-white border-b border-gray-100 shrink-0 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+          {/* Row 1: Back + title + save indicator */}
+          <div className="flex items-center gap-3 px-4 md:px-6 h-14">
             <button
               onClick={() => void handleBack()}
               className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
             >
               <ChevronLeft size={18} />
             </button>
-            <button
-              onClick={() => navigate('/home')}
-              className="hidden sm:flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors shrink-0"
-              aria-label="Home"
-            >
-              <span>Home</span>
-            </button>
-            <span className="hidden sm:inline text-gray-200 text-xs">|</span>
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <p className="text-gray-400 text-xs font-medium truncate leading-tight">
                 {job ? (job.jobNumber ?? job.name) : 'Estimate'}
               </p>
@@ -394,12 +387,31 @@ export default function EstimateEditorPage() {
                 {dirty && !saving && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1.5 mb-0.5" title="Unsaved changes" />}
               </p>
             </div>
+            {/* Save indicator — right side of row 1 */}
+            {saving && <Loader2 size={14} className="animate-spin text-muted-foreground shrink-0" />}
+            {saved && !saving && !dirty && <span className="text-xs text-emerald-600 font-semibold shrink-0">Saved</span>}
+            {/* Manual save button — row 1 on mobile */}
+            {!isLocked && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 shrink-0 ${
+                  dirty
+                    ? 'bg-primary hover:bg-violet-700 text-white'
+                    : 'bg-primary/70 hover:bg-primary text-white'
+                }`}
+              >
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                <span>{dirty ? 'Save' : 'Saved'}</span>
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Row 2: Action pills */}
+          <div className="flex items-center gap-2 px-4 md:px-6 pb-2 overflow-x-auto">
             {/* Status badge + dropdown */}
             {estimate && statusStyle && (
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button
                   onClick={() => setStatusOpen(!statusOpen)}
                   className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${statusStyle.bg} ${statusStyle.color}`}
@@ -411,7 +423,7 @@ export default function EstimateEditorPage() {
                 {statusOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
+                    <div className="absolute left-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
                       {ESTIMATE_STATUSES.map((s) => {
                         const st = getEstimateStatusStyle(s);
                         const locked = s === 'Approved' && !canApprove;
@@ -442,82 +454,64 @@ export default function EstimateEditorPage() {
               </div>
             )}
 
-            {/* Save indicator */}
-            {saving && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
-            {saved && !saving && !dirty && <span className="text-xs text-emerald-600 font-semibold">Saved</span>}
-
             {/* Print */}
             <button
               onClick={() => setShowPrint(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors shrink-0"
             >
               <Printer size={14} />
-              <span className="hidden sm:inline">Print</span>
+              <span>Print</span>
             </button>
 
             {/* Send via Outlook */}
             {estimate && (
-              <OutlookEmailButton
-                context={{
-                  kind: 'estimate',
-                  estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
-                  jobName: job?.name,
-                  customerName: estimate.customerName ?? undefined,
-                  totalAmount: (() => { const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST'); return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }); })(),
-                  status: estimate.status,
-                  link: `${typeof window !== 'undefined' ? window.location.origin : 'https://iwillbuild.com'}/view/estimate/${estimate.id}`,
-                }}
-                size="sm"
-                showCopy
-              />
+              <div className="shrink-0">
+                <OutlookEmailButton
+                  context={{
+                    kind: 'estimate',
+                    estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
+                    jobName: job?.name,
+                    customerName: estimate.customerName ?? undefined,
+                    totalAmount: (() => { const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST'); return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }); })(),
+                    status: estimate.status,
+                    link: `${typeof window !== 'undefined' ? window.location.origin : 'https://iwillbuild.com'}/view/estimate/${estimate.id}`,
+                  }}
+                  size="sm"
+                  showCopy
+                />
+              </div>
             )}
 
             {/* Export PDF */}
             <button
               onClick={handleExportPdf}
               disabled={exportingPdf || !estimate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
               title="Download PDF"
             >
               {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              <span className="hidden sm:inline">PDF</span>
+              <span>PDF</span>
             </button>
 
             {/* Share link */}
             <button
               onClick={() => setShowShare(true)}
               disabled={!estimate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
               title="Share link"
             >
               <Share2 size={14} />
-              <span className="hidden sm:inline">Share</span>
+              <span>Share</span>
             </button>
 
             {/* Duplicate */}
             <button
               onClick={handleDuplicate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors shrink-0"
             >
               <Copy size={14} />
-              <span className="hidden sm:inline">Duplicate</span>
+              <span>Duplicate</span>
             </button>
-
-            {/* Manual save */}
-            {!isLocked && (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 ${
-                  dirty
-                    ? 'bg-primary hover:bg-violet-700 text-white'
-                    : 'bg-primary/70 hover:bg-primary text-white'
-                }`}
-              >
-                {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                <span className="hidden sm:inline">{dirty ? 'Save' : 'Saved'}</span>
-              </button>
-            )}
           </div>
         </header>
 

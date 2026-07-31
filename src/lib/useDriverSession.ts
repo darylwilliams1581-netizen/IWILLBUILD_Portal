@@ -45,20 +45,27 @@ export function useDriverSession() {
   const [session, setSession] = useState<DriverSession | null | undefined>(undefined);
   const [error, setError] = useState('');
   const gpsWatchCleanupRef = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(true); // guards against setState after unmount
 
   // Track the latest permission + GPS status so heartbeats always send current values
   const permStatusRef  = useRef<GpsPermissionStatus>('unknown');
   const gpsStatusRef   = useRef<GpsStatusValue>('waiting_fix');
   const sessionIdRef   = useRef<number | null>(null);
 
+  // Mark unmounted on cleanup
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/fleet/driver-sessions/active', { credentials: 'include' });
-      if (res.status === 401) { setSession(null); return; }
+      if (res.status === 401) { if (mountedRef.current) setSession(null); return; }
       const data = await res.json() as { session?: DriverSession | null };
-      setSession(data.session ?? null);
+      if (mountedRef.current) setSession(data.session ?? null);
     } catch {
-      setError('Failed to load driving session');
+      if (mountedRef.current) setError('Failed to load driving session');
     }
   }, []);
 
@@ -92,21 +99,26 @@ export function useDriverSession() {
       const geo = await getNativeGeo();
       if (geo) {
         // Native Capacitor GPS — higher accuracy, works in background on Android
-        const pos = await geo.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 10_000,
-        });
+        // Hard 10s timeout: getCurrentPosition can hang indefinitely on iOS if
+        // the plugin is registered but the OS hasn't granted a fix yet.
+        const pos = await Promise.race([
+          geo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10_000 }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('GPS getCurrentPosition timed out')), 10_500)
+          ),
+        ]);
         lat      = pos.coords.latitude;
         lng      = pos.coords.longitude;
         speed    = pos.coords.speed ?? null;
         heading  = pos.coords.heading ?? null;
         accuracy = pos.coords.accuracy ?? null;
       } else if (navigator.geolocation) {
-        // Web browser fallback
+        // Web browser fallback — already has a 10s timeout in the options
         const pos = await new Promise<GeolocationPosition | null>((resolve) => {
+          const timer = setTimeout(() => resolve(null), 11_000); // safety net
           navigator.geolocation.getCurrentPosition(
-            (p) => resolve(p),
-            () => resolve(null),
+            (p) => { clearTimeout(timer); resolve(p); },
+            () => { clearTimeout(timer); resolve(null); },
             { enableHighAccuracy: true, timeout: 10_000, maximumAge: 5_000 }
           );
         });

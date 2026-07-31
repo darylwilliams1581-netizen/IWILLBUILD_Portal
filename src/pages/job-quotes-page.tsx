@@ -231,7 +231,7 @@ export default function JobQuotesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <Helmet>
         <title>{job ? `Quotes — ${job.name}` : 'Quotes'} — IWILLBUILD</title>
         <meta name="description" content="View and manage quotes for this job." />
@@ -241,7 +241,7 @@ export default function JobQuotesPage() {
       <h1 className="sr-only">{job ? `Quotes — ${job.name}` : 'Quotes'}</h1>
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+      <div className="bg-white border-b border-gray-100 px-4 pb-4 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => navigate(`/jobs/${id}`)}
@@ -250,7 +250,7 @@ export default function JobQuotesPage() {
             <ChevronLeft size={18} />
           </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+            <button onClick={() => navigate('/')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             <p className="text-gray-900 font-bold text-xl leading-tight text-center">Quotes</p>

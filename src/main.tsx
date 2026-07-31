@@ -39,7 +39,7 @@ import { Component, StrictMode, useEffect, useState, type ReactNode } from 'reac
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
+import AiroErrorBoundary from '../export-plugins/AiroErrorBoundary';
 import App from './App';
 import './styles/globals.css';
 import './lib/i18n';

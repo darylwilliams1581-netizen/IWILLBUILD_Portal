@@ -31,11 +31,15 @@ export default async function handler(req: Request, res: Response) {
       jobId,
       dateFrom,
       dateTo,
+      archived,
       limit = '200',
       offset = '0',
     } = req.query as Record<string, string | undefined>;
 
+    // By default show only active (non-archived) records; pass archived=1 to see the archive
+    const showArchived = archived === '1' || archived === 'true';
     let where = `WHERE r.company_id = ${profile.companyId}`;
+    where += showArchived ? ' AND r.archived_at IS NOT NULL' : ' AND r.archived_at IS NULL';
     if (status)      where += ` AND r.status = '${status.replace(/'/g, "''")}'`;
     if (likelihood)  where += ` AND r.likelihood = '${likelihood.replace(/'/g, "''")}'`;
     if (consequence) where += ` AND r.consequence = '${consequence.replace(/'/g, "''")}'`;

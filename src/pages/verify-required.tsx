@@ -5,6 +5,7 @@ import {
   Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Eye, EyeOff,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 export default function VerifyRequiredPage() {
   const { user } = useSession();
@@ -20,7 +21,6 @@ export default function VerifyRequiredPage() {
   const [changeEmailPassword, setChangeEmailPassword] = useState('');
   const [showChangeEmailPw, setShowChangeEmailPw] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
-  const [emailChanged, setEmailChanged] = useState(false);
 
   // SMS
   const [smsConfigured, setSmsConfigured] = useState(false);
@@ -86,7 +86,6 @@ export default function VerifyRequiredPage() {
       });
       const data = await res.json() as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {
-        setEmailChanged(true);
         setSuccess('Email updated! A verification link has been sent to your new address.');
         setShowChangeEmail(false);
       } else {
@@ -338,13 +337,11 @@ export default function VerifyRequiredPage() {
                       ) : !smsSent ? (
                         <form onSubmit={handleSendSms} className="flex flex-col gap-3">
                           <p className="text-white/40 text-xs">Enter your mobile number to receive a 6-digit code.</p>
-                          <input
-                            type="tel"
+                          <PhoneInput
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="+61 4XX XXX XXX"
-                            required
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary transition-colors"
+                            onChange={setPhone}
+                            disabled={sendingSms}
+                            darkMode
                           />
                           <button
                             type="submit"

@@ -12,6 +12,7 @@ import {
   Clock,
   XCircle,
   BarChart3,
+  RefreshCw,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -53,7 +54,9 @@ export default function DashboardPage() {
   const { role } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
+  const [jobsError, setJobsError] = useState(false);
   const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
+  const [fleetError, setFleetError] = useState(false);
   const [dueTodayTodos, setDueTodayTodos] = useState<DashTodo[]>([]);
   const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
 
@@ -73,14 +76,14 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchJobs()
       .then((data) => { setJobs(data); setJobsLoaded(true); })
-      .catch(() => setJobsLoaded(true));
+      .catch(() => { setJobsLoaded(true); setJobsError(true); });
     fetchFleetFlags()
       .then((flags) => setFleetFlags(flags))
-      .catch(() => {});
+      .catch(() => { setFleetError(true); });
     fetch('/api/dashboard/todos')
       .then((r) => r.json())
       .then((d) => { setDueTodayTodos(d.dueToday ?? []); setOverdueTodos(d.overdue ?? []); })
-      .catch(() => {});
+      .catch(() => {}); // Todos are supplementary — silent failure is acceptable here
     fetch('/api/usage', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
@@ -124,7 +127,7 @@ export default function DashboardPage() {
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="portal-main lg:pt-[96px]">
+      <div className="portal-main lg:pt-[104px]">
 
         {/* Desktop banner strip — sits just below the dock */}
         <div className="hidden md:flex items-center px-3 py-1.5 border-b border-border bg-white shrink-0 print:hidden">
@@ -246,6 +249,13 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
+          {fleetError && !fleetFlags && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg mb-2 text-[11px] text-amber-700">
+              <AlertTriangle size={12} className="shrink-0" />
+              Fleet status unavailable — check connection.
+            </div>
+          )}
+
           {/* ── To-do Alerts ── */}
           {(overdueTodos.length > 0 || dueTodayTodos.length > 0) && (
             <motion.div
@@ -329,6 +339,23 @@ export default function DashboardPage() {
                     <div className="h-3 w-16 bg-slate-100 rounded animate-pulse shrink-0" />
                   </div>
                 ))}
+              </div>
+            ) : jobsError ? (
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                  <AlertTriangle size={18} className="text-red-500" />
+                </div>
+                <p className="text-xs font-semibold text-foreground mb-1">Couldn't load jobs</p>
+                <p className="text-[11px] text-muted-foreground mb-4 max-w-xs">
+                  Check your connection and refresh.
+                </p>
+                <button
+                  onClick={() => { setJobsError(false); setJobsLoaded(false); fetchJobs().then((data) => { setJobs(data); setJobsLoaded(true); }).catch(() => { setJobsLoaded(true); setJobsError(true); }); }}
+                  className="inline-flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150"
+                >
+                  <RefreshCw size={12} />
+                  Retry
+                </button>
               </div>
             ) : recentJobs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center">

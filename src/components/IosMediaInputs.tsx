@@ -76,10 +76,12 @@ export function IosPermissionBanner({ type, onDismiss }: IosPermissionBannerProp
   async function openSettings() {
     if (isNative()) {
       try {
-        // Capacitor App plugin can open the native settings screen
-        const { App } = await import('@capacitor/app');
-        // @ts-expect-error openSettings is available on some Capacitor versions
-        await App.openSettings?.();
+        // Use window.Capacitor.Plugins global — avoids Vite dynamic import resolution
+        const cap = (window as {
+          Capacitor?: { Plugins?: { App?: { openUrl: (opts: { url: string }) => Promise<void> } } }
+        }).Capacitor;
+        // 'app-settings:' is the iOS deep-link to the app's Settings page
+        await cap?.Plugins?.App?.openUrl({ url: 'app-settings:' });
         return;
       } catch { /* fall through */ }
     }

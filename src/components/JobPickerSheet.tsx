@@ -6,6 +6,8 @@ interface JobOption {
   id: number;
   name: string;
   jobNumber?: string | null;
+  client?: string | null;
+  address?: string | null;
 }
 
 interface JobPickerSheetProps {
@@ -94,27 +96,25 @@ export default function JobPickerSheet({
                 </button>
               </div>
 
-              {/* Search */}
-              {jobs.length > 4 && (
-                <div className="px-4 pb-2 shrink-0">
-                  <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
-                    <Search size={14} className="text-gray-400 shrink-0" />
-                    <input
-                      ref={searchRef}
-                      type="text"
-                      value={query}
-                      onChange={e => setQuery(e.target.value)}
-                      placeholder="Search jobs…"
-                      className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
-                    />
-                    {query && (
-                      <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
-                        <X size={13} />
-                      </button>
-                    )}
-                  </div>
+              {/* Search — always visible, even while loading */}
+              <div className="px-4 pb-2 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search jobs, job numbers…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                  />
+                  {query && (
+                    <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                      <X size={13} />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
 
               <div className="h-px bg-gray-100 shrink-0 mx-4" />
 
@@ -132,7 +132,7 @@ export default function JobPickerSheet({
                 ) : filtered.map(job => (
                   <button
                     key={job.id}
-                    onClick={() => { onClose(); onSelect(job); }}
+                    onClick={() => { onSelect(job); }}
                     className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
                   >
                     <div className={`w-2 h-2 rounded-full shrink-0 ${iconBg.replace('-100', '-400')}`} />

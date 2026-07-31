@@ -36,7 +36,7 @@ export default function JobDrawingsPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="min-h-screen bg-[#F4F5F7] flex flex-col">
+      <div className="flex-1 bg-[#F4F5F7] flex flex-col overflow-hidden">
         {/* Header — desktop: back+home left, title center; mobile: title only, safe-area padded */}
         <div
           className="bg-white border-b border-slate-200 shrink-0"
@@ -77,9 +77,6 @@ export default function JobDrawingsPage() {
           style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="flex items-center gap-2 px-3 py-2">
-            <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
-              <ArrowLeft size={16} />
-            </button>
             <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
               <Home size={16} />
             </button>

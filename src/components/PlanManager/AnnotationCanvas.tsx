@@ -176,13 +176,29 @@ export default function AnnotationCanvas({
   const pageW = width / scale;
   const pageH = height / scale;
 
-  // Convert screen coords → unscaled SVG/page coords
+  // Convert screen coords → unscaled SVG/page coords.
+  //
+  // We use getScreenCTM() + createSVGPoint() instead of getBoundingClientRect()
+  // because getScreenCTM() accounts for the SVG's viewBox transform (which maps
+  // the scaled CSS pixel space to the unscaled page coordinate space), as well as
+  // any CSS transforms on ancestor elements. This means we never need to manually
+  // divide by `scale` — the CTM already encodes that mapping.
   const getSvgPoint = useCallback((e: React.MouseEvent | React.PointerEvent): Point => {
-    const rect = svgRef.current!.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) / scale,
-      y: (e.clientY - rect.top) / scale,
-    };
+    const svg = svgRef.current!;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) {
+      // Fallback: manual calculation if CTM is unavailable
+      const rect = svg.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) / scale,
+        y: (e.clientY - rect.top) / scale,
+      };
+    }
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return { x: svgPt.x, y: svgPt.y };
   }, [scale]);
 
   // Push current state onto undo stack before mutating
@@ -345,7 +361,14 @@ export default function AnnotationCanvas({
       height={height}
       // viewBox uses unscaled page dimensions — browser scales the SVG to fill width×height
       viewBox={`0 0 ${pageW} ${pageH}`}
-      style={{ position: 'absolute', top: 0, left: 0, cursor, touchAction: 'none' }}
+      style={{
+        position: 'absolute', top: 0, left: 0,
+        cursor,
+        touchAction: 'none',
+        // Pan tool: let mouse events fall through to the scroll container so
+        // the drag-to-pan handler in PdfViewer can receive them.
+        pointerEvents: activeTool === 'pan' ? 'none' : 'auto',
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

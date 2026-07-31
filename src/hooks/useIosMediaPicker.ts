@@ -28,6 +28,11 @@
  *    photo library access, we surface a clear message with a deep-link to
  *    Settings rather than silently failing.
  *
+ * 6. VITE BUILD SAFETY — All Capacitor plugin access uses window.Capacitor.Plugins
+ *    globals, NOT dynamic imports. Dynamic imports of @capacitor/* plugin instances
+ *    are resolved at Vite build time and can produce broken chunks in the iOS bundle.
+ *    Static enum/constant imports at module level are safe.
+ *
  * Usage:
  *   const picker = useIosMediaPicker();
  *
@@ -51,12 +56,41 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { isNative, getPlatform } from '@/lib/capacitor-plugins';
+import { isNative, getPlatform, getCameraPlugin } from '@/lib/capacitor-plugins';
 import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
+// Camera enum constants — static values safe to import at module level.
+// These are NOT plugin instances, so they do not violate Rule 6.
+import { CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type PickerMode = 'camera' | 'library';
+
+/**
+ * Native camera options passed to openCamera().
+ * On native (Capacitor) these map directly to Camera.getPhoto() options.
+ * On web, `direction` maps to the `capture` attribute (user/environment).
+ * `flashMode` has no web equivalent and is silently ignored on web.
+ */
+export interface NativeCameraOptions {
+  /** 'front' uses the selfie camera; 'rear' (default) uses the main camera. */
+  direction?: 'front' | 'rear';
+  /** 'on' forces flash; 'off' disables it; 'auto' (default) lets the OS decide. */
+  flashMode?: 'on' | 'off' | 'auto';
+  /**
+   * JPEG quality hint passed to Camera.getPhoto() on native.
+   * Maps to the quality setting from CameraSettings:
+   *   low  → 72  (matches processImage JPEG quality for low)
+   *   med  → 84  (matches processImage JPEG quality for medium)
+   *   high → 92  (matches processImage JPEG quality for high)
+   * Defaults to 84 (medium) if not provided.
+   *
+   * Note: this controls the native capture quality, not the processImage
+   * resize cap. processImage still applies its own maxDim resize on top.
+   * Keeping these in sync avoids double-compressing at mismatched quality levels.
+   */
+  captureQuality?: number;
+}
 
 export interface IosMediaPickerState {
   file: File | null;
@@ -68,7 +102,14 @@ export interface IosMediaPickerState {
   checkingPermission: boolean;
   /** Set when the user has denied camera or photo library access */
   permissionDenied: 'camera' | 'photos' | null;
-  openCamera: () => Promise<void>;
+  /**
+   * Set when iOS returns 'limited' photo library access.
+   * Limited = user selected specific photos only (iOS 14+).
+   * The picker still works — we can still open the library — but the user
+   * can only see the photos they explicitly allowed. This is NOT a denial.
+   */
+  photosLimited: boolean;
+  openCamera: (opts?: NativeCameraOptions) => Promise<void>;
   openLibrary: () => Promise<void>;
   clear: () => void;
   /** Render this inside your component — the hidden file inputs */
@@ -76,17 +117,6 @@ export interface IosMediaPickerState {
   /**
    * Explainer modal state — set when the pre-permission explainer should be shown.
    * Callers render <PermissionExplainerModal> when this is non-null.
-   *
-   * Example:
-   *   {picker.explainer && (
-   *     <PermissionExplainerModal
-   *       type={picker.explainer.type}
-   *       open
-   *       denied={picker.explainer.denied}
-   *       onNotNow={picker.explainer.onNotNow}
-   *       onEnable={picker.explainer.onEnable}
-   *     />
-   *   )}
    */
   explainer: {
     type: 'camera' | 'photos';
@@ -121,42 +151,105 @@ function safePreviewUrl(file: File): string | null {
   }
 }
 
+// ── Capacitor Camera permission helpers ───────────────────────────────────────
+// Uses getCameraPlugin() from capacitor-plugins.ts which dynamically imports
+// @capacitor/camera — a real installed package. This gives us the actual
+// Capacitor permission API instead of falling back to 'unknown' every time.
+
 /**
- * Check / request camera permission via Capacitor on native iOS/Android.
- * Returns 'granted' | 'denied' | 'unknown' (web / non-native).
+ * Decode a base64 string to a Blob in 64KB chunks.
+ *
+ * WHY chunked:
+ * A 12MP iPhone photo at quality 84 produces ~6–10MB of base64 data.
+ * The naive approach — atob() then a single char-by-char for loop over the
+ * resulting string — iterates over millions of chars synchronously on the
+ * main thread, blocking the UI for 200–500ms. In TestFlight this manifests
+ * as a visible freeze immediately after shutter press, which users report as
+ * a crash.
+ *
+ * The chunked approach keeps each JS tick short:
+ *   1. atob() the full string once (fast — native C, not JS iteration)
+ *   2. Slice the decoded string into 64KB chunks
+ *   3. Convert each chunk to a Uint8Array via charCodeAt (short loop per chunk)
+ *   4. Collect chunks into a Blob directly — no giant intermediate Uint8Array
+ *
+ * This avoids both the main-thread stall and the peak memory spike of
+ * allocating a single Uint8Array for the entire image at once.
+ */
+const BASE64_CHUNK = 65536; // 64KB per chunk — keeps each tick under ~1ms
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const decoded = atob(base64); // native C — fast, does not block JS
+  const chunks: Uint8Array[] = [];
+  for (let offset = 0; offset < decoded.length; offset += BASE64_CHUNK) {
+    const slice = decoded.slice(offset, offset + BASE64_CHUNK);
+    const chunk = new Uint8Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      chunk[i] = slice.charCodeAt(i);
+    }
+    chunks.push(chunk);
+  }
+  return new Blob(chunks as BlobPart[], { type: mimeType });
+}
+
+/**
+ * Check / request camera permission via the real @capacitor/camera plugin.
+ * Returns 'granted' | 'denied' | 'unknown' (web / non-native / plugin missing).
  */
 async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    // Dynamically import to avoid loading Capacitor on web
-    const { Camera, CameraPermissionState } = await import('@capacitor/camera');
+    const Camera = await getCameraPlugin();
+    if (!Camera) return 'unknown';
+
     const status = await Camera.checkPermissions();
-    if (status.camera === 'granted') return 'granted';
-    if (status.camera === 'denied') return 'denied';
-    // 'prompt' or 'prompt-with-rationale' — request it
-    const requested = await Camera.requestPermissions({ permissions: ['camera'] });
-    if ((requested.camera as CameraPermissionState) === 'granted') return 'granted';
-    return 'denied';
+    // @capacitor/camera v5+ returns { camera: PermissionState, photos: PermissionState }
+    const cam = (status as { camera?: string }).camera ?? 'prompt';
+    if (cam === 'granted') return 'granted';
+    if (cam === 'denied') return 'denied';
+
+    // 'prompt' or 'prompt-with-rationale' — trigger the native dialog
+    const requested = await Camera.requestPermissions({ permissions: ['camera'] as never });
+    const grantedCam = (requested as { camera?: string }).camera ?? 'denied';
+    return grantedCam === 'granted' ? 'granted' : 'denied';
   } catch {
-    // @capacitor/camera may not be installed — fall back to browser input
+    // Plugin unavailable at runtime — fall back to browser input
     return 'unknown';
   }
 }
 
 /**
- * Check / request photo library permission via Capacitor on native iOS/Android.
+ * Check / request photo library permission via the real @capacitor/camera plugin.
+ * Returns 'granted' | 'limited' | 'denied' | 'unknown'.
+ *
+ * 'limited' = iOS 14+ "Selected Photos" — the picker still works but the user
+ * can only see photos they explicitly allowed. This is NOT a denial; do not
+ * block the picker. Surface it in the UI so the user understands why they
+ * can't see all their photos.
  */
-async function ensurePhotosPermission(): Promise<'granted' | 'denied' | 'unknown'> {
+async function ensurePhotosPermission(): Promise<'granted' | 'limited' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    const { Camera, CameraPermissionState } = await import('@capacitor/camera');
+    const Camera = await getCameraPlugin();
+    if (!Camera) return 'unknown';
+
     const status = await Camera.checkPermissions();
-    const photos = status.photos ?? status.camera; // Android uses 'camera' for both
-    if (photos === 'granted' || photos === 'limited') return 'granted';
+    const photos = (status as { photos?: string }).photos
+      ?? (status as { camera?: string }).camera
+      ?? 'prompt';
+
+    if (photos === 'granted') return 'granted';
+    if (photos === 'limited') return 'limited';   // ← surface distinctly
     if (photos === 'denied') return 'denied';
-    const requested = await Camera.requestPermissions({ permissions: ['photos'] });
-    const rPhotos = (requested.photos ?? requested.camera) as CameraPermissionState;
-    if (rPhotos === 'granted' || rPhotos === 'limited') return 'granted';
+
+    // 'prompt' — trigger the native dialog
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
+    const rPhotos = (requested as { photos?: string }).photos
+      ?? (requested as { camera?: string }).camera
+      ?? 'denied';
+
+    if (rPhotos === 'granted') return 'granted';
+    if (rPhotos === 'limited') return 'limited';
     return 'denied';
   } catch {
     return 'unknown';
@@ -171,6 +264,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   const [isHeic, setIsHeic]                 = useState(false);
   const [checkingPermission, setChecking]   = useState(false);
   const [permissionDenied, setDenied]       = useState<'camera' | 'photos' | null>(null);
+  const [photosLimited, setPhotosLimited]   = useState(false);
 
   // ── Explainer modal state ─────────────────────────────────────────────────
   type ExplainerState = {
@@ -184,10 +278,9 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
 
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
-  // Wrapper div so callers can render both inputs with a single ref
   const inputsRef       = useRef<HTMLDivElement>(null);
 
-  // Revoke previous blob URL when a new file is selected
+  // Revoke previous blob URL on unmount
   const prevUrlRef = useRef<string | null>(null);
   useEffect(() => {
     return () => {
@@ -196,7 +289,6 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, []);
 
   const handleFile = useCallback((f: File) => {
-    // Revoke previous blob URL
     if (prevUrlRef.current) {
       URL.revokeObjectURL(prevUrlRef.current);
       prevUrlRef.current = null;
@@ -215,19 +307,18 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) handleFile(f);
-    // Reset input so the same file can be re-selected
+    // Reset so the same file can be re-selected
     e.target.value = '';
   }, [handleFile]);
 
-  // ── Internal: actually request camera permission + open input ─────────────
-  const doOpenCamera = useCallback(async () => {
+  // ── Internal: check camera permission + open input ────────────────────────
+  const doOpenCamera = useCallback(async (opts?: NativeCameraOptions) => {
     setDenied(null);
     setChecking(true);
     try {
       const perm = await ensureCameraPermission();
       if (perm === 'denied') {
         setDenied('camera');
-        // Show denied variant of explainer
         setExplainer({
           type: 'camera',
           denied: true,
@@ -239,10 +330,99 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     } finally {
       setChecking(false);
     }
-    cameraInputRef.current?.click();
-  }, []);
 
-  // ── Internal: actually request photos permission + open input ─────────────
+    // ── Native path: use Capacitor Camera.getPhoto() so flash + direction work ──
+    if (isNative()) {
+      try {
+        const CameraPlugin = await getCameraPlugin();
+        if (CameraPlugin) {
+          // Use Base64 instead of DataUrl on native.
+          // DataUrl requires an extra fetch() round-trip to convert to a Blob,
+          // adding latency and a second full-image memory copy in the WKWebView heap.
+          // Base64 lets us decode directly, reducing peak memory.
+          //
+          // captureQuality: use the caller's quality hint (from CameraSettings) so
+          // the native capture matches the intended quality tier. Defaults to 84
+          // (medium) — never hardcode 90 which ignores the user's setting entirely.
+          const nativeQuality = opts?.captureQuality ?? 84;
+
+          const photo = await CameraPlugin.getPhoto({
+            quality: nativeQuality,
+            allowEditing: false,
+            resultType: CameraResultType.Base64,
+            source: CameraSource.Camera,
+            direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
+            // flashMode is a valid runtime option on iOS even if the TS types
+            // for this version don't expose it — pass as string literal via cast
+            flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+          } as any);
+
+          if (photo.base64String) {
+            // Decode base64 → Uint8Array → Blob.
+            //
+            // IMPORTANT: do NOT use a char-by-char atob loop here.
+            // A 12MP iPhone photo at quality 84 produces ~6–10MB of base64 data.
+            // Iterating over millions of chars synchronously on the main thread
+            // blocks the UI for 200–500ms, which looks like a freeze/crash in
+            // TestFlight. Use a chunked decode instead:
+            //   1. atob() the full string (fast — native C, not JS)
+            //   2. Slice into 64KB chunks and decode each chunk
+            //   3. Concatenate into a single Uint8Array
+            // This keeps each JS tick short and avoids the main-thread stall.
+            try {
+              const blob = base64ToBlob(
+                photo.base64String,
+                photo.format === 'png' ? 'image/png' : 'image/jpeg',
+              );
+              const file = new File([blob], `capture.${photo.format ?? 'jpg'}`, { type: blob.type });
+              handleFile(file);
+            } catch (decodeErr) {
+              console.warn('[camera] base64 decode failed, falling back to dataUrl path:', decodeErr);
+              // Fallback: re-request with DataUrl if chunked decode fails (should not happen)
+              const photo2 = await CameraPlugin.getPhoto({
+                quality: nativeQuality,
+                allowEditing: false,
+                resultType: CameraResultType.DataUrl,
+                source: CameraSource.Camera,
+                direction: opts?.direction === 'front' ? CameraDirection.Front : CameraDirection.Rear,
+                flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+              } as any);
+              if (photo2.dataUrl) {
+                const res = await fetch(photo2.dataUrl);
+                const blob = await res.blob();
+                const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
+                handleFile(file);
+              }
+            }
+          }
+          return;
+        }
+      } catch (err) {
+        // Distinguish user-cancel from a real crash.
+        // Capacitor throws with "cancelled" / "User cancelled" / "No image" when
+        // the user dismisses the camera — this is not a crash, do not log it.
+        const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+        const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image');
+        if (!isCancel) {
+          console.warn('[camera] native Camera.getPhoto failed:', err);
+        }
+        // Do not fall through to the file input on native — the native camera either
+        // worked, was cancelled, or failed. Falling through to a file input on iOS
+        // would show the wrong UI (a file picker instead of the camera).
+        return;
+      }
+    }
+
+    // ── Web / fallback path: file input with capture attribute ────────────────
+    // Dynamically set capture direction so front/rear works on Android Chrome too
+    const input = cameraInputRef.current;
+    if (input) {
+      input.setAttribute('capture', opts?.direction === 'front' ? 'user' : 'environment');
+      input.click();
+    }
+  }, [handleFile]);
+
+  // ── Internal: check photos permission + open input ────────────────────────
   const doOpenLibrary = useCallback(async () => {
     setDenied(null);
     setChecking(true);
@@ -258,6 +438,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         });
         return;
       }
+      // 'limited' = iOS "Selected Photos" — picker still works, just show a note
+      setPhotosLimited(perm === 'limited');
     } finally {
       setChecking(false);
     }
@@ -265,8 +447,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, []);
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
-  const openCamera = useCallback(async () => {
-    // Only show explainer on native iOS/Android — browser doesn't need it
+  const openCamera = useCallback(async (opts?: NativeCameraOptions) => {
     if (isNative() && permExplainer.shouldShow('camera')) {
       setExplainer({
         type: 'camera',
@@ -278,12 +459,12 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         onEnable: async () => {
           permExplainer.markShown('camera');
           setExplainer(null);
-          await doOpenCamera();
+          await doOpenCamera(opts);
         },
       });
       return;
     }
-    await doOpenCamera();
+    await doOpenCamera(opts);
   }, [permExplainer, doOpenCamera]);
 
   // ── Public: openLibrary — shows explainer first if not yet seen ───────────
@@ -316,16 +497,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     setPreviewUrl(null);
     setIsHeic(false);
     setDenied(null);
+    setPhotosLimited(false);
     setExplainer(null);
-  }, []);
-
-  // Attach event listeners to the inputs once the wrapper div mounts
-  // (We can't use JSX here since this is a .ts file — callers render the inputs)
-  useEffect(() => {
-    const cam = cameraInputRef.current;
-    const lib = libraryInputRef.current;
-    if (!cam || !lib) return;
-    // The onChange handler is attached via the ref in the returned inputsRef
   }, []);
 
   return {
@@ -334,12 +507,13 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     isHeic,
     checkingPermission,
     permissionDenied,
+    photosLimited,
     openCamera,
     openLibrary,
     clear,
     inputsRef,
     explainer,
-    // Expose refs so callers can render the inputs
+    // Expose refs so callers can render the inputs via IosMediaInputs
     _cameraInputRef: cameraInputRef,
     _libraryInputRef: libraryInputRef,
     _handleInputChange: handleInputChange,

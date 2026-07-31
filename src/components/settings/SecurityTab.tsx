@@ -327,19 +327,7 @@ export default function SecurityTab() {
         )}
       </div>
 
-      {/* Info box */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-        <p className="text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
-          <KeyRound size={12} />
-          Recommended authenticator apps
-        </p>
-        <ul className="text-xs text-slate-500 flex flex-col gap-1">
-          <li>• <strong>Google Authenticator</strong> — iOS &amp; Android</li>
-          <li>• <strong>Authy</strong> — iOS, Android &amp; Desktop (supports backup)</li>
-          <li>• <strong>Microsoft Authenticator</strong> — iOS &amp; Android</li>
-          <li>• <strong>1Password / Bitwarden</strong> — built-in TOTP support</li>
-        </ul>
-      </div>
+
     </div>
   );
 }

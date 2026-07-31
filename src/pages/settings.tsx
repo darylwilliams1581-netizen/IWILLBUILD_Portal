@@ -1,10 +1,10 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Settings,
   Building2,
   Bell,
+  Calculator,
   Database,
   ChevronRight,
   Layers,
@@ -15,6 +15,7 @@ import {
   User,
   Truck,
   Home,
+  ShieldCheck,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
@@ -27,6 +28,8 @@ import AccountingTab from '@/components/settings/AccountingTab';
 import CompanyTab from '@/components/settings/CompanyTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
+import AppPermissionsTab from '@/components/settings/AppPermissionsTab';
+import CostingTab from '@/components/settings/CostingTab';
 import { Skeleton } from '@/components/ui/skeleton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -39,21 +42,12 @@ const tabs = [
   { id: 'accounting',   label: 'Accounting',         icon: Receipt },
   { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications',label: 'Notifications',      icon: Bell },
-  { id: 'integrations', label: 'Integrations',       icon: Plug },
-  { id: 'fleet',        label: 'Fleet Analytics',     icon: Truck },
-  { id: 'data',         label: 'Data & Backup',       icon: Database },
+  { id: 'permissions',  label: 'App Permissions',    icon: ShieldCheck },
+  // Integrations hidden from normal users — accessible via direct URL ?tab=integrations
+  { id: 'costing',      label: 'Costing',             icon: Calculator },
+  { id: 'fleet',        label: 'Fleet Analytics',    icon: Truck },
+  { id: 'data',         label: 'Data & Backup',      icon: Database },
 ];
-
-interface Company {
-  id: number;
-  name: string;
-  abn: string | null;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  address: string | null;
-  industry: string | null;
-}
 
 /** Fallback shown while a settings sub-tab is loading */
 function TabSkeleton() {
@@ -84,15 +78,8 @@ export default function SettingsPage() {
   const { me, isAdmin } = usePermissions();
   const isOwner = me?.profile?.role === 'owner';
 
-  // Run migration once on mount to ensure company_settings table exists
-  useEffect(() => {
-    if (!isAdmin) return;
-    fetch('/api/migrate-company-settings', { method: 'POST', credentials: 'include' })
-      .catch(() => { /* silent — table may already exist */ });
-  }, [isAdmin]);
-
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -186,7 +173,9 @@ export default function SettingsPage() {
                 {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}
                 {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
                 {activeTab === 'notifications' && <NotificationsTab />}
+                {activeTab === 'permissions'  && <AppPermissionsTab />}
                 {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
+                {activeTab === 'costing'      && <CostingTab />}
                 {activeTab === 'fleet'        && <FleetAnalyticsTab isAdmin={isAdmin} />}
                 {activeTab === 'data' && <DataBackupTab isAdmin={isAdmin} />}
               </Suspense>

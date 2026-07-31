@@ -8,6 +8,7 @@ import { db } from '../../../db/client.js';
 import { user, smsVerificationCodes } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { normalisePhone } from '../../../lib/normalise-phone.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -22,8 +23,9 @@ export default async function handler(req: Request, res: Response) {
     const { phone } = req.body as { phone?: string };
     if (!phone?.trim()) return res.status(400).json({ error: 'Phone number is required.' });
 
-    // Basic E.164 / Australian format normalisation
-    const normalised = phone.trim().replace(/\s+/g, '');
+    // Normalise AU (04xx) and NZ (02x) local formats to E.164 for Twilio
+    const raw = phone.trim().replace(/\s+/g, '');
+    const normalised = normalisePhone(raw);
     if (normalised.length < 8 || normalised.length > 20) {
       return res.status(400).json({ error: 'Please enter a valid phone number.' });
     }

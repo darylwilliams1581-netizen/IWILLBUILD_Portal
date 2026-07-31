@@ -425,7 +425,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <SosInnerBoundary>
-      <div ref={patchRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
+      <div ref={patchRef} suppressHydrationWarning className="h-full bg-background text-foreground flex flex-col">
         <Helmet>
           <title>IWILLBUILD Portal</title>
           <meta

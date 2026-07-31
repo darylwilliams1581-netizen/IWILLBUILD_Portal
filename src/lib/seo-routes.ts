@@ -71,6 +71,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/studio", changefreq: "monthly", priority: 0.8 },
   { path: "/studio/documents", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/forms", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/global-lists", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/library", changefreq: "monthly", priority: 0.5 },
   { path: "/safety/posters", changefreq: "monthly", priority: 0.5 },
   { path: "/job-docs", changefreq: "monthly", priority: 0.8 },
@@ -89,6 +90,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/settings", changefreq: "monthly", priority: 0.8 },
   { path: "/profile", changefreq: "monthly", priority: 0.8 },
   { path: "/help", changefreq: "monthly", priority: 0.5 },
+  { path: "/camera", changefreq: "monthly", priority: 0.8 },
   { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
   { path: "/developer-console", changefreq: "monthly", priority: 0.8 },
   { path: "/roadmap", changefreq: "monthly", priority: 0.5 },
@@ -96,4 +98,5 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/lists", changefreq: "monthly", priority: 0.5 },
   { path: "/user-logs", changefreq: "monthly", priority: 0.8 },
   { path: "/job-cards", changefreq: "monthly", priority: 0.5 },
+  { path: "/job-cards/new", changefreq: "monthly", priority: 0.5 },
 ];

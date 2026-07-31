@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Plus, Search, Loader2, X, Check, AlertCircle,
   Phone, Mail, MapPin, Building2,
-  ChevronRight, FileText, Briefcase, Tag, MessageSquare, Send,
+  ChevronRight, FileText, Briefcase, Tag, MessageSquare, Send, ArrowLeft,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -96,7 +96,7 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
     </div>
   );
 }
-import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
+import PortalSidebar from '@/components/PortalSidebar';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { useTerminology } from '@/lib/useTerminology';
 import {
@@ -511,10 +511,6 @@ export default function CustomersPage() {
     }
   }
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
   return (
     <div className="portal-page">
       <Helmet>
@@ -539,9 +535,15 @@ export default function CustomersPage() {
         {/* Page header */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-3">
-            <MobileMenuButton onClick={openMobileMenu} />
+            <Link
+              to="/home"
+              className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+              aria-label="Back to home"
+            >
+              <ArrowLeft size={18} />
+            </Link>
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Contacts</h1>
+              <h1 className="font-heading font-bold text-base text-foreground">Contacts</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
               </p>

@@ -16,10 +16,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import {
   ShieldAlert, Plus, Filter, X, ChevronRight, Loader2,
   Search, Home, AlertTriangle, CheckCircle2, Clock,
   User, CalendarDays, Briefcase, ChevronDown, ChevronUp,
+  Archive, ArchiveRestore, Inbox,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -49,6 +51,9 @@ export interface RiskEntry {
   notes: string | null;
   closed_at: string | null;
   closed_by: string | null;
+  archived_at: string | null;
+  archived_by: string | null;
+  archive_reason: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -125,11 +130,17 @@ export function statusStyle(status: string) {
 interface NewRiskModalProps {
   onClose: () => void;
   onSaved: (entry: RiskEntry) => void;
+  preselectedJob?: { id: number; name: string; jobNumber?: string | null } | null;
 }
 
-function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
+function NewRiskModal({ onClose, onSaved, preselectedJob }: NewRiskModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Job linkage — pre-filled from picker, can be cleared
+  const [linkedJob, setLinkedJob] = useState<{ id: number; name: string; jobNumber?: string | null } | null>(
+    preselectedJob ?? null
+  );
 
   const [form, setForm] = useState({
     title: '',
@@ -163,7 +174,7 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
       const r = await fetch('/api/risk-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, risk_level: riskLevel }),
+        body: JSON.stringify({ ...form, risk_level: riskLevel, job_id: linkedJob?.id ?? null }),
       });
       if (!r.ok) {
         const d = await r.json() as { error?: string };
@@ -196,6 +207,25 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-xl">{error}</div>
           )}
+
+          {/* Linked job */}
+          <div>
+            <label className="text-xs font-semibold text-slate-600 mb-1 block">Linked job</label>
+            {linkedJob ? (
+              <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <Briefcase size={13} className="text-orange-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{linkedJob.name}</p>
+                  {linkedJob.jobNumber && <p className="text-xs text-slate-500 font-mono">{linkedJob.jobNumber}</p>}
+                </div>
+                <button type="button" onClick={() => setLinkedJob(null)} className="text-slate-400 hover:text-slate-600 shrink-0">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic px-1">No job linked — company-wide risk</p>
+            )}
+          </div>
 
           {/* Title */}
           <div>
@@ -282,7 +312,7 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
                   onChange={e => set('likelihood', e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
-                  {risk_register.LIKELIHOOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {LIKELIHOOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
@@ -292,7 +322,7 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
                   onChange={e => set('consequence', e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
-                  {risk_register.CONSEQUENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {CONSEQUENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             </div>
@@ -406,11 +436,18 @@ function NewRiskModal({ onClose, onSaved }: NewRiskModalProps) {
 interface RiskCardProps {
   entry: RiskEntry;
   onStatusChange: (id: number, status: string) => void;
+  onArchived: (id: number) => void;
+  onRestored: (id: number) => void;
+  isArchiveView?: boolean;
 }
 
-function RiskCard({ entry, onStatusChange }: RiskCardProps) {
+function RiskCard({ entry, onStatusChange, onArchived, onRestored, isArchiveView }: RiskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveReason, setArchiveReason] = useState('');
+  const [archiving, setArchiving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const isOverdue = entry.due_date && entry.status !== 'closed' &&
     new Date(entry.due_date) < new Date();
@@ -426,6 +463,30 @@ function RiskCard({ entry, onStatusChange }: RiskCardProps) {
       if (r.ok) onStatusChange(entry.id, newStatus);
     } finally {
       setUpdatingStatus(false);
+    }
+  }
+
+  async function handleArchive() {
+    setArchiving(true);
+    try {
+      const r = await fetch(`/api/risk-register/${entry.id}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: archiveReason }),
+      });
+      if (r.ok) { setShowArchiveModal(false); onArchived(entry.id); }
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  async function handleRestore() {
+    setRestoring(true);
+    try {
+      const r = await fetch(`/api/risk-register/${entry.id}/unarchive`, { method: 'POST' });
+      if (r.ok) onRestored(entry.id);
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -550,7 +611,7 @@ function RiskCard({ entry, onStatusChange }: RiskCardProps) {
           )}
 
           {/* Status change buttons */}
-          {entry.status !== 'closed' && (
+          {!isArchiveView && entry.status !== 'closed' && (
             <div className="flex gap-2 pt-1">
               {STATUS_OPTIONS.filter(s => s.value !== entry.status && s.value !== 'open').map(s => (
                 <button
@@ -567,6 +628,88 @@ function RiskCard({ entry, onStatusChange }: RiskCardProps) {
               ))}
             </div>
           )}
+
+          {/* Archive / Restore */}
+          <div className="pt-1 border-t border-slate-50">
+            {isArchiveView ? (
+              <div className="space-y-2">
+                {entry.archive_reason && (
+                  <p className="text-xs text-slate-400 italic">
+                    Archived reason: {entry.archive_reason}
+                  </p>
+                )}
+                {entry.archived_by && (
+                  <p className="text-xs text-slate-400">
+                    Archived by {entry.archived_by}
+                    {entry.archived_at ? ` · ${new Date(entry.archived_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={restoring}
+                  onClick={() => void handleRestore()}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                >
+                  {restoring ? <Loader2 size={10} className="animate-spin" /> : <ArchiveRestore size={10} />}
+                  Restore to register
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowArchiveModal(true)}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <Archive size={10} /> Archive
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Archive reason modal */}
+      {showArchiveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowArchiveModal(false)} />
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center">
+                <Archive size={16} className="text-slate-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">Archive risk</h3>
+                <p className="text-xs text-slate-400">Moves to archive — never deleted</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Reason (optional)</label>
+              <textarea
+                value={archiveReason}
+                onChange={e => setArchiveReason(e.target.value)}
+                placeholder="e.g. Risk resolved, controls in place, no longer applicable…"
+                rows={3}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowArchiveModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={archiving}
+                onClick={() => void handleArchive()}
+                className="flex-1 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {archiving ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                Archive
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -583,7 +726,10 @@ export default function RiskRegisterPage() {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showJobPicker, setShowJobPicker] = useState(false);
+  const [pendingJob, setPendingJob] = useState<{ id: number; name: string; jobNumber?: string | null } | null | 'none'>('none');
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
 
   // Filters
   const [filterStatus,    setFilterStatus]    = useState(searchParams.get('status') ?? '');
@@ -596,17 +742,21 @@ export default function RiskRegisterPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterStatus)    params.set('status', filterStatus);
-      if (filterRiskLevel) params.set('risk_level', filterRiskLevel);
-      if (filterCategory)  params.set('category', filterCategory);
-      if (filterDateFrom)  params.set('dateFrom', filterDateFrom);
-      if (filterDateTo)    params.set('dateTo', filterDateTo);
+      if (activeTab === 'archive') {
+        params.set('archived', '1');
+      } else {
+        if (filterStatus)    params.set('status', filterStatus);
+        if (filterRiskLevel) params.set('risk_level', filterRiskLevel);
+        if (filterCategory)  params.set('category', filterCategory);
+        if (filterDateFrom)  params.set('dateFrom', filterDateFrom);
+        if (filterDateTo)    params.set('dateTo', filterDateTo);
+      }
       const r = await fetch(`/api/risk-register?${params.toString()}`);
       if (r.ok) setEntries(await r.json() as RiskEntry[]);
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterRiskLevel, filterCategory, filterDateFrom, filterDateTo]);
+  }, [activeTab, filterStatus, filterRiskLevel, filterCategory, filterDateFrom, filterDateTo]);
 
   useEffect(() => { void loadEntries(); }, [loadEntries]);
 
@@ -643,9 +793,15 @@ export default function RiskRegisterPage() {
   function handleStatusChange(id: number, newStatus: string) {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
   }
+  function handleArchived(id: number) {
+    setEntries(prev => prev.filter(e => e.id !== id));
+  }
+  function handleRestored(id: number) {
+    setEntries(prev => prev.filter(e => e.id !== id));
+  }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[96px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -655,7 +811,7 @@ export default function RiskRegisterPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="flex flex-col min-h-screen bg-slate-50">
+      <div className="flex flex-col flex-1 bg-slate-50 overflow-hidden">
         {/* Header */}
         <div className="bg-orange-600 text-white px-4 safe-top pb-3">
           <div className="flex items-center gap-1.5 text-xs text-orange-300 mb-2 pt-1">
@@ -677,7 +833,7 @@ export default function RiskRegisterPage() {
             </div>
             <button
               type="button"
-              onClick={() => setShowNewModal(true)}
+              onClick={() => { setPendingJob('none'); setShowJobPicker(true); }}
               className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors"
             >
               <Plus size={14} /> New risk
@@ -697,8 +853,34 @@ export default function RiskRegisterPage() {
           </div>
         </div>
 
-        {/* KPI strip */}
-        {!loading && entries.length > 0 && (
+        {/* Active / Archive tab switcher */}
+        <div className="bg-white border-b border-slate-100 px-4 flex gap-1 pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('active')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${
+              activeTab === 'active'
+                ? 'border-orange-500 text-orange-700'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <ShieldAlert size={12} /> Active register
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('archive')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${
+              activeTab === 'archive'
+                ? 'border-slate-500 text-slate-700'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Archive size={12} /> Archive
+          </button>
+        </div>
+
+        {/* KPI strip — active tab only */}
+        {activeTab === 'active' && !loading && entries.length > 0 && (
           <div className="bg-white border-b border-slate-100 px-4 py-2.5 flex gap-4 overflow-x-auto">
             {extremeCount > 0 && (
               <div className="flex items-center gap-1.5 shrink-0">
@@ -725,88 +907,92 @@ export default function RiskRegisterPage() {
           </div>
         )}
 
-        {/* Filter bar */}
-        <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-              activeFilterCount > 0
-                ? 'bg-orange-50 border-orange-200 text-orange-700'
-                : 'border-slate-200 text-slate-600'
-            }`}
-          >
-            <Filter size={12} />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-orange-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-          {activeFilterCount > 0 && (
-            <button type="button" onClick={clearFilters} className="text-xs text-slate-400 flex items-center gap-1">
-              <X size={11} /> Clear
-            </button>
-          )}
-          <span className="ml-auto text-xs text-slate-400">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
-        </div>
+        {/* Filter bar — active tab only */}
+        {activeTab === 'active' && (
+          <>
+            <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                  activeFilterCount > 0
+                    ? 'bg-orange-50 border-orange-200 text-orange-700'
+                    : 'border-slate-200 text-slate-600'
+                }`}
+              >
+                <Filter size={12} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="bg-orange-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              {activeFilterCount > 0 && (
+                <button type="button" onClick={clearFilters} className="text-xs text-slate-400 flex items-center gap-1">
+                  <X size={11} /> Clear
+                </button>
+              )}
+              <span className="ml-auto text-xs text-slate-400">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
+            </div>
 
-        {/* Filter panel */}
-        {showFilters && (
-          <div className="bg-white border-b border-slate-100 px-4 py-3 grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Status</label>
-              <select
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              >
-                <option value="">All statuses</option>
-                {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Risk level</label>
-              <select
-                value={filterRiskLevel}
-                onChange={e => setFilterRiskLevel(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              >
-                <option value="">All levels</option>
-                {RISK_LEVEL_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Category</label>
-              <select
-                value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              >
-                <option value="">All categories</option>
-                {RISK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Date from</label>
-              <input
-                type="date"
-                value={filterDateFrom}
-                onChange={e => setFilterDateFrom(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Date to</label>
-              <input
-                type="date"
-                value={filterDateTo}
-                onChange={e => setFilterDateTo(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-              />
-            </div>
-          </div>
+            {/* Filter panel */}
+            {showFilters && (
+              <div className="bg-white border-b border-slate-100 px-4 py-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={e => setFilterStatus(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All statuses</option>
+                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Risk level</label>
+                  <select
+                    value={filterRiskLevel}
+                    onChange={e => setFilterRiskLevel(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All levels</option>
+                    {RISK_LEVEL_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-slate-500 mb-1 block">Category</label>
+                  <select
+                    value={filterCategory}
+                    onChange={e => setFilterCategory(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <option value="">All categories</option>
+                    {RISK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Date from</label>
+                  <input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={e => setFilterDateFrom(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Date to</label>
+                  <input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={e => setFilterDateTo(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* List */}
@@ -817,20 +1003,30 @@ export default function RiskRegisterPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16">
-              <ShieldAlert size={36} className="text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm font-medium">
-                {activeFilterCount > 0 || search ? 'No risks match your filters' : 'No risks recorded'}
-              </p>
-              {!activeFilterCount && !search && (
+              {activeTab === 'archive' ? (
                 <>
-                  <p className="text-slate-300 text-xs mt-1">Tap New risk to add the first entry</p>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewModal(true)}
-                    className="mt-4 flex items-center gap-2 mx-auto bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-                  >
-                    <Plus size={14} /> Add first risk
-                  </button>
+                  <Inbox size={36} className="text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">Archive is empty</p>
+                  <p className="text-slate-300 text-xs mt-1">Archived risks appear here — they are never deleted</p>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert size={36} className="text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">
+                    {activeFilterCount > 0 || search ? 'No risks match your filters' : 'No risks recorded'}
+                  </p>
+                  {!activeFilterCount && !search && (
+                    <>
+                      <p className="text-slate-300 text-xs mt-1">Tap New risk to add the first entry</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewModal(true)}
+                        className="mt-4 flex items-center gap-2 mx-auto bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                      >
+                        <Plus size={14} /> Add first risk
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -841,6 +1037,9 @@ export default function RiskRegisterPage() {
                   key={entry.id}
                   entry={entry}
                   onStatusChange={handleStatusChange}
+                  onArchived={handleArchived}
+                  onRestored={handleRestored}
+                  isArchiveView={activeTab === 'archive'}
                 />
               ))}
             </div>
@@ -848,10 +1047,39 @@ export default function RiskRegisterPage() {
         </div>
       </div>
 
+      {/* Job picker — shown before new entry modal */}
+      <JobPickerSheet
+        open={showJobPicker}
+        onClose={() => setShowJobPicker(false)}
+        title="Link to a job?"
+        subtitle="Select a job or skip to log a company-wide risk"
+        iconBg="bg-orange-100"
+        iconFg="text-orange-600"
+        Icon={Briefcase}
+        onSelect={job => {
+          setPendingJob({ id: job.id, name: job.name, jobNumber: job.jobNumber });
+          setShowJobPicker(false);
+          setShowNewModal(true);
+        }}
+      />
+      {/* No-job option rendered below the picker via a footer — handled by skip button */}
+      {showJobPicker && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <button
+            type="button"
+            onClick={() => { setPendingJob(null); setShowJobPicker(false); setShowNewModal(true); }}
+            className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            No job — company-wide risk
+          </button>
+        </div>
+      )}
+
       {/* New risk modal */}
       {showNewModal && (
         <NewRiskModal
           onClose={() => setShowNewModal(false)}
+          preselectedJob={pendingJob === 'none' ? null : pendingJob}
           onSaved={entry => {
             setEntries(prev => [entry, ...prev]);
             setShowNewModal(false);

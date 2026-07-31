@@ -32,6 +32,9 @@ function mapStatus(status: string): string {
 }
 
 export default async function handler(req: Request, res: Response) {
+  // Hoisted outside try so the catch block can scope error writes to the correct company
+  let sessionCompanyId: number | undefined;
+
   try {
     const auth = getAuth();
     const headers = new Headers();
@@ -43,6 +46,8 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    sessionCompanyId = profile.companyId;
 
     const isAdmin = profile.role === 'owner' || profile.role === 'admin' || profile.permAdmin === true;
     const canInvoices = isAdmin || profile.permInvoices !== false;
@@ -183,13 +188,13 @@ export default async function handler(req: Request, res: Response) {
     });
   } catch (err) {
     const invoiceId = parseInt(req.params.invoiceId, 10);
-    if (invoiceId) {
+    if (invoiceId && typeof sessionCompanyId === 'number') {
       try {
         const errMsg = err instanceof Error ? err.message : String(err);
         await db.execute(sql`
           UPDATE invoices
           SET qbo_sync_status = 'error', qbo_sync_error = ${errMsg.substring(0, 500)}, updated_at = NOW()
-          WHERE id = ${invoiceId}
+          WHERE id = ${invoiceId} AND company_id = ${sessionCompanyId}
         `);
       } catch { /* non-fatal */ }
     }

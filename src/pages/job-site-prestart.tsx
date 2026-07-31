@@ -12,7 +12,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
   AlertTriangle, Loader2, ClipboardCheck, Users, FileText,
   Pen, X, Check, Printer, HardHat, Shield, Info,
-  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays, Home,
+  ChevronRight, Clock, Wrench, Phone, CalendarDays, Home, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -467,17 +468,38 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   onWorkerAdded: (w: Worker) => void;
   onClose: () => void;
 }) {
+  const [mode, setMode] = useState<'pick' | 'new'>('pick');
+  const [members, setMembers] = useState<{ userId: string; name: string }[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [memberQuery, setMemberQuery] = useState('');
   const [form, setForm] = useState({
     fullName: '',
-    companyEmployer: '',
-    roleTrade: '',
+    roleTrade: '' as SiteRole | '',
     fitForWork: true,
-    whiteCardNumber: '',
     signature: '',
   });
+  const [rolePickerOpen, setRolePickerOpen] = useState(false);
+  const [roleDraft, setRoleDraft] = useState<SiteRole | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Load team members once
+  useEffect(() => {
+    setMembersLoading(true);
+    fetch('/api/team/members', { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { members?: { userId: string; name: string }[] }) => setMembers(d.members ?? []))
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
+  }, []);
+
+  const filteredMembers = memberQuery.trim()
+    ? members.filter(m => m.name.toLowerCase().includes(memberQuery.toLowerCase()))
+    : members;
+
+  // Already signed on names for duplicate prevention in picker
+  const signedNames = new Set(workers.map(w => w.full_name.toLowerCase()));
 
   const swmsSnapshot = prestart.swms_snapshot
     ? (typeof prestart.swms_snapshot === 'string' ? JSON.parse(prestart.swms_snapshot) : prestart.swms_snapshot) as Array<{ id: number; title: string }>
@@ -485,6 +507,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
 
   async function submit() {
     if (!form.fullName.trim()) { setError('Full name is required'); return; }
+    if (!form.roleTrade) { setError('Please select a role'); return; }
     if (!form.signature) { setError('Signature is required'); return; }
     setSubmitting(true);
     setError('');
@@ -494,10 +517,8 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: form.fullName,
-          companyEmployer: form.companyEmployer,
           roleTrade: form.roleTrade,
           fitForWork: form.fitForWork,
-          whiteCardNumber: form.whiteCardNumber,
           signature: form.signature,
         }),
       });
@@ -507,7 +528,9 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setForm({ fullName: '', companyEmployer: '', roleTrade: '', fitForWork: true, whiteCardNumber: '', signature: '' });
+        setForm({ fullName: '', roleTrade: '', fitForWork: true, signature: '' });
+        setMode('pick');
+        setMemberQuery('');
       }, 2000);
     } catch (e) {
       setError(String(e));
@@ -517,7 +540,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
       {/* Locked summary */}
       <div className="bg-violet-500 text-white px-4 pt-3 pb-4 safe-top">
         <div className="flex items-center justify-between mb-3">
@@ -566,41 +589,130 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
               By signing, I confirm I attended today's prestart, am fit for work, understand today's work activities, hazards, controls, PPE requirements, emergency arrangements, and the relevant SWMS reviewed for today.
             </div>
 
-            <Field label="Full Name *">
-              <Input
-                value={form.fullName}
-                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                placeholder="Your full name"
-                className="h-12 text-base rounded-xl"
-              />
-            </Field>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Company / Employer">
-                <Input
-                  value={form.companyEmployer}
-                  onChange={e => setForm(f => ({ ...f, companyEmployer: e.target.value }))}
-                  placeholder="Company"
-                  className="h-11 rounded-xl"
-                />
-              </Field>
-              <Field label="Role / Trade">
-                <Input
-                  value={form.roleTrade}
-                  onChange={e => setForm(f => ({ ...f, roleTrade: e.target.value }))}
-                  placeholder="Trade"
-                  className="h-11 rounded-xl"
-                />
-              </Field>
+            {/* Pick from team / New person toggle */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setMode('pick'); setForm(f => ({ ...f, fullName: '' })); }}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
+                  mode === 'pick'
+                    ? 'bg-violet-500 border-violet-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400'
+                }`}
+              >
+                Pick from team
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('new'); setForm(f => ({ ...f, fullName: '' })); setMemberQuery(''); }}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
+                  mode === 'new'
+                    ? 'bg-violet-500 border-violet-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400'
+                }`}
+              >
+                New person
+              </button>
             </div>
 
-            <Field label="White Card No. (optional)">
-              <Input
-                value={form.whiteCardNumber}
-                onChange={e => setForm(f => ({ ...f, whiteCardNumber: e.target.value }))}
-                placeholder="White card number"
-                className="h-11 rounded-xl"
-              />
+            {mode === 'pick' ? (
+              /* ── Team member picker ── */
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={memberQuery}
+                    onChange={e => setMemberQuery(e.target.value)}
+                    placeholder="Search team…"
+                    className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
+                  />
+                  {memberQuery && (
+                    <button onClick={() => setMemberQuery('')} className="text-slate-400">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                {membersLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-slate-400 text-sm">
+                    <Loader2 size={15} className="animate-spin" /> Loading team…
+                  </div>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="text-center text-slate-400 text-sm py-4">
+                    {memberQuery ? 'No matches' : 'No team members found'}
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                    {filteredMembers.map(m => {
+                      const alreadySigned = signedNames.has(m.name.toLowerCase());
+                      const selected = form.fullName === m.name;
+                      return (
+                        <button
+                          key={m.userId}
+                          type="button"
+                          disabled={alreadySigned}
+                          onClick={() => setForm(f => ({ ...f, fullName: m.name }))}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
+                            selected
+                              ? 'bg-violet-50 border-violet-300'
+                              : alreadySigned
+                              ? 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
+                              : 'bg-white border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+                          }`}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
+                            {m.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="flex-1 text-sm font-medium text-slate-800 truncate">{m.name}</span>
+                          {alreadySigned && <span className="text-xs text-slate-400">Signed</span>}
+                          {selected && <Check size={14} className="text-violet-500 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ── New person — manual name entry ── */
+              <Field label="Full Name *">
+                <Input
+                  value={form.fullName}
+                  onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
+                  placeholder="Visitor or subcontractor name"
+                  className="h-12 text-base rounded-xl"
+                  autoFocus
+                />
+              </Field>
+            )}
+
+            {/* Selected name confirmation */}
+            {form.fullName && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl">
+                <Check size={14} className="text-violet-500 shrink-0" />
+                <span className="text-sm font-semibold text-violet-800 truncate">{form.fullName}</span>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, fullName: '' }))}
+                  className="ml-auto text-violet-400 hover:text-violet-600"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
+            <Field label="Role *">
+              <button
+                type="button"
+                onClick={() => setRolePickerOpen(true)}
+                className={`w-full h-12 rounded-xl border px-4 text-sm font-medium flex items-center justify-between gap-2 transition-colors ${
+                  form.roleTrade
+                    ? 'border-violet-400 bg-violet-50 text-violet-800'
+                    : 'border-slate-300 bg-white text-slate-400 hover:border-violet-400'
+                }`}
+              >
+                <span>{form.roleTrade || 'Select role…'}</span>
+                <ChevronRight size={15} className="shrink-0 text-slate-400" />
+              </button>
             </Field>
 
             <CheckRow
@@ -631,27 +743,128 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
 
         {workers.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Signed on ({workers.length})</p>
-            {workers.map(w => (
-              <div key={w.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
-                <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
-                  <p className="text-xs text-slate-500 truncate">{w.role_trade || w.company_employer || '—'}</p>
+            {/* Role summary */}
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              <span className="text-xs font-semibold text-slate-500">{workers.length} on site</span>
+              {Object.entries(
+                workers.reduce<Record<string, number>>((acc, w) => {
+                  const r = w.role_trade || 'Unspecified';
+                  acc[r] = (acc[r] ?? 0) + 1;
+                  return acc;
+                }, {})
+              )
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([role, count]) => (
+                  <span key={role} className="text-xs text-slate-400">· {count} {role}</span>
+                ))}
+            </div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Signed on</p>
+            {workers.map(w => {
+              const badge = ROLE_BADGE[w.role_trade];
+              return (
+                <div key={w.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
+                  <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {badge ? (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>{badge.label}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">{w.role_trade || 'Unspecified'}</span>
+                      )}
+                      {w.company_employer && <span className="text-xs text-slate-400 truncate">{w.company_employer}</span>}
+                    </div>
+                  </div>
+                  {!w.fit_for_work && (
+                    <Badge variant="destructive" className="text-xs">Not fit</Badge>
+                  )}
                 </div>
-                {!w.fit_for_work && (
-                  <Badge variant="destructive" className="text-xs">Not fit</Badge>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* ── Role picker sheet ── */}
+      {rolePickerOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-t-2xl overflow-hidden" style={{ maxHeight: '70dvh' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => { setRolePickerOpen(false); setRoleDraft(''); }}
+                className="text-sm text-slate-500 font-medium"
+              >
+                Cancel
+              </button>
+              <span className="text-sm font-semibold text-slate-800">Select Role</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (roleDraft) setForm(f => ({ ...f, roleTrade: roleDraft }));
+                  setRolePickerOpen(false);
+                  setRoleDraft('');
+                }}
+                className="text-sm font-bold text-violet-600"
+              >
+                Done
+              </button>
+            </div>
+            {/* Role list */}
+            <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: 'calc(70dvh - 60px)' }}>
+              {SITE_ROLES.map((role, i) => {
+                const active = (roleDraft || form.roleTrade) === role;
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => {
+                      setRoleDraft(role);
+                      setForm(f => ({ ...f, roleTrade: role }));
+                      setRolePickerOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${
+                      i > 0 ? 'border-t border-slate-100' : ''
+                    } ${active ? 'bg-violet-50' : 'bg-white active:bg-slate-50'}`}
+                  >
+                    <span className={`text-base ${active ? 'font-semibold text-violet-700' : 'text-slate-800'}`}>
+                      {role}
+                    </span>
+                    {active && <Check size={18} className="text-violet-500 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Role constants ────────────────────────────────────────────────────────────
+
+const SITE_ROLES = [
+  'Worker',
+  'Apprentice',
+  'Operator',
+  'Supervisor',
+  'Person in Charge of Construction',
+  'First Aid Officer',
+  'Safety Observer',
+  'Visitor',
+  'Delivery Driver',
+] as const;
+
+type SiteRole = typeof SITE_ROLES[number];
+
+// Roles that get a highlighted badge in the signed-on list
+const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  'First Aid Officer':               { bg: 'bg-green-100',  text: 'text-green-700',  label: 'First Aid' },
+  'Supervisor':                      { bg: 'bg-violet-100', text: 'text-violet-700', label: 'Supervisor' },
+  'Person in Charge of Construction':{ bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'PIC' },
+};
 
 type View = 'list' | 'new' | 'form' | 'signon';
 
@@ -666,6 +879,7 @@ export default function JobSitePrestartPage() {
   const [prestart, setPrestart] = useState<SitePrestart | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [delayModalOpen, setDelayModalOpen] = useState(false);
+  const [jobPickerOpen, setJobPickerOpen] = useState(false);
   const [delays, setDelays] = useState<DelayEntry[]>([]);
   const [jobSwms, setJobSwms] = useState<JobSwms[]>([]);
   const [saving, setSaving] = useState(false);
@@ -943,23 +1157,51 @@ export default function JobSitePrestartPage() {
 
               {/* Section 1: Job Details */}
               <Section title="Job Details" icon={HardHat} defaultOpen accent="bg-violet-500">
-                <p className="text-xs text-slate-400 -mt-1">Check these job details are correct before starting the briefing.</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Job Number">
-                    <Input value={prestart.job_number ?? ''} onChange={e => update('job_number', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                  <Field label="Date">
-                    <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                </div>
-                <Field label="Job Name">
-                  <Input value={prestart.job_name ?? ''} onChange={e => update('job_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
+                <p className="text-xs text-slate-400 -mt-1">Pick the job — details will fill in automatically.</p>
+
+                {/* Job picker button */}
+                <Field label="Job">
+                  <button
+                    type="button"
+                    disabled={isReadOnly}
+                    onClick={() => setJobPickerOpen(true)}
+                    className="w-full min-h-[2.75rem] rounded-xl border border-input bg-background px-3 py-2 text-sm text-left flex items-center justify-between gap-2 hover:border-violet-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex-1 min-w-0">
+                      {prestart.job_number || prestart.job_name ? (
+                        <>
+                          <p className="font-semibold text-foreground truncate">{prestart.job_name || '—'}</p>
+                          {prestart.job_number && <p className="text-xs font-mono text-muted-foreground">{prestart.job_number}</p>}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Pick a job…</span>
+                      )}
+                    </div>
+                    {!isReadOnly && <ChevronRight size={13} className="text-muted-foreground shrink-0" />}
+                  </button>
                 </Field>
-                <Field label="Customer">
-                  <Input value={prestart.customer_name ?? ''} onChange={e => update('customer_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
+
+                {/* Auto-filled client — read-only display */}
+                {prestart.customer_name && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-xs text-slate-400 shrink-0">Client</span>
+                    <span className="text-sm font-medium text-slate-700 truncate">{prestart.customer_name}</span>
+                  </div>
+                )}
+
+                {/* Site address — editable, pre-filled from job */}
+                <Field label="Site Address">
+                  <Input
+                    value={prestart.site_address ?? ''}
+                    onChange={e => update('site_address', e.target.value)}
+                    disabled={isReadOnly}
+                    placeholder="Address auto-filled from job…"
+                    className="h-10 rounded-xl"
+                  />
                 </Field>
-                <Field label="Site Address / Location">
-                  <Input value={prestart.site_address ?? ''} onChange={e => update('site_address', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
+
+                <Field label="Date">
+                  <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Start Time">
@@ -969,17 +1211,6 @@ export default function JobSitePrestartPage() {
                     <Input value={prestart.weather ?? ''} onChange={e => update('weather', e.target.value)} disabled={isReadOnly} placeholder="e.g. Sunny" className="h-10 rounded-xl" />
                   </Field>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Supervisor">
-                    <Input value={prestart.supervisor_name ?? ''} onChange={e => update('supervisor_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                  <Field label="First Aid Person">
-                    <Input value={prestart.first_aid_person ?? ''} onChange={e => update('first_aid_person', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                  </Field>
-                </div>
-                <Field label="Rainfall (mm)">
-                  <Input type="number" value={prestart.rainfall_mm ?? ''} onChange={e => update('rainfall_mm', parseFloat(e.target.value) || null)} disabled={isReadOnly} placeholder="0" className="h-10 rounded-xl" />
-                </Field>
               </Section>
 
               {/* Section 2: Situation */}
@@ -1177,78 +1408,6 @@ export default function JobSitePrestartPage() {
               </Section>
               </div>
 
-              {/* Section 8: Weather / Delays */}
-              <Section title="Weather / Rainfall / Delays" icon={CloudRain} accent="bg-sky-500">
-                <p className="text-xs text-slate-400 -mt-1">Record today's weather and rainfall. If rain, heat, wind, or ground conditions caused a delay or changed the work, note the impact.</p>
-                <Field label="Weather Summary">
-                  <Input value={prestart.weather_summary ?? ''} onChange={e => update('weather_summary', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Rainfall (mm)">
-                    <Input type="number" value={prestart.rainfall_mm ?? ''} onChange={e => update('rainfall_mm', parseFloat(e.target.value) || null)} disabled={isReadOnly} placeholder="0" className="h-10 rounded-xl" />
-                  </Field>
-                  <Field label="Ground Condition">
-                    <select
-                      value={prestart.ground_condition ?? ''}
-                      onChange={e => update('ground_condition', e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="">Select...</option>
-                      {['Dry', 'Damp', 'Wet', 'Muddy', 'Flooded'].map(o => <option key={o} value={o.toLowerCase()}>{o}</option>)}
-                    </select>
-                  </Field>
-                </div>
-                {/* Delays — single Yes/No question only */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-300">Any delays recorded in Delay Register?</p>
-                  <div className="flex gap-2">
-                    {([{ label: 'No', value: false }, { label: 'Yes', value: true }] as const).map(opt => (
-                      <button
-                        key={String(opt.value)}
-                        type="button"
-                        disabled={isReadOnly}
-                        onClick={() => update('weather_delay', opt.value)}
-                        className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
-                          prestart.weather_delay === opt.value
-                            ? opt.value
-                              ? 'bg-violet-500 border-violet-600 text-white'
-                              : 'bg-slate-600 border-slate-600 text-white'
-                            : 'bg-transparent border-slate-600 text-slate-400 hover:border-slate-400'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </Section>
-
-              {/* Section 9: Supervisor Sign-Off */}
-              <Section title="Supervisor Sign-Off" icon={Pen} accent="bg-green-600">
-                <Field label="Supervisor Name">
-                  <Input value={prestart.supervisor_signoff_name ?? prestart.supervisor_name ?? ''} onChange={e => update('supervisor_signoff_name', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                {!isReadOnly && (
-                  <Field label="Supervisor Signature">
-                    <SignaturePad
-                      onSave={sig => { setSupervisorSig(sig); update('supervisor_signature', sig); }}
-                      onClear={() => { setSupervisorSig(''); update('supervisor_signature', ''); }}
-                    />
-                  </Field>
-                )}
-                {isReadOnly && prestart.supervisor_signature && (
-                  <div className="border border-slate-200 rounded-xl p-2 bg-white">
-                    <img src={prestart.supervisor_signature} alt="Supervisor signature" className="max-h-20 w-auto" />
-                  </div>
-                )}
-                {prestart.submitted_at && (
-                  <p className="text-xs text-slate-500">
-                    Finalised: {new Date(prestart.submitted_at).toLocaleString('en-AU')}
-                  </p>
-                )}
-              </Section>
-
               {/* Worker sign-on summary */}
               <Section title={`Worker Sign-On (${workers.length})`} icon={Users} accent="bg-violet-500">
                 <Button
@@ -1260,16 +1419,37 @@ export default function JobSitePrestartPage() {
                 </Button>
                 {workers.length > 0 && (
                   <div className="space-y-2 mt-2">
-                    {workers.map(w => (
-                      <div key={w.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <CheckCircle2 size={15} className="text-green-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
-                          <p className="text-xs text-slate-500 truncate">{w.role_trade || w.company_employer || '—'}</p>
+                    {/* Key role highlights */}
+                    {(['First Aid Officer', 'Supervisor', 'Person in Charge of Construction'] as const).map(role => {
+                      const match = workers.find(w => w.role_trade === role);
+                      const badge = ROLE_BADGE[role];
+                      return match ? (
+                        <div key={role} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${badge.bg} border-transparent`}>
+                          <span className={`text-xs font-bold ${badge.text}`}>{badge.label}</span>
+                          <span className="text-xs text-slate-600 truncate">{match.full_name}</span>
                         </div>
-                        {!w.fit_for_work && <Badge variant="destructive" className="text-xs">Not fit</Badge>}
-                      </div>
-                    ))}
+                      ) : null;
+                    })}
+                    {/* All workers */}
+                    {workers.map(w => {
+                      const badge = ROLE_BADGE[w.role_trade];
+                      return (
+                        <div key={w.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <CheckCircle2 size={15} className="text-green-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">{w.full_name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {badge ? (
+                                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>{badge.label}</span>
+                              ) : (
+                                <span className="text-xs text-slate-400">{w.role_trade || 'Unspecified'}</span>
+                              )}
+                            </div>
+                          </div>
+                          {!w.fit_for_work && <Badge variant="destructive" className="text-xs">Not fit</Badge>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Section>
@@ -1316,6 +1496,25 @@ export default function JobSitePrestartPage() {
           button, .sticky { display: none !important; }
         }
       `}</style>
+
+      {/* Job picker */}
+      <JobPickerSheet
+        open={jobPickerOpen}
+        onClose={() => setJobPickerOpen(false)}
+        title="Pick a Job"
+        subtitle="Select the job for this prestart"
+        iconBg="bg-violet-100"
+        iconFg="text-violet-700"
+        Icon={HardHat}
+        onSelect={(job) => {
+          update('job_number', job.jobNumber ?? '');
+          update('job_name', job.name);
+          update('job_id', job.id);
+          if (job.client) update('customer_name', job.client);
+          if (job.address) update('site_address', job.address);
+          setJobPickerOpen(false);
+        }}
+      />
     </>
   );
 }

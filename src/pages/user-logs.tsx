@@ -742,7 +742,7 @@ export default function UserLogsPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] lg:pt-[96px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -768,7 +768,7 @@ export default function UserLogsPage() {
       <div className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">User Logs</h1>
+            <h1 className="font-heading font-bold text-base text-gray-900">User Logs</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               Site sign-ins · vehicle usage · time entries · platform activity
             </p>

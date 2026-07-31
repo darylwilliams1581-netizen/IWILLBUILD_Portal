@@ -14,6 +14,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, MoreHorizontal } from 'lucide-react';
 import PdfViewer from './PdfViewer';
+import { resolveNativeUrl } from '@/lib/native-url';
 import AnnotationToolbar from './AnnotationToolbar';
 import RevisionPanel from './RevisionPanel';
 import ShareModal from './ShareModal';
@@ -74,6 +75,24 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
     }
   }, [drawing.id, drawing.current_revision_id, viewer.currentPage, annotations, loadPageAnnotations]);
 
+  // ── iOS swipe-back / hardware-back interception ──────────────────────────
+  // Push a dummy history entry so the native back gesture closes this overlay
+  // instead of navigating the router away from the plan manager page.
+  useEffect(() => {
+    window.history.pushState({ drawingViewer: true }, '');
+    function onPopState(e: PopStateEvent) {
+      if (!(e.state as Record<string, unknown> | null)?.drawingViewer) return;
+      onClose();
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      if (window.history.state && (window.history.state as Record<string, unknown>).drawingViewer) {
+        window.history.back();
+      }
+    };
+  }, [onClose]);
+
   const handleStyleChange = useCallback((partial: Partial<AnnotationStyle>) => {
     setActiveStyle(s => ({ ...s, ...partial }));
   }, []);
@@ -102,7 +121,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const hasPdf = Boolean(drawing.source_file_path);
 
   return (
-    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-950" style={{ overflowX: 'clip' }}>
+    <div className="viewer-shell fixed inset-0 flex flex-col bg-slate-950" style={{ overflowX: 'clip', zIndex: 1200 }}>
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div
         className="viewer-toolbar flex items-center gap-2 px-3 bg-slate-900 border-b border-slate-700 flex-shrink-0"
@@ -224,7 +243,6 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
       <div
         className="flex flex-1 min-h-0 overflow-hidden"
         style={{
-          overflowX: 'clip',
           // Safe-area bottom: home indicator on iPhone
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
@@ -245,7 +263,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
         {/* PDF viewer (center) */}
         {hasPdf ? (
           <PdfViewer
-            fileUrl={drawing.source_file_path!}
+            fileUrl={resolveNativeUrl(drawing.source_file_path!)}
             currentPage={viewer.currentPage}
             totalPages={viewer.totalPages}
             scale={viewer.scale}

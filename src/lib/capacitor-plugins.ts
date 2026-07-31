@@ -112,6 +112,28 @@ export async function getAppPlugin() {
   }
 }
 
+/**
+ * Returns the @capacitor/camera Camera plugin, or null on web / if unavailable.
+ *
+ * Used for:
+ *   - checkPermissions()   — read current camera / photos permission state
+ *   - requestPermissions() — trigger the native iOS permission dialog
+ *   - savePhoto()          — save a photo to the device camera roll
+ *
+ * @capacitor/camera must be installed (it is — see package.json) AND the native
+ * project must have been synced with `npx cap sync` for the plugin to be present
+ * in the WKWebView's Capacitor.Plugins registry at runtime.
+ */
+export async function getCameraPlugin() {
+  if (!isNative()) return null;
+  try {
+    const { Camera } = await import('@capacitor/camera');
+    return Camera;
+  } catch {
+    return null;
+  }
+}
+
 // ── Haptic helpers ────────────────────────────────────────────────────────────
 // Convenience wrappers — safe to call on web (no-op).
 

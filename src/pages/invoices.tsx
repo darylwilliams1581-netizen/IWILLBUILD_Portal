@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Receipt, Plus, Search, Loader2, AlertCircle, Filter,
-  ChevronRight, Calendar, Building2, FileText, DollarSign,
-  Clock, CheckCircle2, XCircle, Send, AlertTriangle,
+  Receipt, Plus, Search, Loader2, AlertCircle,
+  ChevronRight, Calendar, Building2, FileText,
+  Clock, CheckCircle2, XCircle, Send, AlertTriangle, ArrowLeft,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
+import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 import {
   fetchInvoices, fmtMoney, STATUS_LABELS, STATUS_COLORS,
@@ -122,7 +122,6 @@ export default function InvoicesPage() {
   const overdue = invoices.filter((i) => i.status === 'overdue');
   const totalUnpaid = unpaid.reduce((s, i) => s + parseFloat(i.balance_due ?? '0'), 0);
 
-  function openMobileMenu() { window.dispatchEvent(new Event('portal:open-menu')); }
 
   if (!permLoading && !canInvoices) {
     return (
@@ -133,6 +132,9 @@ export default function InvoicesPage() {
             <Receipt size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-bold text-foreground mb-1">No Invoice Access</p>
             <p className="text-sm text-muted-foreground">You don't have permission to view invoices.</p>
+            <Link to="/" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+              <ArrowLeft size={14} /> Back to home
+            </Link>
           </div>
         </div>
       </div>
@@ -163,9 +165,15 @@ export default function InvoicesPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
-            <MobileMenuButton onClick={openMobileMenu} />
+            <Link
+              to="/"
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors shrink-0"
+              title="Back to home"
+            >
+              <ArrowLeft size={15} className="text-muted-foreground" />
+            </Link>
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Ledger</h1>
+              <h1 className="font-heading font-bold text-base text-foreground">Invoices</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{invoices.length} total</p>
             </div>
           </div>

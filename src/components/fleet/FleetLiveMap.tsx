@@ -55,14 +55,14 @@ interface LastKnownPosition {
 
 // ── Google Maps window types ──────────────────────────────────────────────────
 
-type GMaps = typeof google.maps;
-type GMap  = google.maps.Map;
-type GMarker = google.maps.Marker;
-type GInfoWindow = google.maps.InfoWindow;
+type GMaps = any;
+type GMap  = any;
+type GMarker = any;
+type GInfoWindow = any;
 
 type GoogleWindow = Window & typeof globalThis & {
   google?: { maps?: GMaps };
-  __gmapsLoader?: Promise<void>;
+  __gmapsLoader?: Promise<void> | undefined;
   __gmapsLoaded?: boolean;
 };
 
@@ -72,34 +72,103 @@ const DEFAULT_CENTER = { lat: -27.4698, lng: 153.0251 }; // Brisbane fallback
 const DEFAULT_ZOOM   = 11;
 
 // ── Google Maps key — fetched from backend ────────────────────────────────────
+//
+// Cache rules:
+//   - Cache a non-empty key indefinitely (it doesn't change at runtime)
+//   - Never cache null / empty string — always retry on next mount
+//   - On fetch failure, log the exact reason so it's visible in Safari Web Inspector
 
 let _cachedKey: string | null = null;
 
 async function fetchMapsKey(): Promise<string> {
-  if (_cachedKey !== null) return _cachedKey;
-  const res = await fetch('/api/config/maps-key', { credentials: 'include' });
-  if (!res.ok) throw new Error('Maps API key not available');
-  const data = await res.json() as { key: string };
-  _cachedKey = data.key ?? '';
+  if (_cachedKey) return _cachedKey; // only reuse a real, non-empty key
+
+  let res: Response;
+  try {
+    res = await fetch('/api/config/maps-key', { credentials: 'include' });
+  } catch (networkErr) {
+    const msg = `Maps key fetch failed (network error): ${String(networkErr)}`;
+    console.error('[FleetLiveMap]', msg);
+    throw new Error(msg);
+  }
+
+  if (res.status === 401) {
+    const msg = 'Maps key fetch failed: not authenticated (401). Check session cookie on mobile.';
+    console.error('[FleetLiveMap]', msg);
+    throw new Error('Not authenticated — please sign in again to load the map.');
+  }
+
+  if (res.status === 404) {
+    const msg = 'Maps key fetch failed: GOOGLE_MAPS_API_KEY is not configured in Secrets (404).';
+    console.error('[FleetLiveMap]', msg);
+    throw new Error('Google Maps API key is not configured. Add VITE_GOOGLE_MAPS_API_KEY in Settings → Secrets.');
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    const msg = `Maps key fetch failed: HTTP ${res.status} — ${body}`;
+    console.error('[FleetLiveMap]', msg);
+    throw new Error(`Maps key unavailable (HTTP ${res.status}). Check server logs.`);
+  }
+
+  let data: { key?: string };
+  try {
+    data = await res.json() as { key?: string };
+  } catch (parseErr) {
+    const msg = `Maps key response is not valid JSON: ${String(parseErr)}`;
+    console.error('[FleetLiveMap]', msg);
+    throw new Error('Maps key response was malformed. Check /api/config/maps-key.');
+  }
+
+  const key = data.key ?? '';
+  if (!key) {
+    const msg = 'Maps key fetch succeeded but key is empty. Check VITE_GOOGLE_MAPS_API_KEY secret value.';
+    console.error('[FleetLiveMap]', msg);
+    // Do NOT cache empty key — allow retry on next mount
+    throw new Error('Google Maps API key is empty. Update VITE_GOOGLE_MAPS_API_KEY in Settings → Secrets.');
+  }
+
+  console.info('[FleetLiveMap] Maps key loaded successfully.');
+  _cachedKey = key;
   return _cachedKey;
 }
 
 // ── Google Maps script loader (singleton) ─────────────────────────────────────
+//
+// Reset rules:
+//   - __gmapsLoader is cleared on rejection so the next mount retries cleanly
+//   - __gmapsLoaded is only set to true on a successful load
 
 function loadGoogleMaps(): Promise<void> {
   if (window.__gmapsLoaded) return Promise.resolve();
   if (window.__gmapsLoader) return window.__gmapsLoader;
 
-  window.__gmapsLoader = fetchMapsKey().then(key => new Promise<void>((resolve, reject) => {
-    if (!key) { reject(new Error('GOOGLE_MAPS_API_KEY is not configured')); return; }
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => { window.__gmapsLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error('Failed to load Google Maps script'));
-    document.head.appendChild(script);
-  }));
+  window.__gmapsLoader = fetchMapsKey()
+    .then(key => new Promise<void>((resolve, reject) => {
+      // Guard: if another mount already loaded the script while we were fetching the key
+      if (window.__gmapsLoaded) { resolve(); return; }
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        window.__gmapsLoaded = true;
+        console.info('[FleetLiveMap] Google Maps script loaded.');
+        resolve();
+      };
+      script.onerror = () => {
+        const msg = 'Google Maps script failed to load. Check API key restrictions and billing in Google Cloud Console.';
+        console.error('[FleetLiveMap]', msg);
+        reject(new Error(msg));
+      };
+      document.head.appendChild(script);
+    }))
+    .catch((err: unknown) => {
+      // Clear the loader so the next mount retries instead of getting the same rejection
+      window.__gmapsLoader = undefined;
+      throw err;
+    });
 
   return window.__gmapsLoader;
 }
@@ -337,6 +406,8 @@ export default function FleetLiveMap() {
   const [lastRefresh,    setLastRefresh]    = useState<Date>(new Date());
   const [mapReady,       setMapReady]       = useState(false);
   const [mapError,       setMapError]       = useState<string | null>(null);
+  // Incrementing this triggers a fresh map-init attempt after a failure
+  const [mapRetryKey,    setMapRetryKey]    = useState(0);
 
   // ── Derive map mode ─────────────────────────────────────────────────────────
   const withGps = sessions.filter(s => s.lat != null && s.lng != null);
@@ -354,16 +425,27 @@ export default function FleetLiveMap() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/fleet/driver-sessions/live', { credentials: 'include' });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Failed to load');
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 15_000);
+      let res: Response;
+      try {
+        res = await fetch('/api/fleet/driver-sessions/live', { credentials: 'include', signal: ac.signal });
+      } finally {
+        clearTimeout(timer);
       }
-      const data = await res.json() as { sessions: LiveSession[] };
+      // Parse body ONCE — reading it twice throws "body already used"
+      const data = await res.json() as { sessions?: LiveSession[]; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? `Failed to load (HTTP ${res.status})`);
+      }
       setSessions(data.sessions ?? []);
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load live sessions');
+      if ((err as Error).name === 'AbortError') {
+        setError('Request timed out — check your connection');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load live sessions');
+      }
     } finally {
       setLoading(false);
     }
@@ -396,12 +478,24 @@ export default function FleetLiveMap() {
   }, []);
 
   // ── Init Google Map ─────────────────────────────────────────────────────────
+  // Re-runs when mapRetryKey increments (user tapped Retry after a failure).
   useEffect(() => {
     if (!mapRef.current || gMapRef.current) return;
     let disposed = false;
 
+    // 30s hard timeout — if loadGoogleMaps never resolves (e.g. script blocked
+    // by a corporate proxy or the key fetch hangs), surface an error instead of
+    // leaving the user on a blank spinner forever.
+    const initTimer = setTimeout(() => {
+      if (!disposed && !gMapRef.current) {
+        window.__gmapsLoader = undefined; // reset so retry works
+        setMapError('Map took too long to load. Check your connection and tap Retry.');
+      }
+    }, 30_000);
+
     loadGoogleMaps()
       .then(() => {
+        clearTimeout(initTimer);
         if (disposed || !mapRef.current || gMapRef.current) return;
         const map = new window.google!.maps!.Map(mapRef.current, {
           center: DEFAULT_CENTER,
@@ -417,11 +511,13 @@ export default function FleetLiveMap() {
         setMapReady(true);
       })
       .catch((err: unknown) => {
+        clearTimeout(initTimer);
         if (!disposed) setMapError(err instanceof Error ? err.message : 'Map failed to load');
       });
 
     return () => {
       disposed = true;
+      clearTimeout(initTimer);
       liveMarkersRef.current.forEach(m => m.setMap(null));
       liveMarkersRef.current.clear();
       staticMarkersRef.current.forEach(m => m.setMap(null));
@@ -429,7 +525,9 @@ export default function FleetLiveMap() {
       infoWinRef.current?.close();
       gMapRef.current = null;
     };
-  }, []);
+  // mapRetryKey intentionally included — incrementing it re-runs this effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapRetryKey]);
 
   // ── Update LIVE markers ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -694,7 +792,7 @@ export default function FleetLiveMap() {
       </div>
 
       {/* ── Body: sidebar + map ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
         {/* Sidebar — desktop only */}
         <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
@@ -772,13 +870,29 @@ export default function FleetLiveMap() {
         >
           <div ref={mapRef} className="absolute inset-0" />
 
-          {/* Map load error */}
+          {/* Map load error — shows exact diagnostic reason + clean retry */}
           {mapError && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10 p-4">
-              <div className="bg-white border border-red-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs w-full">
+              <div className="bg-white border border-red-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-sm w-full">
                 <AlertCircle size={28} className="text-red-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700 mb-1">Map unavailable</p>
-                <p className="text-xs text-slate-500 break-words">{mapError}</p>
+                <p className="text-xs text-slate-500 break-words leading-relaxed">{mapError}</p>
+                <button
+                  onClick={() => {
+                    // Reset all singleton state so loadGoogleMaps retries from scratch
+                    window.__gmapsLoader = undefined;
+                    // Do NOT reset __gmapsLoaded — if the script already loaded,
+                    // we only need to re-init the Map instance, not re-fetch the script.
+                    setMapError(null);
+                    setMapReady(false);
+                    gMapRef.current = null;
+                    // Increment key → triggers the map init useEffect to re-run
+                    setMapRetryKey(k => k + 1);
+                  }}
+                  className="mt-3 px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             </div>
           )}
@@ -810,30 +924,6 @@ export default function FleetLiveMap() {
               </button>
             )}
           </div>
-
-          {/* ── Map overlay: mode indicator chip ── */}
-          {mapReady && !mapError && mapMode !== 'live' && (
-            <div className="absolute top-3 left-3 z-10 pointer-events-none">
-              {mapMode === 'last-known' && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-600">
-                  <Clock size={11} className="text-slate-400" />
-                  Last known positions
-                </div>
-              )}
-              {mapMode === 'office' && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-xl shadow-sm text-[11px] font-semibold text-blue-600">
-                  <Building2 size={11} />
-                  Base location
-                </div>
-              )}
-              {mapMode === 'empty' && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-500">
-                  <Truck size={11} className="text-slate-400" />
-                  No active drivers
-                </div>
-              )}
-            </div>
-          )}
 
           {/* ── Live mode: GPS status overlay (all drivers have no GPS) ── */}
           {!loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
@@ -921,6 +1011,30 @@ export default function FleetLiveMap() {
             </div>
           )}
         </div>
+
+        {/* ── Mode indicator chip — outside overflow-hidden map container ── */}
+        {mapReady && !mapError && mapMode !== 'live' && (
+          <div className="absolute bottom-3 left-3 sm:left-[calc(14rem+12px)] md:left-[calc(16rem+12px)] z-20 pointer-events-none">
+            {mapMode === 'last-known' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-600">
+                <Clock size={11} className="text-slate-400" />
+                Last known positions
+              </div>
+            )}
+            {mapMode === 'office' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-xl shadow-sm text-[11px] font-semibold text-blue-600">
+                <Building2 size={11} />
+                Base location
+              </div>
+            )}
+            {mapMode === 'empty' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-500">
+                <Truck size={11} className="text-slate-400" />
+                No active drivers
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

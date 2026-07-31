@@ -25,6 +25,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Link2, Copy, Check, Loader2, QrCode, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 /** Structured target descriptor — used by JobSafety and other callers */
 export interface ShareTarget {
@@ -77,6 +78,9 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const qrRef = useRef<HTMLCanvasElement>(null);
+
+  // Lock body scroll while open — must be before any early return
+  useBodyScrollLock(open);
 
   // Reset when modal opens
   useEffect(() => {
@@ -154,7 +158,7 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -169,8 +173,9 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
             initial={{ opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ duration: 0.18, ease: 'easeOut' as const }}
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            transition={{ duration: 0.2, ease: 'easeOut' as const }}
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+            style={{ maxHeight: 'min(88dvh, 600px)' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -188,7 +193,7 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
               </button>
             </div>
 
-            <div className="px-5 py-5 flex flex-col gap-4">
+            <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-5 flex flex-col gap-4">
               {!shareUrl ? (
                 <>
                   {/* Expiry picker */}

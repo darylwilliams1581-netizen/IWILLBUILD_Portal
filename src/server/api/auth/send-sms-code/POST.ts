@@ -16,6 +16,7 @@ import { getAuth } from '../../../../lib/auth/auth.js';
 import { profiles } from '../../../db/schema.js';
 import { isSmsConfigured, sendSms } from '../../../lib/sms.js';
 import { checkSmsRate } from '../../../lib/signup-rate-limiter.js';
+import { normalisePhone } from '../../../lib/normalise-phone.js';
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -53,6 +54,9 @@ export default async function handler(req: Request, res: Response) {
 
     const normalised = phone.trim().replace(/\s+/g, '');
 
+    // Normalise AU (04xx) and NZ (02x) local formats to E.164 for Twilio
+    const e164 = normalisePhone(normalised);
+
     const code = generateCode();
     const hashed = hashCode(code);
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS);
@@ -66,12 +70,12 @@ export default async function handler(req: Request, res: Response) {
       id,
       userId: session.user.id,
       codeHash: hashed,
-      phone: normalised,
+      phone: e164,
       expiresAt,
     });
 
     // Send SMS
-    const sent = await sendSms(normalised, `Your IWILLBUILD verification code is: ${code}. Expires in 10 minutes.`);
+    const sent = await sendSms(e164, `Your IWILLBUILD verification code is: ${code}. Expires in 10 minutes.`);
     if (!sent) {
       return res.status(500).json({ error: 'Failed to send SMS. Please try again or use a different verification method.' });
     }

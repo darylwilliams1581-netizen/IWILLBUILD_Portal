@@ -11,7 +11,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import {
   Zap, Plus, Search, X, ChevronRight, RefreshCw,
   CheckCircle2, Clock, AlertCircle, Receipt,
-  ArrowRightLeft, Camera,
+  ArrowRightLeft, Camera, ChevronLeft,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -65,17 +65,17 @@ function fmtCurrency(n: number | null) {
   return `$${Number(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// ── Create modal ──────────────────────────────────────────────────────────────
+// ── Create sheet ──────────────────────────────────────────────────────────────
 interface Customer { id: number; name: string; }
 interface TeamMember { id: string; name: string; }
 
-interface CreateModalProps {
+interface CreateSheetProps {
   open: boolean;
   onClose: () => void;
   onCreated: (id: number) => void;
 }
 
-function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
+function CreateSheet({ open, onClose, onCreated }: CreateSheetProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [saving, setSaving] = useState(false);
@@ -100,6 +100,14 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
       .then(r => r.ok ? r.json() : null)
       .then((d: { members?: TeamMember[] } | null) => setTeam(d?.members ?? []))
       .catch(() => {});
+  }, [open]);
+
+  // Reset form when closed
+  useEffect(() => {
+    if (!open) {
+      setForm({ customerId: '', customerNameOverride: '', siteAddress: '', serviceDate: new Date().toISOString().slice(0, 10), assignedUserId: '', workDescription: '' });
+      setError('');
+    }
   }, [open]);
 
   function set(k: keyof typeof form, v: string) {
@@ -136,7 +144,6 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
       if (!res.ok) throw new Error(data.error ?? 'Failed to create');
       onCreated(data.jobCard!.id);
       onClose();
-      setForm({ customerId: '', customerNameOverride: '', siteAddress: '', serviceDate: new Date().toISOString().slice(0, 10), assignedUserId: '', workDescription: '' });
     } catch (err) {
       setError(String((err as Error).message));
     } finally {
@@ -144,43 +151,61 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
     }
   }
 
-  if (!open) return null;
+  const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 bg-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-shadow";
+  const labelCls = "block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: 'min(90vh, 760px)' }}>
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center">
-            <Zap size={16} className="text-yellow-600" />
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Sheet */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New Job Card"
+      >
+        {/* Sheet header */}
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+            <Zap size={17} className="text-yellow-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[15px] font-bold text-gray-900">New Job Card</h2>
-            <p className="text-[11px] text-gray-400">Quick work record — reactive / call-out</p>
+            <h2 className="text-base font-bold text-gray-900 leading-tight">New Job Card</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">Quick work record — reactive / call-out</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-            <X size={16} />
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <X size={17} />
           </button>
         </div>
 
-        {/* Body — lean create: customer + site + work + worker. Labour/materials added after in edit. */}
-        <form id="create-jc-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+        {/* Sheet body */}
+        <form id="create-jc-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
           {error && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
               <AlertCircle size={14} className="shrink-0" />
               {error}
             </div>
           )}
 
-          {/* Customer — prefer existing record */}
+          {/* Customer */}
           <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Customer</label>
+            <label className={labelCls}>Customer</label>
             <select
               value={form.customerId}
               onChange={e => set('customerId', e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              className={inputCls + ' appearance-none'}
             >
-              <option value="">— Select customer —</option>
+              <option value="">— Select existing customer —</option>
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             {!form.customerId && (
@@ -189,70 +214,72 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
                 value={form.customerNameOverride}
                 onChange={e => set('customerNameOverride', e.target.value)}
                 placeholder="Or type a one-off customer name…"
-                className="mt-2 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className={inputCls + ' mt-2'}
               />
             )}
           </div>
 
-          {/* Site + Service date */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Site address</label>
-              <input
-                type="text"
-                value={form.siteAddress}
-                onChange={e => set('siteAddress', e.target.value)}
-                placeholder="123 Main St"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Service date</label>
-              <input
-                type="date"
-                value={form.serviceDate}
-                onChange={e => set('serviceDate', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
-            </div>
+          {/* Site address */}
+          <div>
+            <label className={labelCls}>Site address</label>
+            <input
+              type="text"
+              value={form.siteAddress}
+              onChange={e => set('siteAddress', e.target.value)}
+              placeholder="123 Main St, Suburb"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Service date */}
+          <div>
+            <label className={labelCls}>Service date</label>
+            <input
+              type="date"
+              value={form.serviceDate}
+              onChange={e => set('serviceDate', e.target.value)}
+              className={inputCls}
+            />
           </div>
 
           {/* Work description */}
           <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Work description <span className="text-red-500">*</span>
+            <label className={labelCls}>
+              Work description <span className="text-red-400 normal-case tracking-normal">*</span>
             </label>
             <textarea
               value={form.workDescription}
               onChange={e => set('workDescription', e.target.value)}
-              rows={3}
+              rows={4}
               placeholder="Describe the work to be done…"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none"
+              className={inputCls + ' resize-none'}
             />
           </div>
 
           {/* Assigned worker */}
           <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Assigned worker</label>
+            <label className={labelCls}>Assigned worker</label>
             <select
               value={form.assignedUserId}
               onChange={e => set('assignedUserId', e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              className={inputCls + ' appearance-none'}
             >
               <option value="">— Unassigned —</option>
               {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
 
-          <p className="text-[11px] text-gray-400 -mt-1">Labour, materials, PO number and completion details can be added after creation.</p>
+          <p className="text-[11px] text-gray-400 leading-relaxed">
+            Labour, materials, PO number and completion details can be added after creation.
+          </p>
         </form>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 shrink-0">
+        {/* Sheet footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/60 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
@@ -260,14 +287,14 @@ function CreateModal({ open, onClose, onCreated }: CreateModalProps) {
             type="submit"
             form="create-jc-form"
             disabled={saving}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-yellow-500 hover:bg-yellow-600 text-white transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-yellow-500 hover:bg-yellow-600 text-white transition-colors disabled:opacity-50 shadow-sm"
           >
             {saving ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
             Create Job Card
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -281,7 +308,8 @@ export default function JobCardsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [invoiceFilter, setInvoiceFilter] = useState('all');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false); // kept for type-safety; unused after nav refactor
+  void setCreateOpen;
   const [page, setPage] = useState(0);
   const LIMIT = 50;
 
@@ -320,9 +348,8 @@ export default function JobCardsPage() {
     searchTimer.current = setTimeout(() => void fetchCards({ reset: true }), 350);
   }
 
-  function handleCreated(id: number) {
+  function handleCreated(_id: number) {
     void fetchCards({ reset: true });
-    navigate(`/job-cards/${id}`);
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -339,10 +366,28 @@ export default function JobCardsPage() {
       <PortalSidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* ── Mobile back bar ── */}
+        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100 shrink-0 safe-top">
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-1 text-sm font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+          >
+            <ChevronLeft size={18} />
+            Home
+          </button>
+        </div>
+
         {/* ── Page header ── */}
-        <div className="bg-white border-b border-gray-100 px-6 py-4 shrink-0">
+        <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-4 shrink-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
+              {/* Desktop back */}
+              <button
+                onClick={() => navigate('/home')}
+                className="hidden lg:flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-gray-700 transition-colors mr-1"
+              >
+                <ChevronLeft size={16} />
+              </button>
               <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center shrink-0">
                 <Zap size={16} className="text-yellow-600" />
               </div>
@@ -360,7 +405,7 @@ export default function JobCardsPage() {
                 <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               </button>
               <button
-                onClick={() => setCreateOpen(true)}
+                onClick={() => navigate('/job-cards/new')}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors"
               >
                 <Plus size={15} />
@@ -442,7 +487,7 @@ export default function JobCardsPage() {
               </p>
               {!search && statusFilter === 'all' && invoiceFilter === 'all' && (
                 <button
-                  onClick={() => setCreateOpen(true)}
+                  onClick={() => navigate('/job-cards/new')}
                   className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors"
                 >
                   <Plus size={14} />
@@ -554,8 +599,6 @@ export default function JobCardsPage() {
           </div>
         )}
       </main>
-
-      <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={handleCreated} />
     </div>
   );
 }

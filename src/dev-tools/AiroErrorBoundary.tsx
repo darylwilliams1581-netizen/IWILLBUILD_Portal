@@ -2,7 +2,7 @@
  * Local-dev / E2E passthrough for AiroErrorBoundary.
  *
  * In the builder sandbox the real component lives at
- * ../../dev-tools/src/AiroErrorBoundary (project root).
+ * ../../export-plugins/AiroErrorBoundary (project root).
  * When that directory is present (local dev), src/main.tsx and src/App.tsx
  * import it directly via relative paths — this file is never loaded.
  *
@@ -20,7 +20,7 @@ let RealBoundary: React.ComponentType<{ children?: React.ReactNode; captureGloba
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  RealBoundary = require('../../dev-tools/src/AiroErrorBoundary').default;
+  RealBoundary = require('../../export-plugins/AiroErrorBoundary').default;
 } catch {
   // dev-tools directory absent — use passthrough below
 }

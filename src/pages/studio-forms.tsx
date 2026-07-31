@@ -4,7 +4,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, ClipboardList } from 'lucide-react';
+import { ArrowLeft, ClipboardList, List } from 'lucide-react';
 import { FormsPage } from '@/pages/forms';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -13,7 +13,7 @@ export default function StudioFormsPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 lg:pt-[96px]">
+    <div className="flex flex-col flex-1 min-h-0 lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -36,6 +36,14 @@ export default function StudioFormsPage() {
         <span className="text-gray-300">|</span>
         <ClipboardList size={17} className="text-primary shrink-0" />
         <h1 className="font-heading font-bold text-base truncate flex-1">Forms</h1>
+        <button
+          onClick={() => navigate('/studio/global-lists')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors shrink-0"
+          title="Manage global lists"
+        >
+          <List size={13} />
+          <span className="hidden sm:inline">Global Lists</span>
+        </button>
       </header>
 
       {/* Forms content — has its own header/tabs internally */}

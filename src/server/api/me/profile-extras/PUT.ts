@@ -24,6 +24,7 @@ export default async function handler(req: Request, res: Response) {
 
     const {
       licenses = '',
+      white_card_number = '',
       profile_notes = '',
       emergency_contact_name = '',
       emergency_contact_phone = '',
@@ -32,6 +33,7 @@ export default async function handler(req: Request, res: Response) {
     await db.execute(sql`
       UPDATE profiles SET
         licenses               = ${String(licenses).slice(0, 5000)},
+        white_card_number      = ${String(white_card_number).slice(0, 100)},
         profile_notes          = ${String(profile_notes).slice(0, 5000)},
         emergency_contact_name = ${String(emergency_contact_name).slice(0, 255)},
         emergency_contact_phone= ${String(emergency_contact_phone).slice(0, 50)}

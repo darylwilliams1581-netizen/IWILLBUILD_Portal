@@ -697,7 +697,7 @@ export default function HelpPage() {
       <DesktopTopBar />
       <DesktopDock />
 
-      <main className="min-h-screen bg-[#F4F5F7] pb-20 lg:pt-[96px]">
+      <main className="min-h-screen bg-[#F4F5F7] pb-20 lg:pt-[104px]">
         {/* Sticky page header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[96px] z-10">
           <div className="max-w-3xl mx-auto px-4 py-4">

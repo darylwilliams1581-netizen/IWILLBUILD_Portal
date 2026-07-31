@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Save, Mail, Phone, Loader2, CheckCircle2, AlertCircle,
+  Save, Mail, Loader2, CheckCircle2, AlertCircle,
   Lock, Eye, EyeOff, KeyRound, Smartphone, BadgeCheck, RefreshCw,
+  FileText, User, ShieldAlert, Phone, Paperclip, Upload, Trash2, Download,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -92,14 +94,13 @@ function PhoneVerificationSection() {
   async function handleSavePhone(e: React.FormEvent) {
     e.preventDefault();
     setSavePhoneError(''); setSavePhoneOk(false);
-    const trimmed = editPhone.trim().replace(/\s+/g, '');
-    if (!trimmed) { setSavePhoneError('Please enter a phone number.'); return; }
+    if (!editPhone || editPhone === '+') { setSavePhoneError('Please enter a phone number.'); return; }
     setSavingPhone(true);
     try {
-      const res = await fetch('/api/me/phone', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ phone: trimmed }) });
-      const data = await res.json() as { ok?: boolean; error?: string };
+      const res = await fetch('/api/me/phone', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ phone: editPhone }) });
+      const data = await res.json() as { ok?: boolean; error?: string; phoneNumber?: string };
       if (!res.ok) { setSavePhoneError(data.error ?? 'Failed to save phone number.'); }
-      else { setSavePhoneOk(true); setSavedPhone(trimmed); setPhoneVerified(false); setVerifyStep('idle'); setTimeout(() => setSavePhoneOk(false), 3000); }
+      else { setSavePhoneOk(true); setSavedPhone(data.phoneNumber ?? editPhone); setPhoneVerified(false); setVerifyStep('idle'); setTimeout(() => setSavePhoneOk(false), 3000); }
     } catch { setSavePhoneError('Network error. Please try again.'); } finally { setSavingPhone(false); }
   }
 
@@ -139,11 +140,14 @@ function PhoneVerificationSection() {
         <form onSubmit={handleSavePhone} className="flex flex-col gap-3">
           <label className={labelClass}><span className="flex items-center gap-1"><Phone size={11} /> Mobile Number</span></label>
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Smartphone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+61 4xx xxx xxx" autoComplete="tel" className={`${inputClass} pl-9`} />
+            <div className="flex-1">
+              <PhoneInput
+                value={editPhone}
+                onChange={setEditPhone}
+                disabled={savingPhone}
+              />
             </div>
-            <button type="submit" disabled={savingPhone || editPhone.trim().replace(/\s+/g, '') === savedPhone} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+            <button type="submit" disabled={savingPhone || !editPhone || editPhone === savedPhone} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
               {savingPhone ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}Save
             </button>
           </div>
@@ -188,6 +192,20 @@ function PhoneVerificationSection() {
   );
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+interface Attachment {
+  id: string;
+  filename: string;
+  url: string;
+  size: number;
+  uploadedAt: string;
+}
+
 export default function MyAccountTab() {
   const { me, reload: reloadMe } = useMe();
   const isOwner = me?.profile?.role === 'owner';
@@ -201,6 +219,80 @@ export default function MyAccountTab() {
   useEffect(() => {
     if (me?.user) { setDisplayName(me.user.name ?? ''); setEmailField(me.user.email ?? ''); }
   }, [me?.user?.id]);
+
+  // ── Licences / Notes / Emergency / Attachments ────────────────────────────
+  const [whiteCardNumber, setWhiteCardNumber] = useState('');
+  const [licenses,        setLicenses]        = useState('');
+  const [notes,           setNotes]           = useState('');
+  const [emergencyName,   setEmergencyName]   = useState('');
+  const [emergencyPhone,  setEmergencyPhone]  = useState('');
+  const [extrasSaving,    setExtrasSaving]    = useState(false);
+  const [extrasState,     setExtrasState]     = useState<'idle' | 'saved' | 'error'>('idle');
+  const [extrasError,     setExtrasError]     = useState('');
+
+  const [attachments,  setAttachments]  = useState<Attachment[]>([]);
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadError,  setUploadError]  = useState('');
+  const [deletingId,   setDeletingId]   = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/me/profile-extras', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { white_card_number?: string; licenses?: string; profile_notes?: string; emergency_contact_name?: string; emergency_contact_phone?: string; attachments?: Attachment[] }) => {
+        setWhiteCardNumber(d.white_card_number ?? '');
+        setLicenses(d.licenses ?? '');
+        setNotes(d.profile_notes ?? '');
+        setEmergencyName(d.emergency_contact_name ?? '');
+        setEmergencyPhone(d.emergency_contact_phone ?? '');
+        setAttachments(d.attachments ?? []);
+      })
+      .catch(() => {/* ignore */});
+  }, []);
+
+  async function handleExtrasSave(e: React.FormEvent) {
+    e.preventDefault();
+    setExtrasError(''); setExtrasState('idle');
+    setExtrasSaving(true);
+    try {
+      const res = await fetch('/api/me/profile-extras', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ white_card_number: whiteCardNumber, licenses, profile_notes: notes, emergency_contact_name: emergencyName, emergency_contact_phone: emergencyPhone }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) { setExtrasError(data.error ?? 'Failed to save.'); setExtrasState('error'); }
+      else { setExtrasState('saved'); setTimeout(() => setExtrasState('idle'), 3000); }
+    } catch { setExtrasError('Network error.'); setExtrasState('error'); } finally { setExtrasSaving(false); }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (attachments.length >= 5) { setUploadError('Maximum 5 attachments allowed.'); return; }
+    setUploadError(''); setUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/me/profile-attachments', { method: 'POST', credentials: 'include', body: fd });
+      const data = await res.json() as { ok?: boolean; attachments?: Attachment[]; error?: string };
+      if (!res.ok) { setUploadError(data.error ?? 'Upload failed.'); }
+      else { setAttachments(data.attachments ?? []); }
+    } catch { setUploadError('Network error.'); } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDeleteAttachment(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/me/profile-attachments/${id}`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json() as { ok?: boolean; attachments?: Attachment[]; error?: string };
+      if (res.ok) setAttachments(data.attachments ?? []);
+    } catch { /* ignore */ } finally { setDeletingId(null); }
+  }
 
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
@@ -291,6 +383,149 @@ export default function MyAccountTab() {
         </div>
       </div>
 
+      <PhoneVerificationSection />
+
+      {/* ── Licences + Notes + Emergency ─────────────────────────────── */}
+      <form onSubmit={handleExtrasSave} className="flex flex-col gap-4">
+
+        {/* Licences */}
+        <div>
+          <h2 className="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+            <FileText size={16} className="text-violet-400" />Licences
+          </h2>
+          <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4">
+            <div>
+              <label className={labelClass}>White Card Number</label>
+              <input
+                value={whiteCardNumber}
+                onChange={(e) => setWhiteCardNumber(e.target.value)}
+                placeholder="e.g. WC123456789"
+                maxLength={100}
+                className={inputClass}
+              />
+              <p className="text-xs text-slate-400 mt-1">Your Construction Induction (White Card) number</p>
+            </div>
+            <div>
+              <label className={labelClass}>Other licences &amp; details</label>
+              <textarea
+                value={licenses}
+                onChange={(e) => setLicenses(e.target.value)}
+                rows={3}
+                placeholder="e.g. Builder's Licence: BLD123456, Forklift: FL789, EWP..."
+                className={`${inputClass} resize-none`}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <h2 className="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+            <User size={16} className="text-blue-400" />Notes
+          </h2>
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Any personal notes..."
+              className={`${inputClass} resize-none`}
+            />
+          </div>
+        </div>
+
+        {/* Emergency Contact */}
+        <div>
+          <h2 className="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+            <ShieldAlert size={16} className="text-red-400" />Emergency Contact
+          </h2>
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Contact Name</label>
+                <input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} placeholder="Full name" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}><span className="flex items-center gap-1"><Phone size={11} />Contact Number</span></label>
+                <input type="tel" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} placeholder="+61 4xx xxx xxx" className={inputClass} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {extrasError && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-xl px-3 py-2.5"><AlertCircle size={13} />{extrasError}</div>}
+        {extrasState === 'saved' && <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 font-semibold"><CheckCircle2 size={13} />Details saved.</div>}
+        <div className="flex justify-end">
+          <button type="submit" disabled={extrasSaving} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
+            {extrasSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save Details
+          </button>
+        </div>
+      </form>
+
+      {/* ── Attachments ──────────────────────────────────────────────── */}
+      <div>
+        <h2 className="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+          <Paperclip size={16} className="text-slate-400" />Licence Attachments
+          <span className="text-xs font-normal text-slate-400">({attachments.length}/5)</span>
+        </h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <p className="text-xs text-slate-500 mb-4">Upload copies of your licences and cards — always have them on hand when on site.</p>
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+          {uploadError && (
+            <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+              <AlertCircle size={12} />{uploadError}
+            </div>
+          )}
+          {attachments.length === 0 ? (
+            <div
+              className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip size={24} className="text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">No attachments yet</p>
+              <p className="text-xs text-slate-300 mt-1">Click to upload — up to 5 files, 10 MB each</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {attachments.map((att) => (
+                <div key={att.id} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                  <FileText size={16} className="text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{att.filename}</p>
+                    <p className="text-xs text-slate-400">{formatBytes(att.size)} · {new Date(att.uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                  <a href={att.url} download={att.filename} className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200">
+                    <Download size={14} />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAttachment(att.id)}
+                    disabled={deletingId === att.id}
+                    className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {deletingId === att.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
+                </div>
+              ))}
+              {attachments.length < 5 && (
+                <p className="text-xs text-slate-400 text-center pt-1">{5 - attachments.length} slot{5 - attachments.length !== 1 ? 's' : ''} remaining</p>
+              )}
+            </div>
+          )}
+          {attachments.length < 5 && attachments.length > 0 && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              {uploading ? 'Uploading…' : 'Add File'}
+            </button>
+          )}
+        </div>
+      </div>
+
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4 flex items-center gap-2"><KeyRound size={16} className="text-slate-400" />Change Password</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6">
@@ -337,8 +572,6 @@ export default function MyAccountTab() {
           </form>
         </div>
       </div>
-
-      <PhoneVerificationSection />
 
       {/* ── Two-Factor Authentication ─────────────────────────────────── */}
       <div>

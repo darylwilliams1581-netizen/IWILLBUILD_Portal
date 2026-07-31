@@ -159,11 +159,15 @@ html {
 /* ── Mobile overflow guard ───────────────────────────────────────────────────
    overflow-x: clip — see html comment above for why clip not hidden.
    width: 100% — avoids scrollbar-width issue on desktop.
+   height: 100% — completes the html(100%) → body(100%) → #sos-root(100%)
+   bounded-height chain. Without this, min-h-screen on child pages creates a
+   second viewport-height floor that stacks on the layout's own height.
    Safe-area insets for notched phones (iPhone X+).
 */
 body {
   overflow-x: clip;
   width: 100%;
+  height: 100%;
   /* Safe-area insets for notched phones (iPhone X+) */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -173,11 +177,24 @@ body {
    #sos-root is the React mount point. Clip overflow here too so any
    component that accidentally overflows doesn't cause page-level scroll.
    min-width: 0 prevents flex/grid children from overflowing their container.
+
+   height: 100% + display: flex + flex-direction: column makes the root a
+   BOUNDED flex container. Without this, RootLayout's min-h-screen creates a
+   floor but not a ceiling — child pages that also use min-h-screen stack on
+   top of it, making the document taller than the viewport. Dialogs then
+   center relative to the oversized document (top: 50% of a 200vh page =
+   100vh from the top — off screen). With height: 100% the flex chain is
+   bounded: html(100%) → body(100%) → #sos-root(100%) → RootLayout fills
+   exactly one viewport, and child pages fill that container instead of
+   re-declaring their own viewport height.
 */
 #sos-root {
   overflow-x: clip;
   width: 100%;
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Universal width cap ─────────────────────────────────────────────────────
@@ -498,13 +515,13 @@ input, select, textarea {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   column-gap: 10px;
-  row-gap: 7px;
+  row-gap: 1px;
 }
 
 @media (min-width: 640px) {
   .home-icon-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 9px 14px;
+    gap: 6px 14px;
   }
 }
 

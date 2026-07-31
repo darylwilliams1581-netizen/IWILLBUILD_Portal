@@ -24,7 +24,7 @@ export default async function handler(req: Request, res: Response) {
 
     // Read extra columns via raw SQL (late-added, not in Drizzle schema)
     const [rows] = await db.execute(
-      sql`SELECT licenses, profile_notes, emergency_contact_name, emergency_contact_phone, profile_attachments
+      sql`SELECT licenses, white_card_number, profile_notes, emergency_contact_name, emergency_contact_phone, profile_attachments
           FROM profiles WHERE user_id = ${session.user.id} LIMIT 1`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
@@ -36,8 +36,9 @@ export default async function handler(req: Request, res: Response) {
     } catch { /* ignore */ }
 
     return res.json({
-      licenses:              row.licenses ?? '',
-      profile_notes:         row.profile_notes ?? '',
+      licenses:                row.licenses ?? '',
+      white_card_number:       row.white_card_number ?? '',
+      profile_notes:           row.profile_notes ?? '',
       emergency_contact_name:  row.emergency_contact_name ?? '',
       emergency_contact_phone: row.emergency_contact_phone ?? '',
       attachments,
