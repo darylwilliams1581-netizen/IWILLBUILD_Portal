@@ -1029,62 +1029,54 @@ export default function JobCardDetailPage() {
       <PortalSidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* ── Mobile back bar (hidden on desktop where sidebar handles nav) ── */}
-        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100 shrink-0 safe-top">
-          <Link
-            to="/job-cards"
-            className="flex items-center gap-1.5 text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors"
-          >
-            <ChevronLeft size={18} />
-            Job Cards
-          </Link>
-          <span className="flex-1" />
-          <span className="font-mono text-[12px] font-bold text-gray-400">{card.card_number}</span>
-        </div>
 
-        {/* ── Header ── */}
-        <div className="bg-white border-b border-gray-100 px-6 py-4 shrink-0">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 min-w-0">
-              <Link to="/job-cards" className="mt-0.5 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0">
-                <ChevronLeft size={16} />
-              </Link>
-              <div className="min-w-0">
-                {/* Card number + lifecycle status + billing status — clearly separated */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-[13px] font-bold text-gray-400">{card.card_number}</span>
-                  {/* Lifecycle status */}
-                  <StatusBadge status={card.status} />
-                  {/* Billing status — separate pill, only when invoiced */}
-                  {card.invoice_id && (
-                    <Link
-                      to={`/invoices/${card.invoice_id}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-100"
-                    >
-                      <Receipt size={9} />
-                      Invoice #{card.invoice_id}
-                      <ExternalLink size={9} />
-                    </Link>
-                  )}
-                  {card.converted_job_id && (
-                    <Link
-                      to={`/jobs/${card.converted_job_id}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors border border-violet-100"
-                    >
-                      <ArrowRightLeft size={9} />
-                      Full Job #{card.converted_job_id}
-                      <ExternalLink size={9} />
-                    </Link>
-                  )}
-                </div>
-                <h1 className="text-[17px] font-bold text-gray-900 mt-1 leading-tight truncate max-w-lg">
-                  {customerLabel}
-                </h1>
-                <p className="text-[12px] text-gray-400 mt-0.5 truncate max-w-lg">{card.work_description}</p>
+        {/* ── Header — single unified bar for mobile + desktop ── */}
+        <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-3 shrink-0 safe-top">
+
+          {/* Row 1: back nav + card number */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <Link
+              to="/job-cards"
+              className="flex items-center gap-1 text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors"
+            >
+              <ChevronLeft size={17} />
+              Job Cards
+            </Link>
+            <span className="font-mono text-[12px] font-bold text-gray-400 shrink-0">{card.card_number}</span>
+          </div>
+
+          {/* Row 2: customer name + status badges */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[16px] font-bold text-gray-900 leading-tight truncate">{customerLabel}</h1>
+              <p className="text-[12px] text-gray-400 mt-0.5 truncate">{card.work_description}</p>
+              {/* Status badges */}
+              <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                <StatusBadge status={card.status} />
+                {card.invoice_id && (
+                  <Link
+                    to={`/invoices/${card.invoice_id}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-100"
+                  >
+                    <Receipt size={9} />
+                    Invoice #{card.invoice_id}
+                    <ExternalLink size={9} />
+                  </Link>
+                )}
+                {card.converted_job_id && (
+                  <Link
+                    to={`/jobs/${card.converted_job_id}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors border border-violet-100"
+                  >
+                    <ArrowRightLeft size={9} />
+                    Full Job #{card.converted_job_id}
+                    <ExternalLink size={9} />
+                  </Link>
+                )}
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Action buttons */}
             <div className="flex items-center gap-2 shrink-0">
               {!editing && (
                 <>
