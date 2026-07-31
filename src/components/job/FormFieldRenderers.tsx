@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Loader2, AlertCircle, MapPin, Camera, Link, SplitSquareHorizontal,
+  Loader2, AlertCircle, MapPin, Link, SplitSquareHorizontal,
   Navigation, ExternalLink, Briefcase, Truck, Search, ChevronDown, X,
+  ImagePlus, CheckCircle2,
 } from 'lucide-react';
 import { type FormField, parseOptions, parseSettings } from '../FormFieldBuilder';
 import SignaturePad, {
@@ -110,6 +111,24 @@ export function ReadOnlyAnswer({ field, value }: { field: FormField; value: Answ
           <ExternalLink size={11} className="text-slate-400" />
         </a>
       );
+    } else if (field.fieldType === 'photo') {
+      const photoUrls: string[] = (() => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string');
+        if (typeof value === 'string') {
+          try { const p = JSON.parse(value); return Array.isArray(p) ? p : [value]; } catch { return [value]; }
+        }
+        return [];
+      })();
+      display = photoUrls.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {photoUrls.map((url, idx) => (
+            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 hover:opacity-90 transition-opacity">
+              <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+            </a>
+          ))}
+        </div>
+      ) : <span className="text-sm text-slate-400 italic">No photo</span>;
     } else {
       display = <span className="text-sm text-slate-700">{String(value)}</span>;
     }
@@ -426,12 +445,140 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
           </div>
         );
       })()}
-      {field.fieldType === 'photo' && (
-        <div className="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
-          <Camera size={20} className="text-slate-300" />
-          <p className="text-xs text-slate-400">Photo upload coming soon</p>
-        </div>
-      )}
+      {field.fieldType === 'photo' && (() => {
+        const allowMultiple = !!settings.multiple;
+        // value is stored as a JSON array of URLs, or a single URL string, or null
+        const urls: string[] = (() => {
+          if (!value) return [];
+          if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string');
+          if (typeof value === 'string') {
+            try { const p = JSON.parse(value); return Array.isArray(p) ? p : [value]; } catch { return [value]; }
+          }
+          return [];
+        })();
+
+        const [uploading, setUploading] = useState(false);
+        const [uploadError, setUploadError] = useState<string | null>(null);
+        const fileInputRef = useRef<HTMLInputElement>(null);
+
+        const handleFiles = useCallback(async (files: File[]) => {
+          if (!files.length) return;
+          setUploading(true);
+          setUploadError(null);
+          try {
+            const newUrls: string[] = [];
+            for (const file of files) {
+              const fd = new FormData();
+              fd.append('file', file);
+              fd.append('capturedAt', new Date().toISOString());
+              const res = await fetch('/api/camera-captures', { method: 'POST', body: fd, credentials: 'include' });
+              if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? 'Upload failed'); }
+              const data = await res.json() as { captures?: Array<{ url: string }> };
+              const url = data.captures?.[0]?.url;
+              if (url) newUrls.push(url);
+            }
+            const combined = allowMultiple ? [...urls, ...newUrls] : newUrls.slice(-1);
+            onChange(combined.length === 1 ? combined[0] : JSON.stringify(combined));
+          } catch (e) {
+            setUploadError(e instanceof Error ? e.message : 'Upload failed');
+          } finally {
+            setUploading(false);
+          }
+        }, [urls, allowMultiple, onChange]);
+
+        const handleNativeCapture = useCallback(async () => {
+          try {
+            // Dynamic import so web builds don't break
+            const { Camera: CapCamera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+            const photo = await CapCamera.getPhoto({
+              quality: 85,
+              allowEditing: false,
+              resultType: CameraResultType.Base64,
+              source: CameraSource.Camera,
+            });
+            if (!photo.base64String) return;
+            const mime = photo.format === 'png' ? 'image/png' : 'image/jpeg';
+            const ext = photo.format === 'png' ? 'png' : 'jpg';
+            const byteChars = atob(photo.base64String);
+            const byteNums = new Uint8Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+            const blob = new Blob([byteNums], { type: mime });
+            const file = new File([blob], `photo_${Date.now()}.${ext}`, { type: mime });
+            await handleFiles([file]);
+          } catch (e) {
+            // User cancelled — ignore
+            if (e instanceof Error && e.message.toLowerCase().includes('cancel')) return;
+            setUploadError(e instanceof Error ? e.message : 'Camera error');
+          }
+        }, [handleFiles]);
+
+        const isNative = typeof (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform === 'function'
+          && (window as unknown as { Capacitor: { isNativePlatform: () => boolean } }).Capacitor.isNativePlatform();
+
+        const removePhoto = (idx: number) => {
+          const next = urls.filter((_, i) => i !== idx);
+          onChange(next.length === 0 ? null : next.length === 1 ? next[0] : JSON.stringify(next));
+        };
+
+        return (
+          <div className="flex flex-col gap-2">
+            {/* Thumbnails */}
+            {urls.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {urls.map((url, idx) => (
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                    <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    {!disabled && (
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(idx)}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X size={10} className="text-white" />
+                      </button>
+                    )}
+                    <div className="absolute bottom-0.5 right-0.5">
+                      <CheckCircle2 size={12} className="text-emerald-400 drop-shadow" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload / capture button */}
+            {!disabled && (allowMultiple || urls.length === 0) && (
+              <>
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => isNative ? handleNativeCapture() : fileInputRef.current?.click()}
+                  className={`flex items-center justify-center gap-2 h-20 rounded-xl border-2 border-dashed transition-colors ${
+                    error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
+                  } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}
+                >
+                  {uploading
+                    ? <><Loader2 size={18} className="animate-spin text-primary" /><span className="text-xs text-slate-500">Uploading…</span></>
+                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? 'Add another photo' : 'Take or upload a photo'}</span></>
+                  }
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple={allowMultiple}
+                  className="hidden"
+                  onChange={(e) => { if (e.target.files?.length) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
+                />
+              </>
+            )}
+
+            {uploadError && (
+              <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12} />{uploadError}</p>
+            )}
+          </div>
+        );
+      })()}
       {field.fieldType === 'signature' && (() => {
         const isMultiple = !!settings.multiple;
         const buttonLabel = typeof settings.buttonLabel === 'string' && settings.buttonLabel.trim() ? settings.buttonLabel : '+ Add Signer';
