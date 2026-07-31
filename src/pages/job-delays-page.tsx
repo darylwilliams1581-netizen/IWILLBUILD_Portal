@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Loader2, Download } from 'lucide-react';
+import { Home, Clock, Loader2, Download } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import JobDelays from '@/components/job/JobDelays';
 
@@ -71,52 +71,50 @@ export default function JobDelaysPage() {
         style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
       >
         <button
-          onClick={() => navigate(`/jobs/${id}`)}
-          className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+          onClick={() => navigate('/home')}
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm shrink-0"
+          title="Dashboard"
         >
-          <ArrowLeft size={18} />
+          <Home size={18} />
         </button>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-            {loading ? (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-            ) : (
-              <>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Delays'}</h1>
-                <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
-                  <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
-                  <span>/</span>
-                  <span className="text-gray-500 font-medium">Delays</span>
-                </div>
-              </>
-            )}
-          </div>
-          <button
-            onClick={exportCsv}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0"
-          >
-            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            <span>Export CSV</span>
-          </button>
+        <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
+          {loading ? (
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+          ) : (
+            <>
+              <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Delays'}</h1>
+              <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
+                <span>/</span>
+                <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
+                <span>/</span>
+                <span className="text-gray-500 font-medium">Delays</span>
+              </div>
+            </>
+          )}
         </div>
+        <button
+          onClick={exportCsv}
+          disabled={exporting}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0"
+        >
+          {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+          <span>Export CSV</span>
+        </button>
+      </div>
 
       {/* ── Mobile safe-area top bar ── */}
       <div
         className="md:hidden bg-white border-b border-gray-100 shrink-0 safe-top"
       >
         <div className="flex items-center gap-2 px-3 h-12">
-          {/* Left: back */}
+          {/* Left: home */}
           <button
-            onClick={() => navigate(`/jobs/${id}`)}
-            className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
-            aria-label="Back"
+            onClick={() => navigate('/home')}
+            className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white active:bg-violet-700 transition-colors touch-manipulation shadow-sm shrink-0"
+            aria-label="Dashboard"
           >
-            <ArrowLeft size={16} />
+            <Home size={16} />
           </button>
 
           {/* Centre: title */}
