@@ -1125,7 +1125,42 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const labelCls = 'block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1';
 
   return (
-    <Sheet open={open} onClose={onClose} title="New Job Card" titleIcon={Zap} titleIconClass="text-yellow-500">
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-[65] bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Right-side sheet */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New Job Card"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0 safe-top">
+          <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+            <Zap size={17} className="text-yellow-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-gray-900 leading-tight">New Job Card</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {step === 'form' ? 'Step 1 of 2 — Details' : step === 'completion' ? 'Step 2 of 2 — Completion & Photos' : 'Created'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5">
       {step === 'done' ? (
         /* ── Done ── */
         <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
@@ -1346,7 +1381,9 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
       )}
-    </Sheet>
+        </div>{/* end scrollable body */}
+      </div>{/* end sheet */}
+    </>
   );
 }
 

@@ -1029,6 +1029,19 @@ export default function JobCardDetailPage() {
       <PortalSidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* ── Mobile back bar (hidden on desktop where sidebar handles nav) ── */}
+        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100 shrink-0 safe-top">
+          <Link
+            to="/job-cards"
+            className="flex items-center gap-1.5 text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors"
+          >
+            <ChevronLeft size={18} />
+            Job Cards
+          </Link>
+          <span className="flex-1" />
+          <span className="font-mono text-[12px] font-bold text-gray-400">{card.card_number}</span>
+        </div>
+
         {/* ── Header ── */}
         <div className="bg-white border-b border-gray-100 px-6 py-4 shrink-0">
           <div className="flex items-start justify-between gap-4">
