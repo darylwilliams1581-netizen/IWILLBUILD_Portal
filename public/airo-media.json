@@ -387,5 +387,33 @@
     },
     "uploadContentHash": "7672f55e7ff91d742620d4ef314258d2e37907ec05d70a247a6234c2944ce933",
     "caption": "fleet management dashboard vehicle status overview"
+  },
+  "ios/appicon-512": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/ios-appicon-512-e0566ce6.png",
+    "searchQuery": "blue checkmark symbol geometric pattern",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-31T05:54:39.938Z",
+    "lastUpdated": "2026-07-31T05:54:39.938Z",
+    "uploadSources": {
+      "/airo-assets/uploads/ios-appicon-512-e0566ce6.png": "f38wenbvln_1785473163941_file_JP3Cz_87K8.png"
+    },
+    "uploadContentHash": "29e4777e319de3ee5a52c3a8004ec19d0568414004257e36d7c94a077d71c93b",
+    "caption": "blue checkmark symbol geometric pattern"
+  },
+  "ios/splash-2732x2732-1": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/ios-splash-2732x2732-1-c1b2aced.png",
+    "searchQuery": "blue hashtag symbol minimalist design",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-31T05:54:44.255Z",
+    "lastUpdated": "2026-07-31T05:54:44.255Z",
+    "uploadSources": {
+      "/airo-assets/uploads/ios-splash-2732x2732-1-c1b2aced.png": "f38wenbvln_1785473131772_file_wj1eGSbYCg.png"
+    },
+    "uploadContentHash": "1b5002b74a5500e697298ced06ca2811ac33f2771f236f3c720ff23243890530",
+    "caption": "blue hashtag symbol minimalist design"
   }
 }
