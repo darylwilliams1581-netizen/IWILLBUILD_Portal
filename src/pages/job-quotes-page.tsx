@@ -241,40 +241,39 @@ export default function JobQuotesPage() {
       <h1 className="sr-only">{job ? `Quotes — ${job.name}` : 'Quotes'}</h1>
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 px-4 pb-4 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
-        <div className="max-w-2xl mx-auto">
-          {/* Row 1: back + home + title + new quote */}
-          <div className="flex items-center gap-2 h-14">
-            <button
-              onClick={() => navigate(`/jobs/${id}`)}
-              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="w-9 h-9 rounded-xl bg-violet-500 text-white flex items-center justify-center hover:bg-violet-700 active:bg-violet-800 transition-colors shrink-0"
-              title="Dashboard"
-            >
-              <Home size={16} />
-            </button>
-            <div className="flex-1 min-w-0 text-center">
-              <p className="font-bold text-gray-900 text-lg leading-tight">Quotes</p>
-              <p className="text-xs text-gray-400 leading-tight truncate">
-                {job?.name ?? '…'}
-              </p>
-            </div>
-            {canEdit && (
-              <button
-                onClick={handleCreate}
-                disabled={creating}
-                className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold px-4 py-2.5 rounded-2xl transition-colors disabled:opacity-60 shrink-0"
-              >
-                {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                New Quote
-              </button>
-            )}
+      <div className="bg-white border-b border-gray-100 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+        <div className="max-w-2xl mx-auto px-4 flex items-center gap-2 h-14">
+          {/* Back */}
+          <button
+            onClick={() => navigate(`/jobs/${id}`)}
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          {/* Home */}
+          <button
+            onClick={() => navigate('/')}
+            className="w-9 h-9 rounded-full bg-violet-500 text-white flex items-center justify-center hover:bg-violet-600 active:bg-violet-700 transition-colors shrink-0"
+            title="Dashboard"
+          >
+            <Home size={15} />
+          </button>
+          {/* Title — centred between buttons */}
+          <div className="flex-1 min-w-0 text-center">
+            <p className="font-bold text-gray-900 text-base leading-tight">Quotes</p>
+            <p className="text-xs text-gray-400 leading-tight truncate">{job?.name ?? '…'}</p>
           </div>
+          {/* New Quote */}
+          {canEdit && (
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white text-sm font-bold px-3.5 py-2 rounded-xl transition-colors disabled:opacity-60 shrink-0"
+            >
+              {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              New
+            </button>
+          )}
         </div>
       </div>
 
@@ -339,7 +338,7 @@ export default function JobQuotesPage() {
                       </span>
                     </div>
 
-                    {/* Row 2: status + invoice badge + actions */}
+                    {/* Row 2: status badge + invoice badges */}
                     <div className="flex items-center gap-2 mt-3 ml-12 flex-wrap">
                       <StatusDropdown
                         estimate={est}
@@ -347,7 +346,6 @@ export default function JobQuotesPage() {
                         onStatusChange={handleStatusChange}
                       />
 
-                      {/* Locked → invoice exists: show "Sent to Invoice" badge + navigate button */}
                       {isLocked && est.invoice_exists && (
                         <button
                           onClick={() => navigate(`/invoices/${est.locked_invoice_id}`)}
@@ -359,7 +357,6 @@ export default function JobQuotesPage() {
                         </button>
                       )}
 
-                      {/* Locked → invoice was deleted: show warning + re-push button */}
                       {invoiceGone && canEdit && (
                         <button
                           onClick={() => handleUnlockAndReconvert(est.id)}
@@ -367,70 +364,72 @@ export default function JobQuotesPage() {
                           className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-amber-100 disabled:opacity-60"
                           title="Invoice was deleted — click to re-create"
                         >
-                          {convertingId === est.id
-                            ? <Loader2 size={11} className="animate-spin" />
-                            : <Link2Off size={11} />}
+                          {convertingId === est.id ? <Loader2 size={11} className="animate-spin" /> : <Link2Off size={11} />}
                           Re-push Invoice
                         </button>
                       )}
 
-                      {/* Not yet invoiced: show Invoice button */}
                       {est.status === 'Approved' && canEdit && !isLocked && (
                         <button
                           onClick={() => handleConvertToInvoice(est.id)}
                           disabled={convertingId === est.id}
-                          className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60"
+                          className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60"
                         >
-                          {convertingId === est.id
-                            ? <Loader2 size={11} className="animate-spin" />
-                            : <Receipt size={11} />}
+                          {convertingId === est.id ? <Loader2 size={11} className="animate-spin" /> : <Receipt size={11} />}
                           Invoice
                         </button>
                       )}
+                    </div>
 
-                      <div className="flex items-center gap-0.5 ml-auto">
-                        <a
-                          href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
-                          title="Email"
-                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Mail size={15} />
-                        </a>
+                    {/* Row 3: action icon strip — always on its own row, never fights badges */}
+                    <div className="flex items-center gap-0.5 mt-2 ml-12 border-t border-gray-50 pt-2">
+                      <a
+                        href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
+                        title="Email"
+                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Mail size={15} />
+                      </a>
+                      <button
+                        title="Copy share link"
+                        onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/view/estimate/${est.id}`)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                      >
+                        <Share2 size={15} />
+                      </button>
+                      <Link
+                        to={`/estimates/${est.id}`}
+                        title="Open editor"
+                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                      >
+                        <ExternalLink size={15} />
+                      </Link>
+                      <button
+                        title="Duplicate"
+                        onClick={() => handleDuplicate(est.id)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                      >
+                        <Copy size={15} />
+                      </button>
+                      {canEdit && (
                         <button
-                          title="Copy share link"
-                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/view/estimate/${est.id}`)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                          title="Delete"
+                          onClick={() => handleDelete(est.id)}
+                          disabled={deletingId === est.id}
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                         >
-                          <Share2 size={15} />
+                          {deletingId === est.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                         </button>
-                        <Link
-                          to={`/estimates/${est.id}`}
-                          title="Open editor"
-                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                        >
-                          <ExternalLink size={15} />
-                        </Link>
-                        <button
-                          title="Duplicate"
-                          onClick={() => handleDuplicate(est.id)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                        >
-                          <Copy size={15} />
-                        </button>
-                        {canEdit && (
-                          <button
-                            title="Delete"
-                            onClick={() => handleDelete(est.id)}
-                            disabled={deletingId === est.id}
-                            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                          >
-                            {deletingId === est.id
-                              ? <Loader2 size={15} className="animate-spin" />
-                              : <Trash2 size={15} />}
-                          </button>
-                        )}
-                      </div>
+                      )}
+                      {/* Open editor — prominent CTA on the right */}
+                      <Link
+                        to={`/estimates/${est.id}`}
+                        className="ml-auto flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-violet-700 hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Open
+                        <ExternalLink size={12} />
+                      </Link>
                     </div>
                   </div>
                 );

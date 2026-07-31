@@ -407,8 +407,8 @@ export default function EstimateEditorPage() {
             )}
           </div>
 
-          {/* Row 2: Action pills */}
-          <div className="flex items-center gap-2 px-4 md:px-6 pb-2 overflow-x-auto">
+          {/* Row 2: Action pills — compact, consistent, scrollable */}
+          <div className="flex items-center gap-1.5 px-4 md:px-6 pb-3 overflow-x-auto scrollbar-none">
             {/* Status badge + dropdown */}
             {estimate && statusStyle && (
               <div className="relative shrink-0">
@@ -454,13 +454,25 @@ export default function EstimateEditorPage() {
               </div>
             )}
 
+            <div className="w-px h-4 bg-border shrink-0" />
+
             {/* Print */}
             <button
               onClick={() => setShowPrint(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors shrink-0"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
             >
-              <Printer size={14} />
+              <Printer size={13} />
               <span>Print</span>
+            </button>
+
+            {/* Export PDF */}
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf || !estimate}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+            >
+              {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              <span>PDF</span>
             </button>
 
             {/* Send via Outlook */}
@@ -482,34 +494,22 @@ export default function EstimateEditorPage() {
               </div>
             )}
 
-            {/* Export PDF */}
-            <button
-              onClick={handleExportPdf}
-              disabled={exportingPdf || !estimate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
-              title="Download PDF"
-            >
-              {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              <span>PDF</span>
-            </button>
-
             {/* Share link */}
             <button
               onClick={() => setShowShare(true)}
               disabled={!estimate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
-              title="Share link"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
             >
-              <Share2 size={14} />
+              <Share2 size={13} />
               <span>Share</span>
             </button>
 
             {/* Duplicate */}
             <button
               onClick={handleDuplicate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors shrink-0"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
             >
-              <Copy size={14} />
+              <Copy size={13} />
               <span>Duplicate</span>
             </button>
           </div>
