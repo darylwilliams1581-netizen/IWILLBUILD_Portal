@@ -381,7 +381,7 @@ export default function JobQuotesPage() {
                       )}
                     </div>
 
-                    {/* Row 3: action icon strip — always on its own row, never fights badges */}
+                    {/* Row 3: action icon strip — own row, never fights badges */}
                     <div className="flex items-center gap-0.5 mt-2 ml-12 border-t border-gray-50 pt-2">
                       <a
                         href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
@@ -398,13 +398,6 @@ export default function JobQuotesPage() {
                       >
                         <Share2 size={15} />
                       </button>
-                      <Link
-                        to={`/estimates/${est.id}`}
-                        title="Open editor"
-                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                      >
-                        <ExternalLink size={15} />
-                      </Link>
                       <button
                         title="Duplicate"
                         onClick={() => handleDuplicate(est.id)}
@@ -422,7 +415,7 @@ export default function JobQuotesPage() {
                           {deletingId === est.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                         </button>
                       )}
-                      {/* Open editor — prominent CTA on the right */}
+                      {/* Open — labelled CTA pushed to the right */}
                       <Link
                         to={`/estimates/${est.id}`}
                         className="ml-auto flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-violet-700 hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
