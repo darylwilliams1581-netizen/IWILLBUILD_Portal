@@ -10,7 +10,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  ChevronLeft, Plus, ShieldAlert, CheckCircle2, AlertTriangle,
+  ChevronLeft, ChevronDown, Plus, ShieldAlert, CheckCircle2, AlertTriangle,
   Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2,
   FileWarning,
 } from 'lucide-react';
@@ -601,6 +601,123 @@ function Chip({
   );
 }
 
+// ── Dropdown multi-selector ───────────────────────────────────────────────────
+
+function MultiDropdown({
+  options,
+  selected,
+  onChange,
+  disabled,
+  placeholder,
+  color = 'rose',
+  error,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+  placeholder: string;
+  color?: 'rose' | 'amber';
+  error?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  function toggle(opt: string) {
+    if (selected.includes(opt)) onChange(selected.filter(x => x !== opt));
+    else onChange([...selected, opt]);
+  }
+
+  const accentSel  = color === 'amber' ? 'bg-amber-600' : 'bg-rose-600';
+  const accentText = color === 'amber' ? 'text-amber-700' : 'text-rose-700';
+  const accentBg   = color === 'amber' ? 'bg-amber-50'   : 'bg-rose-50';
+  const accentBorder = color === 'amber' ? 'border-amber-200' : 'border-rose-200';
+  const ringFocus  = color === 'amber' ? 'ring-amber-400' : 'ring-rose-400';
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors disabled:cursor-default disabled:bg-slate-50 disabled:text-slate-400 ${
+          error ? 'border-red-400 bg-red-50' :
+          open  ? `border-slate-300 ring-2 ${ringFocus} bg-white` :
+          'border-slate-200 bg-white hover:border-slate-300'
+        }`}
+      >
+        <span className={selected.length === 0 ? 'text-slate-400' : 'text-slate-700 font-medium'}>
+          {selected.length === 0
+            ? placeholder
+            : selected.length === 1
+              ? selected[0]
+              : `${selected.length} selected`}
+        </span>
+        <ChevronDown size={15} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Selected pills (when >1) */}
+      {selected.length > 1 && !open && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {selected.map(s => (
+            <span key={s} className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${accentBg} ${accentText} border ${accentBorder}`}>
+              {s}
+              {!disabled && (
+                <button type="button" onClick={() => toggle(s)} className="ml-0.5 opacity-60 hover:opacity-100">
+                  <X size={10} />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="max-h-56 overflow-y-auto divide-y divide-slate-50">
+            {options.map(opt => {
+              const isSel = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => toggle(opt)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
+                    isSel ? `${accentBg} ${accentText} font-semibold` : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    isSel ? `${accentSel} border-transparent` : 'border-slate-300'
+                  }`}>
+                    {isSel && <CheckCircle2 size={10} className="text-white" />}
+                  </div>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+          <div className="px-4 py-2 border-t border-slate-100 flex justify-between items-center">
+            <span className="text-xs text-slate-400">{selected.length} selected</span>
+            <button type="button" onClick={() => setOpen(false)} className={`text-xs font-semibold ${accentText}`}>Done</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 type View = 'list' | 'form' | 'signoff' | 'supervisor-signoff';
@@ -928,6 +1045,7 @@ export default function JobRiskyPage() {
             {/* Details */}
             <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Details</h2>
+              {/* Date + Time side by side */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Date</label>
@@ -995,18 +1113,16 @@ export default function JobRiskyPage() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                 <AlertTriangle size={13} className="text-amber-500" /> Hazards Identified
               </h2>
+              <MultiDropdown
+                options={job_risky.HAZARD_OPTIONS}
+                selected={form.hazardsSelected}
+                onChange={v => updateForm({ hazardsSelected: v })}
+                disabled={isFinalised}
+                placeholder="Select hazards…"
+                color="rose"
+                error={errors.hazardsSelected}
+              />
               {errors.hazardsSelected && <p className="text-xs text-red-500">{errors.hazardsSelected}</p>}
-              <div className="flex flex-wrap gap-2">
-                {job_risky.HAZARD_OPTIONS.map(h => (
-                  <Chip
-                    key={h}
-                    label={h}
-                    selected={form.hazardsSelected.includes(h)}
-                    onClick={() => !isFinalised && toggleHazard(h)}
-                    disabled={isFinalised}
-                  />
-                ))}
-              </div>
               {form.hazardsSelected.includes('Other') && (
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Describe other hazard</label>
@@ -1074,18 +1190,15 @@ export default function JobRiskyPage() {
                   </div>
                   <p className="text-xs text-slate-500 font-medium">Permit type(s)</p>
                   {errors.permitTypes && <p className="text-xs text-red-500">{errors.permitTypes}</p>}
-                  <div className="flex flex-wrap gap-2">
-                    {job_risky.PERMIT_TYPE_OPTIONS.map(pt => (
-                      <Chip
-                        key={pt}
-                        label={pt}
-                        selected={form.permitTypes.includes(pt)}
-                        onClick={() => !isFinalised && togglePermitType(pt)}
-                        disabled={isFinalised}
-                        color="amber"
-                      />
-                    ))}
-                  </div>
+                  <MultiDropdown
+                    options={job_risky.PERMIT_TYPE_OPTIONS}
+                    selected={form.permitTypes}
+                    onChange={v => updateForm({ permitTypes: v })}
+                    disabled={isFinalised}
+                    placeholder="Select permit types…"
+                    color="amber"
+                    error={errors.permitTypes}
+                  />
                   {form.permitTypes.includes('Other') && (
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block">Describe other permit</label>
