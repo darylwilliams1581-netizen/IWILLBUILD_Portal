@@ -40,6 +40,7 @@ const StudioPage         = lazy(() => import('./pages/studio'));
 const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
 const StudioDocumentsPage = lazy(() => import('./pages/studio-documents'));
 const StudioFormsPage    = lazy(() => import('./pages/studio-forms'));
+const StudioGlobalListsPage = lazy(() => import('./pages/studio-global-lists'));
 const StudioLibraryPage  = lazy(() => import('./pages/studio-library'));
 const SafetyPostersPage  = lazy(() => import('./pages/safety-posters'));
 const JobFieldDocsPage   = lazy(() => import('./pages/job-field-docs'));
@@ -220,6 +221,7 @@ export const routes: RouteObject[] = [
   { path: '/studio/builder/:id',   element: protect(<StudioBuilderPage />),   errorElement: routeError },
   { path: '/studio/documents',     element: protect(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>), errorElement: routeError },
   { path: '/studio/forms',         element: protect(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>),     errorElement: routeError },
+  { path: '/studio/global-lists',  element: protect(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>), errorElement: routeError },
   { path: '/studio/library',       element: protect(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>),   errorElement: routeError },
   { path: '/safety/posters',       element: protect(<Suspense fallback={<PageLoader />}><SafetyPostersPage /></Suspense>),   errorElement: routeError },
   { path: '/job-docs',             element: protect(<Suspense fallback={<PageLoader />}><JobFieldDocsPage /></Suspense>),    errorElement: routeError },

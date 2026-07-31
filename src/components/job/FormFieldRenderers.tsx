@@ -4,7 +4,7 @@ import {
   Navigation, ExternalLink, Briefcase, Truck, Search, ChevronDown, X,
   ImagePlus, CheckCircle2,
 } from 'lucide-react';
-import { type FormField, parseOptions, parseSettings } from '../FormFieldBuilder';
+import { type FormField, parseOptions, parseSettings, fetchGlobalLists } from '../FormFieldBuilder';
 import SignaturePad, {
   MultiSignaturePad,
   type SignatureAnswer,
@@ -262,8 +262,20 @@ function LinkDropdown({
 }
 
 export function FieldInput({ field, value, onChange, error, disabled, companyId }: FieldInputProps) {
-  const options = parseOptions(field.optionsJson);
   const settings = parseSettings(field.settingsJson);
+  const globalListId = typeof settings.globalListId === 'number' && settings.globalListId > 0 ? settings.globalListId : null;
+
+  // Resolve options: global list takes precedence over optionsJson
+  const [resolvedOptions, setResolvedOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
+  useEffect(() => {
+    if (!globalListId) { setResolvedOptions(parseOptions(field.optionsJson)); return; }
+    fetchGlobalLists().then((lists) => {
+      const found = lists.find((l) => l.id === globalListId);
+      if (found) setResolvedOptions(found.items);
+    }).catch(console.error);
+  }, [globalListId, field.optionsJson]);
+
+  const options = resolvedOptions;
 
   const baseInput = 'w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
   const errorBorder = error ? 'border-red-400' : 'border-slate-200';

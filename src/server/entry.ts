@@ -261,6 +261,10 @@ import form_templates_seed_post_228 from "./api/form-templates/seed/POST";
 import form_templates_id_delete_229 from "./api/form-templates/[id]/DELETE";
 import form_templates_id_put_230 from "./api/form-templates/[id]/PUT";
 import form_templates_id_publish_to_library_post_231 from "./api/form-templates/[id]/publish-to-library/POST";
+import form_global_lists_get from "./api/form-global-lists/GET";
+import form_global_lists_post from "./api/form-global-lists/POST";
+import form_global_lists_id_put from "./api/form-global-lists/[id]/PUT";
+import form_global_lists_id_delete from "./api/form-global-lists/[id]/DELETE";
 import forms_assets_list_get_232 from "./api/forms/assets-list/GET";
 import forms_jobs_list_get_233 from "./api/forms/jobs-list/GET";
 import forms_migrate_skip_logic_post_234 from "./api/forms/migrate-skip-logic/POST";
@@ -2951,6 +2955,10 @@ app.post("/api/form-templates/seed", form_templates_seed_post_228);
 app.delete("/api/form-templates/:id", form_templates_id_delete_229);
 app.put("/api/form-templates/:id", form_templates_id_put_230);
 app.post("/api/form-templates/:id/publish-to-library", form_templates_id_publish_to_library_post_231);
+app.get("/api/form-global-lists", form_global_lists_get);
+app.post("/api/form-global-lists", form_global_lists_post);
+app.put("/api/form-global-lists/:id", form_global_lists_id_put);
+app.delete("/api/form-global-lists/:id", form_global_lists_id_delete);
 app.get("/api/forms/assets-list", forms_assets_list_get_232);
 app.get("/api/forms/jobs-list", forms_jobs_list_get_233);
 app.post("/api/forms/migrate-skip-logic", forms_migrate_skip_logic_post_234);
@@ -4069,6 +4077,24 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.log('[startup] team_time_entries table ready');
 		} catch (e) {
 			console.warn('[startup] team_time_entries migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── form_global_lists ─────────────────────────────────────────────────
+		try {
+			await db.execute(sql.raw(
+				"CREATE TABLE IF NOT EXISTS form_global_lists (" +
+				"  id         INT AUTO_INCREMENT PRIMARY KEY," +
+				"  company_id INT NOT NULL," +
+				"  name       VARCHAR(120) NOT NULL," +
+				"  items      JSON NOT NULL DEFAULT (JSON_ARRAY())," +
+				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+				"  INDEX idx_fgl_company (company_id)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] form_global_lists table ready');
+		} catch (e) {
+			console.warn('[startup] form_global_lists migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
 		// ── sms_verification_codes.verified_at (missing column fix) ──────────

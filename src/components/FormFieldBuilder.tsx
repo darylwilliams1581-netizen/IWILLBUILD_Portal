@@ -35,6 +35,7 @@ import {
   Eye,
   Briefcase,
   Truck,
+  Globe,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -62,6 +63,29 @@ export interface FormField {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Global list types & hook ──────────────────────────────────────────────────
+
+export interface GlobalList {
+  id: number;
+  name: string;
+  items: string[];
+}
+
+let _globalListsCache: GlobalList[] | null = null;
+let _globalListsPromise: Promise<GlobalList[]> | null = null;
+
+export async function fetchGlobalLists(): Promise<GlobalList[]> {
+  if (_globalListsCache) return _globalListsCache;
+  if (_globalListsPromise) return _globalListsPromise;
+  _globalListsPromise = fetch('/api/form-global-lists', { credentials: 'include' })
+    .then((r) => r.ok ? r.json() as Promise<{ lists: GlobalList[] }> : { lists: [] })
+    .then((d) => { _globalListsCache = d.lists ?? []; return _globalListsCache; })
+    .catch(() => []);
+  return _globalListsPromise;
+}
+
+export function invalidateGlobalListsCache() { _globalListsCache = null; _globalListsPromise = null; }
 
 // ── Settings helpers ──────────────────────────────────────────────────────────
 
@@ -456,6 +480,145 @@ function InstructionImageUploader({ templateId, fieldId, currentUrl, onUploaded 
   );
 }
 
+// ── Global list options editor ────────────────────────────────────────────────
+
+function GlobalListOptionsEditor({
+  settings, options, optionSaving, onSaveSettings,
+  onAddOption, onRemoveOption, onEditOption, onBlurOption,
+  newOption, setNewOption, diSm,
+}: {
+  settings: Record<string, unknown>;
+  options: string[];
+  optionSaving: boolean;
+  onSaveSettings: (s: Record<string, unknown>) => Promise<void>;
+  onAddOption: () => Promise<void>;
+  onRemoveOption: (i: number) => Promise<void>;
+  onEditOption: (i: number, val: string) => Promise<void>;
+  onBlurOption: (i: number) => Promise<void>;
+  newOption: string;
+  setNewOption: (v: string) => void;
+  diSm: string;
+}) {
+  const [globalLists, setGlobalLists] = useState<GlobalList[]>([]);
+  const [loadingLists, setLoadingLists] = useState(false);
+  const useGlobal = typeof settings.globalListId === 'number' && settings.globalListId > 0;
+  const selectedListId = useGlobal ? (settings.globalListId as number) : null;
+  const selectedList = globalLists.find((l) => l.id === selectedListId) ?? null;
+
+  // Load global lists when toggled on or when already on
+  useEffect(() => {
+    if (useGlobal || globalLists.length === 0) {
+      setLoadingLists(true);
+      fetchGlobalLists().then(setGlobalLists).catch(console.error).finally(() => setLoadingLists(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useGlobal]);
+
+  async function toggleGlobal() {
+    if (useGlobal) {
+      // Switch back to manual options
+      await onSaveSettings({ ...settings, globalListId: null });
+    } else {
+      // Load lists and enable
+      setLoadingLists(true);
+      const lists = await fetchGlobalLists().finally(() => setLoadingLists(false));
+      setGlobalLists(lists);
+      await onSaveSettings({ ...settings, globalListId: lists[0]?.id ?? null });
+    }
+  }
+
+  async function selectList(id: number) {
+    await onSaveSettings({ ...settings, globalListId: id });
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          Options {optionSaving && <Loader2 size={10} className="inline animate-spin ml-1 text-slate-300" />}
+        </label>
+        {/* Global list toggle */}
+        <button
+          onClick={toggleGlobal}
+          className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+            useGlobal
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'
+          }`}
+          title={useGlobal ? 'Switch to manual options' : 'Use a global list'}
+        >
+          {loadingLists ? <Loader2 size={9} className="animate-spin" /> : <Globe size={9} />}
+          {useGlobal ? 'Global list' : 'Use global list'}
+        </button>
+      </div>
+
+      {useGlobal ? (
+        <div className="flex flex-col gap-2">
+          {/* List picker */}
+          <select
+            value={selectedListId ?? ''}
+            onChange={(e) => void selectList(Number(e.target.value))}
+            className={`${diSm} appearance-none`}
+          >
+            {globalLists.length === 0 && <option value="">No lists yet — create one in Global Lists</option>}
+            {globalLists.map((l) => (
+              <option key={l.id} value={l.id}>{l.name} ({l.items.length} items)</option>
+            ))}
+          </select>
+          {/* Preview */}
+          {selectedList && selectedList.items.length > 0 && (
+            <div className="bg-slate-50 rounded-xl border border-slate-100 px-3 py-2 flex flex-col gap-1">
+              {selectedList.items.slice(0, 5).map((item, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                  <span className="text-xs text-slate-500 truncate">{item}</span>
+                </div>
+              ))}
+              {selectedList.items.length > 5 && (
+                <span className="text-[10px] text-slate-400 pl-4">+{selectedList.items.length - 5} more</span>
+              )}
+            </div>
+          )}
+          {selectedList && selectedList.items.length === 0 && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              This list has no items yet. Add items in Global Lists.
+            </p>
+          )}
+          {globalLists.length === 0 && !loadingLists && (
+            <p className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+              No global lists found. <a href="/studio/global-lists" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Create one →</a>
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1.5 mb-2">
+            {options.map((opt, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <GripVertical size={12} className="text-slate-300 shrink-0" />
+                <input type="text" value={opt} onChange={(e) => onEditOption(i, e.target.value)} onBlur={() => onBlurOption(i)}
+                  className={`${diSm} flex-1 min-w-0`} />
+                <button onClick={() => onRemoveOption(i)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors">
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="text" value={newOption} onChange={(e) => setNewOption(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void onAddOption(); }}
+              placeholder="Add option…" className={`${diSm} flex-1 min-w-0`} />
+            <button onClick={onAddOption}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-violet-700 rounded-lg transition-colors">
+              Add
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Field card ────────────────────────────────────────────────────────────────
 
 interface FieldCardProps {
@@ -656,32 +819,19 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
 
                   {/* Options */}
                   {showOptions && (
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">
-                        Options {optionSaving && <Loader2 size={10} className="inline animate-spin ml-1 text-slate-300" />}
-                      </label>
-                      <div className="flex flex-col gap-1.5 mb-2">
-                        {options.map((opt, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <GripVertical size={12} className="text-slate-300 shrink-0" />
-                            <input type="text" value={opt} onChange={(e) => editOption(i, e.target.value)} onBlur={() => blurOption(i)}
-                              className={`${diSm} flex-1 min-w-0`} />
-                            <button onClick={() => removeOption(i)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors">
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <input type="text" value={newOption} onChange={(e) => setNewOption(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') void addOption(); }}
-                          placeholder="Add option…" className={`${diSm} flex-1 min-w-0`} />
-                        <button onClick={addOption}
-                          className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-violet-700 rounded-lg transition-colors">
-                          Add
-                        </button>
-                      </div>
-                    </div>
+                    <GlobalListOptionsEditor
+                      settings={settings}
+                      options={options}
+                      optionSaving={optionSaving}
+                      onSaveSettings={saveSettings}
+                      onAddOption={addOption}
+                      onRemoveOption={removeOption}
+                      onEditOption={editOption}
+                      onBlurOption={blurOption}
+                      newOption={newOption}
+                      setNewOption={setNewOption}
+                      diSm={diSm}
+                    />
                   )}
 
                   {/* Type-specific settings */}

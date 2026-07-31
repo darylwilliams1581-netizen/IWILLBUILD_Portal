@@ -71,6 +71,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/studio", changefreq: "monthly", priority: 0.8 },
   { path: "/studio/documents", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/forms", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/global-lists", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/library", changefreq: "monthly", priority: 0.5 },
   { path: "/safety/posters", changefreq: "monthly", priority: 0.5 },
   { path: "/job-docs", changefreq: "monthly", priority: 0.8 },
