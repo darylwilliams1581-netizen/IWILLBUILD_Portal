@@ -9,7 +9,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, ChevronDown, AlertTriangle, Plus, Trash2, CheckCircle2,
   Lock, Loader2, Users, ClipboardCheck, X, Save,
-  ShieldAlert, Home, ChevronRight,
+  ShieldAlert, Home, ChevronRight, Paperclip, FileText, Image, Download, Printer,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -42,6 +42,16 @@ interface ThirdParty {
   injury_damage_alleged: boolean;
   statement_taken: boolean;
   is_witness: boolean;
+}
+
+interface Attachment {
+  id: number;
+  file_type: 'image' | 'pdf' | 'document';
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  public_url: string;
+  created_at: string;
 }
 
 interface FullIncident extends Incident {
@@ -325,6 +335,10 @@ export default function IncidentDetailPage() {
 
   const [correctiveActions, setCorrectiveActions] = useState<CorrectiveAction[]>([]);
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing
   const loadIncident = useCallback(async () => {
@@ -369,6 +383,12 @@ export default function IncidentDetailPage() {
           ? JSON.parse(data.third_parties)
           : (data.third_parties ?? [])
       );
+      // Load attachments
+      const ar = await fetch(`/api/incidents/${incidentId}/attachments`);
+      if (ar.ok) {
+        const ad = await ar.json() as { attachments: Attachment[] };
+        setAttachments(ad.attachments ?? []);
+      }
     } finally {
       setLoading(false);
     }
@@ -567,6 +587,34 @@ export default function IncidentDetailPage() {
     setThirdParties(prev => prev.filter(p => p.id !== tp.id));
   }
 
+  async function handleUploadFiles(files: FileList | null) {
+    if (!files || files.length === 0 || !incidentId) return;
+    setUploadingFiles(true);
+    try {
+      const fd = new FormData();
+      for (let i = 0; i < files.length; i++) fd.append('files', files[i]);
+      const r = await fetch(`/api/incidents/${incidentId}/attachments`, { method: 'POST', body: fd });
+      if (r.ok) {
+        const d = await r.json() as { attachments: Attachment[] };
+        setAttachments(prev => [...prev, ...d.attachments.filter(a => a.id)]);
+      }
+    } finally {
+      setUploadingFiles(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDeleteAttachment(a: Attachment) {
+    if (!incidentId) return;
+    await fetch(`/api/incidents/${incidentId}/attachments/${a.id}`, { method: 'DELETE' });
+    setAttachments(prev => prev.filter(x => x.id !== a.id));
+  }
+
+  function handlePrint() {
+    if (!incidentId) return;
+    window.open(`/api/incidents/${incidentId}/pdf`, '_blank');
+  }
+
   const isClosed = incident?.status === 'closed';
   const pageTitle = isNew ? 'New Incident' : `Incident #${incidentId}`;
 
@@ -636,10 +684,27 @@ export default function IncidentDetailPage() {
                 surface="dark"
                 items={[
                   {
+                    label: 'Print / Download PDF',
+                    icon: <Printer size={15} />,
+                    onSelect: handlePrint,
+                  },
+                  {
                     label: 'Close Incident',
                     icon: <Lock size={15} />,
                     onSelect: () => setShowCloseModal(true),
                     destructive: true,
+                  },
+                ]}
+              />
+            )}
+            {!isNew && isClosed && (
+              <MobileOverflowMenu
+                surface="dark"
+                items={[
+                  {
+                    label: 'Print / Download PDF',
+                    icon: <Printer size={15} />,
+                    onSelect: handlePrint,
                   },
                 ]}
               />
@@ -1088,6 +1153,127 @@ export default function IncidentDetailPage() {
             </div>
           </section>
 
+          {/* Attachments */}
+          {!isNew && (
+            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                  <Paperclip size={13} /> Photos &amp; Attachments
+                  {attachments.length > 0 && (
+                    <span className="bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5 rounded-full font-normal">{attachments.length}</span>
+                  )}
+                </h2>
+                {!isClosed && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingFiles}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    {uploadingFiles ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    Add
+                  </button>
+                )}
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                multiple
+                className="hidden"
+                onChange={e => handleUploadFiles(e.target.files)}
+              />
+
+              {attachments.length === 0 && (
+                <div
+                  className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`}
+                  onClick={() => !isClosed && fileInputRef.current?.click()}
+                >
+                  <Paperclip size={20} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-xs text-slate-400">{isClosed ? 'No attachments' : 'Tap to add photos or PDFs'}</p>
+                </div>
+              )}
+
+              {attachments.length > 0 && (
+                <div className="space-y-3">
+                  {/* Photo grid */}
+                  {attachments.filter(a => a.file_type === 'image').length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><Image size={11} /> Photos</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {attachments.filter(a => a.file_type === 'image').map(a => (
+                          <div key={a.id} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
+                            <img
+                              src={a.public_url}
+                              alt={a.original_name}
+                              className="w-full h-full object-cover cursor-pointer"
+                              onClick={() => setLightboxUrl(a.public_url)}
+                            />
+                            {!isClosed && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAttachment(a)}
+                                className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X size={11} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {!isClosed && (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-red-300 hover:text-red-400 transition-colors"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PDF / document list */}
+                  {attachments.filter(a => a.file_type !== 'image').length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><FileText size={11} /> Documents</p>
+                      <div className="space-y-1.5">
+                        {attachments.filter(a => a.file_type !== 'image').map(a => (
+                          <div key={a.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+                            <FileText size={16} className="text-red-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-700 truncate">{a.original_name}</p>
+                              <p className="text-xs text-slate-400">{(a.size_bytes / 1024).toFixed(0)} KB</p>
+                            </div>
+                            <a
+                              href={a.public_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                              <Download size={15} />
+                            </a>
+                            {!isClosed && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAttachment(a)}
+                                className="text-slate-300 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Closed info */}
           {isClosed && incident && (
             <div className="bg-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-1">
@@ -1138,6 +1324,28 @@ export default function IncidentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Photo lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/70 hover:text-white"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X size={28} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Attachment"
+            className="max-w-full max-h-full rounded-xl object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Close modal */}
       {showCloseModal && (

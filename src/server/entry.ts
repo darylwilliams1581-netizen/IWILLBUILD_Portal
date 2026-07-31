@@ -291,6 +291,10 @@ import incidents_incidentId_corrective_actions_post_258 from "./api/incidents/[i
 import incidents_incidentId_corrective_actions_actionId_put_259 from "./api/incidents/[incidentId]/corrective-actions/[actionId]/PUT";
 import incidents_incidentId_third_parties_post_260 from "./api/incidents/[incidentId]/third-parties/POST";
 import incidents_incidentId_third_parties_thirdPartyId_delete_261 from "./api/incidents/[incidentId]/third-parties/[thirdPartyId]/DELETE";
+import incidents_incidentId_attachments_post_262a from "./api/incidents/[incidentId]/attachments/POST";
+import incidents_incidentId_attachments_get_262aa from "./api/incidents/[incidentId]/attachments/GET";
+import incidents_incidentId_attachments_attachId_delete_262b from "./api/incidents/[incidentId]/attachments/[attachId]/DELETE";
+import incidents_incidentId_pdf_get_262c from "./api/incidents/[incidentId]/pdf/GET";
 import integrations_myob_auth_url_get_262 from "./api/integrations/myob/auth-url/GET";
 import integrations_myob_callback_get_263 from "./api/integrations/myob/callback/GET";
 import integrations_myob_disconnect_post_264 from "./api/integrations/myob/disconnect/POST";
@@ -2521,6 +2525,34 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── incident_attachments ──────────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS incident_attachments (
+        id               INT PRIMARY KEY AUTO_INCREMENT,
+        incident_id      INT NOT NULL,
+        company_id       INT NOT NULL,
+        file_type        VARCHAR(20) NOT NULL DEFAULT 'image',
+        original_name    VARCHAR(500) NOT NULL,
+        storage_key      VARCHAR(500) NOT NULL,
+        storage_provider VARCHAR(50) NOT NULL DEFAULT 'local',
+        mime_type        VARCHAR(100) NOT NULL,
+        size_bytes       INT NOT NULL DEFAULT 0,
+        public_url       TEXT NOT NULL,
+        uploaded_by      VARCHAR(255) NULL,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ia_incident (incident_id),
+        INDEX idx_ia_company (company_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] incident_attachments table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] incident_attachments CREATE failed:', msg);
+    }
+  }
+
   // ── Job Cards ─────────────────────────────────────────────────────────────────
   // Three tables: job_cards (header), job_card_materials (line items), job_card_photos
   const jobCardTables = [
@@ -2985,6 +3017,10 @@ app.post("/api/incidents/:incidentId/corrective-actions", incidents_incidentId_c
 app.put("/api/incidents/:incidentId/corrective-actions/:actionId", incidents_incidentId_corrective_actions_actionId_put_259);
 app.post("/api/incidents/:incidentId/third-parties", incidents_incidentId_third_parties_post_260);
 app.delete("/api/incidents/:incidentId/third-parties/:thirdPartyId", incidents_incidentId_third_parties_thirdPartyId_delete_261);
+app.get("/api/incidents/:incidentId/attachments", incidents_incidentId_attachments_get_262aa);
+app.post("/api/incidents/:incidentId/attachments", incidents_incidentId_attachments_post_262a);
+app.delete("/api/incidents/:incidentId/attachments/:attachId", incidents_incidentId_attachments_attachId_delete_262b);
+app.get("/api/incidents/:incidentId/pdf", incidents_incidentId_pdf_get_262c);
 app.get("/api/integrations/myob/auth-url", integrations_myob_auth_url_get_262);
 app.get("/api/integrations/myob/callback", integrations_myob_callback_get_263);
 app.post("/api/integrations/myob/disconnect", integrations_myob_disconnect_post_264);
