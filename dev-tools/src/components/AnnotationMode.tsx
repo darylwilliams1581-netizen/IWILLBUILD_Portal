@@ -77,9 +77,13 @@ function rectFromDraft(draft: DraftBox): Box {
   }
 }
 
+function viewportWidthExcludingScrollbarGutter(): number {
+  return document.documentElement.clientWidth
+}
+
 function getDocSize(): DocSize {
   return {
-    width: document.documentElement.scrollWidth,
+    width: viewportWidthExcludingScrollbarGutter(),
     height: document.documentElement.scrollHeight,
   }
 }

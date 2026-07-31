@@ -74,6 +74,7 @@ beforeEach(function setup() {
   document.body.innerHTML = ''
   Object.defineProperty(document.documentElement, 'scrollWidth', { value: 1000, configurable: true })
   Object.defineProperty(document.documentElement, 'scrollHeight', { value: 800, configurable: true })
+  Object.defineProperty(document.documentElement, 'clientWidth', { value: 1000, configurable: true })
   Object.defineProperty(window, 'scrollX', { value: 0, configurable: true })
   Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   Object.defineProperty(window, 'innerHeight', { value: 400, configurable: true })
@@ -229,5 +230,34 @@ describe('AnnotationMode', function annotationModeTests() {
     expect(payload.resolvedElement).toBeDefined()
     expect(payload.resolvedElement?.resolved).toBe(false)
     expect(payload.resolvedElement?.kind).toBeNull()
+  })
+})
+
+describe('AnnotationMode overlay sizing', function overlaySizingTests() {
+  it('sizes overlay width from clientWidth, not scrollWidth', function widthFromClientWidth() {
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: 1000, configurable: true })
+    Object.defineProperty(document.documentElement, 'scrollWidth', { value: 1006, configurable: true })
+    Object.defineProperty(document.documentElement, 'scrollHeight', { value: 4000, configurable: true })
+
+    render(createElement(AnnotationMode, { isActive: true }))
+
+    const overlay = getOverlay()
+    expect(overlay.getAttribute('width')).toBe('1000')
+    expect(overlay.getAttribute('height')).toBe('4000')
+  })
+
+  it('shrinks overlay width when the viewport narrows (no scrollWidth ratchet)', function noRatchet() {
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: 1300, configurable: true })
+    Object.defineProperty(document.documentElement, 'scrollWidth', { value: 1300, configurable: true })
+
+    render(createElement(AnnotationMode, { isActive: true }))
+    expect(getOverlay().getAttribute('width')).toBe('1300')
+
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: 500, configurable: true })
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(getOverlay().getAttribute('width')).toBe('500')
   })
 })
