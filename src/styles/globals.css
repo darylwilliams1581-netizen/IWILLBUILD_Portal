@@ -355,27 +355,38 @@ input, select, textarea {
 }
 
 /* ── iOS font-size zoom prevention ──────────────────────────────────────────
-   iOS Safari zooms in when an input has font-size < 16px.
-   Setting font-size: 16px on focus prevents the zoom without changing the
-   visual appearance (the zoom is a browser behaviour, not a CSS effect).
-   We use max() so the font never goes below 16px on iOS but respects larger
-   sizes set by the component.
+   iOS Safari auto-zooms the viewport when any focused input has font-size
+   below 16px — and critically, it does NOT zoom back out when you blur.
+   This leaves the page stuck zoomed in until the user manually pinches out.
+
+   FIX: Force font-size: 16px on ALL inputs/selects/textareas unconditionally.
+   The visual appearance (compact sizing) is controlled by padding and height,
+   not font-size, so this has zero visual impact on the UI.
+
+   We do NOT use @media (max-width: 768px) because:
+   1. iOS reports its viewport width in CSS pixels which can exceed 768px on
+      iPads and landscape iPhones — the media query misses those cases.
+   2. The zoom behaviour is triggered by the font-size value, not screen size.
+
+   We do NOT use maximum-scale=1 in the viewport meta — that disables
+   intentional user pinch-zoom, which is an accessibility violation.
 */
-@media (max-width: 768px) {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="search"],
-  input[type="date"],
-  input[type="time"],
-  input[type="datetime-local"],
-  select,
-  textarea {
-    font-size: max(16px, 1em);
-  }
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"],
+input[type="color"],
+select,
+textarea {
+  font-size: 16px !important;
 }
 
 /* ── Flex children overflow guard ───────────────────────────────────────────
