@@ -420,6 +420,7 @@ export default function FleetPage() {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <PortalErrorBoundary inline>
                 <Suspense fallback={
                   <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
@@ -430,6 +431,7 @@ export default function FleetPage() {
                   <FleetLiveMap key="fleet-live-map" />
                 </Suspense>
               </PortalErrorBoundary>
+            </div>
           )}
 
           {/* ── Tracker Portal view — REMOVED, replaced by Quick Links ── */}
