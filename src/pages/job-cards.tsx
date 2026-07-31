@@ -11,7 +11,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import {
   Zap, Plus, Search, X, ChevronRight, RefreshCw,
   CheckCircle2, Clock, AlertCircle, Receipt,
-  ArrowRightLeft, Camera,
+  ArrowRightLeft, Camera, ChevronLeft,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -308,7 +308,8 @@ export default function JobCardsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [invoiceFilter, setInvoiceFilter] = useState('all');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false); // kept for type-safety; unused after nav refactor
+  void setCreateOpen;
   const [page, setPage] = useState(0);
   const LIMIT = 50;
 
@@ -347,9 +348,8 @@ export default function JobCardsPage() {
     searchTimer.current = setTimeout(() => void fetchCards({ reset: true }), 350);
   }
 
-  function handleCreated(id: number) {
+  function handleCreated(_id: number) {
     void fetchCards({ reset: true });
-    navigate(`/job-cards/${id}`);
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -366,10 +366,28 @@ export default function JobCardsPage() {
       <PortalSidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* ── Mobile back bar ── */}
+        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100 shrink-0 safe-top">
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-1 text-sm font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+          >
+            <ChevronLeft size={18} />
+            Home
+          </button>
+        </div>
+
         {/* ── Page header ── */}
-        <div className="bg-white border-b border-gray-100 px-6 py-4 shrink-0">
+        <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-4 shrink-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
+              {/* Desktop back */}
+              <button
+                onClick={() => navigate('/home')}
+                className="hidden lg:flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-gray-700 transition-colors mr-1"
+              >
+                <ChevronLeft size={16} />
+              </button>
               <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center shrink-0">
                 <Zap size={16} className="text-yellow-600" />
               </div>
@@ -387,7 +405,7 @@ export default function JobCardsPage() {
                 <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               </button>
               <button
-                onClick={() => setCreateOpen(true)}
+                onClick={() => navigate('/job-cards/new')}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors"
               >
                 <Plus size={15} />
@@ -469,7 +487,7 @@ export default function JobCardsPage() {
               </p>
               {!search && statusFilter === 'all' && invoiceFilter === 'all' && (
                 <button
-                  onClick={() => setCreateOpen(true)}
+                  onClick={() => navigate('/job-cards/new')}
                   className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors"
                 >
                   <Plus size={14} />
@@ -581,8 +599,6 @@ export default function JobCardsPage() {
           </div>
         )}
       </main>
-
-      <CreateSheet open={createOpen} onClose={() => setCreateOpen(false)} onCreated={handleCreated} />
     </div>
   );
 }

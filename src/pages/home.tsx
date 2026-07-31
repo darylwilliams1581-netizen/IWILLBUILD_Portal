@@ -2188,7 +2188,7 @@ export default function HomeScreen() {
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
-    if (href === '?panel=job-card') { setJobCardOpen(true); return; }
+    // job-card now navigates directly to /job-cards
     if (href === '?panel=camera') { navigate('/camera'); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);

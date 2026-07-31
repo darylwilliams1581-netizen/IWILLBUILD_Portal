@@ -72,6 +72,7 @@ const ListsPage          = lazy(() => import('./pages/lists'));
 const UserLogsPage       = lazy(() => import('./pages/user-logs'));
 const QuickLinksPage     = lazy(() => import('./pages/quick-links'));
 const JobCardsPage       = lazy(() => import('./pages/job-cards'));
+const JobCardNewPage     = lazy(() => import('./pages/job-card-new'));
 const JobCardDetailPage  = lazy(() => import('./pages/job-card-detail'));
 
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
@@ -259,8 +260,9 @@ export const routes: RouteObject[] = [
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/lists',         element: protect(<ListsPage />),           errorElement: routeError },
   { path: '/user-logs',     element: protect(<UserLogsPage />),        errorElement: routeError },
-  { path: '/job-cards',     element: protect(<JobCardsPage />),        errorElement: routeError },
-  { path: '/job-cards/:id', element: protect(<JobCardDetailPage />),   errorElement: routeError },
+  { path: '/job-cards',      element: protect(<Suspense fallback={<PageLoader />}><JobCardsPage /></Suspense>),     errorElement: routeError },
+  { path: '/job-cards/new',  element: protect(<Suspense fallback={<PageLoader />}><JobCardNewPage /></Suspense>),  errorElement: routeError },
+  { path: '/job-cards/:id',  element: protect(<Suspense fallback={<PageLoader />}><JobCardDetailPage /></Suspense>), errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)
   { path: '/view/file/:id',     element: protect(<ViewFilePage />),     errorElement: routeError },
