@@ -344,7 +344,7 @@ export default function FleetPage() {
       <h1 className="sr-only">Fleet</h1>
 
       <PortalErrorBoundary inline>
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Header — back/title left · view toggle centre · add asset right */}
         <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
           <div className="flex items-center gap-2 px-3 h-12 min-w-0">

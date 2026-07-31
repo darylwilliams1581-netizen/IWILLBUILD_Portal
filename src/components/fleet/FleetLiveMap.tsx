@@ -728,7 +728,7 @@ export default function FleetLiveMap() {
   const sidebarIcon = mapMode === 'live' ? <Users size={10} /> : <Truck size={10} />;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
+    <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0, flex: '1 1 0' }}>
 
       {/* ── Header bar ── */}
       <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-200 bg-white shrink-0 flex-wrap">
@@ -866,9 +866,9 @@ export default function FleetLiveMap() {
         {/* ── Map area ── */}
         <div
           className="flex-1 relative min-w-0 overflow-hidden"
-          style={{ minHeight: 'min(60vh, 400px)' }}
+          style={{ minHeight: 'min(60vh, 400px)', flex: '1 1 0' }}
         >
-          <div ref={mapRef} className="absolute inset-0" />
+          <div ref={mapRef} className="absolute inset-0" style={{ minHeight: '300px' }} />
 
           {/* Map load error — shows exact diagnostic reason + clean retry */}
           {mapError && (
