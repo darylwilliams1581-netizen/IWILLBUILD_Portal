@@ -728,9 +728,9 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
         </div>
         <div className="flex-1 border-t border-dashed border-slate-200" />
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={onMoveUp} disabled={index === 0} className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-slate-700 transition-colors"><ChevronUp size={14} /></button>
-          <button onClick={onMoveDown} disabled={index === total - 1} className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-slate-700 transition-colors"><ChevronDown size={14} /></button>
-          <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={13} /></button>
+          <button onClick={onMoveUp} disabled={index === 0} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-600 hover:text-slate-800 transition-colors"><ChevronUp size={14} /></button>
+          <button onClick={onMoveDown} disabled={index === total - 1} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-600 hover:text-slate-800 transition-colors"><ChevronDown size={14} /></button>
+          <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors"><Trash2 size={13} /></button>
         </div>
       </motion.div>
     );
@@ -760,10 +760,10 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
               </p>
             </div>
             <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-              <button onClick={onMoveUp} disabled={index === 0} className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-slate-700 transition-colors"><ChevronUp size={14} /></button>
-              <button onClick={onMoveDown} disabled={index === total - 1} className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-slate-700 transition-colors"><ChevronDown size={14} /></button>
-              <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={13} /></button>
-              <ChevronDownIcon size={14} className={`text-slate-500 transition-transform ml-1 ${expanded ? 'rotate-180' : ''}`} />
+              <button onClick={onMoveUp} disabled={index === 0} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-600 hover:text-slate-800 transition-colors"><ChevronUp size={14} /></button>
+              <button onClick={onMoveDown} disabled={index === total - 1} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-600 hover:text-slate-800 transition-colors"><ChevronDown size={14} /></button>
+              <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors"><Trash2 size={13} /></button>
+              <ChevronDownIcon size={14} className={`text-slate-600 transition-transform ml-1 ${expanded ? 'rotate-180' : ''}`} />
             </div>
           </div>
 

@@ -84,14 +84,14 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pt-[120px]">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.15 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85dvh] lg:max-h-[calc(100dvh-128px)] overflow-y-auto"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-heading font-bold text-base">New Fleet Asset</h2>
@@ -121,7 +121,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5">Asset / Rego Number</label>
+              <label className="block text-xs font-semibold mb-1.5">Asset Number</label>
               <input
                 type="text"
                 value={form.assetNumber}
@@ -165,7 +165,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5">Rego Plate</label>
+              <label className="block text-xs font-semibold mb-1.5">Rego Number</label>
               <input
                 type="text"
                 value={form.rego}
@@ -188,7 +188,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
               </label>
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-semibold mb-1.5">Service Due Date</label>
               <input
                 type="date"
@@ -198,7 +198,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
               />
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-semibold mb-1.5">Rego Expiry Date</label>
               <input
                 type="date"
