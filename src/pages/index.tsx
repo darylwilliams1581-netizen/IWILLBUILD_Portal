@@ -1118,67 +1118,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Site Escape Arcade — compact icon link ──────────────────────────── */}
-      <section id="arcade" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 60%, #0f172a 100%)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{
-          position: 'absolute', inset: 0, opacity: 0.05,
-          backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
-          backgroundSize: '48px 48px', pointerEvents: 'none',
-        }} />
-        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', padding: '48px 22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <a
-            href="/site-escape.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 16,
-              background: 'rgba(255,255,255,.05)',
-              border: '2px solid rgba(255,212,71,0.45)',
-              borderRadius: 20,
-              padding: '18px 28px',
-              textDecoration: 'none',
-              boxShadow: '0 8px 32px rgba(0,0,0,.45), 0 0 32px rgba(249,115,22,.12)',
-              transition: 'transform .15s ease, box-shadow .15s ease',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)';
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 14px 40px rgba(0,0,0,.5), 0 0 48px rgba(249,115,22,.22)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 8px 32px rgba(0,0,0,.45), 0 0 32px rgba(249,115,22,.12)';
-            }}
-          >
-            {/* Bobcat icon */}
-            <div style={{
-              width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-              background: 'linear-gradient(135deg, #1e3a5f, #0f172a)',
-              border: '2px solid rgba(255,212,71,0.5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 26,
-            }}>
-              🚜
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                <span style={{ color: '#fff', fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em' }}>Site Escape</span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-                  background: 'rgba(249,115,22,.2)', border: '1px solid rgba(249,115,22,.4)',
-                  color: '#fb923c', borderRadius: 6, padding: '2px 7px',
-                }}>ARCADE</span>
-                {/* external link arrow */}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-              </div>
-              <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
-                Dodge workers &amp; outrun the safety officer
-              </p>
-            </div>
-          </a>
-        </div>
-      </section>
 
       {/* ── Final CTA ──────────────────────────────────────────────────────── */}
       <section style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0' }}>
