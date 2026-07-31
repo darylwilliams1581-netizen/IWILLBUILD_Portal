@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  ChevronLeft, AlertTriangle, Plus, Trash2, CheckCircle2,
+  ChevronLeft, ChevronDown, AlertTriangle, Plus, Trash2, CheckCircle2,
   Lock, Loader2, Users, ClipboardCheck, X, Save,
   ShieldAlert, Home, ChevronRight,
 } from 'lucide-react';
@@ -77,6 +77,153 @@ function emptyThirdParty(): ThirdParty {
 
 function emptyAction(): CorrectiveAction {
   return { action: '', owner: '', due_date: '', status: 'open', notes: '' };
+}
+
+// ── Job selector ──────────────────────────────────────────────────────────────
+
+interface JobOption { id: number; name: string; job_number: string | null; customer_name: string | null; }
+
+function JobSelector({
+  jobId, jobName, jobNumber, customerName,
+  onChange, disabled,
+}: {
+  jobId: string; jobName: string; jobNumber: string; customerName: string;
+  onChange: (patch: { jobId: string; jobName: string; jobNumber: string; customerName: string }) => void;
+  disabled?: boolean;
+}) {
+  const [jobs, setJobs] = useState<JobOption[]>([]);
+  const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/forms/jobs-list')
+      .then(r => r.ok ? r.json() : [])
+      .then((d: JobOption[]) => setJobs(d))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // If jobId is set but not in the list, show manual mode
+  const selectedJob = jobs.find(j => String(j.id) === jobId);
+  const displayLabel = jobId === '0' ? 'No job / not on site'
+    : selectedJob ? `${selectedJob.name}${selectedJob.job_number ? ` · #${selectedJob.job_number}` : ''}`
+    : jobName || 'Select job…';
+
+  function selectJob(job: JobOption | null) {
+    if (!job) {
+      onChange({ jobId: '0', jobName: '', jobNumber: '', customerName: '' });
+    } else {
+      onChange({
+        jobId: String(job.id),
+        jobName: job.name,
+        jobNumber: job.job_number ?? '',
+        customerName: job.customer_name ?? '',
+      });
+    }
+    setOpen(false);
+    setManual(false);
+  }
+
+  if (manual) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2">
+          <input
+            type="text" value={jobName}
+            onChange={e => onChange({ jobId: '', jobName: e.target.value, jobNumber, customerName })}
+            disabled={disabled} placeholder="Job name"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50"
+          />
+          <input
+            type="text" value={jobNumber}
+            onChange={e => onChange({ jobId: '', jobName, jobNumber: e.target.value, customerName })}
+            disabled={disabled} placeholder="Job number (optional)"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50"
+          />
+          <input
+            type="text" value={customerName}
+            onChange={e => onChange({ jobId: '', jobName, jobNumber, customerName: e.target.value })}
+            disabled={disabled} placeholder="Customer / client (optional)"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50"
+          />
+        </div>
+        {!disabled && (
+          <button type="button" onClick={() => setManual(false)}
+            className="text-xs text-violet-600 hover:underline">
+            ← Back to job selector
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button" disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors disabled:cursor-default disabled:bg-slate-50 disabled:text-slate-400 ${
+          open ? 'border-slate-300 ring-2 ring-violet-400 bg-white' : 'border-slate-200 bg-white hover:border-slate-300'
+        }`}
+      >
+        <span className={jobId ? 'text-slate-700 font-medium' : 'text-slate-400'}>{displayLabel}</span>
+        <ChevronDown size={15} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Selected job detail pill */}
+      {jobId && jobId !== '0' && selectedJob?.customer_name && (
+        <p className="text-xs text-slate-400 mt-1 pl-1">{selectedJob.customer_name}</p>
+      )}
+
+      {open && (
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="max-h-60 overflow-y-auto divide-y divide-slate-50">
+            {/* No job option */}
+            <button type="button" onClick={() => selectJob(null)}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors ${
+                jobId === '0' ? 'bg-slate-50 text-slate-700 font-semibold' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              <span className="text-slate-400 text-xs">—</span>
+              No job / not on site
+            </button>
+            {jobs.map(job => (
+              <button key={job.id} type="button" onClick={() => selectJob(job)}
+                className={`w-full flex flex-col px-4 py-2.5 text-left transition-colors ${
+                  String(job.id) === jobId ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-sm font-medium">{job.name}</span>
+                <span className="text-xs text-slate-400">
+                  {[job.job_number ? `#${job.job_number}` : null, job.customer_name].filter(Boolean).join(' · ')}
+                </span>
+              </button>
+            ))}
+            {jobs.length === 0 && (
+              <p className="px-4 py-3 text-xs text-slate-400">No jobs found</p>
+            )}
+          </div>
+          <div className="px-4 py-2 border-t border-slate-100 flex justify-between items-center">
+            <button type="button" onClick={() => { setManual(true); setOpen(false); }}
+              className="text-xs text-violet-600 hover:underline">
+              Enter manually
+            </button>
+            <button type="button" onClick={() => setOpen(false)}
+              className="text-xs font-semibold text-slate-500">Done</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Toggle chip ───────────────────────────────────────────────────────────────
@@ -577,14 +724,14 @@ export default function IncidentDetailPage() {
 
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Severity <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-4 gap-2 incident-severity-grid">
+              <div className="grid grid-cols-2 gap-2">
                 {SEVERITY_OPTIONS.map(s => (
                   <button
                     key={s.value}
                     type="button"
                     onClick={() => !isClosed && updateForm({ severity: s.value })}
                     disabled={isClosed}
-                    className={`py-2 rounded-xl border-2 text-xs font-semibold transition-colors disabled:cursor-default ${
+                    className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default ${
                       form.severity === s.value
                         ? `${s.color} border-current`
                         : 'border-slate-200 text-slate-500'
@@ -600,41 +747,14 @@ export default function IncidentDetailPage() {
           {/* Job link */}
           <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Job (optional)</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Job name</label>
-                <input
-                  type="text"
-                  value={form.jobName}
-                  onChange={e => updateForm({ jobName: e.target.value })}
-                  disabled={isClosed}
-                  placeholder="Job name"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Job number</label>
-                <input
-                  type="text"
-                  value={form.jobNumber}
-                  onChange={e => updateForm({ jobNumber: e.target.value })}
-                  disabled={isClosed}
-                  placeholder="Job #"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Customer</label>
-              <input
-                type="text"
-                value={form.customerName}
-                onChange={e => updateForm({ customerName: e.target.value })}
-                disabled={isClosed}
-                placeholder="Customer / client name"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
+            <JobSelector
+              jobId={form.jobId}
+              jobName={form.jobName}
+              jobNumber={form.jobNumber}
+              customerName={form.customerName}
+              onChange={patch => updateForm(patch)}
+              disabled={isClosed}
+            />
           </section>
 
           {/* Description */}
@@ -753,44 +873,44 @@ export default function IncidentDetailPage() {
 
                 {showAddThirdParty && (
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <input
                         type="text"
                         value={newThirdParty.name}
                         onChange={e => setNewThirdParty(p => ({ ...p, name: e.target.value }))}
                         placeholder="Name"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                       <input
                         type="text"
                         value={newThirdParty.company_org}
                         onChange={e => setNewThirdParty(p => ({ ...p, company_org: e.target.value }))}
                         placeholder="Company / organisation"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                     </div>
                     <select
                       value={newThirdParty.role_type}
                       onChange={e => setNewThirdParty(p => ({ ...p, role_type: e.target.value }))}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     >
                       <option value="">Role / type…</option>
                       {incident_detail.THIRD_PARTY_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <input
                         type="tel"
                         value={newThirdParty.contact_phone}
                         onChange={e => setNewThirdParty(p => ({ ...p, contact_phone: e.target.value }))}
                         placeholder="Phone (optional)"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                       <input
                         type="email"
                         value={newThirdParty.contact_email}
                         onChange={e => setNewThirdParty(p => ({ ...p, contact_email: e.target.value }))}
                         placeholder="Email (optional)"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                     </div>
                     <textarea
@@ -798,36 +918,36 @@ export default function IncidentDetailPage() {
                       onChange={e => setNewThirdParty(p => ({ ...p, involvement: e.target.value }))}
                       placeholder="Involvement description (required)"
                       rows={2}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none"
                     />
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex gap-4 flex-wrap pt-1">
                       {[
                         { key: 'injury_damage_alleged' as const, label: 'Injury/damage alleged' },
                         { key: 'statement_taken' as const, label: 'Statement taken' },
                         { key: 'is_witness' as const, label: 'Witness' },
                       ].map(({ key, label }) => (
-                        <label key={key} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                        <label key={key} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={newThirdParty[key]}
                             onChange={e => setNewThirdParty(p => ({ ...p, [key]: e.target.checked }))}
-                            className="rounded"
+                            className="rounded w-4 h-4"
                           />
                           {label}
                         </label>
                       ))}
                     </div>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setShowAddThirdParty(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600">
+                    <div className="flex gap-2 pt-1">
+                      <button type="button" onClick={() => setShowAddThirdParty(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 font-medium">
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={handleAddThirdParty}
                         disabled={savingThirdParty || (!newThirdParty.name.trim() && !newThirdParty.company_org.trim()) || !newThirdParty.involvement.trim()}
-                        className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-40"
+                        className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-40"
                       >
-                        {savingThirdParty ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add'}
+                        {savingThirdParty ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Add'}
                       </button>
                     </div>
                   </div>
