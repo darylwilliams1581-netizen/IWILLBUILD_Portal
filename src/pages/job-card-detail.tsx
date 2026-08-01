@@ -461,17 +461,15 @@ function InvoiceModal({ card, open, onClose, onDone }: {
             <span>This Job Card ({card.card_number}) will be attached as the supporting service record on the invoice.</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Issue date</label>
-              <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Due date</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
-            </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Issue date</label>
+            <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Due date</label>
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
           </div>
 
           <div>
@@ -783,19 +781,17 @@ function EditPanel({ card, customers, team, onSave, onCancel }: {
       {/* Work */}
       <Section title="Work" icon={Wrench}>
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Service date</label>
-              <input type="date" value={form.serviceDate} onChange={e => set('serviceDate', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Assigned worker</label>
-              <select value={form.assignedUserId} onChange={e => set('assignedUserId', e.target.value)}
-                className={`${inputCls} bg-white`}>
-                <option value="">— Unassigned —</option>
-                {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className={labelCls}>Service date</label>
+            <input type="date" value={form.serviceDate} onChange={e => set('serviceDate', e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Assigned worker</label>
+            <select value={form.assignedUserId} onChange={e => set('assignedUserId', e.target.value)}
+              className={`${inputCls} bg-white`}>
+              <option value="">— Unassigned —</option>
+              {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
           </div>
           <div>
             <label className={labelCls}>Work description <span className="text-red-500">*</span></label>
@@ -881,16 +877,14 @@ function EditPanel({ card, customers, team, onSave, onCancel }: {
               placeholder="Summary of work completed, findings, recommendations…"
               className={`${inputCls} resize-none`} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Authorised by</label>
-              <input type="text" value={form.authorisedBy} onChange={e => set('authorisedBy', e.target.value)}
-                placeholder="Customer name" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Approval / sign date</label>
-              <input type="date" value={form.approvalDate} onChange={e => set('approvalDate', e.target.value)} className={inputCls} />
-            </div>
+          <div>
+            <label className={labelCls}>Authorised by</label>
+            <input type="text" value={form.authorisedBy} onChange={e => set('authorisedBy', e.target.value)}
+              placeholder="Customer name" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Approval / sign date</label>
+            <input type="date" value={form.approvalDate} onChange={e => set('approvalDate', e.target.value)} className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>Customer signature</label>

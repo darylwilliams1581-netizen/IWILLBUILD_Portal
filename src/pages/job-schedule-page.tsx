@@ -160,7 +160,7 @@ function MilestoneForm({ initial, onSave, onClose }: MilestoneFormProps) {
             </div>
 
             {/* Dates */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Start Date</label>
                 <input
