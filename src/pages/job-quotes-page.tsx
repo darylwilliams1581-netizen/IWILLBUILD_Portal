@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Loader2, AlertCircle, ChevronLeft,
-  Mail, Share2, ExternalLink, Copy, Trash2, CheckCircle,
+  Mail, Share2, Copy, Trash2, CheckCircle,
   Receipt, ChevronDown, Link2, Link2Off, Home, ArrowRight,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
@@ -21,7 +21,7 @@ function fmtDate(s: string) {
   return new Date(s).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// ── Status dropdown ───────────────────────────────────────────────────────────
+// ── Status pill / dropdown ────────────────────────────────────────────────────
 function StatusDropdown({
   estimate,
   canEdit,
@@ -37,8 +37,8 @@ function StatusDropdown({
 
   if (!canEdit) {
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${style.bg} ${style.color}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${style.bg} ${style.color}`}>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`} />
         {estimate.status}
       </span>
     );
@@ -49,20 +49,25 @@ function StatusDropdown({
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         disabled={saving}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold transition-opacity hover:opacity-80 ${style.bg} ${style.color}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-opacity hover:opacity-80 active:opacity-60 ${style.bg} ${style.color}`}
       >
         {saving
           ? <Loader2 size={10} className="animate-spin" />
-          : <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />}
+          : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`} />}
         {estimate.status}
-        <ChevronDown size={10} />
+        <ChevronDown size={9} />
       </button>
+
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-1.5 z-20 bg-white border border-gray-100 rounded-2xl shadow-xl py-1.5 min-w-[148px]" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.10)' }}>
+          <div
+            className="absolute left-0 top-full mt-1.5 z-20 bg-white border border-gray-100 rounded-2xl py-1.5 min-w-[152px]"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+          >
             {ESTIMATE_STATUSES.map((s) => {
               const st = getEstimateStatusStyle(s);
+              const isCurrent = estimate.status === s;
               return (
                 <button
                   key={s}
@@ -73,11 +78,11 @@ function StatusDropdown({
                     await onStatusChange(estimate.id, s);
                     setSaving(false);
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors ${estimate.status === s ? st.color : 'text-gray-700'}`}
+                  className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] font-semibold transition-colors hover:bg-gray-50 ${isCurrent ? st.color : 'text-gray-700'}`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
                   <span className="flex-1 text-left">{s}</span>
-                  {estimate.status === s && <CheckCircle size={10} className="text-violet-500 shrink-0" />}
+                  {isCurrent && <CheckCircle size={11} className="text-violet-500 shrink-0" />}
                 </button>
               );
             })}
@@ -95,12 +100,12 @@ export default function JobQuotesPage() {
   const { isAdmin, isOwner } = usePermissions();
   const canEdit = isAdmin || isOwner;
 
-  const [job, setJob] = useState<Job | null>(null);
+  const [job, setJob]           = useState<Job | null>(null);
   const [estimates, setEstimates] = useState<Estimate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
   const [creating, setCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId]   = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
@@ -159,13 +164,10 @@ export default function JobQuotesPage() {
   async function handleConvertToInvoice(estimateId: number) {
     setConvertingId(estimateId);
     try {
-      const res = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, {
-        method: 'POST', credentials: 'include',
-      });
-      const data = await res.json() as { invoice_id?: number; invoice?: { id: number }; error?: string };
-      if (res.status === 201 && data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
-      if (res.status === 409 && data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
-      if (data.invoice?.id) { navigate(`/invoices/${data.invoice.id}`); return; }
+      const res  = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, { method: 'POST', credentials: 'include' });
+      const data = await res.json() as { invoice_id?: number; invoice?: { id: number } };
+      const invId = data.invoice_id ?? data.invoice?.id;
+      if (invId) { navigate(`/invoices/${invId}`); return; }
       await load();
     } catch {
       setError('Failed to convert to invoice');
@@ -178,9 +180,9 @@ export default function JobQuotesPage() {
     if (!confirm('The linked invoice was deleted. Unlock this quote and create a new invoice?')) return;
     setConvertingId(estimateId);
     try {
-      const unlockRes = await fetch(`/api/estimates/${estimateId}/unlock`, { method: 'POST', credentials: 'include' });
-      if (!unlockRes.ok) { setError('Failed to unlock quote'); return; }
-      const res = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, { method: 'POST', credentials: 'include' });
+      const unlock = await fetch(`/api/estimates/${estimateId}/unlock`, { method: 'POST', credentials: 'include' });
+      if (!unlock.ok) { setError('Failed to unlock quote'); return; }
+      const res  = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, { method: 'POST', credentials: 'include' });
       const data = await res.json() as { invoice_id?: number };
       if (data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
       await load();
@@ -220,6 +222,7 @@ export default function JobQuotesPage() {
     setTimeout(() => setCopiedId(null), 1800);
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
       <Helmet>
@@ -230,38 +233,40 @@ export default function JobQuotesPage() {
       </Helmet>
       <h1 className="sr-only">{job ? `Quotes — ${job.name}` : 'Quotes'}</h1>
 
-      {/* ── Header ── */}
+      {/* ════════════════════════════════════════════════════════
+          HEADER — single row, locked height, nothing shifts
+          ════════════════════════════════════════════════════════ */}
       <div
         className="bg-white border-b border-gray-100 safe-top shrink-0"
-        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06)' }}
       >
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-2">
 
-          {/* Back */}
+          {/* ← Back */}
           <button
             onClick={() => navigate(`/jobs/${id}`)}
-            className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
             aria-label="Back to job"
+            className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center text-gray-500 transition-colors shrink-0"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={18} strokeWidth={2.5} />
           </button>
 
-          {/* Home */}
+          {/* ⌂ Home */}
           <button
             onClick={() => navigate('/')}
-            className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors shrink-0"
             aria-label="Dashboard"
+            className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors shrink-0"
           >
             <Home size={15} />
           </button>
 
-          {/* Title block — centred */}
-          <div className="flex-1 min-w-0 text-center px-1">
+          {/* Title — centred, flex-1 */}
+          <div className="flex-1 min-w-0 text-center">
             <p className="font-bold text-gray-900 text-[15px] leading-tight tracking-tight">Quotes</p>
-            <p className="text-[11px] text-gray-400 leading-tight truncate mt-px">{job?.name ?? '…'}</p>
+            <p className="text-[11px] text-gray-400 leading-tight truncate">{job?.name ?? '…'}</p>
           </div>
 
-          {/* New button */}
+          {/* + New */}
           {canEdit && (
             <button
               onClick={handleCreate}
@@ -277,11 +282,13 @@ export default function JobQuotesPage() {
         </div>
       </div>
 
-      {/* ── Scrollable content ── */}
+      {/* ════════════════════════════════════════════════════════
+          SCROLLABLE BODY
+          ════════════════════════════════════════════════════════ */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-5 flex flex-col gap-3">
 
-          {/* Error */}
+          {/* Error banner */}
           {error && (
             <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm">
               <AlertCircle size={15} className="shrink-0" />
@@ -289,24 +296,24 @@ export default function JobQuotesPage() {
             </div>
           )}
 
-          {/* Loading */}
+          {/* Loading spinner */}
           {loading && (
             <div className="flex items-center justify-center py-24">
               <Loader2 size={22} className="animate-spin text-gray-300" />
             </div>
           )}
 
-          {/* Empty state */}
+          {/* ── Empty state ── */}
           {!loading && estimates.length === 0 && (
             <div
-              className="bg-white rounded-3xl border border-gray-100 p-12 flex flex-col items-center text-center"
-              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+              className="bg-white rounded-3xl border border-gray-100 px-8 py-14 flex flex-col items-center text-center"
+              style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
             >
               <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mb-4">
                 <FileText size={22} className="text-violet-400" />
               </div>
               <p className="font-bold text-gray-800 text-[15px] mb-1">No quotes yet</p>
-              <p className="text-sm text-gray-400 mb-6">Create your first quote for this job</p>
+              <p className="text-sm text-gray-400 mb-6 max-w-[220px]">Create your first quote for this job</p>
               {canEdit && (
                 <button
                   onClick={handleCreate}
@@ -320,31 +327,34 @@ export default function JobQuotesPage() {
             </div>
           )}
 
-          {/* Quote list */}
+          {/* ── Quote list ── */}
           {!loading && estimates.length > 0 && (
             <>
-              {/* Count label */}
+              {/* Section label */}
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-1">
                 {estimates.length} {estimates.length === 1 ? 'Quote' : 'Quotes'}
               </p>
 
-              {/* Cards */}
+              {/* Card container */}
               <div
                 className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-50"
-                style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
                 {estimates.map((est) => {
-                  const isLocked = est.locked === 1 || est.locked === true;
+                  const isLocked    = est.locked === 1 || est.locked === true;
                   const invoiceGone = isLocked && !est.invoice_exists;
 
                   return (
                     <div key={est.id} className="px-4 pt-4 pb-3">
 
-                      {/* ── Row 1: icon · title · total ── */}
+                      {/* ── Beat 1: icon · title · total ── */}
                       <div className="flex items-start gap-3">
+                        {/* Icon */}
                         <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 mt-0.5">
                           <FileText size={15} className="text-violet-400" />
                         </div>
+
+                        {/* Title + date */}
                         <div className="flex-1 min-w-0">
                           <Link
                             to={`/estimates/${est.id}`}
@@ -354,12 +364,14 @@ export default function JobQuotesPage() {
                           </Link>
                           <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{fmtDate(est.createdAt)}</p>
                         </div>
+
+                        {/* Total — right-aligned, same baseline as title */}
                         <span className="font-bold text-gray-900 text-[14px] tabular-nums shrink-0 mt-0.5">
                           {fmt(est.total ?? 0)}
                         </span>
                       </div>
 
-                      {/* ── Row 2: status + invoice badges ── */}
+                      {/* ── Beat 2: status + invoice badges ── */}
                       <div className="flex items-center gap-2 mt-2.5 ml-12 flex-wrap">
                         <StatusDropdown
                           estimate={est}
@@ -367,7 +379,7 @@ export default function JobQuotesPage() {
                           onStatusChange={handleStatusChange}
                         />
 
-                        {/* Locked → invoice exists */}
+                        {/* Invoiced badge */}
                         {isLocked && est.invoice_exists && (
                           <button
                             onClick={() => navigate(`/invoices/${est.locked_invoice_id}`)}
@@ -378,7 +390,7 @@ export default function JobQuotesPage() {
                           </button>
                         )}
 
-                        {/* Locked → invoice deleted */}
+                        {/* Re-push badge */}
                         {invoiceGone && canEdit && (
                           <button
                             onClick={() => handleUnlockAndReconvert(est.id)}
@@ -392,7 +404,7 @@ export default function JobQuotesPage() {
                           </button>
                         )}
 
-                        {/* Approved + not yet invoiced */}
+                        {/* → Invoice CTA */}
                         {est.status === 'Approved' && canEdit && !isLocked && (
                           <button
                             onClick={() => handleConvertToInvoice(est.id)}
@@ -407,18 +419,20 @@ export default function JobQuotesPage() {
                         )}
                       </div>
 
-                      {/* ── Row 3: action strip + Open CTA ── */}
+                      {/* ── Beat 3: secondary actions + Open CTA ── */}
                       <div className="flex items-center mt-2 ml-12 pt-2 border-t border-gray-50">
-                        {/* Secondary icon actions */}
+
+                        {/* Icon strip — left */}
                         <div className="flex items-center gap-0.5">
                           <a
                             href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
                             title="Email quote"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                             onClick={(e) => e.stopPropagation()}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                           >
                             <Mail size={14} />
                           </a>
+
                           <button
                             title={copiedId === est.id ? 'Copied!' : 'Copy share link'}
                             onClick={() => void handleCopyLink(est.id)}
@@ -432,6 +446,7 @@ export default function JobQuotesPage() {
                               ? <CheckCircle size={14} />
                               : <Share2 size={14} />}
                           </button>
+
                           <button
                             title="Duplicate"
                             onClick={() => handleDuplicate(est.id)}
@@ -439,6 +454,7 @@ export default function JobQuotesPage() {
                           >
                             <Copy size={14} />
                           </button>
+
                           {canEdit && (
                             <button
                               title="Delete"
@@ -453,7 +469,7 @@ export default function JobQuotesPage() {
                           )}
                         </div>
 
-                        {/* Open CTA — right-aligned, always visible */}
+                        {/* Open → right */}
                         <Link
                           to={`/estimates/${est.id}`}
                           className="ml-auto flex items-center gap-1 text-[12px] font-bold text-violet-600 hover:text-violet-700 hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
