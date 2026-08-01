@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Loader2, AlertCircle, ChevronLeft,
   Mail, Share2, ExternalLink, Copy, Trash2, CheckCircle,
-  Receipt, ChevronDown, Link2, Link2Off, Home,
+  Receipt, ChevronDown, Link2, Link2Off, Home, ArrowRight,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchJob, type Job } from '@/lib/jobs-api';
@@ -60,7 +60,7 @@ function StatusDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-2xl shadow-xl py-1.5 min-w-[140px]">
+          <div className="absolute left-0 top-full mt-1.5 z-20 bg-white border border-gray-100 rounded-2xl shadow-xl py-1.5 min-w-[148px]" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.10)' }}>
             {ESTIMATE_STATUSES.map((s) => {
               const st = getEstimateStatusStyle(s);
               return (
@@ -75,9 +75,9 @@ function StatusDropdown({
                   }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors ${estimate.status === s ? st.color : 'text-gray-700'}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                  {s}
-                  {estimate.status === s && <CheckCircle size={10} className="ml-auto text-violet-600" />}
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
+                  <span className="flex-1 text-left">{s}</span>
+                  {estimate.status === s && <CheckCircle size={10} className="text-violet-500 shrink-0" />}
                 </button>
               );
             })}
@@ -102,6 +102,7 @@ export default function JobQuotesPage() {
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -120,7 +121,7 @@ export default function JobQuotesPage() {
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   async function handleCreate() {
     if (!id) return;
@@ -162,17 +163,8 @@ export default function JobQuotesPage() {
         method: 'POST', credentials: 'include',
       });
       const data = await res.json() as { invoice_id?: number; invoice?: { id: number }; error?: string };
-      // 201 = new invoice created
-      if (res.status === 201 && data.invoice_id) {
-        navigate(`/invoices/${data.invoice_id}`);
-        return;
-      }
-      // 409 = already locked — navigate to the existing invoice
-      if (res.status === 409 && data.invoice_id) {
-        navigate(`/invoices/${data.invoice_id}`);
-        return;
-      }
-      // Legacy shape fallback
+      if (res.status === 201 && data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
+      if (res.status === 409 && data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
       if (data.invoice?.id) { navigate(`/invoices/${data.invoice.id}`); return; }
       await load();
     } catch {
@@ -186,15 +178,9 @@ export default function JobQuotesPage() {
     if (!confirm('The linked invoice was deleted. Unlock this quote and create a new invoice?')) return;
     setConvertingId(estimateId);
     try {
-      // Unlock the estimate first
-      const unlockRes = await fetch(`/api/estimates/${estimateId}/unlock`, {
-        method: 'POST', credentials: 'include',
-      });
+      const unlockRes = await fetch(`/api/estimates/${estimateId}/unlock`, { method: 'POST', credentials: 'include' });
       if (!unlockRes.ok) { setError('Failed to unlock quote'); return; }
-      // Now re-convert
-      const res = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, {
-        method: 'POST', credentials: 'include',
-      });
+      const res = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, { method: 'POST', credentials: 'include' });
       const data = await res.json() as { invoice_id?: number };
       if (data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
       await load();
@@ -221,13 +207,17 @@ export default function JobQuotesPage() {
 
   async function handleDuplicate(estimateId: number) {
     try {
-      const res = await fetch(`/api/estimates/${estimateId}/duplicate`, {
-        method: 'POST', credentials: 'include',
-      });
+      const res = await fetch(`/api/estimates/${estimateId}/duplicate`, { method: 'POST', credentials: 'include' });
       if (res.ok) await load();
     } catch {
       setError('Failed to duplicate');
     }
+  }
+
+  async function handleCopyLink(estimateId: number) {
+    await navigator.clipboard.writeText(`${window.location.origin}/view/estimate/${estimateId}`);
+    setCopiedId(estimateId);
+    setTimeout(() => setCopiedId(null), 1800);
   }
 
   return (
@@ -240,196 +230,247 @@ export default function JobQuotesPage() {
       </Helmet>
       <h1 className="sr-only">{job ? `Quotes — ${job.name}` : 'Quotes'}</h1>
 
-      {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
-        <div className="max-w-2xl mx-auto px-4 flex items-center gap-2 h-14">
+      {/* ── Header ── */}
+      <div
+        className="bg-white border-b border-gray-100 safe-top shrink-0"
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
+      >
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-2">
+
           {/* Back */}
           <button
             onClick={() => navigate(`/jobs/${id}`)}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
+            className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
+            aria-label="Back to job"
           >
             <ChevronLeft size={18} />
           </button>
+
           {/* Home */}
           <button
             onClick={() => navigate('/')}
-            className="w-9 h-9 rounded-full bg-violet-500 text-white flex items-center justify-center hover:bg-violet-600 active:bg-violet-700 transition-colors shrink-0"
-            title="Dashboard"
+            className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors shrink-0"
+            aria-label="Dashboard"
           >
             <Home size={15} />
           </button>
-          {/* Title — centred between buttons */}
-          <div className="flex-1 min-w-0 text-center">
-            <p className="font-bold text-gray-900 text-base leading-tight">Quotes</p>
-            <p className="text-xs text-gray-400 leading-tight truncate">{job?.name ?? '…'}</p>
+
+          {/* Title block — centred */}
+          <div className="flex-1 min-w-0 text-center px-1">
+            <p className="font-bold text-gray-900 text-[15px] leading-tight tracking-tight">Quotes</p>
+            <p className="text-[11px] text-gray-400 leading-tight truncate mt-px">{job?.name ?? '…'}</p>
           </div>
-          {/* New Quote */}
+
+          {/* New button */}
           {canEdit && (
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white text-sm font-bold px-3.5 py-2 rounded-xl transition-colors disabled:opacity-60 shrink-0"
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-[13px] font-bold px-3.5 py-2 rounded-xl transition-colors disabled:opacity-60 shrink-0"
             >
-              {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              {creating
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Plus size={13} strokeWidth={2.5} />}
               New
             </button>
           )}
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex-1 px-4 py-5 space-y-3 max-w-2xl w-full mx-auto">
+      {/* ── Scrollable content ── */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-4 py-5 flex flex-col gap-3">
 
-        {error && (
-          <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm">
-            <AlertCircle size={15} className="shrink-0" />{error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-gray-300" />
-          </div>
-        ) : estimates.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-              <FileText size={24} className="text-violet-400" />
+          {/* Error */}
+          {error && (
+            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm">
+              <AlertCircle size={15} className="shrink-0" />
+              {error}
             </div>
-            <p className="font-bold text-gray-800 mb-1">No quotes yet</p>
-            <p className="text-sm text-gray-400 mb-5">Create your first quote for this job</p>
-            {canEdit && (
-              <button
-                onClick={handleCreate}
-                disabled={creating}
-                className="inline-flex items-center gap-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-colors disabled:opacity-60"
+          )}
+
+          {/* Loading */}
+          {loading && (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 size={22} className="animate-spin text-gray-300" />
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && estimates.length === 0 && (
+            <div
+              className="bg-white rounded-3xl border border-gray-100 p-12 flex flex-col items-center text-center"
+              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mb-4">
+                <FileText size={22} className="text-violet-400" />
+              </div>
+              <p className="font-bold text-gray-800 text-[15px] mb-1">No quotes yet</p>
+              <p className="text-sm text-gray-400 mb-6">Create your first quote for this job</p>
+              {canEdit && (
+                <button
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-colors disabled:opacity-60"
+                >
+                  {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  New Quote
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Quote list */}
+          {!loading && estimates.length > 0 && (
+            <>
+              {/* Count label */}
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-1">
+                {estimates.length} {estimates.length === 1 ? 'Quote' : 'Quotes'}
+              </p>
+
+              {/* Cards */}
+              <div
+                className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-50"
+                style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
               >
-                {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                New Quote
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
-              {estimates.length} {estimates.length === 1 ? 'Quote' : 'Quotes'}
-            </p>
-            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-50" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              {estimates.map((est) => {
-                const isLocked = est.locked === 1 || est.locked === true;
-                const invoiceGone = isLocked && !est.invoice_exists;
-                return (
-                  <div key={est.id} className="px-4 py-4">
-                    {/* Row 1: icon + title + total */}
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 mt-0.5">
-                        <FileText size={15} className="text-violet-400" />
+                {estimates.map((est) => {
+                  const isLocked = est.locked === 1 || est.locked === true;
+                  const invoiceGone = isLocked && !est.invoice_exists;
+
+                  return (
+                    <div key={est.id} className="px-4 pt-4 pb-3">
+
+                      {/* ── Row 1: icon · title · total ── */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText size={15} className="text-violet-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            to={`/estimates/${est.id}`}
+                            className="font-bold text-gray-900 text-[14px] leading-snug hover:text-violet-600 transition-colors truncate block"
+                          >
+                            {est.title}
+                          </Link>
+                          <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{fmtDate(est.createdAt)}</p>
+                        </div>
+                        <span className="font-bold text-gray-900 text-[14px] tabular-nums shrink-0 mt-0.5">
+                          {fmt(est.total ?? 0)}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
+
+                      {/* ── Row 2: status + invoice badges ── */}
+                      <div className="flex items-center gap-2 mt-2.5 ml-12 flex-wrap">
+                        <StatusDropdown
+                          estimate={est}
+                          canEdit={canEdit}
+                          onStatusChange={handleStatusChange}
+                        />
+
+                        {/* Locked → invoice exists */}
+                        {isLocked && est.invoice_exists && (
+                          <button
+                            onClick={() => navigate(`/invoices/${est.locked_invoice_id}`)}
+                            className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-emerald-100 transition-colors"
+                          >
+                            <Link2 size={10} />
+                            Invoiced
+                          </button>
+                        )}
+
+                        {/* Locked → invoice deleted */}
+                        {invoiceGone && canEdit && (
+                          <button
+                            onClick={() => handleUnlockAndReconvert(est.id)}
+                            disabled={convertingId === est.id}
+                            className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-amber-100 transition-colors disabled:opacity-60"
+                          >
+                            {convertingId === est.id
+                              ? <Loader2 size={10} className="animate-spin" />
+                              : <Link2Off size={10} />}
+                            Re-push
+                          </button>
+                        )}
+
+                        {/* Approved + not yet invoiced */}
+                        {est.status === 'Approved' && canEdit && !isLocked && (
+                          <button
+                            onClick={() => handleConvertToInvoice(est.id)}
+                            disabled={convertingId === est.id}
+                            className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors disabled:opacity-60"
+                          >
+                            {convertingId === est.id
+                              ? <Loader2 size={10} className="animate-spin" />
+                              : <Receipt size={10} />}
+                            Invoice
+                          </button>
+                        )}
+                      </div>
+
+                      {/* ── Row 3: action strip + Open CTA ── */}
+                      <div className="flex items-center mt-2 ml-12 pt-2 border-t border-gray-50">
+                        {/* Secondary icon actions */}
+                        <div className="flex items-center gap-0.5">
+                          <a
+                            href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
+                            title="Email quote"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Mail size={14} />
+                          </a>
+                          <button
+                            title={copiedId === est.id ? 'Copied!' : 'Copy share link'}
+                            onClick={() => void handleCopyLink(est.id)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                              copiedId === est.id
+                                ? 'text-emerald-600 bg-emerald-50'
+                                : 'text-gray-400 hover:text-violet-600 hover:bg-violet-50'
+                            }`}
+                          >
+                            {copiedId === est.id
+                              ? <CheckCircle size={14} />
+                              : <Share2 size={14} />}
+                          </button>
+                          <button
+                            title="Duplicate"
+                            onClick={() => handleDuplicate(est.id)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                          >
+                            <Copy size={14} />
+                          </button>
+                          {canEdit && (
+                            <button
+                              title="Delete"
+                              onClick={() => handleDelete(est.id)}
+                              disabled={deletingId === est.id}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                            >
+                              {deletingId === est.id
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <Trash2 size={14} />}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Open CTA — right-aligned, always visible */}
                         <Link
                           to={`/estimates/${est.id}`}
-                          className="font-bold text-gray-900 text-sm hover:text-violet-600 transition-colors truncate block"
+                          className="ml-auto flex items-center gap-1 text-[12px] font-bold text-violet-600 hover:text-violet-700 hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
                         >
-                          {est.title}
+                          Open
+                          <ArrowRight size={12} strokeWidth={2.5} />
                         </Link>
-                        <p className="text-xs text-gray-400 mt-0.5">{fmtDate(est.createdAt)}</p>
                       </div>
-                      <span className="font-bold text-gray-900 text-sm tabular-nums shrink-0">
-                        {fmt(est.total ?? 0)}
-                      </span>
+
                     </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-                    {/* Row 2: status badge + invoice badges */}
-                    <div className="flex items-center gap-2 mt-3 ml-12 flex-wrap">
-                      <StatusDropdown
-                        estimate={est}
-                        canEdit={canEdit}
-                        onStatusChange={handleStatusChange}
-                      />
-
-                      {isLocked && est.invoice_exists && (
-                        <button
-                          onClick={() => navigate(`/invoices/${est.locked_invoice_id}`)}
-                          className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-emerald-100"
-                          title="View linked invoice"
-                        >
-                          <Link2 size={11} />
-                          Sent to Invoice
-                        </button>
-                      )}
-
-                      {invoiceGone && canEdit && (
-                        <button
-                          onClick={() => handleUnlockAndReconvert(est.id)}
-                          disabled={convertingId === est.id}
-                          className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-amber-100 disabled:opacity-60"
-                          title="Invoice was deleted — click to re-create"
-                        >
-                          {convertingId === est.id ? <Loader2 size={11} className="animate-spin" /> : <Link2Off size={11} />}
-                          Re-push Invoice
-                        </button>
-                      )}
-
-                      {est.status === 'Approved' && canEdit && !isLocked && (
-                        <button
-                          onClick={() => handleConvertToInvoice(est.id)}
-                          disabled={convertingId === est.id}
-                          className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60"
-                        >
-                          {convertingId === est.id ? <Loader2 size={11} className="animate-spin" /> : <Receipt size={11} />}
-                          Invoice
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Row 3: action icon strip — own row, never fights badges */}
-                    <div className="flex items-center gap-0.5 mt-2 ml-12 border-t border-gray-50 pt-2">
-                      <a
-                        href={`mailto:?subject=${encodeURIComponent(est.title)}&body=${encodeURIComponent(`View quote: ${window.location.origin}/view/estimate/${est.id}`)}`}
-                        title="Email"
-                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Mail size={15} />
-                      </a>
-                      <button
-                        title="Copy share link"
-                        onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/view/estimate/${est.id}`)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                      >
-                        <Share2 size={15} />
-                      </button>
-                      <button
-                        title="Duplicate"
-                        onClick={() => handleDuplicate(est.id)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                      >
-                        <Copy size={15} />
-                      </button>
-                      {canEdit && (
-                        <button
-                          title="Delete"
-                          onClick={() => handleDelete(est.id)}
-                          disabled={deletingId === est.id}
-                          className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                        >
-                          {deletingId === est.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                        </button>
-                      )}
-                      {/* Open — labelled CTA pushed to the right */}
-                      <Link
-                        to={`/estimates/${est.id}`}
-                        className="ml-auto flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-violet-700 hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Open
-                        <ExternalLink size={12} />
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+        </div>
       </div>
     </div>
   );
