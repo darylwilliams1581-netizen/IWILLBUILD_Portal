@@ -18,6 +18,7 @@ import {
   type Incident,
 } from './incidents';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
+import FormSection from '@/components/FormSection';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -712,7 +713,7 @@ export default function IncidentDetailPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-32">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-32">
 
           {errors.general && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
@@ -720,180 +721,210 @@ export default function IncidentDetailPage() {
             </div>
           )}
 
-          {/* Incident details */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Incident Details</h2>
+          {/* ── Section completion booleans ── */}
+          {(() => {
+            const detailsComplete = !!(form.incidentDate && form.reportedBy && form.incidentType && form.severity);
+            const whatHappenedComplete = !!(form.description.trim());
+            const impactsComplete = form.injuryOccurred !== null && form.propertyDamage !== null && form.environmentalImpact !== null;
+            const statusComplete = !!(form.status);
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Date <span className="text-red-500">*</span></label>
-                <input
-                  type="date"
-                  value={form.incidentDate}
-                  onChange={e => updateForm({ incidentDate: e.target.value })}
-                  disabled={isClosed}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentDate ? 'border-red-400' : 'border-slate-200'}`}
-                />
-                {errors.incidentDate && <p className="text-xs text-red-500 mt-0.5">{errors.incidentDate}</p>}
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Time</label>
-                <input
-                  type="time"
-                  value={form.incidentTime}
-                  onChange={e => updateForm({ incidentTime: e.target.value })}
-                  disabled={isClosed}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-            </div>
+            return (
+              <>
+                {/* Incident details */}
+                <FormSection
+                  title="Incident Details"
+                  icon={<AlertTriangle size={13} />}
+                  complete={detailsComplete}
+                  fillRatio={[form.incidentDate, form.reportedBy, form.incidentType, form.severity].filter(Boolean).length / 4}
+                  required
+                  accent="red"
+                  alwaysOpen={isNew}
+                  defaultOpen
+                >
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Date <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      value={form.incidentDate}
+                      onChange={e => updateForm({ incidentDate: e.target.value })}
+                      disabled={isClosed}
+                      className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentDate ? 'border-red-400' : 'border-slate-200'}`}
+                    />
+                    {errors.incidentDate && <p className="text-xs text-red-500 mt-0.5">{errors.incidentDate}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Time</label>
+                    <input
+                      type="time"
+                      value={form.incidentTime}
+                      onChange={e => updateForm({ incidentTime: e.target.value })}
+                      disabled={isClosed}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Reported by <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={form.reportedBy}
+                      onChange={e => updateForm({ reportedBy: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Name"
+                      className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.reportedBy ? 'border-red-400' : 'border-slate-200'}`}
+                    />
+                    {errors.reportedBy && <p className="text-xs text-red-500 mt-0.5">{errors.reportedBy}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Location / site address</label>
+                    <input
+                      type="text"
+                      value={form.location}
+                      onChange={e => updateForm({ location: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Where did this occur?"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Incident type <span className="text-red-500">*</span></label>
+                    <select
+                      value={form.incidentType}
+                      onChange={e => updateForm({ incidentType: e.target.value })}
+                      disabled={isClosed}
+                      className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentType ? 'border-red-400' : 'border-slate-200'}`}
+                    >
+                      <option value="">Select type…</option>
+                      {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    {errors.incidentType && <p className="text-xs text-red-500 mt-0.5">{errors.incidentType}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1.5 block">Severity <span className="text-red-500">*</span></label>
+                    <div className="flex flex-col gap-2">
+                      {SEVERITY_OPTIONS.map(s => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => !isClosed && updateForm({ severity: s.value })}
+                          disabled={isClosed}
+                          className={`w-full py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default text-left px-4 ${
+                            form.severity === s.value
+                              ? `${s.color} border-current`
+                              : 'border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </FormSection>
 
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Reported by <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={form.reportedBy}
-                onChange={e => updateForm({ reportedBy: e.target.value })}
-                disabled={isClosed}
-                placeholder="Name"
-                className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.reportedBy ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.reportedBy && <p className="text-xs text-red-500 mt-0.5">{errors.reportedBy}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Location / site address</label>
-              <input
-                type="text"
-                value={form.location}
-                onChange={e => updateForm({ location: e.target.value })}
-                disabled={isClosed}
-                placeholder="Where did this occur?"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Incident type <span className="text-red-500">*</span></label>
-              <select
-                value={form.incidentType}
-                onChange={e => updateForm({ incidentType: e.target.value })}
-                disabled={isClosed}
-                className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentType ? 'border-red-400' : 'border-slate-200'}`}
-              >
-                <option value="">Select type…</option>
-                {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              {errors.incidentType && <p className="text-xs text-red-500 mt-0.5">{errors.incidentType}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Severity <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-2 gap-2">
-                {SEVERITY_OPTIONS.map(s => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    onClick={() => !isClosed && updateForm({ severity: s.value })}
+                {/* Job link */}
+                <FormSection
+                  title="Job (optional)"
+                  icon={<ChevronRight size={13} />}
+                  complete={!!(form.jobId)}
+                  accent="violet"
+                  defaultOpen={false}
+                >
+                  <JobSelector
+                    jobId={form.jobId}
+                    jobName={form.jobName}
+                    jobNumber={form.jobNumber}
+                    customerName={form.customerName}
+                    onChange={patch => updateForm(patch)}
                     disabled={isClosed}
-                    className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default ${
-                      form.severity === s.value
-                        ? `${s.color} border-current`
-                        : 'border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Job link */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Job (optional)</h2>
-            <JobSelector
-              jobId={form.jobId}
-              jobName={form.jobName}
-              jobNumber={form.jobNumber}
-              customerName={form.customerName}
-              onChange={patch => updateForm(patch)}
-              disabled={isClosed}
-            />
-          </section>
-
-          {/* Description */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <AlertTriangle size={13} className="text-red-500" /> What Happened
-            </h2>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Description <span className="text-red-500">*</span></label>
-              <textarea
-                value={form.description}
-                onChange={e => updateForm({ description: e.target.value })}
-                disabled={isClosed}
-                placeholder="Describe what happened…"
-                rows={4}
-                className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.description ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Immediate action taken</label>
-              <textarea
-                value={form.immediateActionTaken}
-                onChange={e => updateForm({ immediateActionTaken: e.target.value })}
-                disabled={isClosed}
-                placeholder="What was done immediately after the incident?"
-                rows={2}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
-
-          {/* Impacts */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <ShieldAlert size={13} className="text-violet-600" /> Impacts
-            </h2>
-            <YesNo label="Was anyone injured?" value={form.injuryOccurred} onChange={v => updateForm({ injuryOccurred: v })} disabled={isClosed} />
-            {form.injuryOccurred && (
-              <div className="space-y-2 pl-2 border-l-2 border-red-200">
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">Person injured</label>
-                  <input
-                    type="text"
-                    value={form.personInjured}
-                    onChange={e => updateForm({ personInjured: e.target.value })}
-                    disabled={isClosed}
-                    placeholder="Name"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                   />
-                </div>
-                <YesNo label="Medical treatment required?" value={form.medicalTreatmentRequired} onChange={v => updateForm({ medicalTreatmentRequired: v })} disabled={isClosed} />
-              </div>
-            )}
-            <YesNo label="Property damage?" value={form.propertyDamage} onChange={v => updateForm({ propertyDamage: v })} disabled={isClosed} />
-            <YesNo label="Environmental impact?" value={form.environmentalImpact} onChange={v => updateForm({ environmentalImpact: v })} disabled={isClosed} />
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Witnesses</label>
-              <input
-                type="text"
-                value={form.witnesses}
-                onChange={e => updateForm({ witnesses: e.target.value })}
-                disabled={isClosed}
-                placeholder="Names of witnesses"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
+                </FormSection>
 
-          {/* Third parties */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <Users size={13} className="text-slate-400" /> Third Parties
-            </h2>
+                {/* What Happened */}
+                <FormSection
+                  title="What Happened"
+                  icon={<AlertTriangle size={13} />}
+                  complete={whatHappenedComplete}
+                  fillRatio={form.description.trim() ? 1 : 0}
+                  required
+                  accent="red"
+                  defaultOpen
+                >
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Description <span className="text-red-500">*</span></label>
+                    <textarea
+                      value={form.description}
+                      onChange={e => updateForm({ description: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Describe what happened…"
+                      rows={4}
+                      className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.description ? 'border-red-400' : 'border-slate-200'}`}
+                    />
+                    {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Immediate action taken</label>
+                    <textarea
+                      value={form.immediateActionTaken}
+                      onChange={e => updateForm({ immediateActionTaken: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="What was done immediately after the incident?"
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                </FormSection>
+
+                {/* Impacts */}
+                <FormSection
+                  title="Impacts"
+                  icon={<ShieldAlert size={13} />}
+                  complete={impactsComplete}
+                  fillRatio={[form.injuryOccurred, form.propertyDamage, form.environmentalImpact].filter(v => v !== null).length / 3}
+                  required
+                  accent="violet"
+                  defaultOpen
+                >
+                  <YesNo label="Was anyone injured?" value={form.injuryOccurred} onChange={v => updateForm({ injuryOccurred: v })} disabled={isClosed} />
+                  {form.injuryOccurred && (
+                    <div className="space-y-2 pl-2 border-l-2 border-red-200">
+                      <div>
+                        <label className="text-xs text-slate-500 mb-1 block">Person injured</label>
+                        <input
+                          type="text"
+                          value={form.personInjured}
+                          onChange={e => updateForm({ personInjured: e.target.value })}
+                          disabled={isClosed}
+                          placeholder="Name"
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                        />
+                      </div>
+                      <YesNo label="Medical treatment required?" value={form.medicalTreatmentRequired} onChange={v => updateForm({ medicalTreatmentRequired: v })} disabled={isClosed} />
+                    </div>
+                  )}
+                  <YesNo label="Property damage?" value={form.propertyDamage} onChange={v => updateForm({ propertyDamage: v })} disabled={isClosed} />
+                  <YesNo label="Environmental impact?" value={form.environmentalImpact} onChange={v => updateForm({ environmentalImpact: v })} disabled={isClosed} />
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Witnesses</label>
+                    <input
+                      type="text"
+                      value={form.witnesses}
+                      onChange={e => updateForm({ witnesses: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Names of witnesses"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                </FormSection>
+
+                {/* Third parties */}
+                <FormSection
+                  title="Third Parties"
+                  icon={<Users size={13} />}
+                  complete={form.thirdPartiesInvolved === false || (form.thirdPartiesInvolved === true && thirdParties.length > 0)}
+                  fillRatio={form.thirdPartiesInvolved !== null ? 1 : 0}
+                  required={false}
+                  accent="blue"
+                  defaultOpen={false}
+                >
             <YesNo
               label="Were any third parties involved?"
               value={form.thirdPartiesInvolved}
@@ -1019,269 +1050,237 @@ export default function IncidentDetailPage() {
                 )}
               </div>
             )}
-          </section>
+                </FormSection>
 
-          {/* Corrective actions */}
-          {!isNew && (
-            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                  <ClipboardCheck size={13} className="text-slate-400" /> Corrective Actions
-                </h2>
-                {!isClosed && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAction(!showAddAction)}
-                    className="text-xs text-red-600 flex items-center gap-1"
+                {/* Corrective actions */}
+                {!isNew && (
+                  <FormSection
+                    title="Corrective Actions"
+                    icon={<ClipboardCheck size={13} />}
+                    complete={correctiveActions.length > 0 && correctiveActions.every(ca => ca.status === 'complete')}
+                    fillRatio={correctiveActions.length > 0 ? correctiveActions.filter(ca => ca.status === 'complete').length / correctiveActions.length : 0}
+                    accent="violet"
+                    defaultOpen={correctiveActions.length > 0}
+                    headerRight={
+                      !isClosed ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddAction(!showAddAction)}
+                          className="text-xs text-red-600 flex items-center gap-1 py-0.5"
+                        >
+                          <Plus size={12} /> Add
+                        </button>
+                      ) : undefined
+                    }
                   >
-                    <Plus size={12} /> Add
-                  </button>
-                )}
-              </div>
-
-              {correctiveActions.length === 0 && !showAddAction && (
-                <p className="text-xs text-slate-400">No corrective actions yet.</p>
-              )}
-
-              {correctiveActions.map((ca, idx) => (
-                <div key={ca.id ?? idx} className="border border-slate-100 rounded-xl p-3 space-y-1.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-slate-700 flex-1">{ca.action}</p>
-                    <select
-                      value={ca.status}
-                      onChange={e => handleUpdateActionStatus(ca, e.target.value as CorrectiveAction['status'])}
-                      disabled={isClosed}
-                      className="text-xs border border-slate-200 rounded-lg px-1.5 py-1 disabled:bg-slate-50"
-                    >
-                      <option value="open">Open</option>
-                      <option value="in progress">In progress</option>
-                      <option value="complete">Complete</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-3 text-xs text-slate-400">
-                    {ca.owner && <span>Owner: {ca.owner}</span>}
-                    {ca.due_date && <span>Due: {new Date(ca.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>}
-                    {ca.status === 'complete' && <CheckCircle2 size={12} className="text-emerald-500" />}
-                  </div>
-                  {ca.notes && <p className="text-xs text-slate-400 italic">{ca.notes}</p>}
-                </div>
-              ))}
-
-              {showAddAction && (
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
-                  <textarea
-                    value={newAction.action}
-                    onChange={e => setNewAction(p => ({ ...p, action: e.target.value }))}
-                    placeholder="Corrective action (required)"
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={newAction.owner}
-                      onChange={e => setNewAction(p => ({ ...p, owner: e.target.value }))}
-                      placeholder="Owner"
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                    />
-                    <input
-                      type="date"
-                      value={newAction.due_date}
-                      onChange={e => setNewAction(p => ({ ...p, due_date: e.target.value }))}
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                    />
-                  </div>
-                  <textarea
-                    value={newAction.notes}
-                    onChange={e => setNewAction(p => ({ ...p, notes: e.target.value }))}
-                    placeholder="Notes (optional)"
-                    rows={1}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setShowAddAction(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600">
-                      <X size={12} className="inline mr-1" /> Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddAction}
-                      disabled={savingAction || !newAction.action.trim()}
-                      className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-40"
-                    >
-                      {savingAction ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add action'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Status + Notes */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status & Notes</h2>
-            {!isClosed && (
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Status</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {STATUS_OPTIONS.filter(s => s.value !== 'closed').map(s => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => updateForm({ status: s.value })}
-                      className={`py-2 rounded-xl border-2 text-xs font-semibold transition-colors ${
-                        form.status === s.value
-                          ? `${s.color} border-current`
-                          : 'border-slate-200 text-slate-500'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Notes</label>
-              <textarea
-                value={form.notes}
-                onChange={e => updateForm({ notes: e.target.value })}
-                disabled={isClosed}
-                placeholder="Additional notes…"
-                rows={2}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
-
-          {/* Attachments */}
-          {!isNew && (
-            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                  <Paperclip size={13} /> Photos &amp; Attachments
-                  {attachments.length > 0 && (
-                    <span className="bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5 rounded-full font-normal">{attachments.length}</span>
-                  )}
-                </h2>
-                {!isClosed && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingFiles}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg disabled:opacity-50"
-                  >
-                    {uploadingFiles ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                    Add
-                  </button>
-                )}
-              </div>
-
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                multiple
-                className="hidden"
-                onChange={e => handleUploadFiles(e.target.files)}
-              />
-
-              {attachments.length === 0 && (
-                <div
-                  className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`}
-                  onClick={() => !isClosed && fileInputRef.current?.click()}
-                >
-                  <Paperclip size={20} className="mx-auto text-slate-300 mb-2" />
-                  <p className="text-xs text-slate-400">{isClosed ? 'No attachments' : 'Tap to add photos or PDFs'}</p>
-                </div>
-              )}
-
-              {attachments.length > 0 && (
-                <div className="space-y-3">
-                  {/* Photo grid */}
-                  {attachments.filter(a => a.file_type === 'image').length > 0 && (
-                    <div>
-                      <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><Image size={11} /> Photos</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {attachments.filter(a => a.file_type === 'image').map(a => (
-                          <div key={a.id} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
-                            <img
-                              src={a.public_url}
-                              alt={a.original_name}
-                              className="w-full h-full object-cover cursor-pointer"
-                              onClick={() => setLightboxUrl(a.public_url)}
-                            />
-                            {!isClosed && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteAttachment(a)}
-                                className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X size={11} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        {!isClosed && (
+                    {correctiveActions.length === 0 && !showAddAction && (
+                      <p className="text-xs text-slate-400">No corrective actions yet.</p>
+                    )}
+                    {correctiveActions.map((ca, idx) => (
+                      <div key={ca.id ?? idx} className="border border-slate-100 rounded-xl p-3 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-slate-700 flex-1">{ca.action}</p>
+                          <select
+                            value={ca.status}
+                            onChange={e => handleUpdateActionStatus(ca, e.target.value as CorrectiveAction['status'])}
+                            disabled={isClosed}
+                            className="text-xs border border-slate-200 rounded-lg px-1.5 py-1 disabled:bg-slate-50"
+                          >
+                            <option value="open">Open</option>
+                            <option value="in progress">In progress</option>
+                            <option value="complete">Complete</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-3 text-xs text-slate-400">
+                          {ca.owner && <span>Owner: {ca.owner}</span>}
+                          {ca.due_date && <span>Due: {new Date(ca.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>}
+                          {ca.status === 'complete' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                        </div>
+                        {ca.notes && <p className="text-xs text-slate-400 italic">{ca.notes}</p>}
+                      </div>
+                    ))}
+                    {showAddAction && (
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+                        <textarea
+                          value={newAction.action}
+                          onChange={e => setNewAction(p => ({ ...p, action: e.target.value }))}
+                          placeholder="Corrective action (required)"
+                          rows={2}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
+                        />
+                        <input
+                          type="text"
+                          value={newAction.owner}
+                          onChange={e => setNewAction(p => ({ ...p, owner: e.target.value }))}
+                          placeholder="Owner"
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        />
+                        <input
+                          type="date"
+                          value={newAction.due_date}
+                          onChange={e => setNewAction(p => ({ ...p, due_date: e.target.value }))}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        />
+                        <textarea
+                          value={newAction.notes}
+                          onChange={e => setNewAction(p => ({ ...p, notes: e.target.value }))}
+                          placeholder="Notes (optional)"
+                          rows={1}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setShowAddAction(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600">
+                            <X size={12} className="inline mr-1" /> Cancel
+                          </button>
                           <button
                             type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-red-300 hover:text-red-400 transition-colors"
+                            onClick={handleAddAction}
+                            disabled={savingAction || !newAction.action.trim()}
+                            className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-40"
                           >
-                            <Plus size={20} />
+                            {savingAction ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add action'}
                           </button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </FormSection>
+                )}
 
-                  {/* PDF / document list */}
-                  {attachments.filter(a => a.file_type !== 'image').length > 0 && (
+          {/* Status + Notes */}
+                <FormSection
+                  title="Status & Notes"
+                  icon={<ClipboardCheck size={13} />}
+                  complete={!!(form.status)}
+                  required
+                  accent="violet"
+                  defaultOpen
+                >
+                  {!isClosed && (
                     <div>
-                      <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><FileText size={11} /> Documents</p>
-                      <div className="space-y-1.5">
-                        {attachments.filter(a => a.file_type !== 'image').map(a => (
-                          <div key={a.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
-                            <FileText size={16} className="text-red-400 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-700 truncate">{a.original_name}</p>
-                              <p className="text-xs text-slate-400">{(a.size_bytes / 1024).toFixed(0)} KB</p>
-                            </div>
-                            <a
-                              href={a.public_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-slate-400 hover:text-red-500 transition-colors"
-                            >
-                              <Download size={15} />
-                            </a>
-                            {!isClosed && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteAttachment(a)}
-                                className="text-slate-300 hover:text-red-500 transition-colors"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
+                      <label className="text-xs text-slate-500 mb-1.5 block">Status</label>
+                      <div className="flex flex-col gap-2">
+                        {STATUS_OPTIONS.filter(s => s.value !== 'closed').map(s => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            onClick={() => updateForm({ status: s.value })}
+                            className={`w-full py-2 rounded-xl border-2 text-xs font-semibold transition-colors text-left px-4 ${
+                              form.status === s.value
+                                ? `${s.color} border-current`
+                                : 'border-slate-200 text-slate-500'
+                            }`}
+                          >
+                            {s.label}
+                          </button>
                         ))}
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-            </section>
-          )}
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Notes</label>
+                    <textarea
+                      value={form.notes}
+                      onChange={e => updateForm({ notes: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Additional notes…"
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                </FormSection>
 
-          {/* Closed info */}
-          {isClosed && incident && (
-            <div className="bg-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-1">
-              <p className="font-semibold text-slate-600">Incident closed</p>
-              {incident.closed_at && <p>Closed: {new Date(incident.closed_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
-              {incident.closed_by && <p>By: {incident.closed_by}</p>}
-            </div>
-          )}
+                {/* Attachments */}
+                {!isNew && (
+                  <FormSection
+                    title="Photos & Attachments"
+                    icon={<Paperclip size={13} />}
+                    complete={attachments.length > 0}
+                    accent="violet"
+                    defaultOpen={attachments.length > 0}
+                    headerRight={
+                      !isClosed ? (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingFiles}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-lg disabled:opacity-50"
+                        >
+                          {uploadingFiles ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                          Add
+                        </button>
+                      ) : attachments.length > 0 ? (
+                        <span className="bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5 rounded-full">{attachments.length}</span>
+                      ) : undefined
+                    }
+                  >
+                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={e => handleUploadFiles(e.target.files)} />
+                    {attachments.length === 0 && (
+                      <div
+                        className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`}
+                        onClick={() => !isClosed && fileInputRef.current?.click()}
+                      >
+                        <Paperclip size={20} className="mx-auto text-slate-300 mb-2" />
+                        <p className="text-xs text-slate-400">{isClosed ? 'No attachments' : 'Tap to add photos or PDFs'}</p>
+                      </div>
+                    )}
+                    {attachments.length > 0 && (
+                      <div className="space-y-3">
+                        {attachments.filter(a => a.file_type === 'image').length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><Image size={11} /> Photos</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {attachments.filter(a => a.file_type === 'image').map(a => (
+                                <div key={a.id} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
+                                  <img src={a.public_url} alt={a.original_name} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(a.public_url)} />
+                                  {!isClosed && (
+                                    <button type="button" onClick={() => handleDeleteAttachment(a)} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <X size={11} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              {!isClosed && (
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-red-300 hover:text-red-400 transition-colors">
+                                  <Plus size={20} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {attachments.filter(a => a.file_type !== 'image').length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><FileText size={11} /> Documents</p>
+                            <div className="space-y-1.5">
+                              {attachments.filter(a => a.file_type !== 'image').map(a => (
+                                <div key={a.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+                                  <FileText size={16} className="text-red-400 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-700 truncate">{a.original_name}</p>
+                                    <p className="text-xs text-slate-400">{(a.size_bytes / 1024).toFixed(0)} KB</p>
+                                  </div>
+                                  <a href={a.public_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-red-500 transition-colors"><Download size={15} /></a>
+                                  {!isClosed && <button type="button" onClick={() => handleDeleteAttachment(a)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </FormSection>
+                )}
+
+                {/* Closed info */}
+                {isClosed && incident && (
+                  <div className="bg-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-1">
+                    <p className="font-semibold text-slate-600">Incident closed</p>
+                    {incident.closed_at && <p>Closed: {new Date(incident.closed_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+                    {incident.closed_by && <p>By: {incident.closed_by}</p>}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Bottom actions */}
