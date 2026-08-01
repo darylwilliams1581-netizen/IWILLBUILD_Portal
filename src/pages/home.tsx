@@ -759,11 +759,12 @@ function ActiveStatusBar({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.25 }}
-      className="bg-white border-b border-gray-100 px-4 py-2.5"
+      className="px-4 py-2"
+      style={{ background: 'rgba(17,24,39,0.96)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
         {/* Label */}
-        <span className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest shrink-0 mr-0.5">
+        <span className="text-white/30 text-[9px] font-bold uppercase tracking-[0.1em] shrink-0">
           Active
         </span>
 
@@ -771,11 +772,15 @@ function ActiveStatusBar({
         {hasJob && (
           <button
             onClick={onJobPress}
-            className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 shrink-0 hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 shrink-0 active:scale-95 transition-all"
+            style={{
+              background: 'rgba(16,185,129,0.15)',
+              border: '1px solid rgba(16,185,129,0.35)',
+            }}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <HardHatIcon size={11} className="text-emerald-600 shrink-0" />
-            <span className="text-emerald-700 text-xs font-semibold truncate max-w-[120px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <HardHatIcon size={10} className="text-emerald-400 shrink-0" />
+            <span className="text-emerald-300 text-[11px] font-semibold truncate max-w-[120px]">
               {status!.jobSignIn!.jobName ?? `Job #${status!.jobSignIn!.jobId}`}
             </span>
             {status!.jobSignIn!.signedInAt && (
@@ -791,20 +796,24 @@ function ActiveStatusBar({
           <button
             key={s.sessionId}
             onClick={() => onDriveStop(s.sessionId)}
-            className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 shrink-0 hover:bg-blue-100 active:bg-blue-200 transition-colors"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 shrink-0 active:scale-95 transition-all"
+            style={{
+              background: 'rgba(59,130,246,0.15)',
+              border: '1px solid rgba(59,130,246,0.35)',
+            }}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
-            <Navigation size={11} className="text-blue-600 shrink-0" />
-            <span className="text-blue-700 text-xs font-semibold truncate max-w-[120px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0" />
+            <Navigation size={10} className="text-blue-400 shrink-0" />
+            <span className="text-blue-300 text-[11px] font-semibold truncate max-w-[120px]">
               {s.assetName ?? 'Vehicle'}
             </span>
             {s.rego && (
-              <span className="text-blue-400 text-[10px] font-mono shrink-0">
+              <span className="text-blue-400/70 text-[10px] font-mono shrink-0">
                 {s.rego}
               </span>
             )}
             {s.startAt && (
-              <span className="text-blue-500 text-[10px] font-medium shrink-0">
+              <span className="text-blue-400 text-[10px] font-medium shrink-0">
                 {elapsed(s.startAt)}
               </span>
             )}
@@ -2067,6 +2076,18 @@ interface HomeIconGridProps {
   onNavigate: (href: string) => void;
 }
 
+// ── Group label component ─────────────────────────────────────────────────────
+function GroupLabel({ label }: { label: string }) {
+  return (
+    <div className="col-span-full flex items-center gap-2 pt-3 pb-1 px-1">
+      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400/80 select-none">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-gray-200/60" />
+    </div>
+  );
+}
+
 function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, onNavigate }: HomeIconGridProps) {
   // Resolve icons client-side only — SSR and first hydration both use the
   // SSR-safe default so the DOM structure never changes during hydration,
@@ -2087,14 +2108,44 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, onNaviga
     ...(isPlatformOwner ? platformAsIconDef : []),
   ];
 
+  // Group icons by their group property, preserving order
+  const groupOrder: Array<import('@/lib/homeIcons').IconGroup> = ['field', 'safety', 'tools', 'management'];
+  const groupLabelMap: Record<string, string> = {
+    field: 'Field',
+    safety: 'Finance & Tools',
+    tools: 'Studio',
+    management: 'Management',
+  };
+
+  // Build sections: only include groups that have icons
+  const sections = groupOrder
+    .map(g => ({ group: g, icons: allIcons.filter(i => i.group === g) }))
+    .filter(s => s.icons.length > 0);
+
+  // If only one group, skip labels (minimal permission set)
+  const showLabels = sections.length > 1;
+
   return (
-    <div className="px-4 pt-3">
+    <div className="px-4 pt-2 pb-2">
       <div className="mx-auto" style={{ maxWidth: 640 }}>
         {allIcons.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <p className="text-sm font-medium">No icons available</p>
           </div>
+        ) : showLabels ? (
+          // Grouped layout with section labels
+          sections.map(({ group, icons }) => (
+            <div key={group}>
+              <GroupLabel label={groupLabelMap[group] ?? group} />
+              <div className="home-icon-grid">
+                {icons.map((item) => (
+                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          ))
         ) : (
+          // Flat grid for minimal permission sets
           <div className="home-icon-grid">
             {allIcons.map((item) => (
               <IconTile key={item.key} item={item} onNavigate={onNavigate} />
@@ -2257,37 +2308,26 @@ export default function HomeScreen() {
 
       {/* ── Top bar ── */}
       <div
-        className="px-5 pb-4"
+        className="px-4 pb-3"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 18px)',
-          background: 'linear-gradient(135deg, #111827 0%, #1c2333 50%, #231a0d 100%)',
-          boxShadow: '0 1px 0 rgba(255,255,255,0.05), 0 6px 24px rgba(0,0,0,0.30)',
+          paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
+          background: 'linear-gradient(150deg, #0d1117 0%, #161d2e 55%, #1a1208 100%)',
+          boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)',
         }}
       >
-        <div className="flex items-center justify-between gap-3">
-          {/* Left: greeting */}
-          <div className="min-w-0">
-            <p className="text-violet-400/50 text-[10.5px] font-semibold tracking-[0.06em] uppercase truncate">{dateStr}</p>
-            <p className="text-white font-extrabold text-[21px] leading-tight mt-0.5 tracking-[-0.02em] truncate">
-              {greeting},{' '}
-              <span
-                className="text-transparent bg-clip-text"
-                style={{ backgroundImage: 'linear-gradient(90deg, #fb923c, #7c3aed)' }}
-              >
-                {firstName}
-              </span>
-            </p>
-          </div>
-          {/* Right: actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="[&_button]:text-gray-400 [&_button:hover]:text-white [&_button]:rounded-full [&_button]:p-2 [&_button]:transition-colors">
+        {/* Row 1: date + actions */}
+        <div className="flex items-center justify-between mb-2.5">
+          <p className="text-white/30 text-[10px] font-semibold tracking-[0.07em] uppercase">{dateStr}</p>
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="[&_button]:text-white/40 [&_button:hover]:text-white [&_button]:rounded-full [&_button]:p-1.5 [&_button]:transition-colors">
               <NotificationBell />
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-400/20 flex items-center justify-center hover:bg-violet-500/25 transition-colors"
+              className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-400/25 flex items-center justify-center hover:bg-violet-500/35 active:scale-95 transition-all"
+              aria-label="Profile"
             >
-              <User size={15} className="text-violet-300" />
+              <User size={13} className="text-violet-300" />
             </button>
             <button
               onClick={async () => {
@@ -2299,10 +2339,41 @@ export default function HomeScreen() {
                 navigate('/login');
               }}
               title="Log out"
-              className="w-8 h-8 rounded-full bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/25 transition-colors"
+              aria-label="Log out"
+              className="w-7 h-7 rounded-full bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/25 hover:border-red-400/30 active:scale-95 transition-all"
             >
-              <LogOut size={14} className="text-gray-500" />
+              <LogOut size={12} className="text-white/30" />
             </button>
+          </div>
+        </div>
+        {/* Row 2: greeting — large, bold, personal */}
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-white/50 text-[11px] font-medium leading-tight mb-0.5">{greeting}</p>
+            <p
+              className="font-extrabold text-[28px] leading-none tracking-[-0.03em] truncate"
+              style={{
+                background: 'linear-gradient(100deg, #ffffff 0%, #c4b5fd 55%, #fb923c 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              {firstName}
+            </p>
+          </div>
+          {/* Company initial badge */}
+          <div
+            className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 mb-0.5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(124,58,237,0.35) 0%, rgba(251,146,60,0.20) 100%)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
+          >
+            <span className="text-white font-black text-[15px] leading-none select-none">
+              {(me?.company?.name ?? 'I')[0].toUpperCase()}
+            </span>
           </div>
         </div>
       </div>

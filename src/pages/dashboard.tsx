@@ -129,14 +129,60 @@ export default function DashboardPage() {
       {/* ── Main content ── */}
       <div className="portal-main lg:pt-[104px]">
 
-        {/* Desktop banner strip — sits just below the dock */}
-        <div className="hidden md:flex items-center px-3 py-1.5 border-b border-border bg-white shrink-0 print:hidden">
-          <DashboardBanner userId={user?.id ?? 'anon'} />
+        {/* ── Desktop command-centre header ── */}
+        <div
+          className="hidden lg:flex items-center justify-between px-6 py-4 shrink-0 print:hidden"
+          style={{
+            background: 'linear-gradient(135deg, #0d1117 0%, #161d2e 60%, #1a1208 100%)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.25)',
+          }}
+        >
+          {/* Left: greeting + date */}
+          <div className="flex items-center gap-4">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, rgba(124,58,237,0.4) 0%, rgba(251,146,60,0.25) 100%)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}
+            >
+              <span className="text-white font-black text-[14px] leading-none select-none">
+                {(user?.name ?? 'U')[0].toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-white/35 text-[10px] font-semibold tracking-[0.07em] uppercase leading-tight">
+                {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              <p
+                className="font-extrabold text-[20px] leading-tight tracking-[-0.025em]"
+                style={{
+                  background: 'linear-gradient(100deg, #ffffff 0%, #c4b5fd 55%, #fb923c 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                {(() => {
+                  const h = new Date().getHours();
+                  const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+                  const n = user?.name ?? '';
+                  const fn = n.split(' ')[0] || 'there';
+                  return `${g}, ${fn}`;
+                })()}
+              </p>
+            </div>
+          </div>
+          {/* Right: banner */}
+          <div className="flex-1 min-w-0 ml-8">
+            <DashboardBanner userId={user?.id ?? 'anon'} />
+          </div>
         </div>
 
         {/* Mobile top strip */}
         <div
-          className="md:hidden bg-white border-b border-border shrink-0 print:hidden"
+          className="lg:hidden bg-white border-b border-border shrink-0 print:hidden"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <div className="h-12 flex items-center justify-between px-4">
@@ -376,25 +422,45 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {recentJobs.map((job) => (
-                  <Link
-                    key={job.id}
-                    to={`/jobs/${job.id}`}
-                    className="flex items-center justify-between px-4 py-2 hover:bg-muted/50 transition-colors group"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate">{job.name}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {job.jobNumber && <span className="font-mono mr-1.5">{job.jobNumber}</span>}
-                        {job.client ?? 'No client'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 ml-3">
-                      <span className="text-[11px] font-medium text-muted-foreground hidden sm:block">{job.status}</span>
-                      <ChevronRight size={13} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                  </Link>
-                ))}
+                {recentJobs.map((job) => {
+                  const statusMeta: Record<string, { dot: string; label: string }> = {
+                    active:    { dot: 'bg-emerald-500', label: 'Active' },
+                    pending:   { dot: 'bg-amber-400',   label: 'Pending' },
+                    complete:  { dot: 'bg-blue-500',    label: 'Complete' },
+                    cancelled: { dot: 'bg-red-400',     label: 'Cancelled' },
+                    on_hold:   { dot: 'bg-slate-400',   label: 'On Hold' },
+                  };
+                  const sm = statusMeta[job.status?.toLowerCase() ?? ''] ?? { dot: 'bg-gray-300', label: job.status ?? '' };
+                  return (
+                    <Link
+                      key={job.id}
+                      to={`/jobs/${job.id}`}
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors group"
+                    >
+                      {/* Status dot */}
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${sm.dot}`} />
+                      {/* Job info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{job.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {job.jobNumber && (
+                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{job.jobNumber}</span>
+                          )}
+                          {job.client && (
+                            <span className="text-[11px] text-muted-foreground truncate">{job.client}</span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Status label + chevron */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="hidden sm:inline-flex items-center text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          {sm.label}
+                        </span>
+                        <ChevronRight size={12} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </motion.div>
