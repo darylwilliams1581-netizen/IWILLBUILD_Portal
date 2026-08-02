@@ -170,6 +170,33 @@ describe('jsxSourceMapper — Commerce component ownership', () => {
   });
 });
 
+describe('jsxSourceMapper — white-space: pre-line for content text', () => {
+  it('adds pre-line to a content-bound text element so stored line breaks render', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default () => <p>{home.hero.subtitle}</p>;
+    `);
+    expect(output).toContain('data-dev-content-key="home.hero.subtitle"');
+    expect(output).toContain('pre-line');
+  });
+
+  it('adds pre-line to in-map content text', () => {
+    const output = transform(`
+      import { products } from 'virtual:content';
+      export default () => (
+        <ul>{products.map((p) => <li>{p.name}</li>)}</ul>
+      );
+    `);
+    expect(output).toContain('data-dev-content-key-template="products[].name"');
+    expect(output).toContain('pre-line');
+  });
+
+  it('does not add pre-line to a plain literal element', () => {
+    const output = transform('<p>Just a literal</p>');
+    expect(output).not.toContain('pre-line');
+  });
+});
+
 describe('jsxSourceMapper — data-dev-content-key', () => {
   it('emits content-key for direct member access on a content binding', () => {
     const output = transform(`

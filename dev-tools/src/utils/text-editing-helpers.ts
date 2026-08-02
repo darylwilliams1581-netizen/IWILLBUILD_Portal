@@ -6,6 +6,29 @@ export const INDICATOR_MS = 1500;
 
 export const INLINE_TAGS = new Set(["em", "strong", "b", "i", "span", "br", "a"]);
 
+const BLOCK_LEVEL_TAGS = new Set(["div", "p", "li"]);
+
+/**
+ * Extract an element's text with `<br>` and block boundaries turned into "\n",
+ * so line breaks a user inserts while inline-editing survive the save.
+ * `textContent` joins block boundaries with nothing ("a</div><div>b" → "ab");
+ * `innerText` is layout- and jsdom-dependent. This walk is deterministic.
+ */
+export function extractEditableText(element: HTMLElement): string {
+  const render = (node: Node): string =>
+    Array.from(node.childNodes)
+      .map((child: Node): string => {
+        if (child.nodeType === Node.TEXT_NODE) return child.textContent ?? "";
+        if (!(child instanceof HTMLElement)) return "";
+        const tag: string = child.tagName.toLowerCase();
+        if (tag === "br") return "\n";
+        const inner: string = render(child);
+        return BLOCK_LEVEL_TAGS.has(tag) ? `\n${inner}\n` : inner;
+      })
+      .join("");
+  return render(element).replace(/\n{3,}/g, "\n\n").trim();
+}
+
 // CSS properties to copy from target element to editor overlay
 const COPY_STYLES = [
   "fontFamily",

@@ -75,6 +75,36 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     );
   }
 
+  function ensurePreLineStyle(openingElement: JSXElement['openingElement']): void {
+    const preLine = t.objectProperty(t.identifier('whiteSpace'), t.stringLiteral('pre-line'));
+    const styleAttr = openingElement.attributes.find(
+      (attr): attr is types.JSXAttribute =>
+        t.isJSXAttribute(attr) && t.isJSXIdentifier(attr.name) && attr.name.name === 'style',
+    );
+    if (!styleAttr) {
+      openingElement.attributes.push(
+        t.jsxAttribute(t.jsxIdentifier('style'), t.jsxExpressionContainer(t.objectExpression([preLine]))),
+      );
+      return;
+    }
+    const value = styleAttr.value;
+    if (!value || !t.isJSXExpressionContainer(value)) return;
+    const expr = value.expression;
+    if (t.isJSXEmptyExpression(expr)) return;
+    if (t.isObjectExpression(expr)) {
+      const hasWhiteSpace = expr.properties.some(
+        (p) =>
+          t.isObjectProperty(p) &&
+          !p.computed &&
+          ((t.isIdentifier(p.key) && p.key.name === 'whiteSpace') ||
+            (t.isStringLiteral(p.key) && p.key.value === 'whiteSpace')),
+      );
+      if (!hasWhiteSpace) expr.properties.unshift(preLine);
+      return;
+    }
+    value.expression = t.objectExpression([preLine, t.spreadElement(expr)]);
+  }
+
   function getJsxTagName(opening: JSXElement['openingElement']): string {
     if (t.isJSXIdentifier(opening.name)) return opening.name.name;
     if (t.isJSXMemberExpression(opening.name)) {
@@ -946,6 +976,10 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
             );
             path.node.children = path.node.children.map((child) => child === expressionContainer ? wrapper : child);
             if (state.programPath) ensureFormattedBoundTextImport(state.programPath, t);
+          }
+
+          if (contentKey && textTagName) {
+            ensurePreLineStyle(openingElement);
           }
 
           if (!isDevBuild) return;

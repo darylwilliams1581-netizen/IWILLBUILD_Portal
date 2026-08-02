@@ -21,6 +21,7 @@ import {
   INLINE_TAGS,
   watchTextReflected,
   waitForContentBacked,
+  extractEditableText,
 } from "../text-editing-helpers";
 import { resolveContentKey } from "../element-detection";
 
@@ -39,6 +40,40 @@ function html(markup: string): HTMLElement {
 
 afterEach(() => {
   while (document.body.firstChild) document.body.removeChild(document.body.firstChild);
+});
+
+// ── extractEditableText ──
+
+describe("extractEditableText", () => {
+  it("returns trimmed plain text unchanged", () => {
+    expect(extractEditableText(html("Hello world"))).toBe("Hello world");
+  });
+
+  it("converts <br> to a newline", () => {
+    expect(extractEditableText(html("a<br>b"))).toBe("a\nb");
+  });
+
+  it("treats block boundaries as newlines, keeping a blank line for an empty block", () => {
+    expect(
+      extractEditableText(html("placed.<div><br></div><div>It's amazing!</div>")),
+    ).toBe("placed.\n\nIt's amazing!");
+  });
+
+  it("keeps inline formatting on the same line", () => {
+    expect(extractEditableText(html("Hello <strong>bold</strong> world"))).toBe(
+      "Hello bold world",
+    );
+  });
+
+  it("preserves existing newline characters", () => {
+    expect(extractEditableText(html("line1\nline2"))).toBe("line1\nline2");
+  });
+
+  it("collapses 3+ consecutive newlines to a single blank line", () => {
+    expect(
+      extractEditableText(html("a<div><br></div><div><br></div><div>b</div>")),
+    ).toBe("a\n\nb");
+  });
 });
 
 // ── findEditableContainer ──

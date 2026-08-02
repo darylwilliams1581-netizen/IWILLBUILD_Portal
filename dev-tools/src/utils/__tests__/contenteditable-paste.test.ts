@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { insertPlainTextOnPaste } from '../contenteditable-paste';
+import { insertPlainTextOnPaste, insertLineBreakOnEnter } from '../contenteditable-paste';
 
 function makeClipboardEvent(data: Record<string, string> | null) {
   let prevented = false;
@@ -38,6 +38,26 @@ function selectAllContents(el: HTMLElement): void {
   range.selectNodeContents(el);
   selection.removeAllRanges();
   selection.addRange(range);
+}
+
+function placeCaretInText(node: Text, offset: number): void {
+  const selection = window.getSelection()!;
+  const range = document.createRange();
+  range.setStart(node, offset);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function makeKeyEvent(key: string) {
+  let prevented = false;
+  return {
+    key,
+    preventDefault() {
+      prevented = true;
+    },
+    wasPrevented: () => prevented,
+  };
 }
 
 describe('insertPlainTextOnPaste', () => {
@@ -97,5 +117,78 @@ describe('insertPlainTextOnPaste', () => {
     insertPlainTextOnPaste(event as unknown as ClipboardEvent);
     expect(event.wasPrevented()).toBe(false);
     expect(el.textContent).toBe('untouched');
+  });
+});
+
+describe('insertLineBreakOnEnter', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    window.getSelection()?.removeAllRanges();
+  });
+
+  it('ignores non-Enter keys without preventing default (typing still works)', () => {
+    const el = setupEditable('hello');
+    placeCaretInText(el.firstChild as Text, 5);
+    const event = makeKeyEvent('a');
+    insertLineBreakOnEnter(event as unknown as KeyboardEvent);
+    expect(event.wasPrevented()).toBe(false);
+    expect(el.textContent).toBe('hello');
+  });
+
+  it('prevents the default block insertion on Enter', () => {
+    const el = setupEditable('hello');
+    placeCaretInText(el.firstChild as Text, 5);
+    const event = makeKeyEvent('Enter');
+    insertLineBreakOnEnter(event as unknown as KeyboardEvent);
+    expect(event.wasPrevented()).toBe(true);
+  });
+
+  it('does nothing when there is no selection', () => {
+    const el = setupEditable('hello');
+    window.getSelection()?.removeAllRanges();
+    insertLineBreakOnEnter(makeKeyEvent('Enter') as unknown as KeyboardEvent);
+    expect(el.textContent).toBe('hello');
+  });
+
+  it('inserts a newline in place at the caret, preserving the original text node', () => {
+    const el = setupEditable('line1');
+    const originalNode = el.firstChild; // React's tracked text node
+    placeCaretInText(el.firstChild as Text, 5);
+    insertLineBreakOnEnter(makeKeyEvent('Enter') as unknown as KeyboardEvent);
+    // No block/split nodes: same single text node, identity preserved.
+    expect(el.childNodes.length).toBe(1);
+    expect(el.firstChild).toBe(originalNode);
+    expect(el.querySelector('div, br')).toBeNull();
+    expect(el.textContent).toBe('line1\n');
+  });
+
+  it('inserts a newline mid-text without splitting the node', () => {
+    const el = setupEditable('ab');
+    const textNode = el.firstChild as Text;
+    placeCaretInText(textNode, 1);
+    insertLineBreakOnEnter(makeKeyEvent('Enter') as unknown as KeyboardEvent);
+    expect(el.childNodes.length).toBe(1);
+    expect(el.firstChild).toBe(textNode);
+    expect(el.textContent).toBe('a\nb');
+  });
+
+  it('replaces a selection with the newline', () => {
+    const el = setupEditable('REPLACE');
+    selectAllContents(el);
+    insertLineBreakOnEnter(makeKeyEvent('Enter') as unknown as KeyboardEvent);
+    expect(el.textContent).toBe('\n');
+  });
+
+  it('inserts a newline text node when the caret is not inside a text node', () => {
+    const el = setupEditable('');
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    insertLineBreakOnEnter(makeKeyEvent('Enter') as unknown as KeyboardEvent);
+    expect(el.textContent).toBe('\n');
+    expect(el.querySelector('div, br')).toBeNull();
   });
 });

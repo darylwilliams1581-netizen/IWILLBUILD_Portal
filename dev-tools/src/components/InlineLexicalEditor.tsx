@@ -30,7 +30,7 @@ import {
   INSERT_ORDERED_LIST_COMMAND,
   REMOVE_LIST_COMMAND,
 } from '@lexical/list';
-import { formattingSignature, showIndicator } from '../utils/text-editing-helpers';
+import { formattingSignature, showIndicator, extractEditableText } from '../utils/text-editing-helpers';
 // --- Types ---
 
 export interface InlineLexicalEditorProps {
@@ -407,7 +407,7 @@ export default function InlineLexicalEditor({
   const handleCommit = useCallback((html: string) => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     const container = parsed.body.firstElementChild || parsed.body;
-    const plainText = (container.textContent || '').trim();
+    const plainText = extractEditableText(container as HTMLElement);
 
     if (!dirtyRef.current) {
       onCommit(plainText, null);

@@ -18,9 +18,10 @@ import {
   type ConformTarget,
 } from "../utils/element-detection";
 import { buildContentUpdatePayload } from "../utils/content-edit-payload";
+import { resolveHoverableAnchorAtPoint } from "./useImageHoverDetection";
 import InlineLexicalEditor from "../components/InlineLexicalEditor";
 import { htmlToJsxStructured } from "../utils/html-to-jsx";
-import { insertPlainTextOnPaste } from "../utils/contenteditable-paste";
+import { insertPlainTextOnPaste, insertLineBreakOnEnter } from "../utils/contenteditable-paste";
 import { createElement } from "react";
 import {
   INDICATOR_MS,
@@ -42,6 +43,7 @@ import {
   mergeOriginalClasses,
   injectEditorCss,
   ensureBoldFontLoaded,
+  extractEditableText,
 } from "../utils/text-editing-helpers";
 
 export interface PendingConform extends ConformTarget {
@@ -443,13 +445,14 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
         stopEditing(true);
       }
 
-      const originalText = element.textContent?.trim() || "";
+      const originalText = extractEditableText(element);
       const originalInnerHtml = element.innerHTML;
       const originalHasStructure = element.querySelector("a, span, em, strong, b, i, code, br") !== null;
       const parentOriginalText = brParent?.textContent?.trim() || "";
       element.contentEditable = "true";
       element.style.outline = "none";
       element.addEventListener("paste", insertPlainTextOnPaste);
+      element.addEventListener("keydown", insertLineBreakOnEnter);
       element.focus();
 
       const sel = window.getSelection();
@@ -467,8 +470,9 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
         element.style.outline = "";
         element.removeEventListener("blur", onBlur);
         element.removeEventListener("paste", insertPlainTextOnPaste);
+        element.removeEventListener("keydown", insertLineBreakOnEnter);
         blurHandlerRef.current = null;
-        const newText = element.textContent?.trim() || "";
+        const newText = extractEditableText(element);
         const hasStructureNow = element.querySelector("a, span, em, strong, b, i, code, br") !== null;
         const htmlChanged = element.innerHTML !== originalInnerHtml;
         const newHtml = (originalHasStructure || hasStructureNow) && htmlChanged ? element.outerHTML : null;
@@ -507,7 +511,7 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
       ensureBoldFontLoaded(element);
 
       const parentOriginalText = brParent?.textContent?.trim() || "";
-      const originalText = element.textContent?.trim() || "";
+      const originalText = extractEditableText(element);
       const elementTag = element.tagName.toLowerCase();
       const isListRoot = elementTag === "ul" || elementTag === "ol";
       const initialHtml = isListRoot
@@ -590,6 +594,11 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
         target = findEditableContainer(rawTarget, cmsInlineEditEnabled);
       }
       if (!target) {
+        if (resolveHoverableAnchorAtPoint(rawTarget, e.clientX, e.clientY)?.type === "image") {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         const conform = resolveConformTarget(rawTarget);
         if (conform && !pendingConformRef.current) {
           e.preventDefault();
