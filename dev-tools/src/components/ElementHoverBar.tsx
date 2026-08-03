@@ -1027,7 +1027,7 @@ export default function ElementHoverBar({
             {!isCommerceMutationBlocked && (
               <HoverBarButton
                 onClick={handleEditWithAI}
-                title={t("devtools_edit_with_ai", "Edit with AI")}
+                title={t("devtools_edit_with_ai", "Edit with Airo")}
                 icon={<Sparkles width={15} height={15} style={{ color: "var(--color-accent-purple)" }} />}
               />
             )}

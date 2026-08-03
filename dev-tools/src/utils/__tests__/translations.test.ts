@@ -30,7 +30,7 @@ describe('translations', () => {
       setTranslations(testTranslations);
 
       expect(t('devtools_image_replace', 'Replace')).toBe('Remplacer');
-      expect(t('devtools_edit_with_ai', 'Edit with AI')).toBe('Modifier avec l\'IA');
+      expect(t('devtools_edit_with_ai', 'Edit with Airo')).toBe('Modifier avec l\'IA');
     });
 
     it('merges new translations with existing ones', () => {

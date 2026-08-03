@@ -227,7 +227,7 @@ describe('ElementHoverBar - Commerce product image gating', () => {
     expect(await screen.findByRole('button', { name: 'Modify' })).not.toBeNull();
   });
 
-  it('still shows Reference but hides Edit with AI for Commerce product images', async () => {
+  it('still shows Reference but hides Edit with Airo for Commerce product images', async () => {
     vi.stubEnv('VITE_GODADDY_STORE_ID', 'store-123');
 
     const img = makeImageElement();
@@ -237,7 +237,7 @@ describe('ElementHoverBar - Commerce product image gating', () => {
     openToolbar(img);
 
     expect(await screen.findByRole('button', { name: 'Add as reference' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Edit with AI' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit with Airo' })).toBeNull();
   });
 
   it('hides image mutation actions for direct-DOM Commerce product images', () => {
@@ -280,7 +280,7 @@ describe('ElementHoverBar - Commerce product text gating', () => {
     openToolbar(h2);
 
     expect(await screen.findByRole('button', { name: 'Add as reference' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Edit with AI' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit with Airo' })).toBeNull();
   });
 });
 
@@ -512,13 +512,13 @@ describe('ElementHoverBar - tracking', () => {
     expect(findTrackCall('devtools.toolbar.multi_select_add')).toBeTruthy();
   });
 
-  it('fires sparkles click when Edit with AI is clicked', () => {
+  it('fires sparkles click when Edit with Airo is clicked', () => {
     vi.stubEnv('VITE_GODADDY_STORE_ID', '');
     const img = makeImageElement();
     const hovered = makeImageHover(img, { imageUrl: 'https://x/y.jpg' });
     renderHoverBar(hovered);
     openToolbar(img);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit with AI' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit with Airo' }));
     expect(findTrackCall('devtools.toolbar.sparkles')).toBeTruthy();
   });
 });
