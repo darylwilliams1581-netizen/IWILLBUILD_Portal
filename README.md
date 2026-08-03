@@ -10,23 +10,23 @@ A modern, production-ready web application template built with Vite, React, and 
 - **🧠 AI-Friendly**: Component introspection for AI development tools
 - **📱 Responsive**: Mobile-first design with modern CSS
 - **🔧 Developer Experience**: Hot reload, linting, formatting, and testing setup
-- **🚀 Production Ready**: SSR support, optimized builds, and deployment-ready
+- **🚀 Production Ready**: Server-side rendering (SSR), optimized builds, and deployment-ready
 
 ## 🛠️ Tech Stack
 
 ### Frontend
 
-- **React 18+** - Modern React with hooks and concurrent features
+- **React 19** - Modern React with hooks and concurrent features
 - **TypeScript 5** - Full type safety across the application
-- **Vite 5** - Fast build tool and dev server with HMR
+- **Vite 6** - Fast build tool and dev server with HMR
 - **Tailwind CSS 3** - Utility-first CSS framework
 - **shadcn/ui** - Beautiful, accessible component library
-- **React Router DOM** - Client-side routing
-- **Framer Motion** - Smooth animations and transitions
+- **React Router DOM 7** - Client-side routing
+- **Motion** - Smooth animations and transitions
 
 ### Backend
 
-- **Node.js API** - Simple health check and utilities
+- **Express API** - Health check, SSR, and extensible server routes
 - **TypeScript** - Type-safe backend development
 
 ### Development Tools
@@ -36,7 +36,7 @@ A modern, production-ready web application template built with Vite, React, and 
 - **Vitest** - Fast unit testing
 - **TypeScript ESLint** - TypeScript-specific linting
 
-> **Note:** SSR support with vite-plugin-ssr has been temporarily removed due to compatibility issues with the directory structure. This can be re-added later when the plugin is updated or replaced with a more stable alternative.
+> **Requirement:** Node.js 22 or later.
 
 ## 📁 Project Structure
 
@@ -61,8 +61,9 @@ v8-app-template/
 │   ├── lib/              # Utilities and API
 │   │   ├── utils.ts      # Utility functions
 │   │   └── api-client.ts # API client
-│   ├── api/              # Backend API routes
-│   │   └── health.ts     # Health check endpoint
+│   ├── server/           # Express API routes and SSR entry point
+│   │   ├── api/health/GET.ts
+│   │   └── entry.ts
 │   ├── styles/           # Global styles
 │   │   └── globals.css
 │   ├── test/             # Test setup
@@ -74,18 +75,25 @@ v8-app-template/
 ├── dev-tools/            # Development mode enhancements
 ├── source-mapper/        # AI introspection plugin
 ├── public/               # Static assets
-└── scripts/              # Development scripts
+├── Dockerfile.dev        # Local Docker development image
+└── vite.config.ts        # Vite, API, SSR, and plugin configuration
 ```
 
 ## 📜 Available Scripts
 
 - `npm run dev` - Start development server with hot reload
-- `npm run build` - Build for production
+- `npm run build` - Build the client and SSR server bundle for production
 - `npm run preview` - Preview production build locally
 - `npm run test` - Run Vitest unit tests
+- `npm run test:ui` - Open the Vitest UI
+- `npm run test:coverage` - Run tests with coverage reporting
+- `npm run audit` - Check dependencies for high-severity vulnerabilities
 - `npm run lint` - Run ESLint code linting
+- `npm run lint:fix` - Run ESLint and apply fixes where possible
 - `npm run type-check` - Run TypeScript type checking
-- `npm run setup` - Initialize project with dependencies
+- `npm run format` - Format source files with Prettier
+- `npm run clean` - Remove build output and Vite's dependency cache
+- `npm run reset` - Clean the project and reinstall dependencies
 
 ## 🎨 UI Components
 
@@ -225,10 +233,14 @@ npm run build
 Copy `env.example` to `.env` and configure:
 
 ```env
-VITE_APP_NAME=V8 App Template
-VITE_API_URL=http://localhost:5173/api
+VITE_APP_NAME=v8 App Template
+VITE_PUBLIC_URL=http://localhost:5173
+VITE_API_URL=http://localhost:3000/api
 NODE_ENV=development
-PORT=5173
+PORT=3000
+VITE_ENABLE_SOURCE_MAPPING=true
+VITE_ENABLE_SSR=true
+VITE_SHOW_DEV_TOOLS=false
 ```
 
 ### Custom Plugins
@@ -241,12 +253,17 @@ Configure in `vite.config.ts`:
 
 ```typescript
 import { defineConfig } from "vite";
-import { sourceMapperPlugin } from "./source-mapper";
-import { devToolsPlugin } from "./dev-tools";
+import react from "@vitejs/plugin-react";
+import sourceMapperPlugin from "./source-mapper/src/index";
+import { devToolsPlugin } from "./dev-tools/src/vite-plugin";
+import { fullStoryPlugin } from "./fullstory-plugin";
 
-export default defineConfig({
-  plugins: [sourceMapperPlugin(), devToolsPlugin()],
-});
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react({ babel: { plugins: [sourceMapperPlugin] } }),
+    ...(mode === "development" ? [devToolsPlugin(), fullStoryPlugin()] : []),
+  ],
+}));
 ```
 
 ## 🎯 Best Practices
