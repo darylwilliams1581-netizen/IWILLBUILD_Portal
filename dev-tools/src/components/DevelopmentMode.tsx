@@ -110,6 +110,14 @@ export default function DevelopmentMode() {
       }
     }
 
+    const emitScrollPositionUpdate = () => {
+      send({
+        type: 'SCROLL_POSITION_UPDATE',
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      })
+    }
+
     // Clear stale theme preview state from previous sessions
     localStorage.removeItem('airo-dev-original-theme')
     localStorage.removeItem('airo-dev-preview-theme')
@@ -1225,11 +1233,13 @@ export default function DevelopmentMode() {
         sections.forEach(section => sectionsObserver?.observe(section))
         isScriptReady = true
         updateCachedContext()
+        emitScrollPositionUpdate()
 
       } catch (error) {
         activeSection = 'content'
         isScriptReady = true
         updateCachedContext()
+        emitScrollPositionUpdate()
       }
     }
 
@@ -1240,6 +1250,7 @@ export default function DevelopmentMode() {
       scrollTimeout = setTimeout(() => {
         updateCachedContext()
         updateDebugOverlay()
+        emitScrollPositionUpdate()
         scrollTimeout = null
       }, 150) // Throttle to every 150ms
     }
@@ -1268,6 +1279,7 @@ export default function DevelopmentMode() {
         visibleSections = []
         setupSectionObserver()
         updateCachedContext()
+        emitScrollPositionUpdate()
         navigationTimeout = null
       }, 150)
     }
