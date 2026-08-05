@@ -1,5 +1,18 @@
 {
   "name": "@airo/content-plugin",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc src/keys.ts --outDir dist --declaration --target ES2022 --lib ES2022 --module ESNext --moduleResolution bundler --strict --skipLibCheck --esModuleInterop --forceConsistentCasingInFileNames"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  },
+  "exports": {
+    "./keys": {
+      "types": "./dist/keys.d.ts",
+      "default": "./dist/keys.js"
+    }
+  }
 }
