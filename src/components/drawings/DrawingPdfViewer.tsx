@@ -20,7 +20,7 @@ import {
   X, ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2,
   ChevronLeft, ChevronRight, Save, Trash2, Loader2,
   Type, ArrowUpRight, Square, Highlighter, Pen,
-  MoreHorizontal, Shrink,
+  Shrink, MousePointer2,
 } from 'lucide-react';
 import { useMobileViewer } from '@/lib/useMobileViewer';
 import { resolveNativeUrl } from '@/lib/native-url';
@@ -185,6 +185,23 @@ function MarkupCanvas({ items, currentPage, pageWidth, pageHeight, activeTool, o
   );
 }
 
+// ── Mobile bottom-bar button ──────────────────────────────────────────────────
+function MobileToolBtn({ icon, label, active, onClick }: {
+  icon: React.ReactNode; label: string; active?: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className={`flex flex-col items-center justify-center gap-0.5 px-1.5 py-1 rounded-xl min-w-[44px] transition-colors
+        ${active ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600'}`}
+    >
+      {icon}
+      <span className="text-[9px] font-semibold leading-none tracking-tight">{label}</span>
+    </button>
+  );
+}
+
 export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title, onClose, onMarkupSaved }: Props) {
   const fileUrl = resolveNativeUrl(fileUrlRaw);
   const [numPages, setNumPages] = useState(0);
@@ -199,8 +216,6 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
   const [pageWidth, setPageWidth] = useState(0);
   const [pageHeight, setPageHeight] = useState(0);
   const [pdfError, setPdfError] = useState('');
-  // Mobile overflow menu (markup tools + rotate on small screens)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ── Mobile gesture hook ──────────────────────────────────────────────────
@@ -416,73 +431,10 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Mobile "…" overflow menu button */}
-        <button
-          onClick={() => setMobileMenuOpen(s => !s)}
-          className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
-          title="More options"
-        >
-          <MoreHorizontal size={16} />
-        </button>
-
         <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white ml-0.5">
           <X size={17} />
         </button>
       </div>
-
-      {/* ── Mobile overflow menu ─────────────────────────────────────────────── */}
-      {mobileMenuOpen && (
-        <div className="md:hidden flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-800 border-b border-slate-700 shrink-0">
-          {/* Fit to screen */}
-          <button
-            onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-semibold border border-violet-600/30"
-          >
-            <Shrink size={13} /> Fit to screen
-          </button>
-          {/* Reset zoom */}
-          <button
-            onClick={() => { mobileViewer.resetZoom(); setMobileMenuOpen(false); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-          >
-            <Maximize2 size={13} /> Reset zoom
-          </button>
-          {/* Rotate */}
-          <button
-            onClick={() => { setRotation((r) => (r + 90) % 360); setMobileMenuOpen(false); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-          >
-            <RotateCw size={13} /> Rotate
-          </button>
-          {/* Markup tools */}
-          <div className="w-full flex items-center gap-1.5 pt-1 border-t border-slate-700">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Markup</span>
-            {(['text', 'arrow', 'rect', 'highlight', 'pen'] as ToolType[]).map((tool) => {
-              const Icon = { text: Type, arrow: ArrowUpRight, rect: Square, highlight: Highlighter, pen: Pen }[tool];
-              return (
-                <button key={tool}
-                  onClick={() => { setActiveTool((t) => t === tool ? 'none' : tool); setMobileMenuOpen(false); }}
-                  title={TOOL_LABELS[tool]}
-                  className={`p-2 rounded-lg transition-colors ${activeTool === tool ? 'bg-primary text-white' : 'bg-slate-700 text-slate-300'}`}>
-                  <Icon size={14} />
-                </button>
-              );
-            })}
-          </div>
-          {/* Save / Clear markup */}
-          <div className="w-full flex items-center gap-2 pt-1 border-t border-slate-700">
-            <button onClick={() => { clearMarkup(); setMobileMenuOpen(false); }} disabled={!markupItems.length}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-700 disabled:opacity-30">
-              <Trash2 size={12} /> Clear
-            </button>
-            <button onClick={() => { void saveMarkup(); setMobileMenuOpen(false); }} disabled={saving || !markupItems.length}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold disabled:opacity-40">
-              {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-              Save Markup
-            </button>
-          </div>
-        </div>
-      )}
 
       {saveMsg && (
         <div className={`px-4 py-2 text-xs font-semibold text-center shrink-0 ${saveMsg.startsWith('Error') ? 'bg-red-900/60 text-red-200' : 'bg-emerald-900/60 text-emerald-200'}`}>
@@ -491,7 +443,7 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
       )}
 
       {activeTool !== 'none' && (
-        <div className="px-4 py-1.5 bg-primary/20 border-b border-primary/30 text-xs text-violet-200 text-center shrink-0">
+        <div className="hidden md:block px-4 py-1.5 bg-primary/20 border-b border-primary/30 text-xs text-violet-200 text-center shrink-0">
           <span className="font-bold">{TOOL_LABELS[activeTool]}</span> active — draw on the PDF. Press Esc to deselect.
         </div>
       )}
@@ -502,7 +454,6 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
         className="viewer-canvas flex-1 overflow-auto flex justify-center items-start py-4 px-4 bg-slate-800"
         style={{
           ...mobileViewer.containerStyle,
-          // Safe-area bottom padding for iPhone home indicator
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
           overflowX: 'clip',
         }}
@@ -533,8 +484,69 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
         )}
       </div>
 
+      {/* ── Mobile / tablet bottom toolbar (hidden on md+) ───────────────────── */}
+      <div
+        className="md:hidden flex items-center justify-around bg-slate-800 border-t border-slate-700 shrink-0"
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
+          paddingTop: '6px',
+          paddingLeft: '4px',
+          paddingRight: '4px',
+        }}
+      >
+        {/* Select (none) */}
+        <MobileToolBtn
+          icon={<MousePointer2 size={18} />}
+          label="Select"
+          active={activeTool === 'none'}
+          onClick={() => setActiveTool('none')}
+        />
+
+        {/* Markup tools */}
+        {(['text', 'arrow', 'rect', 'highlight', 'pen'] as ToolType[]).map((tool) => {
+          const Icon = { text: Type, arrow: ArrowUpRight, rect: Square, highlight: Highlighter, pen: Pen }[tool];
+          return (
+            <MobileToolBtn
+              key={tool}
+              icon={<Icon size={18} />}
+              label={TOOL_LABELS[tool]}
+              active={activeTool === tool}
+              onClick={() => setActiveTool((t) => t === tool ? 'none' : tool)}
+            />
+          );
+        })}
+
+        {/* Divider */}
+        <div className="w-px h-7 bg-slate-600 mx-0.5 shrink-0" />
+
+        {/* Fit to screen */}
+        <MobileToolBtn
+          icon={<Shrink size={18} />}
+          label="Fit"
+          onClick={() => mobileViewer.fitToScreen()}
+        />
+
+        {/* Rotate */}
+        <MobileToolBtn
+          icon={<RotateCw size={18} />}
+          label="Rotate"
+          onClick={() => setRotation((r) => (r + 90) % 360)}
+        />
+
+        {/* Save markup — only shown when there's something to save */}
+        {markupItems.length > 0 && (
+          <MobileToolBtn
+            icon={saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            label="Save"
+            active
+            onClick={() => void saveMarkup()}
+          />
+        )}
+      </div>
+
+      {/* Unsaved markup badge — desktop only (mobile has Save in bottom bar) */}
       {markupItems.length > 0 && (
-        <div className="absolute bottom-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
+        <div className="hidden md:block absolute bottom-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
           {markupItems.length} unsaved markup{markupItems.length !== 1 ? 's' : ''}
         </div>
       )}
