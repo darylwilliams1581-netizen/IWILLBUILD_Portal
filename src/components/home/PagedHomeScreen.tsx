@@ -18,13 +18,14 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus } from 'lucide-react';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
+import NewJobModal from '@/components/NewJobModal';
 
 const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
   { label: 'Console', icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600', fg: 'text-white' },
@@ -109,12 +110,32 @@ function IconPage({
 // ── Dashboard page ────────────────────────────────────────────────────────────
 
 function DashboardPage({ userId, role }: { userId: string; role: string }) {
+  const [newJobOpen, setNewJobOpen] = useState(false);
+
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
+      {/* Header row: title + Add Job button */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-foreground">Dashboard</span>
+        <button
+          onClick={() => setNewJobOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
+        >
+          <Plus size={13} strokeWidth={2.5} />
+          Add Job
+        </button>
+      </div>
+
       <DashboardBanner userId={userId} />
       <KpiWidgets />
       <NotificationList />
       <MyTasksPanel userRole={role} />
+
+      <NewJobModal
+        open={newJobOpen}
+        onClose={() => setNewJobOpen(false)}
+        onCreated={() => setNewJobOpen(false)}
+      />
     </div>
   );
 }
