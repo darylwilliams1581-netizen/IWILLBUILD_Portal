@@ -18,16 +18,13 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { LayoutDashboard, Zap, Settings2 } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck } from 'lucide-react';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
-
-// ── Platform icon shape (same as home.tsx) ────────────────────────────────────
-import { ShieldCheck } from 'lucide-react';
 
 const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
   { label: 'Console', icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600', fg: 'text-white' },
