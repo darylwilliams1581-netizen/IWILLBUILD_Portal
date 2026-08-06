@@ -102,7 +102,7 @@ export default function DashboardPage() {
   const recentJobs = jobs.slice(0, 8);
 
   return (
-    <div className="portal-page">
+    <div className="flex-1 bg-muted/30 flex flex-col overflow-hidden">
       <Helmet>
         <title>Dashboard — IWILLBUILD Portal</title>
         <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
@@ -127,7 +127,7 @@ export default function DashboardPage() {
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="portal-main lg:pt-[104px]">
+      <div className="flex flex-col flex-1 min-h-0 lg:pt-[104px]">
 
         {/* ── Desktop command-centre header ── */}
         <div
