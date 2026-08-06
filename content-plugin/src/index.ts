@@ -1,13 +1,8 @@
 import type { Plugin } from 'vite';
 import { promises as fs, existsSync } from 'node:fs';
 import path from 'node:path';
+import { parseFrontmatter, type ParsedMarkdown } from './frontmatter';
 import { parseJson } from './parse';
-import {
-  CONTENT_SUBDIRS, canonicalKeyFor, classifyDirents,
-  isCollectionItem, findFatalDuplicates,
-  assertSafeContentName, exportableAliasNames, normalizeCollectionItem,
-  type DirentLike, type KeyedEntry,
-} from './keys';
 
 const VIRTUAL_ID = 'virtual:content';
 const RESOLVED_VIRTUAL_ID = '\0' + VIRTUAL_ID;
@@ -27,20 +22,19 @@ interface Options {
   contentDir?: string;
 }
 
-type DiscoveredEntry =
-  | (KeyedEntry & { kind: 'file'; absPath: string })
-  | (KeyedEntry & { kind: 'collection'; dirPath: string; itemPaths: string[] });
+type Entry =
+  | { key: string; kind: 'file'; absPath: string }
+  | { key: string; kind: 'collection'; dirPath: string; itemPaths: string[] };
 
 /**
  * Emits a virtual `virtual:content` module whose exports are the parsed content
  * of `src/content/**`, validated at module-eval time against schemas exported
  * from `src/content/schemas.ts`.
  *
- * Discovery rules:
+ * Discovery rules (v1, JSON-only):
  *   src/content/site.json           → `site`
- *   src/content/pages/<name>.json   → `pages.<name>` (+ a bare `<name>` alias if unique)
- *   src/content/data/<name>.json    → `data.<name>` (+ a bare `<name>` alias if unique)
- *   src/content/data/<name>/        → `data.<name>` as an array (+ alias if unique)
+ *   src/content/pages/<name>.json   → `<name>` (page-level)
+ *   src/content/data/<name>.json    → `<name>` (data collection)
  */
 export function contentPlugin(options: Options = {}): Plugin {
   const relContentDir = options.contentDir ?? 'src/content';
@@ -170,8 +164,8 @@ export function contentPlugin(options: Options = {}): Plugin {
 
 export default contentPlugin;
 
-async function discover(contentDir: string): Promise<DiscoveredEntry[]> {
-  const entries: DiscoveredEntry[] = [];
+async function discover(contentDir: string): Promise<Entry[]> {
+  const entries: Entry[] = [];
 
   // Enforce layout: the ONLY JSON allowed at the content-dir top level is
   // site.json. Page content belongs under pages/; data collections under
@@ -194,77 +188,81 @@ async function discover(contentDir: string): Promise<DiscoveredEntry[]> {
     }
   }
 
-  const siteAbsPath: string = path.join(contentDir, 'site.json');
-  if (await exists(siteAbsPath)) {
-    entries.push({
-      canonicalKey: canonicalKeyFor(null, 'site'),
-      bareName: 'site',
-      subdir: null,
-      kind: 'file',
-      relPath: 'site.json',
-      absPath: siteAbsPath,
-    });
+  const site: string = path.join(contentDir, 'site.json');
+  if (await exists(site)) {
+    entries.push({ key: 'site', kind: 'file', absPath: site });
   }
 
-  for (const subdir of CONTENT_SUBDIRS) {
+  for (const subdir of ['pages', 'data']) {
     const dir: string = path.join(contentDir, subdir);
     if (!(await exists(dir))) continue;
-
-    const dirents: DirentLike[] = (await fs.readdir(dir, { withFileTypes: true })).map(
-      (d): DirentLike => ({ name: d.name, isDirectory: d.isDirectory() }),
-    );
-
-    for (const keyed of classifyDirents(subdir, dirents)) {
-      assertSafeContentName(keyed.bareName, keyed.relPath);
-
-      if (keyed.kind === 'file') {
-        entries.push({ ...keyed, kind: 'file', absPath: path.join(contentDir, keyed.relPath) });
-        continue;
+    for (const dirent of await fs.readdir(dir, { withFileTypes: true })) {
+      if (dirent.isFile() && dirent.name.endsWith('.json')) {
+        const key: string = dirent.name.replace(/\.json$/, '');
+        assertSafeKey(key, dirent.name);
+        entries.push({ key, kind: 'file', absPath: path.join(dir, dirent.name) });
+      } else if (dirent.isDirectory() && subdir === 'data') {
+        // Collections are data/-only; pages/ holds singular page objects
+        const key: string = dirent.name;
+        assertSafeKey(key, dirent.name);
+        const collectionDir: string = path.join(dir, dirent.name);
+        const itemPaths: string[] = (await fs.readdir(collectionDir))
+          .filter((f: string): boolean =>
+            (f.endsWith('.json') || f.endsWith('.md')) && !f.startsWith('.') && f !== 'README.md')
+          .sort()
+          .map((f: string): string => path.join(collectionDir, f));
+        entries.push({ key, kind: 'collection', dirPath: collectionDir, itemPaths });
       }
-
-      const collectionDir: string = path.join(contentDir, keyed.relPath);
-      const itemPaths: string[] = (await fs.readdir(collectionDir))
-        .filter(isCollectionItem)
-        .sort()
-        .map((f: string): string => path.join(collectionDir, f));
-      entries.push({ ...keyed, kind: 'collection', dirPath: collectionDir, itemPaths });
     }
   }
 
-  const duplicates: Array<[KeyedEntry, KeyedEntry]> = findFatalDuplicates(entries);
-  if (duplicates.length > 0) {
-    const [first, second]: [KeyedEntry, KeyedEntry] = duplicates[0]!;
-    throw duplicateKeyError(contentDir, first as DiscoveredEntry, second as DiscoveredEntry);
+  const seen = new Map<string, Entry>();
+  for (const e of entries) {
+    const clash: Entry | undefined = seen.get(e.key);
+    if (clash) throw duplicateKeyError(contentDir, clash, e);
+    seen.set(e.key, e);
   }
 
   return entries;
 }
 
 /** `src/content/`-relative display path for an entry, for use in error messages. */
-function displayPath(contentDir: string, entry: DiscoveredEntry): string {
+function displayPath(contentDir: string, entry: Entry): string {
   const abs: string = entry.kind === 'file' ? entry.absPath : entry.dirPath;
   const rel: string = path.relative(contentDir, abs).split(path.sep).join('/');
   return entry.kind === 'file' ? `src/content/${rel}` : `src/content/${rel}/ (collection)`;
 }
 
-// findFatalDuplicates only reports same-namespace collisions (D4) — a file and
-// a directory both claiming data/blog. Cross-namespace pairs (pages/blog.json
-// vs data/blog.json) already coexist as distinct namespace exports.
-function duplicateKeyError(contentDir: string, first: DiscoveredEntry, second: DiscoveredEntry): Error {
+// Every key becomes one top-level export of virtual:content, so a repeat key
+// would emit two `export const <key>` — a syntax error. Name both paths and a
+// rename that actually passes assertSafeKey, since the message is what the
+// agent (and the customer, via "Ask Airo to Fix It") acts on.
+function duplicateKeyError(contentDir: string, first: Entry, second: Entry): Error {
+  const pagesEntry: Entry | undefined = [first, second].find(
+    (e: Entry): boolean => displayPath(contentDir, e).startsWith('src/content/pages/'),
+  );
+  const fix: string =
+    pagesEntry !== undefined
+      ? `Rename the page copy to src/content/pages/${second.key}Page.json and import { ${second.key}Page } instead.`
+      : `Rename one of them so the keys differ.`;
   return new Error(
-    `[airo-content] duplicate content key "${second.canonicalKey}" — both of these export "${second.canonicalKey}":\n` +
+    `[airo-content] duplicate content key "${second.key}" — both of these export "${second.key}":\n` +
     `  ${displayPath(contentDir, first)}\n` +
     `  ${displayPath(contentDir, second)}\n` +
-    `Delete or rename one of them so the keys differ.\n` +
-    `Keys must be camelCase JS identifiers; hyphens are rejected.`,
+    `${fix}\nKeys must be camelCase JS identifiers; hyphens are rejected.`,
   );
 }
 
 function normalizeItem(absPath: string, raw: string): unknown {
-  return normalizeCollectionItem(path.basename(absPath), raw);
+  const slugFromFile: string = path.basename(absPath).replace(/\.(md|json)$/, '');
+  if (absPath.endsWith('.md')) {
+    const { data, content }: ParsedMarkdown = parseFrontmatter(raw);
+    return { slug: slugFromFile, ...data, content };
+  }
+  return { slug: slugFromFile, ...(parseJson(raw) as Record<string, unknown>) };
 }
 
-async function readEntryValue(entry: DiscoveredEntry): Promise<unknown> {
+async function readEntryValue(entry: Entry): Promise<unknown> {
   if (entry.kind === 'file') {
     const raw: string = await fs.readFile(entry.absPath, 'utf8');
     return parseJson(raw);
@@ -277,36 +275,16 @@ async function readEntryValue(entry: DiscoveredEntry): Promise<unknown> {
   );
 }
 
-function entryLocation(entry: DiscoveredEntry): string {
-  return entry.kind === 'file' ? entry.absPath : `collection ${entry.canonicalKey}`;
-}
-
-async function readLiteral(entry: DiscoveredEntry): Promise<string> {
-  let value: unknown;
-  try {
-    value = await readEntryValue(entry);
-  } catch (err) {
-    const msg: string = err instanceof Error ? err.message : String(err);
-    throw new Error(`[airo-content] failed to parse ${entryLocation(entry)}: ${msg}`);
-  }
-  return JSON.stringify(value, null, 2);
-}
-
-/** Bare names claimed by exactly one entry — the only names a flat schema can unambiguously describe. */
-function uniqueBareNameSet(entries: readonly KeyedEntry[]): ReadonlySet<string> {
-  const counts: Map<string, number> = new Map();
-  for (const e of entries) counts.set(e.bareName, (counts.get(e.bareName) ?? 0) + 1);
-  const out: Set<string> = new Set();
-  for (const [name, n] of counts) if (n === 1) out.add(name);
-  return out;
+function entryLocation(entry: Entry): string {
+  return entry.kind === 'file' ? entry.absPath : `collection ${entry.key}`;
 }
 
 async function emitVirtualModule(
-  entries: DiscoveredEntry[],
+  entries: Entry[],
   schemasImportPath: string,
   schemasPath: string,
 ): Promise<string> {
-  const hasSchemas: boolean = await exists(schemasPath);
+  const hasSchemas = await exists(schemasPath);
   const lines: string[] = [];
 
   if (hasSchemas) {
@@ -315,54 +293,22 @@ async function emitVirtualModule(
   }
   lines.push('');
 
-  const aliasable: ReadonlySet<string> = exportableAliasNames(entries);
-  const uniqueBareNames: ReadonlySet<string> = uniqueBareNameSet(entries);
-  const aliasLines: string[] = [];
-
-  const siteEntry: DiscoveredEntry | undefined = entries.find(
-    (e: DiscoveredEntry): boolean => e.subdir === null,
-  );
-  if (siteEntry) {
-    const literal: string = await readLiteral(siteEntry);
-    lines.push(
-      hasSchemas
-        ? `export const site = (schemas.site ?? identity).parse(${literal});`
-        : `export const site = ${literal};`,
-    );
-  }
-
-  for (const subdir of CONTENT_SUBDIRS) {
-    const namespaceEntries: DiscoveredEntry[] = entries.filter(
-      (e: DiscoveredEntry): boolean => e.subdir === subdir,
-    );
-    if (namespaceEntries.length === 0) continue;
-
-    const props: string[] = [];
-    for (const entry of namespaceEntries) {
-      const literal: string = await readLiteral(entry);
-      // The flat fallback is only consulted when exactly one entry claims the bare name. A
-      // hand-written `schemas.blog` cannot say which of pages.blog / data.blog it describes, so
-      // consulting it for both would parse one document against the other's schema — the same
-      // flat-namespace collapse this module fixes for keys.
-      const flatFallback: string = uniqueBareNames.has(entry.bareName)
-        ? ` ?? schemas.${entry.bareName}`
-        : '';
-      const expr: string = hasSchemas
-        ? `(schemas.${subdir}?.${entry.bareName}${flatFallback} ?? identity).parse(${literal})`
-        : literal;
-      props.push(`  ${JSON.stringify(entry.bareName)}: ${expr},`);
-
-      // A name that is unambiguous but not a legal binding (a JS reserved word) stays reachable
-      // through the namespace object without an alias.
-      if (aliasable.has(entry.bareName)) {
-        aliasLines.push(`export const ${entry.bareName} = ${subdir}.${entry.bareName};`);
-      }
+  for (const entry of entries) {
+    let value: unknown;
+    try {
+      value = await readEntryValue(entry);
+    } catch (err) {
+      const msg: string = err instanceof Error ? err.message : String(err);
+      throw new Error(`[airo-content] failed to parse ${entryLocation(entry)}: ${msg}`);
     }
 
-    lines.push(`export const ${subdir} = {`, ...props, '};');
+    const literal: string = JSON.stringify(value, null, 2);
+    if (hasSchemas) {
+      lines.push(`export const ${entry.key} = (schemas.${entry.key} ?? identity).parse(${literal});`);
+    } else {
+      lines.push(`export const ${entry.key} = ${literal};`);
+    }
   }
-
-  lines.push(...aliasLines);
 
   // Accept HMR updates to prevent Vite's full-reload fallback when the
   // module structure changes (new exports from content_scaffold). The accept
@@ -421,8 +367,7 @@ export async function validateContentEager(
     return;
   }
 
-  const entries: DiscoveredEntry[] = await discover(contentDir);
-  const uniqueBareNames: ReadonlySet<string> = uniqueBareNameSet(entries);
+  const entries: Entry[] = await discover(contentDir);
   for (const entry of entries) {
     const where: string = entryLocation(entry);
     let value: unknown;
@@ -434,14 +379,7 @@ export async function validateContentEager(
       );
     }
 
-    // D8: a nested schema (schemas.pages.home) takes priority over a flat
-    // one (schemas.home) sharing the bare name, so both shapes validate.
-    type SchemaMap = Record<string, { parse: (v: unknown) => unknown } | undefined>;
-    const namespaceSchemas: SchemaMap | undefined =
-      entry.subdir ? (schemas[entry.subdir] as SchemaMap | undefined) : undefined;
-    const schema: { parse: (v: unknown) => unknown } | undefined =
-      namespaceSchemas?.[entry.bareName] ??
-      (uniqueBareNames.has(entry.bareName) ? schemas[entry.bareName] : undefined);
+    const schema: { parse: (v: unknown) => unknown } | undefined = schemas[entry.key];
     if (!schema) continue; // unregistered key — pass-through
     if (typeof schema.parse !== 'function') continue; // non-Zod export — skip silently
 
@@ -449,7 +387,7 @@ export async function validateContentEager(
       schema.parse(value);
     } catch (err) {
       throw new Error(
-        `[airo-content] content in ${where} does not match schemas.${entry.bareName}:\n` +
+        `[airo-content] content in ${where} does not match schemas.${entry.key}:\n` +
         (err instanceof Error ? err.message : String(err)),
       );
     }
@@ -518,5 +456,29 @@ async function exists(p: string): Promise<boolean> {
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return false;
+  }
+}
+
+// JS reserved words and strict-mode future reserved words that would produce
+// invalid `export const <key> = …` syntax if used as content keys.
+const JS_RESERVED_WORDS = new Set([
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger',
+  'default', 'delete', 'do', 'else', 'export', 'extends', 'false',
+  'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof',
+  'let', 'new', 'null', 'return', 'static', 'super', 'switch', 'this',
+  'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with',
+  'yield', 'enum', 'await',
+]);
+
+function assertSafeKey(key: string, filename: string): void {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+    throw new Error(`[airo-content] invalid content key "${key}" from "${filename}" — must be a valid JS identifier`);
+  }
+  if (JS_RESERVED_WORDS.has(key)) {
+    throw new Error(
+      `[airo-content] reserved content key "${key}" from "${filename}" — ` +
+      `"${key}" is a JS reserved word and cannot be used as an export name. ` +
+      `Rename the file to avoid a syntax error in the emitted virtual module.`,
+    );
   }
 }
