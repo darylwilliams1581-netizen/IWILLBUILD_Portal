@@ -84,6 +84,8 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   const [showPublishModal, setShowPublishModal]     = useState(false);
   const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
   const [zoomLevel, setZoomLevel]                   = useState(100); // percent
+  /** Mobile: show the tools bottom sheet */
+  const [showMobileTools, setShowMobileTools]       = useState(false);
 
   /** Top-level app mode: build the template or use/fill it */
   const [appMode] = useState<AppMode>(initialMode);
@@ -383,9 +385,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         </div>
       </div>
 
-      {/* ── Row 2: Ribbon tab strip (Build Mode only) ────────────────────────── */}
+      {/* ── Row 2: Ribbon tab strip (Build Mode only — desktop only) ──────────── */}
       {appMode === 'build' && buildSubMode === 'edit' && (
-        <div className="flex items-end px-3 bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="hidden sm:flex items-end px-3 bg-white border-b border-slate-200 flex-shrink-0">
           {/* Doc type pill — sits before the tabs */}
           <div className="relative flex-shrink-0 self-center mr-2">
             <button
@@ -597,161 +599,136 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
             {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas */}
             {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
               <>
-                {/* STRUCTURE insert strip */}
-                {activeTab === 'structure' && (
-                  <RibbonPanel title="Structure">
-                    <RibbonGroup label="Import">
-                      <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
-                    </RibbonGroup>
-                    <RibbonGroup label="Blocks">
-                      <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
-                      <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
-                      <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
-                      <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
-                      <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Rich Text" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<p>Click to type…</p>' })} />
-                      <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
-                      <RibbonInsertBtn icon={<Image size={12} />} label="Image" onClick={() => appendBlock({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'center', preserveAspectRatio: true })} />
-                      <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
-                      <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
-                    </RibbonGroup>
-                  </RibbonPanel>
-                )}
+                {/* ── Desktop ribbon panels (hidden on mobile) ── */}
+                <div className="hidden sm:contents">
+                  {/* STRUCTURE insert strip */}
+                  {activeTab === 'structure' && (
+                    <RibbonPanel title="Structure">
+                      <RibbonGroup label="Import">
+                        <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
+                      </RibbonGroup>
+                      <RibbonGroup label="Blocks">
+                        <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
+                        <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
+                        <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
+                        <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
+                        <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Rich Text" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<p>Click to type…</p>' })} />
+                        <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
+                        <RibbonInsertBtn icon={<Image size={12} />} label="Image" onClick={() => appendBlock({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'center', preserveAspectRatio: true })} />
+                        <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
+                        <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
+                      </RibbonGroup>
+                    </RibbonPanel>
+                  )}
 
-                {/* TABLES insert strip */}
-                {activeTab === 'tables' && (
-                  <RibbonPanel title="Tables">
-                    <RibbonGroup label="Insert Table">
-                      <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
-                      <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
-                      <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
-                      <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
-                    </RibbonGroup>
-                  </RibbonPanel>
-                )}
+                  {/* TABLES insert strip */}
+                  {activeTab === 'tables' && (
+                    <RibbonPanel title="Tables">
+                      <RibbonGroup label="Insert Table">
+                        <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
+                        <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
+                        <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
+                        <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
+                      </RibbonGroup>
+                    </RibbonPanel>
+                  )}
 
-                {/* FORM FIELDS insert strip */}
-                {activeTab === 'form_fields' && (
-                  <RibbonPanel title="Form Fields">
-                    <RibbonGroup label="Insert Field">
-                      <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
-                      <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
-                      <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
-                      <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
-                      <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
-                      <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
-                      <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
-                      <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
-                    </RibbonGroup>
-                  </RibbonPanel>
-                )}
+                  {/* FORM FIELDS insert strip */}
+                  {activeTab === 'form_fields' && (
+                    <RibbonPanel title="Form Fields">
+                      <RibbonGroup label="Insert Field">
+                        <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
+                        <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
+                        <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
+                        <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
+                        <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
+                        <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
+                        <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
+                        <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
+                      </RibbonGroup>
+                    </RibbonPanel>
+                  )}
 
-                {/* SYSTEM FIELDS insert strip */}
-                {activeTab === 'system_fields' && (
-                  <RibbonPanel title="System Fields">
-                    <p className="px-3 pb-1 text-[10px] text-slate-400 leading-tight">Live tokens — resolve on export.</p>
-                    <RibbonGroup label="Job">
-                      <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
-                      <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
-                      <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
-                      <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
-                      <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
-                      <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
-                    </RibbonGroup>
-                    <RibbonGroup label="Company">
-                      <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
-                      <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
-                    </RibbonGroup>
-                    <RibbonGroup label="Document">
-                      <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
-                      <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
-                      <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Doc Number"      onClick={() => appendSysToken('doc.number',    'Document Number')} />
-                      <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
-                    </RibbonGroup>
-                  </RibbonPanel>
-                )}
+                  {/* SYSTEM FIELDS insert strip */}
+                  {activeTab === 'system_fields' && (
+                    <RibbonPanel title="System Fields">
+                      <p className="px-3 pb-1 text-[10px] text-slate-400 leading-tight">Live tokens — resolve on export.</p>
+                      <RibbonGroup label="Job">
+                        <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
+                        <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
+                        <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
+                        <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
+                        <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
+                        <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
+                      </RibbonGroup>
+                      <RibbonGroup label="Company">
+                        <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
+                        <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
+                      </RibbonGroup>
+                      <RibbonGroup label="Document">
+                        <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
+                        <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
+                        <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Doc Number"      onClick={() => appendSysToken('doc.number',    'Document Number')} />
+                        <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
+                      </RibbonGroup>
+                    </RibbonPanel>
+                  )}
 
-                {/* ADVANCED insert strip */}
-                {activeTab === 'advanced' && (
-                  <RibbonPanel title="Advanced">
-                    <RibbonGroup label="Banners">
-                      <RibbonInsertBtn icon={<Info size={12} />}          label="Info"          accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<AlertTriangle size={12} />}  label="Warning"       accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<AlertOctagon size={12} />}   label="Danger"        accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<CheckCircle size={12} />}    label="Success"       accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<Shield size={12} />}         label="Safety"        accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
-                      <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
-                    </RibbonGroup>
-                    <RibbonGroup label="Safety Images">
-                      <RibbonInsertBtn icon={<ShieldCheck size={12} />} label="PPE Banner"      accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:"image", src:"/airo-assets/images/safety-badges/ppe-banner-strip",      alt:"PPE Required", size:"full", align:"center", preserveAspectRatio:true })} />
-                      <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Assessment" accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:"risk_matrix", title:"Risk Assessment Matrix", showLegend:true, showOnExport:true })} />
-                      <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Matrix Banner" accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:"risk_matrix_banner" })} />
-                    </RibbonGroup>
-                    <RibbonGroup label="Image">
-                      <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
-                    </RibbonGroup>
-                    <RibbonGroup label="Layout">
-                      <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
-                      <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
-                    </RibbonGroup>
-                  </RibbonPanel>
-                )}
+                  {/* ADVANCED insert strip */}
+                  {activeTab === 'advanced' && (
+                    <RibbonPanel title="Advanced">
+                      <RibbonGroup label="Banners">
+                        <RibbonInsertBtn icon={<Info size={12} />}          label="Info"          accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<AlertTriangle size={12} />}  label="Warning"       accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<AlertOctagon size={12} />}   label="Danger"        accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<CheckCircle size={12} />}    label="Success"       accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<Shield size={12} />}         label="Safety"        accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
+                        <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
+                      </RibbonGroup>
+                      <RibbonGroup label="Safety Images">
+                        <RibbonInsertBtn icon={<ShieldCheck size={12} />} label="PPE Banner"      accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:"image", src:"/airo-assets/images/safety-badges/ppe-banner-strip",      alt:"PPE Required", size:"full", align:"center", preserveAspectRatio:true })} />
+                        <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Assessment" accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:"risk_matrix", title:"Risk Assessment Matrix", showLegend:true, showOnExport:true })} />
+                        <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Matrix Banner" accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:"risk_matrix_banner" })} />
+                      </RibbonGroup>
+                      <RibbonGroup label="Image">
+                        <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
+                      </RibbonGroup>
+                      <RibbonGroup label="Layout">
+                        <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
+                        <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
+                      </RibbonGroup>
+                    </RibbonPanel>
+                  )}
 
-                {/* VIEW panel */}
-                {activeTab === 'view' && (
-                  <RibbonPanel title="View">
-                    {/* Zoom controls */}
-                    <RibbonGroup label="Zoom">
-                      <div className="flex items-center gap-1 px-1 pb-1">
-                        <button
-                          onClick={() => setZoomLevel((z) => Math.max(25, z - 10))}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
-                          title="Zoom out"
-                        ><ZoomOut size={13} /></button>
-                        <span className="flex-1 text-center text-xs font-semibold text-slate-700 tabular-nums">{zoomLevel}%</span>
-                        <button
-                          onClick={() => setZoomLevel((z) => Math.min(200, z + 10))}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
-                          title="Zoom in"
-                        ><ZoomIn size={13} /></button>
-                      </div>
-                      {/* Preset zoom buttons */}
-                      {[50, 75, 100, 125, 150].map((pct) => (
-                        <button
-                          key={pct}
-                          onClick={() => setZoomLevel(pct)}
-                          className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-colors ${zoomLevel === pct ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
-                        >{pct}%</button>
-                      ))}
-                      <button
-                        onClick={() => setZoomLevel(100)}
-                        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-md transition-colors mt-0.5"
-                        title="Reset zoom"
-                      ><RotateCcw size={11} />Reset</button>
-                    </RibbonGroup>
+                  {/* VIEW panel */}
+                  {activeTab === 'view' && (
+                    <RibbonPanel title="View">
+                      <RibbonGroup label="Zoom">
+                        <div className="flex items-center gap-1 px-1 pb-1">
+                          <button onClick={() => setZoomLevel((z) => Math.max(25, z - 10))} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors" title="Zoom out"><ZoomOut size={13} /></button>
+                          <span className="flex-1 text-center text-xs font-semibold text-slate-700 tabular-nums">{zoomLevel}%</span>
+                          <button onClick={() => setZoomLevel((z) => Math.min(200, z + 10))} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors" title="Zoom in"><ZoomIn size={13} /></button>
+                        </div>
+                        {[50, 75, 100, 125, 150].map((pct) => (
+                          <button key={pct} onClick={() => setZoomLevel(pct)} className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-colors ${zoomLevel === pct ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>{pct}%</button>
+                        ))}
+                        <button onClick={() => setZoomLevel(100)} className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-md transition-colors mt-0.5" title="Reset zoom"><RotateCcw size={11} />Reset</button>
+                      </RibbonGroup>
+                      <RibbonGroup label="Orientation">
+                        <button onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'portrait' })} className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation !== 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                          <span className="inline-block w-3 h-4 border-2 border-current rounded-sm flex-shrink-0" />Portrait
+                        </button>
+                        <button onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'landscape' })} className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation === 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                          <span className="inline-block w-4 h-3 border-2 border-current rounded-sm flex-shrink-0" />Landscape
+                        </button>
+                      </RibbonGroup>
+                    </RibbonPanel>
+                  )}
+                </div>
 
-                    {/* Orientation toggle */}
-                    <RibbonGroup label="Orientation">
-                      <button
-                        onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'portrait' })}
-                        className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation !== 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
-                      >
-                        <span className="inline-block w-3 h-4 border-2 border-current rounded-sm flex-shrink-0" />
-                        Portrait
-                      </button>
-                      <button
-                        onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'landscape' })}
-                        className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation === 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
-                      >
-                        <span className="inline-block w-4 h-3 border-2 border-current rounded-sm flex-shrink-0" />
-                        Landscape
-                      </button>
-                    </RibbonGroup>
-                  </RibbonPanel>
-                )}
-
-                {/* Canvas */}
+                {/* Canvas — full width on mobile, shares row with ribbon on desktop */}
                 <div className="flex-1 flex min-h-0">
                   <StructurePanel zoom={zoomLevel} />
                 </div>
@@ -762,8 +739,8 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
       </div>
 
-      {/* ── Status bar ───────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-end gap-2 px-3 py-1 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+      {/* ── Status bar (desktop only) ─────────────────────────────────────────── */}
+      <div className="hidden sm:flex items-center justify-end gap-2 px-3 py-1 border-t border-slate-200 bg-slate-50 flex-shrink-0">
         <span className="text-[10px] text-slate-400 capitalize">{pageLayout.orientation}</span>
         <div className="w-px h-3 bg-slate-300" />
         <button onClick={() => setZoomLevel((z) => Math.max(25, z - 10))} className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"><ZoomOut size={11} /></button>
@@ -771,6 +748,159 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         <button onClick={() => setZoomLevel((z) => Math.min(200, z + 10))} className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"><ZoomIn size={11} /></button>
         <button onClick={() => setZoomLevel(100)} className="text-[10px] text-slate-400 hover:text-slate-700 transition-colors px-1">Reset</button>
       </div>
+
+      {/* ── Mobile: floating "Add Block" FAB (build mode only) ───────────────── */}
+      {appMode === 'build' && buildSubMode === 'edit' && (
+        <div className="sm:hidden">
+          {/* FAB */}
+          <button
+            onClick={() => setShowMobileTools((v) => !v)}
+            className="fixed bottom-6 right-5 z-[60] w-12 h-12 rounded-full bg-primary text-white shadow-lg flex items-center justify-center transition-transform active:scale-95"
+            aria-label="Insert block"
+          >
+            <Layers size={20} />
+          </button>
+
+          {/* Bottom sheet */}
+          <AnimatePresence>
+            {showMobileTools && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[55] bg-black/40"
+                  onClick={() => setShowMobileTools(false)}
+                />
+                {/* Sheet */}
+                <motion.div
+                  initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                  className="fixed bottom-0 left-0 right-0 z-[56] bg-white rounded-t-2xl shadow-2xl flex flex-col"
+                  style={{ maxHeight: '70dvh' }}
+                >
+                  {/* Sheet handle */}
+                  <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-slate-100 flex-shrink-0">
+                    <span className="text-xs font-bold text-slate-700">Insert Block</span>
+                    <button onClick={() => setShowMobileTools(false)} className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-500"><X size={14} /></button>
+                  </div>
+
+                  {/* Tab selector */}
+                  <div className="flex gap-1 px-3 py-2 overflow-x-auto flex-shrink-0 border-b border-slate-100">
+                    {RIBBON_TABS.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
+                          activeTab === tab.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {tab.icon}{tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Scrollable insert buttons */}
+                  <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1">
+                    {/* STRUCTURE */}
+                    {activeTab === 'structure' && (<>
+                      <MobileInsertBtn icon={<Upload size={13} />} label="Import DOCX / PDF" primary onClick={() => { setShowDocxImporter(true); setShowMobileTools(false); }} />
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-0.5">Blocks</p>
+                      <MobileInsertBtn icon={<Hash size={13} />} label="Title (H1)" onClick={() => { appendBlock({ id:nanoid(10), type:'heading', content:'Document Title', level:1, align:'left' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Hash size={13} />} label="Heading (H2)" onClick={() => { appendBlock({ id:nanoid(10), type:'heading', content:'Section Heading', level:2, align:'left' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Hash size={13} />} label="Sub-section (H3)" onClick={() => { appendBlock({ id:nanoid(10), type:'heading', content:'Sub-section', level:3, align:'left' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Type size={13} />} label="Paragraph" onClick={() => { appendBlock({ id:nanoid(10), type:'text', content:'Enter text here…', align:'left' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<AlignLeft size={13} />} label="Rich Text" onClick={() => { appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Click to type…</p>' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<List size={13} />} label="Bullet List" onClick={() => { appendBlock({ id:nanoid(10), type:'rich_text', html:'<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Minus size={13} />} label="Divider" onClick={() => { appendBlock({ id:nanoid(10), type:'divider', style:'solid', thickness:1 }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<AlignLeft size={13} />} label="Page Break" onClick={() => { appendBlock({ id:nanoid(10), type:'page_break' }); setShowMobileTools(false); }} />
+                    </>)}
+
+                    {/* TABLES */}
+                    {activeTab === 'tables' && (<>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-1 pb-0.5">Insert Table</p>
+                      <MobileInsertBtn icon={<Table2 size={13} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<LayoutGrid size={13} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Zap size={13} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<PenLine size={13} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); setShowMobileTools(false); }} />
+                    </>)}
+
+                    {/* FORM FIELDS */}
+                    {activeTab === 'form_fields' && (<>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-1 pb-0.5">Insert Field</p>
+                      <MobileInsertBtn icon={<FileText size={13} />} label="Short Text"       onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<FileText size={13} />} label="Long Text"        onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<CheckSquare size={13} />} label="Yes / No"      onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Calendar size={13} />} label="Date"             onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<List size={13} />} label="Choice / Dropdown"    onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<PenLine size={13} />} label="Signature"         onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Camera size={13} />} label="Photo / Evidence"   onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<FileText size={13} />} label="File Upload"      onClick={() => { appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false }); setShowMobileTools(false); }} />
+                    </>)}
+
+                    {/* SYSTEM FIELDS */}
+                    {activeTab === 'system_fields' && (<>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-1 pb-0.5">Job</p>
+                      <MobileInsertBtn icon={<Briefcase size={13} />} label="Job Number"   onClick={() => { appendSysToken('job.number',       'Job Number');   setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Briefcase size={13} />} label="Job Name"     onClick={() => { appendSysToken('job.name',         'Job Name');     setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<MapPin size={13} />}    label="Site Address" onClick={() => { appendSysToken('job.site_address', 'Site Address'); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Building2 size={13} />} label="Client"       onClick={() => { appendSysToken('job.client',       'Client');       setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<User size={13} />}      label="Supervisor"   onClick={() => { appendSysToken('job.supervisor',   'Supervisor');   setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Calendar size={13} />}  label="Start Date"   onClick={() => { appendSysToken('job.start_date',   'Start Date');   setShowMobileTools(false); }} />
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-0.5">Company</p>
+                      <MobileInsertBtn icon={<Building2 size={13} />} label="Company Name" onClick={() => { appendSysToken('company.name', 'Company Name'); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Building2 size={13} />} label="Company ABN"  onClick={() => { appendSysToken('company.abn',  'Company ABN');  setShowMobileTools(false); }} />
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-0.5">Document</p>
+                      <MobileInsertBtn icon={<User size={13} />}          label="Current User"    onClick={() => { appendSysToken('user.name',    'Current User');    setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Calendar size={13} />}      label="Today's Date"    onClick={() => { appendSysToken('date.today',   "Today's Date");    setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<ClipboardList size={13} />} label="Doc Number"      onClick={() => { appendSysToken('doc.number',   'Document Number'); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<ClipboardList size={13} />} label="Revision"        onClick={() => { appendSysToken('doc.revision', 'Revision');        setShowMobileTools(false); }} />
+                    </>)}
+
+                    {/* ADVANCED */}
+                    {activeTab === 'advanced' && (<>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-1 pb-0.5">Banners</p>
+                      <MobileInsertBtn icon={<Info size={13} />}         label="Info"         accent="blue"   onClick={() => { appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',         body:'Enter information here.',   size:'standard', align:'left', showOnExport:true }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<AlertTriangle size={13} />} label="Warning"      accent="amber"  onClick={() => { appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',       body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<AlertOctagon size={13} />}  label="Danger"       accent="red"    onClick={() => { appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',        body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<Shield size={13} />}        label="Safety"       accent="orange" onClick={() => { appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice', body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<ShieldAlert size={13} />}   label="Safety First" accent="yellow" onClick={() => { appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST', body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true }); setShowMobileTools(false); }} />
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-0.5">Layout</p>
+                      <MobileInsertBtn icon={<FileText size={13} />}   label="Rich Text Block" onClick={() => { appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' }); setShowMobileTools(false); }} />
+                      <MobileInsertBtn icon={<LayoutGrid size={13} />} label="Two-Column Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); setShowMobileTools(false); }} />
+                    </>)}
+
+                    {/* VIEW */}
+                    {activeTab === 'view' && (<>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-1 pb-0.5">Zoom</p>
+                      <div className="flex items-center gap-2 px-1 py-1">
+                        <button onClick={() => setZoomLevel((z) => Math.max(25, z - 10))} className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-100 text-slate-600 active:bg-slate-200"><ZoomOut size={15} /></button>
+                        <span className="flex-1 text-center text-sm font-bold text-slate-700 tabular-nums">{zoomLevel}%</span>
+                        <button onClick={() => setZoomLevel((z) => Math.min(200, z + 10))} className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-100 text-slate-600 active:bg-slate-200"><ZoomIn size={15} /></button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 px-1 py-1">
+                        {[50, 75, 100, 125, 150].map((pct) => (
+                          <button key={pct} onClick={() => setZoomLevel(pct)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${zoomLevel === pct ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>{pct}%</button>
+                        ))}
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-0.5">Orientation</p>
+                      <div className="flex gap-2 px-1">
+                        <button onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'portrait' })} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors ${pageLayout.orientation !== 'landscape' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
+                          <span className="inline-block w-3 h-4 border-2 border-current rounded-sm" />Portrait
+                        </button>
+                        <button onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'landscape' })} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors ${pageLayout.orientation === 'landscape' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
+                          <span className="inline-block w-4 h-3 border-2 border-current rounded-sm" />Landscape
+                        </button>
+                      </div>
+                    </>)}
+
+                    <div className="h-4" />
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
@@ -936,6 +1066,35 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
         </>
       )}
     </div>
+  );
+}
+
+// ── MobileInsertBtn — full-width tap target for the mobile bottom sheet ──────
+function MobileInsertBtn({
+  icon, label, onClick, primary = false, accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  primary?: boolean;
+  accent?: string;
+}) {
+  const accentMap: Record<string, string> = {
+    blue: 'text-blue-600', amber: 'text-amber-600', red: 'text-red-600',
+    green: 'text-green-600', orange: 'text-violet-700', yellow: 'text-yellow-700',
+  };
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left active:scale-[0.98] ${
+        primary
+          ? 'bg-primary/10 text-primary border border-primary/20'
+          : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+      }`}
+    >
+      <span className={`flex-shrink-0 ${primary ? 'text-primary' : accent ? accentMap[accent] ?? 'text-slate-400' : 'text-slate-400'}`}>{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
