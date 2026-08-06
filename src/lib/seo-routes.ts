@@ -50,4 +50,9 @@ export const seoRoutes: SeoRoute[] = [
 
   // ── Customer portal (token-based, no staff login) ────────────────────────────
   { path: "/portal/login", changefreq: "monthly", priority: 0.4 },
+
+  // ── Authenticated app pages — intentionally excluded from sitemap ─────────────
+  // /lists, /home, /jobs, /scheduler, /fleet, /studio, /settings, /billing, etc.
+  // These require a logged-in session; crawlers receive a login redirect (not indexable).
+  // seo-noindex: /lists
 ];
