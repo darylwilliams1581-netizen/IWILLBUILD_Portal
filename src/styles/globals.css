@@ -536,6 +536,17 @@ textarea {
   }
 }
 
+/* Icon tile decorative effects — extracted to CSS so inline style linting passes */
+.icon-tile-shadow {
+  box-shadow: 0 3px 8px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10);
+}
+.icon-tile-gloss {
+  background: linear-gradient(145deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 40%, transparent 70%);
+}
+.icon-tile-depth {
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.12);
+}
+
 /* Icon glyph: 21 px on mobile, 26 px on desktop — single element, no duplicate */
 .home-icon-glyph {
   width: 21px !important;

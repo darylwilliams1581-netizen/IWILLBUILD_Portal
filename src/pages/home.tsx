@@ -11,8 +11,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Car, FileText, StickyNote, BookOpen,
   Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  Navigation, ClipboardCheck, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
-  LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
+  Navigation, ClipboardCheck, ShieldAlert, X, HardHat, ChevronRight,
+  Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
   Zap, RefreshCw, AlertTriangle, Search,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
@@ -22,15 +22,10 @@ import { invalidateMeCache } from '@/lib/usePermissions';
 import { invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
-import KpiWidgets from '@/components/dashboard/KpiWidgets';
-import DashboardBanner from '@/components/dashboard/DashboardBanner';
-import NotificationList from '@/components/NotificationList';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
-import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import NotificationBell from '@/components/NotificationBell';
-import {
-  resolveHomeIcons, type HomeIconDef,
-} from '@/lib/homeIcons';
+import MyTasksPanel from '@/components/notes/MyTasksPanel';
+import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
@@ -38,86 +33,6 @@ import {
 // NOTE: Field/Safety/Tools/Management icons are now defined in src/lib/homeIcons.ts
 // These local arrays remain for the PLATFORM section (platform owner only, not permission-controlled)
 
-const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
-  { label: 'Console', icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600', fg: 'text-white' },
-];
-
-// ── Single icon tile ──────────────────────────────────────────────────────────
-
-function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: string) => void }) {
-  const Icon = item.icon;
-  return (
-    /*
-     * Fixed-width cell — every tile is exactly the same width so the grid
-     * columns stay perfectly aligned at all phone widths (375 / 390 / 430 px).
-     * The outer button is the grid cell; it does NOT grow or shrink.
-     * w-full fills the grid column; items-center centres the icon + label.
-     */
-    <motion.button
-      whileTap={{ scale: 0.88 }}
-      whileHover={{ scale: 1.06, y: -2 }}
-      transition={{ type: 'spring', stiffness: 440, damping: 20 }}
-      onClick={() => onNavigate(item.href)}
-      className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
-      style={{ gap: '1px' }}
-    >
-      {/* Icon tile — slightly smaller on mobile (54 px) vs desktop (66 px) */}
-      <div
-        className={`w-[54px] h-[54px] sm:w-[66px] sm:h-[66px] rounded-[14px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden flex-shrink-0`}
-        style={{
-          boxShadow: '0 3px 8px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10)',
-        }}
-      >
-        {/* Top-left gloss sheen */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)',
-          }}
-        />
-        {/* Bottom inner shadow for depth */}
-        <div
-          className="absolute inset-0 pointer-events-none rounded-[inherit]"
-          style={{ boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.12)' }}
-        />
-        {/* Icon — single element, size controlled via CSS class */}
-        <Icon size={21} strokeWidth={1.8} className="home-icon-glyph relative z-10 drop-shadow-sm" />
-        {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
-            {item.badge > 9 ? '9+' : item.badge}
-          </span>
-        )}
-      </div>
-
-      {/*
-       * Label — fixed two-line reserved area so every cell is the same height
-       * regardless of label length.  Long labels clamp with ellipsis after
-       * line 2 and never push the row taller.
-       *
-       * Height maths (mobile):
-       *   font-size  9px  ×  line-height 1.25  =  11.25 px / line
-       *   2 lines                               =  22.5 px  → round to 23 px
-       *   We use minHeight: '23px' so single-line labels still reserve the
-       *   same vertical space as two-line labels.
-       */}
-      <span
-        className="text-[9px] sm:text-[11px] text-gray-800 font-semibold text-center w-full px-0.5"
-        style={{
-          lineHeight: 1.25,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          minHeight: '20px',
-          wordBreak: 'break-word',
-          hyphens: 'auto',
-        }}
-      >
-        {item.label}
-      </span>
-    </motion.button>
-  );
-}
 
 // ── Shared sheet backdrop + panel ─────────────────────────────────────────────
 
@@ -2063,100 +1978,6 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
-// ── HomeIconGrid — extracted component so React always has a stable node tree ──
-// Using an IIFE inside JSX causes React to lose track of the subtree on HMR,
-// which triggers the sos-shim patchedRemoveChild NotFoundError. A named
-// component gives React a stable reconciliation target.
-
-interface HomeIconGridProps {
-  iconPermissions: string[] | null;
-  role: string;
-  isSolo: boolean;
-  isPlatformOwner: boolean;
-  onNavigate: (href: string) => void;
-}
-
-// ── Group label component ─────────────────────────────────────────────────────
-function GroupLabel({ label }: { label: string }) {
-  return (
-    <div className="col-span-full flex items-center gap-2 pt-3 pb-1 px-1">
-      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400/80 select-none">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-gray-200/60" />
-    </div>
-  );
-}
-
-function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, onNavigate }: HomeIconGridProps) {
-  // Resolve icons client-side only — SSR and first hydration both use the
-  // SSR-safe default so the DOM structure never changes during hydration,
-  // preventing the sos-shim patchedRemoveChild NotFoundError.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  const allowedIcons = mounted
-    ? resolveHomeIcons(iconPermissions, role, isSolo)
-    : resolveHomeIcons(null, '', false);
-
-  const platformAsIconDef: HomeIconDef[] = PLATFORM_ICONS.map(p => ({
-    ...p,
-    key: p.label.toLowerCase().replace(/\s+/g, '_'),
-    group: 'management' as const,
-  }));
-  const allIcons: HomeIconDef[] = [
-    ...allowedIcons,
-    ...(isPlatformOwner ? platformAsIconDef : []),
-  ];
-
-  // Group icons by their group property, preserving order
-  const groupOrder: Array<import('@/lib/homeIcons').IconGroup> = ['field', 'safety', 'tools', 'management'];
-  const groupLabelMap: Record<string, string> = {
-    field: 'Field',
-    safety: 'Finance & Tools',
-    tools: 'Studio',
-    management: 'Management',
-  };
-
-  // Build sections: only include groups that have icons
-  const sections = groupOrder
-    .map(g => ({ group: g, icons: allIcons.filter(i => i.group === g) }))
-    .filter(s => s.icons.length > 0);
-
-  // If only one group, skip labels (minimal permission set)
-  const showLabels = sections.length > 1;
-
-  return (
-    <div className="px-4 pt-2 pb-2">
-      <div className="mx-auto" style={{ maxWidth: 640 }}>
-        {allIcons.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-            <p className="text-sm font-medium">No icons available</p>
-          </div>
-        ) : showLabels ? (
-          // Grouped layout with section labels
-          sections.map(({ group, icons }) => (
-            <div key={group}>
-              <GroupLabel label={groupLabelMap[group] ?? group} />
-              <div className="home-icon-grid">
-                {icons.map((item) => (
-                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          // Flat grid for minimal permission sets
-          <div className="home-icon-grid">
-            {allIcons.map((item) => (
-              <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -2190,9 +2011,8 @@ export default function HomeScreen() {
       .catch(() => setIsSolo(false));
   }, [me?.user?.id, loading]);
 
-  const [dashOpen, setDashOpen] = useState(false);
+  const [dashOpen, setDashOpen] = useState(false); // kept for ?panel=dashboard handler below
   const [notesOpen, setNotesOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [cameraPickerOpen, setCameraPickerOpen] = useState(false);
   const [notesPickerOpen, setNotesPickerOpen] = useState(false);
   const [delaysPickerOpen, setDelaysPickerOpen] = useState(false);
@@ -2394,39 +2214,18 @@ export default function HomeScreen() {
         )}
       </AnimatePresence>
 
-      {/* ── Filter chips + icon grid ── */}
-      {/* HomeIconGrid is always rendered (SSR + client) with the same icon list
-          so React never adds/removes child nodes during hydration — that mismatch
-          is what triggers the sos-shim patchedRemoveChild NotFoundError. */}
-      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
-        <HomeIconGrid
-          iconPermissions={iconPermissions}
-          role={role ?? ''}
-          isSolo={isSolo}
-          isPlatformOwner={isPlatformOwner}
-          onNavigate={handleNavigate}
-        />
-      </div>
+      {/* ── Paged home screen (Dashboard / Field / Manage) ── */}
+      {/* PagedHomeScreen handles its own scroll per page and the page dots */}
+      <PagedHomeScreen
+        iconPermissions={iconPermissions}
+        role={role ?? ''}
+        isSolo={isSolo}
+        isPlatformOwner={isPlatformOwner}
+        userId={session?.user?.id ?? me?.user?.id ?? ''}
+        onNavigate={handleNavigate}
+      />
 
       {/* ── Sheets ── */}
-      <Sheet
-        open={dashOpen}
-        onClose={() => setDashOpen(false)}
-        title="Home"
-        titleIcon={LayoutDashboard}
-        titleIconClass="text-violet-600"
-      >
-        <DashboardBanner userId={session?.user?.id ?? 'anon'} />
-        <div className="mt-4">
-          <KpiWidgets />
-        </div>
-        <div className="mt-4">
-          <NotificationList />
-        </div>
-        <div className="mt-4">
-          <MyTasksPanel userRole={role ?? ''} />
-        </div>
-      </Sheet>
 
       <Sheet
         open={notesOpen}
