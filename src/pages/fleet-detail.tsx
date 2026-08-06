@@ -310,8 +310,8 @@ function EditAssetModal({ asset, onClose, onSaved }: EditAssetModalProps) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+          <div className="flex flex-col gap-3">
+            <div>
               <label className="block text-xs font-semibold mb-1.5">Asset Name <span className="text-red-500">*</span></label>
               <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)}
                 className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
@@ -328,7 +328,7 @@ function EditAssetModal({ asset, onClose, onSaved }: EditAssetModalProps) {
                 {ASSET_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="block text-xs font-semibold mb-1.5">Make / Model</label>
               <input type="text" value={form.makeModel} onChange={(e) => set('makeModel', e.target.value)}
                 className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
@@ -339,19 +339,17 @@ function EditAssetModal({ asset, onClose, onSaved }: EditAssetModalProps) {
                 disabled={form.regoNotApplicable}
                 className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors disabled:opacity-40 disabled:bg-slate-50" />
             </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={form.regoNotApplicable} onChange={(e) => set('regoNotApplicable', e.target.checked)}
-                  className="w-4 h-4 accent-primary" />
-                <span className="text-xs font-semibold text-slate-600">Rego not applicable</span>
-              </label>
-            </div>
-            <div className="col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={form.regoNotApplicable} onChange={(e) => set('regoNotApplicable', e.target.checked)}
+                className="w-4 h-4 accent-primary" />
+              <span className="text-xs font-semibold text-slate-600">Rego not applicable</span>
+            </label>
+            <div>
               <label className="block text-xs font-semibold mb-1.5">Service Due Date</label>
               <input type="date" value={form.serviceDate} onChange={(e) => set('serviceDate', e.target.value)}
                 className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="block text-xs font-semibold mb-1.5">Rego Expiry Date</label>
               <input type="date" value={form.regoExpiry} onChange={(e) => set('regoExpiry', e.target.value)}
                 disabled={form.regoNotApplicable}
@@ -364,14 +362,12 @@ function EditAssetModal({ asset, onClose, onSaved }: EditAssetModalProps) {
                 {ASSET_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={form.archived} onChange={(e) => set('archived', e.target.checked)}
-                  className="w-4 h-4 accent-primary" />
-                <span className="text-xs font-semibold text-slate-600">Archive this asset</span>
-              </label>
-            </div>
-            <div className="col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={form.archived} onChange={(e) => set('archived', e.target.checked)}
+                className="w-4 h-4 accent-primary" />
+              <span className="text-xs font-semibold text-slate-600">Archive this asset</span>
+            </label>
+            <div>
               <label className="block text-xs font-semibold mb-1.5">Notes</label>
               <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={3}
                 className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none" />
@@ -508,45 +504,39 @@ function ServiceLogModal({ assetId, log, onClose, onSaved }: {
               <AlertCircle size={14} />{error}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Service Type</label>
-              <select value={form.service_type} onChange={e => set('service_type', e.target.value)} className={inp}>
-                {SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={lbl}>Status</label>
-              <select value={form.status} onChange={e => set('status', e.target.value)} className={inp}>
-                <option value="completed">Completed</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="overdue">Overdue</option>
-              </select>
-            </div>
+          <div>
+            <label className={lbl}>Service Type</label>
+            <select value={form.service_type} onChange={e => set('service_type', e.target.value)} className={inp}>
+              {SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Status</label>
+            <select value={form.status} onChange={e => set('status', e.target.value)} className={inp}>
+              <option value="completed">Completed</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="overdue">Overdue</option>
+            </select>
           </div>
           <div>
             <label className={lbl}>Title *</label>
             <input type="text" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. 10,000km service" className={inp} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Service Date *</label>
-              <input type="date" value={form.service_date} onChange={e => set('service_date', e.target.value)} className={inp} required />
-            </div>
-            <div>
-              <label className={lbl}>Odometer (km)</label>
-              <input type="number" value={form.odometer_km} onChange={e => set('odometer_km', e.target.value)} placeholder="e.g. 45000" className={inp} min="0" />
-            </div>
+          <div>
+            <label className={lbl}>Service Date *</label>
+            <input type="date" value={form.service_date} onChange={e => set('service_date', e.target.value)} className={inp} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Cost ($)</label>
-              <input type="number" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="0.00" className={inp} min="0" step="0.01" />
-            </div>
-            <div>
-              <label className={lbl}>Provider / Workshop</label>
-              <input type="text" value={form.provider} onChange={e => set('provider', e.target.value)} placeholder="e.g. Bob's Auto" className={inp} />
-            </div>
+          <div>
+            <label className={lbl}>Odometer (km)</label>
+            <input type="number" value={form.odometer_km} onChange={e => set('odometer_km', e.target.value)} placeholder="e.g. 45000" className={inp} min="0" />
+          </div>
+          <div>
+            <label className={lbl}>Cost ($)</label>
+            <input type="number" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="0.00" className={inp} min="0" step="0.01" />
+          </div>
+          <div>
+            <label className={lbl}>Provider / Workshop</label>
+            <input type="text" value={form.provider} onChange={e => set('provider', e.target.value)} placeholder="e.g. Bob's Auto" className={inp} />
           </div>
           <div>
             <label className={lbl}>Invoice / Reference #</label>
@@ -558,7 +548,7 @@ function ServiceLogModal({ assetId, log, onClose, onSaved }: {
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Next Service Reminder</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <div>
                 <label className={lbl}>Next Service Date</label>
                 <input type="date" value={form.next_service_date} onChange={e => set('next_service_date', e.target.value)} className={inp} />

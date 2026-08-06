@@ -594,7 +594,7 @@ export default function OwnerConsolePage() {
   // Access guard
   if (!permsLoading && !isPlatformOwner) {
     return (
-      <div className="flex-1 bg-[#F4F5F7] flex flex-col overflow-hidden lg:pt-[104px]">
+      <div className="flex-1 bg-[#F4F5F7] flex flex-col lg:pt-[104px]">
         <DesktopTopBar />
         <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
@@ -625,7 +625,7 @@ export default function OwnerConsolePage() {
     : null;
 
   return (
-    <div className="flex-1 bg-[#F4F5F7] flex flex-col overflow-hidden lg:pt-[104px]">
+    <div className="flex-1 bg-[#F4F5F7] flex flex-col lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
 

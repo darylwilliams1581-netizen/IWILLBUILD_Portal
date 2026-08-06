@@ -111,6 +111,15 @@ interface AddEntryModalProps {
   editEntry?: LedgerEntry | null;
 }
 
+const COST_CATEGORIES = [
+  { key: 'MATERIAL',      label: 'Material' },
+  { key: 'LABOUR',        label: 'Labour' },
+  { key: 'PLANT',         label: 'Plant / Equipment' },
+  { key: 'SUBCONTRACTOR', label: 'Subcontractor' },
+  { key: 'RECEIPT',       label: 'Receipt / Purchase' },
+  { key: 'ADJUSTMENT',    label: 'Other' },
+];
+
 function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalProps) {
   const [form, setForm] = useState({
     entryDate: editEntry?.entry_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
@@ -158,7 +167,6 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
   function set(field: string, value: string) {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      // Auto-fill account code when event type changes
       if (field === 'eventType' && !editEntry) {
         next.accountCode = DEFAULT_ACCOUNT[value] ?? '5000';
       }
@@ -215,10 +223,11 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
     }
   }
 
-  const inputCls = 'w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white';
+  const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 bg-white';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+    /* Mobile: slides up from bottom. Desktop: centred floating card */
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:px-4 pb-[env(safe-area-inset-bottom)]">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -229,120 +238,143 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
         onClick={onClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet / card */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 8 }}
-        transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: 'min(88dvh, 700px)' }}
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.22, ease: 'easeOut' as const }}
+        className="relative w-full md:max-w-md bg-white md:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxHeight: 'min(92dvh, 720px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sticky header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <BookOpen size={14} className="text-primary" />
+        {/* Drag handle (mobile only) */}
+        <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-slate-200" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 pt-3 pb-4 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+            <BookOpen size={18} className="text-emerald-600" />
           </div>
-          <p className="font-bold text-sm flex-1">{editEntry ? 'Edit Ledger Entry' : 'Add Ledger Entry'}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-base text-slate-900 leading-tight">
+              {editEntry ? 'Edit Cost Entry' : 'Log a Cost'}
+            </p>
+            <p className="text-xs text-slate-400 leading-tight">Snap a receipt or enter manually</p>
+          </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4 flex flex-col gap-3">
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 pb-4 flex flex-col gap-4">
           {error && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
-              <AlertCircle size={12} />{error}
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-xs text-red-700">
+              <AlertCircle size={12} className="shrink-0" />{error}
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Date *</label>
-              <input type="date" value={form.entryDate} onChange={(e) => set('entryDate', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Event Type *</label>
-              <select value={form.eventType} onChange={(e) => set('eventType', e.target.value)} className={inputCls}>
-                {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-          </div>
-
+          {/* Category chips */}
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Description *</label>
-            <input type="text" value={form.description} onChange={(e) => set('description', e.target.value)}
-              placeholder="e.g. Carpenter labour — framing" className={inputCls} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Qty</label>
-              <input type="number" step="0.001" value={form.qty} onChange={(e) => set('qty', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Unit</label>
-              <input type="text" value={form.unit} onChange={(e) => set('unit', e.target.value)} placeholder="hr, m², t…" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Rate ($)</label>
-              <input type="number" step="0.01" value={form.rate} onChange={(e) => set('rate', e.target.value)} className={inputCls} />
-            </div>
-          </div>
-
-          {/* Live total preview */}
-          <div className="bg-muted/30 rounded-xl p-3 grid grid-cols-3 gap-2 text-center">
-            <div><p className="text-xs text-muted-foreground">Subtotal</p><p className="text-sm font-bold font-mono">{fmt(subtotal)}</p></div>
-            <div><p className="text-xs text-muted-foreground">GST (10%)</p><p className="text-sm font-bold font-mono">{fmt(gst)}</p></div>
-            <div><p className="text-xs text-primary">Total</p><p className="text-sm font-bold font-mono text-primary">{fmt(total)}</p></div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Account Code</label>
-              <input type="text" value={form.accountCode} onChange={(e) => set('accountCode', e.target.value)} placeholder="e.g. 5000" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Tax Code</label>
-              <select value={form.taxCode} onChange={(e) => set('taxCode', e.target.value)} className={inputCls}>
-                <option value="GST">GST</option>
-                <option value="FRE">FRE (GST Free)</option>
-                <option value="N-T">N-T (Not Reportable)</option>
-                <option value="CAP">CAP (Capital)</option>
-              </select>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Category</p>
+            <div className="grid grid-cols-3 gap-2">
+              {COST_CATEGORIES.map(cat => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => set('eventType', cat.key)}
+                  className={`py-2.5 px-2 rounded-xl border-2 text-xs font-semibold text-center transition-colors leading-tight ${
+                    form.eventType === cat.key
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Contact / Supplier</label>
-              <input type="text" value={form.contactName} onChange={(e) => set('contactName', e.target.value)} placeholder="Supplier or contractor name" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Reference</label>
-              <input type="text" value={form.reference} onChange={(e) => set('reference', e.target.value)} placeholder="Invoice #, docket #…" className={inputCls} />
-            </div>
-          </div>
-
+          {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Status</label>
-            <select value={form.status} onChange={(e) => set('status', e.target.value)} className={inputCls}>
-              <option value="pending">Pending (awaiting approval)</option>
-              <option value="approved">Approved</option>
-            </select>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Description</label>
+            <input
+              type="text"
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              placeholder="e.g. Timber framing materials"
+              className={inputCls}
+            />
           </div>
 
-          {/* Photo attachment — tap-first row, no dashed border */}
+          {/* Amount + Date — stacked on mobile to prevent overlap */}
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Amount (ex GST)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.rate}
+                  onChange={(e) => set('rate', e.target.value)}
+                  placeholder="0.00"
+                  className={`${inputCls} pl-7`}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
+              <input
+                type="date"
+                value={form.entryDate}
+                onChange={(e) => set('entryDate', e.target.value)}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          {/* Reference */}
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Receipt / Invoice Photo</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              Reference / Invoice # <span className="text-slate-300 normal-case font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.reference}
+              onChange={(e) => set('reference', e.target.value)}
+              placeholder="Invoice #, docket #…"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Contact / Supplier */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              Supplier / Contact <span className="text-slate-300 normal-case font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.contactName}
+              onChange={(e) => set('contactName', e.target.value)}
+              placeholder="Supplier or contractor name"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Photo attachment */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Receipt Photo</label>
             {photoPreview ? (
-              <div className="relative rounded-xl overflow-hidden border border-border">
-                <img src={photoPreview} alt="Receipt preview" className="w-full max-h-48 object-contain bg-muted/30" />
+              <div className="relative rounded-xl overflow-hidden border border-slate-200">
+                <img src={photoPreview} alt="Receipt preview" className="w-full max-h-48 object-contain bg-slate-50" />
                 <button type="button" onClick={clearPhoto}
                   className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors">
                   <X size={12} className="text-white" />
@@ -350,31 +382,39 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
               </div>
             ) : (
               <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-border bg-muted/30 hover:border-primary hover:bg-violet-50 transition-colors text-left">
-                <div className="w-10 h-10 rounded-lg bg-white border border-border flex items-center justify-center shrink-0">
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors text-left">
+                <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
                   <Camera size={18} className="text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Tap to attach photo</p>
-                  <p className="text-xs text-muted-foreground">JPG, PNG, PDF · max 10 MB</p>
+                  <p className="text-sm font-semibold text-slate-700">Tap to attach photo</p>
+                  <p className="text-xs text-slate-400">JPG, PNG, PDF · max 10 MB</p>
                 </div>
               </button>
             )}
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handlePhotoChange} />
           </div>
+
+          {/* GST preview */}
+          {parseFloat(form.rate) > 0 && (
+            <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between text-xs text-slate-500">
+              <span>GST (10%): <strong className="text-slate-700 font-mono">${gst.toFixed(2)}</strong></span>
+              <span>Total inc GST: <strong className="text-emerald-700 font-mono">${total.toFixed(2)}</strong></span>
+            </div>
+          )}
         </div>
 
         {/* Sticky footer */}
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border bg-white shrink-0">
-          <button onClick={onClose}
-            className="text-sm text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors">
-            Cancel
+        <div className="px-5 py-4 border-t border-slate-100 bg-white shrink-0 space-y-2">
+          <button
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold py-3.5 rounded-xl disabled:opacity-50 transition-colors"
+          >
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+            {editEntry ? 'Save Changes' : 'Submit Cost'}
           </button>
-          <button onClick={() => void handleSave()} disabled={saving}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-xl disabled:opacity-50 transition-colors">
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
-            {editEntry ? 'Save Changes' : 'Add Entry'}
-          </button>
+          <p className="text-center text-xs text-slate-400">Submitted as pending — admin will review</p>
         </div>
       </motion.div>
     </div>

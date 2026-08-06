@@ -365,7 +365,7 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
               </div>
 
               {/* ── Delay days + Date ── */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1.5">
                     Delay days

@@ -170,6 +170,7 @@ export default function KpiWidgets() {
       icon: DollarSign,
       iconBg: 'bg-emerald-50',
       iconColor: 'text-emerald-600',
+      accentColor: '#10b981',
       label: 'Revenue MTD',
       value: fmtMoney(kpi.revenueMtd),
       sub: kpi.revenueLastMonth > 0
@@ -191,6 +192,7 @@ export default function KpiWidgets() {
       icon: HardHat,
       iconBg: 'bg-violet-50',
       iconColor: 'text-primary',
+      accentColor: '#7c3aed',
       label: 'Open Jobs',
       value: String(kpi.openJobs),
       sub: kpi.newJobsLast30 > 0
@@ -208,6 +210,7 @@ export default function KpiWidgets() {
       icon: FileText,
       iconBg: kpi.overdueCount > 0 ? 'bg-red-50' : 'bg-amber-50',
       iconColor: kpi.overdueCount > 0 ? 'text-red-600' : 'text-amber-600',
+      accentColor: kpi.overdueCount > 0 ? '#ef4444' : '#f59e0b',
       label: 'Outstanding',
       value: fmtMoney(kpi.outstandingBalance),
       sub: kpi.outstandingCount > 0
@@ -229,6 +232,7 @@ export default function KpiWidgets() {
       icon: Truck,
       iconBg: 'bg-cyan-50',
       iconColor: 'text-cyan-600',
+      accentColor: '#06b6d4',
       label: 'Fleet Utilisation',
       value: kpi.fleetTotal > 0 ? `${kpi.fleetUtilisation}%` : '—',
       sub: kpi.fleetTotal > 0
@@ -252,8 +256,11 @@ export default function KpiWidgets() {
           variants={cardVariants}
           initial="hidden"
           animate="visible"
-          whileHover={{ y: -1, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
-          className="bg-white rounded-lg border border-border p-2.5 flex flex-col"
+          whileHover={{ y: -1, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+          className="bg-white rounded-lg border border-border p-2.5 flex flex-col overflow-hidden relative"
+          style={{
+            borderLeft: `3px solid ${card.accentColor}`,
+          }}
         >
           {/* Icon + trend */}
           <div className="flex items-start justify-between mb-1.5">

@@ -18,6 +18,7 @@ import { resolveNativeUrl } from '@/lib/native-url';
 import AnnotationToolbar from './AnnotationToolbar';
 import RevisionPanel from './RevisionPanel';
 import ShareModal from './ShareModal';
+import MobileAnnotationBar from './MobileAnnotationBar';
 import type { ToolType, AnnotationStyle } from './types';
 import type { DrawingDetail } from './usePlanManager';
 import type { usePlanManager } from './usePlanManager';
@@ -240,18 +241,10 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
       <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
 
       {/* ── Body ─────────────────────────────────────────────────────────────── */}
-      <div
-        className="flex flex-1 min-h-0 overflow-hidden"
-        style={{
-          // Safe-area bottom: home indicator on iPhone
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        {/* Annotation toolbar (left) — keep drawing tools available on phones */}
-        <div
-          className="flex flex-shrink-0 p-1 sm:p-2 bg-slate-900 border-r border-slate-700 items-start overflow-y-auto"
-          aria-label="Drawing edit tools"
-        >
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* Annotation toolbar — LEFT sidebar on sm+ (tablet/desktop) */}
+        <div className="hidden sm:flex flex-shrink-0 p-2 bg-slate-900 border-r border-slate-700 items-start overflow-y-auto">
           <AnnotationToolbar
             activeTool={activeTool}
             activeStyle={activeStyle}
@@ -263,41 +256,54 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
           />
         </div>
 
-        {/* PDF viewer (center) */}
-        {hasPdf ? (
-          <PdfViewer
-            fileUrl={resolveNativeUrl(drawing.source_file_path!)}
-            currentPage={viewer.currentPage}
-            totalPages={viewer.totalPages}
-            scale={viewer.scale}
-            rotation={viewer.rotation}
-            fitWidth={viewer.fitWidth}
+        {/* PDF viewer (center) — fills remaining space */}
+        <div className="flex flex-col flex-1 min-w-0 min-h-0">
+          {hasPdf ? (
+            <PdfViewer
+              fileUrl={resolveNativeUrl(drawing.source_file_path!)}
+              currentPage={viewer.currentPage}
+              totalPages={viewer.totalPages}
+              scale={viewer.scale}
+              rotation={viewer.rotation}
+              fitWidth={viewer.fitWidth}
+              activeTool={activeTool}
+              activeStyle={activeStyle}
+              isLocked={isLocked}
+              annotations={annotations}
+              undoTrigger={undoTrigger}
+              onPageChange={setPage}
+              onScaleChange={setScale}
+              onRotate={rotate}
+              onFitWidth={setFitWidth}
+              onTotalPages={setTotalPages}
+              onAnnotationsChange={setPageAnnotations}
+              onUndoAvailableChange={setCanUndo}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500 px-4">
+              <Upload size={40} className="text-slate-600" />
+              <p className="text-sm font-semibold text-slate-400">No PDF uploaded yet</p>
+              <p className="text-xs text-slate-600 text-center">Tap "…" then "Upload PDF" to add a drawing file</p>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+              >
+                Upload PDF
+              </button>
+            </div>
+          )}
+
+          {/* ── Mobile annotation toolbar — bottom strip, phones only (hidden sm+) ── */}
+          <MobileAnnotationBar
             activeTool={activeTool}
             activeStyle={activeStyle}
             isLocked={isLocked}
-            annotations={annotations}
-            undoTrigger={undoTrigger}
-            onPageChange={setPage}
-            onScaleChange={setScale}
-            onRotate={rotate}
-            onFitWidth={setFitWidth}
-            onTotalPages={setTotalPages}
-            onAnnotationsChange={setPageAnnotations}
-            onUndoAvailableChange={setCanUndo}
+            canUndo={canUndo}
+            onToolChange={setActiveTool}
+            onStyleChange={handleStyleChange}
+            onUndo={handleUndo}
           />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500 px-4">
-            <Upload size={40} className="text-slate-600" />
-            <p className="text-sm font-semibold text-slate-400">No PDF uploaded yet</p>
-            <p className="text-xs text-slate-600 text-center">Tap "…" then "Upload PDF" to add a drawing file</p>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
-            >
-              Upload PDF
-            </button>
-          </div>
-        )}
+        </div>
 
         {/* Revision panel (right) — hidden on mobile by default, toggled via overflow menu */}
         {revPanelOpen && (

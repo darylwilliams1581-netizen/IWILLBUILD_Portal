@@ -218,24 +218,47 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 }
 
 /**
+ * Race a promise against a timeout. Returns the fallback value if the timeout
+ * fires first. Prevents any Capacitor plugin call from hanging the UI forever
+ * when the bridge is slow to initialise or the plugin is missing at runtime.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+/**
  * Check / request camera permission via the real @capacitor/camera plugin.
  * Returns 'granted' | 'denied' | 'unknown' (web / non-native / plugin missing).
+ *
+ * Hard timeout: 5 s total. If the Capacitor bridge or plugin import hangs
+ * (common on first launch before the bridge is fully initialised), we fall
+ * back to 'unknown' so the UI never stays stuck on "Checking permissions…".
  */
 async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = await getCameraPlugin();
+    // 3 s to load the plugin — if the bridge isn't ready yet this import can hang
+    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
     if (!Camera) return 'unknown';
 
-    const status = await Camera.checkPermissions();
+    // 3 s for checkPermissions — native IPC; should be instant but guard anyway
+    const status = await withTimeout(
+      Camera.checkPermissions() as Promise<Record<string, string>>,
+      3000,
+      { camera: 'prompt' } as Record<string, string>,
+    );
     // @capacitor/camera v5+ returns { camera: PermissionState, photos: PermissionState }
-    const cam = (status as { camera?: string }).camera ?? 'prompt';
+    const cam = status.camera ?? 'prompt';
     if (cam === 'granted') return 'granted';
     if (cam === 'denied') return 'denied';
 
-    // 'prompt' or 'prompt-with-rationale' — trigger the native dialog
-    const requested = await Camera.requestPermissions({ permissions: ['camera'] as never });
-    const grantedCam = (requested as { camera?: string }).camera ?? 'denied';
+    // 'prompt' or 'prompt-with-rationale' — trigger the native dialog.
+    // No timeout here — the dialog waits for the user; that's intentional.
+    const requested = await Camera.requestPermissions({ permissions: ['camera'] as never }) as Record<string, string>;
+    const grantedCam = requested.camera ?? 'denied';
     return grantedCam === 'granted' ? 'granted' : 'denied';
   } catch {
     // Plugin unavailable at runtime — fall back to browser input
@@ -251,27 +274,29 @@ async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown
  * can only see photos they explicitly allowed. This is NOT a denial; do not
  * block the picker. Surface it in the UI so the user understands why they
  * can't see all their photos.
+ *
+ * Hard timeout: same 3 s guards as ensureCameraPermission.
  */
 async function ensurePhotosPermission(): Promise<'granted' | 'limited' | 'denied' | 'unknown'> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = await getCameraPlugin();
+    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
     if (!Camera) return 'unknown';
 
-    const status = await Camera.checkPermissions();
-    const photos = (status as { photos?: string }).photos
-      ?? (status as { camera?: string }).camera
-      ?? 'prompt';
+    const status = await withTimeout(
+      Camera.checkPermissions() as Promise<Record<string, string>>,
+      3000,
+      { photos: 'prompt' } as Record<string, string>,
+    );
+    const photos = status.photos ?? status.camera ?? 'prompt';
 
     if (photos === 'granted') return 'granted';
     if (photos === 'limited') return 'limited';   // ← surface distinctly
     if (photos === 'denied') return 'denied';
 
-    // 'prompt' — trigger the native dialog
-    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
-    const rPhotos = (requested as { photos?: string }).photos
-      ?? (requested as { camera?: string }).camera
-      ?? 'denied';
+    // 'prompt' — trigger the native dialog (no timeout — waits for user)
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never }) as Record<string, string>;
+    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
 
     if (rPhotos === 'granted') return 'granted';
     if (rPhotos === 'limited') return 'limited';
@@ -359,7 +384,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     // ── Native path: use Capacitor Camera.getPhoto() so flash + direction work ──
     if (isNative()) {
       try {
-        const CameraPlugin = await getCameraPlugin();
+        // 3 s timeout — if the Capacitor bridge isn't ready the import can hang
+        const CameraPlugin = await withTimeout(getCameraPlugin(), 3000, null);
         if (CameraPlugin) {
           // Use Base64 instead of DataUrl on native.
           // DataUrl requires an extra fetch() round-trip to convert to a Blob,

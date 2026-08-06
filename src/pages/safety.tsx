@@ -12,6 +12,7 @@ import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
+import PosterPreviewModal from '@/components/safety-posters/PosterPreviewModal';
 import SwmsBodyBuilder from '@/components/safety/SwmsBodyBuilder';
 import PlanFormModal from '@/components/safety/PlanFormModal';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
@@ -685,6 +686,7 @@ export function PostersTab() {
   const [showGenerator, setShowGenerator] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deletingGen, setDeletingGen] = useState<number | null>(null);
+  const [previewPoster, setPreviewPoster] = useState<GeneratedPoster | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -769,9 +771,18 @@ export function PostersTab() {
                   <p className="font-bold text-sm text-slate-800 truncate">{p.title}</p>
                   <p className="text-xs text-slate-400 mt-0.5 capitalize">{p.poster_type.replace(/_/g, ' ')} · Generated</p>
                 </div>
-                <button onClick={() => handleDeleteGenerated(p.id)} disabled={deletingGen === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0">
-                  {deletingGen === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setPreviewPoster(p)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
+                    title="Preview poster"
+                  >
+                    <Printer size={14} />
+                  </button>
+                  <button onClick={() => handleDeleteGenerated(p.id)} disabled={deletingGen === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                    {deletingGen === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -792,9 +803,19 @@ export function PostersTab() {
                   <p className="font-bold text-sm text-slate-800 truncate">{p.title}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{p.poster_type} · {fmtBytes(p.size_bytes)}</p>
                 </div>
-                <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0">
-                  {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <a
+                    href={`/api/safety/posters/${p.id}/download`}
+                    download
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
+                    title="Download poster"
+                  >
+                    <Download size={14} />
+                  </a>
+                  <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                    {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -819,6 +840,17 @@ export function PostersTab() {
           />
         )}
       </AnimatePresence>
+
+      {/* Poster preview modal (outside AnimatePresence so it doesn't unmount mid-animation) */}
+      {previewPoster && (
+        <PosterPreviewModal
+          open={!!previewPoster}
+          onClose={() => setPreviewPoster(null)}
+          title={previewPoster.title}
+          posterType={previewPoster.poster_type}
+          dataJson={previewPoster.data_json}
+        />
+      )}
     </div>
   );
 }

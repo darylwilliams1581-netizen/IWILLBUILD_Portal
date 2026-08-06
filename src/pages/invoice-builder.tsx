@@ -174,30 +174,26 @@ function RecordPaymentModal({
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <form onSubmit={submit} className="p-5 flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Date <span className="text-red-500">*</span></label>
-              <input type="date" value={form.payment_date} onChange={(e) => setForm((f) => ({ ...f, payment_date: e.target.value }))} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Amount <span className="text-red-500">*</span></label>
-              <input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} className={inp} />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Date <span className="text-red-500">*</span></label>
+            <input type="date" value={form.payment_date} onChange={(e) => setForm((f) => ({ ...f, payment_date: e.target.value }))} className={inp} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Method</label>
-              <select value={form.method} onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))} className={inp}>
-                <option value="">Select…</option>
-                {['Bank Transfer', 'Cash', 'Cheque', 'Credit Card', 'EFTPOS', 'Other'].map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Reference</label>
-              <input value={form.reference} onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))} placeholder="e.g. BSB/Acc or receipt #" className={inp} />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Amount <span className="text-red-500">*</span></label>
+            <input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} className={inp} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Method</label>
+            <select value={form.method} onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))} className={inp}>
+              <option value="">Select…</option>
+              {['Bank Transfer', 'Cash', 'Cheque', 'Credit Card', 'EFTPOS', 'Other'].map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Reference</label>
+            <input value={form.reference} onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))} placeholder="e.g. BSB/Acc or receipt #" className={inp} />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Notes</label>
@@ -831,8 +827,8 @@ export default function InvoiceBuilderPage() {
               )}
 
               {/* Header fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
+              <div className="flex flex-col gap-4">
+                <div>
                   <label className={lbl}>Invoice Title <span className="text-red-500">*</span></label>
                   <input value={title} onChange={(e) => { setTitle(e.target.value); markDirty(); }} disabled={!canEdit} placeholder="e.g. Progress Claim #1 — Bathroom Renovation" className={inp} />
                 </div>
@@ -862,7 +858,7 @@ export default function InvoiceBuilderPage() {
             {/* Job + Customer */}
             <div className="bg-white border border-border rounded-xl p-5">
               <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-4">Job &amp; Customer</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-4">
                 <div>
                   <label className={lbl}>Linked Job</label>
                   <select

@@ -359,7 +359,7 @@ export default function EstimateEditorPage() {
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[104px]">
       <Helmet>
         <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
         <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
@@ -368,37 +368,57 @@ export default function EstimateEditorPage() {
       </Helmet>
       <h1 className="sr-only">{estimate ? `${estimate.title} — Estimate` : 'Estimate Editor'}</h1>
 
-        {/* Top bar — two rows on mobile, single row on desktop */}
-        <header className="bg-white border-b border-gray-100 shrink-0 safe-top" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
-          {/* Row 1: Back + title + save indicator */}
-          <div className="flex items-center gap-3 px-4 md:px-6 h-14">
+        {/* ════════════════════════════════════════════════════════
+            HEADER — Row 1: nav + title + save  |  Row 2: actions
+            ════════════════════════════════════════════════════════ */}
+        <header
+          className="bg-white border-b border-gray-100 shrink-0 safe-top"
+          style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06)' }}
+        >
+          {/* ── Row 1 ── */}
+          <div className="flex items-center gap-2 px-4 md:px-6 h-14">
+            {/* ← Back */}
             <button
               onClick={() => void handleBack()}
-              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
+              aria-label="Back"
+              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center text-gray-500 transition-colors shrink-0"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={18} strokeWidth={2.5} />
             </button>
+
+            {/* Title block */}
             <div className="flex-1 min-w-0">
-              <p className="text-gray-400 text-xs font-medium truncate leading-tight">
+              <p className="text-[11px] text-gray-400 font-medium truncate leading-tight">
                 {job ? (job.jobNumber ?? job.name) : 'Estimate'}
               </p>
-              <p className="font-bold text-gray-900 text-sm truncate leading-tight">
+              <p className="font-bold text-gray-900 text-[14px] truncate leading-tight">
                 {estimate?.title ?? 'Loading…'}
-                {dirty && !saving && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1.5 mb-0.5" title="Unsaved changes" />}
+                {dirty && !saving && (
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1.5 mb-0.5 align-middle"
+                    title="Unsaved changes"
+                  />
+                )}
               </p>
             </div>
-            {/* Save indicator — right side of row 1 */}
-            {saving && <Loader2 size={14} className="animate-spin text-muted-foreground shrink-0" />}
-            {saved && !saving && !dirty && <span className="text-xs text-emerald-600 font-semibold shrink-0">Saved</span>}
-            {/* Manual save button — row 1 on mobile */}
+
+            {/* Save state indicators */}
+            {saving && (
+              <Loader2 size={14} className="animate-spin text-gray-400 shrink-0" />
+            )}
+            {saved && !saving && !dirty && (
+              <span className="text-[11px] text-emerald-600 font-semibold shrink-0">Saved</span>
+            )}
+
+            {/* Save button */}
             {!isLocked && (
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 shrink-0 ${
+                className={`flex items-center gap-1.5 text-[13px] font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 shrink-0 ${
                   dirty
-                    ? 'bg-primary hover:bg-violet-700 text-white'
-                    : 'bg-primary/70 hover:bg-primary text-white'
+                    ? 'bg-violet-600 hover:bg-violet-700 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
                 }`}
               >
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
@@ -407,44 +427,49 @@ export default function EstimateEditorPage() {
             )}
           </div>
 
-          {/* Row 2: Action pills */}
-          <div className="flex items-center gap-2 px-4 md:px-6 pb-2 overflow-x-auto">
-            {/* Status badge + dropdown */}
+          {/* ── Row 2: action strip ── */}
+          <div className="flex items-center gap-1 px-4 md:px-6 pb-2.5 overflow-x-auto scrollbar-none">
+
+            {/* Status badge */}
             {estimate && statusStyle && (
               <div className="relative shrink-0">
                 <button
                   onClick={() => setStatusOpen(!statusOpen)}
-                  className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${statusStyle.bg} ${statusStyle.color}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-opacity hover:opacity-80 ${statusStyle.bg} ${statusStyle.color}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusStyle.dot}`} />
                   {estimate.status}
-                  <ChevronDown size={10} />
+                  <ChevronDown size={9} />
                 </button>
                 {statusOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
+                    <div
+                      className="absolute left-0 top-full mt-1.5 z-20 bg-white border border-gray-100 rounded-2xl py-1.5 min-w-[160px]"
+                      style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+                    >
                       {ESTIMATE_STATUSES.map((s) => {
                         const st = getEstimateStatusStyle(s);
-                        const locked = s === 'Approved' && !canApprove;
+                        const isLocked = s === 'Approved' && !canApprove;
+                        const isCurrent = estimate.status === s;
                         return (
                           <button
                             key={s}
-                            onClick={() => { if (!locked) handleStatusChange(s); }}
-                            disabled={locked}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors
-                              ${locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted'}
-                              ${estimate.status === s ? 'font-bold' : ''}`}
+                            onClick={() => { if (!isLocked) handleStatusChange(s); }}
+                            disabled={isLocked}
+                            className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] font-semibold transition-colors
+                              ${isLocked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50'}
+                              ${isCurrent ? st.color : 'text-gray-700'}`}
                           >
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                            <span className="flex-1">{s}</span>
-                            {locked && <Lock size={10} className="text-muted-foreground" />}
-                            {estimate.status === s && !locked && <Check size={12} className="ml-auto text-primary" />}
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
+                            <span className="flex-1 text-left">{s}</span>
+                            {isLocked && <Lock size={10} className="text-gray-400 shrink-0" />}
+                            {isCurrent && !isLocked && <Check size={11} className="text-violet-500 shrink-0" />}
                           </button>
                         );
                       })}
                       {!canApprove && (
-                        <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border mt-1">
+                        <p className="px-3.5 pt-1.5 pb-1 text-[10px] text-gray-400 border-t border-gray-50 mt-1">
                           Admin approval required
                         </p>
                       )}
@@ -454,16 +479,29 @@ export default function EstimateEditorPage() {
               </div>
             )}
 
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-200 shrink-0 mx-0.5" />
+
             {/* Print */}
             <button
               onClick={() => setShowPrint(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors shrink-0"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
             >
-              <Printer size={14} />
-              <span>Print</span>
+              <Printer size={13} />
+              Print
             </button>
 
-            {/* Send via Outlook */}
+            {/* PDF */}
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf || !estimate}
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+            >
+              {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              PDF
+            </button>
+
+            {/* Email via Outlook */}
             {estimate && (
               <div className="shrink-0">
                 <OutlookEmailButton
@@ -472,7 +510,10 @@ export default function EstimateEditorPage() {
                     estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
                     jobName: job?.name,
                     customerName: estimate.customerName ?? undefined,
-                    totalAmount: (() => { const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST'); return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }); })(),
+                    totalAmount: (() => {
+                      const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST');
+                      return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
+                    })(),
                     status: estimate.status,
                     link: `${typeof window !== 'undefined' ? window.location.origin : 'https://iwillbuild.com'}/view/estimate/${estimate.id}`,
                   }}
@@ -482,35 +523,23 @@ export default function EstimateEditorPage() {
               </div>
             )}
 
-            {/* Export PDF */}
-            <button
-              onClick={handleExportPdf}
-              disabled={exportingPdf || !estimate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
-              title="Download PDF"
-            >
-              {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              <span>PDF</span>
-            </button>
-
-            {/* Share link */}
+            {/* Share */}
             <button
               onClick={() => setShowShare(true)}
               disabled={!estimate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
-              title="Share link"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
             >
-              <Share2 size={14} />
-              <span>Share</span>
+              <Share2 size={13} />
+              Share
             </button>
 
             {/* Duplicate */}
             <button
               onClick={handleDuplicate}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors shrink-0"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
             >
-              <Copy size={14} />
-              <span>Duplicate</span>
+              <Copy size={13} />
+              Duplicate
             </button>
           </div>
         </header>
@@ -608,31 +637,29 @@ export default function EstimateEditorPage() {
 
               {/* Lines table */}
               <div className="bg-white rounded-xl border border-border overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Line Items</h2>
-                    {!isLocked && (
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                        lines.length >= LIMITS.ESTIMATE_LINES
-                          ? 'bg-red-50 text-red-600 border-red-200'
-                          : lines.length >= LIMITS.ESTIMATE_LINES * 0.9
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-muted text-muted-foreground border-border'
-                      }`}>{lines.length} / {LIMITS.ESTIMATE_LINES}</span>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-border overflow-x-auto">
+                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider whitespace-nowrap shrink-0">Line Items</h2>
                   {!isLocked && (
-                    <div className="flex items-center gap-1.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                      lines.length >= LIMITS.ESTIMATE_LINES
+                        ? 'bg-red-50 text-red-600 border-red-200'
+                        : lines.length >= LIMITS.ESTIMATE_LINES * 0.9
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-muted text-muted-foreground border-border'
+                    }`}>{lines.length} / {LIMITS.ESTIMATE_LINES}</span>
+                  )}
+                  {!isLocked && (
+                    <div className="flex items-center gap-1.5 ml-auto shrink-0">
                       <button
                         onClick={() => setShowCostPicker(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30 whitespace-nowrap"
                       >
                         <Calculator size={12} />
                         Cost Guide
                       </button>
                       <button
                         onClick={() => setShowRecipePicker(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30 whitespace-nowrap"
                       >
                         <BookOpen size={12} />
                         Recipe
@@ -641,33 +668,35 @@ export default function EstimateEditorPage() {
                         onClick={addLine}
                         disabled={isLocked || lines.length >= LIMITS.ESTIMATE_LINES}
                         title={lines.length >= LIMITS.ESTIMATE_LINES ? `Estimate line limit reached (${LIMITS.ESTIMATE_LINES} lines)` : undefined}
-                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Plus size={13} />
                         Add Line
                       </button>
-                      {/* CSV actions */}
-                      <div className="w-px h-4 bg-slate-200 mx-0.5" />
-                      <button
-                        onClick={downloadEstimateTemplate}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors"
-                        title="Download CSV import template"
-                      >
-                        <FileText size={12} />CSV Import Template
-                      </button>
-                      <button
-                        onClick={() => setShowCsvImport(true)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
-                      >
-                        <Upload size={12} />Import CSV
-                      </button>
-                      <button
-                        onClick={handleExportCsv}
-                        disabled={exportingCsv || lines.length === 0}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
-                      >
-                        {exportingCsv ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}Export CSV
-                      </button>
+                      {/* CSV actions — hidden on mobile to keep header clean */}
+                      <div className="hidden md:flex items-center gap-1.5">
+                        <div className="w-px h-4 bg-slate-200 mx-0.5" />
+                        <button
+                          onClick={downloadEstimateTemplate}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors"
+                          title="Download CSV import template"
+                        >
+                          <FileText size={12} />CSV Import Template
+                        </button>
+                        <button
+                          onClick={() => setShowCsvImport(true)}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        >
+                          <Upload size={12} />Import CSV
+                        </button>
+                        <button
+                          onClick={handleExportCsv}
+                          disabled={exportingCsv || lines.length === 0}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                        >
+                          {exportingCsv ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}Export CSV
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -824,7 +853,7 @@ export default function EstimateEditorPage() {
                         onChange={(e) => updateLine(line._key, 'description', e.target.value)}
                         rows={2}
                         placeholder="Description"
-                        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none disabled:bg-muted"
+                        className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none disabled:bg-muted"
                       />
                       {/* Category — mobile */}
                       {estimateCategories.length > 0 && (
@@ -834,7 +863,7 @@ export default function EstimateEditorPage() {
                             value={line.category ?? ''}
                             disabled={isLocked}
                             onChange={(e) => updateLine(line._key, 'category', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-border rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted"
+                            className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted"
                           >
                             <option value="">— none —</option>
                             {estimateCategories.map((c) => (
@@ -843,21 +872,25 @@ export default function EstimateEditorPage() {
                           </select>
                         </div>
                       )}
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* Qty + Unit on one row, Rate full-width below — prevents 3-col overlap on narrow phones */}
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs text-muted-foreground">Qty</label>
-                          <input type="number" min="0" step="any" value={line.quantity} disabled={isLocked} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-2 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                          <input type="number" min="0" step="any" value={line.quantity} disabled={isLocked} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-3 py-2.5 border border-border rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted" />
                         </div>
                         <div>
                           <label className="text-xs text-muted-foreground">Unit</label>
-                          <input type="text" value={line.unit} disabled={isLocked} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-2 py-1.5 border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Rate</label>
-                          <input type="number" min="0" step="any" value={line.rate} disabled={isLocked} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-2 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                          <input type="text" value={line.unit} disabled={isLocked} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted" />
                         </div>
                       </div>
-                      <div className="text-right text-sm font-mono font-semibold">${lineCalc(line).toFixed(2)}</div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Rate ($)</label>
+                        <input type="number" min="0" step="any" value={line.rate} disabled={isLocked} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-3 py-2.5 border border-border rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-muted" />
+                      </div>
+                      <div className="flex items-center justify-between bg-muted/30 rounded-xl px-3 py-2">
+                        <span className="text-xs text-muted-foreground">Line total</span>
+                        <span className="text-sm font-mono font-bold text-foreground">${lineCalc(line).toFixed(2)}</span>
+                      </div>
                     </div>
                   ))}
                 </div>

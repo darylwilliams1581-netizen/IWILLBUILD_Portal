@@ -25,7 +25,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
     "clean": "rm -rf dist node_modules/.vite",
     "reset": "npm run clean && npm install",
-    "start": "node scripts/start-server.mjs",
+    "start": "node dist/server.bundle.mjs",
     "audit": "better-npm-audit audit --level high --registry=https://registry.npmjs.org"
   },
   "dependencies": {

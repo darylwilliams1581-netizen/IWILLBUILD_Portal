@@ -182,7 +182,7 @@ export default function IncidentsPage() {
   }
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden lg:pt-[104px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

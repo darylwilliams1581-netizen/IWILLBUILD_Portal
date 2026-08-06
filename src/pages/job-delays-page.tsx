@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Loader2, Download, Home } from 'lucide-react';
+import { Home, Clock, Loader2, Download } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import JobDelays from '@/components/job/JobDelays';
 
@@ -71,63 +71,79 @@ export default function JobDelaysPage() {
         style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
       >
         <button
-          onClick={() => navigate(`/jobs/${id}`)}
-          className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+          onClick={() => navigate('/home')}
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm shrink-0"
+          title="Dashboard"
         >
-          <ArrowLeft size={18} />
+          <Home size={18} />
         </button>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-            {loading ? (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-            ) : (
-              <>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Delays'}</h1>
-                <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
-                  <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
-                  <span>/</span>
-                  <span className="text-gray-500 font-medium">Delays</span>
-                </div>
-              </>
-            )}
-          </div>
-          <button
-            onClick={exportCsv}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0"
-          >
-            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            <span>Export CSV</span>
-          </button>
+        <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
+          {loading ? (
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+          ) : (
+            <>
+              <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Delays'}</h1>
+              <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
+                <span>/</span>
+                <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
+                <span>/</span>
+                <span className="text-gray-500 font-medium">Delays</span>
+              </div>
+            </>
+          )}
         </div>
+        <button
+          onClick={exportCsv}
+          disabled={exporting}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0"
+        >
+          {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+          <span>Export CSV</span>
+        </button>
+      </div>
 
       {/* ── Mobile safe-area top bar ── */}
       <div
-        className="md:hidden bg-white border-b border-gray-100 shrink-0"
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)', boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
+        className="md:hidden bg-white border-b border-gray-100 shrink-0 safe-top"
       >
-        <div className="flex items-center justify-center px-4 pb-3">
-          <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center">
-            {loading ? <span className="inline-block h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (job?.name ?? 'Job Delays')}
-          </h1>
+        <div className="flex items-center gap-2 px-3 h-12">
+          {/* Left: home */}
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white active:bg-violet-700 transition-colors touch-manipulation shadow-sm shrink-0"
+            aria-label="Dashboard"
+          >
+            <Home size={16} />
+          </button>
+
+          {/* Centre: title */}
+          <div className="flex-1 min-w-0 flex flex-col items-center justify-center">
+            <div className="flex items-center gap-1.5">
+              <Clock size={13} className="text-red-500 shrink-0" />
+              <h1 className="text-gray-900 font-bold text-sm leading-tight truncate">
+                {loading
+                  ? <span className="inline-block h-4 w-28 bg-gray-200 rounded animate-pulse" />
+                  : (job?.name ?? 'Delays')}
+              </h1>
+            </div>
+            {job?.jobNumber && (
+              <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>
+            )}
+          </div>
+
+          {/* Right: Export CSV */}
+          <button
+            onClick={exportCsv}
+            disabled={exporting}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-600 active:bg-gray-200 disabled:opacity-40 transition-colors shrink-0"
+            aria-label="Export CSV"
+          >
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            <span>CSV</span>
+          </button>
         </div>
       </div>
-
-      {/* ── Mobile: export CSV floats top-right ── */}
-      <button
-        onClick={exportCsv}
-        disabled={exporting}
-        className="md:hidden fixed z-20 h-9 px-3 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center gap-1.5 text-xs font-semibold text-gray-600 active:bg-gray-100 disabled:opacity-40 transition-colors"
-        style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', right: '12px' }}
-        aria-label="Export CSV"
-      >
-        {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-        CSV
-      </button>
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto">
@@ -136,39 +152,10 @@ export default function JobDelaysPage() {
             <Loader2 size={24} className="animate-spin text-red-400" />
           </div>
         ) : (
-          <div className="px-4 py-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">
+          <div className="px-4 py-4 pb-6 max-w-3xl mx-auto w-full">
             <JobDelays jobId={jobId} />
           </div>
         )}
-      </div>
-
-      {/* ── Mobile bottom bar ── */}
-      <div
-        className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100"
-        style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
-            <ArrowLeft size={16} />
-          </button>
-          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
-            <Home size={16} />
-          </button>
-          <div className="flex-1 min-w-0">
-            {loading ? (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-            ) : (
-              <>
-                <p className="text-gray-900 font-bold text-sm leading-tight truncate">
-                  {job?.name ?? 'Job Delays'}
-                </p>
-                {job?.jobNumber && (
-                  <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>
-                )}
-              </>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

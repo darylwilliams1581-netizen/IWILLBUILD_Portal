@@ -594,7 +594,7 @@ export default function QuickLinksPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

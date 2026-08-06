@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
-const inp = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
+const inp = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
 const lbl = 'block text-xs font-semibold text-slate-500 mb-1';
 const sel = `${inp} appearance-none cursor-pointer`;
 
@@ -39,7 +39,7 @@ function ResultRow({ label, value, unit, highlight, copyText }: {
   label: string; value: string; unit?: string; highlight?: boolean; copyText?: string;
 }) {
   return (
-    <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${highlight ? 'bg-primary/8 border border-primary/20' : 'bg-slate-50 border border-slate-100'}`}>
+    <div className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${highlight ? 'bg-primary/8 border border-primary/20' : 'bg-slate-50 border border-slate-100'}`}>
       <span className="text-xs font-semibold text-slate-600">{label}</span>
       <div className="flex items-center gap-2">
         <span className={`text-sm font-bold ${highlight ? 'text-primary' : 'text-slate-800'}`}>
@@ -51,24 +51,26 @@ function ResultRow({ label, value, unit, highlight, copyText }: {
   );
 }
 
-// ── Card wrapper ──────────────────────────────────────────────────────────────
+// ── Card wrapper — collapsed by default ───────────────────────────────────────
 function CalcCard({ title, icon: Icon, children, accent = '#7C3AED' }: {
   title: string; icon: React.ElementType; children: React.ReactNode; accent?: string;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
       >
         <div className="p-2 rounded-xl shrink-0" style={{ background: `${accent}18` }}>
           <Icon size={16} style={{ color: accent }} />
         </div>
         <span className="flex-1 text-sm font-bold text-slate-800">{title}</span>
-        {open ? <ChevronDown size={15} className="text-slate-400" /> : <ChevronRight size={15} className="text-slate-400" />}
+        {open
+          ? <ChevronDown size={15} className="text-slate-400 shrink-0" />
+          : <ChevronRight size={15} className="text-slate-400 shrink-0" />}
       </button>
-      {open && <div className="px-4 pb-4 pt-1 border-t border-slate-100">{children}</div>}
+      {open && <div className="px-4 pb-5 pt-2 border-t border-slate-100">{children}</div>}
     </div>
   );
 }
@@ -79,6 +81,16 @@ function ResetBtn({ onClick }: { onClick: () => void }) {
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-500 transition-colors">
       <RotateCcw size={12} /> Reset
     </button>
+  );
+}
+
+// ── Field group helper ────────────────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className={lbl}>{label}</label>
+      {children}
+    </div>
   );
 }
 
@@ -97,30 +109,21 @@ function CheckSquareCalc() {
   return (
     <CalcCard title="3-4-5 Check Square" icon={Triangle} accent="#6366f1">
       <div className="flex flex-col gap-3 mt-2">
-        {/* Unit */}
-        <div>
-          <label className={lbl}>Unit</label>
+        <Field label="Unit">
           <select value={unit} onChange={(e) => setUnit(e.target.value as 'm' | 'mm')} className={sel}>
             <option value="m">Metres (m)</option>
             <option value="mm">Millimetres (mm)</option>
           </select>
-        </div>
-        {/* Inputs */}
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <label className={lbl}>Side A ({unit})</label>
-            <input type="number" value={sideA} onChange={(e) => setSideA(e.target.value)} placeholder="e.g. 3" className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>Side B ({unit})</label>
-            <input type="number" value={sideB} onChange={(e) => setSideB(e.target.value)} placeholder="e.g. 4" className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>Measured diagonal ({unit})</label>
-            <input type="number" value={measuredC} onChange={(e) => setMeasuredC(e.target.value)} placeholder="optional" className={inp} />
-          </div>
-        </div>
-        {/* Results */}
+        </Field>
+        <Field label={`Side A (${unit})`}>
+          <input type="number" value={sideA} onChange={(e) => setSideA(e.target.value)} placeholder="e.g. 3" className={inp} />
+        </Field>
+        <Field label={`Side B (${unit})`}>
+          <input type="number" value={sideB} onChange={(e) => setSideB(e.target.value)} placeholder="e.g. 4" className={inp} />
+        </Field>
+        <Field label={`Measured diagonal (${unit}) — optional`}>
+          <input type="number" value={measuredC} onChange={(e) => setMeasuredC(e.target.value)} placeholder="optional" className={inp} />
+        </Field>
         {requiredC !== null && (
           <div className="flex flex-col gap-1.5">
             <ResultRow label="Required diagonal" value={fmt(requiredC, 4)} unit={unit} highlight copyText={`${fmt(requiredC, 4)} ${unit}`} />
@@ -134,7 +137,7 @@ function CheckSquareCalc() {
             )}
           </div>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <ResetBtn onClick={() => { setSideA(''); setSideB(''); setMeasuredC(''); }} />
         </div>
       </div>
@@ -160,24 +163,17 @@ function EqualSpacingCalc() {
   if (L > 0 && N > 0) {
     const totalItemWidth = W * N;
     if (mode === 'ends') {
-      // S = (L - W*N) / (N+1)
       gap = (L - totalItemWidth) / (N + 1);
     } else {
-      // S = (L - W*N) / (N-1)  (gaps between items only, no end gaps)
       gap = N > 1 ? (L - totalItemWidth) / (N - 1) : 0;
     }
     if (gap < 0) { impossible = true; gap = null; }
     else {
       ctc = W + gap;
-      // Positions from start (to centre of each item)
       if (mode === 'ends') {
-        for (let i = 0; i < N; i++) {
-          positions.push(gap + W / 2 + i * (W + gap));
-        }
+        for (let i = 0; i < N; i++) positions.push(gap + W / 2 + i * (W + gap));
       } else {
-        for (let i = 0; i < N; i++) {
-          positions.push(W / 2 + i * (W + gap));
-        }
+        for (let i = 0; i < N; i++) positions.push(W / 2 + i * (W + gap));
       }
     }
   }
@@ -185,37 +181,28 @@ function EqualSpacingCalc() {
   return (
     <CalcCard title="Equal Spacing" icon={AlignJustify} accent="#0ea5e9">
       <div className="flex flex-col gap-3 mt-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className={lbl}>Unit</label>
-            <select value={unit} onChange={(e) => setUnit(e.target.value)} className={sel}>
-              <option value="mm">mm</option>
-              <option value="m">m</option>
-              <option value="mm (posts)">mm (posts)</option>
-            </select>
-          </div>
-          <div>
-            <label className={lbl}>Spacing mode</label>
-            <select value={mode} onChange={(e) => setMode(e.target.value as 'between' | 'ends')} className={sel}>
-              <option value="ends">Gaps including both ends</option>
-              <option value="between">Gaps between items only</option>
-            </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <label className={lbl}>Total length ({unit})</label>
-            <input type="number" value={totalLength} onChange={(e) => setTotalLength(e.target.value)} placeholder="e.g. 3600" className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>No. of items</label>
-            <input type="number" value={numItems} onChange={(e) => setNumItems(e.target.value)} placeholder="e.g. 5" className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>Item width ({unit})</label>
-            <input type="number" value={itemWidth} onChange={(e) => setItemWidth(e.target.value)} placeholder="e.g. 90" className={inp} />
-          </div>
-        </div>
+        <Field label="Unit">
+          <select value={unit} onChange={(e) => setUnit(e.target.value)} className={sel}>
+            <option value="mm">mm</option>
+            <option value="m">m</option>
+            <option value="mm (posts)">mm (posts)</option>
+          </select>
+        </Field>
+        <Field label="Spacing mode">
+          <select value={mode} onChange={(e) => setMode(e.target.value as 'between' | 'ends')} className={sel}>
+            <option value="ends">Gaps including both ends</option>
+            <option value="between">Gaps between items only</option>
+          </select>
+        </Field>
+        <Field label={`Total length (${unit})`}>
+          <input type="number" value={totalLength} onChange={(e) => setTotalLength(e.target.value)} placeholder="e.g. 3600" className={inp} />
+        </Field>
+        <Field label="No. of items">
+          <input type="number" value={numItems} onChange={(e) => setNumItems(e.target.value)} placeholder="e.g. 5" className={inp} />
+        </Field>
+        <Field label={`Item width (${unit})`}>
+          <input type="number" value={itemWidth} onChange={(e) => setItemWidth(e.target.value)} placeholder="e.g. 90" className={inp} />
+        </Field>
         {impossible && (
           <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
             ⚠ Impossible — items are wider than the total length.
@@ -239,7 +226,7 @@ function EqualSpacingCalc() {
             )}
           </div>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <ResetBtn onClick={() => { setTotalLength(''); setNumItems(''); setItemWidth(''); }} />
         </div>
       </div>
@@ -266,7 +253,6 @@ function ConcreteCalc() {
   }
   const w = n(wastage) / 100;
   const m3WithWaste = m3 * (1 + w);
-
   const copyText = `${fmt(m3WithWaste, 3)} m³ (incl. ${wastage}% wastage)`;
 
   return (
@@ -277,36 +263,35 @@ function ConcreteCalc() {
           <div className="flex gap-2">
             {(['slab', 'pier'] as const).map((m) => (
               <button key={m} onClick={() => setMode(m)}
-                className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-colors ${mode === m ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-200 text-slate-600 hover:border-amber-400'}`}>
+                className={`flex-1 py-2.5 rounded-lg border text-xs font-bold transition-colors ${mode === m ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-200 text-slate-600 hover:border-amber-400'}`}>
                 {m === 'slab' ? 'Slab / Rectangle' : 'Pier / Round Hole'}
               </button>
             ))}
           </div>
         </div>
         {mode === 'slab' ? (
-          <div className="grid grid-cols-3 gap-2">
-            <div><label className={lbl}>Length (m)</label><input type="number" value={length} onChange={(e) => setLength(e.target.value)} placeholder="e.g. 6" className={inp} /></div>
-            <div><label className={lbl}>Width (m)</label><input type="number" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="e.g. 4" className={inp} /></div>
-            <div><label className={lbl}>Depth (m)</label><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 0.1" className={inp} /></div>
-          </div>
+          <>
+            <Field label="Length (m)"><input type="number" value={length} onChange={(e) => setLength(e.target.value)} placeholder="e.g. 6" className={inp} /></Field>
+            <Field label="Width (m)"><input type="number" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="e.g. 4" className={inp} /></Field>
+            <Field label="Depth (m)"><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 0.1" className={inp} /></Field>
+          </>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className={lbl}>Diameter (m)</label><input type="number" value={diameter} onChange={(e) => setDiameter(e.target.value)} placeholder="e.g. 0.3" className={inp} /></div>
-            <div><label className={lbl}>Depth (m)</label><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 1.2" className={inp} /></div>
-            <div><label className={lbl}>No. of piers</label><input type="number" value={numPiers} onChange={(e) => setNumPiers(e.target.value)} placeholder="1" className={inp} /></div>
-          </div>
+          <>
+            <Field label="Diameter (m)"><input type="number" value={diameter} onChange={(e) => setDiameter(e.target.value)} placeholder="e.g. 0.3" className={inp} /></Field>
+            <Field label="Depth (m)"><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 1.2" className={inp} /></Field>
+            <Field label="No. of piers"><input type="number" value={numPiers} onChange={(e) => setNumPiers(e.target.value)} placeholder="1" className={inp} /></Field>
+          </>
         )}
-        <div>
-          <label className={lbl}>Wastage %</label>
+        <Field label="Wastage %">
           <input type="number" value={wastage} onChange={(e) => setWastage(e.target.value)} placeholder="10" className={inp} />
-        </div>
+        </Field>
         {m3 > 0 && (
           <div className="flex flex-col gap-1.5">
             <ResultRow label="Volume (net)" value={fmt(m3, 3)} unit="m³" />
             <ResultRow label={`Volume incl. ${wastage}% wastage`} value={fmt(m3WithWaste, 3)} unit="m³" highlight copyText={copyText} />
           </div>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <ResetBtn onClick={() => { setLength(''); setWidth(''); setDepth(''); setDiameter(''); setNumPiers('1'); setWastage('10'); }} />
         </div>
       </div>
@@ -327,11 +312,9 @@ function GravelCalc() {
   return (
     <CalcCard title="Yard Gravel Calculator" icon={Mountain} accent="#84cc16">
       <div className="flex flex-col gap-3 mt-2">
-        <div className="grid grid-cols-3 gap-2">
-          <div><label className={lbl}>Length (m)</label><input type="number" value={length} onChange={(e) => setLength(e.target.value)} placeholder="e.g. 10" className={inp} /></div>
-          <div><label className={lbl}>Width (m)</label><input type="number" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="e.g. 5" className={inp} /></div>
-          <div><label className={lbl}>Depth (m)</label><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 0.1" className={inp} /></div>
-        </div>
+        <Field label="Length (m)"><input type="number" value={length} onChange={(e) => setLength(e.target.value)} placeholder="e.g. 10" className={inp} /></Field>
+        <Field label="Width (m)"><input type="number" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="e.g. 5" className={inp} /></Field>
+        <Field label="Depth (m)"><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 0.1" className={inp} /></Field>
         <div>
           <label className={lbl}>Density (t/m³)</label>
           <input type="number" value={density} onChange={(e) => setDensity(e.target.value)} placeholder="1.5" className={inp} />
@@ -343,7 +326,7 @@ function GravelCalc() {
             <ResultRow label="Estimated weight" value={fmt(tonnes, 2)} unit="tonnes" highlight copyText={`${fmt(m3, 3)} m³ / ${fmt(tonnes, 2)} t`} />
           </div>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <ResetBtn onClick={() => { setLength(''); setWidth(''); setDepth(''); setDensity('1.5'); }} />
         </div>
       </div>
@@ -365,11 +348,9 @@ function SoilCalc() {
   return (
     <CalcCard title="Soil Calculator" icon={Shovel} accent="#a16207">
       <div className="flex flex-col gap-3 mt-2">
-        <div className="grid grid-cols-3 gap-2">
-          <div><label className={lbl}>Length (m)</label><input type="number" value={length} onChange={(e) => setLength(e.target.value)} placeholder="e.g. 5" className={inp} /></div>
-          <div><label className={lbl}>Width (m)</label><input type="number" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="e.g. 3" className={inp} /></div>
-          <div><label className={lbl}>Depth (m)</label><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 0.3" className={inp} /></div>
-        </div>
+        <Field label="Length (m)"><input type="number" value={length} onChange={(e) => setLength(e.target.value)} placeholder="e.g. 5" className={inp} /></Field>
+        <Field label="Width (m)"><input type="number" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="e.g. 3" className={inp} /></Field>
+        <Field label="Depth (m)"><input type="number" value={depth} onChange={(e) => setDepth(e.target.value)} placeholder="e.g. 0.3" className={inp} /></Field>
         <div>
           <label className={lbl}>Density (t/m³) — optional</label>
           <input type="number" value={density} onChange={(e) => setDensity(e.target.value)} placeholder="1.3" className={inp} />
@@ -382,7 +363,7 @@ function SoilCalc() {
             <ResultRow label="Estimated weight" value={fmt(tonnes, 2)} unit="tonnes" />
           </div>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <ResetBtn onClick={() => { setLength(''); setWidth(''); setDepth(''); setDensity('1.3'); }} />
         </div>
       </div>
@@ -406,16 +387,13 @@ function BlocksCalc() {
   return (
     <CalcCard title="Blocks Calculator" icon={Square} accent="#8b5cf6">
       <div className="flex flex-col gap-3 mt-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div><label className={lbl}>Wall length (m)</label><input type="number" value={wallLength} onChange={(e) => setWallLength(e.target.value)} placeholder="e.g. 6" className={inp} /></div>
-          <div><label className={lbl}>Wall height (m)</label><input type="number" value={wallHeight} onChange={(e) => setWallHeight(e.target.value)} placeholder="e.g. 2.4" className={inp} /></div>
-          <div><label className={lbl}>Block length (mm)</label><input type="number" value={blockLength} onChange={(e) => setBlockLength(e.target.value)} placeholder="390" className={inp} /></div>
-          <div><label className={lbl}>Block height (mm)</label><input type="number" value={blockHeight} onChange={(e) => setBlockHeight(e.target.value)} placeholder="190" className={inp} /></div>
-        </div>
-        <div>
-          <label className={lbl}>Wastage %</label>
+        <Field label="Wall length (m)"><input type="number" value={wallLength} onChange={(e) => setWallLength(e.target.value)} placeholder="e.g. 6" className={inp} /></Field>
+        <Field label="Wall height (m)"><input type="number" value={wallHeight} onChange={(e) => setWallHeight(e.target.value)} placeholder="e.g. 2.4" className={inp} /></Field>
+        <Field label="Block length (mm)"><input type="number" value={blockLength} onChange={(e) => setBlockLength(e.target.value)} placeholder="390" className={inp} /></Field>
+        <Field label="Block height (mm)"><input type="number" value={blockHeight} onChange={(e) => setBlockHeight(e.target.value)} placeholder="190" className={inp} /></Field>
+        <Field label="Wastage %">
           <input type="number" value={wastage} onChange={(e) => setWastage(e.target.value)} placeholder="5" className={inp} />
-        </div>
+        </Field>
         {wallArea > 0 && blocks > 0 && (
           <div className="flex flex-col gap-1.5">
             <ResultRow label="Wall area" value={fmt(wallArea, 2)} unit="m²" />
@@ -423,7 +401,7 @@ function BlocksCalc() {
             <ResultRow label={`Blocks incl. ${wastage}% wastage`} value={fmt(Math.ceil(blocksWithWaste), 0)} unit="blocks" highlight copyText={`${Math.ceil(blocksWithWaste)} blocks`} />
           </div>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <ResetBtn onClick={() => { setWallLength(''); setWallHeight(''); setBlockLength('390'); setBlockHeight('190'); setWastage('5'); }} />
         </div>
       </div>
@@ -464,15 +442,12 @@ function RunningMeasurementCalc() {
   return (
     <CalcCard title="Running Measurement" icon={Ruler} accent="#ec4899">
       <div className="flex flex-col gap-3 mt-2">
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <label className={lbl}>Unit</label>
-            <select value={unit} onChange={(e) => setUnit(e.target.value)} className={sel}>
-              <option value="mm">mm</option>
-              <option value="m">m</option>
-            </select>
-          </div>
-        </div>
+        <Field label="Unit">
+          <select value={unit} onChange={(e) => setUnit(e.target.value)} className={sel}>
+            <option value="mm">mm</option>
+            <option value="m">m</option>
+          </select>
+        </Field>
         {/* Table */}
         <div className="rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full text-xs">
@@ -536,7 +511,7 @@ function RunningMeasurementCalc() {
   );
 }
 
-// ── Simple calculators ────────────────────────────────────────────────────────
+// ── 8. Quick Calculators ──────────────────────────────────────────────────────
 function SimpleCalcs() {
   // Area
   const [aL, setAL] = useState(''); const [aW, setAW] = useState('');
@@ -558,56 +533,62 @@ function SimpleCalcs() {
 
   return (
     <CalcCard title="Quick Calculators" icon={Calculator} accent="#64748b">
-      <div className="flex flex-col gap-4 mt-2">
+      <div className="flex flex-col gap-5 mt-2">
+
         {/* Area */}
-        <div>
-          <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Area (m²)</p>
-          <div className="grid grid-cols-3 gap-2 items-end">
-            <div><label className={lbl}>Length (m)</label><input type="number" value={aL} onChange={(e) => setAL(e.target.value)} placeholder="0" className={inp} /></div>
-            <div><label className={lbl}>Width (m)</label><input type="number" value={aW} onChange={(e) => setAW(e.target.value)} placeholder="0" className={inp} /></div>
-            <ResultRow label="Area" value={fmt(area, 3)} unit="m²" highlight copyText={`${fmt(area, 3)} m²`} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Area (m²)</p>
+          <Field label="Length (m)"><input type="number" value={aL} onChange={(e) => setAL(e.target.value)} placeholder="0" className={inp} /></Field>
+          <Field label="Width (m)"><input type="number" value={aW} onChange={(e) => setAW(e.target.value)} placeholder="0" className={inp} /></Field>
+          {(n(aL) > 0 || n(aW) > 0) && <ResultRow label="Area" value={fmt(area, 3)} unit="m²" highlight copyText={`${fmt(area, 3)} m²`} />}
         </div>
+
+        <div className="h-px bg-slate-100" />
+
         {/* Volume */}
-        <div>
-          <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Volume (m³)</p>
-          <div className="grid grid-cols-4 gap-2 items-end">
-            <div><label className={lbl}>L (m)</label><input type="number" value={vL} onChange={(e) => setVL(e.target.value)} placeholder="0" className={inp} /></div>
-            <div><label className={lbl}>W (m)</label><input type="number" value={vW} onChange={(e) => setVW(e.target.value)} placeholder="0" className={inp} /></div>
-            <div><label className={lbl}>D (m)</label><input type="number" value={vD} onChange={(e) => setVD(e.target.value)} placeholder="0" className={inp} /></div>
-            <ResultRow label="Vol" value={fmt(vol, 3)} unit="m³" highlight copyText={`${fmt(vol, 3)} m³`} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Volume (m³)</p>
+          <Field label="Length (m)"><input type="number" value={vL} onChange={(e) => setVL(e.target.value)} placeholder="0" className={inp} /></Field>
+          <Field label="Width (m)"><input type="number" value={vW} onChange={(e) => setVW(e.target.value)} placeholder="0" className={inp} /></Field>
+          <Field label="Depth (m)"><input type="number" value={vD} onChange={(e) => setVD(e.target.value)} placeholder="0" className={inp} /></Field>
+          {(n(vL) > 0 || n(vW) > 0 || n(vD) > 0) && <ResultRow label="Volume" value={fmt(vol, 3)} unit="m³" highlight copyText={`${fmt(vol, 3)} m³`} />}
         </div>
+
+        <div className="h-px bg-slate-100" />
+
         {/* Lineal */}
-        <div>
-          <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Lineal metres</p>
-          <div className="grid grid-cols-3 gap-2 items-end">
-            <div><label className={lbl}>Qty</label><input type="number" value={linQty} onChange={(e) => setLinQty(e.target.value)} placeholder="0" className={inp} /></div>
-            <div><label className={lbl}>Length (m)</label><input type="number" value={linLen} onChange={(e) => setLinLen(e.target.value)} placeholder="0" className={inp} /></div>
-            <ResultRow label="Total LM" value={fmt(lin, 2)} unit="m" highlight copyText={`${fmt(lin, 2)} m`} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Lineal metres</p>
+          <Field label="Qty"><input type="number" value={linQty} onChange={(e) => setLinQty(e.target.value)} placeholder="0" className={inp} /></Field>
+          <Field label="Length (m)"><input type="number" value={linLen} onChange={(e) => setLinLen(e.target.value)} placeholder="0" className={inp} /></Field>
+          {(n(linQty) > 0 || n(linLen) > 0) && <ResultRow label="Total LM" value={fmt(lin, 2)} unit="m" highlight copyText={`${fmt(lin, 2)} m`} />}
         </div>
+
+        <div className="h-px bg-slate-100" />
+
         {/* Labour */}
-        <div>
-          <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Labour total</p>
-          <div className="grid grid-cols-3 gap-2 items-end">
-            <div><label className={lbl}>Hours</label><input type="number" value={labHrs} onChange={(e) => setLabHrs(e.target.value)} placeholder="0" className={inp} /></div>
-            <div><label className={lbl}>Rate ($/hr)</label><input type="number" value={labRate} onChange={(e) => setLabRate(e.target.value)} placeholder="0" className={inp} /></div>
-            <ResultRow label="Total" value={`$${fmt(labour, 2)}`} highlight copyText={`$${fmt(labour, 2)}`} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Labour total</p>
+          <Field label="Hours"><input type="number" value={labHrs} onChange={(e) => setLabHrs(e.target.value)} placeholder="0" className={inp} /></Field>
+          <Field label="Rate ($/hr)"><input type="number" value={labRate} onChange={(e) => setLabRate(e.target.value)} placeholder="0" className={inp} /></Field>
+          {(n(labHrs) > 0 || n(labRate) > 0) && <ResultRow label="Total" value={`$${fmt(labour, 2)}`} highlight copyText={`$${fmt(labour, 2)}`} />}
         </div>
+
+        <div className="h-px bg-slate-100" />
+
         {/* Markup / GST */}
-        <div>
-          <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Markup / GST</p>
-          <div className="grid grid-cols-3 gap-2 items-end">
-            <div><label className={lbl}>Cost ($)</label><input type="number" value={mkCost} onChange={(e) => setMkCost(e.target.value)} placeholder="0" className={inp} /></div>
-            <div><label className={lbl}>Markup %</label><input type="number" value={mkPct} onChange={(e) => setMkPct(e.target.value)} placeholder="10" className={inp} /></div>
-            <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Markup / GST</p>
+          <Field label="Cost ($)"><input type="number" value={mkCost} onChange={(e) => setMkCost(e.target.value)} placeholder="0" className={inp} /></Field>
+          <Field label="Markup %"><input type="number" value={mkPct} onChange={(e) => setMkPct(e.target.value)} placeholder="10" className={inp} /></Field>
+          {n(mkCost) > 0 && (
+            <div className="flex flex-col gap-1.5">
               <ResultRow label="Sell price" value={`$${fmt(mkSell, 2)}`} highlight copyText={`$${fmt(mkSell, 2)}`} />
               <ResultRow label="GST (10%)" value={`$${fmt(mkGst, 2)}`} />
             </div>
-          </div>
+          )}
         </div>
+
       </div>
     </CalcCard>
   );
@@ -616,11 +597,11 @@ function SimpleCalcs() {
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function BuildersCalc() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 mb-1">
         <Calculator size={16} className="text-primary" />
         <h2 className="text-sm font-bold text-slate-700">Builders Calculators</h2>
-        <span className="text-xs text-slate-400">— browser-side, no data saved</span>
+        <span className="text-xs text-slate-400">— tap to expand</span>
       </div>
       <CheckSquareCalc />
       <EqualSpacingCalc />

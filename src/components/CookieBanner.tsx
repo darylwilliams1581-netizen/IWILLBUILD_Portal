@@ -184,6 +184,7 @@ export default function CookieBanner() {
     function handleMessage(event: MessageEvent): void {
       if (event.source !== window.parent) return;
       if (event.data?.type === 'INITIAL_BUILD_COMPLETE') {
+        saveConsent(true);
         setHideForBuilderPreview(true);
         try {
           sessionStorage.removeItem(BANNER_RESET_KEY);

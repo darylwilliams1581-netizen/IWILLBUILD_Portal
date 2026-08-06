@@ -22,6 +22,7 @@ import SharePage from './pages/share';
 import ExternalFormPage from './pages/external-form';
 import LoginHelpPage from './pages/login-help';
 const DownloadAppPage = lazy(() => import('./pages/download-app'));
+const SubscribePage   = lazy(() => import('./pages/subscribe'));
 
 import { Navigate } from 'react-router-dom';
 
@@ -163,6 +164,7 @@ export const routes: RouteObject[] = [
   { path: '/reset-password',  element: <ResetPasswordPage /> },
   { path: '/login-help',      element: <LoginHelpPage /> },
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
+  { path: '/subscribe',      element: <Suspense fallback={<PageLoader />}><SubscribePage /></Suspense> },
   { path: '/driver',       element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>,      errorElement: routeError },
   { path: '/prestart',     element: <ProtectedRoute><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></ProtectedRoute>,    errorElement: routeError },
   { path: '/site-escape', element: <Navigate to="/home" replace />, errorElement: routeError },
@@ -176,7 +178,7 @@ export const routes: RouteObject[] = [
   { path: '/portal/dashboard',       element: <Suspense fallback={<PageLoader />}><PortalDashboardPage /></Suspense> },
   { path: '/portal/jobs/:id',        element: <Suspense fallback={<PageLoader />}><PortalJobDetailPage /></Suspense> },
   { path: '/portal/payment-success', element: <Suspense fallback={<PageLoader />}><PortalPaymentSuccessPage /></Suspense> },
-  { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
+  { path: '/dashboard',     loader: () => redirect('/home') },
   // Alias routes — redirect to canonical paths via loader (SSR-safe, no <Navigate> on initial render)
   { path: '/projects',      loader: () => redirect('/jobs') },
   { path: '/stakeholders',  loader: () => redirect('/customers') },

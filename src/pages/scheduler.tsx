@@ -369,9 +369,138 @@ interface CalendarViewProps {
   onReschedule: (job: SchedulerJob, newStart: string, newEnd: string) => void;
 }
 
+/** Small popup shown when user taps/clicks a calendar event pill */
+function EventPopup({
+  job,
+  onClose,
+  onOpen,
+}: {
+  job: SchedulerJob;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const style = getStatusStyle(job.status);
+  const color = barHex(job.status);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/30" />
+      {/* Card */}
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Colour strip */}
+        <div className="h-1.5 w-full" style={{ background: color }} />
+        <div className="p-4">
+          {/* Status badge */}
+          <div className="flex items-center justify-between mb-2">
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${style.bg} ${style.color}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+              {job.status}
+            </span>
+            <button
+              onClick={onClose}
+              className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 transition-colors text-xs font-bold"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Job name */}
+          <h3 className="text-sm font-bold text-slate-800 leading-snug mb-0.5">{job.name}</h3>
+          {job.jobNumber && (
+            <p className="text-[11px] text-slate-400 font-mono mb-2">#{job.jobNumber}</p>
+          )}
+
+          {/* Details */}
+          <div className="space-y-1.5 text-xs text-slate-600">
+            {/* Dates */}
+            <div className="flex items-center gap-2">
+              <Calendar size={11} className="shrink-0 text-slate-400" />
+              <span>
+                {fmt(job.scheduledStartDate)}
+                {job.scheduledStartTime && (
+                  <span className="text-violet-600 font-medium ml-1">{fmtTime(job.scheduledStartTime)}</span>
+                )}
+                {' → '}
+                {fmt(job.expectedCompletionDate)}
+                {job.scheduledEndTime && (
+                  <span className="text-slate-400 ml-1">{fmtTime(job.scheduledEndTime)}</span>
+                )}
+              </span>
+            </div>
+            {/* Duration */}
+            {job.scheduledStartDate && job.expectedCompletionDate && (
+              <div className="flex items-center gap-2">
+                <Clock size={11} className="shrink-0 text-slate-400" />
+                <span>{daysBetween(job.scheduledStartDate, job.expectedCompletionDate)} day{daysBetween(job.scheduledStartDate, job.expectedCompletionDate) !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+            {/* Client */}
+            {job.client && (
+              <div className="flex items-center gap-2">
+                <User size={11} className="shrink-0 text-slate-400" />
+                <span className="truncate">{job.client}</span>
+              </div>
+            )}
+            {/* Address */}
+            {job.address && (
+              <div className="flex items-start gap-2">
+                <MapPin size={11} className="shrink-0 text-slate-400 mt-0.5" />
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-violet-600 hover:underline leading-snug"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {job.address}
+                </a>
+              </div>
+            )}
+            {/* Supervisor */}
+            {(job.supervisorName ?? job.teamLabel) && (
+              <div className="flex items-center gap-2">
+                <Users size={11} className="shrink-0 text-slate-400" />
+                <span className="truncate">{job.supervisorName ?? job.teamLabel}</span>
+              </div>
+            )}
+            {/* Progress */}
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${job.progress}%`, background: color }} />
+              </div>
+              <span className="text-[11px] text-slate-500 w-8 text-right">{job.progress}%</span>
+            </div>
+          </div>
+
+          {/* Open job button */}
+          <button
+            onClick={onOpen}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white transition-colors"
+            style={{ background: color }}
+          >
+            <ExternalLink size={12} />
+            Open Job
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarViewProps) {
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [draggingJob, setDraggingJob] = useState<SchedulerJob | null>(null);
+  const [popupJob, setPopupJob] = useState<SchedulerJob | null>(null);
+  const navigate = useRRNavigate();
 
   // Build the month grid
   const year  = anchorDate.getFullYear();
@@ -429,22 +558,22 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
   const monthLabel = anchorDate.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="p-4">
+    <div className="p-2 sm:p-3">
       {/* Month nav */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <button onClick={() => onNavigate(-1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 transition-colors">
-          <ChevronLeft size={16} />
+          <ChevronLeft size={15} />
         </button>
-        <h2 className="text-sm font-bold text-slate-800">{monthLabel}</h2>
+        <h2 className="text-xs font-bold text-slate-700">{monthLabel}</h2>
         <button onClick={() => onNavigate(1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 transition-colors">
-          <ChevronRight size={16} />
+          <ChevronRight size={15} />
         </button>
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-          <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wide py-1">{d}</div>
+      <div className="grid grid-cols-7 mb-0.5">
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+          <div key={i} className="text-center text-[9px] font-bold text-slate-400 uppercase py-0.5">{d}</div>
         ))}
       </div>
 
@@ -452,7 +581,7 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
       <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
         {cells.map((date, i) => {
           if (!date) {
-            return <div key={i} className="bg-slate-50 min-h-[80px]" />;
+            return <div key={i} className="bg-slate-50 min-h-[52px]" />;
           }
           const dateStr   = toDateStr(date);
           const isToday   = date.getTime() === today.getTime();
@@ -463,9 +592,9 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
           return (
             <div
               key={i}
-              className={`min-h-[80px] p-1.5 transition-colors ${
-                isToday   ? 'bg-violet-50' :
-                isWeekend ? 'bg-slate-50/80' :
+              className={`min-h-[52px] p-1 transition-colors ${
+                isToday      ? 'bg-violet-50' :
+                isWeekend    ? 'bg-slate-50/80' :
                 isDragTarget ? 'bg-blue-50' :
                 'bg-white'
               }`}
@@ -473,32 +602,40 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => handleDrop(e, date)}
             >
-              <div className={`text-xs font-semibold mb-1 w-6 h-6 flex items-center justify-center rounded-full ${
-                isToday ? 'bg-violet-500 text-white' : 'text-slate-500'
+              {/* Day number */}
+              <div className={`text-[10px] font-bold mb-0.5 w-5 h-5 flex items-center justify-center rounded-full leading-none ${
+                isToday ? 'bg-violet-500 text-white' : 'text-slate-400'
               }`}>
                 {date.getDate()}
               </div>
-              <div className="space-y-0.5">
-                {cellJobs.slice(0, 3).map(job => {
+
+              {/* Event pills */}
+              <div className="space-y-px">
+                {cellJobs.slice(0, 2).map(job => {
                   const isStart = job.scheduledStartDate === dateStr;
                   return (
-                    <div
+                    <button
                       key={job.id}
                       draggable={isStart}
                       onDragStart={isStart ? (e) => handleDragStart(e, job) : undefined}
-                      title={`${job.name}${job.scheduledStartTime ? ` · ${fmtTime(job.scheduledStartTime)}${job.scheduledEndTime ? `–${fmtTime(job.scheduledEndTime)}` : ''}` : ''}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}${job.address ? `\n${job.address}` : ''}`}
-                      className={`text-[10px] font-semibold text-white px-1 py-0.5 rounded truncate leading-tight ${
-                        isStart ? 'cursor-grab active:cursor-grabbing' : 'cursor-default opacity-80'
+                      onClick={(e) => { e.stopPropagation(); setPopupJob(job); }}
+                      className={`w-full text-left text-[9px] font-semibold text-white px-1 py-px rounded-sm truncate leading-tight transition-opacity hover:opacity-90 active:opacity-75 ${
+                        isStart ? 'cursor-pointer' : 'cursor-pointer opacity-80'
                       }`}
                       style={{ background: barHex(job.status) }}
                     >
-                      {isStart && <GripVertical size={8} className="inline mr-0.5 opacity-70" />}
-                      {job.name}
-                    </div>
+                      {isStart && job.name}
+                      {!isStart && <span className="opacity-60">▬</span>}
+                    </button>
                   );
                 })}
-                {cellJobs.length > 3 && (
-                  <div className="text-[10px] text-slate-500 font-medium pl-1">+{cellJobs.length - 3} more</div>
+                {cellJobs.length > 2 && (
+                  <button
+                    onClick={() => setPopupJob(cellJobs[2])}
+                    className="w-full text-left text-[9px] text-slate-500 font-semibold pl-0.5 hover:text-violet-600 transition-colors"
+                  >
+                    +{cellJobs.length - 2}
+                  </button>
                 )}
               </div>
             </div>
@@ -506,15 +643,24 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
         })}
       </div>
 
-      {/* Legend */}
-      <div className="mt-4 flex flex-wrap gap-3">
-        {Object.entries(STATUS_BAR_HEX).slice(0, 6).map(([status, color]) => (
-          <div key={status} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
-            <span className="text-[10px] text-slate-500">{status}</span>
+      {/* Legend — compact, 2 rows */}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {Object.entries(STATUS_BAR_HEX).map(([status, color]) => (
+          <div key={status} className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-sm shrink-0" style={{ background: color }} />
+            <span className="text-[9px] text-slate-400 leading-none">{status}</span>
           </div>
         ))}
       </div>
+
+      {/* Event popup */}
+      {popupJob && (
+        <EventPopup
+          job={popupJob}
+          onClose={() => setPopupJob(null)}
+          onOpen={() => { navigate(`/jobs/${popupJob.id}`); setPopupJob(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -1337,7 +1483,7 @@ export default function SchedulerPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pt-[104px]">
+      <div className="flex-1 flex flex-col min-w-0 lg:pt-[104px]">
 
         {/* ── Top bar ── */}
         <div className="op-page-header flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0 min-w-0">

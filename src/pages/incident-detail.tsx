@@ -7,9 +7,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  ChevronLeft, AlertTriangle, Plus, Trash2, CheckCircle2,
+  ChevronLeft, ChevronDown, AlertTriangle, Plus, Trash2, CheckCircle2,
   Lock, Loader2, Users, ClipboardCheck, X, Save,
-  ShieldAlert, Home, ChevronRight,
+  ShieldAlert, Home, ChevronRight, Paperclip, FileText, Image, Download, Printer,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -18,6 +18,7 @@ import {
   type Incident,
 } from './incidents';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
+import FormSection from '@/components/FormSection';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,16 @@ interface ThirdParty {
   injury_damage_alleged: boolean;
   statement_taken: boolean;
   is_witness: boolean;
+}
+
+interface Attachment {
+  id: number;
+  file_type: 'image' | 'pdf' | 'document';
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  public_url: string;
+  created_at: string;
 }
 
 interface FullIncident extends Incident {
@@ -77,6 +88,153 @@ function emptyThirdParty(): ThirdParty {
 
 function emptyAction(): CorrectiveAction {
   return { action: '', owner: '', due_date: '', status: 'open', notes: '' };
+}
+
+// ── Job selector ──────────────────────────────────────────────────────────────
+
+interface JobOption { id: number; name: string; job_number: string | null; customer_name: string | null; }
+
+function JobSelector({
+  jobId, jobName, jobNumber, customerName,
+  onChange, disabled,
+}: {
+  jobId: string; jobName: string; jobNumber: string; customerName: string;
+  onChange: (patch: { jobId: string; jobName: string; jobNumber: string; customerName: string }) => void;
+  disabled?: boolean;
+}) {
+  const [jobs, setJobs] = useState<JobOption[]>([]);
+  const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/forms/jobs-list')
+      .then(r => r.ok ? r.json() : [])
+      .then((d: JobOption[]) => setJobs(d))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // If jobId is set but not in the list, show manual mode
+  const selectedJob = jobs.find(j => String(j.id) === jobId);
+  const displayLabel = jobId === '0' ? 'No job / not on site'
+    : selectedJob ? `${selectedJob.name}${selectedJob.job_number ? ` · #${selectedJob.job_number}` : ''}`
+    : jobName || 'Select job…';
+
+  function selectJob(job: JobOption | null) {
+    if (!job) {
+      onChange({ jobId: '0', jobName: '', jobNumber: '', customerName: '' });
+    } else {
+      onChange({
+        jobId: String(job.id),
+        jobName: job.name,
+        jobNumber: job.job_number ?? '',
+        customerName: job.customer_name ?? '',
+      });
+    }
+    setOpen(false);
+    setManual(false);
+  }
+
+  if (manual) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2">
+          <input
+            type="text" value={jobName}
+            onChange={e => onChange({ jobId: '', jobName: e.target.value, jobNumber, customerName })}
+            disabled={disabled} placeholder="Job name"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50"
+          />
+          <input
+            type="text" value={jobNumber}
+            onChange={e => onChange({ jobId: '', jobName, jobNumber: e.target.value, customerName })}
+            disabled={disabled} placeholder="Job number (optional)"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50"
+          />
+          <input
+            type="text" value={customerName}
+            onChange={e => onChange({ jobId: '', jobName, jobNumber, customerName: e.target.value })}
+            disabled={disabled} placeholder="Customer / client (optional)"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50"
+          />
+        </div>
+        {!disabled && (
+          <button type="button" onClick={() => setManual(false)}
+            className="text-xs text-violet-600 hover:underline">
+            ← Back to job selector
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button" disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors disabled:cursor-default disabled:bg-slate-50 disabled:text-slate-400 ${
+          open ? 'border-slate-300 ring-2 ring-violet-400 bg-white' : 'border-slate-200 bg-white hover:border-slate-300'
+        }`}
+      >
+        <span className={jobId ? 'text-slate-700 font-medium' : 'text-slate-400'}>{displayLabel}</span>
+        <ChevronDown size={15} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Selected job detail pill */}
+      {jobId && jobId !== '0' && selectedJob?.customer_name && (
+        <p className="text-xs text-slate-400 mt-1 pl-1">{selectedJob.customer_name}</p>
+      )}
+
+      {open && (
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="max-h-60 overflow-y-auto divide-y divide-slate-50">
+            {/* No job option */}
+            <button type="button" onClick={() => selectJob(null)}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors ${
+                jobId === '0' ? 'bg-slate-50 text-slate-700 font-semibold' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              <span className="text-slate-400 text-xs">—</span>
+              No job / not on site
+            </button>
+            {jobs.map(job => (
+              <button key={job.id} type="button" onClick={() => selectJob(job)}
+                className={`w-full flex flex-col px-4 py-2.5 text-left transition-colors ${
+                  String(job.id) === jobId ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-sm font-medium">{job.name}</span>
+                <span className="text-xs text-slate-400">
+                  {[job.job_number ? `#${job.job_number}` : null, job.customer_name].filter(Boolean).join(' · ')}
+                </span>
+              </button>
+            ))}
+            {jobs.length === 0 && (
+              <p className="px-4 py-3 text-xs text-slate-400">No jobs found</p>
+            )}
+          </div>
+          <div className="px-4 py-2 border-t border-slate-100 flex justify-between items-center">
+            <button type="button" onClick={() => { setManual(true); setOpen(false); }}
+              className="text-xs text-violet-600 hover:underline">
+              Enter manually
+            </button>
+            <button type="button" onClick={() => setOpen(false)}
+              className="text-xs font-semibold text-slate-500">Done</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Toggle chip ───────────────────────────────────────────────────────────────
@@ -178,6 +336,10 @@ export default function IncidentDetailPage() {
 
   const [correctiveActions, setCorrectiveActions] = useState<CorrectiveAction[]>([]);
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing
   const loadIncident = useCallback(async () => {
@@ -222,6 +384,12 @@ export default function IncidentDetailPage() {
           ? JSON.parse(data.third_parties)
           : (data.third_parties ?? [])
       );
+      // Load attachments
+      const ar = await fetch(`/api/incidents/${incidentId}/attachments`);
+      if (ar.ok) {
+        const ad = await ar.json() as { attachments: Attachment[] };
+        setAttachments(ad.attachments ?? []);
+      }
     } finally {
       setLoading(false);
     }
@@ -420,6 +588,34 @@ export default function IncidentDetailPage() {
     setThirdParties(prev => prev.filter(p => p.id !== tp.id));
   }
 
+  async function handleUploadFiles(files: FileList | null) {
+    if (!files || files.length === 0 || !incidentId) return;
+    setUploadingFiles(true);
+    try {
+      const fd = new FormData();
+      for (let i = 0; i < files.length; i++) fd.append('files', files[i]);
+      const r = await fetch(`/api/incidents/${incidentId}/attachments`, { method: 'POST', body: fd });
+      if (r.ok) {
+        const d = await r.json() as { attachments: Attachment[] };
+        setAttachments(prev => [...prev, ...d.attachments.filter(a => a.id)]);
+      }
+    } finally {
+      setUploadingFiles(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDeleteAttachment(a: Attachment) {
+    if (!incidentId) return;
+    await fetch(`/api/incidents/${incidentId}/attachments/${a.id}`, { method: 'DELETE' });
+    setAttachments(prev => prev.filter(x => x.id !== a.id));
+  }
+
+  function handlePrint() {
+    if (!incidentId) return;
+    window.open(`/api/incidents/${incidentId}/pdf`, '_blank');
+  }
+
   const isClosed = incident?.status === 'closed';
   const pageTitle = isNew ? 'New Incident' : `Incident #${incidentId}`;
 
@@ -489,6 +685,11 @@ export default function IncidentDetailPage() {
                 surface="dark"
                 items={[
                   {
+                    label: 'Print / Download PDF',
+                    icon: <Printer size={15} />,
+                    onSelect: handlePrint,
+                  },
+                  {
                     label: 'Close Incident',
                     icon: <Lock size={15} />,
                     onSelect: () => setShowCloseModal(true),
@@ -497,10 +698,22 @@ export default function IncidentDetailPage() {
                 ]}
               />
             )}
+            {!isNew && isClosed && (
+              <MobileOverflowMenu
+                surface="dark"
+                items={[
+                  {
+                    label: 'Print / Download PDF',
+                    icon: <Printer size={15} />,
+                    onSelect: handlePrint,
+                  },
+                ]}
+              />
+            )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-32">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-32">
 
           {errors.general && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
@@ -508,207 +721,210 @@ export default function IncidentDetailPage() {
             </div>
           )}
 
-          {/* Incident details */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Incident Details</h2>
+          {/* ── Section completion booleans ── */}
+          {(() => {
+            const detailsComplete = !!(form.incidentDate && form.reportedBy && form.incidentType && form.severity);
+            const whatHappenedComplete = !!(form.description.trim());
+            const impactsComplete = form.injuryOccurred !== null && form.propertyDamage !== null && form.environmentalImpact !== null;
+            const statusComplete = !!(form.status);
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Date <span className="text-red-500">*</span></label>
-                <input
-                  type="date"
-                  value={form.incidentDate}
-                  onChange={e => updateForm({ incidentDate: e.target.value })}
-                  disabled={isClosed}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentDate ? 'border-red-400' : 'border-slate-200'}`}
-                />
-                {errors.incidentDate && <p className="text-xs text-red-500 mt-0.5">{errors.incidentDate}</p>}
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Time</label>
-                <input
-                  type="time"
-                  value={form.incidentTime}
-                  onChange={e => updateForm({ incidentTime: e.target.value })}
-                  disabled={isClosed}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-            </div>
+            return (
+              <>
+                {/* Incident details */}
+                <FormSection
+                  title="Incident Details"
+                  icon={<AlertTriangle size={13} />}
+                  complete={detailsComplete}
+                  fillRatio={[form.incidentDate, form.reportedBy, form.incidentType, form.severity].filter(Boolean).length / 4}
+                  required
+                  accent="red"
+                  alwaysOpen={isNew}
+                  defaultOpen
+                >
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Date <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      value={form.incidentDate}
+                      onChange={e => updateForm({ incidentDate: e.target.value })}
+                      disabled={isClosed}
+                      className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentDate ? 'border-red-400' : 'border-slate-200'}`}
+                    />
+                    {errors.incidentDate && <p className="text-xs text-red-500 mt-0.5">{errors.incidentDate}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Time</label>
+                    <input
+                      type="time"
+                      value={form.incidentTime}
+                      onChange={e => updateForm({ incidentTime: e.target.value })}
+                      disabled={isClosed}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Reported by <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={form.reportedBy}
+                      onChange={e => updateForm({ reportedBy: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Name"
+                      className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.reportedBy ? 'border-red-400' : 'border-slate-200'}`}
+                    />
+                    {errors.reportedBy && <p className="text-xs text-red-500 mt-0.5">{errors.reportedBy}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Location / site address</label>
+                    <input
+                      type="text"
+                      value={form.location}
+                      onChange={e => updateForm({ location: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Where did this occur?"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Incident type <span className="text-red-500">*</span></label>
+                    <select
+                      value={form.incidentType}
+                      onChange={e => updateForm({ incidentType: e.target.value })}
+                      disabled={isClosed}
+                      className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentType ? 'border-red-400' : 'border-slate-200'}`}
+                    >
+                      <option value="">Select type…</option>
+                      {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    {errors.incidentType && <p className="text-xs text-red-500 mt-0.5">{errors.incidentType}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1.5 block">Severity <span className="text-red-500">*</span></label>
+                    <div className="flex flex-col gap-2">
+                      {SEVERITY_OPTIONS.map(s => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => !isClosed && updateForm({ severity: s.value })}
+                          disabled={isClosed}
+                          className={`w-full py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default text-left px-4 ${
+                            form.severity === s.value
+                              ? `${s.color} border-current`
+                              : 'border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </FormSection>
 
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Reported by <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={form.reportedBy}
-                onChange={e => updateForm({ reportedBy: e.target.value })}
-                disabled={isClosed}
-                placeholder="Name"
-                className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.reportedBy ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.reportedBy && <p className="text-xs text-red-500 mt-0.5">{errors.reportedBy}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Location / site address</label>
-              <input
-                type="text"
-                value={form.location}
-                onChange={e => updateForm({ location: e.target.value })}
-                disabled={isClosed}
-                placeholder="Where did this occur?"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Incident type <span className="text-red-500">*</span></label>
-              <select
-                value={form.incidentType}
-                onChange={e => updateForm({ incidentType: e.target.value })}
-                disabled={isClosed}
-                className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.incidentType ? 'border-red-400' : 'border-slate-200'}`}
-              >
-                <option value="">Select type…</option>
-                {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              {errors.incidentType && <p className="text-xs text-red-500 mt-0.5">{errors.incidentType}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Severity <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-4 gap-2 incident-severity-grid">
-                {SEVERITY_OPTIONS.map(s => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    onClick={() => !isClosed && updateForm({ severity: s.value })}
+                {/* Job link */}
+                <FormSection
+                  title="Job (optional)"
+                  icon={<ChevronRight size={13} />}
+                  complete={!!(form.jobId)}
+                  accent="violet"
+                  defaultOpen={false}
+                >
+                  <JobSelector
+                    jobId={form.jobId}
+                    jobName={form.jobName}
+                    jobNumber={form.jobNumber}
+                    customerName={form.customerName}
+                    onChange={patch => updateForm(patch)}
                     disabled={isClosed}
-                    className={`py-2 rounded-xl border-2 text-xs font-semibold transition-colors disabled:cursor-default ${
-                      form.severity === s.value
-                        ? `${s.color} border-current`
-                        : 'border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Job link */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Job (optional)</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Job name</label>
-                <input
-                  type="text"
-                  value={form.jobName}
-                  onChange={e => updateForm({ jobName: e.target.value })}
-                  disabled={isClosed}
-                  placeholder="Job name"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Job number</label>
-                <input
-                  type="text"
-                  value={form.jobNumber}
-                  onChange={e => updateForm({ jobNumber: e.target.value })}
-                  disabled={isClosed}
-                  placeholder="Job #"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Customer</label>
-              <input
-                type="text"
-                value={form.customerName}
-                onChange={e => updateForm({ customerName: e.target.value })}
-                disabled={isClosed}
-                placeholder="Customer / client name"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
-
-          {/* Description */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <AlertTriangle size={13} className="text-red-500" /> What Happened
-            </h2>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Description <span className="text-red-500">*</span></label>
-              <textarea
-                value={form.description}
-                onChange={e => updateForm({ description: e.target.value })}
-                disabled={isClosed}
-                placeholder="Describe what happened…"
-                rows={4}
-                className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.description ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Immediate action taken</label>
-              <textarea
-                value={form.immediateActionTaken}
-                onChange={e => updateForm({ immediateActionTaken: e.target.value })}
-                disabled={isClosed}
-                placeholder="What was done immediately after the incident?"
-                rows={2}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
-
-          {/* Impacts */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <ShieldAlert size={13} className="text-violet-600" /> Impacts
-            </h2>
-            <YesNo label="Was anyone injured?" value={form.injuryOccurred} onChange={v => updateForm({ injuryOccurred: v })} disabled={isClosed} />
-            {form.injuryOccurred && (
-              <div className="space-y-2 pl-2 border-l-2 border-red-200">
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">Person injured</label>
-                  <input
-                    type="text"
-                    value={form.personInjured}
-                    onChange={e => updateForm({ personInjured: e.target.value })}
-                    disabled={isClosed}
-                    placeholder="Name"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                   />
-                </div>
-                <YesNo label="Medical treatment required?" value={form.medicalTreatmentRequired} onChange={v => updateForm({ medicalTreatmentRequired: v })} disabled={isClosed} />
-              </div>
-            )}
-            <YesNo label="Property damage?" value={form.propertyDamage} onChange={v => updateForm({ propertyDamage: v })} disabled={isClosed} />
-            <YesNo label="Environmental impact?" value={form.environmentalImpact} onChange={v => updateForm({ environmentalImpact: v })} disabled={isClosed} />
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Witnesses</label>
-              <input
-                type="text"
-                value={form.witnesses}
-                onChange={e => updateForm({ witnesses: e.target.value })}
-                disabled={isClosed}
-                placeholder="Names of witnesses"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
+                </FormSection>
 
-          {/* Third parties */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <Users size={13} className="text-slate-400" /> Third Parties
-            </h2>
+                {/* What Happened */}
+                <FormSection
+                  title="What Happened"
+                  icon={<AlertTriangle size={13} />}
+                  complete={whatHappenedComplete}
+                  fillRatio={form.description.trim() ? 1 : 0}
+                  required
+                  accent="red"
+                  defaultOpen
+                >
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Description <span className="text-red-500">*</span></label>
+                    <textarea
+                      value={form.description}
+                      onChange={e => updateForm({ description: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Describe what happened…"
+                      rows={4}
+                      className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.description ? 'border-red-400' : 'border-slate-200'}`}
+                    />
+                    {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Immediate action taken</label>
+                    <textarea
+                      value={form.immediateActionTaken}
+                      onChange={e => updateForm({ immediateActionTaken: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="What was done immediately after the incident?"
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                </FormSection>
+
+                {/* Impacts */}
+                <FormSection
+                  title="Impacts"
+                  icon={<ShieldAlert size={13} />}
+                  complete={impactsComplete}
+                  fillRatio={[form.injuryOccurred, form.propertyDamage, form.environmentalImpact].filter(v => v !== null).length / 3}
+                  required
+                  accent="violet"
+                  defaultOpen
+                >
+                  <YesNo label="Was anyone injured?" value={form.injuryOccurred} onChange={v => updateForm({ injuryOccurred: v })} disabled={isClosed} />
+                  {form.injuryOccurred && (
+                    <div className="space-y-2 pl-2 border-l-2 border-red-200">
+                      <div>
+                        <label className="text-xs text-slate-500 mb-1 block">Person injured</label>
+                        <input
+                          type="text"
+                          value={form.personInjured}
+                          onChange={e => updateForm({ personInjured: e.target.value })}
+                          disabled={isClosed}
+                          placeholder="Name"
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                        />
+                      </div>
+                      <YesNo label="Medical treatment required?" value={form.medicalTreatmentRequired} onChange={v => updateForm({ medicalTreatmentRequired: v })} disabled={isClosed} />
+                    </div>
+                  )}
+                  <YesNo label="Property damage?" value={form.propertyDamage} onChange={v => updateForm({ propertyDamage: v })} disabled={isClosed} />
+                  <YesNo label="Environmental impact?" value={form.environmentalImpact} onChange={v => updateForm({ environmentalImpact: v })} disabled={isClosed} />
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Witnesses</label>
+                    <input
+                      type="text"
+                      value={form.witnesses}
+                      onChange={e => updateForm({ witnesses: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Names of witnesses"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                </FormSection>
+
+                {/* Third parties */}
+                <FormSection
+                  title="Third Parties"
+                  icon={<Users size={13} />}
+                  complete={form.thirdPartiesInvolved === false || (form.thirdPartiesInvolved === true && thirdParties.length > 0)}
+                  fillRatio={form.thirdPartiesInvolved !== null ? 1 : 0}
+                  required={false}
+                  accent="blue"
+                  defaultOpen={false}
+                >
             <YesNo
               label="Were any third parties involved?"
               value={form.thirdPartiesInvolved}
@@ -753,44 +969,44 @@ export default function IncidentDetailPage() {
 
                 {showAddThirdParty && (
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <input
                         type="text"
                         value={newThirdParty.name}
                         onChange={e => setNewThirdParty(p => ({ ...p, name: e.target.value }))}
                         placeholder="Name"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                       <input
                         type="text"
                         value={newThirdParty.company_org}
                         onChange={e => setNewThirdParty(p => ({ ...p, company_org: e.target.value }))}
                         placeholder="Company / organisation"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                     </div>
                     <select
                       value={newThirdParty.role_type}
                       onChange={e => setNewThirdParty(p => ({ ...p, role_type: e.target.value }))}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     >
                       <option value="">Role / type…</option>
                       {incident_detail.THIRD_PARTY_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <input
                         type="tel"
                         value={newThirdParty.contact_phone}
                         onChange={e => setNewThirdParty(p => ({ ...p, contact_phone: e.target.value }))}
                         placeholder="Phone (optional)"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                       <input
                         type="email"
                         value={newThirdParty.contact_email}
                         onChange={e => setNewThirdParty(p => ({ ...p, contact_email: e.target.value }))}
                         placeholder="Email (optional)"
-                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                       />
                     </div>
                     <textarea
@@ -798,184 +1014,273 @@ export default function IncidentDetailPage() {
                       onChange={e => setNewThirdParty(p => ({ ...p, involvement: e.target.value }))}
                       placeholder="Involvement description (required)"
                       rows={2}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none"
                     />
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex gap-4 flex-wrap pt-1">
                       {[
                         { key: 'injury_damage_alleged' as const, label: 'Injury/damage alleged' },
                         { key: 'statement_taken' as const, label: 'Statement taken' },
                         { key: 'is_witness' as const, label: 'Witness' },
                       ].map(({ key, label }) => (
-                        <label key={key} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                        <label key={key} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={newThirdParty[key]}
                             onChange={e => setNewThirdParty(p => ({ ...p, [key]: e.target.checked }))}
-                            className="rounded"
+                            className="rounded w-4 h-4"
                           />
                           {label}
                         </label>
                       ))}
                     </div>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setShowAddThirdParty(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600">
+                    <div className="flex gap-2 pt-1">
+                      <button type="button" onClick={() => setShowAddThirdParty(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 font-medium">
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={handleAddThirdParty}
                         disabled={savingThirdParty || (!newThirdParty.name.trim() && !newThirdParty.company_org.trim()) || !newThirdParty.involvement.trim()}
-                        className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-40"
+                        className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-40"
                       >
-                        {savingThirdParty ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add'}
+                        {savingThirdParty ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Add'}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             )}
-          </section>
+                </FormSection>
 
-          {/* Corrective actions */}
-          {!isNew && (
-            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                  <ClipboardCheck size={13} className="text-slate-400" /> Corrective Actions
-                </h2>
-                {!isClosed && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAction(!showAddAction)}
-                    className="text-xs text-red-600 flex items-center gap-1"
+                {/* Corrective actions */}
+                {!isNew && (
+                  <FormSection
+                    title="Corrective Actions"
+                    icon={<ClipboardCheck size={13} />}
+                    complete={correctiveActions.length > 0 && correctiveActions.every(ca => ca.status === 'complete')}
+                    fillRatio={correctiveActions.length > 0 ? correctiveActions.filter(ca => ca.status === 'complete').length / correctiveActions.length : 0}
+                    accent="violet"
+                    defaultOpen={correctiveActions.length > 0}
+                    headerRight={
+                      !isClosed ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddAction(!showAddAction)}
+                          className="text-xs text-red-600 flex items-center gap-1 py-0.5"
+                        >
+                          <Plus size={12} /> Add
+                        </button>
+                      ) : undefined
+                    }
                   >
-                    <Plus size={12} /> Add
-                  </button>
+                    {correctiveActions.length === 0 && !showAddAction && (
+                      <p className="text-xs text-slate-400">No corrective actions yet.</p>
+                    )}
+                    {correctiveActions.map((ca, idx) => (
+                      <div key={ca.id ?? idx} className="border border-slate-100 rounded-xl p-3 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-slate-700 flex-1">{ca.action}</p>
+                          <select
+                            value={ca.status}
+                            onChange={e => handleUpdateActionStatus(ca, e.target.value as CorrectiveAction['status'])}
+                            disabled={isClosed}
+                            className="text-xs border border-slate-200 rounded-lg px-1.5 py-1 disabled:bg-slate-50"
+                          >
+                            <option value="open">Open</option>
+                            <option value="in progress">In progress</option>
+                            <option value="complete">Complete</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-3 text-xs text-slate-400">
+                          {ca.owner && <span>Owner: {ca.owner}</span>}
+                          {ca.due_date && <span>Due: {new Date(ca.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>}
+                          {ca.status === 'complete' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                        </div>
+                        {ca.notes && <p className="text-xs text-slate-400 italic">{ca.notes}</p>}
+                      </div>
+                    ))}
+                    {showAddAction && (
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+                        <textarea
+                          value={newAction.action}
+                          onChange={e => setNewAction(p => ({ ...p, action: e.target.value }))}
+                          placeholder="Corrective action (required)"
+                          rows={2}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
+                        />
+                        <input
+                          type="text"
+                          value={newAction.owner}
+                          onChange={e => setNewAction(p => ({ ...p, owner: e.target.value }))}
+                          placeholder="Owner"
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        />
+                        <input
+                          type="date"
+                          value={newAction.due_date}
+                          onChange={e => setNewAction(p => ({ ...p, due_date: e.target.value }))}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                        />
+                        <textarea
+                          value={newAction.notes}
+                          onChange={e => setNewAction(p => ({ ...p, notes: e.target.value }))}
+                          placeholder="Notes (optional)"
+                          rows={1}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setShowAddAction(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600">
+                            <X size={12} className="inline mr-1" /> Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddAction}
+                            disabled={savingAction || !newAction.action.trim()}
+                            className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-40"
+                          >
+                            {savingAction ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add action'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </FormSection>
                 )}
-              </div>
-
-              {correctiveActions.length === 0 && !showAddAction && (
-                <p className="text-xs text-slate-400">No corrective actions yet.</p>
-              )}
-
-              {correctiveActions.map((ca, idx) => (
-                <div key={ca.id ?? idx} className="border border-slate-100 rounded-xl p-3 space-y-1.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-slate-700 flex-1">{ca.action}</p>
-                    <select
-                      value={ca.status}
-                      onChange={e => handleUpdateActionStatus(ca, e.target.value as CorrectiveAction['status'])}
-                      disabled={isClosed}
-                      className="text-xs border border-slate-200 rounded-lg px-1.5 py-1 disabled:bg-slate-50"
-                    >
-                      <option value="open">Open</option>
-                      <option value="in progress">In progress</option>
-                      <option value="complete">Complete</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-3 text-xs text-slate-400">
-                    {ca.owner && <span>Owner: {ca.owner}</span>}
-                    {ca.due_date && <span>Due: {new Date(ca.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>}
-                    {ca.status === 'complete' && <CheckCircle2 size={12} className="text-emerald-500" />}
-                  </div>
-                  {ca.notes && <p className="text-xs text-slate-400 italic">{ca.notes}</p>}
-                </div>
-              ))}
-
-              {showAddAction && (
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
-                  <textarea
-                    value={newAction.action}
-                    onChange={e => setNewAction(p => ({ ...p, action: e.target.value }))}
-                    placeholder="Corrective action (required)"
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={newAction.owner}
-                      onChange={e => setNewAction(p => ({ ...p, owner: e.target.value }))}
-                      placeholder="Owner"
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                    />
-                    <input
-                      type="date"
-                      value={newAction.due_date}
-                      onChange={e => setNewAction(p => ({ ...p, due_date: e.target.value }))}
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                    />
-                  </div>
-                  <textarea
-                    value={newAction.notes}
-                    onChange={e => setNewAction(p => ({ ...p, notes: e.target.value }))}
-                    placeholder="Notes (optional)"
-                    rows={1}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setShowAddAction(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600">
-                      <X size={12} className="inline mr-1" /> Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddAction}
-                      disabled={savingAction || !newAction.action.trim()}
-                      className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-40"
-                    >
-                      {savingAction ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add action'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
 
           {/* Status + Notes */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status & Notes</h2>
-            {!isClosed && (
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Status</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {STATUS_OPTIONS.filter(s => s.value !== 'closed').map(s => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => updateForm({ status: s.value })}
-                      className={`py-2 rounded-xl border-2 text-xs font-semibold transition-colors ${
-                        form.status === s.value
-                          ? `${s.color} border-current`
-                          : 'border-slate-200 text-slate-500'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Notes</label>
-              <textarea
-                value={form.notes}
-                onChange={e => updateForm({ notes: e.target.value })}
-                disabled={isClosed}
-                placeholder="Additional notes…"
-                rows={2}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
-              />
-            </div>
-          </section>
+                <FormSection
+                  title="Status & Notes"
+                  icon={<ClipboardCheck size={13} />}
+                  complete={!!(form.status)}
+                  required
+                  accent="violet"
+                  defaultOpen
+                >
+                  {!isClosed && (
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1.5 block">Status</label>
+                      <div className="flex flex-col gap-2">
+                        {STATUS_OPTIONS.filter(s => s.value !== 'closed').map(s => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            onClick={() => updateForm({ status: s.value })}
+                            className={`w-full py-2 rounded-xl border-2 text-xs font-semibold transition-colors text-left px-4 ${
+                              form.status === s.value
+                                ? `${s.color} border-current`
+                                : 'border-slate-200 text-slate-500'
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Notes</label>
+                    <textarea
+                      value={form.notes}
+                      onChange={e => updateForm({ notes: e.target.value })}
+                      disabled={isClosed}
+                      placeholder="Additional notes…"
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+                </FormSection>
 
-          {/* Closed info */}
-          {isClosed && incident && (
-            <div className="bg-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-1">
-              <p className="font-semibold text-slate-600">Incident closed</p>
-              {incident.closed_at && <p>Closed: {new Date(incident.closed_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
-              {incident.closed_by && <p>By: {incident.closed_by}</p>}
-            </div>
-          )}
+                {/* Attachments */}
+                {!isNew && (
+                  <FormSection
+                    title="Photos & Attachments"
+                    icon={<Paperclip size={13} />}
+                    complete={attachments.length > 0}
+                    accent="violet"
+                    defaultOpen={attachments.length > 0}
+                    headerRight={
+                      !isClosed ? (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingFiles}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-lg disabled:opacity-50"
+                        >
+                          {uploadingFiles ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                          Add
+                        </button>
+                      ) : attachments.length > 0 ? (
+                        <span className="bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5 rounded-full">{attachments.length}</span>
+                      ) : undefined
+                    }
+                  >
+                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={e => handleUploadFiles(e.target.files)} />
+                    {attachments.length === 0 && (
+                      <div
+                        className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`}
+                        onClick={() => !isClosed && fileInputRef.current?.click()}
+                      >
+                        <Paperclip size={20} className="mx-auto text-slate-300 mb-2" />
+                        <p className="text-xs text-slate-400">{isClosed ? 'No attachments' : 'Tap to add photos or PDFs'}</p>
+                      </div>
+                    )}
+                    {attachments.length > 0 && (
+                      <div className="space-y-3">
+                        {attachments.filter(a => a.file_type === 'image').length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><Image size={11} /> Photos</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {attachments.filter(a => a.file_type === 'image').map(a => (
+                                <div key={a.id} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
+                                  <img src={a.public_url} alt={a.original_name} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(a.public_url)} />
+                                  {!isClosed && (
+                                    <button type="button" onClick={() => handleDeleteAttachment(a)} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <X size={11} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              {!isClosed && (
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-red-300 hover:text-red-400 transition-colors">
+                                  <Plus size={20} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {attachments.filter(a => a.file_type !== 'image').length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1"><FileText size={11} /> Documents</p>
+                            <div className="space-y-1.5">
+                              {attachments.filter(a => a.file_type !== 'image').map(a => (
+                                <div key={a.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+                                  <FileText size={16} className="text-red-400 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-700 truncate">{a.original_name}</p>
+                                    <p className="text-xs text-slate-400">{(a.size_bytes / 1024).toFixed(0)} KB</p>
+                                  </div>
+                                  <a href={a.public_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-red-500 transition-colors"><Download size={15} /></a>
+                                  {!isClosed && <button type="button" onClick={() => handleDeleteAttachment(a)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </FormSection>
+                )}
+
+                {/* Closed info */}
+                {isClosed && incident && (
+                  <div className="bg-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-1">
+                    <p className="font-semibold text-slate-600">Incident closed</p>
+                    {incident.closed_at && <p>Closed: {new Date(incident.closed_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+                    {incident.closed_by && <p>By: {incident.closed_by}</p>}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Bottom actions */}
@@ -1018,6 +1323,28 @@ export default function IncidentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Photo lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/70 hover:text-white"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X size={28} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Attachment"
+            className="max-w-full max-h-full rounded-xl object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Close modal */}
       {showCloseModal && (

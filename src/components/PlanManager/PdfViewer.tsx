@@ -19,8 +19,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import {
   ZoomIn, ZoomOut, RotateCcw, RotateCw,
   ChevronLeft, ChevronRight, Maximize2, Minimize2,
-  Loader2, AlertCircle, MoreHorizontal, X as XIcon,
-  Shrink,
+  Loader2, AlertCircle, Shrink,
 } from 'lucide-react';
 import AnnotationCanvas from './AnnotationCanvas';
 import type { Annotation, AnnotationStyle, ToolType } from './types';
@@ -76,8 +75,6 @@ export default function PdfViewer({
   // Thumbnail strip: hidden on mobile by default, togglable on desktop
   const [thumbnailsOpen, setThumbnailsOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Mobile overflow toolbar menu
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ── Mobile gesture hook ────────────────────────────────────────────────────
   const mobileViewer = useMobileViewer({
@@ -273,7 +270,7 @@ export default function PdfViewer({
             <ZoomIn size={14} />
           </button>
 
-          {/* Rotate — desktop only; on mobile goes into the … menu */}
+          {/* Rotate — desktop only */}
           <div className="hidden md:flex items-center gap-1">
             <div className="w-px h-5 bg-slate-700 mx-1" />
             <button
@@ -292,54 +289,43 @@ export default function PdfViewer({
             </button>
           </div>
 
+          {/* Mobile-only: fit + reset + rotate inline in the same row */}
+          <div className="md:hidden flex items-center gap-0.5 ml-0.5">
+            <div className="w-px h-5 bg-slate-700 mx-0.5" />
+            <button
+              onClick={() => { mobileViewer.fitToScreen(); onFitWidth(true); }}
+              title="Fit"
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${fitWidth ? 'text-violet-400 bg-violet-500/20' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700'}`}
+            >
+              <Shrink size={14} />
+            </button>
+            <button
+              onClick={() => { mobileViewer.resetZoom(); onFitWidth(false); }}
+              title="Reset"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            >
+              <Maximize2 size={14} />
+            </button>
+            <div className="w-px h-5 bg-slate-700 mx-0.5" />
+            <button
+              onClick={() => onRotate(-90)}
+              title="Rotate left"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            >
+              <RotateCcw size={14} />
+            </button>
+            <button
+              onClick={() => onRotate(90)}
+              title="Rotate right"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            >
+              <RotateCw size={14} />
+            </button>
+          </div>
+
           {/* Spacer */}
           <div className="flex-1" />
-
-          {/* Mobile "…" overflow menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(s => !s)}
-            className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
-            title="More options"
-          >
-            {mobileMenuOpen ? <XIcon size={14} /> : <MoreHorizontal size={14} />}
-          </button>
         </div>
-
-        {/* Mobile overflow menu — rotate + fit-to-screen + reset zoom */}
-        {mobileMenuOpen && (
-          <div className="md:hidden flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-800 border-b border-slate-700">
-            {/* Fit to screen */}
-            <button
-              onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-semibold border border-violet-600/30"
-            >
-              <Shrink size={13} /> Fit to screen
-            </button>
-            {/* Reset zoom */}
-            <button
-              onClick={() => { mobileViewer.resetZoom(); setMobileMenuOpen(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-            >
-              <Maximize2 size={13} /> Reset zoom
-            </button>
-            {/* Rotate */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Rotate</span>
-              <button
-                onClick={() => { onRotate(-90); setMobileMenuOpen(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-              >
-                <RotateCcw size={13} /> Left
-              </button>
-              <button
-                onClick={() => { onRotate(90); setMobileMenuOpen(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-              >
-                <RotateCw size={13} /> Right
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* PDF canvas area */}
         <div

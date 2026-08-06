@@ -323,7 +323,7 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -344,7 +344,7 @@ export default function FleetPage() {
       <h1 className="sr-only">Fleet</h1>
 
       <PortalErrorBoundary inline>
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Header — back/title left · view toggle centre · add asset right */}
         <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
           <div className="flex items-center gap-2 px-3 h-12 min-w-0">
@@ -420,6 +420,7 @@ export default function FleetPage() {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <PortalErrorBoundary inline>
                 <Suspense fallback={
                   <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
@@ -430,6 +431,7 @@ export default function FleetPage() {
                   <FleetLiveMap key="fleet-live-map" />
                 </Suspense>
               </PortalErrorBoundary>
+            </div>
           )}
 
           {/* ── Tracker Portal view — REMOVED, replaced by Quick Links ── */}

@@ -30,39 +30,74 @@ export interface SeoRoute {
 }
 
 export const seoRoutes: SeoRoute[] = [
-  // ── Public marketing / landing pages ────────────────────────────────────────
-  { path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-07-31" },
-  { path: "/download-app", changefreq: "monthly", priority: 0.8 },
-
-  // ── Legal ────────────────────────────────────────────────────────────────────
-  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
-  { path: "/terms", changefreq: "yearly", priority: 0.4 },
-
-  // ── Auth flows (public, crawlable) ───────────────────────────────────────────
+  { path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-08-06" },
+  { path: "/home", changefreq: "monthly", priority: 0.8 },
   { path: "/login", changefreq: "monthly", priority: 0.6 },
   { path: "/signup", changefreq: "monthly", priority: 0.9 },
+  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
+  { path: "/terms", changefreq: "yearly", priority: 0.4 },
+  { path: "/check-email", changefreq: "monthly", priority: 0.2 },
+  { path: "/verify-email", changefreq: "monthly", priority: 0.2 },
+  { path: "/verify-required", changefreq: "monthly", priority: 0.2 },
   { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
   { path: "/reset-password", changefreq: "monthly", priority: 0.3 },
   { path: "/login-help", changefreq: "monthly", priority: 0.3 },
-
-  // ── Public utility pages ─────────────────────────────────────────────────────
-  // NOTE: All routes below are auth-protected app pages. They are intentionally
-  // excluded from the public sitemap — crawlers cannot access them and including
-  // them wastes crawl budget and produces "orphaned route" audit warnings.
-  //
-  // Removed (redirects — no page file, just loader redirects):
-  //   /projects → /jobs
-  //   /developer-console → /owner-console
-  //   /site-escape → /home
-  //
-  // Removed (auth-protected app pages — not public content):
-  //   /home, /dashboard, /jobs, /incidents, /risk-register, /scheduler,
-  //   /fleet, /forms, /files, /estimating, /builders-calc, /takeoff-pad,
-  //   /safety, /safety/posters, /library, /customers, /invoices, /studio,
-  //   /studio/*, /job-docs, /plan-manager, /team, /team/schedule,
-  //   /quick-links, /settings, /profile, /help, /camera, /owner-console,
-  //   /roadmap, /billing, /lists, /user-logs, /job-cards, /job-cards/new,
-  //   /signin-history, /dazza-ai, /annette, /stakeholders, /subscription,
-  //   /tools, /driver, /prestart, /portal/*, /check-email, /verify-email,
-  //   /verify-required
+  { path: "/download-app", changefreq: "monthly", priority: 0.8 },
+  { path: "/subscribe", changefreq: "monthly", priority: 0.8 },
+  { path: "/driver", changefreq: "monthly", priority: 0.8 },
+  { path: "/prestart", changefreq: "monthly", priority: 0.8 },
+  { path: "/site-escape", changefreq: "monthly", priority: 0.8 },
+  { path: "/portal/login", changefreq: "monthly", priority: 0.4 },
+  { path: "/portal/dashboard", changefreq: "monthly", priority: 0.5 },
+  { path: "/portal/payment-success", changefreq: "monthly", priority: 0.5 },
+  { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
+  { path: "/projects", changefreq: "monthly", priority: 0.8 },
+  { path: "/stakeholders", changefreq: "monthly", priority: 0.8 },
+  { path: "/subscription", changefreq: "monthly", priority: 0.8 },
+  { path: "/tools", changefreq: "monthly", priority: 0.8 },
+  { path: "/jobs", changefreq: "monthly", priority: 0.8 },
+  { path: "/incidents", changefreq: "monthly", priority: 0.8 },
+  { path: "/risk-register", changefreq: "monthly", priority: 0.8 },
+  { path: "/scheduler", changefreq: "monthly", priority: 0.8 },
+  { path: "/fleet", changefreq: "monthly", priority: 0.8 },
+  { path: "/forms", changefreq: "monthly", priority: 0.8 },
+  { path: "/files", changefreq: "monthly", priority: 0.8 },
+  { path: "/estimating", changefreq: "monthly", priority: 0.8 },
+  { path: "/builders-calc", changefreq: "monthly", priority: 0.8 },
+  { path: "/takeoff-pad", changefreq: "monthly", priority: 0.8 },
+  { path: "/safety", changefreq: "monthly", priority: 0.8 },
+  { path: "/library", changefreq: "monthly", priority: 0.8 },
+  { path: "/customers", changefreq: "monthly", priority: 0.8 },
+  { path: "/invoices", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio/documents", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/forms", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/global-lists", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/library", changefreq: "monthly", priority: 0.5 },
+  { path: "/safety/posters", changefreq: "monthly", priority: 0.5 },
+  { path: "/job-docs", changefreq: "monthly", priority: 0.8 },
+  { path: "/plan-manager", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio/asset-manager", changefreq: "monthly", priority: 0.5 },
+  { path: "/signin-history", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio/jobs", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/estimates", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/fleet", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/accounts", changefreq: "monthly", priority: 0.5 },
+  { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
+  { path: "/annette", changefreq: "monthly", priority: 0.8 },
+  { path: "/team", changefreq: "monthly", priority: 0.8 },
+  { path: "/team/schedule", changefreq: "monthly", priority: 0.5 },
+  { path: "/quick-links", changefreq: "monthly", priority: 0.8 },
+  { path: "/settings", changefreq: "monthly", priority: 0.8 },
+  { path: "/profile", changefreq: "monthly", priority: 0.8 },
+  { path: "/help", changefreq: "monthly", priority: 0.8 },
+  { path: "/camera", changefreq: "monthly", priority: 0.8 },
+  { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
+  { path: "/developer-console", changefreq: "monthly", priority: 0.8 },
+  { path: "/roadmap", changefreq: "monthly", priority: 0.8 },
+  { path: "/billing", changefreq: "monthly", priority: 0.8 },
+  { path: "/lists", changefreq: "monthly", priority: 0.8 },
+  { path: "/user-logs", changefreq: "monthly", priority: 0.8 },
+  { path: "/job-cards", changefreq: "monthly", priority: 0.8 },
+  { path: "/job-cards/new", changefreq: "monthly", priority: 0.5 },
 ];

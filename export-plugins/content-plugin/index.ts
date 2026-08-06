@@ -24,7 +24,7 @@ interface Options {
 
 type Entry =
   | { key: string; kind: 'file'; absPath: string }
-  | { key: string; kind: 'collection'; itemPaths: string[] };
+  | { key: string; kind: 'collection'; dirPath: string; itemPaths: string[] };
 
 /**
  * Emits a virtual `virtual:content` module whose exports are the parsed content
@@ -211,20 +211,46 @@ async function discover(contentDir: string): Promise<Entry[]> {
             (f.endsWith('.json') || f.endsWith('.md')) && !f.startsWith('.') && f !== 'README.md')
           .sort()
           .map((f: string): string => path.join(collectionDir, f));
-        entries.push({ key, kind: 'collection', itemPaths });
+        entries.push({ key, kind: 'collection', dirPath: collectionDir, itemPaths });
       }
     }
   }
 
-  const seen = new Set<string>();
+  const seen = new Map<string, Entry>();
   for (const e of entries) {
-    if (seen.has(e.key)) {
-      throw new Error(`[airo-content] duplicate content key "${e.key}" — defined by more than one file`);
-    }
-    seen.add(e.key);
+    const clash: Entry | undefined = seen.get(e.key);
+    if (clash) throw duplicateKeyError(contentDir, clash, e);
+    seen.set(e.key, e);
   }
 
   return entries;
+}
+
+/** `src/content/`-relative display path for an entry, for use in error messages. */
+function displayPath(contentDir: string, entry: Entry): string {
+  const abs: string = entry.kind === 'file' ? entry.absPath : entry.dirPath;
+  const rel: string = path.relative(contentDir, abs).split(path.sep).join('/');
+  return entry.kind === 'file' ? `src/content/${rel}` : `src/content/${rel}/ (collection)`;
+}
+
+// Every key becomes one top-level export of virtual:content, so a repeat key
+// would emit two `export const <key>` — a syntax error. Name both paths and a
+// rename that actually passes assertSafeKey, since the message is what the
+// agent (and the customer, via "Ask Airo to Fix It") acts on.
+function duplicateKeyError(contentDir: string, first: Entry, second: Entry): Error {
+  const pagesEntry: Entry | undefined = [first, second].find(
+    (e: Entry): boolean => displayPath(contentDir, e).startsWith('src/content/pages/'),
+  );
+  const fix: string =
+    pagesEntry !== undefined
+      ? `Rename the page copy to src/content/pages/${second.key}Page.json and import { ${second.key}Page } instead.`
+      : `Rename one of them so the keys differ.`;
+  return new Error(
+    `[airo-content] duplicate content key "${second.key}" — both of these export "${second.key}":\n` +
+    `  ${displayPath(contentDir, first)}\n` +
+    `  ${displayPath(contentDir, second)}\n` +
+    `${fix}\nKeys must be camelCase JS identifiers; hyphens are rejected.`,
+  );
 }
 
 function normalizeItem(absPath: string, raw: string): unknown {
