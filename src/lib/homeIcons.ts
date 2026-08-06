@@ -66,7 +66,6 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
 export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'quotes',        label: 'Quotes',           icon: FileText,         href: '?panel=quotes-picker',        bg: 'bg-violet-500',  fg: 'text-white', group: 'safety' },
   { key: 'invoices_mgmt', label: 'Invoices',         icon: Receipt,          href: '/invoices',                   bg: 'bg-teal-500',    fg: 'text-white', group: 'safety' },
-  { key: 'ledger',        label: 'Ledger',           icon: BookOpen,         href: '?panel=costs-picker',         bg: 'bg-emerald-600', fg: 'text-white', group: 'safety' },
   { key: 'equipment',     label: 'Equipment',        icon: Wrench,           href: '/studio/asset-manager',       bg: 'bg-violet-500',  fg: 'text-white', group: 'safety' },
   { key: 'drawings',      label: 'Drawings',         icon: Layers,           href: '?panel=drawings-picker',      bg: 'bg-blue-500',    fg: 'text-white', group: 'safety' },
   { key: 'takeoff_pad',   label: 'Takeoff Pad',      icon: ClipboardList,    href: '/takeoff-pad',                bg: 'bg-sky-600',     fg: 'text-white', group: 'safety' },
@@ -91,6 +90,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'stakeholders',  label: 'Contacts',         icon: Users,            href: '/customers',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'jobs',          label: 'Jobs',             icon: HardHat,          href: '/jobs',                       bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'fleet',         label: 'Fleet',            icon: Truck,            href: '/fleet',                      bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
+  { key: 'ledger',        label: 'Ledger',           icon: BookOpen,         href: '?panel=costs-picker',         bg: 'bg-emerald-600', fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',         icon: Settings,         href: '/settings',                   bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',             icon: UserCircle,       href: '/team',                       bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'My Billing',       icon: CreditCard,       href: '/billing',                    bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
