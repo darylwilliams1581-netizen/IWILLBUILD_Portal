@@ -14,7 +14,8 @@ import {
   BarChart3,
   RefreshCw,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import NewJobModal from '@/components/NewJobModal';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -50,7 +51,7 @@ interface DashTodo {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
-  const navigate = useNavigate();
+  const [showNewJob, setShowNewJob] = useState(false);
   const { addWorkLabel } = useTerminology();
   const { role } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -104,6 +105,11 @@ export default function DashboardPage() {
 
   return (
     <div className="portal-page">
+      <NewJobModal
+        open={showNewJob}
+        onClose={() => setShowNewJob(false)}
+        onCreated={(job: Job) => { setJobs(prev => [job, ...prev]); setShowNewJob(false); }}
+      />
       <Helmet>
         <title>Dashboard — IWILLBUILD Portal</title>
         <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
@@ -181,7 +187,7 @@ export default function DashboardPage() {
               <DashboardBanner userId={user?.id ?? 'anon'} />
             </div>
             <button
-              onClick={() => navigate('/jobs/new')}
+              onClick={() => setShowNewJob(true)}
               className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all border border-primary/30 shadow-md"
             >
               <Plus size={15} strokeWidth={2.5} />
@@ -197,6 +203,13 @@ export default function DashboardPage() {
         >
           <div className="h-12 flex items-center justify-between px-4">
             <h1 className="font-heading font-bold text-base text-foreground leading-tight">Dashboard</h1>
+            <button
+              onClick={() => setShowNewJob(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground active:scale-95 transition-all"
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              Add Job
+            </button>
           </div>
         </div>
 
