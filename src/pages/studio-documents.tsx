@@ -4,7 +4,6 @@
  * Matches the Forms page pattern exactly.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -182,7 +181,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
           <ToolBtn icon={Share2}  label="Copy link"           onClick={handleShare} />
           {showShareBtn && <ToolBtn icon={Library} label="Share to Library" onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />}
           <ToolBtn icon={Pencil}  label="Edit"                onClick={(e) => { e.stopPropagation(); openBuilder(); }} variant="orange" />
-          <ToolBtn icon={Eye}     label="Open / Review"       onClick={(e) => { e.stopPropagation(); openUse(); }} variant="green" />
+          <ToolBtn icon={Eye}     label="Open / Review"       onClick={(e) => { e.stopPropagation(); navigate(`/studio/builder/${doc.id}`); }} variant="green" />
           <ToolBtn icon={Trash2}  label="Delete"              onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
           <button title={expanded ? 'Collapse' : 'Expand'}
             onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
@@ -203,7 +202,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
             <button onClick={openBuilder} className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-xl transition-all hover:brightness-110 bg-primary">
               <Pencil size={11} /> Edit
             </button>
-            <button onClick={openUse} className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
+            <button onClick={() => navigate(`/studio/builder/${doc.id}`)} className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
               <Eye size={11} /> Open / Review
             </button>
           </div>
@@ -220,7 +219,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
       )}
 
       <AnimatePresence>
-        {showJobPicker && createPortal(
+        {showJobPicker && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
             onClick={() => setShowJobPicker(false)}>
@@ -258,7 +257,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
               </div>
             </motion.div>
           </motion.div>
-        , document.body)}
+        )}
       </AnimatePresence>
     </motion.div>
   );
