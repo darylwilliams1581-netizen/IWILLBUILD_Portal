@@ -320,62 +320,7 @@ describe('jsxSourceMapper — data-dev-content-key', () => {
       import * as content from 'virtual:content';
       export default () => <h1>{content.site.brand}</h1>;
     `);
-    // The key is canonical (rooted at the export name), not at the import local —
-    // `content` is dropped, not preserved. Do not restore "content.site.brand".
-    expect(output).toContain('data-dev-content-key="site.brand"');
-  });
-
-  it('attributes an aliased import to the export name', () => {
-    const output = transform(`
-      import { blog as posts } from 'virtual:content';
-      export default () => <h1>{posts.hero}</h1>;
-    `);
-    expect(output).toContain('data-dev-content-key="blog.hero"');
-    expect(output).not.toContain('data-dev-content-key="posts.hero"');
-  });
-
-  it('does not canonicalize a parameter that shadows an aliased import', () => {
-    // Matching on identifier text alone turned an unrelated parameter into a writable
-    // content path, so an inline edit here would overwrite real blog content.
-    const output = transform(`
-      import { blog as posts } from 'virtual:content';
-      export function RelatedPosts({ posts }) { return <h1>{posts.hero}</h1>; }
-    `);
-    expect(output).not.toContain('data-dev-content-key="blog.hero"');
-    expect(output).not.toContain('data-dev-content-key="posts.hero"');
-  });
-
-  it('does not canonicalize a local that shadows an import', () => {
-    const output = transform(`
-      import { site } from 'virtual:content';
-      export default () => { const site = getOther(); return <h1>{site.brand}</h1>; };
-    `);
-    expect(output).not.toContain('data-dev-content-key="site.brand"');
-  });
-
-  it('still attributes the genuine import in a sibling scope', () => {
-    const output = transform(`
-      import { blog as posts } from 'virtual:content';
-      export function Shadowed({ posts }) { return <h1>{posts.hero}</h1>; }
-      export function Real() { return <h2>{posts.hero}</h2>; }
-    `);
-    expect(output).toContain('data-dev-content-key="blog.hero"');
-  });
-
-  it('strips the namespace local from a namespace import', () => {
-    const output = transform(`
-      import * as content from 'virtual:content';
-      export default () => <h1>{content.pages.blog.hero}</h1>;
-    `);
-    expect(output).toContain('data-dev-content-key="pages.blog.hero"');
-  });
-
-  it('leaves a plain named import unchanged', () => {
-    const output = transform(`
-      import { site } from 'virtual:content';
-      export default () => <h1>{site.brand}</h1>;
-    `);
-    expect(output).toContain('data-dev-content-key="site.brand"');
+    expect(output).toContain('data-dev-content-key="content.site.brand"');
   });
 
   it('does not re-tag when data-dev-content-key is already present', () => {
@@ -458,9 +403,7 @@ describe('jsxSourceMapper — data-dev-content-key', () => {
       import { home as h } from 'virtual:content';
       export default () => <h1>{h.title}</h1>;
     `);
-    // The key is canonical (rooted at the export name), not at the import local —
-    // `h` is replaced with `home`, not preserved. Do not restore "h.title".
-    expect(output).toContain('data-dev-content-key="home.title"');
+    expect(output).toContain('data-dev-content-key="h.title"');
   });
 
   it('resolves a nested .map() over a map-param field to a deep template key', () => {

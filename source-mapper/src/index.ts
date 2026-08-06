@@ -1,5 +1,5 @@
 import type { PluginObj, PluginPass, types, NodePath } from '@babel/core';
-import type { JSXElement, Program, ImportDeclaration, CallExpression, Expression, Identifier } from '@babel/types';
+import type { JSXElement, Program, ImportDeclaration, CallExpression, Expression } from '@babel/types';
 import {
   buildGuardExpression,
   ensureFormattedBoundTextImport,
@@ -30,13 +30,7 @@ type AnyCallExpression = CallExpression | types.OptionalCallExpression;
 
 type PluginState = PluginPass & {
   opts?: PluginOptions;
-  // Maps the LOCAL binding name to the canonical root it should render as.
-  // A named import (`{ blog as posts }`) maps `posts` → `'blog'` (the export
-  // name), so attribution is rooted at what the module exports, not at
-  // whatever the importer happened to call it. A namespace import
-  // (`* as content`) maps `content` → `null`, meaning "drop this segment —
-  // the next one is the export name" (`content.pages.blog` → `pages.blog`).
-  contentBindings: Map<string, { canonicalRoot: string | null; local: Identifier }>;
+  contentBindings: Set<string>;
   commerceComponentLocals: Set<string>;
   commerceComponentNamespaces: Set<string>;
   hasCommerceDataUsage: boolean;
@@ -468,34 +462,12 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     }
   }
 
-  /**
-   * The content binding `name` refers to at this use site, or undefined.
-   *
-   * Matching on identifier text alone is not enough: a parameter or local of the same name shadows
-   * the import, and canonicalizing it would turn an unrelated value into a writable content path.
-   * The scope binding must be the very identifier the import declared.
-   */
-  function contentBindingFor(
-    name: string,
-    s: PluginState,
-    scope?: NodePath['scope'] | null,
-  ): { canonicalRoot: string | null; local: Identifier } | undefined {
-    const entry = s.contentBindings.get(name);
-    if (!entry) return undefined;
-    if (!scope) return undefined;
-    return scope.getBinding(name)?.identifier === entry.local ? entry : undefined;
-  }
-
   // True when `node`'s chain is rooted in a `virtual:content` binding
-  // (e.g. `catalog[0].retailers`).
-  function isContentRooted(
-    node: Expression,
-    s: PluginState,
-    scope?: NodePath['scope'] | null,
-  ): boolean {
+  // (e.g. `catalog[0].retailers`). Cheap structural check — no scope walk.
+  function isContentRooted(node: Expression, s: PluginState): boolean {
     const chain = readChain(node);
     const root = chain?.[0];
-    return typeof root === 'string' && contentBindingFor(root, s, scope) !== undefined;
+    return typeof root === 'string' && s.contentBindings.has(root);
   }
 
   // Normalize an alias-binding init down to the expression it derives from, so
@@ -509,17 +481,13 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
   //   - `chain.filter(...)` / `.slice(...)` / `.flatMap(...)` (a DERIVE_METHODS
   //     call, Optional* forms included) → `chain` (the callee's object)
   // Returns the innermost node once neither shape applies.
-  function normalizeAliasInit(
-    node: Expression,
-    s: PluginState,
-    scope?: NodePath['scope'] | null,
-  ): Expression {
+  function normalizeAliasInit(node: Expression, s: PluginState): Expression {
     let cur: Expression = node;
     for (;;) {
       if (
         t.isLogicalExpression(cur) &&
         (cur.operator === '??' || cur.operator === '||') &&
-        !isContentRooted(cur.right, s, scope)
+        !isContentRooted(cur.right, s)
       ) {
         cur = cur.left;
         continue;
@@ -558,16 +526,8 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     // The root segment is the identifier name; a numeric root is impossible
     // (readChain always unshifts an Identifier name first), but narrow for type.
     if (typeof root !== 'string') return null;
-    const binding = contentBindingFor(root, s, scope);
-    if (binding) {
-      const rest: (string | number)[] = chain.slice(1);
-      // Namespace import: drop the local segment, the next one is the export name.
-      if (binding.canonicalRoot === null) {
-        return rest.length === 0 ? null : renderChain(rest);
-      }
-      // Named import: replace the local with the export name it aliases
-      // (identity when unaliased, e.g. `import { site }` → root stays `site`).
-      return renderChain([binding.canonicalRoot, ...rest]);
+    if (s.contentBindings.has(root)) {
+      return renderChain(chain);
     }
     for (let i = s.mapStack.length - 1; i >= 0; i--) {
       if (s.mapStack[i].paramName === root) {
@@ -588,7 +548,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
           : binding.path.findParent((p: NodePath): boolean => p.isVariableDeclarator());
         if (declaratorPath?.isVariableDeclarator()) {
           const rawInit = (declaratorPath.node as types.VariableDeclarator).init;
-          const init = rawInit ? normalizeAliasInit(rawInit as Expression, s, scope) : null;
+          const init = rawInit ? normalizeAliasInit(rawInit as Expression, s) : null;
           if (init && (t.isMemberExpression(init) || t.isOptionalMemberExpression(init))) {
             const resolvedBase = resolveContentKey(init, s, scope, _aliasDepth + 1);
             if (resolvedBase) {
@@ -810,7 +770,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     visitor: {
       Program: {
         enter(_path: NodePath<Program>, state: PluginState) {
-          state.contentBindings = new Map();
+          state.contentBindings = new Set();
           state.commerceComponentLocals = new Set();
           state.commerceComponentNamespaces = new Set();
           state.hasCommerceDataUsage = false;
@@ -834,12 +794,9 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
         if (path.node.source.value === CONTENT_MODULE) {
           for (const spec of path.node.specifiers) {
             if (t.isImportSpecifier(spec) && t.isIdentifier(spec.local)) {
-              const importedName: string = t.isIdentifier(spec.imported)
-                ? spec.imported.name
-                : spec.imported.value;
-              state.contentBindings.set(spec.local.name, { canonicalRoot: importedName, local: spec.local });
+              state.contentBindings.add(spec.local.name);
             } else if (t.isImportNamespaceSpecifier(spec) && t.isIdentifier(spec.local)) {
-              state.contentBindings.set(spec.local.name, { canonicalRoot: null, local: spec.local });
+              state.contentBindings.add(spec.local.name);
             }
           }
           return;
