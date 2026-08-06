@@ -50,7 +50,7 @@ interface DockItem {
 
 const ALL_ITEMS: DockItem[] = [
   // ── Field / Jobs ──────────────────────────────────────────────────────────
-  { label: 'Dashboard',       icon: LayoutDashboard, href: '/dashboard',            color: '#1d6fe8' },
+  { label: 'Home',             icon: LayoutDashboard, href: '/home',                 color: '#1d6fe8' },
   { label: 'Jobs',            icon: HardHat,         href: '/jobs',                 color: '#0891b2' },
   { label: 'Job Cards',       icon: Zap,             href: '/job-cards',            color: '#f59e0b' },
   { label: 'Field Docs',      icon: FileStack,       href: '/job-docs',             color: '#8b5cf6' },
