@@ -12,7 +12,7 @@
  * - touch-action: none on PDF canvas area prevents browser pan/zoom interfering
  * - Tested at 375 / 390 / 430 px viewport widths
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -186,19 +186,124 @@ function MarkupCanvas({ items, currentPage, pageWidth, pageHeight, activeTool, o
 }
 
 // ── Mobile bottom-bar button ──────────────────────────────────────────────────
-function MobileToolBtn({ icon, label, active, onClick }: {
-  icon: React.ReactNode; label: string; active?: boolean; onClick: () => void;
+/** Floating annotation FAB + popup sheet — mobile only (hidden on md+) */
+function MobileAnnotationFAB({
+  activeTool, markupCount, saving,
+  onToolChange, onFit, onRotate, onSave,
+}: {
+  activeTool: ToolType;
+  markupCount: number;
+  saving: boolean;
+  onToolChange: (t: ToolType) => void;
+  onFit: () => void;
+  onRotate: () => void;
+  onSave: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const hasMarkup = markupCount > 0;
+  const isEditing = activeTool !== 'none';
+
+  const TOOLS: { tool: ToolType; Icon: React.ElementType; label: string; color: string }[] = [
+    { tool: 'none',      Icon: MousePointer2, label: 'Select / Pan',   color: 'text-slate-300' },
+    { tool: 'text',      Icon: Type,          label: 'Text Note',       color: 'text-blue-400'  },
+    { tool: 'arrow',     Icon: ArrowUpRight,  label: 'Arrow',           color: 'text-red-400'   },
+    { tool: 'rect',      Icon: Square,        label: 'Rectangle',       color: 'text-green-400' },
+    { tool: 'highlight', Icon: Highlighter,   label: 'Highlight',       color: 'text-yellow-400'},
+    { tool: 'pen',       Icon: Pen,           label: 'Freehand Pen',    color: 'text-violet-400'},
+  ];
+
   return (
-    <button
-      onClick={onClick}
-      title={label}
-      className={`flex flex-col items-center justify-center gap-0.5 px-1.5 py-1 rounded-xl min-w-[44px] transition-colors
-        ${active ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600'}`}
-    >
-      {icon}
-      <span className="text-[9px] font-semibold leading-none tracking-tight">{label}</span>
-    </button>
+    <div className="md:hidden">
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-[60]"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {/* Popup sheet — anchored above FAB */}
+      {open && (
+        <div
+          className="fixed z-[61] bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl p-3 flex flex-col gap-1"
+          style={{
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
+            right: '16px',
+            minWidth: '200px',
+          }}
+        >
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pb-1">Annotation Tools</p>
+
+          {TOOLS.map(({ tool, Icon, label, color }) => (
+            <button
+              key={tool}
+              onClick={() => { onToolChange(tool); setOpen(false); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left
+                ${activeTool === tool
+                  ? 'bg-primary text-white'
+                  : `bg-slate-700/60 ${color} hover:bg-slate-700`}`}
+            >
+              <Icon size={16} className="shrink-0" />
+              <span>{label}</span>
+              {activeTool === tool && <span className="ml-auto text-[10px] font-bold opacity-70">ACTIVE</span>}
+            </button>
+          ))}
+
+          <div className="h-px bg-slate-600 my-1" />
+
+          {/* Utility actions */}
+          <button
+            onClick={() => { onFit(); setOpen(false); }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 bg-slate-700/60 hover:bg-slate-700 transition-colors"
+          >
+            <Shrink size={16} className="shrink-0" /> Fit to screen
+          </button>
+          <button
+            onClick={() => { onRotate(); setOpen(false); }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 bg-slate-700/60 hover:bg-slate-700 transition-colors"
+          >
+            <RotateCw size={16} className="shrink-0" /> Rotate 90°
+          </button>
+
+          {hasMarkup && (
+            <>
+              <div className="h-px bg-slate-600 my-1" />
+              <button
+                onClick={() => { onSave(); setOpen(false); }}
+                disabled={saving}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white bg-primary hover:bg-violet-700 transition-colors disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin shrink-0" /> : <Save size={16} className="shrink-0" />}
+                Save Markup ({markupCount})
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* FAB button */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`fixed z-[62] flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl font-bold text-sm transition-all active:scale-95
+          ${open
+            ? 'bg-slate-600 text-white'
+            : isEditing
+              ? 'bg-primary text-white'
+              : 'bg-slate-700 text-slate-200 border border-slate-600'}`}
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+          right: '16px',
+        }}
+      >
+        <Pen size={16} />
+        {isEditing ? TOOL_LABELS[activeTool] : 'Edit'}
+        {hasMarkup && !isEditing && (
+          <span className="bg-primary text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {markupCount}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -484,67 +589,18 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
         )}
       </div>
 
-      {/* ── Mobile / tablet bottom toolbar (hidden on md+) ───────────────────── */}
-      <div
-        className="md:hidden flex items-center justify-around bg-slate-800 border-t border-slate-700 shrink-0"
-        style={{
-          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
-          paddingTop: '6px',
-          paddingLeft: '4px',
-          paddingRight: '4px',
-        }}
-      >
-        {/* Select (none) */}
-        <MobileToolBtn
-          icon={<MousePointer2 size={18} />}
-          label="Select"
-          active={activeTool === 'none'}
-          onClick={() => setActiveTool('none')}
-        />
+      {/* ── Mobile floating toolbar (hidden on md+) ─────────────────────────── */}
+      <MobileAnnotationFAB
+        activeTool={activeTool}
+        markupCount={markupItems.length}
+        saving={saving}
+        onToolChange={setActiveTool}
+        onFit={() => mobileViewer.fitToScreen()}
+        onRotate={() => setRotation((r) => (r + 90) % 360)}
+        onSave={() => void saveMarkup()}
+      />
 
-        {/* Markup tools */}
-        {(['text', 'arrow', 'rect', 'highlight', 'pen'] as ToolType[]).map((tool) => {
-          const Icon = { text: Type, arrow: ArrowUpRight, rect: Square, highlight: Highlighter, pen: Pen }[tool];
-          return (
-            <MobileToolBtn
-              key={tool}
-              icon={<Icon size={18} />}
-              label={TOOL_LABELS[tool]}
-              active={activeTool === tool}
-              onClick={() => setActiveTool((t) => t === tool ? 'none' : tool)}
-            />
-          );
-        })}
-
-        {/* Divider */}
-        <div className="w-px h-7 bg-slate-600 mx-0.5 shrink-0" />
-
-        {/* Fit to screen */}
-        <MobileToolBtn
-          icon={<Shrink size={18} />}
-          label="Fit"
-          onClick={() => mobileViewer.fitToScreen()}
-        />
-
-        {/* Rotate */}
-        <MobileToolBtn
-          icon={<RotateCw size={18} />}
-          label="Rotate"
-          onClick={() => setRotation((r) => (r + 90) % 360)}
-        />
-
-        {/* Save markup — only shown when there's something to save */}
-        {markupItems.length > 0 && (
-          <MobileToolBtn
-            icon={saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            label="Save"
-            active
-            onClick={() => void saveMarkup()}
-          />
-        )}
-      </div>
-
-      {/* Unsaved markup badge — desktop only (mobile has Save in bottom bar) */}
+      {/* Unsaved markup badge — desktop only */}
       {markupItems.length > 0 && (
         <div className="hidden md:block absolute bottom-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
           {markupItems.length} unsaved markup{markupItems.length !== 1 ? 's' : ''}
