@@ -19,8 +19,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import {
   ZoomIn, ZoomOut, RotateCcw, RotateCw,
   ChevronLeft, ChevronRight, Maximize2, Minimize2,
-  Loader2, AlertCircle, MoreHorizontal, X as XIcon,
-  Shrink,
+  Loader2, AlertCircle, Shrink,
 } from 'lucide-react';
 import AnnotationCanvas from './AnnotationCanvas';
 import type { Annotation, AnnotationStyle, ToolType } from './types';
@@ -60,6 +59,23 @@ function nextScale(current: number, dir: 1 | -1) {
   return SCALE_STEPS[Math.max(idx - 2, 0)];
 }
 
+// ── Icon-only bottom-bar button (mobile) ──────────────────────────────────────
+function PdfToolBtn({ icon, label, active, onClick }: {
+  icon: React.ReactNode; label: string; active?: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-xl min-w-[44px] transition-colors
+        ${active ? 'bg-violet-500/20 text-violet-300' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600'}`}
+    >
+      {icon}
+      <span className="text-[9px] font-semibold leading-none tracking-tight">{label}</span>
+    </button>
+  );
+}
+
 export default function PdfViewer({
   fileUrl, currentPage, totalPages, scale, rotation, fitWidth,
   activeTool, activeStyle, isLocked, annotations, undoTrigger,
@@ -76,8 +92,6 @@ export default function PdfViewer({
   // Thumbnail strip: hidden on mobile by default, togglable on desktop
   const [thumbnailsOpen, setThumbnailsOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Mobile overflow toolbar menu
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ── Mobile gesture hook ────────────────────────────────────────────────────
   const mobileViewer = useMobileViewer({
@@ -294,52 +308,28 @@ export default function PdfViewer({
 
           {/* Spacer */}
           <div className="flex-1" />
-
-          {/* Mobile "…" overflow menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(s => !s)}
-            className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
-            title="More options"
-          >
-            {mobileMenuOpen ? <XIcon size={14} /> : <MoreHorizontal size={14} />}
-          </button>
         </div>
 
-        {/* Mobile overflow menu — rotate + fit-to-screen + reset zoom */}
-        {mobileMenuOpen && (
-          <div className="md:hidden flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-800 border-b border-slate-700">
-            {/* Fit to screen */}
-            <button
-              onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-semibold border border-violet-600/30"
-            >
-              <Shrink size={13} /> Fit to screen
-            </button>
-            {/* Reset zoom */}
-            <button
-              onClick={() => { mobileViewer.resetZoom(); setMobileMenuOpen(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-            >
-              <Maximize2 size={13} /> Reset zoom
-            </button>
-            {/* Rotate */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Rotate</span>
-              <button
-                onClick={() => { onRotate(-90); setMobileMenuOpen(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-              >
-                <RotateCcw size={13} /> Left
-              </button>
-              <button
-                onClick={() => { onRotate(90); setMobileMenuOpen(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-              >
-                <RotateCw size={13} /> Right
-              </button>
-            </div>
-          </div>
-        )}
+        {/* ── Mobile bottom toolbar — icon-only, single row ─────────────────── */}
+        <div
+          className="md:hidden flex items-center justify-around bg-slate-900 border-t border-slate-700 shrink-0"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)', paddingTop: '4px' }}
+        >
+          {/* Fit to screen */}
+          <PdfToolBtn icon={<Shrink size={18} />} label="Fit" active={fitWidth}
+            onClick={() => { mobileViewer.fitToScreen(); onFitWidth(true); }} />
+          {/* Reset zoom */}
+          <PdfToolBtn icon={<Maximize2 size={18} />} label="Reset"
+            onClick={() => { mobileViewer.resetZoom(); onFitWidth(false); }} />
+          {/* Divider */}
+          <div className="w-px h-7 bg-slate-700 shrink-0" />
+          {/* Rotate left */}
+          <PdfToolBtn icon={<RotateCcw size={18} />} label="Left"
+            onClick={() => onRotate(-90)} />
+          {/* Rotate right */}
+          <PdfToolBtn icon={<RotateCw size={18} />} label="Right"
+            onClick={() => onRotate(90)} />
+        </div>
 
         {/* PDF canvas area */}
         <div
