@@ -13,7 +13,7 @@
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type React from 'react';
-import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, MoreHorizontal,
+import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, MoreHorizontal,
   MousePointer2, Hand, Minus, ArrowRight, Square, Circle, PenLine, Type, Highlighter, Stamp, Ruler, Undo2,
 } from 'lucide-react';
 import PdfViewer from './PdfViewer';
@@ -68,9 +68,10 @@ interface MobBarProps {
   onToolChange: (t: ToolType) => void;
   onStyleChange: (s: Partial<AnnotationStyle>) => void;
   onUndo: () => void;
+  onCollapse: () => void;
 }
 
-function MobileAnnotationBar({ activeTool, activeStyle, isLocked, canUndo, onToolChange, onStyleChange, onUndo }: MobBarProps) {
+function MobileAnnotationBar({ activeTool, activeStyle, isLocked, canUndo, onToolChange, onStyleChange, onUndo, onCollapse }: MobBarProps) {
   const [showColors, setShowColors] = useState(false);
 
   return (
@@ -149,6 +150,17 @@ function MobileAnnotationBar({ activeTool, activeStyle, isLocked, canUndo, onToo
             }}
           />
         </button>
+
+        <div className="flex-shrink-0 w-px h-6 bg-slate-700 mx-0.5" />
+
+        {/* Collapse annotation bar */}
+        <button
+          onClick={onCollapse}
+          title="Hide tools"
+          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors"
+        >
+          <ChevronDown size={17} />
+        </button>
       </div>
     </div>
   );
@@ -169,6 +181,8 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const [revPanelOpen, setRevPanelOpen] = useState(false);
   // Mobile top-bar overflow menu
   const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
+  // Mobile: annotation bottom bar visibility
+  const [annotBarVisible, setAnnotBarVisible] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Undo: undoTrigger increments to signal the canvas to pop its history
@@ -235,7 +249,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const hasPdf = Boolean(drawing.source_file_path);
 
   return (
-    <div className="viewer-shell fixed inset-0 flex flex-col bg-slate-950" style={{ overflowX: 'clip', zIndex: 1200 }}>
+    <div className="viewer-shell fixed inset-0 flex flex-col bg-slate-950 relative" style={{ overflowX: 'clip', zIndex: 1200 }}>
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div
         className="viewer-toolbar flex items-center gap-2 px-3 bg-slate-900 border-b border-slate-700 flex-shrink-0"
@@ -428,15 +442,29 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
       </div>
 
       {/* ── Mobile annotation bottom bar (sm:hidden) ─────────────────────────── */}
-      <MobileAnnotationBar
-        activeTool={activeTool}
-        activeStyle={activeStyle}
-        isLocked={isLocked}
-        canUndo={canUndo}
-        onToolChange={setActiveTool}
-        onStyleChange={handleStyleChange}
-        onUndo={handleUndo}
-      />
+      {annotBarVisible && (
+        <MobileAnnotationBar
+          activeTool={activeTool}
+          activeStyle={activeStyle}
+          isLocked={isLocked}
+          canUndo={canUndo}
+          onToolChange={setActiveTool}
+          onStyleChange={handleStyleChange}
+          onUndo={handleUndo}
+          onCollapse={() => setAnnotBarVisible(false)}
+        />
+      )}
+
+      {/* Restore pill — shown when annotation bar is hidden */}
+      {!annotBarVisible && (
+        <button
+          onClick={() => setAnnotBarVisible(true)}
+          className="sm:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-600 text-slate-300 text-xs font-semibold shadow-lg backdrop-blur-sm"
+          style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <ChevronUp size={12} /> Tools
+        </button>
+      )}
 
       {/* Share modal */}
       {showShare && (
