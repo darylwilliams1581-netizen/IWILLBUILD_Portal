@@ -359,7 +359,7 @@ export default function EstimateEditorPage() {
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden lg:pt-[104px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[104px]">
       <Helmet>
         <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
         <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />

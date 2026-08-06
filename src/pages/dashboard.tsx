@@ -100,7 +100,7 @@ export default function DashboardPage() {
   const recentJobs = jobs.slice(0, 8);
 
   return (
-    <div className="flex-1 bg-muted/30 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-muted/30 flex flex-col">
       <Helmet>
         <title>Dashboard — IWILLBUILD Portal</title>
         <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
