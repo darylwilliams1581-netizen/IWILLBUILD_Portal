@@ -247,8 +247,11 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        {/* Annotation toolbar (left) — hidden on mobile to save space */}
-        <div className="hidden sm:flex flex-shrink-0 p-2 bg-slate-900 border-r border-slate-700 items-start">
+        {/* Annotation toolbar (left) — keep drawing tools available on phones */}
+        <div
+          className="flex flex-shrink-0 p-1 sm:p-2 bg-slate-900 border-r border-slate-700 items-start overflow-y-auto"
+          aria-label="Drawing edit tools"
+        >
           <AnnotationToolbar
             activeTool={activeTool}
             activeStyle={activeStyle}
