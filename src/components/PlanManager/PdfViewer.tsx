@@ -59,23 +59,6 @@ function nextScale(current: number, dir: 1 | -1) {
   return SCALE_STEPS[Math.max(idx - 2, 0)];
 }
 
-// ── Icon-only bottom-bar button (mobile) ──────────────────────────────────────
-function PdfToolBtn({ icon, label, active, onClick }: {
-  icon: React.ReactNode; label: string; active?: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={label}
-      className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-xl min-w-[44px] transition-colors
-        ${active ? 'bg-violet-500/20 text-violet-300' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600'}`}
-    >
-      {icon}
-      <span className="text-[9px] font-semibold leading-none tracking-tight">{label}</span>
-    </button>
-  );
-}
-
 export default function PdfViewer({
   fileUrl, currentPage, totalPages, scale, rotation, fitWidth,
   activeTool, activeStyle, isLocked, annotations, undoTrigger,
@@ -287,7 +270,7 @@ export default function PdfViewer({
             <ZoomIn size={14} />
           </button>
 
-          {/* Rotate — desktop only; on mobile goes into the … menu */}
+          {/* Rotate — desktop only */}
           <div className="hidden md:flex items-center gap-1">
             <div className="w-px h-5 bg-slate-700 mx-1" />
             <button
@@ -306,29 +289,42 @@ export default function PdfViewer({
             </button>
           </div>
 
+          {/* Mobile-only: fit + reset + rotate inline in the same row */}
+          <div className="md:hidden flex items-center gap-0.5 ml-0.5">
+            <div className="w-px h-5 bg-slate-700 mx-0.5" />
+            <button
+              onClick={() => { mobileViewer.fitToScreen(); onFitWidth(true); }}
+              title="Fit"
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${fitWidth ? 'text-violet-400 bg-violet-500/20' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700'}`}
+            >
+              <Shrink size={14} />
+            </button>
+            <button
+              onClick={() => { mobileViewer.resetZoom(); onFitWidth(false); }}
+              title="Reset"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            >
+              <Maximize2 size={14} />
+            </button>
+            <div className="w-px h-5 bg-slate-700 mx-0.5" />
+            <button
+              onClick={() => onRotate(-90)}
+              title="Rotate left"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            >
+              <RotateCcw size={14} />
+            </button>
+            <button
+              onClick={() => onRotate(90)}
+              title="Rotate right"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            >
+              <RotateCw size={14} />
+            </button>
+          </div>
+
           {/* Spacer */}
           <div className="flex-1" />
-        </div>
-
-        {/* ── Mobile bottom toolbar — icon-only, single row ─────────────────── */}
-        <div
-          className="md:hidden flex items-center justify-around bg-slate-900 border-t border-slate-700 shrink-0"
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)', paddingTop: '4px' }}
-        >
-          {/* Fit to screen */}
-          <PdfToolBtn icon={<Shrink size={18} />} label="Fit" active={fitWidth}
-            onClick={() => { mobileViewer.fitToScreen(); onFitWidth(true); }} />
-          {/* Reset zoom */}
-          <PdfToolBtn icon={<Maximize2 size={18} />} label="Reset"
-            onClick={() => { mobileViewer.resetZoom(); onFitWidth(false); }} />
-          {/* Divider */}
-          <div className="w-px h-7 bg-slate-700 shrink-0" />
-          {/* Rotate left */}
-          <PdfToolBtn icon={<RotateCcw size={18} />} label="Left"
-            onClick={() => onRotate(-90)} />
-          {/* Rotate right */}
-          <PdfToolBtn icon={<RotateCw size={18} />} label="Right"
-            onClick={() => onRotate(90)} />
         </div>
 
         {/* PDF canvas area */}
