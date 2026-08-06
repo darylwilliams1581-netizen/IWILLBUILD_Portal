@@ -10,7 +10,6 @@ export default function BuildersCalcPage() {
       <Helmet>
         <title>Builders Calc — IWILLBUILD</title>
         <meta name="description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform for Australian tradies." />
-        <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/builders-calc" />
         <meta property="og:title" content="Builders Calc — IWILLBUILD" />
         <meta property="og:description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform." />
