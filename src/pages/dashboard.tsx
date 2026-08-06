@@ -14,7 +14,7 @@ import {
   BarChart3,
   RefreshCw,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -50,6 +50,7 @@ interface DashTodo {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
+  const navigate = useNavigate();
   const { addWorkLabel } = useTerminology();
   const { role } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -174,9 +175,18 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          {/* Right: banner */}
-          <div className="flex-1 min-w-0 ml-8">
-            <DashboardBanner userId={user?.id ?? 'anon'} />
+          {/* Right: banner + New Job button */}
+          <div className="flex-1 min-w-0 ml-8 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <DashboardBanner userId={user?.id ?? 'anon'} />
+            </div>
+            <button
+              onClick={() => navigate('/jobs/new')}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all border border-primary/30 shadow-md"
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              New Job
+            </button>
           </div>
         </div>
 
