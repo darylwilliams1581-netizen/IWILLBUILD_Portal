@@ -2013,6 +2013,7 @@ export default function HomeScreen() {
 
   const [dashOpen, setDashOpen] = useState(false); // kept for ?panel=dashboard handler below
   const [notesOpen, setNotesOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [cameraPickerOpen, setCameraPickerOpen] = useState(false);
   const [notesPickerOpen, setNotesPickerOpen] = useState(false);
   const [delaysPickerOpen, setDelaysPickerOpen] = useState(false);
