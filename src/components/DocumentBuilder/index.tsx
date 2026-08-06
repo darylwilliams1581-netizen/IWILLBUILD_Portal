@@ -599,10 +599,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
             {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas */}
             {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
               <>
-                {/* ── Desktop ribbon panels (hidden on mobile) ── */}
-                <div className="hidden sm:contents">
-                  {/* STRUCTURE insert strip */}
-                  {activeTab === 'structure' && (
+                {/* ── Desktop ribbon panels (hidden on mobile via RibbonPanel's hidden sm:flex) ── */}
+                {/* STRUCTURE insert strip */}
+                {activeTab === 'structure' && (
                     <RibbonPanel title="Structure">
                       <RibbonGroup label="Import">
                         <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
@@ -726,7 +725,6 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                       </RibbonGroup>
                     </RibbonPanel>
                   )}
-                </div>
 
                 {/* Canvas — full width on mobile, shares row with ribbon on desktop */}
                 <div className="flex-1 flex min-h-0">
@@ -925,7 +923,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 /** Slim left panel wrapper used by non-structure tabs */
 function RibbonPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="w-44 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
+    <div className="hidden sm:flex w-44 flex-shrink-0 border-r border-slate-200 bg-white flex-col overflow-y-auto">
       <div className="px-3 pt-2.5 pb-1 border-b border-slate-100 bg-slate-50">
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
       </div>

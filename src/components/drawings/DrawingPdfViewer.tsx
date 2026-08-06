@@ -354,7 +354,7 @@ export default function DrawingPdfViewer({ drawingId, fileUrl: fileUrlRaw, title
   }
 
   return (
-    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-900" style={{ overflowX: 'clip' }}>
+    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-900" style={{ overflow: 'hidden' }}>
       {/* ── Top toolbar ──────────────────────────────────────────────────────── */}
       <div className="viewer-toolbar flex items-center gap-1.5 px-2 bg-slate-800 border-b border-slate-700 shrink-0"
         style={{
