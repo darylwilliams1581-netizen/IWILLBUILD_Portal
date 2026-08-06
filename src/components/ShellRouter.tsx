@@ -1,13 +1,25 @@
 /**
- * ShellRouter — Home screen dispatcher.
+ * ShellRouter — Two-interface home dispatcher.
  * ─────────────────────────────────────────────────────────────────────────────
- * Always renders HomeScreen (the icon-grid launcher) on both mobile and
- * desktop. The dashboard is a separate route at /dashboard.
+ * Sits at the /home route and decides which interface to render:
+ *
+ *   App shell  (mobile / field)  → HomeScreen (icon grid + MobileTabBar)
+ *   Office shell (desktop)       → OfficeShell wrapping DashboardPage
+ *
+ * Detection priority:
+ *   1. Capacitor native app → always App shell
+ *   2. localStorage override → honour it
+ *   3. Viewport < 768px → App shell
+ *   4. Viewport ≥ 768px → Office shell
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { useShell } from '@/lib/useShell';
+import OfficeShell from '@/layouts/OfficeShell';
 
-const HomeScreen = lazy(() => import('@/pages/home'));
+// Lazy-load both home pages — only one will be rendered per session
+const HomeScreen   = lazy(() => import('@/pages/home'));
+const DashboardPage = lazy(() => import('@/pages/dashboard'));
 
 function PageLoader() {
   return (
@@ -36,9 +48,32 @@ function PageLoader() {
 }
 
 export default function ShellRouter() {
+  const { hasOverride, setShellOverride, viewportShell } = useShell();
+
+  // If there's a stale localStorage override that contradicts the natural
+  // viewport shell, clear it so the viewport-based default takes over.
+  useEffect(() => {
+    if (hasOverride) {
+      setShellOverride(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
+
+  const effectiveIsAppShell = viewportShell === 'app';
+
+  if (effectiveIsAppShell) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <HomeScreen />
+      </Suspense>
+    );
+  }
+
   return (
-    <Suspense fallback={<PageLoader />}>
-      <HomeScreen />
-    </Suspense>
+    <OfficeShell>
+      <Suspense fallback={<PageLoader />}>
+        <DashboardPage />
+      </Suspense>
+    </OfficeShell>
   );
 }

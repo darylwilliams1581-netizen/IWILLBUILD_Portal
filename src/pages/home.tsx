@@ -31,7 +31,6 @@ import NotificationBell from '@/components/NotificationBell';
 import {
   resolveHomeIcons, type HomeIconDef,
 } from '@/lib/homeIcons';
-import PortalSidebar from '@/components/PortalSidebar';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
@@ -2255,11 +2254,9 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="flex-1 flex flex-col relative lg:pt-[104px]"
+    <div className="flex-1 flex flex-col relative overflow-hidden"
       style={{ background: '#edf0f5' }}
     >
-      {/* Desktop nav bars (hidden on mobile) */}
-      <PortalSidebar />
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -2309,9 +2306,9 @@ export default function HomeScreen() {
       </Helmet>
       <h1 className="sr-only">IWILLBUILD Home</h1>
 
-      {/* ── Top bar — mobile only (desktop uses DesktopTopBar via PortalSidebar) ── */}
+      {/* ── Top bar ── */}
       <div
-        className="lg:hidden px-4 pb-3"
+        className="px-4 pb-3"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
           background: 'linear-gradient(150deg, #0d1117 0%, #161d2e 55%, #1a1208 100%)',

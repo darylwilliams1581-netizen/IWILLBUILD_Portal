@@ -176,7 +176,7 @@ export const routes: RouteObject[] = [
   { path: '/portal/dashboard',       element: <Suspense fallback={<PageLoader />}><PortalDashboardPage /></Suspense> },
   { path: '/portal/jobs/:id',        element: <Suspense fallback={<PageLoader />}><PortalJobDetailPage /></Suspense> },
   { path: '/portal/payment-success', element: <Suspense fallback={<PageLoader />}><PortalPaymentSuccessPage /></Suspense> },
-  { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
+  { path: '/dashboard',     loader: () => redirect('/home') },
   // Alias routes — redirect to canonical paths via loader (SSR-safe, no <Navigate> on initial render)
   { path: '/projects',      loader: () => redirect('/jobs') },
   { path: '/stakeholders',  loader: () => redirect('/customers') },
