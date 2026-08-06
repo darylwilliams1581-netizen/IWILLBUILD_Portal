@@ -18,7 +18,7 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import {
   ZoomIn, ZoomOut, RotateCcw, RotateCw,
-  ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Maximize2, Minimize2,
+  ChevronLeft, ChevronRight, Maximize2, Minimize2,
   Loader2, AlertCircle, Shrink,
 } from 'lucide-react';
 import AnnotationCanvas from './AnnotationCanvas';
@@ -75,8 +75,6 @@ export default function PdfViewer({
   // Thumbnail strip: hidden on mobile by default, togglable on desktop
   const [thumbnailsOpen, setThumbnailsOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Mobile: collapse the toolbar row to maximise canvas space
-  const [toolbarVisible, setToolbarVisible] = useState(true);
 
   // ── Mobile gesture hook ────────────────────────────────────────────────────
   const mobileViewer = useMobileViewer({
@@ -209,10 +207,9 @@ export default function PdfViewer({
       )}
 
       {/* Main viewer */}
-      <div className="flex flex-col flex-1 min-w-0 relative">
+      <div className="flex flex-col flex-1 min-w-0">
 
-        {/* Toolbar — collapsible on mobile */}
-        {(toolbarVisible) && (
+        {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-2 bg-slate-900 border-b border-slate-700 flex-shrink-0">
 
           {/* Thumbnail toggle — desktop only */}
@@ -328,27 +325,7 @@ export default function PdfViewer({
 
           {/* Spacer */}
           <div className="flex-1" />
-
-          {/* Mobile: collapse toolbar button — rightmost */}
-          <button
-            onClick={() => setToolbarVisible(false)}
-            title="Hide toolbar"
-            className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0"
-          >
-            <ChevronUp size={14} />
-          </button>
         </div>
-        )}
-
-        {/* Mobile: floating pill to restore toolbar when hidden */}
-        {!toolbarVisible && (
-          <button
-            onClick={() => setToolbarVisible(true)}
-            className="md:hidden absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-600 text-slate-300 text-xs font-semibold shadow-lg backdrop-blur-sm"
-          >
-            <ChevronDown size={12} /> Tools
-          </button>
-        )}
 
         {/* PDF canvas area */}
         <div

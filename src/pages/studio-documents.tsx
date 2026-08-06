@@ -4,7 +4,6 @@
  * Matches the Forms page pattern exactly.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -220,9 +219,9 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
       )}
 
       <AnimatePresence>
-        {showJobPicker && createPortal(
+        {showJobPicker && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
             onClick={() => setShowJobPicker(false)}>
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.15, ease: 'easeOut' }}
@@ -257,8 +256,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
                 </button>
               </div>
             </motion.div>
-          </motion.div>,
-          document.body
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>

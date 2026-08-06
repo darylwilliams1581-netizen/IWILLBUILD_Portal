@@ -12,10 +12,7 @@
  * - overflowX: hidden on outer shell and body row
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type React from 'react';
-import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, MoreHorizontal,
-  MousePointer2, Hand, Minus, ArrowRight, Square, Circle, PenLine, Type, Highlighter, Stamp, Ruler, Undo2,
-} from 'lucide-react';
+import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft, MoreHorizontal } from 'lucide-react';
 import PdfViewer from './PdfViewer';
 import { resolveNativeUrl } from '@/lib/native-url';
 import AnnotationToolbar from './AnnotationToolbar';
@@ -43,129 +40,6 @@ const DEFAULT_STYLE: AnnotationStyle = {
   fillOpacity: 0.15,
 };
 
-// ── Mobile horizontal annotation bar ─────────────────────────────────────────
-const MOB_TOOLS: { tool: ToolType; icon: React.ElementType; label: string }[] = [
-  { tool: 'select',    icon: MousePointer2, label: 'Select'    },
-  { tool: 'pan',       icon: Hand,          label: 'Pan'       },
-  { tool: 'line',      icon: Minus,         label: 'Line'      },
-  { tool: 'arrow',     icon: ArrowRight,    label: 'Arrow'     },
-  { tool: 'rect',      icon: Square,        label: 'Rect'      },
-  { tool: 'circle',    icon: Circle,        label: 'Circle'    },
-  { tool: 'freehand',  icon: PenLine,       label: 'Draw'      },
-  { tool: 'highlight', icon: Highlighter,   label: 'Highlight' },
-  { tool: 'text',      icon: Type,          label: 'Text'      },
-  { tool: 'dimension', icon: Ruler,         label: 'Measure'   },
-  { tool: 'stamp',     icon: Stamp,         label: 'Stamp'     },
-];
-
-const MOB_COLORS = ['#ef4444', '#7c3aed', '#eab308', '#22c55e', '#3b82f6', '#ec4899', '#000000', '#ffffff'];
-
-interface MobBarProps {
-  activeTool: ToolType;
-  activeStyle: AnnotationStyle;
-  isLocked: boolean;
-  canUndo: boolean;
-  onToolChange: (t: ToolType) => void;
-  onStyleChange: (s: Partial<AnnotationStyle>) => void;
-  onUndo: () => void;
-  onCollapse: () => void;
-}
-
-function MobileAnnotationBar({ activeTool, activeStyle, isLocked, canUndo, onToolChange, onStyleChange, onUndo, onCollapse }: MobBarProps) {
-  const [showColors, setShowColors] = useState(false);
-
-  return (
-    <div
-      className="sm:hidden flex-shrink-0 bg-slate-900 border-t border-slate-700"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 4px)' }}
-    >
-      {/* Color swatch row — shown when tapping the active color dot */}
-      {showColors && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700 overflow-x-auto">
-          {MOB_COLORS.map(c => (
-            <button
-              key={c}
-              onClick={() => { onStyleChange({ color: c }); setShowColors(false); }}
-              className="w-7 h-7 rounded-full flex-shrink-0 border-2 transition-transform active:scale-110"
-              style={{
-                backgroundColor: c,
-                borderColor: activeStyle.color === c ? '#7c3aed' : 'transparent',
-                boxShadow: c === '#ffffff' ? 'inset 0 0 0 1px #475569' : undefined,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Main tool row */}
-      <div className="flex items-center overflow-x-auto px-1 py-1 gap-0.5" style={{ scrollbarWidth: 'none' }}>
-        {/* Undo */}
-        <button
-          onClick={onUndo}
-          disabled={!canUndo || isLocked}
-          title="Undo"
-          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-700 disabled:opacity-30 transition-colors"
-        >
-          <Undo2 size={17} />
-        </button>
-
-        <div className="flex-shrink-0 w-px h-6 bg-slate-700 mx-0.5" />
-
-        {/* Tool buttons */}
-        {MOB_TOOLS.map(({ tool, icon: Icon, label }) => {
-          const navOnly = tool === 'select' || tool === 'pan';
-          const disabled = isLocked && !navOnly;
-          return (
-            <button
-              key={tool}
-              onClick={() => !disabled && onToolChange(tool)}
-              title={label}
-              disabled={disabled}
-              className={[
-                'flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors',
-                activeTool === tool
-                  ? 'bg-violet-500 text-white'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700',
-                disabled ? 'opacity-30 cursor-not-allowed' : '',
-              ].join(' ')}
-            >
-              <Icon size={17} />
-            </button>
-          );
-        })}
-
-        <div className="flex-shrink-0 w-px h-6 bg-slate-700 mx-0.5" />
-
-        {/* Active color dot — tap to open swatch row */}
-        <button
-          onClick={() => setShowColors(s => !s)}
-          title="Color"
-          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-700 transition-colors"
-        >
-          <div
-            className="w-5 h-5 rounded-full border-2 border-slate-500"
-            style={{
-              backgroundColor: activeStyle.color,
-              boxShadow: activeStyle.color === '#ffffff' ? 'inset 0 0 0 1px #475569' : undefined,
-            }}
-          />
-        </button>
-
-        <div className="flex-shrink-0 w-px h-6 bg-slate-700 mx-0.5" />
-
-        {/* Collapse annotation bar */}
-        <button
-          onClick={onCollapse}
-          title="Hide tools"
-          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors"
-        >
-          <ChevronDown size={17} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const { state, loadPageAnnotations, setPageAnnotations, saveAnnotations,
     setPage, setScale, rotate, setFitWidth, setTotalPages,
@@ -181,8 +55,6 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const [revPanelOpen, setRevPanelOpen] = useState(false);
   // Mobile top-bar overflow menu
   const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
-  // Mobile: annotation bottom bar visibility
-  const [annotBarVisible, setAnnotBarVisible] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Undo: undoTrigger increments to signal the canvas to pop its history
@@ -249,7 +121,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const hasPdf = Boolean(drawing.source_file_path);
 
   return (
-    <div className="viewer-shell fixed inset-0 flex flex-col bg-slate-950 relative" style={{ overflowX: 'clip', zIndex: 1200 }}>
+    <div className="viewer-shell fixed inset-0 flex flex-col bg-slate-950" style={{ overflowX: 'clip', zIndex: 1200 }}>
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div
         className="viewer-toolbar flex items-center gap-2 px-3 bg-slate-900 border-b border-slate-700 flex-shrink-0"
@@ -375,7 +247,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        {/* Annotation toolbar (left) — hidden on mobile */}
+        {/* Annotation toolbar (left) — hidden on mobile to save space */}
         <div className="hidden sm:flex flex-shrink-0 p-2 bg-slate-900 border-r border-slate-700 items-start">
           <AnnotationToolbar
             activeTool={activeTool}
@@ -440,31 +312,6 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
           />
         )}
       </div>
-
-      {/* ── Mobile annotation bottom bar (sm:hidden) ─────────────────────────── */}
-      {annotBarVisible && (
-        <MobileAnnotationBar
-          activeTool={activeTool}
-          activeStyle={activeStyle}
-          isLocked={isLocked}
-          canUndo={canUndo}
-          onToolChange={setActiveTool}
-          onStyleChange={handleStyleChange}
-          onUndo={handleUndo}
-          onCollapse={() => setAnnotBarVisible(false)}
-        />
-      )}
-
-      {/* Restore pill — shown when annotation bar is hidden */}
-      {!annotBarVisible && (
-        <button
-          onClick={() => setAnnotBarVisible(true)}
-          className="sm:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-600 text-slate-300 text-xs font-semibold shadow-lg backdrop-blur-sm"
-          style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        >
-          <ChevronUp size={12} /> Tools
-        </button>
-      )}
 
       {/* Share modal */}
       {showShare && (
