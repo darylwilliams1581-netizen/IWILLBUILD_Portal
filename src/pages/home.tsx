@@ -26,6 +26,8 @@ import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import NotificationBell from '@/components/NotificationBell';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
+import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
+import { isNative } from '@/lib/capacitor-plugins';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
@@ -1985,6 +1987,13 @@ export default function HomeScreen() {
   const { isPlatformOwner, me, loading, role } = usePermissions();
   const { session } = useSession();
 
+  // ── Native permissions onboarding ─────────────────────────────────────────
+  // Show once after first login on a native device (iOS / Android).
+  // hasCompletedOnboarding() reads localStorage — safe to call on mount.
+  const [showPermOnboarding, setShowPermOnboarding] = useState(
+    () => isNative() && !hasCompletedOnboarding()
+  );
+
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
 
@@ -2075,9 +2084,15 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden"
-      style={{ background: '#edf0f5' }}
-    >
+    <>
+      {/* Permissions onboarding — shown once on native after first login */}
+      {showPermOnboarding && (
+        <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />
+      )}
+
+      <div className="flex-1 flex flex-col relative overflow-hidden"
+        style={{ background: '#edf0f5' }}
+      >
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -2280,5 +2295,6 @@ export default function HomeScreen() {
       </div>{/* end z-10 content wrapper */}
 
     </div>
+    </>
   );
 }

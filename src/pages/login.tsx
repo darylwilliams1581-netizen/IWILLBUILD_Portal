@@ -750,16 +750,25 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-4 flex flex-col items-center gap-3">
-          {/* Native app: open full web portal in system browser */}
+          {/* Native app: subscribe / create account link */}
           {isNativeApp ? (
-            <button
-              type="button"
-              onClick={() => openExternalUrl(WEB_PORTAL_URL)}
-              className="flex items-center gap-1.5 text-xs text-white/35 hover:text-primary transition-colors"
-            >
-              <ExternalLink size={12} />
-              Open web portal
-            </button>
+            <>
+              <Link
+                to="/subscribe"
+                className="flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors font-medium"
+              >
+                <Users size={12} />
+                New to IWILLBUILD? Start a free trial
+              </Link>
+              <button
+                type="button"
+                onClick={() => openExternalUrl(WEB_PORTAL_URL)}
+                className="flex items-center gap-1.5 text-xs text-white/25 hover:text-primary transition-colors"
+              >
+                <ExternalLink size={12} />
+                Open web portal
+              </button>
+            </>
           ) : (
             <Link
               to="/"
