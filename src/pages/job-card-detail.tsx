@@ -240,6 +240,88 @@ function SignaturePad({ value, onChange }: { value: string | null; onChange: (v:
   );
 }
 
+// ── Photo source picker sheet ─────────────────────────────────────────────────
+function PhotoSourceSheet({
+  open,
+  onClose,
+  onCamera,
+  onLibrary,
+  onFiles,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCamera: () => void;
+  onLibrary: () => void;
+  onFiles: () => void;
+}) {
+  const openedAt = useRef(0);
+  useEffect(() => { if (open) openedAt.current = Date.now(); }, [open]);
+
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center"
+      onClick={(e) => {
+        if (Date.now() - openedAt.current < 300) return;
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50" onClick={() => { if (Date.now() - openedAt.current >= 300) onClose(); }} />
+      <div className="relative w-full max-w-sm bg-white rounded-t-3xl shadow-2xl pb-safe">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        <p className="text-center text-xs font-semibold text-gray-400 pb-3">Add Photo</p>
+        <div className="flex flex-col gap-1 px-4 pb-4">
+          <button
+            onClick={() => { onClose(); setTimeout(onCamera, 120); }}
+            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+              <Camera size={18} className="text-violet-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Take Photo</p>
+              <p className="text-xs text-gray-400">Open camera</p>
+            </div>
+          </button>
+          <button
+            onClick={() => { onClose(); setTimeout(onLibrary, 120); }}
+            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <Image size={18} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Photo Library</p>
+              <p className="text-xs text-gray-400">Choose from camera roll</p>
+            </div>
+          </button>
+          <button
+            onClick={() => { onClose(); setTimeout(onFiles, 120); }}
+            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+              <Upload size={18} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Browse Files</p>
+              <p className="text-xs text-gray-400">Upload from device storage</p>
+            </div>
+          </button>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full py-3.5 text-sm font-semibold text-gray-500 hover:text-gray-700 border-t border-gray-100 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Photo upload section ──────────────────────────────────────────────────────
 function PhotoSection({ cardId, photos, onPhotosChange }: {
   cardId: number;
@@ -248,15 +330,20 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);    // browse files (no capture)
+  const libraryInputRef = useRef<HTMLInputElement>(null); // photo library (no capture)
+  const cameraInputRef = useRef<HTMLInputElement>(null);  // camera only (capture=environment)
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
+  const isNative = typeof window !== 'undefined' && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+
+  async function uploadFiles(files: File[]) {
+    if (!files.length) return;
     setUploading(true);
     setUploadError('');
     try {
       const fd = new FormData();
-      for (const f of Array.from(files)) fd.append('photos', f);
+      for (const f of files) fd.append('photos', f);
       const res = await fetch(`/api/job-cards/${cardId}/photos`, {
         method: 'POST',
         credentials: 'include',
@@ -270,7 +357,63 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (libraryInputRef.current) libraryInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files?.length) return;
+    await uploadFiles(Array.from(files));
+  }
+
+  // Native camera via Capacitor
+  async function handleNativeCamera(source: 'CAMERA' | 'PHOTOS') {
+    try {
+      const { Camera: Cap } = (window as unknown as { Capacitor: { Plugins: { Camera: { getPhoto: (opts: unknown) => Promise<{ base64String?: string; dataUrl?: string; webPath?: string; path?: string; format: string }> } } } }).Capacitor.Plugins;
+      const photo = await Cap.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: 'base64',
+        source,
+        correctOrientation: true,
+      });
+      const b64 = photo.base64String ?? photo.dataUrl?.split(',')[1];
+      if (!b64) throw new Error('No image data returned');
+      const mime = `image/${photo.format === 'jpg' ? 'jpeg' : photo.format}`;
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const file = new File([bytes], `photo.${photo.format}`, { type: mime });
+      await uploadFiles([file]);
+    } catch (err) {
+      const msg = String((err as Error)?.message ?? err);
+      if (!msg.toLowerCase().includes('cancel')) {
+        setUploadError(msg || 'Camera failed');
+      }
+    }
+  }
+
+  function handleAddPhoto() {
+    setPickerOpen(true);
+  }
+
+  function handlePickCamera() {
+    if (isNative) {
+      void handleNativeCamera('CAMERA');
+    } else {
+      cameraInputRef.current?.click();
+    }
+  }
+
+  function handlePickLibrary() {
+    if (isNative) {
+      void handleNativeCamera('PHOTOS');
+    } else {
+      libraryInputRef.current?.click();
+    }
+  }
+
+  function handlePickFiles() {
+    fileInputRef.current?.click();
   }
 
   async function handleDelete(photoId: number) {
@@ -286,12 +429,20 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   }
 
   return (
+    <>
+    <PhotoSourceSheet
+      open={pickerOpen}
+      onClose={() => setPickerOpen(false)}
+      onCamera={handlePickCamera}
+      onLibrary={handlePickLibrary}
+      onFiles={handlePickFiles}
+    />
     <Section
       title={`Photos${photos.length > 0 ? ` (${photos.length})` : ''}`}
       icon={Camera}
       action={
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleAddPhoto}
           disabled={uploading}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors disabled:opacity-50"
         >
@@ -300,15 +451,14 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </button>
       }
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        capture="environment"
-        className="hidden"
-        onChange={e => void handleFiles(e.target.files)}
-      />
+      {/* Hidden file inputs — no capture= so iOS shows full picker */}
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={e => void handleFiles(e.target.files)} />
+      <input ref={libraryInputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={e => void handleFiles(e.target.files)} />
+      {/* Camera-only input for web fallback */}
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={e => void handleFiles(e.target.files)} />
 
       {uploadError && (
         <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -355,6 +505,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </div>
       )}
     </Section>
+    </>
   );
 }
 
