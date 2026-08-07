@@ -1511,11 +1511,11 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
       if (!res.ok) throw new Error(data.error ?? 'Sign in failed');
       if (data.alreadySignedIn) {
         setError('You are already signed in to this job.');
-        await loadStatus(selectedJob.id);
       } else {
         setResult({ type: 'signin', name: selectedJob.name });
-        await loadStatus(selectedJob.id);
       }
+      // Always refresh status after action
+      void loadStatus(selectedJob.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
@@ -1536,11 +1536,11 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
       if (!res.ok) throw new Error(data.error ?? 'Sign out failed');
       if (data.notSignedIn) {
         setError('You are not currently signed in to this job.');
-        await loadStatus(selectedJob.id);
       } else {
         setResult({ type: 'signout', name: selectedJob.name });
-        await loadStatus(selectedJob.id);
       }
+      // Always refresh status after action
+      void loadStatus(selectedJob.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign out failed');
     } finally {
@@ -1671,122 +1671,133 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                 )}
               </div>
 
-              {/* Status + action */}
+              {/* Status + action — always renders once a job is selected */}
               {selectedJob && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
 
-                  {statusLoading ? (
+                  {/* Loading spinner */}
+                  {statusLoading && (
                     <div className="flex items-center justify-center py-6">
                       <Loader2 size={20} className="animate-spin text-indigo-400" />
                     </div>
-                  ) : status && (
-                    <>
-                      {/* Current status card */}
-                      <div className={`rounded-2xl px-4 py-3.5 flex items-center gap-3 ${isSignedIn ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isSignedIn ? 'bg-emerald-100' : 'bg-gray-100'}`}>
-                          {isSignedIn
-                            ? <CheckCircle2 size={20} className="text-emerald-600" />
-                            : <LogOut size={20} className="text-gray-400" />
-                          }
-                        </div>
-                        <div>
-                          <p className={`font-bold text-sm ${isSignedIn ? 'text-emerald-700' : 'text-gray-500'}`}>
-                            {isSignedIn ? 'Currently signed in' : 'Not signed in'}
-                          </p>
-                          {status.lastActionAt && (
-                            <p className="text-xs text-gray-400">
-                              Last {status.lastAction} at {formatTime(status.lastActionAt)}
-                            </p>
-                          )}
-                        </div>
+                  )}
+
+                  {/* Current status card — show once we have status OR after a result */}
+                  {!statusLoading && (status || result) && (
+                    <div className={`rounded-2xl px-4 py-3.5 flex items-center gap-3 ${isSignedIn ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isSignedIn ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                        {isSignedIn
+                          ? <CheckCircle2 size={20} className="text-emerald-600" />
+                          : <LogOut size={20} className="text-gray-400" />
+                        }
                       </div>
-
-                      {/* Result flash */}
-                      {result && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-violet-50 border border-violet-200'}`}
-                        >
-                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-violet-600'} />
-                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-violet-800'}`}>
-                            {result.type === 'signin'
-                              ? `Signed in to ${result.name}`
-                              : `Signed out${result.name ? ` — ${result.name}` : ''}`
-                            }
+                      <div>
+                        <p className={`font-bold text-sm ${isSignedIn ? 'text-emerald-700' : 'text-gray-500'}`}>
+                          {isSignedIn ? 'Currently signed in' : 'Not signed in'}
+                        </p>
+                        {status?.lastActionAt && (
+                          <p className="text-xs text-gray-400">
+                            Last {status.lastAction} at {formatTime(status.lastActionAt)}
                           </p>
-                        </motion.div>
-                      )}
-
-                      {/* Error */}
-                      {error && (
-                        <p className="text-red-500 text-xs font-medium bg-red-50 rounded-xl px-3 py-2">{error}</p>
-                      )}
-
-                      {/* Sign in / out buttons */}
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <button
-                          onClick={() => void handleSignIn()}
-                          disabled={acting || isSignedIn}
-                          className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                        >
-                          {acting && !isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
-                          Sign In
-                        </button>
-                        <button
-                          onClick={() => void handleSignOut()}
-                          disabled={acting || !isSignedIn}
-                          className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                        >
-                          {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
-                          Sign Out
-                        </button>
+                        )}
                       </div>
+                    </div>
+                  )}
 
-                      {/* Supervisor: on-site roster */}
-                      {isSupervisor && status.currentlyOnSite.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                            <UserCheck size={12} />
-                            On Site Now ({status.currentlyOnSite.length})
-                          </p>
-                          <div className="space-y-1.5">
-                            {status.currentlyOnSite.map(u => (
-                              <div
-                                key={u.user_id}
-                                className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5"
-                              >
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                                  <User size={14} className="text-indigo-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-gray-900 font-semibold text-sm truncate">
-                                    {u.user_name ?? u.user_email ?? 'Unknown'}
-                                  </p>
-                                  <p className="text-gray-400 text-xs">
-                                    Signed in {u.signed_in_at ? formatTime(u.signed_in_at) : ''}
-                                  </p>
-                                </div>
-                                <button
-                                  onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
-                                  disabled={forcingOut === u.user_id}
-                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 active:bg-violet-300 disabled:opacity-40 text-violet-800 text-xs font-bold flex items-center gap-1 transition-colors"
-                                >
-                                  {forcingOut === u.user_id
-                                    ? <Loader2 size={11} className="animate-spin" />
-                                    : <LogOut size={11} />
-                                  }
-                                  Sign out
-                                </button>
-                              </div>
-                            ))}
+                  {/* Result flash */}
+                  {result && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                      className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-violet-50 border border-violet-200'}`}
+                    >
+                      <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-violet-600'} />
+                      <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-violet-800'}`}>
+                        {result.type === 'signin'
+                          ? `Signed in to ${result.name}`
+                          : `Signed out${result.name ? ` — ${result.name}` : ''}`
+                        }
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {/* Error — always visible */}
+                  {error && (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                      <p className="text-red-600 text-xs font-medium flex-1">{error}</p>
+                      <button
+                        onClick={() => { setError(''); void loadStatus(selectedJob.id); }}
+                        className="text-red-400 hover:text-red-600 text-xs underline shrink-0"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sign In / Sign Out buttons — ALWAYS shown once job selected, not gated on status */}
+                  {!statusLoading && (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        onClick={() => void handleSignIn()}
+                        disabled={acting || isSignedIn}
+                        className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                      >
+                        {acting && !isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => void handleSignOut()}
+                        disabled={acting || !isSignedIn}
+                        className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                      >
+                        {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Supervisor: on-site roster */}
+                  {!statusLoading && isSupervisor && status && status.currentlyOnSite.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <UserCheck size={12} />
+                        On Site Now ({status.currentlyOnSite.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {status.currentlyOnSite.map(u => (
+                          <div
+                            key={u.user_id}
+                            className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                              <User size={14} className="text-indigo-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-900 font-semibold text-sm truncate">
+                                {u.user_name ?? u.user_email ?? 'Unknown'}
+                              </p>
+                              <p className="text-gray-400 text-xs">
+                                Signed in {u.signed_in_at ? formatTime(u.signed_in_at) : ''}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
+                              disabled={forcingOut === u.user_id}
+                              className="shrink-0 h-7 px-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 active:bg-violet-300 disabled:opacity-40 text-violet-800 text-xs font-bold flex items-center gap-1 transition-colors"
+                            >
+                              {forcingOut === u.user_id
+                                ? <Loader2 size={11} className="animate-spin" />
+                                : <LogOut size={11} />
+                              }
+                              Sign out
+                            </button>
                           </div>
-                        </div>
-                      )}
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                      {isSupervisor && status.currentlyOnSite.length === 0 && (
-                        <p className="text-center text-gray-400 text-xs py-2">No one else currently on site</p>
-                      )}
-                    </>
+                  {!statusLoading && isSupervisor && status && status.currentlyOnSite.length === 0 && (
+                    <p className="text-center text-gray-400 text-xs py-2">No one else currently on site</p>
                   )}
                 </motion.div>
               )}
