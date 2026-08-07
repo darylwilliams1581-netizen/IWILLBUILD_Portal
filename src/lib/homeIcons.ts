@@ -57,7 +57,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'delays',        label: 'Delays',           icon: Clock,            href: '?panel=delays-picker',        bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
   { key: 'scheduler',     label: 'Scheduler',        icon: CalendarDays,     href: '/scheduler',                  bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
   { key: 'job_card',      label: 'Job Card',         icon: Zap,              href: '/job-cards',                  bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
-  { key: 'risky',         label: 'Risk & Permits',   icon: ShieldAlert,      href: '?panel=risky-picker',         bg: 'bg-rose-600',    fg: 'text-white', group: 'field' },
+  { key: 'risky',         label: 'Risk Assessment & Work Permits',   icon: ShieldAlert,      href: '?panel=risky-picker',         bg: 'bg-rose-600',    fg: 'text-white', group: 'field' },
   { key: 'incidents',     label: 'Incidents',        icon: AlertTriangle,    href: '/incidents',                  bg: 'bg-red-700',     fg: 'text-white', group: 'field' },
   { key: 'log_cost',      label: 'Log Cost',         icon: DollarSign,       href: '?panel=log-cost',             bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
 ];

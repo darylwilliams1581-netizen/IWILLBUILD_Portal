@@ -552,7 +552,7 @@ export default function JobSafety({ jobId }: { jobId: number }) {
           <AlertTriangle size={18} className="text-amber-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-amber-900">Risky &amp; Permits</p>
+          <p className="text-sm font-bold text-amber-900">Risk Assessment &amp; Work Permits</p>
           <p className="text-xs text-amber-700">Risk assessments and permit-to-work for this job</p>
         </div>
         <ChevronDown size={15} className="text-amber-500 -rotate-90 shrink-0 group-hover:translate-x-0.5 transition-transform" />

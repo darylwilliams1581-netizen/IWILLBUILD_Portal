@@ -995,7 +995,7 @@ export default function JobRiskyPage() {
     return (
       <>
         <Helmet>
-          <title>Risky & Permits — {jobName}</title>
+          <title>Risk Assessment & Work Permits — {jobName}</title>
           <meta name="description" content="Field risk assessment and permit check." />
           <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
           <meta name="robots" content="noindex, nofollow" />
@@ -1422,7 +1422,7 @@ export default function JobRiskyPage() {
   return (
     <>
       <Helmet>
-        <title>Risky & Permits — {jobName}</title>
+        <title>Risk Assessment & Work Permits — {jobName}</title>
         <meta name="description" content="Field risk assessments and permit checks for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
         <meta name="robots" content="noindex, nofollow" />
@@ -1437,7 +1437,7 @@ export default function JobRiskyPage() {
             <ChevronLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-sm">Risky & Permits</h1>
+            <h1 className="font-bold text-sm">Risk Assessment & Work Permits</h1>
             <p className="text-xs text-rose-200 truncate">{jobName}</p>
           </div>
           <button
