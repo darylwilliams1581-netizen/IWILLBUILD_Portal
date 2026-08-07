@@ -2079,6 +2079,11 @@ export default function CameraPage() {
   const [flashOn, setFlashOn] = useState(false);
   const [frontCamera, setFrontCamera] = useState(false);
 
+  // ── Camera open error — shown when getPhoto fails for a non-cancel reason ──
+  // Cleared on next successful capture or on shutter tap.
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const libraryFallbackRef = useRef<HTMLInputElement>(null);
+
   // Auto-expand tray when a new capture is added
   useEffect(() => {
     if (captures.length > prevCapturesLenRef.current) {
@@ -2207,6 +2212,51 @@ export default function CameraPage() {
             </div>
           </div>
         )}
+
+        {/* Camera open error — shown when getPhoto fails for a non-cancel reason */}
+        {cameraError && !picker.checkingPermission && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 pointer-events-auto">
+            <div className="flex flex-col items-center gap-3 bg-black/70 rounded-3xl px-6 py-6 max-w-xs w-full">
+              <AlertCircle size={32} className="text-red-400" />
+              <p className="text-white font-semibold text-sm text-center">Camera could not be opened</p>
+              <p className="text-white/50 text-xs text-center leading-snug">{cameraError}</p>
+              <div className="flex flex-col gap-2 w-full mt-1">
+                <button
+                  onClick={() => {
+                    setCameraError(null);
+                    void picker.openCamera({
+                      direction: frontCamera ? 'front' : 'rear',
+                      flashMode: flashOn ? 'on' : 'off',
+                      captureQuality: settings.quality === 'low' ? 72 : settings.quality === 'high' ? 92 : 84,
+                    });
+                  }}
+                  className="w-full py-2.5 rounded-2xl bg-violet-600 text-white text-sm font-bold"
+                >
+                  Try again
+                </button>
+                <button
+                  onClick={() => { setCameraError(null); libraryFallbackRef.current?.click(); }}
+                  className="w-full py-2.5 rounded-2xl bg-white/10 text-white/80 text-sm font-semibold flex items-center justify-center gap-2"
+                >
+                  <FolderOpen size={14} /> Choose from Photo Library
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fallback library input — used when camera fails */}
+        <input
+          ref={libraryFallbackRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) handleFileFromPicker(f);
+            e.target.value = '';
+          }}
+        />
       </div>
 
       {/* ═══ CAPTURED TRAY OVERLAY ═══ */}
@@ -2481,16 +2531,23 @@ export default function CameraPage() {
                 whileTap={{ scale: 0.91 }}
                 whileHover={{ scale: 1.03 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-                onClick={() => void picker.openCamera({
-                  direction: frontCamera ? 'front' : 'rear',
-                  flashMode: flashOn ? 'on' : 'off',
-                  // Pass quality hint so native capture matches the user's quality setting.
-                  // These values mirror the JPEG quality used in processImage so the two
-                  // stages stay in sync and we don't double-compress at mismatched levels.
-                  captureQuality: settings.quality === 'low' ? 72
-                    : settings.quality === 'high' ? 92
-                    : 84,
-                })}
+                onClick={() => {
+                  setCameraError(null);
+                  void picker.openCamera({
+                    direction: frontCamera ? 'front' : 'rear',
+                    flashMode: flashOn ? 'on' : 'off',
+                    // Pass quality hint so native capture matches the user's quality setting.
+                    // These values mirror the JPEG quality used in processImage so the two
+                    // stages stay in sync and we don't double-compress at mismatched levels.
+                    captureQuality: settings.quality === 'low' ? 72
+                      : settings.quality === 'high' ? 92
+                      : 84,
+                  }).catch((err: unknown) => {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    const isCancel = msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('dismiss') || msg.toLowerCase().includes('user cancelled');
+                    if (!isCancel) setCameraError(msg || 'Camera could not be opened.');
+                  });
+                }}
                 className="relative flex items-center justify-center"
                 aria-label="Take photo"
                 disabled={picker.checkingPermission || !settingsLoaded}

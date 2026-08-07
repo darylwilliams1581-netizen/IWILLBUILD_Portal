@@ -72,18 +72,31 @@ import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 // hides → white screen in TestFlight.
 //
 // The enum values are pure string constants (verified from the package source):
+//   CameraResultType.Uri     = 'uri'      ← PRIMARY on iOS 17+ (most reliable)
 //   CameraResultType.Base64  = 'base64'
 //   CameraResultType.DataUrl = 'dataUrl'
 //   CameraSource.Camera      = 'CAMERA'
+//   CameraSource.Photos      = 'PHOTOS'
 //   CameraDirection.Rear     = 'REAR'
 //   CameraDirection.Front    = 'FRONT'
 //
 // Using inline literals is safe, zero-risk, and eliminates the startup crash.
 // The actual plugin instance is still lazy-loaded via getCameraPlugin() which
 // is already guarded by isNative() and wrapped in try/catch.
+//
+// RESULT TYPE ORDER (camera):
+//   1. 'uri'    — returns webPath (a capacitor:// URL fetchable as blob). Most
+//                 reliable on iOS 17+. No base64 decode, no memory spike.
+//   2. 'base64' — fallback for older iOS where webPath may be null.
+//   3. 'dataUrl'— last resort.
+//
+// RESULT TYPE ORDER (library):
+//   Same order — 'uri' first, then 'base64', then 'dataUrl'.
+const CAM_RESULT_URI     = 'uri'     as const;
 const CAM_RESULT_BASE64  = 'base64'  as const;
 const CAM_RESULT_DATAURL = 'dataUrl' as const;
 const CAM_SOURCE_CAMERA  = 'CAMERA'  as const;
+const CAM_SOURCE_PHOTOS  = 'PHOTOS'  as const;
 const CAM_DIR_REAR       = 'REAR'    as const;
 const CAM_DIR_FRONT      = 'FRONT'   as const;
 
@@ -276,6 +289,29 @@ interface NativeCameraPluginBridge {
 }
 
 /**
+ * Fetch a capacitor:// or file:// webPath returned by Camera.getPhoto({resultType:'uri'})
+ * and convert it to a File. This is the most reliable path on iOS 17+.
+ *
+ * WHY: On iOS 17+, Camera.getPhoto with resultType:'base64' sometimes returns an
+ * empty base64String even though the photo was captured successfully. The webPath
+ * (a capacitor:// URL) is always populated and can be fetched directly as a blob
+ * without any base64 decode overhead or memory spike.
+ */
+async function webPathToFile(webPath: string, format: string, prefix: string): Promise<File | null> {
+  try {
+    const res = await fetch(webPath);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const mimeType = blob.type || (format === 'png' ? 'image/png' : 'image/jpeg');
+    const ext = format === 'png' ? 'png' : 'jpg';
+    return new File([blob], `${prefix}_${Date.now()}.${ext}`, { type: mimeType });
+  } catch (e) {
+    console.warn('[camera] webPathToFile failed:', e);
+    return null;
+  }
+}
+
+/**
  * Read a file from the native filesystem via window.Capacitor.Plugins.Filesystem.
  * Used as a fallback when Camera.getPhoto returns an empty base64String.
  * Returns null if the plugin is unavailable or the read fails.
@@ -453,100 +489,110 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     // Dynamic import('@capacitor/camera') can produce a broken chunk in the
     // iOS bundle where the resolved module is not the registered bridge object,
     // causing getPhoto() to silently fail or show a black screen.
-    if (isNative()) {
-      const CameraPlugin = getNativeCameraPlugin();
-      if (CameraPlugin) {
-        try {
-          const nativeQuality = opts?.captureQuality ?? 84;
+    const CameraPlugin = getNativeCameraPlugin();
+    if (!CameraPlugin) {
+      console.warn('[camera] CameraPlugin not available on native — cannot open camera');
+      return;
+    }
 
-          // ── Attempt 1: base64 result (most compatible across iOS versions) ──
-          const photo = await CameraPlugin.getPhoto({
-            quality: nativeQuality,
-            allowEditing: false,
-            resultType: CAM_RESULT_BASE64,
-            source: CAM_SOURCE_CAMERA,
-            direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
-            flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
-            saveToGallery: false,
-          });
+    const nativeQuality = opts?.captureQuality ?? 84;
+    const direction = opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR;
+    const flashMode = opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto';
 
-          if (photo.base64String) {
-            try {
-              const blob = base64ToBlob(
-                photo.base64String,
-                photo.format === 'png' ? 'image/png' : 'image/jpeg',
-              );
-              const file = new File([blob], `capture_${Date.now()}.${photo.format ?? 'jpg'}`, { type: blob.type });
-              handleFile(file);
-              return;
-            } catch (decodeErr) {
-              console.warn('[camera] base64 decode failed, trying dataUrl fallback:', decodeErr);
-            }
-          }
+    const baseOpts = {
+      quality: nativeQuality,
+      allowEditing: false,
+      source: CAM_SOURCE_CAMERA,
+      direction,
+      flashMode,
+      saveToGallery: false,
+    };
 
-          // ── Attempt 2: dataUrl result (fallback when base64String is empty) ──
-          try {
-            const photo2 = await CameraPlugin.getPhoto({
-              quality: nativeQuality,
-              allowEditing: false,
-              resultType: CAM_RESULT_DATAURL,
-              source: CAM_SOURCE_CAMERA,
-              direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
-              flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
-              saveToGallery: false,
-            });
-            if (photo2.dataUrl) {
-              const res = await fetch(photo2.dataUrl);
-              const blob = await res.blob();
-              const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-              handleFile(file);
-              return;
-            }
-          } catch (dataUrlErr) {
-            console.warn('[camera] dataUrl fallback failed:', dataUrlErr);
-          }
+    try {
+      // ── Attempt 1: URI result (most reliable on iOS 17+) ──────────────────
+      // Returns a capacitor:// webPath that can be fetched directly as a blob.
+      // No base64 decode, no memory spike, works on all modern iOS versions.
+      console.log('[camera] attempt 1: resultType=uri');
+      const photo1 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_URI });
+      console.log('[camera] uri result: webPath=', photo1.webPath, 'path=', photo1.path, 'format=', photo1.format);
 
-          // ── Attempt 3: URI result + Filesystem.readFile ──────────────────────
-          // Last resort — some iOS 17+ builds return an empty base64String but
-          // a valid path. Read the file directly via the Filesystem plugin.
-          try {
-            const photo3 = await CameraPlugin.getPhoto({
-              quality: nativeQuality,
-              allowEditing: false,
-              resultType: 'uri',
-              source: CAM_SOURCE_CAMERA,
-              direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
-              flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
-              saveToGallery: false,
-            });
-            const filePath = photo3.path ?? photo3.webPath;
-            if (filePath) {
-              const read = await readFileAsBase64(filePath);
-              if (read) {
-                const blob = base64ToBlob(read.base64, read.mimeType);
-                const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type });
-                handleFile(file);
-                return;
-              }
-            }
-          } catch (uriErr) {
-            console.warn('[camera] URI fallback failed:', uriErr);
-          }
-
-          console.warn('[camera] all result type attempts failed — no photo data returned');
+      const webPath = photo1.webPath ?? photo1.path;
+      if (webPath) {
+        const file = await webPathToFile(webPath, photo1.format ?? 'jpg', 'capture');
+        if (file) {
+          console.log('[camera] uri→blob success: size=', file.size, 'type=', file.type);
+          handleFile(file);
           return;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-          const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
-          if (!isCancel) {
-            console.warn('[camera] native Camera.getPhoto failed:', err);
-          }
-          // Do not fall through to file input on native
+        }
+        console.warn('[camera] webPathToFile returned null, trying base64 fallback');
+      } else {
+        console.warn('[camera] uri result had no webPath/path, trying base64 fallback');
+      }
+
+      // ── Attempt 2: base64 result ──────────────────────────────────────────
+      console.log('[camera] attempt 2: resultType=base64');
+      const photo2 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_BASE64 });
+      console.log('[camera] base64 result: base64String length=', photo2.base64String?.length ?? 0, 'format=', photo2.format);
+
+      if (photo2.base64String) {
+        try {
+          const blob = base64ToBlob(
+            photo2.base64String,
+            photo2.format === 'png' ? 'image/png' : 'image/jpeg',
+          );
+          const file = new File([blob], `capture_${Date.now()}.${photo2.format ?? 'jpg'}`, { type: blob.type });
+          console.log('[camera] base64→blob success: size=', file.size);
+          handleFile(file);
+          return;
+        } catch (decodeErr) {
+          console.warn('[camera] base64 decode failed:', decodeErr);
+        }
+      }
+
+      // ── Attempt 3: dataUrl result ─────────────────────────────────────────
+      console.log('[camera] attempt 3: resultType=dataUrl');
+      const photo3 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_DATAURL });
+      console.log('[camera] dataUrl result: dataUrl length=', photo3.dataUrl?.length ?? 0);
+
+      if (photo3.dataUrl) {
+        try {
+          const res = await fetch(photo3.dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+          console.log('[camera] dataUrl→blob success: size=', file.size);
+          handleFile(file);
+          return;
+        } catch (dataUrlErr) {
+          console.warn('[camera] dataUrl fallback failed:', dataUrlErr);
+        }
+      }
+
+      // ── Attempt 4: URI + Filesystem.readFile ──────────────────────────────
+      // Last resort — read the file bytes directly via the Filesystem plugin.
+      console.log('[camera] attempt 4: uri + Filesystem.readFile');
+      const photo4 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_URI });
+      const filePath = photo4.path ?? photo4.webPath;
+      if (filePath) {
+        const read = await readFileAsBase64(filePath);
+        if (read) {
+          const blob = base64ToBlob(read.base64, read.mimeType);
+          const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type });
+          console.log('[camera] Filesystem.readFile success: size=', file.size);
+          handleFile(file);
           return;
         }
       }
+
+      console.warn('[camera] all 4 result type attempts failed — no photo data returned');
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
+      if (!isCancel) {
+        console.warn('[camera] native Camera.getPhoto failed:', err);
+      }
+      // Do not fall through to file input on native — getPhoto handles its own UI
     }
-    // Native plugin not available — nothing more to do on native
   }, [handleFile]);
 
   // ── Internal: check photos permission + open input ────────────────────────
@@ -569,81 +615,97 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     // permission prompt internally and opens the system photo picker directly.
     // This is the correct pattern for Capacitor + WKWebView photo library access.
     const CameraPlugin = getNativeCameraPlugin();
-    if (CameraPlugin) {
-      setChecking(true);
-      try {
-        const photo = await CameraPlugin.getPhoto({
-          quality: 84,
-          allowEditing: false,
-          resultType: CAM_RESULT_BASE64,
-          source: 'PHOTOS',
-          saveToGallery: false,
-        });
-
-        if (photo.base64String) {
-          try {
-            const blob = base64ToBlob(
-              photo.base64String,
-              photo.format === 'png' ? 'image/png' : 'image/jpeg',
-            );
-            const file = new File([blob], `photo_${Date.now()}.${photo.format ?? 'jpg'}`, { type: blob.type });
-            // Check if limited access was indicated
-            setPhotosLimited(false); // reset — getPhoto handles its own limited picker
-            handleFile(file);
-            return;
-          } catch (decodeErr) {
-            console.warn('[library] base64 decode failed, trying dataUrl:', decodeErr);
-          }
-        }
-
-        // dataUrl fallback
-        if (photo.dataUrl) {
-          try {
-            const res = await fetch(photo.dataUrl);
-            const blob = await res.blob();
-            const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-            handleFile(file);
-            return;
-          } catch (dataUrlErr) {
-            console.warn('[library] dataUrl fallback failed:', dataUrlErr);
-          }
-        }
-
-        // URI fallback
-        const filePath = photo.path ?? photo.webPath;
-        if (filePath) {
-          const read = await readFileAsBase64(filePath);
-          if (read) {
-            const blob = base64ToBlob(read.base64, read.mimeType);
-            const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type });
-            handleFile(file);
-          }
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-        const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
-        if (!isCancel) {
-          // Check if it's a permission denial
-          if (msg.includes('permission') || msg.includes('denied') || msg.includes('not authorized')) {
-            setDenied('photos');
-            setExplainer({
-              type: 'photos',
-              denied: true,
-              onNotNow: () => setExplainer(null),
-              onEnable: async () => { setExplainer(null); },
-            });
-          } else {
-            console.warn('[library] Camera.getPhoto({source:PHOTOS}) failed:', err);
-          }
-        }
-      } finally {
-        setChecking(false);
-      }
+    if (!CameraPlugin) {
+      libraryInputRef.current?.click();
       return;
     }
 
-    // Plugin not available — fall back to file input (web-only path)
-    libraryInputRef.current?.click();
+    setChecking(true);
+    try {
+      const baseOpts = {
+        quality: 84,
+        allowEditing: false,
+        source: CAM_SOURCE_PHOTOS,
+        saveToGallery: false,
+      };
+
+      // ── Attempt 1: URI result (most reliable on iOS 17+) ──────────────────
+      console.log('[library] attempt 1: resultType=uri');
+      const photo1 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_URI });
+      console.log('[library] uri result: webPath=', photo1.webPath, 'path=', photo1.path, 'format=', photo1.format);
+
+      const webPath = photo1.webPath ?? photo1.path;
+      if (webPath) {
+        const file = await webPathToFile(webPath, photo1.format ?? 'jpg', 'photo');
+        if (file) {
+          console.log('[library] uri→blob success: size=', file.size, 'type=', file.type);
+          setPhotosLimited(false);
+          handleFile(file);
+          return;
+        }
+        console.warn('[library] webPathToFile returned null, trying base64 fallback');
+      }
+
+      // ── Attempt 2: base64 result ──────────────────────────────────────────
+      console.log('[library] attempt 2: resultType=base64');
+      const photo2 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_BASE64 });
+      if (photo2.base64String) {
+        try {
+          const blob = base64ToBlob(
+            photo2.base64String,
+            photo2.format === 'png' ? 'image/png' : 'image/jpeg',
+          );
+          const file = new File([blob], `photo_${Date.now()}.${photo2.format ?? 'jpg'}`, { type: blob.type });
+          setPhotosLimited(false);
+          handleFile(file);
+          return;
+        } catch (decodeErr) {
+          console.warn('[library] base64 decode failed:', decodeErr);
+        }
+      }
+
+      // ── Attempt 3: dataUrl result ─────────────────────────────────────────
+      if (photo2.dataUrl) {
+        try {
+          const res = await fetch(photo2.dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+          handleFile(file);
+          return;
+        } catch (dataUrlErr) {
+          console.warn('[library] dataUrl fallback failed:', dataUrlErr);
+        }
+      }
+
+      // ── Attempt 4: URI + Filesystem.readFile ──────────────────────────────
+      const filePath = photo1.path ?? photo1.webPath;
+      if (filePath) {
+        const read = await readFileAsBase64(filePath);
+        if (read) {
+          const blob = base64ToBlob(read.base64, read.mimeType);
+          const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type });
+          handleFile(file);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
+      if (!isCancel) {
+        if (msg.includes('permission') || msg.includes('denied') || msg.includes('not authorized')) {
+          setDenied('photos');
+          setExplainer({
+            type: 'photos',
+            denied: true,
+            onNotNow: () => setExplainer(null),
+            onEnable: async () => { setExplainer(null); },
+          });
+        } else {
+          console.warn('[library] Camera.getPhoto({source:PHOTOS}) failed:', err);
+        }
+      }
+    } finally {
+      setChecking(false);
+    }
   }, [handleFile]);
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
