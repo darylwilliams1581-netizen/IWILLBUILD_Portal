@@ -26,6 +26,9 @@ import {
   BookMarked, Zap,
 } from 'lucide-react';
 
+// Camera, LogIn, Car, ClipboardCheck, LayoutDashboard, HardHat kept in imports
+// as they may be used by permission grid or other consumers — do not remove.
+
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
 
 export interface HomeIconDef {
@@ -47,13 +50,10 @@ export interface HomeIconDef {
 }
 
 // ── FIELD ─────────────────────────────────────────────────────────────────────
+// Note: Dashboard, Site Prestart, Camera, Sign In, Drive, Vehicle Prestart are
+// surfaced as quick-action tiles on the Dashboard page — excluded here to avoid
+// duplication on the Field swipe page.
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
-  { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-violet-600',  fg: 'text-white', group: 'field' },
-  { key: 'site_prestart', label: 'Site Prestart',    icon: HardHat,          href: '?panel=site-prestart-picker', bg: 'bg-red-500',     fg: 'text-white', group: 'field' },
-  { key: 'camera',        label: 'Camera',           icon: Camera,           href: '/camera',                     bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
-  { key: 'sign_in',       label: 'Sign In',          icon: LogIn,            href: '?panel=signin',               bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
-  { key: 'drive',         label: 'Drive',            icon: Car,              href: '?panel=drive-picker',         bg: 'bg-sky-500',     fg: 'text-white', group: 'field' },
-  { key: 'prestart',      label: 'Vehicle Prestart', icon: ClipboardCheck,   href: '?panel=prestart-picker',      bg: 'bg-amber-600',   fg: 'text-white', group: 'field' },
   { key: 'delays',        label: 'Delays',           icon: Clock,            href: '?panel=delays-picker',        bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
   { key: 'scheduler',     label: 'Scheduler',        icon: CalendarDays,     href: '/scheduler',                  bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
   { key: 'job_card',      label: 'Job Card',         icon: Zap,              href: '/job-cards',                  bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
