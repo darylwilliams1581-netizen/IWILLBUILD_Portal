@@ -77,8 +77,11 @@ export default async function handler(req: Request, res: Response) {
     const capturedAtRaw = typeof parsed.fields?.capturedAt === 'string'
       ? parsed.fields.capturedAt
       : new Date().toISOString();
-    // MySQL DATETIME requires 'YYYY-MM-DD HH:MM:SS' — strip the T and Z from ISO 8601
-    const capturedAt = capturedAtRaw.replace('T', ' ').replace('Z', '').slice(0, 19);
+    // MySQL DATETIME requires 'YYYY-MM-DD HH:MM:SS' — convert from ISO 8601
+    // e.g. '2026-08-07T12:21:00.138Z' → '2026-08-07 12:21:00'
+    // If conversion produces an invalid string, pass NULL so MySQL uses DEFAULT CURRENT_TIMESTAMP
+    const mysqlDate = capturedAtRaw.replace('T', ' ').replace('Z', '').slice(0, 19);
+    const capturedAt = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(mysqlDate) ? mysqlDate : null;
     const jobIdRaw = typeof parsed.fields?.jobId === 'string' ? parseInt(parsed.fields.jobId, 10) : null;
     const jobId = jobIdRaw && !isNaN(jobIdRaw) ? jobIdRaw : null;
     const initialStatus = jobId ? 'assigned' : 'captured';

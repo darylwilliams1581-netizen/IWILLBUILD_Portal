@@ -1090,7 +1090,7 @@ async function runStartupMigrations() {
         note          TEXT NULL,
         job_id        INT NULL,
         status        VARCHAR(30) NOT NULL DEFAULT 'captured',
-        captured_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        captured_at   DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
         created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_cc_company_user (company_id, user_id),
         INDEX idx_cc_status (company_id, user_id, status),
@@ -1121,6 +1121,15 @@ async function runStartupMigrations() {
         console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, msg);
       }
     }
+  }
+
+  // Make captured_at nullable so ISO-format strings that MySQL rejects fall back to NOW()
+  try {
+    await db.execute(sql.raw(`ALTER TABLE camera_captures MODIFY COLUMN captured_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP`));
+    console.log('[startup-migration] camera_captures: captured_at made nullable');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    console.warn('[startup-migration] camera_captures ALTER captured_at:', msg);
   }
 
   // 1a-cs. Ensure camera_settings table exists
