@@ -264,9 +264,44 @@ function getNativeCameraPlugin(): NativeCameraPluginBridge | null {
 }
 
 interface NativeCameraPluginBridge {
-  getPhoto: (opts: Record<string, unknown>) => Promise<{ base64String?: string; dataUrl?: string; format?: string }>;
+  getPhoto: (opts: Record<string, unknown>) => Promise<{
+    base64String?: string;
+    dataUrl?: string;
+    path?: string;
+    webPath?: string;
+    format?: string;
+  }>;
   checkPermissions: () => Promise<Record<string, string>>;
   requestPermissions: (opts: { permissions: string[] }) => Promise<Record<string, string>>;
+}
+
+/**
+ * Read a file from the native filesystem via window.Capacitor.Plugins.Filesystem.
+ * Used as a fallback when Camera.getPhoto returns an empty base64String.
+ * Returns null if the plugin is unavailable or the read fails.
+ */
+async function readFileAsBase64(path: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const cap = (window as {
+      Capacitor?: { Plugins?: {
+        Filesystem?: {
+          readFile: (opts: { path: string }) => Promise<{ data: string }>;
+        };
+      } }
+    }).Capacitor;
+    const Filesystem = cap?.Plugins?.Filesystem;
+    if (!Filesystem) return null;
+    const result = await Filesystem.readFile({ path });
+    if (!result?.data) return null;
+    // Detect JPEG vs PNG from the base64 header bytes
+    const header = result.data.slice(0, 8);
+    const mimeType = header.startsWith('/9j') ? 'image/jpeg'
+      : header.startsWith('iVBOR') ? 'image/png'
+      : 'image/jpeg';
+    return { base64: result.data, mimeType };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -424,6 +459,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         try {
           const nativeQuality = opts?.captureQuality ?? 84;
 
+          // ── Attempt 1: base64 result (most compatible across iOS versions) ──
           const photo = await CameraPlugin.getPhoto({
             quality: nativeQuality,
             allowEditing: false,
@@ -431,6 +467,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
             source: CAM_SOURCE_CAMERA,
             direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
             flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+            saveToGallery: false,
           });
 
           if (photo.base64String) {
@@ -439,30 +476,68 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
                 photo.base64String,
                 photo.format === 'png' ? 'image/png' : 'image/jpeg',
               );
-              const file = new File([blob], `capture.${photo.format ?? 'jpg'}`, { type: blob.type });
+              const file = new File([blob], `capture_${Date.now()}.${photo.format ?? 'jpg'}`, { type: blob.type });
               handleFile(file);
+              return;
             } catch (decodeErr) {
-              console.warn('[camera] base64 decode failed, falling back to dataUrl path:', decodeErr);
-              const photo2 = await CameraPlugin.getPhoto({
-                quality: nativeQuality,
-                allowEditing: false,
-                resultType: CAM_RESULT_DATAURL,
-                source: CAM_SOURCE_CAMERA,
-                direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
-                flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
-              });
-              if (photo2.dataUrl) {
-                const res = await fetch(photo2.dataUrl);
-                const blob = await res.blob();
-                const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
-                handleFile(file);
-              }
+              console.warn('[camera] base64 decode failed, trying dataUrl fallback:', decodeErr);
             }
           }
+
+          // ── Attempt 2: dataUrl result (fallback when base64String is empty) ──
+          try {
+            const photo2 = await CameraPlugin.getPhoto({
+              quality: nativeQuality,
+              allowEditing: false,
+              resultType: CAM_RESULT_DATAURL,
+              source: CAM_SOURCE_CAMERA,
+              direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
+              flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+              saveToGallery: false,
+            });
+            if (photo2.dataUrl) {
+              const res = await fetch(photo2.dataUrl);
+              const blob = await res.blob();
+              const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+              handleFile(file);
+              return;
+            }
+          } catch (dataUrlErr) {
+            console.warn('[camera] dataUrl fallback failed:', dataUrlErr);
+          }
+
+          // ── Attempt 3: URI result + Filesystem.readFile ──────────────────────
+          // Last resort — some iOS 17+ builds return an empty base64String but
+          // a valid path. Read the file directly via the Filesystem plugin.
+          try {
+            const photo3 = await CameraPlugin.getPhoto({
+              quality: nativeQuality,
+              allowEditing: false,
+              resultType: 'uri',
+              source: CAM_SOURCE_CAMERA,
+              direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
+              flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
+              saveToGallery: false,
+            });
+            const filePath = photo3.path ?? photo3.webPath;
+            if (filePath) {
+              const read = await readFileAsBase64(filePath);
+              if (read) {
+                const blob = base64ToBlob(read.base64, read.mimeType);
+                const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type });
+                handleFile(file);
+                return;
+              }
+            }
+          } catch (uriErr) {
+            console.warn('[camera] URI fallback failed:', uriErr);
+          }
+
+          console.warn('[camera] all result type attempts failed — no photo data returned');
           return;
         } catch (err) {
           const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-          const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image');
+          const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
           if (!isCancel) {
             console.warn('[camera] native Camera.getPhoto failed:', err);
           }
@@ -484,26 +559,92 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       return;
     }
 
-    setChecking(true);
-    try {
-      const perm = await ensurePhotosPermission();
-      if (perm === 'denied') {
-        setDenied('photos');
-        setExplainer({
-          type: 'photos',
-          denied: true,
-          onNotNow: () => setExplainer(null),
-          onEnable: async () => { setExplainer(null); },
+    // ── Native path: use Camera.getPhoto({ source: 'PHOTOS' }) directly ──────
+    // CRITICAL: Do NOT await a permission check before calling getPhoto on native.
+    // iOS invalidates the user gesture token the moment any `await` resolves,
+    // so libraryInputRef.current?.click() after an async permission check is a
+    // no-op — the system silently ignores the programmatic click.
+    //
+    // Instead, call Camera.getPhoto({ source: 'PHOTOS' }) which handles its own
+    // permission prompt internally and opens the system photo picker directly.
+    // This is the correct pattern for Capacitor + WKWebView photo library access.
+    const CameraPlugin = getNativeCameraPlugin();
+    if (CameraPlugin) {
+      setChecking(true);
+      try {
+        const photo = await CameraPlugin.getPhoto({
+          quality: 84,
+          allowEditing: false,
+          resultType: CAM_RESULT_BASE64,
+          source: 'PHOTOS',
+          saveToGallery: false,
         });
-        return;
+
+        if (photo.base64String) {
+          try {
+            const blob = base64ToBlob(
+              photo.base64String,
+              photo.format === 'png' ? 'image/png' : 'image/jpeg',
+            );
+            const file = new File([blob], `photo_${Date.now()}.${photo.format ?? 'jpg'}`, { type: blob.type });
+            // Check if limited access was indicated
+            setPhotosLimited(false); // reset — getPhoto handles its own limited picker
+            handleFile(file);
+            return;
+          } catch (decodeErr) {
+            console.warn('[library] base64 decode failed, trying dataUrl:', decodeErr);
+          }
+        }
+
+        // dataUrl fallback
+        if (photo.dataUrl) {
+          try {
+            const res = await fetch(photo.dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+            handleFile(file);
+            return;
+          } catch (dataUrlErr) {
+            console.warn('[library] dataUrl fallback failed:', dataUrlErr);
+          }
+        }
+
+        // URI fallback
+        const filePath = photo.path ?? photo.webPath;
+        if (filePath) {
+          const read = await readFileAsBase64(filePath);
+          if (read) {
+            const blob = base64ToBlob(read.base64, read.mimeType);
+            const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type });
+            handleFile(file);
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+        const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
+        if (!isCancel) {
+          // Check if it's a permission denial
+          if (msg.includes('permission') || msg.includes('denied') || msg.includes('not authorized')) {
+            setDenied('photos');
+            setExplainer({
+              type: 'photos',
+              denied: true,
+              onNotNow: () => setExplainer(null),
+              onEnable: async () => { setExplainer(null); },
+            });
+          } else {
+            console.warn('[library] Camera.getPhoto({source:PHOTOS}) failed:', err);
+          }
+        }
+      } finally {
+        setChecking(false);
       }
-      // 'limited' = iOS "Selected Photos" — picker still works, just show a note
-      setPhotosLimited(perm === 'limited');
-    } finally {
-      setChecking(false);
+      return;
     }
+
+    // Plugin not available — fall back to file input (web-only path)
     libraryInputRef.current?.click();
-  }, []);
+  }, [handleFile]);
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
   const openCamera = useCallback(async (opts?: NativeCameraOptions) => {

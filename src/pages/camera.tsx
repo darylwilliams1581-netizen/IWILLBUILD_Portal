@@ -1449,7 +1449,7 @@ const CaptureLightbox = memo(function CaptureLightbox({
 
 function CaptureRow({
   item, selected, selectMode, notesEnabled,
-  onToggleSelect, onDelete, onAttachJob, onAddNote, onTapPhoto,
+  onToggleSelect, onDelete, onAttachJob, onAddNote, onTapPhoto, onRetry,
 }: {
   item: CaptureItem;
   selected: boolean;
@@ -1460,6 +1460,7 @@ function CaptureRow({
   onAttachJob: (clientId: string) => void;
   onAddNote: (clientId: string) => void;
   onTapPhoto: (clientId: string) => void;
+  onRetry: (clientId: string) => void;
 }) {
   const imgUrl = item.serverUrl ?? item.localUrl;
 
@@ -1521,8 +1522,7 @@ function CaptureRow({
           )}
           {item.status === 'error' && (
             <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-100 rounded-md px-1.5 py-0.5">Failed</span>
-          )}
-          {item.status === 'done' && item.jobId && (
+          )}          {item.status === 'done' && item.jobId && (
             <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 rounded-md px-1.5 py-0.5 truncate max-w-[120px]">
               {item.jobName ?? 'Attached'}
             </span>
@@ -1541,6 +1541,17 @@ function CaptureRow({
 
       {!selectMode && item.status !== 'uploading' && (
         <div className="flex items-center gap-1 shrink-0">
+          {/* Retry button — only shown on failed uploads */}
+          {item.status === 'error' && (
+            <button
+              onClick={() => onRetry(item.clientId)}
+              className="w-8 h-8 rounded-xl bg-red-100 border border-red-200 flex items-center justify-center text-red-600 hover:bg-red-200 active:bg-red-300 transition-colors"
+              title="Retry upload"
+              aria-label="Retry upload"
+            >
+              <RotateCcw size={13} />
+            </button>
+          )}
           {/* Assign to job */}
           <button
             onClick={() => onAttachJob(item.clientId)}
@@ -1981,6 +1992,38 @@ export default function CameraPage() {
     });
   }
 
+  // ── Retry failed upload ───────────────────────────────────────────────────
+  async function handleRetry(clientId: string) {
+    const item = captures.find(c => c.clientId === clientId);
+    if (!item || item.status !== 'error') return;
+    // Re-attempt upload using the localUrl blob if still available,
+    // otherwise just re-trigger the upload with whatever we have.
+    // Reset to pending first so the UI shows the spinner.
+    setCaptures(prev => prev.map(c =>
+      c.clientId === clientId ? { ...c, status: 'pending', errorMsg: null } : c
+    ));
+    if (item.localUrl) {
+      try {
+        const res = await fetch(item.localUrl);
+        const blob = await res.blob();
+        await uploadBlob(blob, clientId, item.capturedAt, item.jobId);
+      } catch {
+        // localUrl is gone (revoked) — mark as error with a clear message
+        setCaptures(prev => prev.map(c =>
+          c.clientId === clientId
+            ? { ...c, status: 'error', errorMsg: 'Original photo no longer available — please retake' }
+            : c
+        ));
+      }
+    } else {
+      setCaptures(prev => prev.map(c =>
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: 'Original photo no longer available — please retake' }
+          : c
+      ));
+    }
+  }
+
   // ── Edit saved callback ───────────────────────────────────────────────────
   function handleEditSaved(clientId: string, patch: Partial<CaptureItem>) {
     setCaptures(prev => prev.map(c =>
@@ -2279,6 +2322,7 @@ export default function CameraPage() {
                   onAttachJob={(id) => setJobPickerForClientId(id)}
                   onAddNote={(id) => setNoteForClientId(id)}
                   onTapPhoto={(id) => setLightboxClientId(id)}
+                  onRetry={handleRetry}
                 />
               ))}
             </AnimatePresence>
