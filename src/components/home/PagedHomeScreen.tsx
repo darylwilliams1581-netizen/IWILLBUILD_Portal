@@ -18,7 +18,8 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Camera } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
@@ -113,24 +114,36 @@ function DashboardPage({
   role,
   onNavigate,
   onNewJob,
+  onCamera,
 }: {
   userId: string;
   role: string;
   onNavigate: (href: string) => void;
   onNewJob: () => void;
+  onCamera: () => void;
 }) {
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
-      {/* Header row: title + Add Job button */}
-      <div className="flex items-center justify-between">
+      {/* Header row: title + camera icon + Add Job button */}
+      <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-foreground">Dashboard</span>
-        <button
-          onClick={onNewJob}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
-        >
-          <Plus size={13} strokeWidth={2.5} />
-          Add Job
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Camera shortcut — opens /camera with no job attachment */}
+          <button
+            onClick={onCamera}
+            aria-label="Open camera"
+            className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 text-slate-600 active:scale-95 transition-transform hover:bg-slate-200"
+          >
+            <Camera size={16} strokeWidth={2} />
+          </button>
+          <button
+            onClick={onNewJob}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
+          >
+            <Plus size={13} strokeWidth={2.5} />
+            Add Job
+          </button>
+        </div>
       </div>
 
       {/* ── Quick-action row: Sign In + Drive ─────────────────────────────────
@@ -197,6 +210,7 @@ export default function PagedHomeScreen({
   userId,
   onNavigate,
 }: PagedHomeScreenProps) {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -350,7 +364,7 @@ export default function PagedHomeScreen({
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} />
+            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} onCamera={() => navigate('/camera')} />
           </div>
 
           {/* Page 1 — Field */}
