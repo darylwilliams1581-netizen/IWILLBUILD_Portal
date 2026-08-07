@@ -989,6 +989,7 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const [approvalDate, setApprovalDate] = useState(new Date().toISOString().slice(0, 10));
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1007,6 +1008,7 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
     setApprovalDate(new Date().toISOString().slice(0, 10));
     setPhotoFiles([]);
     setPhotoPreviewUrls([]);
+    setPhotoUploadError(null);
     fetch('/api/customers?status=active&limit=200', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((d: { customers?: { id: number; name: string }[] } | null) => setCustomers(d?.customers ?? []))
@@ -1070,14 +1072,27 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
       setCreatedId(newId);
       setCreatedNum(data.jobCard!.card_number);
 
-      // Upload photos if any
+      // Upload photos if any — read the response and surface real errors
+      let photoUploadError: string | null = null;
       if (photoFiles.length > 0) {
-        const fd = new FormData();
-        photoFiles.forEach(f => fd.append('photos', f));
-        await fetch(`/api/job-cards/${newId}/photos`, {
-          method: 'POST', credentials: 'include', body: fd,
-        }).catch(() => {}); // non-fatal
+        try {
+          const fd = new FormData();
+          photoFiles.forEach(f => fd.append('photos', f));
+          const photoRes = await fetch(`/api/job-cards/${newId}/photos`, {
+            method: 'POST', credentials: 'include', body: fd,
+          });
+          const photoData = await photoRes.json() as { photos?: unknown[]; error?: string };
+          if (!photoRes.ok) {
+            photoUploadError = photoData.error ?? `Upload failed (${photoRes.status})`;
+            console.error(`[job-card photos] upload failed: ${photoUploadError}`);
+          }
+        } catch (photoErr) {
+          photoUploadError = photoErr instanceof Error ? photoErr.message : 'Photo upload failed';
+          console.error('[job-card photos] upload error:', photoErr);
+        }
       }
+
+      setPhotoUploadError(photoUploadError);
 
       setStep('done');
     } catch (err) {
@@ -1136,8 +1151,14 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           <div>
             <p className="text-[17px] font-bold text-gray-900">Job Card created</p>
             <p className="text-[13px] text-gray-400 mt-1 font-mono">{createdNum}</p>
-            {photoFiles.length > 0 && (
-              <p className="text-[12px] text-gray-400 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>
+            {photoFiles.length > 0 && !photoUploadError && (
+              <p className="text-[12px] text-green-600 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>
+            )}
+            {photoUploadError && (
+              <p className="text-[12px] text-amber-600 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg leading-snug">
+                Job Card saved, but photos could not be uploaded. Open the Job Card to retry.
+                <br /><span className="text-[11px] text-amber-500 font-mono">{photoUploadError}</span>
+              </p>
             )}
           </div>
           <div className="flex flex-col gap-2 w-full max-w-xs">
@@ -1215,12 +1236,14 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           {/* Photos */}
           <div>
             <label className={labelCls}>Photos</label>
+            {/* No capture="environment" — lets iOS show the native picker:
+                Take Photo / Photo Library / Browse Files.
+                capture= forces camera-only and breaks if permission not yet granted. */}
             <input
               ref={photoInputRef}
               type="file"
               accept="image/*"
               multiple
-              capture="environment"
               className="hidden"
               onChange={e => handlePhotoFiles(e.target.files)}
             />
