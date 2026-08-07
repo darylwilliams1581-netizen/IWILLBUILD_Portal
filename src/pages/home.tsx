@@ -2083,7 +2083,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: '#edf0f5' }}>
+      <div className="flex-1 flex items-center justify-center min-h-0" style={{ background: '#edf0f5' }}>
         <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>
     );
@@ -2096,7 +2096,8 @@ export default function HomeScreen() {
         <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />
       )}
 
-      <div className="flex-1 flex flex-col relative overflow-hidden"
+      <div
+        className="flex-1 flex flex-col relative overflow-hidden min-h-0"
         style={{ background: '#edf0f5' }}
       >
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
@@ -2139,7 +2140,7 @@ export default function HomeScreen() {
       />
 
       {/* All content above the overlay */}
-      <div className="relative z-10 flex flex-col flex-1">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
       <Helmet>
         <title>Home — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD field launcher — quick access to camera, drive, forms, job costs and more." />

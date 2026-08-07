@@ -294,9 +294,10 @@ export default function PagedHomeScreen({
         >
           {/* Page 0 — Dashboard */}
           <div
-            className="overflow-y-auto"
+            className="overflow-y-auto min-h-0"
             style={{
               width: '33.333%',
+              height: '100%',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
@@ -305,9 +306,10 @@ export default function PagedHomeScreen({
 
           {/* Page 1 — Field */}
           <div
-            className="overflow-y-auto"
+            className="overflow-y-auto min-h-0"
             style={{
               width: '33.333%',
+              height: '100%',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
@@ -321,9 +323,10 @@ export default function PagedHomeScreen({
 
           {/* Page 2 — Management */}
           <div
-            className="overflow-y-auto"
+            className="overflow-y-auto min-h-0"
             style={{
               width: '33.333%',
+              height: '100%',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
