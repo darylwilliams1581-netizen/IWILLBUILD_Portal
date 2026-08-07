@@ -14,6 +14,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import PortalSidebar from '@/components/PortalSidebar';
+import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import {
   ChevronLeft, Edit2, Save, X, Plus, Trash2,
   RefreshCw, AlertCircle, CheckCircle2, Receipt, ArrowRightLeft,
@@ -328,14 +329,24 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
 }) {
+  const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);    // browse files (no capture)
-  const libraryInputRef = useRef<HTMLInputElement>(null); // photo library (no capture)
-  const cameraInputRef = useRef<HTMLInputElement>(null);  // camera only (capture=environment)
+  const fileInputRef = useRef<HTMLInputElement>(null); // browse files (no capture)
 
-  const isNative = typeof window !== 'undefined' && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+  // ── useIosMediaPicker handles all native permission + 3-attempt fallback ──
+  const picker = useIosMediaPicker(async (file: File) => {
+    await uploadFiles([file]);
+  });
+  const pickerExt = picker as typeof picker & {
+    _cameraInputRef: React.RefObject<HTMLInputElement>;
+    _libraryInputRef: React.RefObject<HTMLInputElement>;
+    _handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
+
+  const nativeApp = typeof window !== 'undefined' &&
+    !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 
   async function uploadFiles(files: File[]) {
     if (!files.length) return;
@@ -357,63 +368,29 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      if (libraryInputRef.current) libraryInputRef.current.value = '';
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
-  }
-
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
-    await uploadFiles(Array.from(files));
-  }
-
-  // Native camera via Capacitor
-  async function handleNativeCamera(source: 'CAMERA' | 'PHOTOS') {
-    try {
-      const { Camera: Cap } = (window as unknown as { Capacitor: { Plugins: { Camera: { getPhoto: (opts: unknown) => Promise<{ base64String?: string; dataUrl?: string; webPath?: string; path?: string; format: string }> } } } }).Capacitor.Plugins;
-      const photo = await Cap.getPhoto({
-        quality: 85,
-        allowEditing: false,
-        resultType: 'base64',
-        source,
-        correctOrientation: true,
-      });
-      const b64 = photo.base64String ?? photo.dataUrl?.split(',')[1];
-      if (!b64) throw new Error('No image data returned');
-      const mime = `image/${photo.format === 'jpg' ? 'jpeg' : photo.format}`;
-      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-      const file = new File([bytes], `photo.${photo.format}`, { type: mime });
-      await uploadFiles([file]);
-    } catch (err) {
-      const msg = String((err as Error)?.message ?? err);
-      if (!msg.toLowerCase().includes('cancel')) {
-        setUploadError(msg || 'Camera failed');
-      }
-    }
-  }
-
-  function handleAddPhoto() {
-    setPickerOpen(true);
   }
 
   function handlePickCamera() {
-    if (isNative) {
-      void handleNativeCamera('CAMERA');
+    setPickerOpen(false);
+    if (nativeApp) {
+      // Open the full in-app camera (watermark, flash, orientation controls).
+      // After capture the camera page returns here via returnTo param.
+      navigate(`/camera?attachTo=job-card:${cardId}&returnTo=/job-cards/${cardId}`);
     } else {
-      cameraInputRef.current?.click();
+      // Web: use picker's camera input (capture=environment)
+      setTimeout(() => void picker.openCamera(), 120);
     }
   }
 
   function handlePickLibrary() {
-    if (isNative) {
-      void handleNativeCamera('PHOTOS');
-    } else {
-      libraryInputRef.current?.click();
-    }
+    setPickerOpen(false);
+    setTimeout(() => void picker.openLibrary(), 120);
   }
 
   function handlePickFiles() {
-    fileInputRef.current?.click();
+    setPickerOpen(false);
+    setTimeout(() => fileInputRef.current?.click(), 120);
   }
 
   async function handleDelete(photoId: number) {
@@ -430,6 +407,31 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
 
   return (
     <>
+    {/* Permission explainer modal from useIosMediaPicker */}
+    {picker.explainer && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-6">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+          <p className="text-base font-semibold text-gray-900 mb-2">
+            {picker.explainer.type === 'camera' ? 'Camera Access' : 'Photo Library Access'}
+          </p>
+          <p className="text-sm text-gray-500 mb-5">
+            {picker.explainer.denied
+              ? `${picker.explainer.type === 'camera' ? 'Camera' : 'Photo library'} access was denied. Open Settings to allow access.`
+              : `Allow access to your ${picker.explainer.type === 'camera' ? 'camera' : 'photo library'} to add photos.`}
+          </p>
+          <div className="flex gap-3">
+            <button onClick={picker.explainer.onNotNow}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">
+              Not Now
+            </button>
+            <button onClick={() => void picker.explainer!.onEnable()}
+              className="flex-1 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold">
+              {picker.explainer.denied ? 'Open Settings' : 'Allow'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <PhotoSourceSheet
       open={pickerOpen}
       onClose={() => setPickerOpen(false)}
@@ -442,7 +444,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
       icon={Camera}
       action={
         <button
-          onClick={handleAddPhoto}
+          onClick={() => setPickerOpen(true)}
           disabled={uploading}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors disabled:opacity-50"
         >
@@ -451,14 +453,14 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </button>
       }
     >
-      {/* Hidden file inputs — no capture= so iOS shows full picker */}
+      {/* Hidden inputs managed by useIosMediaPicker */}
+      <input ref={pickerExt._cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={pickerExt._handleInputChange} />
+      <input ref={pickerExt._libraryInputRef} type="file" accept="image/*" className="hidden"
+        onChange={pickerExt._handleInputChange} />
+      {/* Browse files input — multi-select, no capture */}
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={e => void handleFiles(e.target.files)} />
-      <input ref={libraryInputRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={e => void handleFiles(e.target.files)} />
-      {/* Camera-only input for web fallback */}
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={e => void handleFiles(e.target.files)} />
+        onChange={e => { const files = Array.from(e.target.files ?? []); if (files.length) void uploadFiles(files); e.target.value = ''; }} />
 
       {uploadError && (
         <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

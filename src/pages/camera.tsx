@@ -23,7 +23,7 @@
 import {
   useState, useEffect, useRef, useCallback, memo,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -1619,6 +1619,18 @@ const DOCK_HEIGHT_PX = 120;
 
 export default function CameraPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // ── attachTo / returnTo — deep-link from job card "Take Photo" ───────────
+  // attachTo=job-card:123  → after each capture, also POST to /api/job-cards/123/photos
+  // returnTo=/job-cards/123 → navigate back there after first successful capture
+  const attachToParam  = searchParams.get('attachTo');   // e.g. "job-card:42"
+  const returnToParam  = searchParams.get('returnTo');   // e.g. "/job-cards/42"
+  const attachJobCardId = attachToParam?.startsWith('job-card:')
+    ? Number(attachToParam.split(':')[1])
+    : null;
+  // Track whether we've already navigated back (only do it once)
+  const returnedRef = useRef(false);
 
   // Permission explainer — used for backup-to-roll pre-prompt
   const permExplainer = usePermissionExplainer();
@@ -1838,6 +1850,29 @@ export default function CameraPage() {
         if (c.localUrl) URL.revokeObjectURL(c.localUrl);
         return { ...c, id: saved.id, serverUrl: saved.url, localUrl: null, status: 'done', errorMsg: null };
       }));
+
+      // ── attachTo: also save to job card photos + navigate back ────────────
+      if (attachJobCardId && saved.url) {
+        try {
+          // Fetch the uploaded image and re-post it to the job card photos endpoint
+          const imgRes = await fetch(saved.url);
+          if (imgRes.ok) {
+            const imgBlob = await imgRes.blob();
+            const fd2 = new FormData();
+            fd2.append('photos', imgBlob, 'capture.jpg');
+            await fetch(`/api/job-cards/${attachJobCardId}/photos`, {
+              method: 'POST', credentials: 'include', body: fd2,
+            });
+          }
+        } catch (attachErr) {
+          console.warn('[camera] attachTo job-card post failed:', attachErr);
+        }
+        // Navigate back once after first successful capture
+        if (returnToParam && !returnedRef.current) {
+          returnedRef.current = true;
+          navigate(returnToParam);
+        }
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
       const isOffline = !navigator.onLine || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch');
@@ -2075,6 +2110,21 @@ export default function CameraPage() {
 
       {/* ═══ FULL SCREEN DARK VIEWFINDER ═══ */}
       <div className="fixed inset-0 z-0 flex flex-col" style={{ background: '#0d0d12' }}>
+
+        {/* attachTo banner — shown when opened from a job card "Take Photo" */}
+        {attachJobCardId && (
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2 z-10 bg-primary"
+            style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
+            <button onClick={() => { if (returnToParam) navigate(returnToParam); }}
+              className="text-primary-foreground/70 hover:text-primary-foreground transition-colors mr-1">
+              <ChevronLeft size={18} />
+            </button>
+            <Camera size={14} className="text-primary-foreground/80 shrink-0" />
+            <p className="text-primary-foreground text-xs font-semibold truncate flex-1">
+              Photo will be saved to job card #{attachJobCardId}
+            </p>
+          </div>
+        )}
 
         {/* Offline banner — top of screen below safe area */}
         <AnimatePresence>
