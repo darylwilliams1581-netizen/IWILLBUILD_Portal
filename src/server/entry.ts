@@ -905,6 +905,10 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
     'https://api.stripe.com',
     'https://login.xero.com',
     'https://api.xero.com',
+    // Google Maps JS API — tile fetches, geocoding, directions, Places
+    'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
+    'https://*.googleapis.com',
     // Allow WebSocket connections for Vite HMR in dev
     ...(import.meta.env.PROD ? [] : ['ws:', 'wss:']),
     ...(r2PublicUrl ? [r2PublicUrl] : []),
@@ -913,9 +917,11 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   // In dev: keep it so the Vite client and React refresh work correctly.
   // img1.wsimg.com is injected by GoDaddy's CDN infrastructure — allow it so
   // CSP violations don't pollute the console or interfere with hydration.
+  // Google Maps JS API requires maps.googleapis.com and maps.gstatic.com in
+  // script-src — the loader injects a <script> tag at runtime.
   const scriptSrc = import.meta.env.PROD
-    ? `script-src 'self' 'unsafe-inline' https://js.stripe.com https://img1.wsimg.com`
-    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://img1.wsimg.com`;
+    ? `script-src 'self' 'unsafe-inline' https://js.stripe.com https://img1.wsimg.com https://maps.googleapis.com https://maps.gstatic.com`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://img1.wsimg.com https://maps.googleapis.com https://maps.gstatic.com`;
   // frame-ancestors: allow the GoDaddy builder iframe to embed this app in preview.
   // In production this is same-origin only (no builder iframe needed).
   const frameAncestors = import.meta.env.PROD

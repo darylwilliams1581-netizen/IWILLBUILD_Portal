@@ -60,13 +60,7 @@ type GMap  = any;
 type GMarker = any;
 type GInfoWindow = any;
 
-type GoogleWindow = Window & typeof globalThis & {
-  google?: { maps?: GMaps };
-  __gmapsLoader?: Promise<void> | undefined;
-  __gmapsLoaded?: boolean;
-};
-
-declare const window: GoogleWindow;
+// (window type is declared below with GmAuthFailureWindow — this block intentionally removed)
 
 const DEFAULT_CENTER = { lat: -27.4698, lng: 153.0251 }; // Brisbane fallback
 const DEFAULT_ZOOM   = 11;
@@ -133,32 +127,98 @@ async function fetchMapsKey(): Promise<string> {
   return _cachedKey;
 }
 
+// ── Google Maps auth-failure handler ─────────────────────────────────────────
+//
+// Google calls window.gm_authFailure() when the key is invalid, the Maps
+// JavaScript API is not enabled, billing is not enabled, or the referrer is
+// not authorised. We capture this and surface a human-readable error.
+//
+// The handler is installed once and stores the last auth-failure reason so
+// the map init code can read it after the script loads.
+
+type GmAuthFailureWindow = Window & typeof globalThis & {
+  google?: { maps?: GMaps };
+  __gmapsLoader?: Promise<void> | undefined;
+  __gmapsLoaded?: boolean;
+  __gmapsAuthError?: string;
+  gm_authFailure?: () => void;
+};
+
+declare const window: GmAuthFailureWindow;
+
+function installAuthFailureHandler() {
+  if (window.gm_authFailure) return; // already installed
+  window.gm_authFailure = () => {
+    // Google does not pass an error code to this callback — we infer the most
+    // likely cause from what we know about the key and environment.
+    const msg =
+      'Google Maps authentication failed. Likely causes:\n' +
+      '• Maps JavaScript API not enabled in Google Cloud Console\n' +
+      '• Billing not enabled on the Google Cloud project\n' +
+      '• HTTP referrer restriction blocking https://iwillbuild.com\n' +
+      '• API key is invalid or has been deleted\n' +
+      'Check the Google Cloud Console → APIs & Services → Credentials.';
+    console.error('[FleetLiveMap] gm_authFailure fired —', msg);
+    window.__gmapsAuthError = msg;
+    // Reset loader so retry works
+    window.__gmapsLoader = undefined;
+    window.__gmapsLoaded = false;
+  };
+}
+
 // ── Google Maps script loader (singleton) ─────────────────────────────────────
 //
 // Reset rules:
 //   - __gmapsLoader is cleared on rejection so the next mount retries cleanly
-//   - __gmapsLoaded is only set to true on a successful load
+//   - __gmapsLoaded is only set to true after window.google.maps is confirmed
+//   - __gmapsAuthError is set by gm_authFailure and checked after onload
 
 function loadGoogleMaps(): Promise<void> {
-  if (window.__gmapsLoaded) return Promise.resolve();
+  installAuthFailureHandler();
+
+  if (window.__gmapsLoaded && window.google?.maps) return Promise.resolve();
   if (window.__gmapsLoader) return window.__gmapsLoader;
 
   window.__gmapsLoader = fetchMapsKey()
     .then(key => new Promise<void>((resolve, reject) => {
       // Guard: if another mount already loaded the script while we were fetching the key
-      if (window.__gmapsLoaded) { resolve(); return; }
+      if (window.__gmapsLoaded && window.google?.maps) { resolve(); return; }
 
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
+      // Use a named callback so we can verify the API is truly ready.
+      // The callback name is passed as &callback= — Google calls it when the
+      // Maps JS API is fully initialised (not just when the script tag loads).
+      const callbackName = `__gmapsReady_${Date.now()}`;
+      (window as Record<string, unknown>)[callbackName] = () => {
+        delete (window as Record<string, unknown>)[callbackName];
+        // Double-check: if gm_authFailure fired before the callback, reject
+        if (window.__gmapsAuthError) {
+          reject(new Error(window.__gmapsAuthError));
+          return;
+        }
+        if (!window.google?.maps) {
+          reject(new Error(
+            'Google Maps script loaded but window.google.maps is not defined. ' +
+            'This usually means the Maps JavaScript API is not enabled or billing is not active.'
+          ));
+          return;
+        }
         window.__gmapsLoaded = true;
-        console.info('[FleetLiveMap] Google Maps script loaded.');
+        console.info('[FleetLiveMap] Google Maps API ready (callback confirmed).');
         resolve();
       };
+
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker&callback=${callbackName}`;
+      script.async = true;
+      script.defer = true;
       script.onerror = () => {
-        const msg = 'Google Maps script failed to load. Check API key restrictions and billing in Google Cloud Console.';
+        delete (window as Record<string, unknown>)[callbackName];
+        // Classify the error — onerror fires for network failures and CSP blocks.
+        // Check if the browser reported a CSP violation (best-effort).
+        const cspBlocked = window.__gmapsAuthError?.includes('CSP') ?? false;
+        const msg = cspBlocked
+          ? 'Google Maps script blocked by Content Security Policy. Check server CSP headers.'
+          : 'Google Maps script failed to load. Possible causes: network error, CSP block, or invalid API key. Check the browser console for details.';
         console.error('[FleetLiveMap]', msg);
         reject(new Error(msg));
       };
@@ -483,20 +543,33 @@ export default function FleetLiveMap() {
     if (!mapRef.current || gMapRef.current) return;
     let disposed = false;
 
-    // 30s hard timeout — if loadGoogleMaps never resolves (e.g. script blocked
-    // by a corporate proxy or the key fetch hangs), surface an error instead of
-    // leaving the user on a blank spinner forever.
+    // 10s hard timeout — surface an error quickly rather than leaving the user
+    // on a blank spinner. 30s was too long; most failures are immediate.
     const initTimer = setTimeout(() => {
       if (!disposed && !gMapRef.current) {
         window.__gmapsLoader = undefined; // reset so retry works
-        setMapError('Map took too long to load. Check your connection and tap Retry.');
+        window.__gmapsLoaded = false;
+        const authErr = window.__gmapsAuthError;
+        setMapError(
+          authErr ??
+          'Map took too long to load (10s). Possible causes: network error, ' +
+          'Maps JavaScript API not enabled, billing not enabled, or API key referrer restriction. ' +
+          'Check the browser console for details, then tap Retry.'
+        );
       }
-    }, 30_000);
+    }, 10_000);
 
     loadGoogleMaps()
       .then(() => {
         clearTimeout(initTimer);
         if (disposed || !mapRef.current || gMapRef.current) return;
+
+        // Final auth-failure check — gm_authFailure may have fired during load
+        if (window.__gmapsAuthError) {
+          setMapError(window.__gmapsAuthError);
+          return;
+        }
+
         const map = new window.google!.maps!.Map(mapRef.current, {
           center: DEFAULT_CENTER,
           zoom: DEFAULT_ZOOM,
@@ -508,11 +581,20 @@ export default function FleetLiveMap() {
         });
         infoWinRef.current = new window.google!.maps!.InfoWindow({});
         gMapRef.current = map;
+
+        // Trigger a resize event so the map fills its container correctly.
+        // This is critical when the map is mounted inside a panel that was not
+        // yet visible (e.g. a tab that becomes active after the component mounts).
+        window.google!.maps!.event.trigger(map, 'resize');
+
         setMapReady(true);
       })
       .catch((err: unknown) => {
         clearTimeout(initTimer);
-        if (!disposed) setMapError(err instanceof Error ? err.message : 'Map failed to load');
+        if (!disposed) {
+          const msg = err instanceof Error ? err.message : 'Map failed to load';
+          setMapError(msg);
+        }
       });
 
     return () => {
@@ -881,8 +963,11 @@ export default function FleetLiveMap() {
                   onClick={() => {
                     // Reset all singleton state so loadGoogleMaps retries from scratch
                     window.__gmapsLoader = undefined;
-                    // Do NOT reset __gmapsLoaded — if the script already loaded,
+                    window.__gmapsLoaded = false;
+                    window.__gmapsAuthError = undefined;
+                    // Do NOT reset __gmapsLoaded if the script already loaded successfully —
                     // we only need to re-init the Map instance, not re-fetch the script.
+                    // (The check above already handles this via the auth-error guard.)
                     setMapError(null);
                     setMapReady(false);
                     gMapRef.current = null;
