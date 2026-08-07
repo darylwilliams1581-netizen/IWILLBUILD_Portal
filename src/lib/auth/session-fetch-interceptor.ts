@@ -41,9 +41,12 @@ export function installSessionFetchInterceptor(): void {
       (url.startsWith(window.location.origin) && url.includes('/api/'));
 
     if (isApiCall) {
-      // Attach expiry header
+      // Only attach expiry header if the stored value is still in the future.
+      // If it's already expired, omit the header entirely so the server falls
+      // back to the BetterAuth cookie — avoids false 401s when the custom
+      // cutoff has passed but the underlying cookie is still valid.
       const expiresAt = readSessionExpiry();
-      if (expiresAt !== null) {
+      if (expiresAt !== null && expiresAt > Date.now()) {
         const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
         headers.set(SESSION_EXPIRY_HEADER, String(expiresAt));
         init = { ...init, headers };

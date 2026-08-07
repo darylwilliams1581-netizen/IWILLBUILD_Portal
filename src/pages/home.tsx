@@ -1483,11 +1483,21 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
     setError('');
     try {
       const res = await fetch(`/api/jobs/${jobId}/signin-status`, { credentials: 'include' });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        // Session expired or not authenticated — clear stale expiry so next
+        // request goes through cleanly after re-login
+        try { localStorage.removeItem('iwb_session_expires_at'); } catch { /* ignore */ }
+        setError('Session expired — please sign in again to continue.');
+        return;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Server error (${res.status})`);
+      }
       const data = await res.json() as SignInStatus;
       setStatus(data);
-    } catch {
-      setError('Could not load sign-in status');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load sign-in status');
     } finally {
       setStatusLoading(false);
     }
@@ -1507,6 +1517,11 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ actorType: 'employee' }),
       });
+      if (res.status === 401) {
+        try { localStorage.removeItem('iwb_session_expires_at'); } catch { /* ignore */ }
+        setError('Session expired — please close this and sign in again.');
+        return;
+      }
       const data = await res.json() as { ok?: boolean; alreadySignedIn?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Sign in failed');
       if (data.alreadySignedIn) {
@@ -1514,7 +1529,6 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
       } else {
         setResult({ type: 'signin', name: selectedJob.name });
       }
-      // Always refresh status after action
       void loadStatus(selectedJob.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign in failed');
@@ -1532,6 +1546,11 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
+      if (res.status === 401) {
+        try { localStorage.removeItem('iwb_session_expires_at'); } catch { /* ignore */ }
+        setError('Session expired — please close this and sign in again.');
+        return;
+      }
       const data = await res.json() as { ok?: boolean; notSignedIn?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Sign out failed');
       if (data.notSignedIn) {
@@ -1539,7 +1558,6 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
       } else {
         setResult({ type: 'signout', name: selectedJob.name });
       }
-      // Always refresh status after action
       void loadStatus(selectedJob.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign out failed');
