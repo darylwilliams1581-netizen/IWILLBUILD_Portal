@@ -1656,13 +1656,16 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
             onClick={handleBackdropClick}
           />
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+            onClick={handleBackdropClick}
+          >
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', damping: 30, stiffness: 340 }}
-              className="pointer-events-auto w-full sm:max-w-sm bg-white sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
+              className="w-full sm:max-w-sm bg-white sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
               style={{ maxHeight: 'min(680px, calc(100dvh - 60px))' }}
               onClick={e => e.stopPropagation()}
             >
