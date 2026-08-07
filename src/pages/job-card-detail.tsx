@@ -14,7 +14,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import PortalSidebar from '@/components/PortalSidebar';
-import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import {
   ChevronLeft, Edit2, Save, X, Plus, Trash2,
   RefreshCw, AlertCircle, CheckCircle2, Receipt, ArrowRightLeft,
@@ -329,24 +328,13 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
 }) {
-  const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null); // browse files (no capture)
-
-  // ── useIosMediaPicker handles all native permission + 3-attempt fallback ──
-  const picker = useIosMediaPicker(async (file: File) => {
-    await uploadFiles([file]);
-  });
-  const pickerExt = picker as typeof picker & {
-    _cameraInputRef: React.RefObject<HTMLInputElement>;
-    _libraryInputRef: React.RefObject<HTMLInputElement>;
-    _handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  };
-
-  const nativeApp = typeof window !== 'undefined' &&
-    !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+  // Single file input — NO capture attribute.
+  // On iOS this triggers the native "Take Photo / Photo Library / Browse" sheet.
+  // On Android it opens the system file picker with camera option.
+  // This is the exact same pattern used by FilePanel which works reliably.
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function uploadFiles(files: File[]) {
     if (!files.length) return;
@@ -371,26 +359,6 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
     }
   }
 
-  function handlePickCamera() {
-    // PhotoSourceSheet already closes itself and adds 120ms delay before calling us.
-    // On native: navigate to the full in-app camera (watermark, flash, orientation).
-    // On web: trigger the camera file input directly (no extra delay needed here).
-    if (nativeApp) {
-      navigate(`/camera?attachTo=job-card:${cardId}&returnTo=/job-cards/${cardId}`);
-    } else {
-      void picker.openCamera();
-    }
-  }
-
-  function handlePickLibrary() {
-    // PhotoSourceSheet already adds 120ms delay — fire immediately here.
-    void picker.openLibrary();
-  }
-
-  function handlePickFiles() {
-    fileInputRef.current?.click();
-  }
-
   async function handleDelete(photoId: number) {
     try {
       await fetch(`/api/job-cards/${cardId}/photos/${photoId}`, {
@@ -405,44 +373,12 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
 
   return (
     <>
-    {/* Permission explainer modal from useIosMediaPicker */}
-    {picker.explainer && (
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-6">
-        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-          <p className="text-base font-semibold text-gray-900 mb-2">
-            {picker.explainer.type === 'camera' ? 'Camera Access' : 'Photo Library Access'}
-          </p>
-          <p className="text-sm text-gray-500 mb-5">
-            {picker.explainer.denied
-              ? `${picker.explainer.type === 'camera' ? 'Camera' : 'Photo library'} access was denied. Open Settings to allow access.`
-              : `Allow access to your ${picker.explainer.type === 'camera' ? 'camera' : 'photo library'} to add photos.`}
-          </p>
-          <div className="flex gap-3">
-            <button onClick={picker.explainer.onNotNow}
-              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">
-              Not Now
-            </button>
-            <button onClick={() => void picker.explainer!.onEnable()}
-              className="flex-1 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold">
-              {picker.explainer.denied ? 'Open Settings' : 'Allow'}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-    <PhotoSourceSheet
-      open={pickerOpen}
-      onClose={() => setPickerOpen(false)}
-      onCamera={handlePickCamera}
-      onLibrary={handlePickLibrary}
-      onFiles={handlePickFiles}
-    />
     <Section
       title={`Photos${photos.length > 0 ? ` (${photos.length})` : ''}`}
       icon={Camera}
       action={
         <button
-          onClick={() => setPickerOpen(true)}
+          onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors disabled:opacity-50"
         >
@@ -451,14 +387,19 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </button>
       }
     >
-      {/* Hidden inputs managed by useIosMediaPicker */}
-      <input ref={pickerExt._cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={pickerExt._handleInputChange} />
-      <input ref={pickerExt._libraryInputRef} type="file" accept="image/*" className="hidden"
-        onChange={pickerExt._handleInputChange} />
-      {/* Browse files input — multi-select, no capture */}
-      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={e => { const files = Array.from(e.target.files ?? []); if (files.length) void uploadFiles(files); e.target.value = ''; }} />
+      {/* Single input — no capture= so iOS shows its native picker sheet */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={e => {
+          const files = Array.from(e.target.files ?? []);
+          if (files.length) void uploadFiles(files);
+          e.target.value = '';
+        }}
+      />
 
       {uploadError && (
         <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -469,7 +410,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
 
       {photos.length === 0 && !uploading ? (
         <button
-          onClick={() => setPickerOpen(true)}
+          onClick={() => fileInputRef.current?.click()}
           className="w-full flex flex-col items-center justify-center gap-2 py-8 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 hover:border-yellow-300 hover:text-yellow-600 transition-colors"
         >
           <Image size={24} className="text-gray-200" />
