@@ -1989,10 +1989,16 @@ export default function HomeScreen() {
 
   // ── Native permissions onboarding ─────────────────────────────────────────
   // Show once after first login on a native device (iOS / Android).
-  // hasCompletedOnboarding() reads localStorage — safe to call on mount.
-  const [showPermOnboarding, setShowPermOnboarding] = useState(
-    () => isNative() && !hasCompletedOnboarding()
-  );
+  // Delayed by 1.5s to ensure the Capacitor bridge is fully initialised before
+  // any permission plugin calls are made — avoids the "spinning forever" bug
+  // where requestPermissions() hangs because the bridge isn't ready yet.
+  const [showPermOnboarding, setShowPermOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!isNative() || hasCompletedOnboarding()) return;
+    const t = setTimeout(() => setShowPermOnboarding(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);

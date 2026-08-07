@@ -86,23 +86,37 @@ const STEPS: Step[] = [
   },
 ];
 
+// ── Timeout helper ────────────────────────────────────────────────────────────
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 // ── Permission requesters ─────────────────────────────────────────────────────
 
 async function requestLocation(): Promise<boolean> {
-  const geo = await getNativeGeo();
-  if (!geo) {
-    if (!navigator.geolocation) return false;
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        () => resolve(true),
-        () => resolve(false),
-        { timeout: 5000 }
-      );
-    });
-  }
   try {
-    const status = await geo.requestPermissions({ permissions: ['location'] });
-    const loc = status.location ?? status.coarseLocation;
+    const geo = await withTimeout(getNativeGeo(), 4000, null);
+    if (!geo) {
+      if (!navigator.geolocation) return false;
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          () => resolve(true),
+          () => resolve(false),
+          { timeout: 5000 }
+        );
+      });
+    }
+    const status = await withTimeout(
+      geo.requestPermissions({ permissions: ['location'] }),
+      8000,
+      { location: 'denied', coarseLocation: 'denied' } as { location?: string; coarseLocation?: string }
+    );
+    const loc = (status as { location?: string; coarseLocation?: string }).location
+      ?? (status as { location?: string; coarseLocation?: string }).coarseLocation;
     return loc === 'granted';
   } catch {
     return false;
@@ -110,10 +124,14 @@ async function requestLocation(): Promise<boolean> {
 }
 
 async function requestCamera(): Promise<boolean> {
-  const CameraPlugin = await getCameraPlugin();
-  if (!CameraPlugin) return false;
   try {
-    const status = await CameraPlugin.requestPermissions({ permissions: ['camera', 'photos'] });
+    const CameraPlugin = await withTimeout(getCameraPlugin(), 4000, null);
+    if (!CameraPlugin) return false;
+    const status = await withTimeout(
+      CameraPlugin.requestPermissions({ permissions: ['camera', 'photos'] }),
+      8000,
+      { camera: 'denied' } as { camera?: string }
+    );
     const cam = (status as { camera?: string }).camera ?? 'denied';
     return cam === 'granted';
   } catch {
@@ -122,18 +140,26 @@ async function requestCamera(): Promise<boolean> {
 }
 
 async function requestNotifications(): Promise<boolean> {
-  const Push = await getPushNotifications();
-  if (!Push) {
-    if (!('Notification' in window)) return false;
-    try {
-      const result = await Notification.requestPermission();
-      return result === 'granted';
-    } catch {
-      return false;
-    }
-  }
   try {
-    const result = await Push.requestPermissions();
+    const Push = await withTimeout(getPushNotifications(), 4000, null);
+    if (!Push) {
+      if (!('Notification' in window)) return false;
+      try {
+        const result = await withTimeout(
+          Notification.requestPermission(),
+          8000,
+          'denied' as NotificationPermission
+        );
+        return result === 'granted';
+      } catch {
+        return false;
+      }
+    }
+    const result = await withTimeout(
+      Push.requestPermissions(),
+      8000,
+      { receive: 'denied' } as { receive: string }
+    );
     return result.receive === 'granted';
   } catch {
     return false;
@@ -163,10 +189,19 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
     const step = STEPS[stepIndex];
     setStepStates((s) => ({ ...s, [step.id]: 'requesting' }));
 
+    // Hard 10-second global bail-out — if the native bridge is completely
+    // unresponsive, we resolve to false so the button never spins forever.
     let granted = false;
-    if (step.id === 'location')           granted = await requestLocation();
-    else if (step.id === 'camera')        granted = await requestCamera();
-    else if (step.id === 'notifications') granted = await requestNotifications();
+    try {
+      const requestFn =
+        step.id === 'location'      ? requestLocation :
+        step.id === 'camera'        ? requestCamera :
+        /* notifications */           requestNotifications;
+
+      granted = await withTimeout(requestFn(), 10000, false);
+    } catch {
+      granted = false;
+    }
 
     setStepStates((s) => ({ ...s, [step.id]: granted ? 'granted' : 'denied' }));
 
