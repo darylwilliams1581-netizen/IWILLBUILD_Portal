@@ -157,20 +157,25 @@ export function getAuth() {
     //      Origin: capacitor://localhost — a non-https origin that BetterAuth's CSRF
     //      guard treats as cross-origin and rejects, even though it's our own native app.
     //
-    // Cookie attributes:
-    //   - Preview: SameSite=None + Secure + Partitioned (CHIPS) for cross-site iframe access.
-    //   - Production native app: Capacitor WebView on iOS makes requests to
-    //     https://iwillbuild.com, so SameSite=Lax works fine — same registered domain.
-    //   - Production web: SameSite=Lax default is safe.
+    // Cookie attributes — SameSite=None + Secure everywhere:
+    //   - Preview: Required for cross-site iframe access (CHIPS/Partitioned).
+    //   - Production web: Required for Safari "Add to Home Screen" (PWA standalone mode).
+    //     iOS Safari standalone runs in a separate process with its own cookie jar.
+    //     Apple treats it as a different app context — SameSite=Lax cookies are NOT
+    //     reliably persisted between sessions in standalone mode; they get wiped when
+    //     the PWA is backgrounded. SameSite=None + Secure forces a proper persistent
+    //     cookie that Safari standalone honours correctly.
+    //   - Production native app (Capacitor): WebView makes requests to
+    //     https://iwillbuild.com — SameSite=None + Secure works fine here too.
     advanced: {
       disableCSRFCheck: true,
-      ...(process.env.AIRO_PREVIEW === 'true' && {
-        defaultCookieAttributes: {
-          sameSite: 'none' as const,
-          secure: true,
-          partitioned: true,
-        },
-      }),
+      defaultCookieAttributes: {
+        sameSite: 'none' as const,
+        secure: true,
+        // Partitioned (CHIPS) only in preview — production doesn't need it and
+        // some older Safari versions don't handle it well outside iframe contexts.
+        ...(process.env.AIRO_PREVIEW === 'true' && { partitioned: true }),
+      },
     },
 
     emailAndPassword: { enabled: true },
