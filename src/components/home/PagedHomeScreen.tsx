@@ -140,21 +140,23 @@ function DashboardPage({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => onNavigate('?panel=signin')}
-          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform"
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform"
         >
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <LogIn size={18} strokeWidth={2} />
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <LogIn size={20} strokeWidth={2} />
           </div>
-          <span className="text-sm font-semibold leading-tight">Sign In</span>
+          <span className="text-sm font-bold leading-tight">Sign In</span>
+          <span className="text-[10px] text-white/60 leading-tight">Record site attendance</span>
         </button>
         <button
           onClick={() => onNavigate('?panel=drive-picker')}
-          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform"
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform"
         >
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Car size={18} strokeWidth={2} />
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <Car size={20} strokeWidth={2} />
           </div>
-          <span className="text-sm font-semibold leading-tight">Drive</span>
+          <span className="text-sm font-bold leading-tight">Drive</span>
+          <span className="text-[10px] text-white/60 leading-tight">Start a driving session</span>
         </button>
       </div>
 

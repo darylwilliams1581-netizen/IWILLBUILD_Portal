@@ -1791,7 +1791,21 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                 </motion.div>
               )}
             </div>
-            <div className="shrink-0" style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
+
+            {/* ── Done button — appears after a successful sign in/out ── */}
+            {result && (
+              <div className="px-4 pb-4 pt-1 shrink-0">
+                <button
+                  onClick={onClose}
+                  className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+                >
+                  <CheckCircle2 size={16} />
+                  Done
+                </button>
+              </div>
+            )}
+
+            <div className="shrink-0" style={{ height: result ? 0 : 'max(env(safe-area-inset-bottom), 8px)' }} />
             </motion.div>
           </div>
         </>
@@ -2231,7 +2245,7 @@ export default function HomeScreen() {
 
       {/* ── Active status sub-header ── */}
       <AnimatePresence>
-        {(activeStatus?.jobSignIn || activeStatus?.driving) && (
+        {(activeStatus?.jobSignIn || activeStatus?.driving || (activeStatus?.drivingSessions?.length ?? 0) > 0) && (
           <ActiveStatusBar
             status={activeStatus}
             onJobPress={() => setSignInOutOpen(true)}
