@@ -18,7 +18,7 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
@@ -134,7 +134,7 @@ function DashboardPage({
       </div>
 
       {/* ── Quick-action row: Sign In + Drive ─────────────────────────────────
-          These are the two most-used field actions. Shown here on the Dashboard
+          These are the most-used field actions. Shown here on the Dashboard
           page so they're always visible without swiping to Field. */}
       <div className="grid grid-cols-2 gap-3">
         <button
@@ -156,6 +156,26 @@ function DashboardPage({
           </div>
           <span className="text-sm font-bold leading-tight">Drive</span>
           <span className="text-[10px] text-white/60 leading-tight">Start a driving session</span>
+        </button>
+        <button
+          onClick={() => onNavigate('?panel=site-prestart-picker')}
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <HardHat size={20} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-bold leading-tight">Site Prestart</span>
+          <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
+        </button>
+        <button
+          onClick={() => onNavigate('?panel=prestart-picker')}
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-amber-600 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <ClipboardCheck size={20} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-bold leading-tight">Vehicle Prestart</span>
+          <span className="text-[10px] text-white/60 leading-tight">Vehicle inspection check</span>
         </button>
       </div>
 
