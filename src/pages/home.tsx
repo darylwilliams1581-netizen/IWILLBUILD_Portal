@@ -777,12 +777,17 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
       )
     : assets;
 
+  const driveOpenedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (open) driveOpenedAtRef.current = Date.now();
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open && (
         <>
           {/* Backdrop */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => { if (Date.now() - driveOpenedAtRef.current >= 300) onClose(); }} />
 
           {/* Centred floating modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
@@ -1594,6 +1599,19 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
 
   const isSignedIn = status?.signedIn ?? false;
 
+  // Guard: ignore backdrop clicks that arrive within 300 ms of the sheet
+  // opening — this prevents the same touch that opened the sheet from
+  // immediately closing it via event bubbling / fast tap propagation.
+  const openedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (open) openedAtRef.current = Date.now();
+  }, [open]);
+
+  function handleBackdropClick() {
+    if (Date.now() - openedAtRef.current < 300) return;
+    onClose();
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -1601,7 +1619,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
-            onClick={onClose}
+            onClick={handleBackdropClick}
           />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
             <motion.div
