@@ -74,9 +74,11 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const note = typeof parsed.fields?.note === 'string' ? parsed.fields.note.trim() || null : null;
-    const capturedAt = typeof parsed.fields?.capturedAt === 'string'
+    const capturedAtRaw = typeof parsed.fields?.capturedAt === 'string'
       ? parsed.fields.capturedAt
       : new Date().toISOString();
+    // MySQL DATETIME requires 'YYYY-MM-DD HH:MM:SS' — strip the T and Z from ISO 8601
+    const capturedAt = capturedAtRaw.replace('T', ' ').replace('Z', '').slice(0, 19);
     const jobIdRaw = typeof parsed.fields?.jobId === 'string' ? parseInt(parsed.fields.jobId, 10) : null;
     const jobId = jobIdRaw && !isNaN(jobIdRaw) ? jobIdRaw : null;
     const initialStatus = jobId ? 'assigned' : 'captured';
@@ -113,8 +115,8 @@ export default async function handler(req: Request, res: Response) {
            ${result.sizeBytes}, ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
       `);
 
-      const [idRow] = await db.execute(sql`SELECT LAST_INSERT_ID() as id`) as unknown as [Array<{ id: number }>, unknown];
-      const newId = idRow?.[0]?.id ?? 0;
+      const idRows = await db.execute(sql`SELECT LAST_INSERT_ID() as id`) as unknown as Array<{ id: number }>;
+      const newId = idRows?.[0]?.id ?? 0;
 
       saved.push({ id: newId, storageKey: result.storageKey, url: result.publicUrl });
     }

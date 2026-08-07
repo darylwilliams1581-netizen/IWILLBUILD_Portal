@@ -60,10 +60,10 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Fetch existing capture to get old storage key
-    const [rows] = await db.execute(sql`
+    const rows = await db.execute(sql`
       SELECT storage_key FROM camera_captures
       WHERE id = ${captureId} AND company_id = ${profile.companyId} AND user_id = ${session.user.id}
-    `) as unknown as [Array<{ storage_key: string }>, unknown];
+    `) as unknown as Array<{ storage_key: string }>;
     const existing = rows?.[0];
     if (!existing) return res.status(404).json({ error: 'Capture not found' });
 
