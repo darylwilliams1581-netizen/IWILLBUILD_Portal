@@ -164,6 +164,10 @@ export function getAppPlugin(): AppPlugin | null {
   return getPlugin<AppPlugin>('App');
 }
 
+export function getCameraPlugin(): CameraPlugin | null {
+  return getPlugin<CameraPlugin>('Camera');
+}
+
 // ── Async wrappers (backwards-compatible) ────────────────────────────────────
 // These preserve the async API that existing callers expect (await getNativeGeo()).
 
