@@ -19,7 +19,6 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from 'react';
 import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car } from 'lucide-react';
-import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
@@ -161,7 +160,6 @@ function DashboardPage({
       </div>
 
       <DashboardBanner userId={userId} />
-      <KpiWidgets />
       <NotificationList />
       <MyTasksPanel userRole={role} />
 
