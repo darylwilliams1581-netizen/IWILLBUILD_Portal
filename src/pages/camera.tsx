@@ -2084,6 +2084,50 @@ export default function CameraPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const libraryFallbackRef = useRef<HTMLInputElement>(null);
 
+  // ── Auto-open state ───────────────────────────────────────────────────────
+  // autoOpenedRef: ensures we only fire the auto-open once per mount, even if
+  // settingsLoaded triggers a re-render. Never set back to false — once the
+  // camera has been opened (or attempted), the user is in control.
+  const autoOpenedRef = useRef(false);
+  // userCancelled: true after the user dismisses the native camera without
+  // capturing. Shows the landing screen instead of a blank black screen.
+  const [userCancelled, setUserCancelled] = useState(false);
+
+  // ── Auto-open: launch native camera immediately after settings load ───────
+  // Conditions: settings loaded, no permission modal active, not already opened.
+  // On web (non-native) we skip auto-open — the file input requires a direct
+  // user gesture and cannot be triggered programmatically after an async delay.
+  useEffect(() => {
+    if (!settingsLoaded) return;                    // wait for settings
+    if (autoOpenedRef.current) return;              // already opened once
+    if (picker.checkingPermission) return;          // permission modal in flight
+    if (picker.explainer) return;                   // explainer modal showing
+    if (!isNative()) return;                        // web: requires direct gesture
+
+    autoOpenedRef.current = true;                   // mark before the async call
+
+    const quality = settings.quality === 'low' ? 72 : settings.quality === 'high' ? 92 : 84;
+
+    picker.openCamera({
+      direction: 'rear',
+      flashMode: 'auto',
+      captureQuality: quality,
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isCancel =
+        msg.toLowerCase().includes('cancel') ||
+        msg.toLowerCase().includes('dismiss') ||
+        msg.toLowerCase().includes('user cancelled') ||
+        msg.toLowerCase().includes('no image');
+      if (isCancel) {
+        setUserCancelled(true);   // show landing screen — do NOT loop
+      } else {
+        setCameraError(msg || 'Camera could not be opened.');
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoaded]);  // intentionally only re-runs when settings finish loading
+
   // Auto-expand tray when a new capture is added
   useEffect(() => {
     if (captures.length > prevCapturesLenRef.current) {
@@ -2094,8 +2138,156 @@ export default function CameraPage() {
 
   if (!settingsLoaded) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0d0d12' }}>
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
         <Loader2 size={24} className="animate-spin text-violet-400" />
+      </div>
+    );
+  }
+
+  // ── Landing screen — shown after user cancels the native camera ───────────
+  // Also shown when there is a hard camera error (plugin failure / permission
+  // denied). Never shown on first mount — the auto-open fires first.
+  if (userCancelled || cameraError) {
+    const isPermDenied = picker.permissionDenied === 'camera';
+    return (
+      <div className="fixed inset-0 flex flex-col bg-background">
+        <Helmet>
+          <title>Camera — IWILLBUILD</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+
+        {/* Hidden file inputs — still needed for library fallback */}
+        <IosMediaInputs picker={pickerExt} />
+        <input
+          ref={libraryFallbackRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) { setUserCancelled(false); setCameraError(null); handleFileFromPicker(f); }
+            e.target.value = '';
+          }}
+        />
+
+        {/* Safe-area top spacer */}
+        <div style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+
+        {/* Back / close button */}
+        <div className="flex items-center px-4 pt-3 pb-2">
+          <button
+            onClick={() => { if (returnToParam) navigate(returnToParam); else navigate(-1); }}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            <ChevronLeft size={18} />
+            <span>Back</span>
+          </button>
+        </div>
+
+        {/* Centre content */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 px-8 pb-16">
+
+          {/* Icon */}
+          <div className="flex items-center justify-center w-20 h-20 rounded-3xl bg-muted border border-border">
+            <Camera size={36} className="text-muted-foreground/50" />
+          </div>
+
+          {/* Heading */}
+          <div className="flex flex-col items-center gap-2 text-center max-w-xs">
+            {cameraError && !isPermDenied ? (
+              <>
+                <h1 className="text-foreground font-bold text-xl">Camera could not open</h1>
+                <p className="text-muted-foreground text-sm leading-relaxed">{cameraError}</p>
+              </>
+            ) : isPermDenied ? (
+              <>
+                <h1 className="text-foreground font-bold text-xl">Camera access denied</h1>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Allow camera access in iPhone Settings to take photos.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-foreground font-bold text-xl">Ready to capture</h1>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Take a photo or choose one from your library.
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            {isPermDenied ? (
+              <button
+                onClick={() => {
+                  const cap = (window as unknown as { Capacitor?: { Plugins?: { App?: { openUrl?: (opts: { url: string }) => void } } } }).Capacitor;
+                  cap?.Plugins?.App?.openUrl?.({ url: 'app-settings:' });
+                }}
+                className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base flex items-center justify-center gap-2"
+              >
+                <Settings size={18} />
+                Open iPhone Settings
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setCameraError(null);
+                  setUserCancelled(false);
+                  const quality = settings.quality === 'low' ? 72 : settings.quality === 'high' ? 92 : 84;
+                  picker.openCamera({
+                    direction: frontCamera ? 'front' : 'rear',
+                    flashMode: flashOn ? 'on' : 'off',
+                    captureQuality: quality,
+                  }).catch((err: unknown) => {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    const isCancel =
+                      msg.toLowerCase().includes('cancel') ||
+                      msg.toLowerCase().includes('dismiss') ||
+                      msg.toLowerCase().includes('user cancelled') ||
+                      msg.toLowerCase().includes('no image');
+                    if (isCancel) {
+                      setUserCancelled(true);
+                    } else {
+                      setCameraError(msg || 'Camera could not be opened.');
+                    }
+                  });
+                }}
+                className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base flex items-center justify-center gap-2"
+              >
+                <Camera size={18} />
+                Open Camera
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setCameraError(null);
+                setUserCancelled(false);
+                if (isNative()) {
+                  void picker.openLibrary();
+                } else {
+                  libraryFallbackRef.current?.click();
+                }
+              }}
+              className="w-full py-4 rounded-2xl bg-muted border border-border text-foreground/70 font-semibold text-base flex items-center justify-center gap-2"
+            >
+              <FolderOpen size={18} />
+              Choose from Photo Library
+            </button>
+          </div>
+        </div>
+
+        {/* Permission explainer modal */}
+        {picker.explainer && (
+          <PermissionExplainerModal
+            type={picker.explainer.type}
+            open={!!picker.explainer}
+            denied={picker.explainer.denied}
+            onNotNow={picker.explainer.onNotNow}
+            onEnable={() => void picker.explainer!.onEnable()}
+          />
+        )}
       </div>
     );
   }
@@ -2212,51 +2404,6 @@ export default function CameraPage() {
             </div>
           </div>
         )}
-
-        {/* Camera open error — shown when getPhoto fails for a non-cancel reason */}
-        {cameraError && !picker.checkingPermission && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 pointer-events-auto">
-            <div className="flex flex-col items-center gap-3 bg-black/70 rounded-3xl px-6 py-6 max-w-xs w-full">
-              <AlertCircle size={32} className="text-red-400" />
-              <p className="text-white font-semibold text-sm text-center">Camera could not be opened</p>
-              <p className="text-white/50 text-xs text-center leading-snug">{cameraError}</p>
-              <div className="flex flex-col gap-2 w-full mt-1">
-                <button
-                  onClick={() => {
-                    setCameraError(null);
-                    void picker.openCamera({
-                      direction: frontCamera ? 'front' : 'rear',
-                      flashMode: flashOn ? 'on' : 'off',
-                      captureQuality: settings.quality === 'low' ? 72 : settings.quality === 'high' ? 92 : 84,
-                    });
-                  }}
-                  className="w-full py-2.5 rounded-2xl bg-violet-600 text-white text-sm font-bold"
-                >
-                  Try again
-                </button>
-                <button
-                  onClick={() => { setCameraError(null); libraryFallbackRef.current?.click(); }}
-                  className="w-full py-2.5 rounded-2xl bg-white/10 text-white/80 text-sm font-semibold flex items-center justify-center gap-2"
-                >
-                  <FolderOpen size={14} /> Choose from Photo Library
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Fallback library input — used when camera fails */}
-        <input
-          ref={libraryFallbackRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={e => {
-            const f = e.target.files?.[0];
-            if (f) handleFileFromPicker(f);
-            e.target.value = '';
-          }}
-        />
       </div>
 
       {/* ═══ CAPTURED TRAY OVERLAY ═══ */}
@@ -2533,6 +2680,7 @@ export default function CameraPage() {
                 transition={{ type: 'spring', stiffness: 420, damping: 22 }}
                 onClick={() => {
                   setCameraError(null);
+                  setUserCancelled(false);
                   void picker.openCamera({
                     direction: frontCamera ? 'front' : 'rear',
                     flashMode: flashOn ? 'on' : 'off',
@@ -2544,8 +2692,12 @@ export default function CameraPage() {
                       : 84,
                   }).catch((err: unknown) => {
                     const msg = err instanceof Error ? err.message : String(err);
-                    const isCancel = msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('dismiss') || msg.toLowerCase().includes('user cancelled');
-                    if (!isCancel) setCameraError(msg || 'Camera could not be opened.');
+                    const isCancel = msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('dismiss') || msg.toLowerCase().includes('user cancelled') || msg.toLowerCase().includes('no image');
+                    if (isCancel) {
+                      setUserCancelled(true);
+                    } else {
+                      setCameraError(msg || 'Camera could not be opened.');
+                    }
                   });
                 }}
                 className="relative flex items-center justify-center"
