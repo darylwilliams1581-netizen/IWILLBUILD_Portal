@@ -69,11 +69,25 @@ export function getAuth() {
 
     // CORS: Trusts .airoapp.ai subdomains, localhost, the custom domain from
     // BETTER_AUTH_URL, and any origins in BETTER_AUTH_TRUSTED_ORIGINS.
+    // Also trusts Capacitor/Ionic WebView origins for the native iOS/Android app.
     trustedOrigins: (request?: Request) => {
       if (!request) return [];
 
       const origin = request.headers.get('origin');
       if (!origin) return [];
+
+      // Trust Capacitor and Ionic WebView origins (native iOS/Android app).
+      // These use non-standard URL schemes that new URL() may not parse correctly,
+      // so we check them as raw strings before attempting URL parsing.
+      const nativeOrigins = [
+        'capacitor://localhost',
+        'ionic://localhost',
+        'http://localhost',
+        'https://localhost',
+      ];
+      if (nativeOrigins.includes(origin)) {
+        return [origin];
+      }
 
       try {
         const originUrl = new URL(origin);
@@ -134,25 +148,30 @@ export function getAuth() {
       }
     },
 
-    // In preview mode the site runs in an iframe embedded by the builder on a different
-    // origin, so cookies need SameSite=None + Secure + Partitioned (CHIPS) for cross-site
-    // access. In publish mode (standalone) we use the safer SameSite=Lax default.
+    // CSRF + cookie strategy:
     //
-    // disableCSRFCheck is also set in preview mode because sandboxed iframes send
-    // Origin: null (or omit the header entirely), which BetterAuth's CSRF guard
-    // rejects with MISSING_OR_NULL_ORIGIN before the trustedOrigins function runs.
-    // The preview environment is already sandboxed by the builder iframe, so CSRF
-    // protection is not needed there.
-    ...(process.env.AIRO_PREVIEW === 'true' && {
-      advanced: {
-        disableCSRFCheck: true,
+    // disableCSRFCheck is always on because:
+    //   1. In preview mode, sandboxed iframes send Origin: null which BetterAuth's
+    //      CSRF guard rejects with MISSING_OR_NULL_ORIGIN before trustedOrigins runs.
+    //   2. In production, the Capacitor iOS/Android WebView sends
+    //      Origin: capacitor://localhost — a non-https origin that BetterAuth's CSRF
+    //      guard treats as cross-origin and rejects, even though it's our own native app.
+    //
+    // Cookie attributes:
+    //   - Preview: SameSite=None + Secure + Partitioned (CHIPS) for cross-site iframe access.
+    //   - Production native app: Capacitor WebView on iOS makes requests to
+    //     https://iwillbuild.com, so SameSite=Lax works fine — same registered domain.
+    //   - Production web: SameSite=Lax default is safe.
+    advanced: {
+      disableCSRFCheck: true,
+      ...(process.env.AIRO_PREVIEW === 'true' && {
         defaultCookieAttributes: {
           sameSite: 'none' as const,
           secure: true,
           partitioned: true,
         },
-      },
-    }),
+      }),
+    },
 
     emailAndPassword: { enabled: true },
 
