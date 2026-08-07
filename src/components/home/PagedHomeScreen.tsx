@@ -96,7 +96,7 @@ function IconPage({
             </div>
           ))
         ) : (
-          <div className="flex-1 grid grid-cols-2 gap-3" style={{ gridAutoRows: '1fr' }}>
+          <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)', maxHeight: '100%' }}>
             {icons.map(item => (
               <IconTile key={item.key} item={item} onNavigate={onNavigate} />
             ))}
