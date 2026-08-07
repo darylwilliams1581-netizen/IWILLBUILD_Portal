@@ -132,9 +132,10 @@ function DashboardPage({
           <button
             onClick={onCamera}
             aria-label="Open camera"
-            className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 text-slate-600 active:scale-95 transition-transform hover:bg-slate-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
           >
-            <Camera size={16} strokeWidth={2} />
+            <Camera size={13} strokeWidth={2.5} />
+            Camera
           </button>
           <button
             onClick={onNewJob}
