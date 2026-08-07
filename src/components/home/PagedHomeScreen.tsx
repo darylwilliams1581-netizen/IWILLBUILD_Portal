@@ -18,7 +18,7 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car } from 'lucide-react';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
@@ -109,7 +109,15 @@ function IconPage({
 
 // ── Dashboard page ────────────────────────────────────────────────────────────
 
-function DashboardPage({ userId, role }: { userId: string; role: string }) {
+function DashboardPage({
+  userId,
+  role,
+  onNavigate,
+}: {
+  userId: string;
+  role: string;
+  onNavigate: (href: string) => void;
+}) {
   const [newJobOpen, setNewJobOpen] = useState(false);
 
   return (
@@ -123,6 +131,30 @@ function DashboardPage({ userId, role }: { userId: string; role: string }) {
         >
           <Plus size={13} strokeWidth={2.5} />
           Add Job
+        </button>
+      </div>
+
+      {/* ── Quick-action row: Sign In + Drive ─────────────────────────────────
+          These are the two most-used field actions. Shown here on the Dashboard
+          page so they're always visible without swiping to Field. */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => onNavigate('?panel=signin')}
+          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <LogIn size={18} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-semibold leading-tight">Sign In</span>
+        </button>
+        <button
+          onClick={() => onNavigate('?panel=drive-picker')}
+          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Car size={18} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-semibold leading-tight">Drive</span>
         </button>
       </div>
 
@@ -301,7 +333,7 @@ export default function PagedHomeScreen({
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            <DashboardPage userId={userId} role={role} />
+            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} />
           </div>
 
           {/* Page 1 — Field */}
