@@ -27,6 +27,11 @@ export default async function handler(req: Request, res: Response) {
   }
   if (parsed.limitError) return res.status(400).json({ error: parsed.limitError });
 
+  console.log(`[job-card-photos POST] cardId=${req.params.id} files=${parsed.files.length}`);
+  for (const f of parsed.files) {
+    console.log(`[job-card-photos POST] file: name="${f.originalname}" mime="${f.mimetype}" size=${f.size}`);
+  }
+
   try {
     const auth = getAuth();
     const headers = new Headers();
@@ -43,10 +48,11 @@ export default async function handler(req: Request, res: Response) {
     if (!cardId) return res.status(400).json({ error: 'Invalid id' });
 
     // Verify ownership
-    const [rows] = await db.execute(
+    const ownerResult = await db.execute(
       sql`SELECT id FROM job_cards WHERE id = ${cardId} AND company_id = ${profile.companyId}`
-    ) as unknown as [Array<{ id: number }>, unknown];
-    if (!rows?.length) return res.status(404).json({ error: 'Job card not found' });
+    );
+    const ownerRows = ownerResult[0] as Array<{ id: number }>;
+    if (!ownerRows?.length) return res.status(404).json({ error: 'Job card not found' });
 
     const caption = String(parsed.fields.caption ?? '').trim() || null;
     const saved: Array<{ id: number; file_path: string; file_name: string; caption: string | null }> = [];
@@ -72,18 +78,18 @@ export default async function handler(req: Request, res: Response) {
       const compressed = await compressImageIfNeeded(file.buffer, file.mimetype);
       const fileName = `jc-${cardId}-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
       const result = await saveFile({
-        buffer: compressed,
+        buffer: compressed.buffer,
         originalName: fileName,
-        mimeType: 'image/jpeg',
+        mimeType: compressed.mimeType,
         bucket: BUCKET,
       });
 
-      const [ins] = await db.execute(sql`
+      const insResult = await db.execute(sql`
         INSERT INTO job_card_photos (job_card_id, company_id, file_path, file_name, mime_type, caption, uploaded_by)
-        VALUES (${cardId}, ${profile.companyId}, ${result.publicUrl}, ${file.originalname}, ${'image/jpeg'}, ${caption}, ${session.user.id})
-      `) as unknown as [{ insertId: number }, unknown];
-
-      const insertId = Number((ins as unknown as { insertId?: number })?.insertId ?? 0);
+        VALUES (${cardId}, ${profile.companyId}, ${result.publicUrl}, ${file.originalname}, ${compressed.mimeType}, ${caption}, ${session.user.id})
+      `);
+      const ins = insResult[0] as { insertId?: number };
+      const insertId = Number(ins?.insertId ?? 0);
       saved.push({ id: insertId, file_path: result.publicUrl, file_name: file.originalname, caption });
     }
 
