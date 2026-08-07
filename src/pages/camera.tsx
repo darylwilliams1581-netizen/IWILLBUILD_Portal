@@ -349,29 +349,35 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Check whether save-to-photos permission is available.
- * Returns 'granted' | 'denied' | 'unavailable'.
- * Uses @capacitor/camera via dynamic import (getCameraPlugin).
+ * Access window.Capacitor.Plugins.Camera directly — same pattern as useIosMediaPicker.
+ * Dynamic import('@capacitor/camera') can produce a broken chunk in iOS builds.
  */
+function getNativeCamBridge() {
+  if (typeof window === 'undefined') return null;
+  const cap = (window as {
+    Capacitor?: { isNativePlatform?: () => boolean; Plugins?: { Camera?: Record<string, unknown> } };
+  }).Capacitor;
+  if (!cap?.isNativePlatform?.()) return null;
+  return (cap?.Plugins?.Camera ?? null) as {
+    checkPermissions: () => Promise<Record<string, string>>;
+    requestPermissions: (o: { permissions: string[] }) => Promise<Record<string, string>>;
+  } | null;
+}
+
 async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'unavailable'> {
   if (!isNative()) return 'unavailable';
   try {
-    const { getCameraPlugin } = await import('@/lib/capacitor-plugins');
-    const Camera = await getCameraPlugin();
+    const Camera = getNativeCamBridge();
     if (!Camera) return 'unavailable';
 
     const status = await Camera.checkPermissions();
-    const photos = (status as { photos?: string }).photos
-      ?? (status as { camera?: string }).camera
-      ?? 'prompt';
+    const photos = status.photos ?? status.camera ?? 'prompt';
     if (photos === 'granted' || photos === 'limited') return 'granted';
     if (photos === 'denied') return 'denied';
 
     // 'prompt' — request it
-    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
-    const rPhotos = (requested as { photos?: string }).photos
-      ?? (requested as { camera?: string }).camera
-      ?? 'denied';
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] });
+    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
     return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
   } catch {
     return 'unavailable';
