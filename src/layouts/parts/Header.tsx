@@ -220,8 +220,19 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* ── Mobile hamburger (logo + burger only — Sign in lives in the panel) ── */}
+        {/* ── Mobile: Sign in button + hamburger ── */}
         <div className="md:hidden flex items-center" style={{ gap: 8 }}>
+          <Link
+            to="/login"
+            className="border border-primary text-primary hover:bg-primary/10 transition-colors"
+            style={{
+              padding: '7px 14px', borderRadius: 8,
+              fontWeight: 700, fontSize: 13, textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Sign in
+          </Link>
           <button
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
