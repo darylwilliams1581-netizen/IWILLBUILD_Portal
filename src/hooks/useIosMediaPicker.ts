@@ -381,6 +381,21 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   // ── Internal: check camera permission + open input ────────────────────────
   const doOpenCamera = useCallback(async (opts?: NativeCameraOptions) => {
     setDenied(null);
+
+    // ── Web path: click MUST happen synchronously inside the user gesture ─────
+    // iOS Safari invalidates the gesture token the moment any `await` resolves,
+    // even if the awaited value is already settled. So on web we fire the click
+    // immediately — before any async work — then return. The file input's
+    // onChange handler picks up the result.
+    if (!isNative()) {
+      const input = cameraInputRef.current;
+      if (input) {
+        input.setAttribute('capture', opts?.direction === 'front' ? 'user' : 'environment');
+        input.click();
+      }
+      return;
+    }
+
     setChecking(true);
     try {
       const perm = await ensureCameraPermission();
@@ -456,19 +471,19 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         }
       }
     }
-
-    // ── Web / fallback path: file input with capture attribute ────────────────
-    // Dynamically set capture direction so front/rear works on Android Chrome too
-    const input = cameraInputRef.current;
-    if (input) {
-      input.setAttribute('capture', opts?.direction === 'front' ? 'user' : 'environment');
-      input.click();
-    }
+    // Native plugin not available — nothing more to do on native
   }, [handleFile]);
 
   // ── Internal: check photos permission + open input ────────────────────────
   const doOpenLibrary = useCallback(async () => {
     setDenied(null);
+
+    // ── Web path: click synchronously — same Safari gesture-token rule ────────
+    if (!isNative()) {
+      libraryInputRef.current?.click();
+      return;
+    }
+
     setChecking(true);
     try {
       const perm = await ensurePhotosPermission();
