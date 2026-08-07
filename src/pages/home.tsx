@@ -635,9 +635,11 @@ function useActiveStatus(refreshKey: number) {
 
   useEffect(() => {
     let cancelled = false;
+    // Clear stale state immediately so the widget disappears while we refetch
+    setStatus(null);
     fetch('/api/me/active-status', { credentials: 'include' })
       .then(r => r.ok ? r.json() as Promise<ActiveStatus & { ok: boolean }> : null)
-      .then(data => { if (!cancelled && data?.ok) setStatus(data); })
+      .then(data => { if (!cancelled) setStatus(data?.ok ? data : null); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [refreshKey]);
@@ -678,15 +680,21 @@ function ActiveStatusBar({
     if (!status?.jobSignIn || signingOut) return;
     setSigningOut(true);
     try {
-      await fetch(`/api/jobs/${status.jobSignIn.jobId}/signout`, {
+      const res = await fetch(`/api/jobs/${status.jobSignIn.jobId}/signout`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      onJobSignOut(status.jobSignIn.jobId);
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; notSignedIn?: boolean; error?: string };
+      // Success OR already signed out — either way, dismiss the widget
+      if (res.ok || data.notSignedIn) {
+        onJobSignOut(status.jobSignIn.jobId);
+      } else {
+        // Real error — fall back to sheet
+        onJobPress();
+      }
     } catch {
-      // fallback: open the sheet so user can try manually
       onJobPress();
     } finally {
       setSigningOut(false);
