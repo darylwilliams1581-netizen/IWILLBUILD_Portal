@@ -946,9 +946,18 @@ export default function FleetLiveMap() {
         </div>
 
         {/* ── Map area ── */}
+        {/*
+          flex: '1 1 0' fills remaining width next to the sidebar.
+          minHeight ensures the map is never zero-height on mobile:
+          - On phones (no sidebar, full width): the parent already has
+            calc(100dvh - 48px) from fleet.tsx, so this is belt-and-braces.
+          - On tablet/desktop: min(60vh, 400px) keeps the map a sensible size.
+          The inner div uses absolute inset-0 so it always fills the container;
+          minHeight: '300px' is a hard floor for very small viewports.
+        */}
         <div
           className="flex-1 relative min-w-0 overflow-hidden"
-          style={{ minHeight: 'min(60vh, 400px)', flex: '1 1 0' }}
+          style={{ minHeight: 'min(60dvh, 400px)', flex: '1 1 0' }}
         >
           <div ref={mapRef} className="absolute inset-0" style={{ minHeight: '300px' }} />
 
