@@ -1,6 +1,17 @@
 /**
  * POST /api/camera-captures
  * Upload one or more photos to the camera captures inbox (no job required).
+ *
+ * SAFETY RULES
+ * ────────────
+ * 1. insertId is read from the SAME db.execute() result object — never via a
+ *    separate SELECT LAST_INSERT_ID() which can return 0 on a different pool
+ *    connection.
+ * 2. If saveFile() succeeds but the DB insert fails, deleteFile() is called
+ *    immediately to prevent orphaned storage objects.
+ * 3. If jobId is supplied, the job must belong to the authenticated user's
+ *    company before it is accepted.
+ * 4. Blobs are validated (non-empty, supported MIME) before any I/O.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
@@ -11,6 +22,7 @@ import { parseMultipartForm } from '../../lib/file-upload.js';
 import {
   compressImageIfNeeded,
   saveFile,
+  deleteFile,
   ALLOWED_IMAGE_MIMES,
 } from '../../storage/storage-service.js';
 import { randomUUID } from 'node:crypto';
@@ -46,11 +58,15 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    // MIME reclassification (same pattern as job photos)
+    // ── MIME reclassification (magic-byte sniffing for extension-less uploads) ──
     for (const f of files) {
       const ext = (f.originalname.split('.').pop() ?? '').toLowerCase();
       const noExt = !f.originalname.includes('.') || ext === f.originalname.toLowerCase();
-      if (f.mimetype === 'application/octet-stream' || f.mimetype === '' || f.mimetype === 'application/unknown') {
+      if (
+        f.mimetype === 'application/octet-stream' ||
+        f.mimetype === '' ||
+        f.mimetype === 'application/unknown'
+      ) {
         if (ext === 'heic' || ext === 'heif') f.mimetype = 'image/heic';
         else if (ext === 'jpg' || ext === 'jpeg') f.mimetype = 'image/jpeg';
         else if (ext === 'png') f.mimetype = 'image/png';
@@ -66,6 +82,13 @@ export default async function handler(req: Request, res: Response) {
       if (f.mimetype === 'image/jpg') f.mimetype = 'image/jpeg';
       if (f.mimetype === 'image/heif') f.mimetype = 'image/heic';
 
+      // ── Blob validation: reject empty buffers ─────────────────────────────
+      if (!f.buffer || f.buffer.length === 0) {
+        return res.status(400).json({
+          error: `"${f.originalname}" is empty — the capture may have failed on the device.`,
+        });
+      }
+
       if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
         return res.status(400).json({
           error: `"${f.originalname}" is not a supported image type (${f.mimetype}).`,
@@ -78,14 +101,25 @@ export default async function handler(req: Request, res: Response) {
       ? parsed.fields.capturedAt
       : new Date().toISOString();
     // MySQL DATETIME requires 'YYYY-MM-DD HH:MM:SS' — convert from ISO 8601
-    // e.g. '2026-08-07T12:21:00.138Z' → '2026-08-07 12:21:00'
-    // If conversion produces an invalid string, pass NULL so MySQL uses DEFAULT CURRENT_TIMESTAMP
     const mysqlDate = capturedAtRaw.replace('T', ' ').replace('Z', '').slice(0, 19);
     const capturedAt = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(mysqlDate) ? mysqlDate : null;
+
     const jobIdRaw = typeof parsed.fields?.jobId === 'string' ? parseInt(parsed.fields.jobId, 10) : null;
     const jobId = jobIdRaw && !isNaN(jobIdRaw) ? jobIdRaw : null;
-    const initialStatus = jobId ? 'assigned' : 'captured';
 
+    // ── Job ownership check ───────────────────────────────────────────────────
+    // If a jobId was supplied, verify it belongs to this user's company before
+    // accepting it. This prevents cross-company data leakage.
+    if (jobId) {
+      const jobRows = await db.execute(sql`
+        SELECT id FROM jobs WHERE id = ${jobId} AND company_id = ${profile.companyId} LIMIT 1
+      `) as unknown as [Array<{ id: number }>, unknown];
+      if (!jobRows[0]?.[0]) {
+        return res.status(403).json({ error: 'Job not found or does not belong to your company.' });
+      }
+    }
+
+    const initialStatus = jobId ? 'assigned' : 'captured';
     const saved: Array<{ id: number; storageKey: string; url: string }> = [];
 
     for (const file of files) {
@@ -102,7 +136,8 @@ export default async function handler(req: Request, res: Response) {
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
       const storageKey = `${randomUUID()}.${ext}`;
 
-      const result = await saveFile({
+      // ── Save to storage first ─────────────────────────────────────────────
+      const storageResult = await saveFile({
         buffer: compressed,
         originalName: file.originalname,
         mimeType: outMime,
@@ -110,18 +145,45 @@ export default async function handler(req: Request, res: Response) {
         storageKey,
       });
 
-      await db.execute(sql`
-        INSERT INTO camera_captures
-          (company_id, user_id, storage_key, mime_type, size_bytes, original_name, note, job_id, status, captured_at)
-        VALUES
-          (${profile.companyId}, ${session.user.id}, ${result.storageKey}, ${outMime},
-           ${result.sizeBytes}, ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
-      `);
+      // ── DB insert — read insertId from the SAME execute result ────────────
+      // NEVER use a separate SELECT LAST_INSERT_ID() — with a connection pool
+      // the second query may run on a different connection and return 0.
+      let newId = 0;
+      try {
+        const insertResult = await db.execute(sql`
+          INSERT INTO camera_captures
+            (company_id, user_id, storage_key, bucket, mime_type, size_bytes,
+             original_name, note, job_id, status, captured_at)
+          VALUES
+            (${profile.companyId}, ${session.user.id}, ${storageResult.storageKey},
+             ${BUCKET}, ${outMime}, ${storageResult.sizeBytes},
+             ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
+        `);
 
-      const idRows = await db.execute(sql`SELECT LAST_INSERT_ID() as id`) as unknown as Array<{ id: number }>;
-      const newId = idRows?.[0]?.id ?? 0;
+        // Drizzle returns [ResultSetHeader, FieldPacket[]] for raw execute on MySQL.
+        // ResultSetHeader has an insertId property.
+        newId = Number(
+          (insertResult as unknown as [{ insertId?: number }, unknown])[0]?.insertId ?? 0
+        );
 
-      saved.push({ id: newId, storageKey: result.storageKey, url: result.publicUrl });
+        if (newId <= 0) {
+          // insertId was 0 — treat as a failed insert, roll back the storage file
+          console.error('POST /api/camera-captures: insertId is 0 after INSERT — rolling back storage file');
+          await deleteFile(storageResult.storageKey, BUCKET).catch(delErr =>
+            console.error('POST /api/camera-captures: deleteFile rollback failed:', delErr)
+          );
+          return res.status(500).json({ error: 'Database insert did not return a valid ID.' });
+        }
+      } catch (dbErr) {
+        // DB insert threw — roll back the storage file to prevent orphans
+        console.error('POST /api/camera-captures: DB insert failed, rolling back storage file:', dbErr);
+        await deleteFile(storageResult.storageKey, BUCKET).catch(delErr =>
+          console.error('POST /api/camera-captures: deleteFile rollback failed:', delErr)
+        );
+        throw dbErr; // re-throw so the outer catch returns 500
+      }
+
+      saved.push({ id: newId, storageKey: storageResult.storageKey, url: storageResult.publicUrl });
     }
 
     res.status(201).json({ captures: saved });

@@ -385,18 +385,31 @@ async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'un
 }
 
 /**
- * Save a blob to the device camera roll via @capacitor/camera savePhoto().
+ * Save a processed/watermarked blob to the device camera roll.
  *
- * Strategy:
- *   1. Write the JPEG blob to the Capacitor CACHE directory as a temp file.
- *   2. Call Camera.savePhoto({ path: uri }) — the correct @capacitor/camera API
- *      for saving to the iOS Photos library.
- *   3. If Camera.savePhoto is not available (plugin not synced to native project
- *      yet), return 'unavailable' — never pretend the save succeeded.
+ * Strategy
+ * ────────
+ * @capacitor/camera does NOT expose a standalone `savePhoto()` method in the
+ * public API. The correct approach for saving a processed blob (not the raw
+ * capture) to the iOS Photos library is:
+ *
+ *   1. Write the JPEG blob to the Capacitor CACHE directory as a temp file
+ *      using Filesystem.writeFile().
+ *   2. Use the @capacitor-community/media plugin's `savePhoto({ path })` if
+ *      available — this is the community-supported way to save arbitrary files
+ *      to Photos on iOS.
+ *   3. If neither plugin is available, return 'unavailable' honestly — never
+ *      pretend the save succeeded by writing to DOCUMENTS/DCIM (that is NOT
+ *      the camera roll and would mislead the user).
+ *
+ * NOTE: `saveToGallery: true` in Camera.getPhoto() saves the ORIGINAL capture
+ * before any watermarking/compression. We intentionally do NOT use that flag
+ * here because we want to save the processed blob (with watermark/timestamp),
+ * not the raw capture. The auto-open useEffect passes `saveToGallery: false`.
  *
  * Returns:
  *   'saved'            — photo is genuinely in the device camera roll
- *   'permission_denied'— user denied Photos access
+ *   'permission_denied'— user denied Photos Add access
  *   'unavailable'      — not on native, plugin missing, or save failed
  */
 async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission_denied' | 'unavailable'> {
@@ -413,16 +426,20 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
             path: string; data: string; directory: string; recursive?: boolean;
           }) => Promise<{ uri: string }>;
         };
-        Camera?: {
+        // @capacitor-community/media plugin (if installed and synced)
+        Media?: {
           savePhoto?: (opts: { path: string }) => Promise<void>;
         };
       } }
     }).Capacitor;
 
     const Filesystem = cap?.Plugins?.Filesystem;
-    if (!Filesystem) return 'unavailable';
+    if (!Filesystem) {
+      console.warn('[camera-roll] Filesystem plugin not available');
+      return 'unavailable';
+    }
 
-    // Write to CACHE as a temp file — CACHE is writable and not user-visible
+    // Write processed blob to CACHE as a temp file
     const base64 = await blobToBase64(blob);
     const fileName = `iwillbuild_${Date.now()}.jpg`;
     const writeResult = await Filesystem.writeFile({
@@ -432,18 +449,18 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
       recursive: true,
     });
 
-    // Use Camera.savePhoto() — the correct @capacitor/camera API for camera roll
-    const CameraPlugin = cap?.Plugins?.Camera;
-    if (CameraPlugin?.savePhoto) {
-      await CameraPlugin.savePhoto({ path: writeResult.uri });
+    // Try @capacitor-community/media plugin
+    const MediaPlugin = cap?.Plugins?.Media;
+    if (MediaPlugin?.savePhoto) {
+      await MediaPlugin.savePhoto({ path: writeResult.uri });
       return 'saved';
     }
 
-    // savePhoto not available — the native project has not been synced with
-    // @capacitor/camera yet (or the plugin version doesn't support savePhoto).
-    // Do NOT fall back to writing to DOCUMENTS/DCIM — that is not the camera roll
-    // and would silently mislead the user. Return unavailable so the UI is honest.
-    console.warn('[camera-roll] Camera.savePhoto not available — run npx cap sync to register the plugin');
+    // Neither plugin available — be honest about it
+    console.warn(
+      '[camera-roll] No plugin available to save to Photos library. ' +
+      'Install @capacitor-community/media and run npx cap sync to enable Camera Roll backup.'
+    );
     return 'unavailable';
   } catch (e) {
     console.warn('[camera-roll] save failed:', e);
@@ -1795,18 +1812,45 @@ export default function CameraPage() {
 
   useEffect(() => { void loadCaptures(); }, [loadCaptures]);
 
+  // ── Retained blob store — keyed by clientId ──────────────────────────────
+  // Blobs are stored here after processImage() succeeds and removed only after
+  // the server confirms a successful save (non-zero id + url present).
+  // This enables genuine retry: tapping "Retry Save" calls uploadBlob() again
+  // with the same processed blob — no re-capture required.
+  const retainedBlobsRef = useRef<Map<string, { blob: Blob; capturedAt: string; jobId: number | null }>>(new Map());
+
   // ── Upload a single processed blob ───────────────────────────────────────
   // Offline-first: if the device is offline at the moment of upload, we mark
-  // the capture as 'error' with a clear "offline" message so the user knows
+  // the capture as 'error' with a clear "Retry Save" message so the user knows
   // it will need a manual retry — we do NOT silently drop the capture.
-  // On a network error (fetch throws), we retry once after 3 seconds before
-  // giving up, to handle brief signal drops common on construction sites.
+  // On a network error (fetch throws), we retry once after 3 s before giving up.
+  // A 30 s AbortController timeout prevents an endless "Saving…" spinner.
   async function uploadBlob(blob: Blob, clientId: string, capturedAt: string, jobId?: number | null) {
-    // Offline check — fail fast with a clear message rather than hanging
+    // ── Pre-flight blob validation ────────────────────────────────────────
+    if (!blob || blob.size === 0) {
+      setCaptures(prev => prev.map(c =>
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: 'Capture produced an empty image — please try again.' }
+          : c
+      ));
+      return;
+    }
+    const mime = blob.type || 'image/jpeg';
+    const supportedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!supportedMimes.includes(mime)) {
+      setCaptures(prev => prev.map(c =>
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: `Unsupported image type: ${mime}` }
+          : c
+      ));
+      return;
+    }
+
+    // ── Offline check — fail fast ─────────────────────────────────────────
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setCaptures(prev => prev.map(c =>
         c.clientId === clientId
-          ? { ...c, status: 'error', errorMsg: 'Offline — tap to retry when connected' }
+          ? { ...c, status: 'error', errorMsg: 'Offline — tap Retry Save when connected' }
           : c
       ));
       return;
@@ -1816,14 +1860,22 @@ export default function CameraPage() {
       c.clientId === clientId ? { ...c, status: 'uploading' } : c
     ));
 
+    // ── Single attempt with AbortController timeout ───────────────────────
     const attemptUpload = async (): Promise<Response> => {
-      const fd = new FormData();
-      fd.append('photos', blob, 'capture.jpg');
-      fd.append('capturedAt', capturedAt);
-      if (jobId) fd.append('jobId', String(jobId));
-      return fetch('/api/camera-captures', {
-        method: 'POST', credentials: 'include', body: fd,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30 s hard timeout
+      try {
+        const fd = new FormData();
+        fd.append('photos', blob, 'capture.jpg');
+        fd.append('capturedAt', capturedAt);
+        if (jobId) fd.append('jobId', String(jobId));
+        return await fetch('/api/camera-captures', {
+          method: 'POST', credentials: 'include', body: fd,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
     };
 
     try {
@@ -1831,30 +1883,44 @@ export default function CameraPage() {
       try {
         res = await attemptUpload();
       } catch (networkErr) {
-        // First attempt failed with a network error — wait 3s and retry once.
-        // This handles brief signal drops without immediately showing an error.
-        console.warn('[uploadBlob] network error on first attempt, retrying in 3s:', networkErr);
+        // First attempt failed (network error or timeout) — wait 3 s and retry once.
+        const isTimeout = networkErr instanceof DOMException && networkErr.name === 'AbortError';
+        console.warn(`[uploadBlob] ${isTimeout ? 'timeout' : 'network error'} on first attempt, retrying in 3s:`, networkErr);
         await new Promise(r => setTimeout(r, 3000));
-        res = await attemptUpload(); // throws again if still offline → caught below
+        res = await attemptUpload(); // throws again if still failing → caught below
       }
 
       if (!res.ok) {
         const d = await res.json() as { error?: string };
         throw new Error(d.error ?? `Upload failed (${res.status})`);
       }
-      const d = await res.json() as { captures: Array<{ id: number; url: string }> };
+
+      // ── Strict response validation ────────────────────────────────────────
+      // Only mark as done when the server returns a real id > 0 and a url.
+      const d = await res.json() as { captures?: Array<{ id?: number; url?: string }> };
+      if (!Array.isArray(d.captures) || d.captures.length === 0) {
+        throw new Error('Server returned no capture data.');
+      }
       const saved = d.captures[0];
+      if (!saved.id || saved.id <= 0) {
+        throw new Error('Server returned an invalid capture ID — the record may not have saved.');
+      }
+      if (!saved.url) {
+        throw new Error('Server returned no URL for the saved capture.');
+      }
+
+      // ── Success — remove retained blob, update capture state ─────────────
+      retainedBlobsRef.current.delete(clientId);
 
       setCaptures(prev => prev.map(c => {
         if (c.clientId !== clientId) return c;
         if (c.localUrl) URL.revokeObjectURL(c.localUrl);
-        return { ...c, id: saved.id, serverUrl: saved.url, localUrl: null, status: 'done', errorMsg: null };
+        return { ...c, id: saved.id!, serverUrl: saved.url!, localUrl: null, status: 'done', errorMsg: null };
       }));
 
       // ── attachTo: also save to job card photos + navigate back ────────────
       if (attachJobCardId && saved.url) {
         try {
-          // Fetch the uploaded image and re-post it to the job card photos endpoint
           const imgRes = await fetch(saved.url);
           if (imgRes.ok) {
             const imgBlob = await imgRes.blob();
@@ -1867,7 +1933,6 @@ export default function CameraPage() {
         } catch (attachErr) {
           console.warn('[camera] attachTo job-card post failed:', attachErr);
         }
-        // Navigate back once after first successful capture
         if (returnToParam && !returnedRef.current) {
           returnedRef.current = true;
           navigate(returnToParam);
@@ -1876,9 +1941,15 @@ export default function CameraPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
       const isOffline = !navigator.onLine || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch');
+      const isTimeout = msg.toLowerCase().includes('abort') || msg.toLowerCase().includes('timeout');
+      const displayMsg = isOffline
+        ? 'Offline — tap Retry Save when connected'
+        : isTimeout
+          ? 'Upload timed out — tap Retry Save'
+          : msg;
       setCaptures(prev => prev.map(c =>
         c.clientId === clientId
-          ? { ...c, status: 'error', errorMsg: isOffline ? 'Offline — tap to retry when connected' : msg }
+          ? { ...c, status: 'error', errorMsg: displayMsg }
           : c
       ));
     }
@@ -1921,10 +1992,26 @@ export default function CameraPage() {
           job?.jobNumber ?? null,
         );
 
+        // ── Retain the processed blob for genuine retry ───────────────────
+        // Stored before upload so a failed upload can be retried without
+        // re-capturing. Removed only after the server confirms success.
+        retainedBlobsRef.current.set(clientId, {
+          blob,
+          capturedAt,
+          jobId: job?.id ?? null,
+        });
+
+        // ── Camera Roll backup (independent of server save) ───────────────
+        // Failure here must NOT prevent the server save. The two outcomes
+        // are reported independently via state flags.
         if (currentSettings.backupToRoll) {
-          const result = await saveToDeviceCameraRoll(blob);
-          if (result === 'permission_denied') setBackupPermDenied(true);
-          else if (result === 'unavailable' && isNative()) setBackupUnavailable(true);
+          saveToDeviceCameraRoll(blob).then(result => {
+            if (result === 'permission_denied') setBackupPermDenied(true);
+            else if (result === 'unavailable' && isNative()) setBackupUnavailable(true);
+          }).catch(() => {
+            // Camera Roll backup failure is non-fatal — server save continues
+            if (isNative()) setBackupUnavailable(true);
+          });
         }
 
         await uploadBlob(blob, clientId, capturedAt, job?.id ?? null);
@@ -1932,6 +2019,7 @@ export default function CameraPage() {
         // processImage resolved (never rejects now), but uploadBlob could throw
         // in an unexpected path. Fall back to uploading the raw file.
         console.warn('[handleFileFromPicker] processing/upload error, retrying with raw file:', err);
+        retainedBlobsRef.current.set(clientId, { blob: file, capturedAt, jobId: job?.id ?? null });
         await uploadBlob(file, clientId, capturedAt, job?.id ?? null);
       }
     })();
@@ -1949,6 +2037,8 @@ export default function CameraPage() {
     });
     setSelectedIds(prev => { const s = new Set(prev); s.delete(clientId); return s; });
     if (localUrl) URL.revokeObjectURL(localUrl);
+    // Remove retained blob — user has explicitly deleted this capture
+    retainedBlobsRef.current.delete(clientId);
     if (serverId) {
       await fetch(`/api/camera-captures/${serverId}`, {
         method: 'DELETE', credentials: 'include',
@@ -2028,35 +2118,44 @@ export default function CameraPage() {
   }
 
   // ── Retry failed upload ───────────────────────────────────────────────────
+  // Priority order for the blob source:
+  //   1. retainedBlobsRef — the processed blob stored before the first upload
+  //      attempt. This is the canonical source and survives localUrl revocation.
+  //   2. localUrl — object URL still in memory (may have been revoked on success)
+  //   3. Neither available — show "please retake" message
   async function handleRetry(clientId: string) {
     const item = captures.find(c => c.clientId === clientId);
     if (!item || item.status !== 'error') return;
-    // Re-attempt upload using the localUrl blob if still available,
-    // otherwise just re-trigger the upload with whatever we have.
-    // Reset to pending first so the UI shows the spinner.
+
     setCaptures(prev => prev.map(c =>
       c.clientId === clientId ? { ...c, status: 'pending', errorMsg: null } : c
     ));
+
+    // ── 1. Use retained processed blob (preferred) ────────────────────────
+    const retained = retainedBlobsRef.current.get(clientId);
+    if (retained) {
+      await uploadBlob(retained.blob, clientId, retained.capturedAt, retained.jobId);
+      return;
+    }
+
+    // ── 2. Fall back to localUrl if still alive ───────────────────────────
     if (item.localUrl) {
       try {
         const res = await fetch(item.localUrl);
         const blob = await res.blob();
         await uploadBlob(blob, clientId, item.capturedAt, item.jobId);
+        return;
       } catch {
-        // localUrl is gone (revoked) — mark as error with a clear message
-        setCaptures(prev => prev.map(c =>
-          c.clientId === clientId
-            ? { ...c, status: 'error', errorMsg: 'Original photo no longer available — please retake' }
-            : c
-        ));
+        // localUrl has been revoked — fall through to error
       }
-    } else {
-      setCaptures(prev => prev.map(c =>
-        c.clientId === clientId
-          ? { ...c, status: 'error', errorMsg: 'Original photo no longer available — please retake' }
-          : c
-      ));
     }
+
+    // ── 3. No blob available — ask user to retake ─────────────────────────
+    setCaptures(prev => prev.map(c =>
+      c.clientId === clientId
+        ? { ...c, status: 'error', errorMsg: 'Photo data no longer available — please retake' }
+        : c
+    ));
   }
 
   // ── Edit saved callback ───────────────────────────────────────────────────
