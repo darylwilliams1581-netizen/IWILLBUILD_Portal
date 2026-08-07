@@ -1,15 +1,19 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
+import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const profile = (req as unknown as { userProfile?: { userId: string }; userEmail?: string }).userProfile;
-    if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+    const auth = await getSessionAndProfile(req, res);
+    if (!auth) return;
 
-    const [rows] = await db.execute(sql.raw(
-      `SELECT two_factor_enabled FROM \`user\` WHERE id = '${profile.userId}' LIMIT 1`
-    )) as [Array<{ two_factor_enabled: number }>, unknown];
+    const userId = auth.session.user.id;
+    const email  = auth.session.user.email ?? userId;
+
+    const rows = await db.execute(sql.raw(
+      `SELECT two_factor_enabled FROM \`user\` WHERE id = '${userId}' LIMIT 1`
+    )) as unknown as Array<{ two_factor_enabled: number }>;
 
     if (rows[0]?.two_factor_enabled) return res.json({ alreadyEnabled: true });
 
@@ -17,14 +21,13 @@ export default async function handler(req: Request, res: Response) {
       import('otplib'),
       import('qrcode'),
     ]);
-    const secret = otplib.generateSecret(20);
-    const email = (req as unknown as { userEmail?: string }).userEmail ?? profile.userId;
-    const otpAuthUrl = otplib.generateURI({ secret, account: email, issuer: 'IWILLBUILD' });
+    const secret = otplib.generateSecret();
+    const otpAuthUrl = otplib.generateURI({ secret, label: email, issuer: 'IWILLBUILD' });
     const qrDataUrl = await qrcode.toDataURL(otpAuthUrl);
 
     // Store pending secret (not yet confirmed)
     await db.execute(sql.raw(
-      `UPDATE \`user\` SET totp_secret = '${secret}' WHERE id = '${profile.userId}'`
+      `UPDATE \`user\` SET totp_secret = '${secret}' WHERE id = '${userId}'`
     ));
 
     res.json({ secret, qrDataUrl, otpAuthUrl });
