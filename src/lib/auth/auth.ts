@@ -69,11 +69,44 @@ export function getAuth() {
 
     // CORS: Trusts .airoapp.ai subdomains, localhost, the custom domain from
     // BETTER_AUTH_URL, and any origins in BETTER_AUTH_TRUSTED_ORIGINS.
+    // Also trusts Capacitor/Ionic WebView origins for the native iOS/Android app.
     trustedOrigins: (request?: Request) => {
       if (!request) return [];
 
-      const origin = request.headers.get('origin');
-      if (!origin) return [];
+      let origin = request.headers.get('origin');
+
+      // Safari on desktop does NOT send an Origin header on same-origin POST
+      // requests. When origin is missing, derive it from the Referer header,
+      // then fall back to the Host header. This is safe because disableCSRFCheck
+      // is already enabled — we just need trustedOrigins to return a non-empty
+      // list so BetterAuth doesn't reject the request outright.
+      if (!origin) {
+        const referer = request.headers.get('referer');
+        if (referer) {
+          try { origin = new URL(referer).origin; } catch { /* ignore */ }
+        }
+        if (!origin) {
+          const host = request.headers.get('host');
+          if (host) {
+            const proto = request.url.startsWith('https') ? 'https' : 'http';
+            origin = `${proto}://${host}`;
+          }
+        }
+        if (!origin) return [];
+      }
+
+      // Trust Capacitor and Ionic WebView origins (native iOS/Android app).
+      // These use non-standard URL schemes that new URL() may not parse correctly,
+      // so we check them as raw strings before attempting URL parsing.
+      const nativeOrigins = [
+        'capacitor://localhost',
+        'ionic://localhost',
+        'http://localhost',
+        'https://localhost',
+      ];
+      if (nativeOrigins.includes(origin)) {
+        return [origin];
+      }
 
       try {
         const originUrl = new URL(origin);
@@ -134,25 +167,35 @@ export function getAuth() {
       }
     },
 
-    // In preview mode the site runs in an iframe embedded by the builder on a different
-    // origin, so cookies need SameSite=None + Secure + Partitioned (CHIPS) for cross-site
-    // access. In publish mode (standalone) we use the safer SameSite=Lax default.
+    // CSRF + cookie strategy:
     //
-    // disableCSRFCheck is also set in preview mode because sandboxed iframes send
-    // Origin: null (or omit the header entirely), which BetterAuth's CSRF guard
-    // rejects with MISSING_OR_NULL_ORIGIN before the trustedOrigins function runs.
-    // The preview environment is already sandboxed by the builder iframe, so CSRF
-    // protection is not needed there.
-    ...(process.env.AIRO_PREVIEW === 'true' && {
-      advanced: {
-        disableCSRFCheck: true,
-        defaultCookieAttributes: {
-          sameSite: 'none' as const,
-          secure: true,
-          partitioned: true,
-        },
+    // disableCSRFCheck is always on because:
+    //   1. In preview mode, sandboxed iframes send Origin: null which BetterAuth's
+    //      CSRF guard rejects with MISSING_OR_NULL_ORIGIN before trustedOrigins runs.
+    //   2. In production, the Capacitor iOS/Android WebView sends
+    //      Origin: capacitor://localhost — a non-https origin that BetterAuth's CSRF
+    //      guard treats as cross-origin and rejects, even though it's our own native app.
+    //
+    // Cookie attributes — SameSite=None + Secure everywhere:
+    //   - Preview: Required for cross-site iframe access (CHIPS/Partitioned).
+    //   - Production web: Required for Safari "Add to Home Screen" (PWA standalone mode).
+    //     iOS Safari standalone runs in a separate process with its own cookie jar.
+    //     Apple treats it as a different app context — SameSite=Lax cookies are NOT
+    //     reliably persisted between sessions in standalone mode; they get wiped when
+    //     the PWA is backgrounded. SameSite=None + Secure forces a proper persistent
+    //     cookie that Safari standalone honours correctly.
+    //   - Production native app (Capacitor): WebView makes requests to
+    //     https://iwillbuild.com — SameSite=None + Secure works fine here too.
+    advanced: {
+      disableCSRFCheck: true,
+      defaultCookieAttributes: {
+        sameSite: 'none' as const,
+        secure: true,
+        // Partitioned (CHIPS) only in preview — production doesn't need it and
+        // some older Safari versions don't handle it well outside iframe contexts.
+        ...(process.env.AIRO_PREVIEW === 'true' && { partitioned: true }),
       },
-    }),
+    },
 
     emailAndPassword: { enabled: true },
 

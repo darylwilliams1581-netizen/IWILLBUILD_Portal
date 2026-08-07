@@ -56,7 +56,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { isNative, getPlatform, getCameraPlugin } from '@/lib/capacitor-plugins';
+import { isNative, getPlatform } from '@/lib/capacitor-plugins';
 import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 
 // ── Camera enum constants as inline literals ──────────────────────────────────
@@ -72,18 +72,31 @@ import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 // hides → white screen in TestFlight.
 //
 // The enum values are pure string constants (verified from the package source):
+//   CameraResultType.Uri     = 'uri'      ← PRIMARY on iOS 17+ (most reliable)
 //   CameraResultType.Base64  = 'base64'
 //   CameraResultType.DataUrl = 'dataUrl'
 //   CameraSource.Camera      = 'CAMERA'
+//   CameraSource.Photos      = 'PHOTOS'
 //   CameraDirection.Rear     = 'REAR'
 //   CameraDirection.Front    = 'FRONT'
 //
 // Using inline literals is safe, zero-risk, and eliminates the startup crash.
 // The actual plugin instance is still lazy-loaded via getCameraPlugin() which
 // is already guarded by isNative() and wrapped in try/catch.
+//
+// RESULT TYPE ORDER (camera):
+//   1. 'uri'    — returns webPath (a capacitor:// URL fetchable as blob). Most
+//                 reliable on iOS 17+. No base64 decode, no memory spike.
+//   2. 'base64' — fallback for older iOS where webPath may be null.
+//   3. 'dataUrl'— last resort.
+//
+// RESULT TYPE ORDER (library):
+//   Same order — 'uri' first, then 'base64', then 'dataUrl'.
+const CAM_RESULT_URI     = 'uri'     as const;
 const CAM_RESULT_BASE64  = 'base64'  as const;
 const CAM_RESULT_DATAURL = 'dataUrl' as const;
 const CAM_SOURCE_CAMERA  = 'CAMERA'  as const;
+const CAM_SOURCE_PHOTOS  = 'PHOTOS'  as const;
 const CAM_DIR_REAR       = 'REAR'    as const;
 const CAM_DIR_FRONT      = 'FRONT'   as const;
 
@@ -230,74 +243,149 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 /**
- * Check / request camera permission via the real @capacitor/camera plugin.
- * Returns 'granted' | 'denied' | 'unknown' (web / non-native / plugin missing).
+ * getNativeCameraPlugin
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Access the @capacitor/camera plugin via window.Capacitor.Plugins.Camera.
  *
- * Hard timeout: 5 s total. If the Capacitor bridge or plugin import hangs
- * (common on first launch before the bridge is fully initialised), we fall
- * back to 'unknown' so the UI never stays stuck on "Checking permissions…".
+ * WHY window.Capacitor.Plugins instead of dynamic import('@capacitor/camera'):
+ *
+ * In a Capacitor iOS build, ALL native plugins are registered on
+ * window.Capacitor.Plugins by the native bridge BEFORE the JS bundle runs.
+ * Dynamic import('@capacitor/camera') goes through Vite's module graph and
+ * can produce a broken chunk in the iOS bundle — the import resolves but the
+ * plugin instance it returns may not be the same registered bridge object,
+ * causing getPhoto() to silently fail or return a black screen.
+ *
+ * Accessing window.Capacitor.Plugins.Camera directly is the approach used in
+ * the official Capacitor docs for WKWebView and is guaranteed to return the
+ * real registered plugin instance that the native bridge wired up.
+ *
+ * Returns null on web or if the plugin is not registered.
+ */
+function getNativeCameraPlugin(): NativeCameraPluginBridge | null {
+  if (typeof window === 'undefined') return null;
+  const cap = (window as {
+    Capacitor?: {
+      isNativePlatform?: () => boolean;
+      Plugins?: {
+        Camera?: NativeCameraPluginBridge;
+      };
+    };
+  }).Capacitor;
+  if (!cap?.isNativePlatform?.()) return null;
+  return cap?.Plugins?.Camera ?? null;
+}
+
+interface NativeCameraPluginBridge {
+  getPhoto: (opts: Record<string, unknown>) => Promise<{
+    base64String?: string;
+    dataUrl?: string;
+    path?: string;
+    webPath?: string;
+    format?: string;
+  }>;
+  checkPermissions: () => Promise<Record<string, string>>;
+  requestPermissions: (opts: { permissions: string[] }) => Promise<Record<string, string>>;
+}
+
+/**
+ * Fetch a capacitor:// or file:// webPath returned by Camera.getPhoto({resultType:'uri'})
+ * and convert it to a File. This is the most reliable path on iOS 17+.
+ *
+ * WHY: On iOS 17+, Camera.getPhoto with resultType:'base64' sometimes returns an
+ * empty base64String even though the photo was captured successfully. The webPath
+ * (a capacitor:// URL) is always populated and can be fetched directly as a blob
+ * without any base64 decode overhead or memory spike.
+ */
+async function webPathToFile(webPath: string, format: string, prefix: string): Promise<File | null> {
+  try {
+    const res = await fetch(webPath);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const mimeType = blob.type || (format === 'png' ? 'image/png' : 'image/jpeg');
+    const ext = format === 'png' ? 'png' : 'jpg';
+    return new File([blob], `${prefix}_${Date.now()}.${ext}`, { type: mimeType });
+  } catch (e) {
+    console.warn('[camera] webPathToFile failed:', e);
+    return null;
+  }
+}
+
+/**
+ * Read a file from the native filesystem via window.Capacitor.Plugins.Filesystem.
+ * Used as a fallback when Camera.getPhoto returns an empty base64String.
+ * Returns null if the plugin is unavailable or the read fails.
+ */
+async function readFileAsBase64(path: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const cap = (window as {
+      Capacitor?: { Plugins?: {
+        Filesystem?: {
+          readFile: (opts: { path: string }) => Promise<{ data: string }>;
+        };
+      } }
+    }).Capacitor;
+    const Filesystem = cap?.Plugins?.Filesystem;
+    if (!Filesystem) return null;
+    const result = await Filesystem.readFile({ path });
+    if (!result?.data) return null;
+    // Detect JPEG vs PNG from the base64 header bytes
+    const header = result.data.slice(0, 8);
+    const mimeType = header.startsWith('/9j') ? 'image/jpeg'
+      : header.startsWith('iVBOR') ? 'image/png'
+      : 'image/jpeg';
+    return { base64: result.data, mimeType };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check / request camera permission via window.Capacitor.Plugins.Camera.
+ * Returns 'granted' | 'denied' | 'unknown'.
  */
 async function ensureCameraPermission(): Promise<'granted' | 'denied' | 'unknown'> {
-  if (!isNative()) return 'unknown';
+  const Camera = getNativeCameraPlugin();
+  if (!Camera) return 'unknown'; // web or plugin not registered
   try {
-    // 3 s to load the plugin — if the bridge isn't ready yet this import can hang
-    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
-    if (!Camera) return 'unknown';
-
-    // 3 s for checkPermissions — native IPC; should be instant but guard anyway
     const status = await withTimeout(
-      Camera.checkPermissions() as Promise<Record<string, string>>,
+      Camera.checkPermissions(),
       3000,
-      { camera: 'prompt' } as Record<string, string>,
+      { camera: 'prompt' },
     );
-    // @capacitor/camera v5+ returns { camera: PermissionState, photos: PermissionState }
     const cam = status.camera ?? 'prompt';
     if (cam === 'granted') return 'granted';
     if (cam === 'denied') return 'denied';
 
-    // 'prompt' or 'prompt-with-rationale' — trigger the native dialog.
-    // No timeout here — the dialog waits for the user; that's intentional.
-    const requested = await Camera.requestPermissions({ permissions: ['camera'] as never }) as Record<string, string>;
-    const grantedCam = requested.camera ?? 'denied';
-    return grantedCam === 'granted' ? 'granted' : 'denied';
+    // 'prompt' — trigger the native dialog (no timeout — waits for user)
+    const requested = await Camera.requestPermissions({ permissions: ['camera'] });
+    return (requested.camera ?? 'denied') === 'granted' ? 'granted' : 'denied';
   } catch {
-    // Plugin unavailable at runtime — fall back to browser input
     return 'unknown';
   }
 }
 
 /**
- * Check / request photo library permission via the real @capacitor/camera plugin.
+ * Check / request photo library permission via window.Capacitor.Plugins.Camera.
  * Returns 'granted' | 'limited' | 'denied' | 'unknown'.
- *
- * 'limited' = iOS 14+ "Selected Photos" — the picker still works but the user
- * can only see photos they explicitly allowed. This is NOT a denial; do not
- * block the picker. Surface it in the UI so the user understands why they
- * can't see all their photos.
- *
- * Hard timeout: same 3 s guards as ensureCameraPermission.
  */
 async function ensurePhotosPermission(): Promise<'granted' | 'limited' | 'denied' | 'unknown'> {
-  if (!isNative()) return 'unknown';
+  const Camera = getNativeCameraPlugin();
+  if (!Camera) return 'unknown';
   try {
-    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
-    if (!Camera) return 'unknown';
-
     const status = await withTimeout(
-      Camera.checkPermissions() as Promise<Record<string, string>>,
+      Camera.checkPermissions(),
       3000,
-      { photos: 'prompt' } as Record<string, string>,
+      { photos: 'prompt' },
     );
     const photos = status.photos ?? status.camera ?? 'prompt';
-
     if (photos === 'granted') return 'granted';
-    if (photos === 'limited') return 'limited';   // ← surface distinctly
+    if (photos === 'limited') return 'limited';
     if (photos === 'denied') return 'denied';
 
-    // 'prompt' — trigger the native dialog (no timeout — waits for user)
-    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never }) as Record<string, string>;
+    // 'prompt' — trigger the native dialog
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] });
     const rPhotos = requested.photos ?? requested.camera ?? 'denied';
-
     if (rPhotos === 'granted') return 'granted';
     if (rPhotos === 'limited') return 'limited';
     return 'denied';
@@ -364,6 +452,21 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   // ── Internal: check camera permission + open input ────────────────────────
   const doOpenCamera = useCallback(async (opts?: NativeCameraOptions) => {
     setDenied(null);
+
+    // ── Web path: click MUST happen synchronously inside the user gesture ─────
+    // iOS Safari invalidates the gesture token the moment any `await` resolves,
+    // even if the awaited value is already settled. So on web we fire the click
+    // immediately — before any async work — then return. The file input's
+    // onChange handler picks up the result.
+    if (!isNative()) {
+      const input = cameraInputRef.current;
+      if (input) {
+        input.setAttribute('capture', opts?.direction === 'front' ? 'user' : 'environment');
+        input.click();
+      }
+      return;
+    }
+
     setChecking(true);
     try {
       const perm = await ensureCameraPermission();
@@ -381,121 +484,229 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       setChecking(false);
     }
 
-    // ── Native path: use Capacitor Camera.getPhoto() so flash + direction work ──
-    if (isNative()) {
-      try {
-        // 3 s timeout — if the Capacitor bridge isn't ready the import can hang
-        const CameraPlugin = await withTimeout(getCameraPlugin(), 3000, null);
-        if (CameraPlugin) {
-          // Use Base64 instead of DataUrl on native.
-          // DataUrl requires an extra fetch() round-trip to convert to a Blob,
-          // adding latency and a second full-image memory copy in the WKWebView heap.
-          // Base64 lets us decode directly, reducing peak memory.
-          //
-          // captureQuality: use the caller's quality hint (from CameraSettings) so
-          // the native capture matches the intended quality tier. Defaults to 84
-          // (medium) — never hardcode 90 which ignores the user's setting entirely.
-          const nativeQuality = opts?.captureQuality ?? 84;
-
-          const photo = await CameraPlugin.getPhoto({
-            quality: nativeQuality,
-            allowEditing: false,
-            resultType: CAM_RESULT_BASE64,
-            source: CAM_SOURCE_CAMERA,
-            direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
-            // flashMode is a valid runtime option on iOS even if the TS types
-            // for this version don't expose it — pass as string literal via cast
-            flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
-          } as any);
-
-          if (photo.base64String) {
-            // Decode base64 → Uint8Array → Blob.
-            //
-            // IMPORTANT: do NOT use a char-by-char atob loop here.
-            // A 12MP iPhone photo at quality 84 produces ~6–10MB of base64 data.
-            // Iterating over millions of chars synchronously on the main thread
-            // blocks the UI for 200–500ms, which looks like a freeze/crash in
-            // TestFlight. Use a chunked decode instead:
-            //   1. atob() the full string (fast — native C, not JS)
-            //   2. Slice into 64KB chunks and decode each chunk
-            //   3. Concatenate into a single Uint8Array
-            // This keeps each JS tick short and avoids the main-thread stall.
-            try {
-              const blob = base64ToBlob(
-                photo.base64String,
-                photo.format === 'png' ? 'image/png' : 'image/jpeg',
-              );
-              const file = new File([blob], `capture.${photo.format ?? 'jpg'}`, { type: blob.type });
-              handleFile(file);
-            } catch (decodeErr) {
-              console.warn('[camera] base64 decode failed, falling back to dataUrl path:', decodeErr);
-              // Fallback: re-request with DataUrl if chunked decode fails (should not happen)
-              const photo2 = await CameraPlugin.getPhoto({
-                quality: nativeQuality,
-                allowEditing: false,
-                resultType: CAM_RESULT_DATAURL,
-                source: CAM_SOURCE_CAMERA,
-                direction: opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR,
-                flashMode: opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto',
-              } as any);
-              if (photo2.dataUrl) {
-                const res = await fetch(photo2.dataUrl);
-                const blob = await res.blob();
-                const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
-                handleFile(file);
-              }
-            }
-          }
-          return;
-        }
-      } catch (err) {
-        // Distinguish user-cancel from a real crash.
-        // Capacitor throws with "cancelled" / "User cancelled" / "No image" when
-        // the user dismisses the camera — this is not a crash, do not log it.
-        const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-        const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image');
-        if (!isCancel) {
-          console.warn('[camera] native Camera.getPhoto failed:', err);
-        }
-        // Do not fall through to the file input on native — the native camera either
-        // worked, was cancelled, or failed. Falling through to a file input on iOS
-        // would show the wrong UI (a file picker instead of the camera).
-        return;
-      }
+    // ── Native path: use window.Capacitor.Plugins.Camera directly ───────────
+    // We access the plugin via the bridge globals, NOT via dynamic import.
+    // Dynamic import('@capacitor/camera') can produce a broken chunk in the
+    // iOS bundle where the resolved module is not the registered bridge object,
+    // causing getPhoto() to silently fail or show a black screen.
+    const CameraPlugin = getNativeCameraPlugin();
+    if (!CameraPlugin) {
+      console.warn('[camera] CameraPlugin not available on native — cannot open camera');
+      return;
     }
 
-    // ── Web / fallback path: file input with capture attribute ────────────────
-    // Dynamically set capture direction so front/rear works on Android Chrome too
-    const input = cameraInputRef.current;
-    if (input) {
-      input.setAttribute('capture', opts?.direction === 'front' ? 'user' : 'environment');
-      input.click();
+    const nativeQuality = opts?.captureQuality ?? 84;
+    const direction = opts?.direction === 'front' ? CAM_DIR_FRONT : CAM_DIR_REAR;
+    const flashMode = opts?.flashMode === 'on' ? 'on' : opts?.flashMode === 'off' ? 'off' : 'auto';
+
+    const baseOpts = {
+      quality: nativeQuality,
+      allowEditing: false,
+      source: CAM_SOURCE_CAMERA,
+      direction,
+      flashMode,
+      saveToGallery: false,
+    };
+
+    try {
+      // ── Attempt 1: URI result (most reliable on iOS 17+) ──────────────────
+      // Returns a capacitor:// webPath that can be fetched directly as a blob.
+      // No base64 decode, no memory spike, works on all modern iOS versions.
+      console.log('[camera] attempt 1: resultType=uri');
+      const photo1 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_URI });
+      console.log('[camera] uri result: webPath=', photo1.webPath, 'path=', photo1.path, 'format=', photo1.format);
+
+      const webPath = photo1.webPath ?? photo1.path;
+      if (webPath) {
+        const file = await webPathToFile(webPath, photo1.format ?? 'jpg', 'capture');
+        if (file) {
+          console.log('[camera] uri→blob success: size=', file.size, 'type=', file.type);
+          handleFile(file);
+          return;
+        }
+        console.warn('[camera] webPathToFile returned null, trying base64 fallback');
+      } else {
+        console.warn('[camera] uri result had no webPath/path, trying base64 fallback');
+      }
+
+      // ── Attempt 2: base64 result ──────────────────────────────────────────
+      console.log('[camera] attempt 2: resultType=base64');
+      const photo2 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_BASE64 });
+      console.log('[camera] base64 result: base64String length=', photo2.base64String?.length ?? 0, 'format=', photo2.format);
+
+      if (photo2.base64String) {
+        try {
+          const blob = base64ToBlob(
+            photo2.base64String,
+            photo2.format === 'png' ? 'image/png' : 'image/jpeg',
+          );
+          const file = new File([blob], `capture_${Date.now()}.${photo2.format ?? 'jpg'}`, { type: blob.type });
+          console.log('[camera] base64→blob success: size=', file.size);
+          handleFile(file);
+          return;
+        } catch (decodeErr) {
+          console.warn('[camera] base64 decode failed:', decodeErr);
+        }
+      }
+
+      // ── Attempt 3: dataUrl result ─────────────────────────────────────────
+      console.log('[camera] attempt 3: resultType=dataUrl');
+      const photo3 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_DATAURL });
+      console.log('[camera] dataUrl result: dataUrl length=', photo3.dataUrl?.length ?? 0);
+
+      if (photo3.dataUrl) {
+        try {
+          const res = await fetch(photo3.dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+          console.log('[camera] dataUrl→blob success: size=', file.size);
+          handleFile(file);
+          return;
+        } catch (dataUrlErr) {
+          console.warn('[camera] dataUrl fallback failed:', dataUrlErr);
+        }
+      }
+
+      // ── Attempt 4: URI + Filesystem.readFile ──────────────────────────────
+      // Last resort — read the file bytes directly via the Filesystem plugin.
+      console.log('[camera] attempt 4: uri + Filesystem.readFile');
+      const photo4 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_URI });
+      const filePath = photo4.path ?? photo4.webPath;
+      if (filePath) {
+        const read = await readFileAsBase64(filePath);
+        if (read) {
+          const blob = base64ToBlob(read.base64, read.mimeType);
+          const file = new File([blob], `capture_${Date.now()}.jpg`, { type: blob.type });
+          console.log('[camera] Filesystem.readFile success: size=', file.size);
+          handleFile(file);
+          return;
+        }
+      }
+
+      console.warn('[camera] all 4 result type attempts failed — no photo data returned');
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
+      if (!isCancel) {
+        console.warn('[camera] native Camera.getPhoto failed:', err);
+      }
+      // Do not fall through to file input on native — getPhoto handles its own UI
     }
   }, [handleFile]);
 
   // ── Internal: check photos permission + open input ────────────────────────
   const doOpenLibrary = useCallback(async () => {
     setDenied(null);
+
+    // ── Web path: click synchronously — same Safari gesture-token rule ────────
+    if (!isNative()) {
+      libraryInputRef.current?.click();
+      return;
+    }
+
+    // ── Native path: use Camera.getPhoto({ source: 'PHOTOS' }) directly ──────
+    // CRITICAL: Do NOT await a permission check before calling getPhoto on native.
+    // iOS invalidates the user gesture token the moment any `await` resolves,
+    // so libraryInputRef.current?.click() after an async permission check is a
+    // no-op — the system silently ignores the programmatic click.
+    //
+    // Instead, call Camera.getPhoto({ source: 'PHOTOS' }) which handles its own
+    // permission prompt internally and opens the system photo picker directly.
+    // This is the correct pattern for Capacitor + WKWebView photo library access.
+    const CameraPlugin = getNativeCameraPlugin();
+    if (!CameraPlugin) {
+      libraryInputRef.current?.click();
+      return;
+    }
+
     setChecking(true);
     try {
-      const perm = await ensurePhotosPermission();
-      if (perm === 'denied') {
-        setDenied('photos');
-        setExplainer({
-          type: 'photos',
-          denied: true,
-          onNotNow: () => setExplainer(null),
-          onEnable: async () => { setExplainer(null); },
-        });
-        return;
+      const baseOpts = {
+        quality: 84,
+        allowEditing: false,
+        source: CAM_SOURCE_PHOTOS,
+        saveToGallery: false,
+      };
+
+      // ── Attempt 1: URI result (most reliable on iOS 17+) ──────────────────
+      console.log('[library] attempt 1: resultType=uri');
+      const photo1 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_URI });
+      console.log('[library] uri result: webPath=', photo1.webPath, 'path=', photo1.path, 'format=', photo1.format);
+
+      const webPath = photo1.webPath ?? photo1.path;
+      if (webPath) {
+        const file = await webPathToFile(webPath, photo1.format ?? 'jpg', 'photo');
+        if (file) {
+          console.log('[library] uri→blob success: size=', file.size, 'type=', file.type);
+          setPhotosLimited(false);
+          handleFile(file);
+          return;
+        }
+        console.warn('[library] webPathToFile returned null, trying base64 fallback');
       }
-      // 'limited' = iOS "Selected Photos" — picker still works, just show a note
-      setPhotosLimited(perm === 'limited');
+
+      // ── Attempt 2: base64 result ──────────────────────────────────────────
+      console.log('[library] attempt 2: resultType=base64');
+      const photo2 = await CameraPlugin.getPhoto({ ...baseOpts, resultType: CAM_RESULT_BASE64 });
+      if (photo2.base64String) {
+        try {
+          const blob = base64ToBlob(
+            photo2.base64String,
+            photo2.format === 'png' ? 'image/png' : 'image/jpeg',
+          );
+          const file = new File([blob], `photo_${Date.now()}.${photo2.format ?? 'jpg'}`, { type: blob.type });
+          setPhotosLimited(false);
+          handleFile(file);
+          return;
+        } catch (decodeErr) {
+          console.warn('[library] base64 decode failed:', decodeErr);
+        }
+      }
+
+      // ── Attempt 3: dataUrl result ─────────────────────────────────────────
+      if (photo2.dataUrl) {
+        try {
+          const res = await fetch(photo2.dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+          handleFile(file);
+          return;
+        } catch (dataUrlErr) {
+          console.warn('[library] dataUrl fallback failed:', dataUrlErr);
+        }
+      }
+
+      // ── Attempt 4: URI + Filesystem.readFile ──────────────────────────────
+      const filePath = photo1.path ?? photo1.webPath;
+      if (filePath) {
+        const read = await readFileAsBase64(filePath);
+        if (read) {
+          const blob = base64ToBlob(read.base64, read.mimeType);
+          const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type });
+          handleFile(file);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
+      if (!isCancel) {
+        if (msg.includes('permission') || msg.includes('denied') || msg.includes('not authorized')) {
+          setDenied('photos');
+          setExplainer({
+            type: 'photos',
+            denied: true,
+            onNotNow: () => setExplainer(null),
+            onEnable: async () => { setExplainer(null); },
+          });
+        } else {
+          console.warn('[library] Camera.getPhoto({source:PHOTOS}) failed:', err);
+        }
+      }
     } finally {
       setChecking(false);
     }
-    libraryInputRef.current?.click();
-  }, []);
+  }, [handleFile]);
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
   const openCamera = useCallback(async (opts?: NativeCameraOptions) => {

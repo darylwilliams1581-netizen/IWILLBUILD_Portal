@@ -25,7 +25,7 @@ export function useAndroidNative() {
 
     let cleanup: (() => void) | undefined;
 
-    getAppPlugin().then((App) => {
+    Promise.resolve(getAppPlugin()).then((App) => {
       if (!App) return;
 
       const handle = App.addListener('backButton', ({ canGoBack }) => {
@@ -64,7 +64,7 @@ export function useAndroidNative() {
 
     let cleanup: (() => void) | undefined;
 
-    getNetworkPlugin().then(async (Network) => {
+    Promise.resolve(getNetworkPlugin()).then(async (Network) => {
       if (!Network) return;
 
       // Get initial status

@@ -88,12 +88,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 async function checkCameraStatus(): Promise<PermissionStatus> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
+    const Camera = await withTimeout(getCameraPlugin(), 2000, null);
     if (!Camera) return 'unavailable';
 
     const s = await withTimeout(
       (Camera.checkPermissions() as unknown) as Promise<Record<string, string>>,
-      5000,
+      4000,
       { camera: 'unknown' } as Record<string, string>,
     );
     const cam = s.camera ?? 'unknown';
@@ -110,12 +110,12 @@ async function checkCameraStatus(): Promise<PermissionStatus> {
 async function checkPhotosStatus(): Promise<PermissionStatus> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
+    const Camera = await withTimeout(getCameraPlugin(), 2000, null);
     if (!Camera) return 'unavailable';
 
     const s = await withTimeout(
       (Camera.checkPermissions() as unknown) as Promise<Record<string, string>>,
-      5000,
+      4000,
       { photos: 'unknown' } as Record<string, string>,
     );
     const photos = s.photos ?? s.camera ?? 'unknown';
@@ -153,12 +153,12 @@ async function checkLocationStatus(): Promise<PermissionStatus> {
 
   // Native path — use @capacitor/geolocation
   try {
-    const geo = await withTimeout(getNativeGeo(), 3000, null);
+    const geo = await withTimeout(getNativeGeo(), 2000, null);
     if (!geo) return 'unavailable';
 
     const s = await withTimeout(
       geo.checkPermissions() as unknown as Promise<{ location?: string; coarseLocation?: string }>,
-      5000,
+      4000,
       { location: 'unknown', coarseLocation: 'unknown' },
     );
     const loc = s.location ?? s.coarseLocation ?? 'unknown';
@@ -230,12 +230,12 @@ async function checkNotificationsStatus(): Promise<PermissionStatus> {
   if (isNative()) {
     // Use @capacitor/push-notifications — queries real iOS UNUserNotificationCenter
     try {
-      const PushNotif = await withTimeout(getPushNotifications(), 3000, null);
+      const PushNotif = await withTimeout(getPushNotifications(), 2000, null);
       if (!PushNotif) return 'unavailable';
 
       const s = await withTimeout(
         PushNotif.checkPermissions() as unknown as Promise<{ receive?: string }>,
-        5000,
+        4000,
         { receive: 'unknown' },
       );
       const state = s.receive ?? 'unknown';
@@ -273,26 +273,38 @@ export function useNativePermissions(): NativePermissionsState {
     async function run() {
       // Run all checks independently via Promise.allSettled so one stalled
       // iOS plugin call cannot block the others from resolving.
-      // Each checker already has its own 5-second hard timeout, so the
-      // entire batch resolves within ~5 seconds even in the worst case.
-      const results = await Promise.allSettled([
-        checkCameraStatus(),
-        checkPhotosStatus(),
-        checkLocationStatus(),
-        checkMicrophoneStatus(),
-        checkNotificationsStatus(),
-      ]);
+      // Each checker has its own 2s plugin-load + 4s call timeout.
+      // The outer withTimeout is a final safety net — if somehow all inner
+      // timeouts fail (e.g. the dynamic import itself hangs), the whole batch
+      // resolves to 'unavailable' within 6 seconds.
+      const settled = await withTimeout(
+        Promise.allSettled([
+          checkCameraStatus(),
+          checkPhotosStatus(),
+          checkLocationStatus(),
+          checkMicrophoneStatus(),
+          checkNotificationsStatus(),
+        ]),
+        6000,
+        [
+          { status: 'fulfilled' as const, value: 'unavailable' as PermissionStatus },
+          { status: 'fulfilled' as const, value: 'unavailable' as PermissionStatus },
+          { status: 'fulfilled' as const, value: 'unavailable' as PermissionStatus },
+          { status: 'fulfilled' as const, value: 'unavailable' as PermissionStatus },
+          { status: 'fulfilled' as const, value: 'unavailable' as PermissionStatus },
+        ],
+      );
 
       if (cancelled) return;
 
       const resolve = (r: PromiseSettledResult<PermissionStatus>, fallback: PermissionStatus): PermissionStatus =>
         r.status === 'fulfilled' ? r.value : fallback;
 
-      setCamera(resolve(results[0], 'unavailable'));
-      setPhotos(resolve(results[1], 'unavailable'));
-      setLocation(resolve(results[2], 'unavailable'));
-      setMicrophone(resolve(results[3], 'unavailable'));
-      setNotifications(resolve(results[4], 'unavailable'));
+      setCamera(resolve(settled[0], 'unavailable'));
+      setPhotos(resolve(settled[1], 'unavailable'));
+      setLocation(resolve(settled[2], 'unavailable'));
+      setMicrophone(resolve(settled[3], 'unavailable'));
+      setNotifications(resolve(settled[4], 'unavailable'));
     }
 
     void run();

@@ -68,10 +68,10 @@ export default async function handler(req: Request, res: Response) {
     // ── Rotation ──────────────────────────────────────────────────────────────
     if (body.rotate === 'left' || body.rotate === 'right') {
       // Fetch capture record
-      const [rows] = await db.execute(sql`
+      const rows = await db.execute(sql`
         SELECT storage_key, mime_type FROM camera_captures
         WHERE id = ${captureId} AND company_id = ${profile.companyId}
-      `) as unknown as [Array<{ storage_key: string; mime_type: string }>, unknown];
+      `) as unknown as Array<{ storage_key: string; mime_type: string }>;
       const capture = rows?.[0];
       if (!capture) return res.status(404).json({ error: 'Capture not found' });
 

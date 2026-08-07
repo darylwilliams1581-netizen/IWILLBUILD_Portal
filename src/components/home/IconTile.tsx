@@ -1,6 +1,9 @@
 /**
- * IconTile — single icon tile used on the home screen icon grid pages.
- * Extracted so it can be shared between home.tsx and PagedHomeScreen.
+ * IconTile — 2-column card tile used on Field and Manage pages.
+ *
+ * Matches the height and visual weight of the Dashboard quick-action tiles
+ * so the whole home screen feels consistent. Each tile is a full-width card
+ * in a 2-col grid: large icon circle on top, bold label below.
  */
 
 import { motion } from 'motion/react';
@@ -16,26 +19,21 @@ export function IconTile({
   const Icon = item.icon;
   return (
     <motion.button
-      whileTap={{ scale: 0.88 }}
-      whileHover={{ scale: 1.06, y: -2 }}
-      transition={{ type: 'spring', stiffness: 440, damping: 20 }}
+      whileTap={{ scale: 0.94 }}
+      whileHover={{ scale: 1.02, y: -1 }}
+      transition={{ type: 'spring', stiffness: 440, damping: 22 }}
       onClick={() => onNavigate(item.href)}
-      className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
-      style={{ gap: '1px' }}
+      className={`
+        w-full flex flex-col items-center justify-center gap-2
+        px-3 py-4 rounded-2xl shadow-sm min-h-[96px] max-h-[120px]
+        active:scale-95 transition-transform
+        outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2
+        ${item.bg} ${item.fg}
+      `}
     >
-      {/* Icon tile */}
-      <div
-        className={`w-[54px] h-[54px] sm:w-[66px] sm:h-[66px] rounded-[14px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden flex-shrink-0 icon-tile-shadow`}
-      >
-        {/* Top-left gloss sheen */}
-        <div className="absolute inset-0 pointer-events-none icon-tile-gloss" />
-        {/* Bottom inner shadow for depth */}
-        <div className="absolute inset-0 pointer-events-none rounded-[inherit] icon-tile-depth" />
-        <Icon
-          size={21}
-          strokeWidth={1.8}
-          className="home-icon-glyph relative z-10 drop-shadow-sm"
-        />
+      {/* Icon circle */}
+      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center relative flex-shrink-0">
+        <Icon size={20} strokeWidth={2} className="relative z-10" />
         {item.badge != null && item.badge > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
@@ -45,16 +43,13 @@ export function IconTile({
 
       {/* Label */}
       <span
-        className="text-[9px] sm:text-[11px] text-gray-800 font-semibold text-center w-full px-0.5"
+        className="text-sm font-bold leading-tight text-center"
         style={{
-          lineHeight: 1.25,
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          minHeight: '20px',
           wordBreak: 'break-word',
-          hyphens: 'auto',
         }}
       >
         {item.label}

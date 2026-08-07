@@ -38,101 +38,157 @@ export function getPlatform(): 'ios' | 'android' | 'web' {
   return 'web';
 }
 
-// ── Lazy plugin loaders ───────────────────────────────────────────────────────
-// Each returns the plugin instance or null if not in a native context.
-// Lazy-loading keeps the web bundle size unchanged.
+// ── Bridge accessor ───────────────────────────────────────────────────────────
+// All native plugin access goes through window.Capacitor.Plugins directly.
+//
+// WHY: Dynamic import('@capacitor/<plugin>') goes through Vite's module graph
+// and can produce a broken chunk in the iOS bundle — the resolved module may
+// not be the same registered bridge object, causing plugin calls to silently
+// fail or return wrong values. The Capacitor docs recommend accessing plugins
+// via window.Capacitor.Plugins which is guaranteed to return the real instance
+// that the native bridge registered before the JS bundle ran.
+//
+// Static enum/constant imports at module level are still safe (pure JS values).
 
-export async function getNativeGeo() {
-  if (!isNative()) return null;
-  try {
-    const { Geolocation } = await import('@capacitor/geolocation');
-    return Geolocation;
-  } catch {
-    return null;
-  }
+type CapBridge = {
+  isNativePlatform?: () => boolean;
+  getPlatform?: () => string;
+  Plugins?: Record<string, unknown>;
+};
+
+function getCapBridge(): CapBridge | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as unknown as { Capacitor?: CapBridge }).Capacitor;
 }
 
-export async function getHaptics() {
+function getPlugin<T>(name: string): T | null {
   if (!isNative()) return null;
-  try {
-    const { Haptics, ImpactStyle, NotificationType } = await import('@capacitor/haptics');
-    return { Haptics, ImpactStyle, NotificationType };
-  } catch {
-    return null;
-  }
+  const plugin = getCapBridge()?.Plugins?.[name];
+  return (plugin as T) ?? null;
+}
+
+// ── Plugin type interfaces ────────────────────────────────────────────────────
+
+interface GeolocationPlugin {
+  getCurrentPosition: (opts?: Record<string, unknown>) => Promise<{ coords: { latitude: number; longitude: number; accuracy: number; altitude?: number | null; altitudeAccuracy?: number | null; heading?: number | null; speed?: number | null }; timestamp: number }>;
+  watchPosition: (opts: Record<string, unknown>, callback: (pos: unknown, err?: unknown) => void) => Promise<string>;
+  clearWatch: (opts: { id: string }) => Promise<void>;
+  checkPermissions: () => Promise<Record<string, string>>;
+  requestPermissions: (opts?: { permissions: string[] }) => Promise<Record<string, string>>;
+}
+
+interface HapticsPlugin {
+  impact: (opts: { style: string }) => Promise<void>;
+  notification: (opts: { type: string }) => Promise<void>;
+  vibrate: (opts?: { duration?: number }) => Promise<void>;
+}
+
+interface StatusBarPlugin {
+  setStyle: (opts: { style: string }) => Promise<void>;
+  setBackgroundColor: (opts: { color: string }) => Promise<void>;
+  show: () => Promise<void>;
+  hide: () => Promise<void>;
+}
+
+interface SplashScreenPlugin {
+  hide: (opts?: { fadeOutDuration?: number }) => Promise<void>;
+  show: (opts?: { fadeInDuration?: number; showDuration?: number; autoHide?: boolean }) => Promise<void>;
+}
+
+interface NetworkPlugin {
+  getStatus: () => Promise<{ connected: boolean; connectionType: string }>;
+  addListener: (event: string, cb: (status: { connected: boolean; connectionType: string }) => void) => Promise<{ remove: () => void }>;
+}
+
+interface PushNotificationsPlugin {
+  requestPermissions: () => Promise<{ receive: string }>;
+  register: () => Promise<void>;
+  addListener: (event: string, cb: (data: unknown) => void) => Promise<{ remove: () => void }>;
+}
+
+interface AppPlugin {
+  openUrl: (opts: { url: string }) => Promise<void>;
+  exitApp: () => Promise<void>;
+  addListener: (event: string, cb: (data: unknown) => void) => Promise<{ remove: () => void }>;
+  getInfo: () => Promise<{ name: string; id: string; build: string; version: string }>;
+}
+
+interface CameraPlugin {
+  getPhoto: (opts: Record<string, unknown>) => Promise<{ base64String?: string; dataUrl?: string; format?: string; path?: string; webPath?: string }>;
+  checkPermissions: () => Promise<Record<string, string>>;
+  requestPermissions: (opts: { permissions: string[] }) => Promise<Record<string, string>>;
+  savePhoto: (opts: { path: string }) => Promise<void>;
+}
+
+// ── Haptic enum constants (inline — avoids dynamic import startup crash) ──────
+// ImpactStyle and NotificationType are pure string enums in @capacitor/haptics.
+// Verified from package source: Light='LIGHT', Medium='MEDIUM', Heavy='HEAVY',
+// Success='SUCCESS', Warning='WARNING', Error='ERROR'.
+const ImpactStyle = { Light: 'LIGHT', Medium: 'MEDIUM', Heavy: 'HEAVY' } as const;
+const NotificationType = { Success: 'SUCCESS', Warning: 'WARNING', Error: 'ERROR' } as const;
+
+// StatusBar Style enum: Dark='DARK', Light='LIGHT', Default='DEFAULT'
+const StatusBarStyle = { Dark: 'DARK', Light: 'LIGHT', Default: 'DEFAULT' } as const;
+
+// ── Plugin accessors ──────────────────────────────────────────────────────────
+
+export function getNativeGeo(): GeolocationPlugin | null {
+  return getPlugin<GeolocationPlugin>('Geolocation');
+}
+
+export function getHapticsPlugin(): { Haptics: HapticsPlugin; ImpactStyle: typeof ImpactStyle; NotificationType: typeof NotificationType } | null {
+  const Haptics = getPlugin<HapticsPlugin>('Haptics');
+  if (!Haptics) return null;
+  return { Haptics, ImpactStyle, NotificationType };
+}
+
+export function getStatusBarPlugin(): { StatusBar: StatusBarPlugin; Style: typeof StatusBarStyle } | null {
+  const StatusBar = getPlugin<StatusBarPlugin>('StatusBar');
+  if (!StatusBar) return null;
+  return { StatusBar, Style: StatusBarStyle };
+}
+
+export function getSplashScreenPlugin(): SplashScreenPlugin | null {
+  return getPlugin<SplashScreenPlugin>('SplashScreen');
+}
+
+export function getNetworkPlugin(): NetworkPlugin | null {
+  return getPlugin<NetworkPlugin>('Network');
+}
+
+export function getPushNotificationsPlugin(): PushNotificationsPlugin | null {
+  return getPlugin<PushNotificationsPlugin>('PushNotifications');
+}
+
+export function getAppPlugin(): AppPlugin | null {
+  return getPlugin<AppPlugin>('App');
+}
+
+export function getCameraPlugin(): CameraPlugin | null {
+  return getPlugin<CameraPlugin>('Camera');
+}
+
+// ── Async wrappers (backwards-compatible) ────────────────────────────────────
+// These preserve the async API that existing callers expect (await getNativeGeo()).
+
+export async function getHaptics() {
+  return getHapticsPlugin();
 }
 
 export async function getStatusBar() {
-  if (!isNative()) return null;
-  try {
-    const { StatusBar, Style } = await import('@capacitor/status-bar');
-    return { StatusBar, Style };
-  } catch {
-    return null;
-  }
+  return getStatusBarPlugin();
 }
 
 export async function getSplashScreen() {
-  if (!isNative()) return null;
-  try {
-    const { SplashScreen } = await import('@capacitor/splash-screen');
-    return SplashScreen;
-  } catch {
-    return null;
-  }
-}
-
-export async function getNetworkPlugin() {
-  if (!isNative()) return null;
-  try {
-    const { Network } = await import('@capacitor/network');
-    return Network;
-  } catch {
-    return null;
-  }
+  return getSplashScreenPlugin();
 }
 
 export async function getPushNotifications() {
-  if (!isNative()) return null;
-  try {
-    const { PushNotifications } = await import('@capacitor/push-notifications');
-    return PushNotifications;
-  } catch {
-    return null;
-  }
+  return getPushNotificationsPlugin();
 }
 
-export async function getAppPlugin() {
-  if (!isNative()) return null;
-  try {
-    const { App } = await import('@capacitor/app');
-    return App;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Returns the @capacitor/camera Camera plugin, or null on web / if unavailable.
- *
- * Used for:
- *   - checkPermissions()   — read current camera / photos permission state
- *   - requestPermissions() — trigger the native iOS permission dialog
- *   - savePhoto()          — save a photo to the device camera roll
- *
- * @capacitor/camera must be installed (it is — see package.json) AND the native
- * project must have been synced with `npx cap sync` for the plugin to be present
- * in the WKWebView's Capacitor.Plugins registry at runtime.
- */
-export async function getCameraPlugin() {
-  if (!isNative()) return null;
-  try {
-    const { Camera } = await import('@capacitor/camera');
-    return Camera;
-  } catch {
-    return null;
-  }
-}
+// getAppPlugin and getNetworkPlugin are exported as sync functions above.
+// Callers that previously used .then() should wrap with Promise.resolve() or use await.
 
 // ── Haptic helpers ────────────────────────────────────────────────────────────
 // Convenience wrappers — safe to call on web (no-op).

@@ -18,8 +18,8 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus } from 'lucide-react';
-import KpiWidgets from '@/components/dashboard/KpiWidgets';
+import { useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Camera } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
@@ -82,13 +82,13 @@ function IconPage({
   }
 
   return (
-    <div className="px-4 pt-2 pb-4">
-      <div className="mx-auto" style={{ maxWidth: 480 }}>
+    <div className="h-full flex flex-col px-4 pt-2 pb-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
+      <div className="flex-1 flex flex-col mx-auto w-full" style={{ maxWidth: 480 }}>
         {showLabels ? (
           sections.map(({ group, label, icons: sIcons }) => (
-            <div key={group}>
+            <div key={group} className="flex-1 flex flex-col">
               <SectionLabel label={label} />
-              <div className="home-icon-grid">
+              <div className="flex-1 grid grid-cols-2 gap-3" style={{ gridAutoRows: '1fr' }}>
                 {sIcons.map(item => (
                   <IconTile key={item.key} item={item} onNavigate={onNavigate} />
                 ))}
@@ -96,7 +96,7 @@ function IconPage({
             </div>
           ))
         ) : (
-          <div className="home-icon-grid">
+          <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)', maxHeight: '100%' }}>
             {icons.map(item => (
               <IconTile key={item.key} item={item} onNavigate={onNavigate} />
             ))}
@@ -109,33 +109,94 @@ function IconPage({
 
 // ── Dashboard page ────────────────────────────────────────────────────────────
 
-function DashboardPage({ userId, role }: { userId: string; role: string }) {
-  const [newJobOpen, setNewJobOpen] = useState(false);
-
+function DashboardPage({
+  userId,
+  role,
+  onNavigate,
+  onNewJob,
+  onCamera,
+}: {
+  userId: string;
+  role: string;
+  onNavigate: (href: string) => void;
+  onNewJob: () => void;
+  onCamera: () => void;
+}) {
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
-      {/* Header row: title + Add Job button */}
-      <div className="flex items-center justify-between">
+      {/* Header row: title + camera icon + Add Job button */}
+      <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-foreground">Dashboard</span>
+        <div className="flex items-center gap-2">
+          {/* Camera shortcut — opens /camera with no job attachment */}
+          <button
+            onClick={onCamera}
+            aria-label="Open camera"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
+          >
+            <Camera size={13} strokeWidth={2.5} />
+            Camera
+          </button>
+          <button
+            onClick={onNewJob}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
+          >
+            <Plus size={13} strokeWidth={2.5} />
+            Add Job
+          </button>
+        </div>
+      </div>
+
+      {/* ── Quick-action row: Sign In + Drive ─────────────────────────────────
+          These are the most-used field actions. Shown here on the Dashboard
+          page so they're always visible without swiping to Field. */}
+      <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={() => setNewJobOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
+          onClick={() => onNavigate('?panel=signin')}
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform"
         >
-          <Plus size={13} strokeWidth={2.5} />
-          Add Job
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <LogIn size={20} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-bold leading-tight">Sign In</span>
+          <span className="text-[10px] text-white/60 leading-tight">Record site attendance</span>
+        </button>
+        <button
+          onClick={() => onNavigate('?panel=drive-picker')}
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <Car size={20} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-bold leading-tight">Drive</span>
+          <span className="text-[10px] text-white/60 leading-tight">Start a driving session</span>
+        </button>
+        <button
+          onClick={() => onNavigate('?panel=site-prestart-picker')}
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <HardHat size={20} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-bold leading-tight">Site Prestart</span>
+          <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
+        </button>
+        <button
+          onClick={() => onNavigate('?panel=prestart-picker')}
+          className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-amber-600 text-white shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <ClipboardCheck size={20} strokeWidth={2} />
+          </div>
+          <span className="text-sm font-bold leading-tight">Vehicle Prestart</span>
+          <span className="text-[10px] text-white/60 leading-tight">Vehicle inspection check</span>
         </button>
       </div>
 
       <DashboardBanner userId={userId} />
-      <KpiWidgets />
       <NotificationList />
       <MyTasksPanel userRole={role} />
 
-      <NewJobModal
-        open={newJobOpen}
-        onClose={() => setNewJobOpen(false)}
-        onCreated={() => setNewJobOpen(false)}
-      />
     </div>
   );
 }
@@ -150,9 +211,11 @@ export default function PagedHomeScreen({
   userId,
   onNavigate,
 }: PagedHomeScreenProps) {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [newJobOpen, setNewJobOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -247,6 +310,7 @@ export default function PagedHomeScreen({
   const totalTranslate = baseTranslate + dragPercent;
 
   return (
+    <>
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Page tab bar ──────────────────────────────────────────────────────── */}
       <div
@@ -294,22 +358,20 @@ export default function PagedHomeScreen({
         >
           {/* Page 0 — Dashboard */}
           <div
-            className="overflow-y-auto"
+            className="overflow-y-auto min-h-0"
             style={{
               width: '33.333%',
+              height: '100%',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            <DashboardPage userId={userId} role={role} />
+            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} onCamera={() => navigate('/camera')} />
           </div>
 
-          {/* Page 1 — Field */}
+          {/* Page 1 — Field: no scroll, tiles stretch to fill height */}
           <div
-            className="overflow-y-auto"
-            style={{
-              width: '33.333%',
-              paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-            }}
+            className="min-h-0"
+            style={{ width: '33.333%', height: '100%' }}
           >
             <IconPage
               icons={fieldIcons}
@@ -319,13 +381,10 @@ export default function PagedHomeScreen({
             />
           </div>
 
-          {/* Page 2 — Management */}
+          {/* Page 2 — Management: no scroll, tiles stretch to fill height */}
           <div
-            className="overflow-y-auto"
-            style={{
-              width: '33.333%',
-              paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-            }}
+            className="min-h-0"
+            style={{ width: '33.333%', height: '100%' }}
           >
             <IconPage
               icons={mgmtIcons}
@@ -358,5 +417,14 @@ export default function PagedHomeScreen({
         ))}
       </div>
     </div>
+
+    {/* NewJobModal rendered OUTSIDE the swipe track so CSS transform doesn't
+        break fixed positioning — the modal covers the full viewport correctly */}
+    <NewJobModal
+      open={newJobOpen}
+      onClose={() => setNewJobOpen(false)}
+      onCreated={() => setNewJobOpen(false)}
+    />
+    </>
   );
 }

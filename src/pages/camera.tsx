@@ -23,7 +23,7 @@
 import {
   useState, useEffect, useRef, useCallback, memo,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -349,29 +349,35 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Check whether save-to-photos permission is available.
- * Returns 'granted' | 'denied' | 'unavailable'.
- * Uses @capacitor/camera via dynamic import (getCameraPlugin).
+ * Access window.Capacitor.Plugins.Camera directly — same pattern as useIosMediaPicker.
+ * Dynamic import('@capacitor/camera') can produce a broken chunk in iOS builds.
  */
+function getNativeCamBridge() {
+  if (typeof window === 'undefined') return null;
+  const cap = (window as {
+    Capacitor?: { isNativePlatform?: () => boolean; Plugins?: { Camera?: Record<string, unknown> } };
+  }).Capacitor;
+  if (!cap?.isNativePlatform?.()) return null;
+  return (cap?.Plugins?.Camera ?? null) as {
+    checkPermissions: () => Promise<Record<string, string>>;
+    requestPermissions: (o: { permissions: string[] }) => Promise<Record<string, string>>;
+  } | null;
+}
+
 async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'unavailable'> {
   if (!isNative()) return 'unavailable';
   try {
-    const { getCameraPlugin } = await import('@/lib/capacitor-plugins');
-    const Camera = await getCameraPlugin();
+    const Camera = getNativeCamBridge();
     if (!Camera) return 'unavailable';
 
     const status = await Camera.checkPermissions();
-    const photos = (status as { photos?: string }).photos
-      ?? (status as { camera?: string }).camera
-      ?? 'prompt';
+    const photos = status.photos ?? status.camera ?? 'prompt';
     if (photos === 'granted' || photos === 'limited') return 'granted';
     if (photos === 'denied') return 'denied';
 
     // 'prompt' — request it
-    const requested = await Camera.requestPermissions({ permissions: ['photos'] as never });
-    const rPhotos = (requested as { photos?: string }).photos
-      ?? (requested as { camera?: string }).camera
-      ?? 'denied';
+    const requested = await Camera.requestPermissions({ permissions: ['photos'] });
+    const rPhotos = requested.photos ?? requested.camera ?? 'denied';
     return (rPhotos === 'granted' || rPhotos === 'limited') ? 'granted' : 'denied';
   } catch {
     return 'unavailable';
@@ -379,18 +385,31 @@ async function checkSaveToPhotosPermission(): Promise<'granted' | 'denied' | 'un
 }
 
 /**
- * Save a blob to the device camera roll via @capacitor/camera savePhoto().
+ * Save a processed/watermarked blob to the device camera roll.
  *
- * Strategy:
- *   1. Write the JPEG blob to the Capacitor CACHE directory as a temp file.
- *   2. Call Camera.savePhoto({ path: uri }) — the correct @capacitor/camera API
- *      for saving to the iOS Photos library.
- *   3. If Camera.savePhoto is not available (plugin not synced to native project
- *      yet), return 'unavailable' — never pretend the save succeeded.
+ * Strategy
+ * ────────
+ * @capacitor/camera does NOT expose a standalone `savePhoto()` method in the
+ * public API. The correct approach for saving a processed blob (not the raw
+ * capture) to the iOS Photos library is:
+ *
+ *   1. Write the JPEG blob to the Capacitor CACHE directory as a temp file
+ *      using Filesystem.writeFile().
+ *   2. Use the @capacitor-community/media plugin's `savePhoto({ path })` if
+ *      available — this is the community-supported way to save arbitrary files
+ *      to Photos on iOS.
+ *   3. If neither plugin is available, return 'unavailable' honestly — never
+ *      pretend the save succeeded by writing to DOCUMENTS/DCIM (that is NOT
+ *      the camera roll and would mislead the user).
+ *
+ * NOTE: `saveToGallery: true` in Camera.getPhoto() saves the ORIGINAL capture
+ * before any watermarking/compression. We intentionally do NOT use that flag
+ * here because we want to save the processed blob (with watermark/timestamp),
+ * not the raw capture. The auto-open useEffect passes `saveToGallery: false`.
  *
  * Returns:
  *   'saved'            — photo is genuinely in the device camera roll
- *   'permission_denied'— user denied Photos access
+ *   'permission_denied'— user denied Photos Add access
  *   'unavailable'      — not on native, plugin missing, or save failed
  */
 async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission_denied' | 'unavailable'> {
@@ -407,16 +426,20 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
             path: string; data: string; directory: string; recursive?: boolean;
           }) => Promise<{ uri: string }>;
         };
-        Camera?: {
+        // @capacitor-community/media plugin (if installed and synced)
+        Media?: {
           savePhoto?: (opts: { path: string }) => Promise<void>;
         };
       } }
     }).Capacitor;
 
     const Filesystem = cap?.Plugins?.Filesystem;
-    if (!Filesystem) return 'unavailable';
+    if (!Filesystem) {
+      console.warn('[camera-roll] Filesystem plugin not available');
+      return 'unavailable';
+    }
 
-    // Write to CACHE as a temp file — CACHE is writable and not user-visible
+    // Write processed blob to CACHE as a temp file
     const base64 = await blobToBase64(blob);
     const fileName = `iwillbuild_${Date.now()}.jpg`;
     const writeResult = await Filesystem.writeFile({
@@ -426,18 +449,18 @@ async function saveToDeviceCameraRoll(blob: Blob): Promise<'saved' | 'permission
       recursive: true,
     });
 
-    // Use Camera.savePhoto() — the correct @capacitor/camera API for camera roll
-    const CameraPlugin = cap?.Plugins?.Camera;
-    if (CameraPlugin?.savePhoto) {
-      await CameraPlugin.savePhoto({ path: writeResult.uri });
+    // Try @capacitor-community/media plugin
+    const MediaPlugin = cap?.Plugins?.Media;
+    if (MediaPlugin?.savePhoto) {
+      await MediaPlugin.savePhoto({ path: writeResult.uri });
       return 'saved';
     }
 
-    // savePhoto not available — the native project has not been synced with
-    // @capacitor/camera yet (or the plugin version doesn't support savePhoto).
-    // Do NOT fall back to writing to DOCUMENTS/DCIM — that is not the camera roll
-    // and would silently mislead the user. Return unavailable so the UI is honest.
-    console.warn('[camera-roll] Camera.savePhoto not available — run npx cap sync to register the plugin');
+    // Neither plugin available — be honest about it
+    console.warn(
+      '[camera-roll] No plugin available to save to Photos library. ' +
+      'Install @capacitor-community/media and run npx cap sync to enable Camera Roll backup.'
+    );
     return 'unavailable';
   } catch (e) {
     console.warn('[camera-roll] save failed:', e);
@@ -1443,7 +1466,7 @@ const CaptureLightbox = memo(function CaptureLightbox({
 
 function CaptureRow({
   item, selected, selectMode, notesEnabled,
-  onToggleSelect, onDelete, onAttachJob, onAddNote, onTapPhoto,
+  onToggleSelect, onDelete, onAttachJob, onAddNote, onTapPhoto, onRetry,
 }: {
   item: CaptureItem;
   selected: boolean;
@@ -1454,6 +1477,7 @@ function CaptureRow({
   onAttachJob: (clientId: string) => void;
   onAddNote: (clientId: string) => void;
   onTapPhoto: (clientId: string) => void;
+  onRetry: (clientId: string) => void;
 }) {
   const imgUrl = item.serverUrl ?? item.localUrl;
 
@@ -1515,8 +1539,7 @@ function CaptureRow({
           )}
           {item.status === 'error' && (
             <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-100 rounded-md px-1.5 py-0.5">Failed</span>
-          )}
-          {item.status === 'done' && item.jobId && (
+          )}          {item.status === 'done' && item.jobId && (
             <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 rounded-md px-1.5 py-0.5 truncate max-w-[120px]">
               {item.jobName ?? 'Attached'}
             </span>
@@ -1535,6 +1558,17 @@ function CaptureRow({
 
       {!selectMode && item.status !== 'uploading' && (
         <div className="flex items-center gap-1 shrink-0">
+          {/* Retry button — only shown on failed uploads */}
+          {item.status === 'error' && (
+            <button
+              onClick={() => onRetry(item.clientId)}
+              className="w-8 h-8 rounded-xl bg-red-100 border border-red-200 flex items-center justify-center text-red-600 hover:bg-red-200 active:bg-red-300 transition-colors"
+              title="Retry upload"
+              aria-label="Retry upload"
+            >
+              <RotateCcw size={13} />
+            </button>
+          )}
           {/* Assign to job */}
           <button
             onClick={() => onAttachJob(item.clientId)}
@@ -1602,6 +1636,18 @@ const DOCK_HEIGHT_PX = 120;
 
 export default function CameraPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // ── attachTo / returnTo — deep-link from job card "Take Photo" ───────────
+  // attachTo=job-card:123  → after each capture, also POST to /api/job-cards/123/photos
+  // returnTo=/job-cards/123 → navigate back there after first successful capture
+  const attachToParam  = searchParams.get('attachTo');   // e.g. "job-card:42"
+  const returnToParam  = searchParams.get('returnTo');   // e.g. "/job-cards/42"
+  const attachJobCardId = attachToParam?.startsWith('job-card:')
+    ? Number(attachToParam.split(':')[1])
+    : null;
+  // Track whether we've already navigated back (only do it once)
+  const returnedRef = useRef(false);
 
   // Permission explainer — used for backup-to-roll pre-prompt
   const permExplainer = usePermissionExplainer();
@@ -1766,18 +1812,45 @@ export default function CameraPage() {
 
   useEffect(() => { void loadCaptures(); }, [loadCaptures]);
 
+  // ── Retained blob store — keyed by clientId ──────────────────────────────
+  // Blobs are stored here after processImage() succeeds and removed only after
+  // the server confirms a successful save (non-zero id + url present).
+  // This enables genuine retry: tapping "Retry Save" calls uploadBlob() again
+  // with the same processed blob — no re-capture required.
+  const retainedBlobsRef = useRef<Map<string, { blob: Blob; capturedAt: string; jobId: number | null }>>(new Map());
+
   // ── Upload a single processed blob ───────────────────────────────────────
   // Offline-first: if the device is offline at the moment of upload, we mark
-  // the capture as 'error' with a clear "offline" message so the user knows
+  // the capture as 'error' with a clear "Retry Save" message so the user knows
   // it will need a manual retry — we do NOT silently drop the capture.
-  // On a network error (fetch throws), we retry once after 3 seconds before
-  // giving up, to handle brief signal drops common on construction sites.
+  // On a network error (fetch throws), we retry once after 3 s before giving up.
+  // A 30 s AbortController timeout prevents an endless "Saving…" spinner.
   async function uploadBlob(blob: Blob, clientId: string, capturedAt: string, jobId?: number | null) {
-    // Offline check — fail fast with a clear message rather than hanging
+    // ── Pre-flight blob validation ────────────────────────────────────────
+    if (!blob || blob.size === 0) {
+      setCaptures(prev => prev.map(c =>
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: 'Capture produced an empty image — please try again.' }
+          : c
+      ));
+      return;
+    }
+    const mime = blob.type || 'image/jpeg';
+    const supportedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!supportedMimes.includes(mime)) {
+      setCaptures(prev => prev.map(c =>
+        c.clientId === clientId
+          ? { ...c, status: 'error', errorMsg: `Unsupported image type: ${mime}` }
+          : c
+      ));
+      return;
+    }
+
+    // ── Offline check — fail fast ─────────────────────────────────────────
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setCaptures(prev => prev.map(c =>
         c.clientId === clientId
-          ? { ...c, status: 'error', errorMsg: 'Offline — tap to retry when connected' }
+          ? { ...c, status: 'error', errorMsg: 'Offline — tap Retry Save when connected' }
           : c
       ));
       return;
@@ -1787,14 +1860,22 @@ export default function CameraPage() {
       c.clientId === clientId ? { ...c, status: 'uploading' } : c
     ));
 
+    // ── Single attempt with AbortController timeout ───────────────────────
     const attemptUpload = async (): Promise<Response> => {
-      const fd = new FormData();
-      fd.append('photos', blob, 'capture.jpg');
-      fd.append('capturedAt', capturedAt);
-      if (jobId) fd.append('jobId', String(jobId));
-      return fetch('/api/camera-captures', {
-        method: 'POST', credentials: 'include', body: fd,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30 s hard timeout
+      try {
+        const fd = new FormData();
+        fd.append('photos', blob, 'capture.jpg');
+        fd.append('capturedAt', capturedAt);
+        if (jobId) fd.append('jobId', String(jobId));
+        return await fetch('/api/camera-captures', {
+          method: 'POST', credentials: 'include', body: fd,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
     };
 
     try {
@@ -1802,31 +1883,73 @@ export default function CameraPage() {
       try {
         res = await attemptUpload();
       } catch (networkErr) {
-        // First attempt failed with a network error — wait 3s and retry once.
-        // This handles brief signal drops without immediately showing an error.
-        console.warn('[uploadBlob] network error on first attempt, retrying in 3s:', networkErr);
+        // First attempt failed (network error or timeout) — wait 3 s and retry once.
+        const isTimeout = networkErr instanceof DOMException && networkErr.name === 'AbortError';
+        console.warn(`[uploadBlob] ${isTimeout ? 'timeout' : 'network error'} on first attempt, retrying in 3s:`, networkErr);
         await new Promise(r => setTimeout(r, 3000));
-        res = await attemptUpload(); // throws again if still offline → caught below
+        res = await attemptUpload(); // throws again if still failing → caught below
       }
 
       if (!res.ok) {
         const d = await res.json() as { error?: string };
         throw new Error(d.error ?? `Upload failed (${res.status})`);
       }
-      const d = await res.json() as { captures: Array<{ id: number; url: string }> };
+
+      // ── Strict response validation ────────────────────────────────────────
+      // Only mark as done when the server returns a real id > 0 and a url.
+      const d = await res.json() as { captures?: Array<{ id?: number; url?: string }> };
+      if (!Array.isArray(d.captures) || d.captures.length === 0) {
+        throw new Error('Server returned no capture data.');
+      }
       const saved = d.captures[0];
+      if (!saved.id || saved.id <= 0) {
+        throw new Error('Server returned an invalid capture ID — the record may not have saved.');
+      }
+      if (!saved.url) {
+        throw new Error('Server returned no URL for the saved capture.');
+      }
+
+      // ── Success — remove retained blob, update capture state ─────────────
+      retainedBlobsRef.current.delete(clientId);
 
       setCaptures(prev => prev.map(c => {
         if (c.clientId !== clientId) return c;
         if (c.localUrl) URL.revokeObjectURL(c.localUrl);
-        return { ...c, id: saved.id, serverUrl: saved.url, localUrl: null, status: 'done', errorMsg: null };
+        return { ...c, id: saved.id!, serverUrl: saved.url!, localUrl: null, status: 'done', errorMsg: null };
       }));
+
+      // ── attachTo: also save to job card photos + navigate back ────────────
+      if (attachJobCardId && saved.url) {
+        try {
+          const imgRes = await fetch(saved.url);
+          if (imgRes.ok) {
+            const imgBlob = await imgRes.blob();
+            const fd2 = new FormData();
+            fd2.append('photos', imgBlob, 'capture.jpg');
+            await fetch(`/api/job-cards/${attachJobCardId}/photos`, {
+              method: 'POST', credentials: 'include', body: fd2,
+            });
+          }
+        } catch (attachErr) {
+          console.warn('[camera] attachTo job-card post failed:', attachErr);
+        }
+        if (returnToParam && !returnedRef.current) {
+          returnedRef.current = true;
+          navigate(returnToParam);
+        }
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
       const isOffline = !navigator.onLine || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch');
+      const isTimeout = msg.toLowerCase().includes('abort') || msg.toLowerCase().includes('timeout');
+      const displayMsg = isOffline
+        ? 'Offline — tap Retry Save when connected'
+        : isTimeout
+          ? 'Upload timed out — tap Retry Save'
+          : msg;
       setCaptures(prev => prev.map(c =>
         c.clientId === clientId
-          ? { ...c, status: 'error', errorMsg: isOffline ? 'Offline — tap to retry when connected' : msg }
+          ? { ...c, status: 'error', errorMsg: displayMsg }
           : c
       ));
     }
@@ -1869,10 +1992,26 @@ export default function CameraPage() {
           job?.jobNumber ?? null,
         );
 
+        // ── Retain the processed blob for genuine retry ───────────────────
+        // Stored before upload so a failed upload can be retried without
+        // re-capturing. Removed only after the server confirms success.
+        retainedBlobsRef.current.set(clientId, {
+          blob,
+          capturedAt,
+          jobId: job?.id ?? null,
+        });
+
+        // ── Camera Roll backup (independent of server save) ───────────────
+        // Failure here must NOT prevent the server save. The two outcomes
+        // are reported independently via state flags.
         if (currentSettings.backupToRoll) {
-          const result = await saveToDeviceCameraRoll(blob);
-          if (result === 'permission_denied') setBackupPermDenied(true);
-          else if (result === 'unavailable' && isNative()) setBackupUnavailable(true);
+          saveToDeviceCameraRoll(blob).then(result => {
+            if (result === 'permission_denied') setBackupPermDenied(true);
+            else if (result === 'unavailable' && isNative()) setBackupUnavailable(true);
+          }).catch(() => {
+            // Camera Roll backup failure is non-fatal — server save continues
+            if (isNative()) setBackupUnavailable(true);
+          });
         }
 
         await uploadBlob(blob, clientId, capturedAt, job?.id ?? null);
@@ -1880,6 +2019,7 @@ export default function CameraPage() {
         // processImage resolved (never rejects now), but uploadBlob could throw
         // in an unexpected path. Fall back to uploading the raw file.
         console.warn('[handleFileFromPicker] processing/upload error, retrying with raw file:', err);
+        retainedBlobsRef.current.set(clientId, { blob: file, capturedAt, jobId: job?.id ?? null });
         await uploadBlob(file, clientId, capturedAt, job?.id ?? null);
       }
     })();
@@ -1897,6 +2037,8 @@ export default function CameraPage() {
     });
     setSelectedIds(prev => { const s = new Set(prev); s.delete(clientId); return s; });
     if (localUrl) URL.revokeObjectURL(localUrl);
+    // Remove retained blob — user has explicitly deleted this capture
+    retainedBlobsRef.current.delete(clientId);
     if (serverId) {
       await fetch(`/api/camera-captures/${serverId}`, {
         method: 'DELETE', credentials: 'include',
@@ -1975,6 +2117,47 @@ export default function CameraPage() {
     });
   }
 
+  // ── Retry failed upload ───────────────────────────────────────────────────
+  // Priority order for the blob source:
+  //   1. retainedBlobsRef — the processed blob stored before the first upload
+  //      attempt. This is the canonical source and survives localUrl revocation.
+  //   2. localUrl — object URL still in memory (may have been revoked on success)
+  //   3. Neither available — show "please retake" message
+  async function handleRetry(clientId: string) {
+    const item = captures.find(c => c.clientId === clientId);
+    if (!item || item.status !== 'error') return;
+
+    setCaptures(prev => prev.map(c =>
+      c.clientId === clientId ? { ...c, status: 'pending', errorMsg: null } : c
+    ));
+
+    // ── 1. Use retained processed blob (preferred) ────────────────────────
+    const retained = retainedBlobsRef.current.get(clientId);
+    if (retained) {
+      await uploadBlob(retained.blob, clientId, retained.capturedAt, retained.jobId);
+      return;
+    }
+
+    // ── 2. Fall back to localUrl if still alive ───────────────────────────
+    if (item.localUrl) {
+      try {
+        const res = await fetch(item.localUrl);
+        const blob = await res.blob();
+        await uploadBlob(blob, clientId, item.capturedAt, item.jobId);
+        return;
+      } catch {
+        // localUrl has been revoked — fall through to error
+      }
+    }
+
+    // ── 3. No blob available — ask user to retake ─────────────────────────
+    setCaptures(prev => prev.map(c =>
+      c.clientId === clientId
+        ? { ...c, status: 'error', errorMsg: 'Photo data no longer available — please retake' }
+        : c
+    ));
+  }
+
   // ── Edit saved callback ───────────────────────────────────────────────────
   function handleEditSaved(clientId: string, patch: Partial<CaptureItem>) {
     setCaptures(prev => prev.map(c =>
@@ -1995,6 +2178,55 @@ export default function CameraPage() {
   const [flashOn, setFlashOn] = useState(false);
   const [frontCamera, setFrontCamera] = useState(false);
 
+  // ── Camera open error — shown when getPhoto fails for a non-cancel reason ──
+  // Cleared on next successful capture or on shutter tap.
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const libraryFallbackRef = useRef<HTMLInputElement>(null);
+
+  // ── Auto-open state ───────────────────────────────────────────────────────
+  // autoOpenedRef: ensures we only fire the auto-open once per mount, even if
+  // settingsLoaded triggers a re-render. Never set back to false — once the
+  // camera has been opened (or attempted), the user is in control.
+  const autoOpenedRef = useRef(false);
+  // userCancelled: true after the user dismisses the native camera without
+  // capturing. Shows the landing screen instead of a blank black screen.
+  const [userCancelled, setUserCancelled] = useState(false);
+
+  // ── Auto-open: launch native camera immediately after settings load ───────
+  // Conditions: settings loaded, no permission modal active, not already opened.
+  // On web (non-native) we skip auto-open — the file input requires a direct
+  // user gesture and cannot be triggered programmatically after an async delay.
+  useEffect(() => {
+    if (!settingsLoaded) return;                    // wait for settings
+    if (autoOpenedRef.current) return;              // already opened once
+    if (picker.checkingPermission) return;          // permission modal in flight
+    if (picker.explainer) return;                   // explainer modal showing
+    if (!isNative()) return;                        // web: requires direct gesture
+
+    autoOpenedRef.current = true;                   // mark before the async call
+
+    const quality = settings.quality === 'low' ? 72 : settings.quality === 'high' ? 92 : 84;
+
+    picker.openCamera({
+      direction: 'rear',
+      flashMode: 'auto',
+      captureQuality: quality,
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isCancel =
+        msg.toLowerCase().includes('cancel') ||
+        msg.toLowerCase().includes('dismiss') ||
+        msg.toLowerCase().includes('user cancelled') ||
+        msg.toLowerCase().includes('no image');
+      if (isCancel) {
+        setUserCancelled(true);   // show landing screen — do NOT loop
+      } else {
+        setCameraError(msg || 'Camera could not be opened.');
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoaded]);  // intentionally only re-runs when settings finish loading
+
   // Auto-expand tray when a new capture is added
   useEffect(() => {
     if (captures.length > prevCapturesLenRef.current) {
@@ -2005,8 +2237,156 @@ export default function CameraPage() {
 
   if (!settingsLoaded) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0d0d12' }}>
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
         <Loader2 size={24} className="animate-spin text-violet-400" />
+      </div>
+    );
+  }
+
+  // ── Landing screen — shown after user cancels the native camera ───────────
+  // Also shown when there is a hard camera error (plugin failure / permission
+  // denied). Never shown on first mount — the auto-open fires first.
+  if (userCancelled || cameraError) {
+    const isPermDenied = picker.permissionDenied === 'camera';
+    return (
+      <div className="fixed inset-0 flex flex-col bg-background">
+        <Helmet>
+          <title>Camera — IWILLBUILD</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+
+        {/* Hidden file inputs — still needed for library fallback */}
+        <IosMediaInputs picker={pickerExt} />
+        <input
+          ref={libraryFallbackRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) { setUserCancelled(false); setCameraError(null); handleFileFromPicker(f); }
+            e.target.value = '';
+          }}
+        />
+
+        {/* Safe-area top spacer */}
+        <div style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+
+        {/* Back / close button */}
+        <div className="flex items-center px-4 pt-3 pb-2">
+          <button
+            onClick={() => { if (returnToParam) navigate(returnToParam); else navigate(-1); }}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            <ChevronLeft size={18} />
+            <span>Back</span>
+          </button>
+        </div>
+
+        {/* Centre content */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 px-8 pb-16">
+
+          {/* Icon */}
+          <div className="flex items-center justify-center w-20 h-20 rounded-3xl bg-muted border border-border">
+            <Camera size={36} className="text-muted-foreground/50" />
+          </div>
+
+          {/* Heading */}
+          <div className="flex flex-col items-center gap-2 text-center max-w-xs">
+            {cameraError && !isPermDenied ? (
+              <>
+                <h1 className="text-foreground font-bold text-xl">Camera could not open</h1>
+                <p className="text-muted-foreground text-sm leading-relaxed">{cameraError}</p>
+              </>
+            ) : isPermDenied ? (
+              <>
+                <h1 className="text-foreground font-bold text-xl">Camera access denied</h1>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Allow camera access in iPhone Settings to take photos.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-foreground font-bold text-xl">Ready to capture</h1>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Take a photo or choose one from your library.
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            {isPermDenied ? (
+              <button
+                onClick={() => {
+                  const cap = (window as unknown as { Capacitor?: { Plugins?: { App?: { openUrl?: (opts: { url: string }) => void } } } }).Capacitor;
+                  cap?.Plugins?.App?.openUrl?.({ url: 'app-settings:' });
+                }}
+                className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base flex items-center justify-center gap-2"
+              >
+                <Settings size={18} />
+                Open iPhone Settings
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setCameraError(null);
+                  setUserCancelled(false);
+                  const quality = settings.quality === 'low' ? 72 : settings.quality === 'high' ? 92 : 84;
+                  picker.openCamera({
+                    direction: frontCamera ? 'front' : 'rear',
+                    flashMode: flashOn ? 'on' : 'off',
+                    captureQuality: quality,
+                  }).catch((err: unknown) => {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    const isCancel =
+                      msg.toLowerCase().includes('cancel') ||
+                      msg.toLowerCase().includes('dismiss') ||
+                      msg.toLowerCase().includes('user cancelled') ||
+                      msg.toLowerCase().includes('no image');
+                    if (isCancel) {
+                      setUserCancelled(true);
+                    } else {
+                      setCameraError(msg || 'Camera could not be opened.');
+                    }
+                  });
+                }}
+                className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base flex items-center justify-center gap-2"
+              >
+                <Camera size={18} />
+                Open Camera
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setCameraError(null);
+                setUserCancelled(false);
+                if (isNative()) {
+                  void picker.openLibrary();
+                } else {
+                  libraryFallbackRef.current?.click();
+                }
+              }}
+              className="w-full py-4 rounded-2xl bg-muted border border-border text-foreground/70 font-semibold text-base flex items-center justify-center gap-2"
+            >
+              <FolderOpen size={18} />
+              Choose from Photo Library
+            </button>
+          </div>
+        </div>
+
+        {/* Permission explainer modal */}
+        {picker.explainer && (
+          <PermissionExplainerModal
+            type={picker.explainer.type}
+            open={!!picker.explainer}
+            denied={picker.explainer.denied}
+            onNotNow={picker.explainer.onNotNow}
+            onEnable={() => void picker.explainer!.onEnable()}
+          />
+        )}
       </div>
     );
   }
@@ -2026,6 +2406,21 @@ export default function CameraPage() {
 
       {/* ═══ FULL SCREEN DARK VIEWFINDER ═══ */}
       <div className="fixed inset-0 z-0 flex flex-col" style={{ background: '#0d0d12' }}>
+
+        {/* attachTo banner — shown when opened from a job card "Take Photo" */}
+        {attachJobCardId && (
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2 z-10 bg-primary"
+            style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
+            <button onClick={() => { if (returnToParam) navigate(returnToParam); }}
+              className="text-primary-foreground/70 hover:text-primary-foreground transition-colors mr-1">
+              <ChevronLeft size={18} />
+            </button>
+            <Camera size={14} className="text-primary-foreground/80 shrink-0" />
+            <p className="text-primary-foreground text-xs font-semibold truncate flex-1">
+              Photo will be saved to job card #{attachJobCardId}
+            </p>
+          </div>
+        )}
 
         {/* Offline banner — top of screen below safe area */}
         <AnimatePresence>
@@ -2273,6 +2668,7 @@ export default function CameraPage() {
                   onAttachJob={(id) => setJobPickerForClientId(id)}
                   onAddNote={(id) => setNoteForClientId(id)}
                   onTapPhoto={(id) => setLightboxClientId(id)}
+                  onRetry={handleRetry}
                 />
               ))}
             </AnimatePresence>
@@ -2381,16 +2777,28 @@ export default function CameraPage() {
                 whileTap={{ scale: 0.91 }}
                 whileHover={{ scale: 1.03 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-                onClick={() => void picker.openCamera({
-                  direction: frontCamera ? 'front' : 'rear',
-                  flashMode: flashOn ? 'on' : 'off',
-                  // Pass quality hint so native capture matches the user's quality setting.
-                  // These values mirror the JPEG quality used in processImage so the two
-                  // stages stay in sync and we don't double-compress at mismatched levels.
-                  captureQuality: settings.quality === 'low' ? 72
-                    : settings.quality === 'high' ? 92
-                    : 84,
-                })}
+                onClick={() => {
+                  setCameraError(null);
+                  setUserCancelled(false);
+                  void picker.openCamera({
+                    direction: frontCamera ? 'front' : 'rear',
+                    flashMode: flashOn ? 'on' : 'off',
+                    // Pass quality hint so native capture matches the user's quality setting.
+                    // These values mirror the JPEG quality used in processImage so the two
+                    // stages stay in sync and we don't double-compress at mismatched levels.
+                    captureQuality: settings.quality === 'low' ? 72
+                      : settings.quality === 'high' ? 92
+                      : 84,
+                  }).catch((err: unknown) => {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    const isCancel = msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('dismiss') || msg.toLowerCase().includes('user cancelled') || msg.toLowerCase().includes('no image');
+                    if (isCancel) {
+                      setUserCancelled(true);
+                    } else {
+                      setCameraError(msg || 'Camera could not be opened.');
+                    }
+                  });
+                }}
                 className="relative flex items-center justify-center"
                 aria-label="Take photo"
                 disabled={picker.checkingPermission || !settingsLoaded}

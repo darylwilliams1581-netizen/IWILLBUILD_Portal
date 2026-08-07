@@ -208,7 +208,7 @@ export function useDriverSession() {
 
     // On native, also set up a continuous position watch for faster updates
     if (isNative()) {
-      getNativeGeo().then((geo) => {
+      Promise.resolve(getNativeGeo()).then((geo) => {
         if (!geo) return;
         geo.watchPosition(
           { enableHighAccuracy: true, timeout: 15_000 },

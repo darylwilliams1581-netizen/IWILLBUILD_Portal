@@ -635,9 +635,11 @@ function useActiveStatus(refreshKey: number) {
 
   useEffect(() => {
     let cancelled = false;
+    // Clear stale state immediately so the widget disappears while we refetch
+    setStatus(null);
     fetch('/api/me/active-status', { credentials: 'include' })
       .then(r => r.ok ? r.json() as Promise<ActiveStatus & { ok: boolean }> : null)
-      .then(data => { if (!cancelled && data?.ok) setStatus(data); })
+      .then(data => { if (!cancelled) setStatus(data?.ok ? data : null); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [refreshKey]);
@@ -657,18 +659,45 @@ function elapsed(isoStr: string | null): string {
 
 function ActiveStatusBar({
   status,
-  onJobPress,
+  onJobSignOut,
   onDriveStop,
 }: {
   status: ActiveStatus | null;
-  onJobPress: () => void;
+  onJobSignOut: (jobId: number) => void;
   onDriveStop: (sessionId: number) => void;
 }) {
   const hasJob      = !!status?.jobSignIn;
   const sessions    = status?.drivingSessions ?? (status?.driving ? [status.driving] : []);
   const hasDrive    = sessions.length > 0;
+  const [signingOut, setSigningOut] = useState(false);
 
   if (!hasJob && !hasDrive) return null;
+
+  async function handleDirectSignOut(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!status?.jobSignIn || signingOut) return;
+    setSigningOut(true);
+    try {
+      const res = await fetch(`/api/jobs/${status.jobSignIn.jobId}/signout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; notSignedIn?: boolean; error?: string };
+      // Success OR already signed out — either way, dismiss the widget
+      if (res.ok || data.notSignedIn) {
+        onJobSignOut(status.jobSignIn.jobId);
+      } else {
+        // Real error — fall back to sheet
+        onJobPress();
+      }
+    } catch {
+      onJobPress();
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
     <motion.div
@@ -685,15 +714,17 @@ function ActiveStatusBar({
           Active
         </span>
 
-        {/* Job sign-in pill */}
+        {/* Job sign-in pill — one tap signs out immediately */}
         {hasJob && (
           <button
-            onClick={onJobPress}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1 shrink-0 active:scale-95 transition-all"
+            onClick={handleDirectSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 shrink-0 active:opacity-70 transition-opacity disabled:opacity-50"
             style={{
               background: 'rgba(16,185,129,0.15)',
               border: '1px solid rgba(16,185,129,0.35)',
             }}
+            aria-label="Sign out of job"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <HardHatIcon size={10} className="text-emerald-400 shrink-0" />
@@ -705,6 +736,10 @@ function ActiveStatusBar({
                 {elapsed(status!.jobSignIn!.signedInAt)}
               </span>
             )}
+            {signingOut
+              ? <span className="w-3 h-3 border border-emerald-400/60 border-t-transparent rounded-full animate-spin shrink-0" />
+              : <X size={11} strokeWidth={2.5} className="text-emerald-400/70 shrink-0" />
+            }
           </button>
         )}
 
@@ -777,12 +812,17 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
       )
     : assets;
 
+  const driveOpenedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (open) driveOpenedAtRef.current = Date.now();
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open && (
         <>
           {/* Backdrop */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => { if (Date.now() - driveOpenedAtRef.current >= 300) onClose(); }} />
 
           {/* Centred floating modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
@@ -949,6 +989,7 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const [approvalDate, setApprovalDate] = useState(new Date().toISOString().slice(0, 10));
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -967,6 +1008,7 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
     setApprovalDate(new Date().toISOString().slice(0, 10));
     setPhotoFiles([]);
     setPhotoPreviewUrls([]);
+    setPhotoUploadError(null);
     fetch('/api/customers?status=active&limit=200', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((d: { customers?: { id: number; name: string }[] } | null) => setCustomers(d?.customers ?? []))
@@ -1030,14 +1072,27 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
       setCreatedId(newId);
       setCreatedNum(data.jobCard!.card_number);
 
-      // Upload photos if any
+      // Upload photos if any — read the response and surface real errors
+      let photoUploadError: string | null = null;
       if (photoFiles.length > 0) {
-        const fd = new FormData();
-        photoFiles.forEach(f => fd.append('photos', f));
-        await fetch(`/api/job-cards/${newId}/photos`, {
-          method: 'POST', credentials: 'include', body: fd,
-        }).catch(() => {}); // non-fatal
+        try {
+          const fd = new FormData();
+          photoFiles.forEach(f => fd.append('photos', f));
+          const photoRes = await fetch(`/api/job-cards/${newId}/photos`, {
+            method: 'POST', credentials: 'include', body: fd,
+          });
+          const photoData = await photoRes.json() as { photos?: unknown[]; error?: string };
+          if (!photoRes.ok) {
+            photoUploadError = photoData.error ?? `Upload failed (${photoRes.status})`;
+            console.error(`[job-card photos] upload failed: ${photoUploadError}`);
+          }
+        } catch (photoErr) {
+          photoUploadError = photoErr instanceof Error ? photoErr.message : 'Photo upload failed';
+          console.error('[job-card photos] upload error:', photoErr);
+        }
       }
+
+      setPhotoUploadError(photoUploadError);
 
       setStep('done');
     } catch (err) {
@@ -1096,8 +1151,14 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           <div>
             <p className="text-[17px] font-bold text-gray-900">Job Card created</p>
             <p className="text-[13px] text-gray-400 mt-1 font-mono">{createdNum}</p>
-            {photoFiles.length > 0 && (
-              <p className="text-[12px] text-gray-400 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>
+            {photoFiles.length > 0 && !photoUploadError && (
+              <p className="text-[12px] text-green-600 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>
+            )}
+            {photoUploadError && (
+              <p className="text-[12px] text-amber-600 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg leading-snug">
+                Job Card saved, but photos could not be uploaded. Open the Job Card to retry.
+                <br /><span className="text-[11px] text-amber-500 font-mono">{photoUploadError}</span>
+              </p>
             )}
           </div>
           <div className="flex flex-col gap-2 w-full max-w-xs">
@@ -1175,12 +1236,14 @@ function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => vo
           {/* Photos */}
           <div>
             <label className={labelCls}>Photos</label>
+            {/* No capture="environment" — lets iOS show the native picker:
+                Take Photo / Photo Library / Browse Files.
+                capture= forces camera-only and breaks if permission not yet granted. */}
             <input
               ref={photoInputRef}
               type="file"
               accept="image/*"
               multiple
-              capture="environment"
               className="hidden"
               onChange={e => handlePhotoFiles(e.target.files)}
             />
@@ -1483,11 +1546,21 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
     setError('');
     try {
       const res = await fetch(`/api/jobs/${jobId}/signin-status`, { credentials: 'include' });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        // Session expired or not authenticated — clear stale expiry so next
+        // request goes through cleanly after re-login
+        try { localStorage.removeItem('iwb_session_expires_at'); } catch { /* ignore */ }
+        setError('Session expired — please sign in again to continue.');
+        return;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Server error (${res.status})`);
+      }
       const data = await res.json() as SignInStatus;
       setStatus(data);
-    } catch {
-      setError('Could not load sign-in status');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load sign-in status');
     } finally {
       setStatusLoading(false);
     }
@@ -1507,15 +1580,19 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ actorType: 'employee' }),
       });
+      if (res.status === 401) {
+        try { localStorage.removeItem('iwb_session_expires_at'); } catch { /* ignore */ }
+        setError('Session expired — please close this and sign in again.');
+        return;
+      }
       const data = await res.json() as { ok?: boolean; alreadySignedIn?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Sign in failed');
       if (data.alreadySignedIn) {
         setError('You are already signed in to this job.');
-        await loadStatus(selectedJob.id);
       } else {
         setResult({ type: 'signin', name: selectedJob.name });
-        await loadStatus(selectedJob.id);
       }
+      void loadStatus(selectedJob.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
@@ -1532,15 +1609,19 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
+      if (res.status === 401) {
+        try { localStorage.removeItem('iwb_session_expires_at'); } catch { /* ignore */ }
+        setError('Session expired — please close this and sign in again.');
+        return;
+      }
       const data = await res.json() as { ok?: boolean; notSignedIn?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Sign out failed');
       if (data.notSignedIn) {
         setError('You are not currently signed in to this job.');
-        await loadStatus(selectedJob.id);
       } else {
         setResult({ type: 'signout', name: selectedJob.name });
-        await loadStatus(selectedJob.id);
       }
+      void loadStatus(selectedJob.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign out failed');
     } finally {
@@ -1576,6 +1657,19 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
 
   const isSignedIn = status?.signedIn ?? false;
 
+  // Guard: ignore backdrop clicks that arrive within 300 ms of the sheet
+  // opening — this prevents the same touch that opened the sheet from
+  // immediately closing it via event bubbling / fast tap propagation.
+  const openedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (open) openedAtRef.current = Date.now();
+  }, [open]);
+
+  function handleBackdropClick() {
+    if (Date.now() - openedAtRef.current < 300) return;
+    onClose();
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -1583,16 +1677,19 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
-            onClick={onClose}
+            onClick={handleBackdropClick}
           />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+            onClick={handleBackdropClick}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
-              className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl flex flex-col overflow-hidden"
-              style={{ boxShadow: '0 8px 48px rgba(0,0,0,0.18)', maxHeight: 'min(640px, calc(100dvh - 80px))' }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+              className="w-full sm:max-w-sm bg-white sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
+              style={{ maxHeight: 'min(680px, calc(100dvh - 60px))' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
@@ -1671,127 +1768,159 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                 )}
               </div>
 
-              {/* Status + action */}
+              {/* Status + action — always renders once a job is selected */}
               {selectedJob && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
 
-                  {statusLoading ? (
+                  {/* Loading spinner */}
+                  {statusLoading && (
                     <div className="flex items-center justify-center py-6">
                       <Loader2 size={20} className="animate-spin text-indigo-400" />
                     </div>
-                  ) : status && (
-                    <>
-                      {/* Current status card */}
-                      <div className={`rounded-2xl px-4 py-3.5 flex items-center gap-3 ${isSignedIn ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isSignedIn ? 'bg-emerald-100' : 'bg-gray-100'}`}>
-                          {isSignedIn
-                            ? <CheckCircle2 size={20} className="text-emerald-600" />
-                            : <LogOut size={20} className="text-gray-400" />
-                          }
-                        </div>
-                        <div>
-                          <p className={`font-bold text-sm ${isSignedIn ? 'text-emerald-700' : 'text-gray-500'}`}>
-                            {isSignedIn ? 'Currently signed in' : 'Not signed in'}
-                          </p>
-                          {status.lastActionAt && (
-                            <p className="text-xs text-gray-400">
-                              Last {status.lastAction} at {formatTime(status.lastActionAt)}
-                            </p>
-                          )}
-                        </div>
+                  )}
+
+                  {/* Current status card — show once we have status OR after a result */}
+                  {!statusLoading && (status || result) && (
+                    <div className={`rounded-2xl px-4 py-3.5 flex items-center gap-3 ${isSignedIn ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isSignedIn ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                        {isSignedIn
+                          ? <CheckCircle2 size={20} className="text-emerald-600" />
+                          : <LogOut size={20} className="text-gray-400" />
+                        }
                       </div>
-
-                      {/* Result flash */}
-                      {result && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-violet-50 border border-violet-200'}`}
-                        >
-                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-violet-600'} />
-                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-violet-800'}`}>
-                            {result.type === 'signin'
-                              ? `Signed in to ${result.name}`
-                              : `Signed out${result.name ? ` — ${result.name}` : ''}`
-                            }
+                      <div>
+                        <p className={`font-bold text-sm ${isSignedIn ? 'text-emerald-700' : 'text-gray-500'}`}>
+                          {isSignedIn ? 'Currently signed in' : 'Not signed in'}
+                        </p>
+                        {status?.lastActionAt && (
+                          <p className="text-xs text-gray-400">
+                            Last {status.lastAction} at {formatTime(status.lastActionAt)}
                           </p>
-                        </motion.div>
-                      )}
-
-                      {/* Error */}
-                      {error && (
-                        <p className="text-red-500 text-xs font-medium bg-red-50 rounded-xl px-3 py-2">{error}</p>
-                      )}
-
-                      {/* Sign in / out buttons */}
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <button
-                          onClick={() => void handleSignIn()}
-                          disabled={acting || isSignedIn}
-                          className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                        >
-                          {acting && !isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
-                          Sign In
-                        </button>
-                        <button
-                          onClick={() => void handleSignOut()}
-                          disabled={acting || !isSignedIn}
-                          className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                        >
-                          {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
-                          Sign Out
-                        </button>
+                        )}
                       </div>
+                    </div>
+                  )}
 
-                      {/* Supervisor: on-site roster */}
-                      {isSupervisor && status.currentlyOnSite.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                            <UserCheck size={12} />
-                            On Site Now ({status.currentlyOnSite.length})
-                          </p>
-                          <div className="space-y-1.5">
-                            {status.currentlyOnSite.map(u => (
-                              <div
-                                key={u.user_id}
-                                className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5"
-                              >
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                                  <User size={14} className="text-indigo-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-gray-900 font-semibold text-sm truncate">
-                                    {u.user_name ?? u.user_email ?? 'Unknown'}
-                                  </p>
-                                  <p className="text-gray-400 text-xs">
-                                    Signed in {u.signed_in_at ? formatTime(u.signed_in_at) : ''}
-                                  </p>
-                                </div>
-                                <button
-                                  onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
-                                  disabled={forcingOut === u.user_id}
-                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 active:bg-violet-300 disabled:opacity-40 text-violet-800 text-xs font-bold flex items-center gap-1 transition-colors"
-                                >
-                                  {forcingOut === u.user_id
-                                    ? <Loader2 size={11} className="animate-spin" />
-                                    : <LogOut size={11} />
-                                  }
-                                  Sign out
-                                </button>
-                              </div>
-                            ))}
+                  {/* Result flash */}
+                  {result && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                      className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-violet-50 border border-violet-200'}`}
+                    >
+                      <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-violet-600'} />
+                      <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-violet-800'}`}>
+                        {result.type === 'signin'
+                          ? `Signed in to ${result.name}`
+                          : `Signed out${result.name ? ` — ${result.name}` : ''}`
+                        }
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {/* Error — always visible */}
+                  {error && (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                      <p className="text-red-600 text-xs font-medium flex-1">{error}</p>
+                      <button
+                        onClick={() => { setError(''); void loadStatus(selectedJob.id); }}
+                        className="text-red-400 hover:text-red-600 text-xs underline shrink-0"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sign In / Sign Out buttons — ALWAYS shown once job selected, not gated on status */}
+                  {!statusLoading && (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        onClick={() => void handleSignIn()}
+                        disabled={acting || isSignedIn}
+                        className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                      >
+                        {acting && !isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => void handleSignOut()}
+                        disabled={acting || !isSignedIn}
+                        className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                      >
+                        {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Supervisor: on-site roster */}
+                  {!statusLoading && isSupervisor && status && status.currentlyOnSite.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <UserCheck size={12} />
+                        On Site Now ({status.currentlyOnSite.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {status.currentlyOnSite.map(u => (
+                          <div
+                            key={u.user_id}
+                            className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                              <User size={14} className="text-indigo-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-900 font-semibold text-sm truncate">
+                                {u.user_name ?? u.user_email ?? 'Unknown'}
+                              </p>
+                              <p className="text-gray-400 text-xs">
+                                Signed in {u.signed_in_at ? formatTime(u.signed_in_at) : ''}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
+                              disabled={forcingOut === u.user_id}
+                              className="shrink-0 h-7 px-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 active:bg-violet-300 disabled:opacity-40 text-violet-800 text-xs font-bold flex items-center gap-1 transition-colors"
+                            >
+                              {forcingOut === u.user_id
+                                ? <Loader2 size={11} className="animate-spin" />
+                                : <LogOut size={11} />
+                              }
+                              Sign out
+                            </button>
                           </div>
-                        </div>
-                      )}
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                      {isSupervisor && status.currentlyOnSite.length === 0 && (
-                        <p className="text-center text-gray-400 text-xs py-2">No one else currently on site</p>
-                      )}
-                    </>
+                  {!statusLoading && isSupervisor && status && status.currentlyOnSite.length === 0 && (
+                    <p className="text-center text-gray-400 text-xs py-2">No one else currently on site</p>
                   )}
                 </motion.div>
               )}
             </div>
-            <div className="shrink-0" style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
+
+            {/* ── Footer: always-visible close + done button ── */}
+            <div className="px-4 pb-4 pt-2 shrink-0 border-t border-gray-100">
+              {result ? (
+                <button
+                  onClick={onClose}
+                  className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+                >
+                  <CheckCircle2 size={16} />
+                  Done — Close
+                </button>
+              ) : (
+                <button
+                  onClick={onClose}
+                  className="w-full h-11 rounded-2xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <X size={15} />
+                  Close
+                </button>
+              )}
+            </div>
+            <div className="shrink-0" style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
             </motion.div>
           </div>
         </>
@@ -1989,10 +2118,16 @@ export default function HomeScreen() {
 
   // ── Native permissions onboarding ─────────────────────────────────────────
   // Show once after first login on a native device (iOS / Android).
-  // hasCompletedOnboarding() reads localStorage — safe to call on mount.
-  const [showPermOnboarding, setShowPermOnboarding] = useState(
-    () => isNative() && !hasCompletedOnboarding()
-  );
+  // Delayed by 1.5s to ensure the Capacitor bridge is fully initialised before
+  // any permission plugin calls are made — avoids the "spinning forever" bug
+  // where requestPermissions() hangs because the bridge isn't ready yet.
+  const [showPermOnboarding, setShowPermOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!isNative() || hasCompletedOnboarding()) return;
+    const t = setTimeout(() => setShowPermOnboarding(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
@@ -2077,7 +2212,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: '#edf0f5' }}>
+      <div className="flex-1 flex items-center justify-center min-h-0" style={{ background: '#edf0f5' }}>
         <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>
     );
@@ -2090,7 +2225,8 @@ export default function HomeScreen() {
         <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />
       )}
 
-      <div className="flex-1 flex flex-col relative overflow-hidden"
+      <div
+        className="flex-1 flex flex-col relative overflow-hidden min-h-0"
         style={{ background: '#edf0f5' }}
       >
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
@@ -2133,7 +2269,7 @@ export default function HomeScreen() {
       />
 
       {/* All content above the overlay */}
-      <div className="relative z-10 flex flex-col flex-1">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
       <Helmet>
         <title>Home — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD field launcher — quick access to camera, drive, forms, job costs and more." />
@@ -2224,10 +2360,10 @@ export default function HomeScreen() {
 
       {/* ── Active status sub-header ── */}
       <AnimatePresence>
-        {(activeStatus?.jobSignIn || activeStatus?.driving) && (
+        {(activeStatus?.jobSignIn || activeStatus?.driving || (activeStatus?.drivingSessions?.length ?? 0) > 0) && (
           <ActiveStatusBar
             status={activeStatus}
-            onJobPress={() => setSignInOutOpen(true)}
+            onJobSignOut={() => setActiveStatusKey(k => k + 1)}
             onDriveStop={async (sessionId) => {
               await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
                 method: 'POST', credentials: 'include',

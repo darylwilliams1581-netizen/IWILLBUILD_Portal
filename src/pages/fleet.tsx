@@ -420,7 +420,16 @@ export default function FleetPage() {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            // flex-1 + min-h-0 fills remaining space on desktop.
+            // On mobile the flex chain may not have a definite height, so we
+            // also set an explicit dvh-based min-height — the sticky header is
+            // ~48px (h-12) and the page has no bottom bar in map view, so
+            // calc(100dvh - 48px) guarantees a non-zero map height on all
+            // iPhone/tablet viewports regardless of the flex chain.
+            <div
+              className="flex-1 min-h-0 flex flex-col overflow-hidden"
+              style={{ minHeight: 'calc(100dvh - 48px)' }}
+            >
               <PortalErrorBoundary inline>
                 <Suspense fallback={
                   <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">

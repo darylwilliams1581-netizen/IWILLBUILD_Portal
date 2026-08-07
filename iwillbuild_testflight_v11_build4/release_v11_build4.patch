@@ -1,0 +1,18 @@
+diff --git a/capacitor.config.json b/capacitor.config.json
+index 000..000 100644
+--- a/capacitor.config.json
++++ b/capacitor.config.json
+@@
+-  "buildNumber": "3",
++  "buildNumber": "4",
+
+diff --git a/ios/App/App.xcodeproj/project.pbxproj b/ios/App/App.xcodeproj/project.pbxproj
+index 000..000 100644
+--- a/ios/App/App.xcodeproj/project.pbxproj
++++ b/ios/App/App.xcodeproj/project.pbxproj
+@@
+-				CURRENT_PROJECT_VERSION = 3;
++				CURRENT_PROJECT_VERSION = 4;
+@@
+-				CURRENT_PROJECT_VERSION = 3;
++				CURRENT_PROJECT_VERSION = 4;

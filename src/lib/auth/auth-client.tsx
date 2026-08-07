@@ -41,9 +41,23 @@ function authLog(event: string, data?: Record<string, unknown>) {
 }
 
 // Auth client - baseURL must be the full origin for BetterAuth's URL construction.
-// window.location.origin works in all environments (local dev, iframe preview, published).
+//
+// Safari "Add to Home Screen" (PWA standalone mode) bug: window.location.origin
+// returns the literal string "null" in standalone mode on some iOS versions.
+// We detect this and fall back to the known production origin so auth requests
+// are sent to the correct server instead of "null/api/auth/...".
+function getAuthBaseURL(): string {
+  if (typeof window === 'undefined') return '';
+  const origin = window.location.origin;
+  // "null" string origin = Safari standalone PWA mode quirk
+  if (!origin || origin === 'null') {
+    return 'https://iwillbuild.com';
+  }
+  return origin;
+}
+
 const _authClient = createAuthClient({
-  baseURL: typeof window !== 'undefined' ? window.location.origin : '',
+  baseURL: getAuthBaseURL(),
 });
 
 // How long an unsettled session may stay pending before we treat it as a stuck

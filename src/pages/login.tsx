@@ -298,7 +298,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
+    <div className="relative min-h-screen flex items-center justify-center overflow-y-auto bg-[#0F1117] py-8">
       <Helmet>
         <title>Sign In — IWILLBUILD Portal</title>
         <meta name="description" content="Sign in to the IWILLBUILD portal to manage jobs, crews, fleet, safety and more." />

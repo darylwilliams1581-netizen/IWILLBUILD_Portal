@@ -248,15 +248,19 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  // Single file input — NO capture attribute.
+  // On iOS this triggers the native "Take Photo / Photo Library / Browse" sheet.
+  // On Android it opens the system file picker with camera option.
+  // This is the exact same pattern used by FilePanel which works reliably.
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
+  async function uploadFiles(files: File[]) {
+    if (!files.length) return;
     setUploading(true);
     setUploadError('');
     try {
       const fd = new FormData();
-      for (const f of Array.from(files)) fd.append('photos', f);
+      for (const f of files) fd.append('photos', f);
       const res = await fetch(`/api/job-cards/${cardId}/photos`, {
         method: 'POST',
         credentials: 'include',
@@ -286,6 +290,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   }
 
   return (
+    <>
     <Section
       title={`Photos${photos.length > 0 ? ` (${photos.length})` : ''}`}
       icon={Camera}
@@ -300,14 +305,18 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </button>
       }
     >
+      {/* Single input — no capture= so iOS shows its native picker sheet */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         multiple
-        capture="environment"
         className="hidden"
-        onChange={e => void handleFiles(e.target.files)}
+        onChange={e => {
+          const files = Array.from(e.target.files ?? []);
+          if (files.length) void uploadFiles(files);
+          e.target.value = '';
+        }}
       />
 
       {uploadError && (
@@ -324,7 +333,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         >
           <Image size={24} className="text-gray-200" />
           <span className="text-[12px] font-medium">Tap to add photos</span>
-          <span className="text-[11px]">Camera or gallery</span>
+          <span className="text-[11px]">Camera, gallery or files</span>
         </button>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
@@ -355,6 +364,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </div>
       )}
     </Section>
+    </>
   );
 }
 

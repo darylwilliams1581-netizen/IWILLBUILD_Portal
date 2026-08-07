@@ -415,5 +415,19 @@
     },
     "uploadContentHash": "1b5002b74a5500e697298ced06ca2811ac33f2771f236f3c720ff23243890530",
     "caption": "blue hashtag symbol minimalist design"
+  },
+  "reference/screenshot-latest": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg",
+    "searchQuery": "software platform phone desktop interface trial",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-07T23:30:34.817Z",
+    "lastUpdated": "2026-08-07T23:30:34.817Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg": "f38wenbvln_1786145204557_file_bj40l5fLP-.jpg"
+    },
+    "uploadContentHash": "0e2e71a5c0b250bc8be9b82c391f73d1df0e968116e3a59507fef6e166bf5973",
+    "caption": "software platform phone desktop interface trial"
   }
 }
