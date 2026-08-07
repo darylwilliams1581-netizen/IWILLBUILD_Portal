@@ -277,6 +277,7 @@ export default function PagedHomeScreen({
   const totalTranslate = baseTranslate + dragPercent;
 
   return (
+    <>
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Page tab bar ──────────────────────────────────────────────────────── */}
       <div
@@ -399,5 +400,6 @@ export default function PagedHomeScreen({
       onClose={() => setNewJobOpen(false)}
       onCreated={() => setNewJobOpen(false)}
     />
+    </>
   );
 }
