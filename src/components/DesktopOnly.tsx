@@ -1,0 +1,126 @@
+/**
+ * DesktopOnly
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Guard component that blocks access to pages that are desktop-only.
+ *
+ * On native iOS / Android (Capacitor) the screen is too small and the
+ * drag-and-drop studio builder / admin console are not touch-optimised.
+ * Navigating to these pages on mobile via a direct URL would show a broken
+ * layout. This guard intercepts the render and shows a friendly "use desktop"
+ * screen instead.
+ *
+ * Detection strategy
+ * ──────────────────
+ * We use TWO signals combined with OR so the guard fires on either:
+ *
+ *   1. isNative() — running inside a Capacitor WKWebView (iOS / Android app).
+ *      This is the primary signal for TestFlight / App Store builds.
+ *
+ *   2. window.innerWidth < MOBILE_BREAKPOINT — running in a narrow browser
+ *      window (e.g. someone opens the web app on their phone browser, or a
+ *      developer resizes the preview pane). We re-check on resize so the guard
+ *      lifts if the window is widened.
+ *
+ * The guard does NOT redirect — it renders a full-screen message in place of
+ * the page content. This keeps the URL intact so the user can share it with
+ * a desktop colleague, and avoids a redirect loop if /home is also narrow.
+ *
+ * Usage (in routes.tsx):
+ *   function protectDesktop(element: React.ReactElement) {
+ *     return (
+ *       <ProtectedRoute>
+ *         <Suspense fallback={<PageLoader />}>
+ *           <DesktopOnly>{element}</DesktopOnly>
+ *         </Suspense>
+ *       </ProtectedRoute>
+ *     );
+ *   }
+ */
+
+import { useState, useEffect } from 'react';
+import { Monitor, Smartphone } from 'lucide-react';
+import { isNative } from '@/lib/capacitor-plugins';
+
+/** Viewport width below which the guard activates (px). */
+const MOBILE_BREAKPOINT = 768;
+
+function isMobileViewport(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth < MOBILE_BREAKPOINT;
+}
+
+interface DesktopOnlyProps {
+  children: React.ReactNode;
+  /**
+   * Optional page label shown in the message, e.g. "Studio Builder".
+   * Defaults to "This page".
+   */
+  pageName?: string;
+}
+
+export default function DesktopOnly({ children, pageName = 'This page' }: DesktopOnlyProps) {
+  const native = isNative();
+
+  // Track viewport width for web-browser narrow-window detection.
+  // On native we skip the listener — isNative() is stable for the app lifetime.
+  const [narrowViewport, setNarrowViewport] = useState(() => isMobileViewport());
+
+  useEffect(() => {
+    if (native) return; // native detection is sufficient; no need to listen
+    const handler = () => setNarrowViewport(isMobileViewport());
+    window.addEventListener('resize', handler, { passive: true });
+    return () => window.removeEventListener('resize', handler);
+  }, [native]);
+
+  const blocked = native || narrowViewport;
+
+  if (!blocked) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-8 text-center bg-background">
+      {/* Icon pair */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-muted border border-border">
+          <Smartphone size={26} className="text-muted-foreground/40" />
+        </div>
+        <div className="w-8 h-px bg-border" />
+        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 border border-primary/30">
+          <Monitor size={26} className="text-primary" />
+        </div>
+      </div>
+
+      {/* Heading */}
+      <div className="flex flex-col gap-2 max-w-xs">
+        <h1 className="text-foreground font-bold text-xl leading-snug">
+          {pageName} is desktop only
+        </h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          {native
+            ? 'Open IWILLBUILD in a desktop browser to access this area.'
+            : 'Widen your browser window or switch to a desktop to use this page.'}
+        </p>
+      </div>
+
+      {/* URL hint for web users — copy the URL to open on desktop */}
+      {!native && (
+        <div className="flex items-center gap-2 bg-muted border border-border rounded-xl px-4 py-2.5 max-w-xs w-full">
+          <span className="text-muted-foreground text-xs font-mono truncate select-all">
+            {typeof window !== 'undefined' ? window.location.href : ''}
+          </span>
+        </div>
+      )}
+
+      {/* Native hint */}
+      {native && (
+        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 max-w-xs w-full">
+          <Monitor size={14} className="text-primary shrink-0" />
+          <span className="text-primary text-xs leading-snug">
+            Visit <span className="font-semibold">iwillbuild.com</span> on your computer
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

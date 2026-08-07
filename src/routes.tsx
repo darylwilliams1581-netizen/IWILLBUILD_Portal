@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
 import RouteErrorFallback from '@/components/RouteErrorFallback';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopOnly from '@/components/DesktopOnly';
 
 // ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
 import NativeStartupGate from '@/components/NativeStartupGate';
@@ -150,6 +151,42 @@ function protectDev(element: React.ReactElement) {
   );
 }
 
+/**
+ * protectDesktop — auth + desktop-only guard.
+ *
+ * Wraps a page in ProtectedRoute (auth) + DesktopOnly (blocks mobile/native).
+ * Use for studio builder, admin console, and any other page that requires a
+ * wide viewport and is not touch-optimised.
+ *
+ * @param element  The page element to guard.
+ * @param pageName Human-readable page name shown in the "desktop only" message.
+ */
+function protectDesktop(element: React.ReactElement, pageName?: string) {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<PageLoader />}>
+        <DesktopOnly pageName={pageName}>{element}</DesktopOnly>
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
+/**
+ * protectDevDesktop — auth + platform-owner + desktop-only guard.
+ * Use for owner-console and other platform-developer pages.
+ */
+function protectDevDesktop(element: React.ReactElement, pageName?: string) {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<PageLoader />}>
+        <PlatformDevRoute>
+          <DesktopOnly pageName={pageName}>{element}</DesktopOnly>
+        </PlatformDevRoute>
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
 export const routes: RouteObject[] = [
   { path: '/',              element: <NativeStartupGate><HomePage /></NativeStartupGate> },
   { path: '/home',          element: protect(<ShellRouter />), errorElement: routeError },
@@ -220,12 +257,12 @@ export const routes: RouteObject[] = [
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
   { path: '/invoices/:id',  element: protect(<InvoiceBuilderPage />),  errorElement: routeError },
-  { path: '/studio',               element: protect(<StudioPage />),          errorElement: routeError },
-  { path: '/studio/builder/:id',   element: protect(<StudioBuilderPage />),   errorElement: routeError },
-  { path: '/studio/documents',     element: protect(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>), errorElement: routeError },
-  { path: '/studio/forms',         element: protect(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>),     errorElement: routeError },
-  { path: '/studio/global-lists',  element: protect(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>), errorElement: routeError },
-  { path: '/studio/library',       element: protect(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>),   errorElement: routeError },
+  { path: '/studio',               element: protectDesktop(<StudioPage />, 'Studio'),                                                                                                                    errorElement: routeError },
+  { path: '/studio/builder/:id',   element: protectDesktop(<StudioBuilderPage />, 'Studio Builder'),                                                                                                     errorElement: routeError },
+  { path: '/studio/documents',     element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>, 'Studio Documents'),                                                  errorElement: routeError },
+  { path: '/studio/forms',         element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>, 'Studio Forms'),                                                          errorElement: routeError },
+  { path: '/studio/global-lists',  element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>, 'Studio Global Lists'),                                             errorElement: routeError },
+  { path: '/studio/library',       element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>, 'Studio Library'),                                                      errorElement: routeError },
   { path: '/safety/posters',       element: protect(<Suspense fallback={<PageLoader />}><SafetyPostersPage /></Suspense>),   errorElement: routeError },
   { path: '/job-docs',             element: protect(<Suspense fallback={<PageLoader />}><JobFieldDocsPage /></Suspense>),    errorElement: routeError },
   // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
@@ -233,8 +270,8 @@ export const routes: RouteObject[] = [
   { path: '/plan-manager/share/:token',   element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },
   { path: '/plan-manager/:drawingId',     element: protect(<PlanManagerDrawingPage />), errorElement: routeError },
   // Asset Manager
-  { path: '/studio/asset-manager',           element: protect(<AssetManagerPage />),       errorElement: routeError },
-  { path: '/studio/asset-manager/:assetId',  element: protect(<AssetManagerDetailPage />), errorElement: routeError },
+  { path: '/studio/asset-manager',           element: protectDesktop(<AssetManagerPage />, 'Asset Manager'),       errorElement: routeError },
+  { path: '/studio/asset-manager/:assetId',  element: protectDesktop(<AssetManagerDetailPage />, 'Asset Manager'), errorElement: routeError },
   { path: '/share/asset-report/:token',      element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
   // Public job photo gallery — token-validated, no login required
   { path: '/photos/share/:token',            element: <Suspense fallback={<PageLoader />}><PhotoSharePage /></Suspense>, errorElement: routeError },
@@ -256,7 +293,7 @@ export const routes: RouteObject[] = [
   { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/help',          element: protect(<Suspense fallback={<PageLoader />}><HelpPage /></Suspense>), errorElement: routeError },
   { path: '/camera',        element: protect(<Suspense fallback={<PageLoader />}><CameraPage /></Suspense>), errorElement: routeError },
-  { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
+  { path: '/owner-console',     element: protectDevDesktop(<OwnerConsolePage />, 'Owner Console'),   errorElement: routeError },
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
