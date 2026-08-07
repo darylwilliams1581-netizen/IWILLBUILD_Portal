@@ -659,12 +659,10 @@ function elapsed(isoStr: string | null): string {
 
 function ActiveStatusBar({
   status,
-  onJobPress,
   onJobSignOut,
   onDriveStop,
 }: {
   status: ActiveStatus | null;
-  onJobPress: () => void;
   onJobSignOut: (jobId: number) => void;
   onDriveStop: (sessionId: number) => void;
 }) {
@@ -716,44 +714,33 @@ function ActiveStatusBar({
           Active
         </span>
 
-        {/* Job sign-in pill — label taps open sheet, × signs out directly */}
+        {/* Job sign-in pill — one tap signs out immediately */}
         {hasJob && (
-          <div
-            className="flex items-center rounded-full shrink-0 overflow-hidden"
+          <button
+            onClick={handleDirectSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 shrink-0 active:opacity-70 transition-opacity disabled:opacity-50"
             style={{
               background: 'rgba(16,185,129,0.15)',
               border: '1px solid rgba(16,185,129,0.35)',
             }}
+            aria-label="Sign out of job"
           >
-            {/* Left: tap to open sheet */}
-            <button
-              onClick={onJobPress}
-              className="flex items-center gap-1.5 pl-3 pr-2 py-1 active:opacity-70 transition-opacity"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <HardHatIcon size={10} className="text-emerald-400 shrink-0" />
-              <span className="text-emerald-300 text-[11px] font-semibold truncate max-w-[120px]">
-                {status!.jobSignIn!.jobName ?? `Job #${status!.jobSignIn!.jobId}`}
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <HardHatIcon size={10} className="text-emerald-400 shrink-0" />
+            <span className="text-emerald-300 text-[11px] font-semibold truncate max-w-[120px]">
+              {status!.jobSignIn!.jobName ?? `Job #${status!.jobSignIn!.jobId}`}
+            </span>
+            {status!.jobSignIn!.signedInAt && (
+              <span className="text-emerald-500 text-[10px] font-medium shrink-0">
+                {elapsed(status!.jobSignIn!.signedInAt)}
               </span>
-              {status!.jobSignIn!.signedInAt && (
-                <span className="text-emerald-500 text-[10px] font-medium shrink-0">
-                  {elapsed(status!.jobSignIn!.signedInAt)}
-                </span>
-              )}
-            </button>
-            {/* Right: direct sign-out × */}
-            <button
-              onClick={handleDirectSignOut}
-              disabled={signingOut}
-              className="flex items-center justify-center pr-2.5 pl-1 py-1 text-emerald-400/70 hover:text-emerald-300 active:opacity-60 transition-opacity disabled:opacity-40"
-              aria-label="Sign out"
-            >
-              {signingOut
-                ? <span className="w-3 h-3 border border-emerald-400/60 border-t-transparent rounded-full animate-spin" />
-                : <X size={11} strokeWidth={2.5} />
-              }
-            </button>
-          </div>
+            )}
+            {signingOut
+              ? <span className="w-3 h-3 border border-emerald-400/60 border-t-transparent rounded-full animate-spin shrink-0" />
+              : <X size={11} strokeWidth={2.5} className="text-emerald-400/70 shrink-0" />
+            }
+          </button>
         )}
 
         {/* One driving pill per active session */}
@@ -2350,7 +2337,6 @@ export default function HomeScreen() {
         {(activeStatus?.jobSignIn || activeStatus?.driving || (activeStatus?.drivingSessions?.length ?? 0) > 0) && (
           <ActiveStatusBar
             status={activeStatus}
-            onJobPress={() => setSignInOutOpen(true)}
             onJobSignOut={() => setActiveStatusKey(k => k + 1)}
             onDriveStop={async (sessionId) => {
               await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
