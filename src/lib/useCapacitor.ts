@@ -41,7 +41,7 @@ export function useCapacitor() {
     if (!native) return;
     let cleanup: (() => void) | undefined;
 
-    getAppPlugin().then((App) => {
+    Promise.resolve(getAppPlugin()).then((App) => {
       if (!App) return;
       const handle = App.addListener('appStateChange', ({ isActive }) => {
         setAppActive(isActive);

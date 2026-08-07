@@ -18,7 +18,7 @@ import {
 import {
   getNativeGeo,
   getCameraPlugin,
-  getPushNotifications,
+  getPushNotificationsPlugin,
 } from '@/lib/capacitor-plugins';
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -99,8 +99,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 
 async function requestLocation(): Promise<boolean> {
   try {
-    const geo = await withTimeout(getNativeGeo(), 4000, null);
+    // Access Geolocation plugin directly via bridge — no dynamic import
+    const geo = getNativeGeo();
     if (!geo) {
+      // Web / PWA fallback — use browser geolocation API
       if (!navigator.geolocation) return false;
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
@@ -125,7 +127,8 @@ async function requestLocation(): Promise<boolean> {
 
 async function requestCamera(): Promise<boolean> {
   try {
-    const CameraPlugin = await withTimeout(getCameraPlugin(), 4000, null);
+    // Access Camera plugin directly via bridge — no dynamic import
+    const CameraPlugin = getCameraPlugin();
     if (!CameraPlugin) return false;
     const status = await withTimeout(
       CameraPlugin.requestPermissions({ permissions: ['camera', 'photos'] }),
@@ -141,7 +144,8 @@ async function requestCamera(): Promise<boolean> {
 
 async function requestNotifications(): Promise<boolean> {
   try {
-    const Push = await withTimeout(getPushNotifications(), 4000, null);
+    // Access PushNotifications plugin directly via bridge — no dynamic import
+    const Push = getPushNotificationsPlugin();
     if (!Push) {
       if (!('Notification' in window)) return false;
       try {

@@ -190,7 +190,7 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
 
     // Try native Capacitor GPS first (Android/iOS shell)
     if (isNative()) {
-      getNativeGeo().then((geo) => {
+      Promise.resolve(getNativeGeo()).then((geo) => {
         if (!geo) return startBrowserWatch();
 
         geo.watchPosition(
@@ -283,7 +283,7 @@ export default function DriverGpsStatus({ onPosition, onStateChange, variant = '
     }, 20_000);
 
     if (isNative()) {
-      getNativeGeo().then((geo) => {
+      Promise.resolve(getNativeGeo()).then((geo) => {
         if (!geo) {
           startFreshBrowserWatch();
           return;
