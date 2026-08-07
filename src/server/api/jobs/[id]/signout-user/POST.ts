@@ -37,13 +37,13 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     // Verify job belongs to company
-    const [jobRows] = await db.execute(
+    const jobRows = await db.execute(
       sql.raw(`SELECT id FROM jobs WHERE id = ${jobId} AND company_id = ${companyId} LIMIT 1`)
-    ) as unknown as [Array<{ id: number }>, unknown];
+    ) as unknown as Array<{ id: number }>;
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
 
     // Check user is actually signed in (net ins > outs)
-    const [netRows] = await db.execute(
+    const netRows = await db.execute(
       sql.raw(`
         SELECT
           SUM(CASE WHEN action = 'signin'  THEN 1 ELSE 0 END) AS ins,
@@ -51,7 +51,7 @@ export default async function handler(req: Request, res: Response) {
         FROM job_attendance
         WHERE job_id = ${jobId} AND company_id = ${companyId} AND user_id = '${safeUserId}'
       `)
-    ) as unknown as [Array<{ ins: number; outs: number }>, unknown];
+    ) as unknown as Array<{ ins: number; outs: number }>;
 
     const ins  = Number(netRows?.[0]?.ins  ?? 0);
     const outs = Number(netRows?.[0]?.outs ?? 0);

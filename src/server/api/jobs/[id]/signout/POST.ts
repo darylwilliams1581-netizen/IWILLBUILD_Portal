@@ -26,13 +26,13 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     // ── Verify job belongs to company ─────────────────────────────────────
-    const [jobRows] = await db.execute(
+    const jobRows = await db.execute(
       sql.raw(`SELECT id FROM jobs WHERE id = ${jobId} AND company_id = ${companyId} LIMIT 1`)
-    ) as unknown as [Array<{ id: number }>, unknown];
+    ) as unknown as Array<{ id: number }>;
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
 
     // ── Check open sign-in ────────────────────────────────────────────────
-    const [countRows] = await db.execute(
+    const countRows = await db.execute(
       sql.raw(`
         SELECT
           SUM(CASE WHEN action = 'signin'  THEN 1 ELSE 0 END) AS ins,
@@ -40,7 +40,7 @@ export default async function handler(req: Request, res: Response) {
         FROM job_attendance
         WHERE job_id = ${jobId} AND user_id = '${userId.replace(/'/g, '')}'
       `)
-    ) as unknown as [Array<{ ins: number; outs: number }>, unknown];
+    ) as unknown as Array<{ ins: number; outs: number }>;
 
     const ins  = Number(countRows?.[0]?.ins  ?? 0);
     const outs = Number(countRows?.[0]?.outs ?? 0);
@@ -55,18 +55,18 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Record sign-out ───────────────────────────────────────────────────
     const safeNotes = notes ? `'${String(notes).replace(/'/g, "''").slice(0, 500)}'` : 'NULL';
-    const [result] = await db.execute(
+    const result = await db.execute(
       sql.raw(`
         INSERT INTO job_attendance (company_id, job_id, user_id, action, source, actor_type, notes)
         VALUES (${companyId}, ${jobId}, '${userId.replace(/'/g, '')}', 'signout', 'portal', 'employee', ${safeNotes})
       `)
-    ) as unknown as [ResultSetHeader, unknown];
+    ) as unknown as ResultSetHeader;
 
     return res.status(201).json({
       ok: true,
       notSignedIn: false,
       action: 'signout',
-      attendanceId: result.insertId,
+      attendanceId: (result as ResultSetHeader).insertId,
       message: 'Signed out successfully.',
     });
   } catch (err) {

@@ -235,12 +235,12 @@ const GROUPS: GroupDoc[] = [
       },
       {
         key: 'risky',
-        label: 'Risk & Permits',
+        label: 'Risk Assessment & Work Permits',
         icon: AlertCircle,
         bg: 'bg-rose-600',
         purpose: 'Create risk assessments and work permit checks for site activities, changed conditions, new hazards, or high-risk work. Captures hazards, control measures, permit requirements, supervisor sign-off, and worker/party sign-ons.',
         howTo: [
-          'Open a job and go to the Safety tab, or tap Risk & Permits on the home screen.',
+          'Open a job and go to the Safety tab, or tap Risk Assessment & Work Permits on the home screen.',
           'Tap + to create a new risk assessment.',
           'Fill in the activity, hazards, control measures, and any permit requirements.',
           'Supervisor signs off, then workers and relevant parties sign on before work begins.',

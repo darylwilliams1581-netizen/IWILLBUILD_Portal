@@ -9,13 +9,31 @@
  * camera, photos, location, microphone, and notifications.
  *
  * States per permission:
- *   'unknown'   — not yet checked, or not running in a native shell
- *   'checking'  — async check in progress
- *   'granted'   — full access granted
- *   'limited'   — iOS "Selected Photos" (photos only) — picker works but limited
- *   'prompt'    — not yet requested; user hasn't seen the OS dialog
- *   'denied'    — user denied; must go to Settings to re-enable
+ *   'unknown'     — not yet checked, or not running in a native shell
+ *   'checking'    — async check in progress
+ *   'granted'     — full access granted
+ *   'limited'     — iOS "Selected Photos" (photos only) — picker works but limited
+ *   'prompt'      — not yet requested; user hasn't seen the OS dialog
+ *   'denied'      — user denied; must go to Settings to re-enable
  *   'unavailable' — hardware not present or API not supported
+ *   'n/a'         — permission type not applicable on this platform
+ *
+ * ── Timeout behaviour ────────────────────────────────────────────────────────
+ * Every native plugin call is wrapped in a 5-second hard timeout via
+ * withTimeout(). If the Capacitor bridge is slow to initialise (common on
+ * first launch in TestFlight), the stalled check resolves to 'unavailable'
+ * instead of leaving the row stuck on "Checking…" forever.
+ *
+ * Promise.allSettled() is used so one stalled check cannot block the others.
+ *
+ * ── iOS-specific rules ───────────────────────────────────────────────────────
+ * On native iOS, navigator.permissions.query() is NOT used for microphone or
+ * notifications. WKWebView's implementation of the Permissions API is
+ * incomplete — microphone queries hang indefinitely and notifications queries
+ * always return 'denied' regardless of the real system state. Instead:
+ *   - Microphone: use @capacitor/microphone if available, otherwise 'n/a'
+ *     (the plugin is not installed in this project, so we return 'n/a')
+ *   - Notifications: use @capacitor/push-notifications checkPermissions()
  *
  * Usage:
  *   const perms = useNativePermissions();
@@ -26,16 +44,17 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { isNative, getCameraPlugin, getNativeGeo } from '@/lib/capacitor-plugins';
+import { isNative, getCameraPlugin, getNativeGeo, getPushNotifications } from '@/lib/capacitor-plugins';
 
 export type PermissionStatus =
   | 'unknown'
   | 'checking'
   | 'granted'
-  | 'limited'      // iOS "Selected Photos" — photos only
-  | 'prompt'       // not yet requested
+  | 'limited'       // iOS "Selected Photos" — photos only
+  | 'prompt'        // not yet requested
   | 'denied'
-  | 'unavailable';
+  | 'unavailable'
+  | 'n/a';          // not applicable on this platform
 
 export interface NativePermissionsState {
   camera:        PermissionStatus;
@@ -47,18 +66,41 @@ export interface NativePermissionsState {
   refresh: () => void;
 }
 
-// ── Internal checkers (read-only, no dialog) ──────────────────────────────────
+// ── Timeout helper ────────────────────────────────────────────────────────────
+
+/**
+ * Race a promise against a hard timeout.
+ * Returns `fallback` if the timeout fires first.
+ * Prevents any Capacitor plugin call from hanging the UI forever when the
+ * bridge is slow to initialise or the plugin is missing at runtime.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+// ── Per-permission checkers (read-only, no dialog) ────────────────────────────
+// Each function is wrapped in a 5-second hard timeout so a stalled iOS plugin
+// call cannot leave the row stuck on "Checking…" indefinitely.
 
 async function checkCameraStatus(): Promise<PermissionStatus> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = await getCameraPlugin();
-    if (!Camera) return 'unknown';
-    const s = await Camera.checkPermissions();
-    const cam = (s as { camera?: string }).camera ?? 'prompt';
+    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
+    if (!Camera) return 'unavailable';
+
+    const s = await withTimeout(
+      (Camera.checkPermissions() as unknown) as Promise<Record<string, string>>,
+      5000,
+      { camera: 'unknown' } as Record<string, string>,
+    );
+    const cam = s.camera ?? 'unknown';
     if (cam === 'granted') return 'granted';
     if (cam === 'denied')  return 'denied';
     if (cam === 'limited') return 'limited';
+    if (cam === 'unknown') return 'unavailable';
     return 'prompt';
   } catch {
     return 'unavailable';
@@ -68,15 +110,19 @@ async function checkCameraStatus(): Promise<PermissionStatus> {
 async function checkPhotosStatus(): Promise<PermissionStatus> {
   if (!isNative()) return 'unknown';
   try {
-    const Camera = await getCameraPlugin();
-    if (!Camera) return 'unknown';
-    const s = await Camera.checkPermissions();
-    const photos = (s as { photos?: string }).photos
-      ?? (s as { camera?: string }).camera
-      ?? 'prompt';
+    const Camera = await withTimeout(getCameraPlugin(), 3000, null);
+    if (!Camera) return 'unavailable';
+
+    const s = await withTimeout(
+      (Camera.checkPermissions() as unknown) as Promise<Record<string, string>>,
+      5000,
+      { photos: 'unknown' } as Record<string, string>,
+    );
+    const photos = s.photos ?? s.camera ?? 'unknown';
     if (photos === 'granted') return 'granted';
     if (photos === 'limited') return 'limited';
     if (photos === 'denied')  return 'denied';
+    if (photos === 'unknown') return 'unavailable';
     return 'prompt';
   } catch {
     return 'unavailable';
@@ -90,9 +136,13 @@ async function checkLocationStatus(): Promise<PermissionStatus> {
     if (!navigator.geolocation) return 'unavailable';
     if (navigator.permissions) {
       try {
-        const p = await navigator.permissions.query({ name: 'geolocation' });
-        if (p.state === 'granted') return 'granted';
-        if (p.state === 'denied')  return 'denied';
+        // Use a manual race — navigator.permissions.query returns a PermissionStatus
+        // object, not a plain string, so we can't use the generic withTimeout helper.
+        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+        const result  = await Promise.race([navigator.permissions.query({ name: 'geolocation' }), timeout]);
+        if (!result) return 'prompt'; // timed out
+        if (result.state === 'granted') return 'granted';
+        if (result.state === 'denied')  return 'denied';
         return 'prompt';
       } catch {
         return 'prompt';
@@ -100,37 +150,106 @@ async function checkLocationStatus(): Promise<PermissionStatus> {
     }
     return 'prompt';
   }
+
+  // Native path — use @capacitor/geolocation
   try {
-    const geo = await getNativeGeo();
+    const geo = await withTimeout(getNativeGeo(), 3000, null);
     if (!geo) return 'unavailable';
-    const s = await geo.checkPermissions();
-    const loc = s.location ?? s.coarseLocation ?? 'prompt';
+
+    const s = await withTimeout(
+      geo.checkPermissions() as unknown as Promise<{ location?: string; coarseLocation?: string }>,
+      5000,
+      { location: 'unknown', coarseLocation: 'unknown' },
+    );
+    const loc = s.location ?? s.coarseLocation ?? 'unknown';
     if (loc === 'granted' || loc === 'limited') return 'granted';
-    if (loc === 'denied') return 'denied';
+    if (loc === 'denied')  return 'denied';
+    if (loc === 'unknown') return 'unavailable';
     return 'prompt';
   } catch {
     return 'unavailable';
   }
 }
 
+/**
+ * Microphone permission check.
+ *
+ * ── iOS native ───────────────────────────────────────────────────────────────
+ * Do NOT use navigator.permissions.query({ name: 'microphone' }) on native iOS.
+ * WKWebView's Permissions API implementation is incomplete — microphone queries
+ * hang indefinitely on iOS 16 and earlier, which is exactly the "Checking…"
+ * freeze we are trying to fix.
+ *
+ * @capacitor/microphone is not installed in this project, so we return 'n/a'
+ * on native. The UI should render this as "Not available" or hide the row.
+ *
+ * ── Web ───────────────────────────────────────────────────────────────────────
+ * On web, navigator.permissions.query() works correctly on Chrome/Edge/Firefox.
+ * Safari does not support it for microphone — we catch the error and return
+ * 'unknown' so the row shows a neutral state rather than crashing.
+ */
 async function checkMicrophoneStatus(): Promise<PermissionStatus> {
-  // @capacitor/microphone is not installed — use browser Permissions API
+  // On native iOS, do NOT use navigator.permissions — it hangs indefinitely.
+  // @capacitor/microphone is not installed, so return 'n/a'.
+  if (isNative()) return 'n/a';
+
+  // Web path
   if (typeof navigator === 'undefined') return 'unknown';
   if (!navigator.permissions) return 'unknown';
   try {
-    const p = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-    if (p.state === 'granted') return 'granted';
-    if (p.state === 'denied')  return 'denied';
+    // Manual race — navigator.permissions.query returns a PermissionStatus object
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+    const result  = await Promise.race([
+      navigator.permissions.query({ name: 'microphone' as PermissionName }),
+      timeout,
+    ]);
+    if (!result) return 'unknown'; // timed out
+    if (result.state === 'granted') return 'granted';
+    if (result.state === 'denied')  return 'denied';
     return 'prompt';
   } catch {
-    // Microphone permission query not supported on this platform
+    // Safari throws — microphone permission query not supported
     return 'unknown';
   }
 }
 
+/**
+ * Notifications permission check.
+ *
+ * ── iOS native ───────────────────────────────────────────────────────────────
+ * Do NOT use window.Notification.permission on native iOS.
+ * WKWebView always reports 'denied' for Notification.permission regardless of
+ * the real system state — this is a known WebKit limitation. Use the
+ * @capacitor/push-notifications checkPermissions() instead, which queries the
+ * real iOS UNUserNotificationCenter state.
+ *
+ * ── Web ───────────────────────────────────────────────────────────────────────
+ * On web, window.Notification.permission is reliable on all modern browsers.
+ */
 async function checkNotificationsStatus(): Promise<PermissionStatus> {
+  if (isNative()) {
+    // Use @capacitor/push-notifications — queries real iOS UNUserNotificationCenter
+    try {
+      const PushNotif = await withTimeout(getPushNotifications(), 3000, null);
+      if (!PushNotif) return 'unavailable';
+
+      const s = await withTimeout(
+        PushNotif.checkPermissions() as unknown as Promise<{ receive?: string }>,
+        5000,
+        { receive: 'unknown' },
+      );
+      const state = s.receive ?? 'unknown';
+      if (state === 'granted') return 'granted';
+      if (state === 'denied')  return 'denied';
+      if (state === 'unknown') return 'unavailable';
+      return 'prompt';
+    } catch {
+      return 'unavailable';
+    }
+  }
+
+  // Web path — window.Notification.permission
   if (typeof window === 'undefined') return 'unknown';
-  // Web Notifications API
   if (!('Notification' in window)) return 'unavailable';
   const perm = (window as { Notification?: { permission?: string } }).Notification?.permission;
   if (perm === 'granted') return 'granted';
@@ -152,20 +271,28 @@ export function useNativePermissions(): NativePermissionsState {
     let cancelled = false;
 
     async function run() {
-      // Run all checks in parallel — none of them trigger a dialog
-      const [cam, ph, loc, mic, notif] = await Promise.all([
+      // Run all checks independently via Promise.allSettled so one stalled
+      // iOS plugin call cannot block the others from resolving.
+      // Each checker already has its own 5-second hard timeout, so the
+      // entire batch resolves within ~5 seconds even in the worst case.
+      const results = await Promise.allSettled([
         checkCameraStatus(),
         checkPhotosStatus(),
         checkLocationStatus(),
         checkMicrophoneStatus(),
         checkNotificationsStatus(),
       ]);
+
       if (cancelled) return;
-      setCamera(cam);
-      setPhotos(ph);
-      setLocation(loc);
-      setMicrophone(mic);
-      setNotifications(notif);
+
+      const resolve = (r: PromiseSettledResult<PermissionStatus>, fallback: PermissionStatus): PermissionStatus =>
+        r.status === 'fulfilled' ? r.value : fallback;
+
+      setCamera(resolve(results[0], 'unavailable'));
+      setPhotos(resolve(results[1], 'unavailable'));
+      setLocation(resolve(results[2], 'unavailable'));
+      setMicrophone(resolve(results[3], 'unavailable'));
+      setNotifications(resolve(results[4], 'unavailable'));
     }
 
     void run();

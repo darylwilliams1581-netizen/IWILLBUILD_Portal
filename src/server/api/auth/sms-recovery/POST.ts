@@ -53,15 +53,15 @@ export default async function handler(req: Request, res: Response) {
     // Normalise AU (04xx) and NZ (02x) local formats to E.164 for Twilio
     const e164 = normalisePhone(normalised);
 
-    // Look up user by phone number — try both stored formats
+    // Look up user by phone number
     const [row] = await db
-      .select({ id: user.id, name: user.name, email: user.email, verificationMethod: user.verificationMethod })
+      .select({ id: user.id, name: user.name, email: user.email })
       .from(user)
       .where(eq(user.phoneNumber, e164))
       .limit(1);
 
-    // Silently succeed if not found or not verified via SMS
-    if (!row || row.verificationMethod !== 'sms') {
+    // Silently succeed if not found
+    if (!row) {
       return res.json(GENERIC_OK);
     }
 

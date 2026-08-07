@@ -911,7 +911,7 @@ function RiskyJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <JobPickerSheet
       open={open} onClose={onClose}
-      title="Risky & Permits" subtitle="Select a job to start a risk assessment"
+      title="Risk Assessment & Work Permits" subtitle="Select a job to start a risk assessment"
       iconBg="bg-rose-100" iconFg="text-rose-700" Icon={ShieldAlert}
       onSelect={job => navigate(`/jobs/${job.id}/risky`, { state: { returnTo: '/home' } })}
     />

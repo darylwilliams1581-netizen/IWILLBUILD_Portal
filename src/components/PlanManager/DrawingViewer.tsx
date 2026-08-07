@@ -5,7 +5,7 @@
  *
  * Mobile (Sprint 5 — Gesture Viewer):
  * - Revision panel hidden on mobile by default (toggle via "…" menu)
- * - Desktop annotation toolbar is replaced by a compact mobile toolbar (< sm)
+ * - Annotation toolbar hidden on mobile (< sm) — already was hidden
  * - Safe-area top padding on the top bar (notch / Dynamic Island)
  * - Safe-area bottom padding on the body area (home indicator)
  * - Overflow menu: Upload, Share, Revisions — all accessible on mobile

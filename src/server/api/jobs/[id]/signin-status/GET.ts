@@ -32,13 +32,13 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     // ── Verify job belongs to company ─────────────────────────────────────
-    const [jobRows] = await db.execute(
+    const jobRows = await db.execute(
       sql.raw(`SELECT id FROM jobs WHERE id = ${jobId} AND company_id = ${companyId} LIMIT 1`)
-    ) as unknown as [Array<{ id: number }>, unknown];
+    ) as unknown as Array<{ id: number }>;
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
 
     // ── 1. Current user status (net sign-in count) ────────────────────────
-    const [netRows] = await db.execute(
+    const netRows = await db.execute(
       sql.raw(`
         SELECT
           SUM(CASE WHEN action = 'signin'  THEN 1 ELSE 0 END) AS ins,
@@ -46,14 +46,14 @@ export default async function handler(req: Request, res: Response) {
         FROM job_attendance
         WHERE job_id = ${jobId} AND user_id = '${safeUserId}'
       `)
-    ) as unknown as [Array<{ ins: number; outs: number }>, unknown];
+    ) as unknown as Array<{ ins: number; outs: number }>;
 
     const netIns  = Number(netRows?.[0]?.ins  ?? 0);
     const netOuts = Number(netRows?.[0]?.outs ?? 0);
     const signedIn = netIns > netOuts;
 
     // ── 2. Last action for the status card ────────────────────────────────
-    const [lastRows] = await db.execute(
+    const lastRows = await db.execute(
       sql.raw(`
         SELECT action, created_at
         FROM job_attendance
@@ -61,13 +61,13 @@ export default async function handler(req: Request, res: Response) {
         ORDER BY created_at DESC
         LIMIT 1
       `)
-    ) as unknown as [Array<{ action: string; created_at: string }>, unknown];
+    ) as unknown as Array<{ action: string; created_at: string }>;
 
     const lastRow = lastRows?.[0] ?? null;
 
     // ── 3. Currently on site — live roster ────────────────────────────────
     // All users whose net sign-in count > sign-out count for this job.
-    const [onSiteRows] = await db.execute(
+    const onSiteRows = await db.execute(
       sql.raw(`
         SELECT
           ja.user_id,
@@ -86,17 +86,17 @@ export default async function handler(req: Request, res: Response) {
              > SUM(CASE WHEN ja.action = 'signout' THEN 1 ELSE 0 END)
         ORDER BY signed_in_at DESC
       `)
-    ) as unknown as [Array<{
+    ) as unknown as Array<{
       user_id: string;
       signed_in_at: string;
       actor_type: string;
       source: string;
       user_name: string | null;
       user_email: string | null;
-    }>, unknown];
+    }>;
 
     // ── 4. Recent attendance log (raw, last 30 entries) ───────────────────
-    const [logRows] = await db.execute(
+    const logRows = await db.execute(
       sql.raw(`
         SELECT
           ja.id, ja.action, ja.source, ja.actor_type, ja.notes,
@@ -109,7 +109,7 @@ export default async function handler(req: Request, res: Response) {
         ORDER BY ja.created_at DESC
         LIMIT 30
       `)
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
+    ) as unknown as Array<Record<string, unknown>>;
 
     return res.json({
       ok: true,
@@ -122,7 +122,7 @@ export default async function handler(req: Request, res: Response) {
       })),
       recentLog: (logRows ?? []).map((r) => ({
         ...r,
-        created_at: toUtcIso(r.created_at),
+        created_at: toUtcIso(r.created_at as string),
       })),
     });
   } catch (err) {

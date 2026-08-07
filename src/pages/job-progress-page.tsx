@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  ArrowLeft, TrendingUp, Loader2, Download, Save,
+  TrendingUp, Loader2, Download, Save,
   CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList, Home,
 } from 'lucide-react';
 
@@ -257,12 +257,8 @@ export default function JobProgressPage() {
         </button>
       </div>
 
-      {/* ── Mobile: back arrow ── */}
-      <button onClick={() => navigate(`/jobs/${id}`)} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '12px' }} aria-label="Back">
-        <ArrowLeft size={18} />
-      </button>
-      {/* ── Mobile: Dashboard button ── */}
-      <button onClick={() => navigate('/home')} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-violet-50/90 backdrop-blur-sm shadow-sm border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '60px' }} aria-label="Dashboard">
+      {/* ── Mobile: Home button only (no back arrow — home navigates to /home) ── */}
+      <button onClick={() => navigate('/home')} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-violet-50/90 backdrop-blur-sm shadow-sm border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '12px' }} aria-label="Home">
         <Home size={16} />
       </button>
 
@@ -291,7 +287,7 @@ export default function JobProgressPage() {
             <Loader2 size={24} className="animate-spin text-cyan-400" />
           </div>
         ) : (
-          <div className="px-4 py-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full space-y-4">
+          <div className="px-4 pt-16 pb-24 md:pt-4 md:pb-6 max-w-3xl mx-auto w-full space-y-4">
 
             {error && (
               <div className="flex items-center gap-2 mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">

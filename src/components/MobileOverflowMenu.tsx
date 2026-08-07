@@ -31,6 +31,14 @@ export interface OverflowMenuItem {
   disabled?: boolean;
   /** Render a divider line above this item */
   dividerAbove?: boolean;
+  /**
+   * When set, the menu item renders as an <a href> instead of a <button>.
+   * Use this for "open in new tab" actions (e.g. PDF/print) so the browser
+   * never treats it as a popup and blocks it. onSelect is still called.
+   */
+  href?: string;
+  /** Only used when href is set. Defaults to '_blank'. */
+  target?: string;
 }
 
 interface MobileOverflowMenuProps {
@@ -113,6 +121,35 @@ export default function MobileOverflowMenu({
               {item.dividerAbove && (
                 <div className="h-px bg-gray-100 mx-3 my-1" />
               )}
+              {item.href ? (
+                // Render as a native <a> so the browser never blocks it as a popup.
+                // This is the correct pattern for "open PDF in new tab" actions.
+                <a
+                  role="menuitem"
+                  href={item.disabled ? undefined : item.href}
+                  target={item.target ?? '_blank'}
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    setOpen(false);
+                    if (!item.disabled) item.onSelect();
+                  }}
+                  className={[
+                    'w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-left transition-colors touch-manipulation no-underline',
+                    item.disabled
+                      ? 'text-gray-300 pointer-events-none'
+                      : item.destructive
+                        ? 'text-red-600 hover:bg-red-50 active:bg-red-100'
+                        : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100',
+                  ].join(' ')}
+                >
+                  {item.icon && (
+                    <span className={item.disabled ? 'opacity-40' : item.destructive ? 'text-red-500' : 'text-gray-400'}>
+                      {item.icon}
+                    </span>
+                  )}
+                  {item.label}
+                </a>
+              ) : (
               <button
                 role="menuitem"
                 type="button"
@@ -137,6 +174,7 @@ export default function MobileOverflowMenu({
                 )}
                 {item.label}
               </button>
+              )}
             </div>
           ))}
         </div>

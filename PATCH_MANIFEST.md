@@ -1,8 +1,8 @@
-# IWILLBUILD TestFlight v10.2 patch bundle
+# IWILLBUILD TestFlight v11 patch bundle
 
 Scope:
 - Built a deployable TestFlight prep bundle using your current raw project plus the missing iOS/build files from the GitHub recovery copy.
-- Set iOS version metadata to Version 10 / Build 2.
+- Set iOS version metadata to Version 11 / Build 3.
 
 Included for apply:
 - capacitor.config.json
@@ -26,10 +26,10 @@ Included for apply:
 
 Version updates in this patch:
 - ios/App/App.xcodeproj/project.pbxproj
-  - MARKETING_VERSION = 10
-  - CURRENT_PROJECT_VERSION = 2
+  - MARKETING_VERSION = 11
+  - CURRENT_PROJECT_VERSION = 3
 - capacitor.config.json
-  - ios.buildNumber = "2"
+  - ios.buildNumber = "3"
 
 Files intentionally not in this patch:
 - public\assets\uploads\airo-logo-shimmer-horizontal.svg
@@ -45,4 +45,4 @@ Apply directions:
    - Bundle ID: `com.iwillbuild.portal`
    - App name: `IWILLBUILD`
 3. Build and archive from Xcode, then upload to TestFlight.
-4. In App Store Connect, create a new release with version `10`, build `2`.
+4. In App Store Connect, create a new release with version `11`, build `3`.

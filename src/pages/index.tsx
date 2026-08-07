@@ -137,7 +137,7 @@ const featureGroups: FeatureGroup[] = [
     category: 'Safety & compliance',
     icon: AlertTriangle,
     color: '#ea580c', bg: '#fff7ed',
-    title: 'Risky & permits',
+    title: 'Risk Assessment & Work Permits',
     desc: 'Per-job risk assessments and permit checks for changed site conditions. Activity → Hazards → Controls → Sign-off.',
     bullets: ['Activity-based risk flow', 'Hazard & control capture', 'Permit-required flag', 'Supervisor sign-off'],
   },
