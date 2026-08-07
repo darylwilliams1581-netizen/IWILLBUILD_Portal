@@ -35,14 +35,25 @@ interface IosMediaInputsProps {
 }
 
 export function IosMediaInputs({ picker, accept = 'image/*' }: IosMediaInputsProps) {
+  // On native (Capacitor) the camera input is never clicked directly — the
+  // Capacitor Camera plugin handles capture. The input is only used on web.
+  //
+  // On web (including Safari PWA / Add to Home Screen):
+  //   - With capture="environment": iOS forces the native camera app to open,
+  //     bypassing our in-app UI and returning a file we can't process correctly.
+  //   - Without capture: iOS shows the standard media picker sheet (Take Photo /
+  //     Photo Library / Browse) which works correctly and lets users choose.
+  //
+  // So we intentionally omit `capture` on web — the standard picker is better UX
+  // and the returned File goes through our normal processImage pipeline.
   return (
     <>
-      {/* Camera input — capture="environment" opens rear camera on iOS */}
+      {/* Camera input — NO capture attribute on web so iOS shows the standard
+          media picker sheet instead of forcing the native camera app */}
       <input
         ref={picker._cameraInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         aria-hidden="true"
         onChange={picker._handleInputChange}
