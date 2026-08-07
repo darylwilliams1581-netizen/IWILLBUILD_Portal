@@ -611,11 +611,6 @@ export default function IncidentDetailPage() {
     setAttachments(prev => prev.filter(x => x.id !== a.id));
   }
 
-  function handlePrint() {
-    if (!incidentId) return;
-    window.open(`/api/incidents/${incidentId}/pdf`, '_blank');
-  }
-
   const isClosed = incident?.status === 'closed';
   const pageTitle = isNew ? 'New Incident' : `Incident #${incidentId}`;
 
@@ -687,7 +682,8 @@ export default function IncidentDetailPage() {
                   {
                     label: 'Print / Download PDF',
                     icon: <Printer size={15} />,
-                    onSelect: handlePrint,
+                    href: `/api/incidents/${incidentId}/pdf`,
+                    onSelect: () => {},
                   },
                   {
                     label: 'Close Incident',
@@ -705,7 +701,8 @@ export default function IncidentDetailPage() {
                   {
                     label: 'Print / Download PDF',
                     icon: <Printer size={15} />,
-                    onSelect: handlePrint,
+                    href: `/api/incidents/${incidentId}/pdf`,
+                    onSelect: () => {},
                   },
                 ]}
               />
