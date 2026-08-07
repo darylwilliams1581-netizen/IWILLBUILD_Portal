@@ -88,7 +88,7 @@ function IconPage({
           sections.map(({ group, label, icons: sIcons }) => (
             <div key={group}>
               <SectionLabel label={label} />
-              <div className="home-icon-grid">
+              <div className="grid grid-cols-2 gap-3">
                 {sIcons.map(item => (
                   <IconTile key={item.key} item={item} onNavigate={onNavigate} />
                 ))}
@@ -96,7 +96,7 @@ function IconPage({
             </div>
           ))
         ) : (
-          <div className="home-icon-grid">
+          <div className="grid grid-cols-2 gap-3">
             {icons.map(item => (
               <IconTile key={item.key} item={item} onNavigate={onNavigate} />
             ))}
