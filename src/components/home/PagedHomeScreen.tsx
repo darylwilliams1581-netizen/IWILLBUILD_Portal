@@ -82,13 +82,13 @@ function IconPage({
   }
 
   return (
-    <div className="px-4 pt-2 pb-4">
-      <div className="mx-auto" style={{ maxWidth: 480 }}>
+    <div className="h-full flex flex-col px-4 pt-2 pb-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
+      <div className="flex-1 flex flex-col mx-auto w-full" style={{ maxWidth: 480 }}>
         {showLabels ? (
           sections.map(({ group, label, icons: sIcons }) => (
-            <div key={group}>
+            <div key={group} className="flex-1 flex flex-col">
               <SectionLabel label={label} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex-1 grid grid-cols-2 gap-3" style={{ gridAutoRows: '1fr' }}>
                 {sIcons.map(item => (
                   <IconTile key={item.key} item={item} onNavigate={onNavigate} />
                 ))}
@@ -96,7 +96,7 @@ function IconPage({
             </div>
           ))
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex-1 grid grid-cols-2 gap-3" style={{ gridAutoRows: '1fr' }}>
             {icons.map(item => (
               <IconTile key={item.key} item={item} onNavigate={onNavigate} />
             ))}
@@ -368,14 +368,10 @@ export default function PagedHomeScreen({
             <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} onCamera={() => navigate('/camera')} />
           </div>
 
-          {/* Page 1 — Field */}
+          {/* Page 1 — Field: no scroll, tiles stretch to fill height */}
           <div
-            className="overflow-y-auto min-h-0"
-            style={{
-              width: '33.333%',
-              height: '100%',
-              paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-            }}
+            className="min-h-0"
+            style={{ width: '33.333%', height: '100%' }}
           >
             <IconPage
               icons={fieldIcons}
@@ -385,14 +381,10 @@ export default function PagedHomeScreen({
             />
           </div>
 
-          {/* Page 2 — Management */}
+          {/* Page 2 — Management: no scroll, tiles stretch to fill height */}
           <div
-            className="overflow-y-auto min-h-0"
-            style={{
-              width: '33.333%',
-              height: '100%',
-              paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-            }}
+            className="min-h-0"
+            style={{ width: '33.333%', height: '100%' }}
           >
             <IconPage
               icons={mgmtIcons}

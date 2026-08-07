@@ -24,8 +24,8 @@ export function IconTile({
       transition={{ type: 'spring', stiffness: 440, damping: 22 }}
       onClick={() => onNavigate(item.href)}
       className={`
-        w-full flex flex-col items-center justify-center gap-2
-        px-3 py-4 rounded-2xl shadow-sm min-h-[96px]
+        w-full h-full flex flex-col items-center justify-center gap-2
+        px-3 py-4 rounded-2xl shadow-sm
         active:scale-95 transition-transform
         outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2
         ${item.bg} ${item.fg}
