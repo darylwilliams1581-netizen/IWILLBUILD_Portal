@@ -372,25 +372,23 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   }
 
   function handlePickCamera() {
-    setPickerOpen(false);
+    // PhotoSourceSheet already closes itself and adds 120ms delay before calling us.
+    // On native: navigate to the full in-app camera (watermark, flash, orientation).
+    // On web: trigger the camera file input directly (no extra delay needed here).
     if (nativeApp) {
-      // Open the full in-app camera (watermark, flash, orientation controls).
-      // After capture the camera page returns here via returnTo param.
       navigate(`/camera?attachTo=job-card:${cardId}&returnTo=/job-cards/${cardId}`);
     } else {
-      // Web: use picker's camera input (capture=environment)
-      setTimeout(() => void picker.openCamera(), 120);
+      void picker.openCamera();
     }
   }
 
   function handlePickLibrary() {
-    setPickerOpen(false);
-    setTimeout(() => void picker.openLibrary(), 120);
+    // PhotoSourceSheet already adds 120ms delay — fire immediately here.
+    void picker.openLibrary();
   }
 
   function handlePickFiles() {
-    setPickerOpen(false);
-    setTimeout(() => fileInputRef.current?.click(), 120);
+    fileInputRef.current?.click();
   }
 
   async function handleDelete(photoId: number) {
@@ -471,12 +469,12 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
 
       {photos.length === 0 && !uploading ? (
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => setPickerOpen(true)}
           className="w-full flex flex-col items-center justify-center gap-2 py-8 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 hover:border-yellow-300 hover:text-yellow-600 transition-colors"
         >
           <Image size={24} className="text-gray-200" />
           <span className="text-[12px] font-medium">Tap to add photos</span>
-          <span className="text-[11px]">Camera or gallery</span>
+          <span className="text-[11px]">Camera, gallery or files</span>
         </button>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
