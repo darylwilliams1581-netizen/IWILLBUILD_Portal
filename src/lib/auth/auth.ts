@@ -73,8 +73,27 @@ export function getAuth() {
     trustedOrigins: (request?: Request) => {
       if (!request) return [];
 
-      const origin = request.headers.get('origin');
-      if (!origin) return [];
+      let origin = request.headers.get('origin');
+
+      // Safari on desktop does NOT send an Origin header on same-origin POST
+      // requests. When origin is missing, derive it from the Referer header,
+      // then fall back to the Host header. This is safe because disableCSRFCheck
+      // is already enabled — we just need trustedOrigins to return a non-empty
+      // list so BetterAuth doesn't reject the request outright.
+      if (!origin) {
+        const referer = request.headers.get('referer');
+        if (referer) {
+          try { origin = new URL(referer).origin; } catch { /* ignore */ }
+        }
+        if (!origin) {
+          const host = request.headers.get('host');
+          if (host) {
+            const proto = request.url.startsWith('https') ? 'https' : 'http';
+            origin = `${proto}://${host}`;
+          }
+        }
+        if (!origin) return [];
+      }
 
       // Trust Capacitor and Ionic WebView origins (native iOS/Android app).
       // These use non-standard URL schemes that new URL() may not parse correctly,
