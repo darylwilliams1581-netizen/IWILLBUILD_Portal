@@ -1585,14 +1585,14 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
             onClick={onClose}
           />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
-              className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl flex flex-col overflow-hidden"
-              style={{ boxShadow: '0 8px 48px rgba(0,0,0,0.18)', maxHeight: 'min(640px, calc(100dvh - 80px))' }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+              className="pointer-events-auto w-full sm:max-w-sm bg-white sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
+              style={{ maxHeight: 'min(680px, calc(100dvh - 60px))' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
@@ -1792,20 +1792,27 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
               )}
             </div>
 
-            {/* ── Done button — appears after a successful sign in/out ── */}
-            {result && (
-              <div className="px-4 pb-4 pt-1 shrink-0">
+            {/* ── Footer: always-visible close + done button ── */}
+            <div className="px-4 pb-4 pt-2 shrink-0 border-t border-gray-100">
+              {result ? (
                 <button
                   onClick={onClose}
                   className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
                 >
                   <CheckCircle2 size={16} />
-                  Done
+                  Done — Close
                 </button>
-              </div>
-            )}
-
-            <div className="shrink-0" style={{ height: result ? 0 : 'max(env(safe-area-inset-bottom), 8px)' }} />
+              ) : (
+                <button
+                  onClick={onClose}
+                  className="w-full h-11 rounded-2xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <X size={15} />
+                  Close
+                </button>
+              )}
+            </div>
+            <div className="shrink-0" style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
             </motion.div>
           </div>
         </>
