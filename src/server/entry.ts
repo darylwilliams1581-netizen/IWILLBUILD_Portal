@@ -1498,7 +1498,11 @@ async function runStartupMigrations() {
     { table: 'profiles', column: 'emergency_contact_name', definition: 'VARCHAR(255) NULL' },
     { table: 'profiles', column: 'emergency_contact_phone',definition: 'VARCHAR(50) NULL' },
     { table: 'profiles', column: 'profile_attachments',    definition: 'TEXT NULL' },
-    // ── job_photos: thumbnail + preview + dimensions (v2) ────────────────────
+    // ── job_photos: thumbnail + preview + dimensions + uploader (v2) ────────
+    { table: 'job_photos', column: 'original_name',         definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'uploaded_by_user_id',   definition: 'VARCHAR(36) NULL' },
+    { table: 'job_photos', column: 'uploaded_by_name',      definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'size_bytes',            definition: 'INT NULL' },
     { table: 'job_photos', column: 'caption',               definition: 'TEXT NULL' },
     { table: 'job_photos', column: 'category',              definition: 'VARCHAR(100) NULL' },
     { table: 'job_photos', column: 'thumbnail_key',         definition: 'VARCHAR(255) NULL' },
