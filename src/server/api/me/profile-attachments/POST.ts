@@ -1,20 +1,26 @@
 /**
  * POST /api/me/profile-attachments
- * Uploads a file attachment for the user's profile (max 5 total, 10 MB each).
- * Stores to /shared-storage/public/assets/profile-attachments/{userId}/
- * Returns the updated attachments list.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Upload a file attachment for the user's profile (max 5 total, 10 MB each).
+ *
+ * Migrated to canonical uploadService:
+ *  - Stores file via storage service (R2 / local) instead of local filesystem
+ *  - Creates media_assets + media_asset_links rows
+ *  - Preserves existing JSON response shape (profiles.profile_attachments)
+ *    for backwards compatibility
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { profiles } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
-import fs from 'fs/promises';
-import path from 'path';
+import { parseMultipartForm } from '../../../lib/file-upload.js';
+import { uploadMedia, normaliseMime } from '../../../lib/uploadService.js';
+import { randomUUID } from 'node:crypto';
 
 const MAX_ATTACHMENTS = 5;
-const MAX_SIZE_BYTES  = 10 * 1024 * 1024; // 10 MB
+const MAX_SIZE_BYTES   = 10 * 1024 * 1024;
+const BUCKET           = 'profile-attachments';
 
 interface Attachment {
   id: string;
@@ -22,6 +28,7 @@ interface Attachment {
   url: string;
   size: number;
   uploadedAt: string;
+  mediaAssetId?: number;
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -36,6 +43,7 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    if (!profile.companyId) return res.status(403).json({ error: 'No company' });
 
     // Read existing attachments
     const [rows] = await db.execute(
@@ -51,60 +59,51 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: `Maximum ${MAX_ATTACHMENTS} attachments allowed. Remove one before adding another.` });
     }
 
-    // Parse multipart body — express doesn't parse multipart by default; read raw body
-    const contentType = req.headers['content-type'] ?? '';
-    if (!contentType.includes('multipart/form-data')) {
-      return res.status(400).json({ error: 'Expected multipart/form-data' });
+    // Parse multipart
+    let parsed;
+    try {
+      parsed = await parseMultipartForm(req, { maxFileSize: MAX_SIZE_BYTES, maxFiles: 1 });
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
     }
+    if (parsed.limitError) return res.status(400).json({ error: `File exceeds the 10 MB limit.` });
+    if (!parsed.file) return res.status(400).json({ error: 'No file received.' });
 
-    // Use busboy for multipart parsing
-    const { default: Busboy } = await import('busboy');
-    const bb = Busboy({ headers: req.headers, limits: { fileSize: MAX_SIZE_BYTES, files: 1 } });
+    const file = parsed.file;
+    normaliseMime(file);
 
-    let savedAttachment: Attachment | null = null;
-    let fileTooLarge = false;
+    const id = randomUUID();
+    const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 200);
+    const ext = safeFilename.includes('.') ? safeFilename.split('.').pop() ?? 'bin' : 'bin';
+    const storageKey = `${session.user.id}/${id}-${safeFilename}.${ext === safeFilename ? 'bin' : ''}`.replace(/\.$/, '');
+    // Use a clean key: userId/uuid-safeFilename
+    const cleanKey = `${session.user.id}/${id}-${safeFilename}`;
+    const clientId = (req.headers['x-client-id'] as string | undefined)?.trim() || null;
 
-    await new Promise<void>((resolve, reject) => {
-      bb.on('file', async (_field, file, info) => {
-        const { filename } = info;
-        const safeFilename = filename.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 200);
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        const dir = `/shared-storage/public/assets/profile-attachments/${session.user.id}`;
-        const filePath = path.join(dir, `${id}-${safeFilename}`);
-
-        const chunks: Buffer[] = [];
-        file.on('data', (chunk: Buffer) => chunks.push(chunk));
-        file.on('limit', () => { fileTooLarge = true; });
-        file.on('end', async () => {
-          if (fileTooLarge) { resolve(); return; }
-          try {
-            await fs.mkdir(dir, { recursive: true });
-            const buf = Buffer.concat(chunks);
-            await fs.writeFile(filePath, buf);
-            savedAttachment = {
-              id,
-              filename: safeFilename,
-              url: `/airo-assets/uploads/profile-attachments/${session.user.id}/${id}-${safeFilename}`,
-              size: buf.length,
-              uploadedAt: new Date().toISOString(),
-            };
-          } catch (e) { reject(e); }
-          resolve();
-        });
-      });
-      bb.on('error', reject);
-      bb.on('finish', resolve);
-      req.pipe(bb);
+    const result = await uploadMedia({
+      file,
+      companyId: profile.companyId,
+      userId: session.user.id,
+      bucket: BUCKET,
+      storageKey: cleanKey,
+      destinationType: 'profile_attachment',
+      destinationId: null,
+      fieldKey: session.user.id,
+      clientId,
+      imageOnly: false,
+      // No compatibility row needed — we update profiles.profile_attachments JSON below
     });
 
-    if (fileTooLarge) {
-      return res.status(400).json({ error: `File exceeds the 10 MB limit.` });
-    }
-    if (!savedAttachment) {
-      return res.status(400).json({ error: 'No file received.' });
-    }
+    const newAttachment: Attachment = {
+      id,
+      filename: safeFilename,
+      url: result.url,
+      size: result.sizeBytes,
+      uploadedAt: new Date().toISOString(),
+      mediaAssetId: result.mediaAssetId,
+    };
 
-    attachments.push(savedAttachment);
+    attachments.push(newAttachment);
     await db.execute(sql`
       UPDATE profiles SET profile_attachments = ${JSON.stringify(attachments)}
       WHERE user_id = ${session.user.id}
@@ -112,7 +111,9 @@ export default async function handler(req: Request, res: Response) {
 
     return res.json({ ok: true, attachments });
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const status = (err as { status?: number }).status ?? 500;
     console.error('POST /api/me/profile-attachments error:', err);
-    return res.status(500).json({ error: 'Failed to upload attachment' });
+    return res.status(status).json({ error: msg || 'Failed to upload attachment' });
   }
 }

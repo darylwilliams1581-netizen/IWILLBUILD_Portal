@@ -160,6 +160,7 @@ import developer_support_notes_get_127 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_128 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_129 from "./api/developer/support-notes/[id]/DELETE";
 import developer_swms_cleanup_post_130 from "./api/developer/swms-cleanup/POST";
+import developer_media_backfill_report_get from "./api/developer/media-backfill-report/GET";
 import developer_users_id_assign_company_post_131 from "./api/developer/users/[id]/assign-company/POST";
 import developer_users_id_deactivate_post_132 from "./api/developer/users/[id]/deactivate/POST";
 import developer_users_id_delete_orphan_post_133 from "./api/developer/users/[id]/delete-orphan/POST";
@@ -259,6 +260,7 @@ import form_global_lists_get_226 from "./api/form-global-lists/GET";
 import form_global_lists_post_227 from "./api/form-global-lists/POST";
 import form_global_lists_id_delete_228 from "./api/form-global-lists/[id]/DELETE";
 import form_global_lists_id_put_229 from "./api/form-global-lists/[id]/PUT";
+import form_attachments_post from "./api/form-attachments/POST";
 import form_templates_get_230 from "./api/form-templates/GET";
 import form_templates_post_231 from "./api/form-templates/POST";
 import form_templates_seed_post_232 from "./api/form-templates/seed/POST";
@@ -2849,6 +2851,13 @@ if (!process.env.VITEST) {
   void runStartupMigrations().catch((e) =>
     console.error('[startup-migration] fatal:', e)
   );
+  // Media assets migration runs independently so it doesn't block the main
+  // migration chain and can be added without touching runStartupMigrations.
+  void import('./lib/media-migration.js').then(m =>
+    m.runMediaAssetsMigration().catch((e: unknown) =>
+      console.error('[media-migration] fatal:', e)
+    )
+  );
 }
 
 // ── DB connection keep-alive ──────────────────────────────────────────────────
@@ -3031,6 +3040,7 @@ app.get("/api/developer/support-notes", developer_support_notes_get_127);
 app.post("/api/developer/support-notes", developer_support_notes_post_128);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_129);
 app.post("/api/developer/swms-cleanup", developer_swms_cleanup_post_130);
+app.get("/api/developer/media-backfill-report", developer_media_backfill_report_get);
 app.post("/api/developer/users/:id/assign-company", developer_users_id_assign_company_post_131);
 app.post("/api/developer/users/:id/deactivate", developer_users_id_deactivate_post_132);
 app.post("/api/developer/users/:id/delete-orphan", developer_users_id_delete_orphan_post_133);
@@ -3130,6 +3140,7 @@ app.get("/api/form-global-lists", form_global_lists_get_226);
 app.post("/api/form-global-lists", form_global_lists_post_227);
 app.delete("/api/form-global-lists/:id", form_global_lists_id_delete_228);
 app.put("/api/form-global-lists/:id", form_global_lists_id_put_229);
+app.post("/api/form-attachments", form_attachments_post);
 app.get("/api/form-templates", form_templates_get_230);
 app.post("/api/form-templates", form_templates_post_231);
 app.post("/api/form-templates/seed", form_templates_seed_post_232);
