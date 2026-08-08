@@ -101,17 +101,15 @@ export default function DesktopOnly({ children, pageName = 'This page' }: Deskto
         </p>
       </div>
 
-      {/* Login link — shown for both native and narrow-browser */}
+      {/* Login link */}
       <a
         href="https://iwillbuild.com/login"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 max-w-xs w-full hover:bg-primary/20 transition-colors"
+        className="flex items-center justify-center gap-2.5 bg-primary hover:bg-violet-700 active:bg-violet-800 text-white font-semibold text-base rounded-2xl px-8 py-4 max-w-xs w-full transition-colors shadow-lg"
       >
-        <Monitor size={14} className="text-primary shrink-0" />
-        <span className="text-primary text-xs leading-snug">
-          Log in at <span className="font-semibold underline underline-offset-2">iwillbuild.com/login</span>
-        </span>
+        <Monitor size={20} />
+        Open iwillbuild.com
       </a>
     </div>
   );
