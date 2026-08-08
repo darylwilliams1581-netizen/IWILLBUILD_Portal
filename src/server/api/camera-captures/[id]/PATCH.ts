@@ -118,11 +118,65 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Job assignment ────────────────────────────────────────────────────────
     if ('jobId' in body) {
-      const newStatus = body.jobId != null ? 'assigned' : 'captured';
+      const newJobId = body.jobId ?? null;
+      const newStatus = newJobId != null ? 'assigned' : 'captured';
+
+      // Update the camera_captures record
       await db.execute(sql`
-        UPDATE camera_captures SET job_id = ${body.jobId ?? null}, status = ${newStatus}
+        UPDATE camera_captures SET job_id = ${newJobId}, status = ${newStatus}
         WHERE id = ${captureId} AND company_id = ${profile.companyId} AND user_id = ${session.user.id}
       `);
+
+      // ── Copy image into job_photos (same path as the Upload button) ─────────
+      // Only when assigning to a job (not clearing). Fetch the capture record,
+      // stream the image from R2, and POST it to the jobs photo endpoint so it
+      // appears in the job's photo gallery immediately.
+      if (newJobId != null) {
+        try {
+          const captureRows = await db.execute(sql`
+            SELECT storage_key, mime_type, original_name, size_bytes
+            FROM camera_captures
+            WHERE id = ${captureId} AND company_id = ${profile.companyId}
+            LIMIT 1
+          `) as unknown as [Array<{ storage_key: string; mime_type: string; original_name: string | null; size_bytes: number | null }>, unknown];
+          const capture = captureRows[0]?.[0];
+
+          if (capture?.storage_key) {
+            const { stream: imgStream } = await getDownloadStream(capture.storage_key, 'camera-captures');
+            const imgBuffer = await streamToBuffer(imgStream);
+
+            // Build a multipart form using Node 18+ built-in FormData + Blob
+            const ext = (capture.mime_type === 'image/png') ? 'png' : 'jpg';
+            const filename = capture.original_name ?? `capture.${ext}`;
+            const blob = new Blob([imgBuffer], { type: capture.mime_type ?? 'image/jpeg' });
+            const fd = new FormData();
+            fd.append('photos', blob, filename);
+
+            // Forward auth cookies so the jobs photo handler can authenticate
+            const cookieHeader = req.headers['cookie'] ?? '';
+            const protocol = req.protocol ?? 'http';
+            const host = req.headers['host'] ?? 'localhost';
+            const internalUrl = `${protocol}://${host}/api/jobs/${newJobId}/photos`;
+
+            const uploadRes = await fetch(internalUrl, {
+              method: 'POST',
+              headers: { cookie: cookieHeader },
+              body: fd,
+            });
+
+            if (!uploadRes.ok) {
+              const errText = await uploadRes.text().catch(() => '');
+              console.warn(`[camera-captures PATCH] job photo copy failed (${uploadRes.status}): ${errText}`);
+            } else {
+              console.log(`[camera-captures PATCH] copied capture ${captureId} → job ${newJobId} photos`);
+            }
+          }
+        } catch (copyErr) {
+          // Non-fatal — the assignment metadata is already saved; log and continue
+          console.warn('[camera-captures PATCH] job photo copy error (non-fatal):', copyErr instanceof Error ? copyErr.message : copyErr);
+        }
+      }
+
       return res.json({ ok: true });
     }
 

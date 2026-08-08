@@ -2048,6 +2048,8 @@ export default function CameraPage() {
 
   // ── Attach single job ─────────────────────────────────────────────────────
   // job === null means the user explicitly chose "No job" — set noJob: true
+  // When a real job is chosen the capture is moved into job_photos on the
+  // server (same path as the Upload button) and removed from the inbox list.
   async function handleAttachJob(clientId: string, job: JobOption | null) {
     let serverId: number | null = null;
     setCaptures(prev => {
@@ -2060,11 +2062,21 @@ export default function CameraPage() {
       );
     });
     if (serverId) {
-      await fetch(`/api/camera-captures/${serverId}`, {
+      const res = await fetch(`/api/camera-captures/${serverId}`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job?.id ?? null }),
-      }).catch(() => {});
+      }).catch(() => null);
+
+      // If assigned to a real job, remove from inbox and soft-delete the capture
+      if (job?.id != null && res?.ok) {
+        setCaptures(prev => prev.filter(c => c.clientId !== clientId));
+        setSelectedIds(prev => { const s = new Set(prev); s.delete(clientId); return s; });
+        // Soft-delete the camera_captures record — it now lives in job_photos
+        await fetch(`/api/camera-captures/${serverId}`, {
+          method: 'DELETE', credentials: 'include',
+        }).catch(() => {});
+      }
     }
   }
 
@@ -2079,7 +2091,8 @@ export default function CameraPage() {
       );
     });
     setSelectedIds(new Set());
-    await Promise.allSettled(
+
+    const results = await Promise.allSettled(
       serverItems.map(c =>
         fetch(`/api/camera-captures/${c.id}`, {
           method: 'PATCH', credentials: 'include',
@@ -2088,6 +2101,29 @@ export default function CameraPage() {
         })
       )
     );
+
+    // Remove successfully assigned captures from the inbox list and soft-delete them
+    const successfulServerIds: number[] = [];
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value.ok) {
+        const id = serverItems[i]?.id;
+        if (id != null) successfulServerIds.push(id);
+      }
+    });
+
+    if (successfulServerIds.length > 0) {
+      const successfulClientIds = new Set(
+        serverItems.filter(c => c.id != null && successfulServerIds.includes(c.id!)).map(c => c.clientId)
+      );
+      setCaptures(prev => prev.filter(c => !successfulClientIds.has(c.clientId)));
+
+      // Soft-delete the camera_captures records — they now live in job_photos
+      await Promise.allSettled(
+        successfulServerIds.map(id =>
+          fetch(`/api/camera-captures/${id}`, { method: 'DELETE', credentials: 'include' })
+        )
+      );
+    }
   }
 
   // ── Save note ─────────────────────────────────────────────────────────────
