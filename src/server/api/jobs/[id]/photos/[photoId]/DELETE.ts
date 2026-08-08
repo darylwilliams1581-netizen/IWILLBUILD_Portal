@@ -41,6 +41,15 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!photo) return res.status(404).json({ error: 'Photo not found' });
 
+    // Locked photos cannot be deleted — lock is permanent
+    if (photo.status === 'locked') {
+      return res.status(409).json({
+        error: 'Locked photos cannot be deleted.',
+        lockedByName: photo.lockedByName ?? undefined,
+        lockedAt: photo.lockedAt ?? undefined,
+      });
+    }
+
     // Delete from DB first, then storage (best-effort)
     await db.delete(jobPhotos).where(eq(jobPhotos.id, photoId));
     await deleteFile(photo.filename, PHOTO_BUCKET);

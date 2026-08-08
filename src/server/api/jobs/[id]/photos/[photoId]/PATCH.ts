@@ -77,6 +77,19 @@ export default async function handler(req: Request, res: Response) {
 
     const { label, rotate } = req.body as { label?: string; rotate?: 'left' | 'right' };
 
+    // Locked photos: block rotation (would silently overwrite the locked image).
+    // Label updates are also blocked — the locked record is immutable.
+    if (photo.status === 'locked') {
+      if (rotate) {
+        return res.status(409).json({ error: 'Locked photos cannot be rotated.' });
+      }
+      if (typeof label === 'string') {
+        return res.status(409).json({ error: 'Locked photos cannot be edited.' });
+      }
+      // No-op if neither field was sent
+      return res.json({ ok: true, photo });
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: Record<string, any> = {};
 
@@ -124,17 +137,23 @@ export default async function handler(req: Request, res: Response) {
       await db.update(jobPhotos).set(updates).where(eq(jobPhotos.id, photoId));
     }
 
-    // Return updated record with a fresh signed URL
+    // Return updated record with fresh signed URLs
     const updated = await db.query.jobPhotos.findFirst({
       where: eq(jobPhotos.id, photoId),
     });
 
     let url: string | null = null;
-    try {
-      url = await getSignedUrl(photo.filename, PHOTO_BUCKET, 3600);
-    } catch { /* best-effort */ }
+    let thumbnailUrl: string | null = null;
+    let previewUrl: string | null = null;
+    try { url = await getSignedUrl(photo.filename, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+    if (updated?.thumbnailKey) {
+      try { thumbnailUrl = await getSignedUrl(updated.thumbnailKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+    }
+    if (updated?.previewKey) {
+      try { previewUrl = await getSignedUrl(updated.previewKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+    }
 
-    res.json({ ok: true, photo: { ...updated, url } });
+    res.json({ ok: true, photo: { ...updated, url, thumbnailUrl, previewUrl } });
   } catch (error) {
     console.error('PATCH /api/jobs/:id/photos/:photoId error:', error);
     res.status(500).json({ error: 'Failed to update photo' });
