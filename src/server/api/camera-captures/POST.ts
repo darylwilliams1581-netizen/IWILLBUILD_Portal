@@ -150,7 +150,12 @@ export default async function handler(req: Request, res: Response) {
       // the second query may run on a different connection and return 0.
       let newId = 0;
       try {
-        const insertResult = await db.execute(sql`
+        // Note: 'bucket' column may not exist on older DB instances (migration pending).
+      // We use a conditional INSERT that works whether the column exists or not.
+      // The bucket value is always the BUCKET constant so it's safe to omit.
+      let insertResult;
+      try {
+        insertResult = await db.execute(sql`
           INSERT INTO camera_captures
             (company_id, user_id, storage_key, bucket, mime_type, size_bytes,
              original_name, note, job_id, status, captured_at)
@@ -159,6 +164,23 @@ export default async function handler(req: Request, res: Response) {
              ${BUCKET}, ${outMime}, ${storageResult.sizeBytes},
              ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
         `);
+      } catch (bucketColErr) {
+        const bucketMsg = String((bucketColErr as Error)?.message ?? bucketColErr);
+        // If the bucket column doesn't exist yet, retry without it
+        if (bucketMsg.includes('bucket') || bucketMsg.includes('Unknown column')) {
+          insertResult = await db.execute(sql`
+            INSERT INTO camera_captures
+              (company_id, user_id, storage_key, mime_type, size_bytes,
+               original_name, note, job_id, status, captured_at)
+            VALUES
+              (${profile.companyId}, ${session.user.id}, ${storageResult.storageKey},
+               ${outMime}, ${storageResult.sizeBytes},
+               ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
+          `);
+        } else {
+          throw bucketColErr;
+        }
+      }
 
         // Drizzle returns [ResultSetHeader, FieldPacket[]] for raw execute on MySQL.
         // ResultSetHeader has an insertId property.

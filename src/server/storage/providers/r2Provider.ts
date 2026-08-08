@@ -22,11 +22,18 @@ import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
 import { getSecret } from '#airo/secrets';
 
-async function getS3() {
-  return import('@aws-sdk/client-s3') as Promise<typeof import('@aws-sdk/client-s3')>;
+// ── AWS SDK lazy imports — ONLY used for GET/DELETE/signed URLs, never for PUT ──
+// These are intentionally NOT imported at module scope so Vite SSR does not
+// bundle the SDK hash-middleware into the initial chunk.  saveFile() uses the
+// hand-rolled SigV4 PUT below and never touches these functions.
+
+async function getS3Lazy() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return import('@aws-sdk/client-s3') as Promise<any>;
 }
-async function getPresigner() {
-  return import('@aws-sdk/s3-request-presigner') as Promise<typeof import('@aws-sdk/s3-request-presigner')>;
+async function getPresignerLazy() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return import('@aws-sdk/s3-request-presigner') as Promise<any>;
 }
 
 // ── Client factory (lazy, singleton — used for GET/DELETE/signed URLs only) ───
@@ -47,7 +54,7 @@ async function getClient() {
     );
   }
 
-  const { S3Client } = await getS3();
+  const { S3Client } = await getS3Lazy();
   _client = new S3Client({
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -259,8 +266,8 @@ export const r2Provider: StorageProvider = {
     } else {
       // Fall back to a signed URL via the SDK (GET — no hash middleware issue)
       const client = await getClient();
-      const { GetObjectCommand } = await getS3();
-      const { getSignedUrl: awsGetSignedUrl } = await getPresigner();
+      const { GetObjectCommand } = await getS3Lazy();
+      const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
       publicUrl = await awsGetSignedUrl(
         client,
         new GetObjectCommand({ Bucket: r2Bucket, Key: key }),
@@ -278,7 +285,7 @@ export const r2Provider: StorageProvider = {
 
   async getDownloadStream(storageKey: string, bucket: string): Promise<GetFileResult> {
     const client = await getClient();
-    const { GetObjectCommand } = await getS3();
+    const { GetObjectCommand } = await getS3Lazy();
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
@@ -304,7 +311,7 @@ export const r2Provider: StorageProvider = {
   async deleteFile(storageKey: string, bucket: string): Promise<void> {
     try {
       const client = await getClient();
-      const { DeleteObjectCommand } = await getS3();
+      const { DeleteObjectCommand } = await getS3Lazy();
       const r2Bucket = getBucket();
       await client.send(new DeleteObjectCommand({
         Bucket: r2Bucket,
@@ -317,8 +324,8 @@ export const r2Provider: StorageProvider = {
 
   async getSignedUrl(storageKey: string, bucket: string, expiresInSeconds = 3600): Promise<string> {
     const client = await getClient();
-    const { GetObjectCommand } = await getS3();
-    const { getSignedUrl: awsGetSignedUrl } = await getPresigner();
+    const { GetObjectCommand } = await getS3Lazy();
+    const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
@@ -342,7 +349,7 @@ export const r2Provider: StorageProvider = {
 export async function testR2Connection(): Promise<{ ok: boolean; error?: string }> {
   try {
     const client = await getClient();
-    const { HeadObjectCommand } = await getS3();
+    const { HeadObjectCommand } = await getS3Lazy();
     const r2Bucket = getBucket();
 
     try {
