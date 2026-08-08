@@ -19,7 +19,7 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, FileSpreadsheet, ExternalLink } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
@@ -190,7 +190,85 @@ function DashboardPage({
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Manage page (Page 2) ──────────────────────────────────────────────────────
+// Shows management icon tiles (minus desktop-only ones) + a full-width
+// "Desktop features" link card at the bottom.
+
+const DESKTOP_ONLY_FEATURES = [
+  { label: 'Doc Studio',   icon: FileText,        desc: 'Build document templates' },
+  { label: 'Form Studio',  icon: ClipboardList,   desc: 'Design custom forms' },
+  { label: 'Estimating',   icon: Calculator,      desc: 'Create detailed estimates' },
+  { label: 'Reports',      icon: BarChart2,       desc: 'Analytics & reporting' },
+  { label: 'Timesheets',   icon: FileSpreadsheet, desc: 'Manage timesheets' },
+];
+
+/** Keys that are desktop-only and should be hidden from the Manage tile grid */
+const DESKTOP_ONLY_KEYS = new Set(['studio_docs', 'studio_forms', 'estimating']);
+
+function ManagePage({
+  icons,
+  onNavigate,
+}: {
+  icons: HomeIconDef[];
+  onNavigate: (href: string) => void;
+}) {
+  const mobileIcons = icons.filter(i => !DESKTOP_ONLY_KEYS.has(i.key));
+
+  return (
+    <div
+      className="h-full overflow-y-auto flex flex-col px-4 pt-2 gap-4"
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+    >
+      <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
+        {/* ── Mobile icon grid ── */}
+        <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)' }}>
+          {mobileIcons.map(item => (
+            <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+          ))}
+        </div>
+
+        {/* ── Desktop features card ── */}
+        <a
+          href="https://iwillbuild.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex flex-col w-full rounded-2xl overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-900/60 to-violet-800/40 active:scale-[0.98] transition-transform"
+        >
+          {/* Header row */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-violet-500/30 flex items-center justify-center">
+                <Monitor size={14} className="text-violet-300" />
+              </div>
+              <span className="text-sm font-bold text-white">Desktop features</span>
+            </div>
+            <div className="flex items-center gap-1 text-violet-300">
+              <span className="text-[11px] font-semibold">iwillbuild.com</span>
+              <ExternalLink size={11} />
+            </div>
+          </div>
+
+          {/* Feature list */}
+          <div className="px-4 pb-4 flex flex-col gap-0">
+            {DESKTOP_ONLY_FEATURES.map(({ label, icon: Icon, desc }) => (
+              <div key={label} className="flex items-center gap-3 py-2 border-t border-white/10 first:border-t-0">
+                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                  <Icon size={14} className="text-violet-200" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[13px] font-semibold text-white leading-tight">{label}</span>
+                  <span className="text-[11px] text-violet-300/80 leading-tight">{desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+
 
 export default function PagedHomeScreen({
   iconPermissions,
@@ -242,7 +320,6 @@ export default function PagedHomeScreen({
 
   // ── Page 2: Management icons ─────────────────────────────────────────────────
   const mgmtIcons = allIcons.filter(i => i.group === 'management');
-  const mgmtSections = [{ group: 'management', label: 'Management', icons: mgmtIcons }];
 
   // ── Swipe handlers ────────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e: ReactTouchEvent) => {
@@ -370,15 +447,13 @@ export default function PagedHomeScreen({
             />
           </div>
 
-          {/* Page 2 — Management: no scroll, tiles stretch to fill height */}
+          {/* Page 2 — Management */}
           <div
             className="min-h-0"
             style={{ width: '33.333%', height: '100%' }}
           >
-            <IconPage
+            <ManagePage
               icons={mgmtIcons}
-              sections={mgmtSections}
-              showLabels={false}
               onNavigate={onNavigate}
             />
           </div>
