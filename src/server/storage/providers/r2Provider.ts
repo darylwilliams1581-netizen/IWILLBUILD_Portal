@@ -101,14 +101,26 @@ export const r2Provider: StorageProvider = {
     const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
     const key = objectKey(input.bucket, storageKey);
 
+    // AWS SDK v3 in a Vite SSR bundle can misidentify a Buffer as a stream
+    // ("Unable to calculate hash for flowing readable stream") because the
+    // bundled Buffer class reference differs from the runtime one.
+    // Copying bytes into a plain Uint8Array (not a Buffer subclass) forces
+    // the SDK's hash middleware to treat it as an in-memory blob, not a stream.
+    const rawBytes = input.buffer;
+    const bodyBytes = new Uint8Array(
+      rawBytes.buffer,
+      rawBytes.byteOffset,
+      rawBytes.byteLength,
+    );
+
+    console.log(`[r2Provider] saveFile key=${key} size=${rawBytes.byteLength} bodyType=${bodyBytes.constructor.name}`);
+
     await client.send(new PutObjectCommand({
       Bucket: r2Bucket,
       Key: key,
-      // Always pass a true Buffer — Uint8Array or stream causes
-      // "Unable to calculate hash for flowing readable stream" in the SDK.
-      Body: Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer),
+      Body: bodyBytes,
       ContentType: input.mimeType,
-      ContentLength: input.buffer.length,
+      ContentLength: rawBytes.byteLength,
       ContentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
       Metadata: {
         originalName: input.originalName,

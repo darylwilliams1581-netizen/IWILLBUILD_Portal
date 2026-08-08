@@ -265,7 +265,9 @@ export async function compressImageIfNeeded(
     // iOS Safari can display HEIC natively; other browsers get the proxy URL.
     console.warn(`[storage] compressImageIfNeeded: Jimp failed for mime=${mimeType} — storing raw buffer`);
     // Ensure the fallback is also a true Buffer copy, not a Uint8Array reference.
-    return { buffer: Buffer.from(buffer), mimeType };
+    const fallback = Buffer.from(buffer);
+    console.warn(`[storage] fallback buffer type=${fallback.constructor.name} isBuffer=${Buffer.isBuffer(fallback)} byteLength=${fallback.byteLength}`);
+    return { buffer: fallback, mimeType };
   }
 }
 
