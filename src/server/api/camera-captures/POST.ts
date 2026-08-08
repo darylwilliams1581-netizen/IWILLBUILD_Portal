@@ -67,17 +67,36 @@ interface IdempotencyEntry {
 const idempotencyCache = new Map<string, IdempotencyEntry>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-/** Returns true when the MySQL error is an unknown-column error (1054). */
+/** Returns true when the MySQL error is an unknown-column error (1054).
+ *
+ * Drizzle wraps MySQL errors in a DrizzleQueryError whose .message is
+ * "Failed query: ..." and the real MySQL error is on .cause.
+ * We must walk the cause chain to find the actual MySQL error object.
+ */
 function isUnknownColumnError(e: unknown): boolean {
-  const msg = String((e as Error)?.message ?? e);
-  const code = (e as { code?: string })?.code ?? '';
-  const errno = (e as { errno?: number })?.errno ?? 0;
-  return (
-    errno === 1054 ||
-    code === 'ER_BAD_FIELD_ERROR' ||
-    msg.includes('Unknown column') ||
-    msg.includes('ER_BAD_FIELD_ERROR')
-  );
+  // Walk the cause chain — Drizzle wraps MySQL errors in DrizzleQueryError
+  let current: unknown = e;
+  while (current != null) {
+    const msg = String((current as Error)?.message ?? '');
+    const code = (current as { code?: string })?.code ?? '';
+    const errno = (current as { errno?: number })?.errno ?? 0;
+    const sqlMsg = (current as { sqlMessage?: string })?.sqlMessage ?? '';
+
+    if (
+      errno === 1054 ||
+      code === 'ER_BAD_FIELD_ERROR' ||
+      msg.includes('Unknown column') ||
+      msg.includes('ER_BAD_FIELD_ERROR') ||
+      sqlMsg.includes('Unknown column')
+    ) {
+      return true;
+    }
+    // Move to cause
+    const next = (current as { cause?: unknown })?.cause;
+    if (next === current || next == null) break;
+    current = next;
+  }
+  return false;
 }
 
 export default async function handler(req: Request, res: Response) {
