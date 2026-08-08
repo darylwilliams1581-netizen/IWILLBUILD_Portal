@@ -186,9 +186,6 @@ function DashboardPage({
       <DashboardBanner userId={userId} />
       <NotificationList />
       <MyTasksPanel userRole={role} />
-
-      {/* Camera FAB — floats over the dashboard, opens job-picker then camera */}
-      <CameraFab />
     </div>
   );
 }
@@ -382,8 +379,7 @@ export default function PagedHomeScreen({
 
   return (
     <>
-    <div className="flex flex-col flex-1 min-h-0">
-      {/* ── Page tab bar ──────────────────────────────────────────────────────── */}
+    <div className="flex flex-col flex-1 min-h-0">      {/* ── Page tab bar ──────────────────────────────────────────────────────── */}
       <div
         className="flex items-center shrink-0 px-4 pt-2 pb-1 gap-1"
         style={{ background: 'transparent' }}
@@ -494,6 +490,12 @@ export default function PagedHomeScreen({
       onClose={() => setNewJobOpen(false)}
       onCreated={() => setNewJobOpen(false)}
     />
+
+    {/* CameraFab rendered OUTSIDE the swipe track for the same reason —
+        position:fixed inside a CSS-transformed ancestor is clipped to that
+        ancestor's bounds, so the FAB must live outside all overflow/transform
+        containers to float correctly over the full viewport */}
+    <CameraFab />
     </>
   );
 }
