@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -20,7 +19,6 @@ import {
   CheckSquare,
   Square,
   Lock,
-  PenLine,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
@@ -369,69 +367,176 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
   const bust = cacheBust[photo.id];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/92">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        {/* Edit & Lock — canvas editor, only for unlocked photos */}
-        {!isLocked && (
-          <button onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 text-black text-xs font-bold transition-colors"
-            title="Edit & Lock">
-            <PenLine size={13} /> Edit &amp; Lock
-          </button>
-        )}
-        {/* Legacy label/rotate edit */}
-        {!isLocked && (
-          <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Edit label / rotate">
-            <Pencil size={16} />
-          </button>
-        )}
-        {/* Lock badge */}
-        {isLocked && (
-          <span className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded-lg text-amber-400 text-xs font-semibold">
-            <Lock size={12} /> Locked
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/95">
+      {/* ── Top toolbar: Download · Delete · Close ── */}
+      <div className="shrink-0 flex items-center justify-between px-3 py-2 bg-black/60 backdrop-blur-sm">
+        {/* Left: photo counter + label */}
+        <div className="flex flex-col min-w-0">
+          <span className="text-white/80 text-xs font-semibold truncate max-w-[180px]">
+            {photo.label ?? photo.originalName ?? photo.filename}
           </span>
-        )}
-        <button onClick={() => { const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }}
-          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Download"><Download size={16} /></button>
-        <button onClick={() => onDelete(photo)} disabled={deleting === photo.id || isLocked}
-          className="p-2 rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-50" title={isLocked ? 'Locked photos cannot be deleted' : 'Delete'}>
-          {deleting === photo.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-        </button>
-        <button onClick={onClose} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Close"><X size={16} /></button>
-      </div>
-      {index > 0 && (
-        <button onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-          <ChevronLeft size={24} />
-        </button>
-      )}
-      <div className="relative z-10 max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
-        <img
-          key={bust ?? photo.filename}
-          src={previewSrc(photo, bust)}
-          alt={photo.label ?? photo.originalName ?? 'Job photo'}
-          className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl"
-          loading="eager"
-          decoding="async"
-        />
-        <div className="text-center">
-          {photo.label && <p className="text-white font-semibold text-sm mb-0.5">{photo.label}</p>}
-          <p className="text-white/50 text-xs">{photo.originalName ?? photo.filename}{photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}</p>
-          {photo.uploadedByName && <p className="text-white/40 text-xs mt-0.5">{photo.uploadedByName} · {formatDateTime(photo.createdAt)}</p>}
-          {isLocked && photo.lockedByName && (
-            <p className="text-amber-400/80 text-xs mt-0.5 flex items-center justify-center gap-1">
-              <Lock size={10} /> Locked by {photo.lockedByName}
-            </p>
+          <span className="text-white/35 text-[10px]">{index + 1} / {photos.length}</span>
+        </div>
+
+        {/* Right: actions */}
+        <div className="flex items-center gap-1">
+          {/* Label/rotate edit — unlocked only */}
+          {!isLocked && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(photo); }}
+              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="Edit photo label"
+              title="Edit label / rotate"
+            >
+              <Pencil size={16} />
+            </button>
           )}
-          <p className="text-white/25 text-xs mt-0.5">{index + 1} / {photos.length}</p>
+
+          {/* Download */}
+          <button
+            onClick={() => {
+              const a = document.createElement('a');
+              a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+              a.download = photo.originalName ?? photo.filename;
+              a.click();
+            }}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Download photo"
+            title="Download original"
+          >
+            <Download size={16} />
+          </button>
+
+          {/* Delete — disabled for locked */}
+          <button
+            onClick={() => onDelete(photo)}
+            disabled={deleting === photo.id || isLocked}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-40"
+            aria-label={isLocked ? 'Locked photos cannot be deleted' : 'Delete photo'}
+            title={isLocked ? 'Locked — cannot delete' : 'Delete'}
+          >
+            {deleting === photo.id
+              ? <Loader2 size={16} className="animate-spin" />
+              : <Trash2 size={16} />}
+          </button>
+
+          {/* Close */}
+          <button
+            onClick={onClose}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Close preview"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
         </div>
       </div>
-      {index < photos.length - 1 && (
-        <button onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-          <ChevronRight size={24} />
-        </button>
-      )}
+
+      {/* ── Photo area — fills remaining height ── */}
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+        {/* Backdrop tap-to-close */}
+        <div className="absolute inset-0" onClick={onClose} />
+
+        {/* Prev arrow */}
+        {index > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            aria-label="Previous photo"
+          >
+            <ChevronLeft size={22} />
+          </button>
+        )}
+
+        {/* Photo + overlaid edit/lock button */}
+        <div className="relative z-10 flex items-center justify-center max-w-[92vw] max-h-full">
+          <img
+            key={bust ?? photo.filename}
+            src={previewSrc(photo, bust)}
+            alt={photo.label ?? photo.originalName ?? 'Job photo'}
+            className="block max-w-full max-h-[calc(100dvh-120px)] object-contain rounded-lg shadow-2xl"
+            loading="eager"
+            decoding="async"
+          />
+
+          {/*
+           * ── TOP-RIGHT CORNER EDIT / LOCK BUTTON ──────────────────────────
+           * Positioned over the photo, not in the toolbar, so it is always
+           * visually associated with the image regardless of screen size.
+           * Touch target: min 44×44 px (Apple HIG / WCAG 2.5.5).
+           */}
+          {isLocked ? (
+            /* Locked: lock icon — opens read-only editor view */
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
+              className="
+                absolute top-2 right-2
+                min-w-[44px] min-h-[44px] w-11 h-11
+                flex items-center justify-center
+                rounded-xl
+                bg-amber-500/90 hover:bg-amber-400
+                text-black
+                shadow-lg shadow-black/40
+                transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300
+              "
+              aria-label="View locked photo"
+              title="Locked photo"
+            >
+              <Lock size={18} />
+            </button>
+          ) : (
+            /* Unlocked: pencil icon — opens canvas editor */
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
+              className="
+                absolute top-2 right-2
+                min-w-[44px] min-h-[44px] w-11 h-11
+                flex items-center justify-center
+                rounded-xl
+                bg-black/60 hover:bg-primary
+                text-white
+                shadow-lg shadow-black/40
+                backdrop-blur-sm
+                transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60
+              "
+              aria-label="Edit photo"
+              title="Edit photo"
+            >
+              <Pencil size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Next arrow */}
+        {index < photos.length - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            aria-label="Next photo"
+          >
+            <ChevronRight size={22} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Caption bar ── */}
+      <div className="shrink-0 px-4 py-2.5 bg-black/60 backdrop-blur-sm text-center">
+        {photo.uploadedByName && (
+          <p className="text-white/45 text-xs">
+            Uploaded by {photo.uploadedByName} · {formatDateTime(photo.createdAt)}
+            {photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}
+          </p>
+        )}
+        {isLocked && photo.lockedByName && (
+          <p className="text-amber-400/90 text-xs mt-0.5 flex items-center justify-center gap-1 font-semibold">
+            <Lock size={10} />
+            Locked by {photo.lockedByName}
+            {photo.lockedAt ? ` · ${formatDateTime(photo.lockedAt)}` : ''}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
