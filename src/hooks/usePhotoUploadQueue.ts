@@ -337,7 +337,9 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
       }
     })();
 
-    if (activeRef.current < CONCURRENCY) processNext();
+    // Note: do NOT call processNext() here again — the finally block above already
+    // chains the next item. Calling it here races against the async state update
+    // and causes the same item to be picked up twice (double-upload).
   }, [jobId, updateItem, onBatchComplete]);
 
   // ── Enqueue files ──────────────────────────────────────────────────────────
@@ -377,9 +379,11 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
 
     setQueue((prev) => [...prev, ...newItems]);
 
-    // Only kick off upload if online
+    // Only kick off upload if online — fire up to CONCURRENCY slots
     if (navigator.onLine) {
-      setTimeout(() => processNext(), 0);
+      for (let i = 0; i < Math.min(files.length, CONCURRENCY); i++) {
+        setTimeout(() => processNext(), i * 50);
+      }
     }
   }, [jobId, processNext]);
 
