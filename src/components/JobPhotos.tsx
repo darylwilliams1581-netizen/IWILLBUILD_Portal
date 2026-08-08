@@ -873,6 +873,31 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
+
+    // Pre-flight HEIC/HEIF check — reject immediately with a clear message.
+    // The server also rejects these, but catching them here avoids a failed
+    // queue entry and gives the user instant feedback.
+    const heicFiles = arr.filter((f) => {
+      const mime = f.type.toLowerCase();
+      const ext  = f.name.split('.').pop()?.toLowerCase() ?? '';
+      return mime === 'image/heic' || mime === 'image/heif' ||
+             mime === 'image/heic-sequence' || mime === 'image/heif-sequence' ||
+             ext === 'heic' || ext === 'heif';
+    });
+    if (heicFiles.length > 0) {
+      const names = heicFiles.map((f) => f.name).join(', ');
+      setUploadError(
+        `HEIC/HEIF photos are not supported: ${names}. ` +
+        `Please convert to JPEG first (on iPhone: Settings → Camera → Formats → Most Compatible).`
+      );
+      // If there are non-HEIC files in the same batch, continue with those
+      const rest = arr.filter((f) => !heicFiles.includes(f));
+      if (rest.length === 0) return;
+      if (rest.length > BATCH_LIMIT) { setOverLimitFiles(rest); return; }
+      enqueueValidated(rest);
+      return;
+    }
+
     // If user selected more than BATCH_LIMIT, show friendly dialog
     if (arr.length > BATCH_LIMIT) {
       setOverLimitFiles(arr);

@@ -92,27 +92,9 @@ function Sheet({
   );
 }
 
-// ── Camera job-picker sheet ───────────────────────────────────────────────────
+// ── Notes job picker sheet ────────────────────────────────────────────────────
 
 interface JobOption { id: number; name: string; jobNumber?: string | null; }
-
-function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
-  return (
-    <JobPickerSheet
-      open={open}
-      onClose={onClose}
-      title="Select Job"
-      subtitle="Choose a job to add photos to"
-      iconBg="bg-violet-100"
-      iconFg="text-violet-600"
-      Icon={Camera}
-      onSelect={(job) => navigate(`/jobs/${job.id}?tab=photos`)}
-    />
-  );
-}
-
-// ── Notes job picker sheet ────────────────────────────────────────────────────
 
 function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -2158,7 +2140,6 @@ export default function HomeScreen() {
   const [dashOpen, setDashOpen] = useState(false); // kept for ?panel=dashboard handler below
   const [notesOpen, setNotesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [cameraPickerOpen, setCameraPickerOpen] = useState(false);
   const [notesPickerOpen, setNotesPickerOpen] = useState(false);
   const [delaysPickerOpen, setDelaysPickerOpen] = useState(false);
   const [costsPickerOpen, setCostsPickerOpen] = useState(false);
@@ -2205,7 +2186,6 @@ export default function HomeScreen() {
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
     // job-card now navigates directly to /job-cards
-    if (href === '?panel=camera') { navigate('/camera'); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
   }
@@ -2398,7 +2378,6 @@ export default function HomeScreen() {
       </Sheet>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <CameraJobPickerSheet open={cameraPickerOpen} onClose={() => setCameraPickerOpen(false)} />
       <NotesJobPickerSheet open={notesPickerOpen} onClose={() => setNotesPickerOpen(false)} />
       <DelaysJobPickerSheet open={delaysPickerOpen} onClose={() => setDelaysPickerOpen(false)} />
       <CostsJobPickerSheet open={costsPickerOpen} onClose={() => setCostsPickerOpen(false)} />

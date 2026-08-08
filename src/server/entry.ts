@@ -105,13 +105,6 @@ import billing_cancellation_feedback_post_72 from "./api/billing/cancellation-fe
 import billing_customer_portal_post_73 from "./api/billing/customer-portal/POST";
 import billing_reactivate_subscription_post_74 from "./api/billing/reactivate-subscription/POST";
 import billing_upgrade_subscription_post_75 from "./api/billing/upgrade-subscription/POST";
-import camera_captures_get_76 from "./api/camera-captures/GET";
-import camera_captures_post_77 from "./api/camera-captures/POST";
-import camera_captures_id_delete_78 from "./api/camera-captures/[id]/DELETE";
-import camera_captures_id_patch_79 from "./api/camera-captures/[id]/PATCH";
-import camera_captures_id_replace_post_80 from "./api/camera-captures/[id]/replace/POST";
-import camera_settings_get_81 from "./api/camera-settings/GET";
-import camera_settings_put_82 from "./api/camera-settings/PUT";
 import company_get_83 from "./api/company/GET";
 import company_put_84 from "./api/company/PUT";
 import company_logo_post_85 from "./api/company/logo/POST";
@@ -1154,123 +1147,6 @@ async function runStartupMigrations() {
       if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] risk_register.${colName} alter failed:`, msg);
       }
-    }
-  }
-
-  // 1a-cc. Ensure camera_captures table exists
-  try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS camera_captures (
-        id            INT AUTO_INCREMENT PRIMARY KEY,
-        company_id    INT NOT NULL,
-        user_id       VARCHAR(36) NOT NULL,
-        storage_key   VARCHAR(500) NOT NULL,
-        mime_type     VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
-        size_bytes    INT NULL,
-        original_name VARCHAR(500) NULL,
-        note          TEXT NULL,
-        job_id        INT NULL,
-        status        VARCHAR(30) NOT NULL DEFAULT 'captured',
-        captured_at   DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
-        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_cc_company_user (company_id, user_id),
-        INDEX idx_cc_status (company_id, user_id, status),
-        INDEX idx_cc_job (job_id)
-      )
-    `);
-    console.log('[startup-migration] camera_captures table ready');
-  } catch (e: unknown) {
-    const msg = migrationErrMsg(e);
-    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
-      console.warn('[startup-migration] camera_captures CREATE failed:', msg);
-    }
-  }
-
-  // 1a-cc-cols. Ensure camera_captures has all expected columns.
-  // Uses INFORMATION_SCHEMA to check existence first — avoids relying on
-  // error-message text matching which is fragile across MySQL versions.
-  //
-  // IMPORTANT: db.execute() returns [rows, fields] as a 2-element tuple.
-  // Rows are at result[0] (an array); result[0][0] is the first row object.
-  // Casting the whole result as Array<{cnt}> and reading [0].cnt is WRONG —
-  // it reads the ResultSetHeader, not the first data row.
-  for (const [colName, colDef] of [
-    ['original_name', 'VARCHAR(500) NULL'],
-    ['bucket',        'VARCHAR(100) NULL'],
-  ] as [string, string][]) {
-    try {
-      let ccColExists = false;
-      try {
-        const ccColResult = await db.execute(
-          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
-              WHERE TABLE_SCHEMA = DATABASE()
-                AND TABLE_NAME  = 'camera_captures'
-                AND COLUMN_NAME = ${colName}`
-        ) as unknown as [Array<{ cnt: number }>, unknown];
-        ccColExists = Number(ccColResult[0]?.[0]?.cnt ?? 0) > 0;
-      } catch (checkErr: unknown) {
-        // INFORMATION_SCHEMA query itself failed — log the real nested error
-        // and fall through to the direct ALTER with duplicate-column suppression.
-        let checkErrMsg = String((checkErr as Error)?.message ?? checkErr);
-        const checkCause = (checkErr as { cause?: unknown })?.cause;
-        if (checkCause) checkErrMsg += ` | cause: ${String((checkCause as Error)?.message ?? checkCause)}`;
-        console.warn(`[startup-migration] camera_captures existence check for ${colName} failed:`, checkErrMsg);
-        // ccColExists stays false → will attempt ALTER below
-      }
-
-      if (!ccColExists) {
-        try {
-          await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN \`${colName}\` ${colDef}`));
-          console.log(`[startup-migration] camera_captures: added column ${colName}`);
-        } catch (alterErr: unknown) {
-          const alterMsg = migrationErrMsg(alterErr);
-          const isDup = isDupColumnError(alterErr);
-          if (isDup) {
-            // Column already exists — existence check was wrong or race condition; harmless.
-          } else {
-            console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, alterMsg);
-          }
-        }
-      }
-    } catch (e: unknown) {
-      const msg = migrationErrMsg(e);
-      console.warn(`[startup-migration] camera_captures column ensure ${colName} unexpected error:`, msg);
-    }
-  }
-
-  // Make captured_at nullable so ISO-format strings that MySQL rejects fall back to NOW()
-  try {
-    await db.execute(sql.raw(`ALTER TABLE camera_captures MODIFY COLUMN captured_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP`));
-    console.log('[startup-migration] camera_captures: captured_at made nullable');
-  } catch (e: unknown) {
-    const msg = migrationErrMsg(e);
-    console.warn('[startup-migration] camera_captures ALTER captured_at:', msg);
-  }
-
-  // 1a-cs. Ensure camera_settings table exists
-  try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS camera_settings (
-        id            INT AUTO_INCREMENT PRIMARY KEY,
-        company_id    INT NOT NULL,
-        user_id       VARCHAR(36) NOT NULL,
-        backup_to_roll TINYINT(1) NOT NULL DEFAULT 0,
-        quality       VARCHAR(10) NOT NULL DEFAULT 'high',
-        notes_enabled TINYINT(1) NOT NULL DEFAULT 1,
-        overlay_enabled TINYINT(1) NOT NULL DEFAULT 0,
-        overlay_date_format VARCHAR(20) NOT NULL DEFAULT 'dd MM yyyy',
-        overlay_time_format VARCHAR(10) NOT NULL DEFAULT '24h',
-        overlay_text_color VARCHAR(10) NOT NULL DEFAULT 'white',
-        overlay_font_size  INT NOT NULL DEFAULT 12,
-        updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_cs_user (company_id, user_id)
-      )
-    `);
-    console.log('[startup-migration] camera_settings table ready');
-  } catch (e: unknown) {
-    const msg = migrationErrMsg(e);
-    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
-      console.warn('[startup-migration] camera_settings CREATE failed:', msg);
     }
   }
 
@@ -2986,13 +2862,6 @@ app.post("/api/billing/cancellation-feedback", billing_cancellation_feedback_pos
 app.post("/api/billing/customer-portal", billing_customer_portal_post_73);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post_74);
 app.post("/api/billing/upgrade-subscription", billing_upgrade_subscription_post_75);
-app.get("/api/camera-captures", camera_captures_get_76);
-app.post("/api/camera-captures", camera_captures_post_77);
-app.delete("/api/camera-captures/:id", camera_captures_id_delete_78);
-app.patch("/api/camera-captures/:id", camera_captures_id_patch_79);
-app.post("/api/camera-captures/:id/replace", camera_captures_id_replace_post_80);
-app.get("/api/camera-settings", camera_settings_get_81);
-app.put("/api/camera-settings", camera_settings_put_82);
 app.get("/api/company", company_get_83);
 app.put("/api/company", company_put_84);
 app.post("/api/company/logo", company_logo_post_85);
