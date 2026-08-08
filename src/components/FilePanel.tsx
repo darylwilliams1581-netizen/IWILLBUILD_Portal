@@ -391,7 +391,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 sm:px-4 pb-[env(safe-area-inset-bottom)]">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -406,7 +406,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
         className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: 'min(88dvh, 640px)' }}
+        style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-bottom) - env(safe-area-inset-top) - 32px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -608,7 +608,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
           </div>
 
           {/* Sticky footer */}
-          <div className="flex gap-2.5 px-5 py-4 border-t border-slate-200 bg-white shrink-0">
+          <div className="flex gap-2.5 px-5 py-4 border-t border-slate-200 bg-white shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-10 text-sm" disabled={uploading}>Cancel</Button>
             <Button type="submit" className="flex-1 h-10 text-sm" disabled={uploading || !file}>
               {uploading ? <><Loader2 size={14} className="animate-spin mr-1.5" />Uploading…</> : 'Upload'}
@@ -646,7 +646,7 @@ function DeleteConfirm({ file, onClose, onDeleted }: DeleteConfirmProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
