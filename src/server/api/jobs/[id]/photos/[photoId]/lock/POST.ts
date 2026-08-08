@@ -22,6 +22,9 @@ import { db } from '../../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
+import { getSignedUrl } from '../../../../../../storage/storage-service.js';
+
+const PHOTO_BUCKET = 'job-photos';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -99,7 +102,26 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const updated = await db.query.jobPhotos.findFirst({ where: eq(jobPhotos.id, photoId) });
-    return res.json({ ok: true, photo: updated });
+
+    // Generate fresh signed URLs so the client can immediately display the
+    // locked photo without waiting for the next full photo list reload.
+    let url: string | null = null;
+    let thumbnailUrl: string | null = null;
+    let previewUrl: string | null = null;
+    if (updated) {
+      try { url = await getSignedUrl(updated.filename, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+      if (updated.thumbnailKey) {
+        try { thumbnailUrl = await getSignedUrl(updated.thumbnailKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+      }
+      if (updated.previewKey) {
+        try { previewUrl = await getSignedUrl(updated.previewKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      photo: updated ? { ...updated, url, thumbnailUrl, previewUrl } : null,
+    });
   } catch (error) {
     console.error('POST lock error:', error);
     return res.status(500).json({ error: 'Failed to lock photo' });

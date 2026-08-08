@@ -147,7 +147,10 @@ function formatBytes(bytes: number | null) {
 }
 
 function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-AU', {
+  // MySQL DATETIME strings arrive as "YYYY-MM-DD HH:MM:SS" (no T, no Z).
+  // Safari's Date constructor rejects that format — normalise to ISO 8601 first.
+  const normalised = iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z';
+  return new Date(normalised).toLocaleString('en-AU', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -454,7 +457,8 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
             key={bust ?? photo.filename}
             src={previewSrc(photo, bust)}
             alt={photo.label ?? photo.originalName ?? 'Job photo'}
-            className="block max-w-full max-h-[calc(100dvh-120px)] object-contain rounded-lg shadow-2xl"
+            className="block max-w-full object-contain rounded-lg shadow-2xl"
+            style={{ maxHeight: 'min(calc(100dvh - 120px), calc(100vh - 120px))' }}
             loading="eager"
             decoding="async"
           />
@@ -509,11 +513,11 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
           )}
         </div>
 
-        {/* Next arrow */}
+        {/* Next arrow — offset left so it never overlaps the edit/lock button */}
         {index < photos.length - 1 && (
           <button
             onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            className="absolute right-14 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
             aria-label="Next photo"
           >
             <ChevronRight size={22} />

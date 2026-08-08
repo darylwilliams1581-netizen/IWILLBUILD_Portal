@@ -242,17 +242,33 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
   useLayoutEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+
+    // URL priority: full-res original → 1000px preview → download endpoint.
+    // Always load the highest available resolution so the saved canvas is not
+    // a downscaled copy of the original.
+    const urlCandidates = [
+      photo.url,
+      photo.previewUrl,
+      `/api/jobs/${photo.jobId}/photos/${photo.id}/download`,
+    ].filter(Boolean) as string[];
+
+    let candidateIdx = 0;
+
+    const tryNext = () => {
+      if (candidateIdx >= urlCandidates.length) return; // all failed
+      img.src = urlCandidates[candidateIdx++];
+    };
+
     img.onload = () => {
       baseImageRef.current = img;
       drawBaseImage(img, rotationRef.current);
     };
     img.onerror = () => {
-      // Fallback: try the original URL
-      if (photo.url && img.src !== photo.url) {
-        img.src = photo.url;
-      }
+      // Try next candidate in the fallback chain
+      tryNext();
     };
-    img.src = photo.previewUrl ?? photo.url ?? `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+
+    tryNext();
   }, [photo, drawBaseImage]);
 
   // ── Sync strokesRef ────────────────────────────────────────────────────────
@@ -645,7 +661,10 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
             style={{
               display: 'block',
               maxWidth: '100%',
-              maxHeight: 'calc(100dvh - 100px)',
+              // dvh fallback: Safari < 15.4 doesn't support dvh; min() picks
+              // whichever resolves — both evaluate identically on supporting
+              // browsers, and the vh value is the safe fallback.
+              maxHeight: 'min(calc(100dvh - 100px), calc(100vh - 100px))',
               cursor: canvasCursor,
               touchAction: 'none',
             }}

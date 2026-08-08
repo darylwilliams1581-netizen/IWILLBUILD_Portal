@@ -134,8 +134,16 @@ export default async function handler(req: Request, res: Response) {
 
     const updated = await db.query.jobPhotos.findFirst({ where: eq(jobPhotos.id, photoId) });
     let url: string | null = null;
+    let thumbnailUrl: string | null = null;
+    let previewUrl: string | null = null;
     try { url = await getSignedUrl(result.storageKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
-    return res.json({ ok: true, photo: { ...updated, url } });
+    if (updated?.thumbnailKey) {
+      try { thumbnailUrl = await getSignedUrl(updated.thumbnailKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+    }
+    if (updated?.previewKey) {
+      try { previewUrl = await getSignedUrl(updated.previewKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+    }
+    return res.json({ ok: true, photo: { ...updated, url, thumbnailUrl, previewUrl } });
   } catch (error) {
     console.error('POST replace error:', error);
     return res.status(500).json({ error: 'Failed to replace photo' });
