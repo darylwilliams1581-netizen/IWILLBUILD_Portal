@@ -209,17 +209,18 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top) - 16px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0 rounded-t-2xl bg-white">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-800 truncate">{file.label || file.originalName}</p>
             <p className="text-xs text-slate-400 truncate">{file.originalName} · {mimeLabel(file.mimeType)} · {formatBytes(file.sizeBytes)}</p>
@@ -229,94 +230,99 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
           </button>
         </div>
 
-        {/* Preview */}
-        {isImg ? (
-          <div className="bg-slate-50 flex items-center justify-center" style={{ maxHeight: '60vh', overflow: 'hidden' }}>
-            <img
-              src={fileViewUrl(file.id)}
-              alt={file.label || file.originalName}
-              className="max-w-full max-h-[60vh] object-contain"
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 bg-slate-50">
-            <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center mb-3 ${mimeColor(file.mimeType)}`}>
-              <FileIcon mime={file.mimeType} className="w-7 h-7" />
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
+          {/* Preview */}
+          {isImg ? (
+            <div className="bg-slate-50 flex items-center justify-center" style={{ maxHeight: '55vh', overflow: 'hidden' }}>
+              <img
+                src={fileViewUrl(file.id)}
+                alt={file.label || file.originalName}
+                className="max-w-full max-h-[55vh] object-contain"
+              />
             </div>
-            <p className="text-sm text-slate-500">{mimeLabel(file.mimeType)} file — no preview available</p>
-          </div>
-        )}
-
-        {/* Meta + actions */}
-        <div className="px-5 py-4 border-t border-slate-100">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-xs">
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Category</p>
-              <p className="text-slate-700 font-medium">{file.fileCategory}</p>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 bg-slate-50">
+              <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center mb-3 ${mimeColor(file.mimeType)}`}>
+                <FileIcon mime={file.mimeType} className="w-7 h-7" />
+              </div>
+              <p className="text-sm text-slate-500">{mimeLabel(file.mimeType)} file — no preview available</p>
             </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Uploaded by</p>
-              <p className="text-slate-700 font-medium">{file.uploaderName ?? '—'}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date</p>
-              <p className="text-slate-700 font-medium">
-                {new Date(file.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Size</p>
-              <p className="text-slate-700 font-medium">{formatBytes(file.sizeBytes)}</p>
-            </div>
-          </div>
-          {file.notes && (
-            <p className="text-xs text-slate-500 mb-4 bg-slate-50 rounded-lg px-3 py-2">{file.notes}</p>
           )}
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 h-9 text-sm"
-              onClick={() => window.open(`/view/file/${file.id}`, '_blank', 'noopener,noreferrer')}
-            >
-              <ExternalLink size={13} />
-              Open in new tab
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 h-9 text-sm"
-              onClick={() => setShareTarget({
-                type: 'file',
-                id: String(file.id),
-                title: file.originalName,
-                linkType: 'file_transfer',
-                defaultPermissions: ['view', 'download'],
-              })}
-            >
-              <Link2 size={13} />
-              Share / QR
-            </Button>
-            <Button
-              size="sm"
-              className="gap-1.5 h-9 text-sm"
-              onClick={() => downloadFile(file.id, file.originalName)}
-            >
-              <Download size={13} />
-              Download
-            </Button>
-            {canDelete && (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1.5 h-9 text-sm"
-                onClick={onDelete}
-              >
-                <Trash2 size={13} />
-                Delete
-              </Button>
+
+          {/* Meta */}
+          <div className="px-5 py-4 border-t border-slate-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-xs">
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Category</p>
+                <p className="text-slate-700 font-medium">{file.fileCategory}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Uploaded by</p>
+                <p className="text-slate-700 font-medium">{file.uploaderName ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date</p>
+                <p className="text-slate-700 font-medium">
+                  {new Date(file.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Size</p>
+                <p className="text-slate-700 font-medium">{formatBytes(file.sizeBytes)}</p>
+              </div>
+            </div>
+            {file.notes && (
+              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">{file.notes}</p>
             )}
           </div>
+        </div>{/* end scrollable body */}
+
+        {/* Sticky action footer — always visible, never clipped */}
+        <div className="flex flex-wrap gap-2 px-5 py-4 border-t border-slate-100 bg-white shrink-0 rounded-b-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 h-9 text-sm"
+            onClick={() => window.open(`/view/file/${file.id}`, '_blank', 'noopener,noreferrer')}
+          >
+            <ExternalLink size={13} />
+            Open in new tab
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 h-9 text-sm"
+            onClick={() => setShareTarget({
+              type: 'file',
+              id: String(file.id),
+              title: file.originalName,
+              linkType: 'file_transfer',
+              defaultPermissions: ['view', 'download'],
+            })}
+          >
+            <Link2 size={13} />
+            Share / QR
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5 h-9 text-sm"
+            onClick={() => downloadFile(file.id, file.originalName)}
+          >
+            <Download size={13} />
+            Download
+          </Button>
+          {canDelete && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-1.5 h-9 text-sm"
+              onClick={onDelete}
+            >
+              <Trash2 size={13} />
+              Delete
+            </Button>
+          )}
         </div>
       </motion.div>
     </div>
