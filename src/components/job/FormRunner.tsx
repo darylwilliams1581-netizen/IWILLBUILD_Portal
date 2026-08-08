@@ -335,6 +335,23 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
   // ── Print / PDF ─────────────────────────────────────────────────────────────
 
+  // Fetch a URL (auth-gated) and return a base64 data URL, or null on failure
+  async function fetchAsDataUrl(url: string): Promise<string | null> {
+    try {
+      const r = await fetch(url, { credentials: 'include' });
+      if (!r.ok) return null;
+      const blob = await r.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
   async function triggerPrint(
     printFields: FormField[],
     printAnswers: Answers,
@@ -354,6 +371,23 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         pdfStyle = d.pdf ?? {};
       }
     } catch { /* use defaults */ }
+
+    // Pre-fetch all photo answers as base64 data URLs so the print window can render them
+    // (the print window has no session cookies, so auth-gated R2 URLs won't load directly)
+    const photoDataUrls: Record<number, string[]> = {};
+    await Promise.all(
+      printFields
+        .filter((f) => (f.fieldType === 'photo') && printVisible.has(f.id))
+        .map(async (f) => {
+          const val = printAnswers[f.id];
+          if (!val) return;
+          const urls: string[] = Array.isArray(val)
+            ? val.filter((v): v is string => typeof v === 'string')
+            : typeof val === 'string' ? [val] : [];
+          const dataUrls = await Promise.all(urls.map((u) => fetchAsDataUrl(u)));
+          photoDataUrls[f.id] = dataUrls.filter((d): d is string => d !== null);
+        })
+    );
 
     const showFooter = pdfStyle.showFooterOnForms !== false;
 
@@ -407,8 +441,21 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         } else if (field.fieldType === 'url') {
           const safeHref = safeUrl(val);
           answerHtml = safeHref ? `<a href="${safeHref}">${escapeHtml(String(val))}</a>` : escapeHtml(String(val));
-        } else if (field.fieldType === 'long_text') {
+        } else if (field.fieldType === 'long_text' || field.fieldType === 'textarea') {
           answerHtml = `<p class="long-text">${escapeHtml(String(val)).replace(/\n/g, '<br/>')}</p>`;
+        } else if (field.fieldType === 'photo') {
+          const dataUrls = photoDataUrls[field.id] ?? [];
+          if (dataUrls.length > 0) {
+            answerHtml = `<div class="photo-grid">${dataUrls.map((d) =>
+              `<img src="${d}" class="photo-img" alt="Photo" />`
+            ).join('')}</div>`;
+          } else {
+            // Fallback: show count if we couldn't fetch
+            const urls: string[] = Array.isArray(val)
+              ? val.filter((v): v is string => typeof v === 'string')
+              : typeof val === 'string' ? [val] : [];
+            answerHtml = `<span class="no-answer">${urls.length} photo${urls.length !== 1 ? 's' : ''} (could not load for print)</span>`;
+          }
         } else if (field.fieldType === 'location') {
           const gps = isGpsAnswer(val) ? val : null;
           if (gps) {
@@ -447,7 +494,8 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
             }
           }
         } else {
-          answerHtml = `<span>${String(val)}</span>`;
+          // Handles: short_text, text, number, date, datetime, single_choice, select, and any other plain-value type
+          answerHtml = `<span>${escapeHtml(String(val))}</span>`;
         }
       }
 
@@ -508,6 +556,9 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   .gps-time { font-size: 11px; color: #4ade80; margin-top: 2px; }
   .gps-link { font-size: 11px; color: #16a34a; text-decoration: underline; display: inline-block; margin-top: 4px; }
   .sig-date { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+
+  .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .photo-img { width: 180px; height: 135px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; page-break-inside: avoid; }
 
   .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
   .disclaimer { font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; padding: 10px 0; line-height: 1.6; margin-top: 8px; }
