@@ -349,13 +349,14 @@ function DashboardPage({
   role,
   onNavigate,
   onNewJob,
+  onOpenCamera,
 }: {
   userId: string;
   role: string;
   onNavigate: (href: string) => void;
   onNewJob: () => void;
+  onOpenCamera: () => void;
 }) {
-  const [cameraSheetOpen, setCameraSheetOpen] = useState(false);
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
@@ -364,7 +365,7 @@ function DashboardPage({
         <span className="text-sm font-semibold text-foreground">Dashboard</span>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCameraSheetOpen(true)}
+            onClick={onOpenCamera}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
           >
             <CameraIcon size={13} strokeWidth={2.5} />
@@ -429,15 +430,6 @@ function DashboardPage({
       <DashboardBanner userId={userId} />
       <NotificationList />
       <MyTasksPanel userRole={role} />
-
-      {/* Camera sheet — rendered inside DashboardPage (not inside the swipe
-          track's overflow container) so AnimatePresence can mount/unmount it.
-          The sheet itself uses position:fixed so it escapes any ancestor clip. */}
-      <AnimatePresence>
-        {cameraSheetOpen && (
-          <JobPickerSheet onClose={() => setCameraSheetOpen(false)} />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -537,6 +529,7 @@ export default function PagedHomeScreen({
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [newJobOpen, setNewJobOpen] = useState(false);
+  const [cameraSheetOpen, setCameraSheetOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -684,7 +677,7 @@ export default function PagedHomeScreen({
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} />
+            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} onOpenCamera={() => setCameraSheetOpen(true)} />
           </div>
 
           {/* Page 1 — Field: no scroll, tiles stretch to fill height */}
@@ -742,6 +735,15 @@ export default function PagedHomeScreen({
       onClose={() => setNewJobOpen(false)}
       onCreated={() => setNewJobOpen(false)}
     />
+
+    {/* JobPickerSheet also rendered OUTSIDE the swipe track for the same reason:
+        translateX + willChange:transform creates a stacking context that traps
+        position:fixed children, clipping the sheet to the swipe container. */}
+    <AnimatePresence>
+      {cameraSheetOpen && (
+        <JobPickerSheet onClose={() => setCameraSheetOpen(false)} />
+      )}
+    </AnimatePresence>
     </>
   );
 }
