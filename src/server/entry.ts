@@ -817,6 +817,78 @@ export function renderSsrDocument(
 		.replace("<!--app-html-->", () => result.html);
 }
 
+/**
+ * Extract a useful error message from a Drizzle/MySQL error.
+ *
+ * Drizzle wraps MySQL errors: the outer .message is "Failed query: ..."
+ * and the real MySQL error (with errno/code/sqlMessage) is on .cause.
+ * This helper walks the full cause chain and returns the most specific
+ * message available, so ER_DUP_FIELDNAME checks work correctly.
+ *
+ * Also checks errno 1060 (ER_DUP_FIELDNAME) directly so callers can use
+ * isDupColumn(e) without string matching.
+ */
+function migrationErrMsg(e: unknown): string {
+  let current: unknown = e;
+  let depth = 0;
+  let best = '';
+  while (current != null && depth < 10) {
+    depth++;
+    const node = current as {
+      message?: string;
+      sqlMessage?: string;
+      code?: string;
+      errno?: number;
+      cause?: unknown;
+    };
+    const sqlMsg = String(node.sqlMessage ?? '');
+    const msg    = String(node.message ?? '');
+    const code   = String(node.code ?? '');
+    // Prefer sqlMessage (the real MySQL text) over the Drizzle wrapper
+    if (sqlMsg && sqlMsg !== 'undefined') best = sqlMsg;
+    else if (msg && msg !== 'undefined' && !msg.startsWith('Failed query:')) best = msg;
+    // Append code if useful
+    if (code && code !== 'undefined' && !best.includes(code)) best = `${best} [${code}]`.trim();
+    const next = node.cause;
+    if (next === current || next == null) break;
+    current = next;
+  }
+  // Fallback: stringify the original error
+  if (!best) best = String((e as Error)?.message ?? e);
+  return best;
+}
+
+/** Returns true when the error is a duplicate-column error (MySQL 1060). */
+function isDupColumnError(e: unknown): boolean {
+  let current: unknown = e;
+  let depth = 0;
+  while (current != null && depth < 10) {
+    depth++;
+    const node = current as {
+      message?: string;
+      sqlMessage?: string;
+      code?: string;
+      errno?: number;
+      cause?: unknown;
+    };
+    const msg    = String(node.message ?? '');
+    const sqlMsg = String(node.sqlMessage ?? '');
+    const code   = String(node.code ?? '');
+    const errno  = Number(node.errno ?? 0);
+    if (
+      errno === 1060 ||
+      code === 'ER_DUP_FIELDNAME' ||
+      msg.includes('ER_DUP_FIELDNAME') ||
+      msg.includes('Duplicate column') ||
+      sqlMsg.includes('Duplicate column')
+    ) return true;
+    const next = node.cause;
+    if (next === current || next == null) break;
+    current = next;
+  }
+  return false;
+}
+
 function normalizeCommerceApiBaseUrlEnv() {
 	if (process.env.GODADDY_API_BASE_URL) return;
 	const hostOnly = process.env.VITE_GODADDY_API_HOST;
@@ -1016,7 +1088,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] company_settings table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     // Table already exists is fine
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] company_settings CREATE failed:', msg);
@@ -1058,7 +1130,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] risk_register table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] risk_register CREATE failed:', msg);
     }
@@ -1075,8 +1147,8 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE risk_register ADD COLUMN ${colDef}`));
       console.log(`[startup-migration] risk_register.${colName} added`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] risk_register.${colName} alter failed:`, msg);
       }
     }
@@ -1105,7 +1177,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] camera_captures table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] camera_captures CREATE failed:', msg);
     }
@@ -1148,10 +1220,8 @@ async function runStartupMigrations() {
           await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN \`${colName}\` ${colDef}`));
           console.log(`[startup-migration] camera_captures: added column ${colName}`);
         } catch (alterErr: unknown) {
-          const alterMsg = String((alterErr as Error)?.message ?? alterErr);
-          const isDup = alterMsg.includes('ER_DUP_FIELDNAME') ||
-                        alterMsg.includes('Duplicate column name') ||
-                        alterMsg.includes('1060');
+          const alterMsg = migrationErrMsg(alterErr);
+          const isDup = isDupColumnError(alterErr);
           if (isDup) {
             // Column already exists — existence check was wrong or race condition; harmless.
           } else {
@@ -1160,7 +1230,7 @@ async function runStartupMigrations() {
         }
       }
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
+      const msg = migrationErrMsg(e);
       console.warn(`[startup-migration] camera_captures column ensure ${colName} unexpected error:`, msg);
     }
   }
@@ -1170,7 +1240,7 @@ async function runStartupMigrations() {
     await db.execute(sql.raw(`ALTER TABLE camera_captures MODIFY COLUMN captured_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP`));
     console.log('[startup-migration] camera_captures: captured_at made nullable');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     console.warn('[startup-migration] camera_captures ALTER captured_at:', msg);
   }
 
@@ -1195,7 +1265,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] camera_settings table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] camera_settings CREATE failed:', msg);
     }
@@ -1220,7 +1290,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] notifications table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] notifications CREATE failed:', msg);
     }
@@ -1251,7 +1321,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] platform_activity_log table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] platform_activity_log CREATE failed:', msg);
     }
@@ -1282,7 +1352,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] document_templates table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] document_templates CREATE failed:', msg);
     }
@@ -1600,15 +1670,15 @@ async function runStartupMigrations() {
           await db.execute(sql.raw(query));
           console.log(`[startup-migration] Added ${table}.${column}`);
         } catch (alterErr: unknown) {
-          const alterMsg = String((alterErr as Error)?.message ?? alterErr);
-          const isDup = alterMsg.includes('ER_DUP_FIELDNAME') || alterMsg.includes('Duplicate column name');
+          const alterMsg = migrationErrMsg(alterErr);
+          const isDup = isDupColumnError(alterErr);
           if (!isDup) {
             console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, alterMsg);
           }
         }
       }
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
+      const msg = migrationErrMsg(e);
       console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, msg);
     }
   }
@@ -1692,7 +1762,7 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(query));
       console.log(`[startup-migration] Added ${unique ? 'unique ' : ''}index ${indexName} on ${table}`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
+      const msg = migrationErrMsg(e);
       // ER_DUP_KEYNAME = index already exists under a different check path — safe to ignore
       if (!msg.includes('ER_DUP_KEYNAME') && !msg.includes('Duplicate key name')) {
         console.warn(`[startup-migration] Could not add index ${indexName} on ${table}:`, msg);
@@ -1822,7 +1892,7 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
+      const msg = migrationErrMsg(e);
       if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
         console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
       }
@@ -1887,7 +1957,7 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
+      const msg = migrationErrMsg(e);
       if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
         console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
       }
@@ -1966,7 +2036,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] site_prestarts table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] site_prestarts CREATE failed:', msg);
     }
@@ -1992,7 +2062,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] site_prestart_workers table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] site_prestart_workers CREATE failed:', msg);
     }
@@ -2032,8 +2102,8 @@ async function runStartupMigrations() {
         console.log(`[startup-migration] Added user.${column}`);
       }
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] Could not ensure user.${column}:`, msg);
       }
     }
@@ -2049,8 +2119,8 @@ async function runStartupMigrations() {
       console.log('[startup-migration] Added customers.stakeholder_type');
     }
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
-    if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+    const msg = migrationErrMsg(e);
+    if (!isDupColumnError(e)) {
       console.warn('[startup-migration] Could not ensure customers.stakeholder_type:', msg);
     }
   }
@@ -2071,8 +2141,8 @@ async function runStartupMigrations() {
         console.log(`[startup-migration] Added manual_verification_log.${column}`);
       }
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] Could not ensure manual_verification_log.${column}:`, msg);
       }
     }
@@ -2097,8 +2167,8 @@ async function runStartupMigrations() {
         console.log(`[startup-migration] Added companies.${column}`);
       }
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] Could not ensure companies.${column}:`, msg);
       }
     }
@@ -2224,7 +2294,7 @@ async function runStartupMigrations() {
       console.log('[startup-migration] platform_activity_log table created');
     }
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] platform_activity_log create failed:', msg);
     }
@@ -2267,8 +2337,8 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE jobs ADD COLUMN ${col} TIME NULL`));
       console.log(`[startup-migration] jobs.${col} column added`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('Duplicate column') && !msg.includes('already exists') && !msg.includes('ER_DUP_FIELDNAME')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] jobs.${col} skipped:`, msg.slice(0, 120));
       }
     }
@@ -2299,7 +2369,7 @@ async function runStartupMigrations() {
     ));
     console.log('[startup-migration] team_shifts table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] team_shifts CREATE failed:', msg);
     }
@@ -2337,7 +2407,7 @@ async function runStartupMigrations() {
     ));
     console.log('[startup-migration] team_time_entries table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] team_time_entries CREATE failed:', msg);
     }
@@ -2366,7 +2436,7 @@ async function runStartupMigrations() {
     ));
     console.log('[startup-migration] job_attendance table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] job_attendance CREATE failed:', msg);
     }
@@ -2402,7 +2472,7 @@ async function runStartupMigrations() {
     ));
     console.log('[startup-migration] guest_checkins table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] guest_checkins CREATE failed:', msg);
     }
@@ -2436,7 +2506,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] risky_assessments table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] risky_assessments CREATE failed:', msg);
     }
@@ -2455,7 +2525,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] risky_assessment_signatures table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] risky_assessment_signatures CREATE failed:', msg);
     }
@@ -2477,8 +2547,8 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE risky_assessments ADD COLUMN ${col} ${ddl}`));
       console.log(`[startup-migration] risky_assessments: added column ${col}`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] risky_assessments ALTER ${col} failed:`, msg);
       }
     }
@@ -2526,7 +2596,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] incidents table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] incidents CREATE failed:', msg);
     }
@@ -2543,8 +2613,8 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE incidents ADD COLUMN ${colDef}`));
       console.log(`[startup-migration] incidents.${colName} added`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] incidents.${colName} alter failed:`, msg);
       }
     }
@@ -2568,7 +2638,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] incident_corrective_actions table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] incident_corrective_actions CREATE failed:', msg);
     }
@@ -2594,7 +2664,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] incident_third_parties table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] incident_third_parties CREATE failed:', msg);
     }
@@ -2622,7 +2692,7 @@ async function runStartupMigrations() {
     `);
     console.log('[startup-migration] incident_attachments table ready');
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
+    const msg = migrationErrMsg(e);
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] incident_attachments CREATE failed:', msg);
     }
@@ -2707,7 +2777,7 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
+      const msg = migrationErrMsg(e);
       if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
         console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
       }
@@ -2730,8 +2800,8 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
       console.log(`[startup-migration] Added ${column} to ${table}`);
     } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      const msg = migrationErrMsg(e);
+      if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] Could not add ${column} to ${table}:`, msg);
       }
     }
@@ -2748,8 +2818,8 @@ async function runStartupMigrations() {
       console.log('[startup-migration] sms_verification_codes.phone added');
     }
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
-    if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+    const msg = migrationErrMsg(e);
+    if (!isDupColumnError(e)) {
       console.warn('[startup-migration] sms_verification_codes.phone alter failed:', msg);
     }
   }
@@ -2765,8 +2835,8 @@ async function runStartupMigrations() {
       console.log('[startup-migration] profiles.white_card_number added');
     }
   } catch (e: unknown) {
-    const msg = String((e as Error)?.message ?? e);
-    if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+    const msg = migrationErrMsg(e);
+    if (!isDupColumnError(e)) {
       console.warn('[startup-migration] profiles.white_card_number alter failed:', msg);
     }
   }
