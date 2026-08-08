@@ -320,9 +320,36 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
       />
 
       {uploadError && (
-        <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertCircle size={13} className="shrink-0" />
-          {uploadError}
+        <div className="mb-3 bg-red-50 border border-red-200 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-red-200">
+            <AlertCircle size={13} className="shrink-0 text-red-600" />
+            <span className="text-sm font-semibold text-red-700 flex-1">Upload failed</span>
+            <button
+              onClick={() => {
+                void navigator.clipboard.writeText(uploadError).then(() => {
+                  const btn = document.getElementById('copy-upload-error-btn');
+                  if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
+                });
+              }}
+              id="copy-upload-error-btn"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+            >
+              Copy
+            </button>
+            <button
+              onClick={() => setUploadError('')}
+              className="text-[11px] font-semibold px-2 py-0.5 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          {/* user-select: text so the message is selectable on mobile */}
+          <pre
+            className="px-3 py-2 text-[11px] text-red-800 whitespace-pre-wrap break-all font-mono leading-relaxed"
+            style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+          >
+            {uploadError}
+          </pre>
         </div>
       )}
 
