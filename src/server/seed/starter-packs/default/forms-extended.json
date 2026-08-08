@@ -137,11 +137,11 @@
     "onDashboard": false,
     "fields": [
       { "label": "Date", "fieldType": "date", "required": true },
-      { "label": "Site / Job Name", "fieldType": "text", "required": true },
-      { "label": "Recorded By", "fieldType": "text", "required": true },
-      { "label": "Purpose of Photos", "fieldType": "select", "required": true, "options": ["Progress Record", "Defect / Issue", "Compliance / Inspection", "Before Works", "After Works", "Damage / Claim", "Other"] },
-      { "label": "Description / Notes", "fieldType": "textarea", "required": true },
-      { "label": "Photos", "fieldType": "photo", "required": true }
+      { "label": "Site / Job Name", "fieldType": "short_text", "required": true },
+      { "label": "Recorded By", "fieldType": "short_text", "required": true },
+      { "label": "Purpose of Photos", "fieldType": "single_choice", "required": true, "options": ["Progress Record", "Defect / Issue", "Compliance / Inspection", "Before Works", "After Works", "Damage / Claim", "Other"] },
+      { "label": "Description / Notes", "fieldType": "long_text", "required": true },
+      { "label": "Photos", "fieldType": "photo", "required": true, "settings": { "multiple": true } }
     ]
   },
   {

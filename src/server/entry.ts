@@ -756,6 +756,7 @@ import sosTriggerPostHandler from "./api/sos/trigger/POST.js";
 import sosAcknowledgePostHandler from "./api/sos/acknowledge/POST.js";
 import adminSetUserCompanyPost from "./api/admin/set-user-company/POST.js";
 import adminFixPhotoThumbnailsPost from "./api/admin/fix-photo-thumbnails/POST.js";
+import adminFixPhotoRecordFieldsPost from "./api/admin/fix-photo-record-fields/POST.js";
 
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -2797,6 +2798,7 @@ if (!openAiKey || openAiKey.trim().length === 0) {
 app.post("/api/active-ping", active_ping_post_0);
 app.post("/api/admin/set-user-company", admin_set_user_company_post_1);
 app.post("/api/admin/fix-photo-thumbnails", adminFixPhotoThumbnailsPost);
+app.post("/api/admin/fix-photo-record-fields", adminFixPhotoRecordFieldsPost);
 app.get("/api/asset-manager/assets", asset_manager_assets_get_2);
 app.post("/api/asset-manager/assets", asset_manager_assets_post_3);
 app.get("/api/asset-manager/assets/:id", asset_manager_assets_id_get_4);

@@ -131,7 +131,7 @@
       { "label": "Recorded By", "fieldType": "short_text", "required": true },
       { "label": "Photo Category", "fieldType": "single_choice", "options": ["Progress", "Defect / Issue", "Before", "After", "Safety", "Damage", "Other"] },
       { "label": "Description", "fieldType": "long_text", "required": true },
-      { "label": "Photos", "fieldType": "photo", "required": true },
+      { "label": "Photos", "fieldType": "photo", "required": true, "settings": { "multiple": true } },
       { "label": "Notes", "fieldType": "long_text" }
     ]
   },

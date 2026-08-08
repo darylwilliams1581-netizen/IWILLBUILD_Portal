@@ -62,8 +62,10 @@ export function ReadOnlyAnswer({ field, value }: { field: FormField; value: Answ
       }
     } else if (field.fieldType === 'url') {
       display = <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{String(value)}</a>;
-    } else if (field.fieldType === 'long_text') {
+    } else if (field.fieldType === 'long_text' || field.fieldType === 'textarea') {
       display = <p className="text-sm text-slate-700 whitespace-pre-wrap">{String(value)}</p>;
+    } else if (field.fieldType === 'short_text' || field.fieldType === 'text') {
+      display = <p className="text-sm text-slate-700">{String(value)}</p>;
     } else if (field.fieldType === 'location') {
       const gps = isGpsAnswer(value) ? value : null;
       if (gps) {
@@ -308,8 +310,31 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
       {field.fieldType === 'short_text' && (
         <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} className={`${baseInput} ${errorBorder}`} placeholder="Type your answer…" disabled={disabled} />
       )}
+      {/* 'text' is a legacy alias for short_text */}
+      {field.fieldType === 'text' && (
+        <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} className={`${baseInput} ${errorBorder}`} placeholder="Type your answer…" disabled={disabled} />
+      )}
       {field.fieldType === 'long_text' && (
         <textarea value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} rows={4} className={`${baseInput} ${errorBorder} resize-none`} placeholder="Type your answer…" disabled={disabled} />
+      )}
+      {/* 'textarea' is a legacy alias for long_text */}
+      {field.fieldType === 'textarea' && (
+        <textarea value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} rows={4} className={`${baseInput} ${errorBorder} resize-none`} placeholder="Type your answer…" disabled={disabled} />
+      )}
+      {/* 'select' is a legacy alias for single_choice */}
+      {field.fieldType === 'select' && (
+        <div className="flex flex-col gap-2">
+          {options.length > 0 ? options.map((opt) => (
+            <label key={opt} className="flex items-center gap-3 cursor-pointer group">
+              <div onClick={() => !disabled && onChange(value === opt ? null : opt)} className={`h-4 w-4 rounded-full border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${value === opt ? 'border-primary' : 'border-slate-300 group-hover:border-primary'}`}>
+                {value === opt && <div className="h-2 w-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-sm text-slate-700">{opt}</span>
+            </label>
+          )) : (
+            <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} className={`${baseInput} ${errorBorder}`} placeholder="Type your answer…" disabled={disabled} />
+          )}
+        </div>
       )}
       {field.fieldType === 'number' && (
         <input type="number" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} className={`${baseInput} ${errorBorder}`} placeholder="0" disabled={disabled} />
@@ -630,6 +655,11 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
         );
       })()}
       {error && field.fieldType !== 'signature' && field.fieldType !== 'job_link' && field.fieldType !== 'asset_link' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
+
+      {/* Fallback: unknown field type — render as plain text input so the field is never invisible */}
+      {!['short_text','text','long_text','textarea','number','url','date','datetime','yes_no','checkbox','single_choice','select','multi_select','linear_scale','rating','location','photo','signature','job_link','asset_link','section','instruction','instruction_image','page_break'].includes(field.fieldType) && (
+        <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} className={`${baseInput} ${errorBorder}`} placeholder="Type your answer…" disabled={disabled} />
+      )}
     </div>
   );
 }
