@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Job } from '@/lib/jobs-api';
-import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -135,13 +134,12 @@ function DeleteConfirm({ templateName, onConfirm, onCancel, deleting }: {
 
 // ── Submission row ────────────────────────────────────────────────────────────
 
-function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, canShare, canReset, onStatusChange }: {
+function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, canReset, onStatusChange }: {
   submission: FormSubmission;
   templateName: string;
   onOpen: () => void;
   onDelete: () => void;
   canDelete: boolean;
-  canShare: boolean;
   canReset: boolean;
   onStatusChange: () => void;
 }) {
@@ -214,15 +212,6 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
         )}
 
         <div className="flex-1" />
-
-        {canShare && (
-          <FormSharePanel
-            submissionId={submission.id}
-            submissionStatus={submission.status}
-            canReset={canReset}
-            onStatusChange={onStatusChange}
-          />
-        )}
 
         {canDelete && (
           <button
@@ -468,7 +457,6 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
                     onOpen={() => openSubmission(s)}
                     onDelete={() => setDeleteTarget(s)}
                     canDelete={canDelete}
-                    canShare={true}
                     canReset={['owner', 'admin'].includes(userRole ?? '')}
                     onStatusChange={load}
                   />
