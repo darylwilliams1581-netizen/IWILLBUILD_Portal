@@ -627,12 +627,29 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
         )}
 
         {/* Download (always available) */}
-        <a href={`/api/jobs/${photo.jobId}/photos/${photo.id}/download`}
-          download={photo.originalName ?? photo.filename}
+        <button
+          type="button"
+          onClick={() => {
+            const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+            fetch(url, { credentials: 'include' })
+              .then((r) => r.blob())
+              .then((blob) => {
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = photo.originalName ?? photo.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+              })
+              .catch(console.error);
+          }}
           className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-          title="Download original">
+          title="Download original"
+        >
           <Download size={15} />
-        </a>
+        </button>
       </div>
 
       {/* ── Error banner ── */}

@@ -123,6 +123,24 @@ const CACHE_TTL_MS = 30_000; // 30 s stale window
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Fetch-based download — sends session cookies so the auth-gated download
+// endpoint does not return 401. The browser native <a download> omits cookies
+// on some browsers, causing "Needs authorization" errors in the downloads panel.
+async function downloadPhoto(photo: JobPhoto): Promise<void> {
+  const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = photo.originalName ?? photo.filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+}
+
 function thumbnailSrc(photo: JobPhoto, bust?: number): string {
   const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
   const base = photo.thumbnailUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
@@ -238,10 +256,10 @@ function EditModal({ photo, cacheBust, onClose, onSaved: _onSaved }: EditModalPr
           className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
         >
-          <a href={`/api/jobs/${photo.jobId}/photos/${photo.id}/download`} download={photo.originalName ?? photo.filename}
+          <button type="button" onClick={() => downloadPhoto(photo)}
             className="flex items-center gap-1.5 px-4 py-2 border border-border bg-white hover:bg-muted text-sm font-semibold text-slate-600 rounded-lg transition-colors">
             <Download size={13} /> Download
-          </a>
+          </button>
           <button type="button" onClick={onClose} className="px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">
             Close
           </button>
@@ -309,12 +327,7 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
 
           {/* Download */}
           <button
-            onClick={() => {
-              const a = document.createElement('a');
-              a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
-              a.download = photo.originalName ?? photo.filename;
-              a.click();
-            }}
+            onClick={() => { downloadPhoto(photo); }}
             className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
             aria-label="Download photo"
             title="Download original"
@@ -553,13 +566,13 @@ const PhotoCard = memo(function PhotoCard({
             {!selectMode && !isLocked && (
               <div className="flex items-center gap-0.5 shrink-0">
                 <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
-                <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
+                <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
               </div>
             )}
             {!selectMode && isLocked && (
               <div className="flex items-center gap-0.5 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
+                <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
               </div>
             )}
           </div>
@@ -881,12 +894,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const downloadSelected = useCallback(() => {
     const targets = photos.filter((p) => selected.has(p.id));
     targets.forEach((p, i) => {
-      setTimeout(() => {
-        const a = document.createElement('a');
-        a.href = `/api/jobs/${p.jobId}/photos/${p.id}/download`;
-        a.download = p.originalName ?? p.filename;
-        a.click();
-      }, i * 300);
+      setTimeout(() => { downloadPhoto(p); }, i * 400);
     });
   }, [photos, selected]);
 
