@@ -25,6 +25,7 @@ import { fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import DashboardInstallCallout from '@/components/dashboard/DashboardInstallCallout';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
+import DashboardPhotoUploader from '@/components/dashboard/DashboardPhotoUploader';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { useTerminology } from '@/lib/useTerminology';
 import { usePermissions } from '@/lib/usePermissions';
@@ -255,6 +256,9 @@ export default function DashboardPage() {
 
           {/* ── KPI Widgets ── */}
           <KpiWidgets />
+
+          {/* ── Quick Photo Upload ── */}
+          <DashboardPhotoUploader />
 
           {/* ── PWA Install Callout ── */}
           <DashboardInstallCallout />
