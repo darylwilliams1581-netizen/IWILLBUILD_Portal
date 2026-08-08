@@ -20,9 +20,10 @@ import {
 } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, ExternalLink, Wrench, BookOpen, List, Camera as CameraIcon, Search, X as XIcon, CheckCircle2, Loader2, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, ExternalLink, Wrench, BookOpen, List, Camera as CameraIcon, Search, X as XIcon, CheckCircle2, Loader2, ChevronRight, User, LogOut } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
+import NotificationBell from '@/components/NotificationBell';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
@@ -30,6 +31,7 @@ import NewJobModal from '@/components/NewJobModal';
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
+import { signOut } from '@/lib/auth/auth-client';
 
 interface JobOption { id: number; jobNumber: string | null; name: string; status: string; }
 type SheetState = 'closed' | 'job-select' | 'uploading' | 'done';
@@ -366,35 +368,64 @@ function DashboardPage({
   onNavigate,
   onNewJob,
   onOpenCamera,
+  onProfile,
+  onLogout,
 }: {
   userId: string;
   role: string;
   onNavigate: (href: string) => void;
   onNewJob: () => void;
   onOpenCamera: () => void;
+  onProfile: () => void;
+  onLogout: () => void;
 }) {
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
-      {/* Header row: title + Job Photo button + Add Job button */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-foreground">Dashboard</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenCamera}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
-          >
-            <CameraIcon size={13} strokeWidth={2.5} />
-            Job Photo
-          </button>
-          <button
-            onClick={onNewJob}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
-          >
-            <Plus size={13} strokeWidth={2.5} />
-            Add Job
-          </button>
+      {/* Header row: action buttons */}
+      <div className="flex items-center gap-2">
+        {/* Job Photo + Add Job — left side */}
+        <button
+          onClick={onOpenCamera}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold shadow-sm active:scale-95 transition-transform"
+        >
+          <CameraIcon size={16} strokeWidth={2.5} />
+          Job Photo
+        </button>
+        <button
+          onClick={onNewJob}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm active:scale-95 transition-transform"
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          Add Job
+        </button>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Notification bell */}
+        <div className="[&_button]:w-11 [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-white/8 [&_button]:border [&_button]:border-white/10 [&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-white/60 [&_button:hover]:text-white [&_button:hover]:bg-white/12 [&_button]:transition-all [&_button]:active:scale-95">
+          <NotificationBell />
         </div>
+
+        {/* Profile */}
+        <button
+          onClick={onProfile}
+          className="w-11 h-11 rounded-xl bg-violet-500/20 border border-violet-400/25 flex items-center justify-center hover:bg-violet-500/35 active:scale-95 transition-all"
+          aria-label="Profile"
+        >
+          <User size={18} className="text-violet-300" />
+        </button>
+
+        {/* Logout */}
+        <button
+          onClick={onLogout}
+          className="w-11 h-11 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/25 active:scale-95 transition-all"
+          aria-label="Log out"
+          title="Log out"
+        >
+          <LogOut size={16} className="text-white/40" />
+        </button>
       </div>
 
       {/* ── Quick-action grid ─────────────────────────────────────────────────── */}
@@ -693,7 +724,18 @@ export default function PagedHomeScreen({
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} onOpenCamera={() => setCameraSheetOpen(true)} />
+            <DashboardPage
+              userId={userId}
+              role={role}
+              onNavigate={onNavigate}
+              onNewJob={() => setNewJobOpen(true)}
+              onOpenCamera={() => setCameraSheetOpen(true)}
+              onProfile={() => navigate('/profile')}
+              onLogout={async () => {
+                await signOut();
+                navigate('/login');
+              }}
+            />
           </div>
 
           {/* Page 1 — Field: no scroll, tiles stretch to fill height */}

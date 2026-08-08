@@ -23,7 +23,7 @@ import { invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
-import NotificationBell from '@/components/NotificationBell';
+import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
@@ -2267,36 +2267,9 @@ export default function HomeScreen() {
           boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Row 1: date + actions */}
+        {/* Row 1: date only — actions moved to Dashboard page header */}
         <div className="flex items-center justify-between mb-2.5">
           <p className="text-white/30 text-[10px] font-semibold tracking-[0.07em] uppercase">{dateStr}</p>
-          <div className="flex items-center gap-1 shrink-0">
-            <div className="[&_button]:text-white/40 [&_button:hover]:text-white [&_button]:rounded-full [&_button]:p-1.5 [&_button]:transition-colors">
-              <NotificationBell />
-            </div>
-            <button
-              onClick={() => navigate('/profile')}
-              className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-400/25 flex items-center justify-center hover:bg-violet-500/35 active:scale-95 transition-all"
-              aria-label="Profile"
-            >
-              <User size={13} className="text-violet-300" />
-            </button>
-            <button
-              onClick={async () => {
-                await signOut();
-                invalidateMeCache();
-                invalidateTerminologyCache();
-                invalidateSubscriptionCache();
-                invalidateSupportModeCache();
-                navigate('/login');
-              }}
-              title="Log out"
-              aria-label="Log out"
-              className="w-7 h-7 rounded-full bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/25 hover:border-red-400/30 active:scale-95 transition-all"
-            >
-              <LogOut size={12} className="text-white/30" />
-            </button>
-          </div>
         </div>
         {/* Row 2: greeting — large, bold, personal */}
         <div className="flex items-end justify-between gap-3">
