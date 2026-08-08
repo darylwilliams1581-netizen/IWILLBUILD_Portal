@@ -12,7 +12,7 @@ import SignaturePad, {
   parseSignatureAnswer,
   parseMultiSignatureAnswer,
 } from './SignaturePad';
-import { isGpsAnswer, type GpsAnswer } from './FormRunner';
+import { isGpsAnswer, type GpsAnswer } from './form-types';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 

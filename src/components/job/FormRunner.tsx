@@ -28,57 +28,12 @@ import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface FormSubmission {
-  id: number;
-  jobId: number;
-  templateId: number;
-  status: string;
-  answersJson: string | null;
-  completedByName?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// Shared types/utils live in form-types.ts (keeps this file a pure default export for Fast Refresh)
+import type { FormSubmission, GpsAnswer } from './form-types';
+import { isGpsAnswer, splitIntoPages } from './form-types';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 type Answers = Record<number, AnswerValue>; // fieldId -> value
-
-// ── GPS structured answer ─────────────────────────────────────────────────────
-
-export interface GpsAnswer {
-  lat: number;
-  lng: number;
-  accuracy: number; // metres
-  timestamp: string; // ISO
-  address?: string;  // manual override
-}
-
-export function isGpsAnswer(v: unknown): v is GpsAnswer {
-  return typeof v === 'object' && v !== null && 'lat' in v && 'lng' in v;
-}
-
-export function formatGps(g: GpsAnswer): string {
-  if (g.address) return `${g.address} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})`;
-  return `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)} ±${Math.round(g.accuracy)}m`;
-}
-
-// ── Page-splitting utility ────────────────────────────────────────────────────
-// Splits a flat field list into pages at every page_break field.
-// Page 0 = fields before the first page_break.
-// Each page_break starts a new page (the page_break field itself is NOT included).
-
-export function splitIntoPages(fields: FormField[]): FormField[][] {
-  const pages: FormField[][] = [[]];
-  for (const field of fields) {
-    if (field.fieldType === 'page_break') {
-      pages.push([]);
-    } else {
-      pages[pages.length - 1].push(field);
-    }
-  }
-  // Drop trailing empty pages
-  while (pages.length > 1 && pages[pages.length - 1].length === 0) pages.pop();
-  return pages;
-}
 
 // ── Logic evaluator ───────────────────────────────────────────────────────────
 
