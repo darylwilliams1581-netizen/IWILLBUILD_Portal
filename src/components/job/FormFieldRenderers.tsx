@@ -529,8 +529,8 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
               </div>
             )}
 
-            {/* Upload / capture button */}
-            {!disabled && (allowMultiple || urls.length === 0) && (
+            {/* Upload / capture button — always shown when not disabled */}
+            {!disabled && (
               <>
                 <button
                   type="button"
@@ -542,7 +542,7 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
                 >
                   {uploading
                     ? <><Loader2 size={18} className="animate-spin text-primary" /><span className="text-xs text-slate-500">Uploading…</span></>
-                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? 'Add another photo' : 'Take or upload a photo'}</span></>
+                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? (allowMultiple ? 'Add another photo' : 'Replace photo') : 'Take or upload a photo'}</span></>
                   }
                 </button>
                 <input
