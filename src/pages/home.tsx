@@ -2289,7 +2289,7 @@ export default function HomeScreen() {
           </div>
           {/* Company logo / initial badge */}
           <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, rgba(124,58,237,0.35) 0%, rgba(251,146,60,0.20) 100%)',
               border: '1px solid rgba(255,255,255,0.10)',
@@ -2300,10 +2300,10 @@ export default function HomeScreen() {
               <img
                 src={me.company.logo_url}
                 alt={me.company.name ?? 'Company logo'}
-                className="w-full h-full object-contain p-1"
+                className="w-full h-full object-contain p-1.5"
               />
             ) : (
-              <span className="text-white font-black text-[15px] leading-none select-none">
+              <span className="text-white font-black text-[26px] leading-none select-none">
                 {(me?.company?.name ?? 'I')[0].toUpperCase()}
               </span>
             )}
