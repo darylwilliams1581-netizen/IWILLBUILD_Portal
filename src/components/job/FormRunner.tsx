@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
-import { type FormField, type FieldLogic, parseLogic, parseSettings } from '../FormFieldBuilder';
+import { type FormField, parseSettings } from '../FormFieldBuilder';
 import SignaturePad, {
   type SignatureAnswer,
   type MultiSignatureAnswer,
@@ -82,53 +82,15 @@ export function splitIntoPages(fields: FormField[]): FormField[][] {
 
 // ── Logic evaluator ───────────────────────────────────────────────────────────
 
-function evaluateLogic(logic: FieldLogic, answers: Answers): boolean {
-  if (!logic.enabled) return true;
-  const { action, triggerFieldId, operator, value } = logic;
-  if (!triggerFieldId) return true;
-
-  const triggerAnswer = answers[triggerFieldId];
-  let conditionMet = false;
-
-  switch (operator) {
-    case 'is_checked':
-      conditionMet = triggerAnswer === true;
-      break;
-    case 'is_not_checked':
-      conditionMet = triggerAnswer !== true;
-      break;
-    case 'equals':
-      conditionMet = Array.isArray(triggerAnswer)
-        ? triggerAnswer.includes(value)
-        : String(triggerAnswer ?? '').toLowerCase() === value.toLowerCase();
-      break;
-    case 'not_equals':
-      conditionMet = Array.isArray(triggerAnswer)
-        ? !triggerAnswer.includes(value)
-        : String(triggerAnswer ?? '').toLowerCase() !== value.toLowerCase();
-      break;
-    case 'contains':
-      conditionMet = Array.isArray(triggerAnswer)
-        ? triggerAnswer.some((v) => v.toLowerCase().includes(value.toLowerCase()))
-        : String(triggerAnswer ?? '').toLowerCase().includes(value.toLowerCase());
-      break;
-    default:
-      conditionMet = false;
-  }
-
-  return action === 'show' ? conditionMet : !conditionMet;
-}
-
-function useFormLogic(fields: FormField[], answers: Answers): Set<number> {
+function useFormLogic(fields: FormField[]): Set<number> {
   return useMemo(() => {
+    // Skip logic removed — all fields are always visible
     const visible = new Set<number>();
     for (const field of fields) {
-      if (evaluateLogic(parseLogic(field.logicJson), answers)) {
-        visible.add(field.id);
-      }
+      visible.add(field.id);
     }
     return visible;
-  }, [fields, answers]);
+  }, [fields]);
 }
 
 // ── Read-only answer display ──────────────────────────────────────────────────
@@ -162,7 +124,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   const [currentPage, setCurrentPage] = useState(0);
   const formTopRef = useRef<HTMLDivElement>(null);
 
-  const visibleFields = useFormLogic(fields, answers);
+  const visibleFields = useFormLogic(fields);
 
   // Split fields into pages at page_break boundaries
   const pages = useMemo(() => splitIntoPages(fields), [fields]);

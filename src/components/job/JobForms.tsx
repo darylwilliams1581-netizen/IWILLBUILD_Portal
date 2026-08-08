@@ -16,7 +16,6 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import SkipMetricsPanel from './SkipMetricsPanel';
 import type { Job } from '@/lib/jobs-api';
 import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 
@@ -505,12 +504,6 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
         )}
       </AnimatePresence>
 
-      {/* Skip logic analytics */}
-      {templates
-        .filter((t) => submissions.some((s) => s.templateId === t.id))
-        .map((t) => (
-          <SkipMetricsPanel key={t.id} templateId={t.id} />
-        ))}
     </>
   );
 }
