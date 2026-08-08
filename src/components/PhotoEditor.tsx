@@ -86,18 +86,13 @@ interface PhotoEditorProps {
 // canvas pixels, not UI theme colours. They must be literal values because
 // they are passed to CanvasRenderingContext2D.strokeStyle / fillStyle.
 const ANNOTATION_COLORS = [
-  { label: 'Red',    value: '#EF4444' },
-  { label: 'Orange', value: '#F97316' },
-  { label: 'Yellow', value: '#EAB308' },
-  { label: 'Green',  value: '#22C55E' },
-  { label: 'Blue',   value: '#3B82F6' },
-  { label: 'Purple', value: '#8B5CF6' },
-  { label: 'White',  value: '#FFFFFF' },
-  { label: 'Black',  value: '#000000' },
+  { label: 'Red',   value: '#EF4444' },
+  { label: 'White', value: '#FFFFFF' },
+  { label: 'Black', value: '#000000' },
 ] as const;
 
 const STROKE_WIDTHS = [2, 4, 8];
-const FONT_SIZES = [16, 24, 36];
+const FONT_SIZES = [32, 48, 72];
 const MAX_HISTORY = 50;
 
 // ── Arrow drawing helper ──────────────────────────────────────────────────────

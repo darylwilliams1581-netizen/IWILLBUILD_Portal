@@ -173,67 +173,14 @@ interface EditModalProps {
   onSaved: (updated: JobPhoto) => void;
 }
 
-function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
-  const [label, setLabel] = useState(photo.label ?? '');
-  const [saving, setSaving] = useState(false);
-  const [rotating, setRotating] = useState<'left' | 'right' | null>(null);
-  const [replacing, setReplacing] = useState(false);
-  const [error, setError] = useState('');
-  const [localBust, setLocalBust] = useState(cacheBust[photo.id] ?? Date.now());
-  const replaceRef = useRef<HTMLInputElement>(null);
-
-  async function doRotate(dir: 'left' | 'right') {
-    setRotating(dir); setError('');
-    try {
-      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ rotate: dir }),
-      });
-      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Rotation failed');
-      setLocalBust(Date.now());
-      if (data.photo) onSaved({ ...data.photo, label: label || data.photo.label });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Rotation failed'); }
-    finally { setRotating(null); }
-  }
-
-  async function doSave() {
-    setSaving(true); setError('');
-    try {
-      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ label }),
-      });
-      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Save failed');
-      if (data.photo) onSaved(data.photo);
-      onClose();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Save failed'); }
-    finally { setSaving(false); }
-  }
-
-  async function doReplace(file: File) {
-    setReplacing(true); setError('');
-    try {
-      const fd = new FormData(); fd.append('photo', file);
-      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}/replace`, {
-        method: 'POST', credentials: 'include', body: fd,
-      });
-      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Replace failed');
-      setLocalBust(Date.now());
-      if (data.photo) onSaved({ ...data.photo, label: label || data.photo.label });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Replace failed'); }
-    finally { setReplacing(false); if (replaceRef.current) replaceRef.current.value = ''; }
-  }
+function EditModal({ photo, cacheBust, onClose, onSaved: _onSaved }: EditModalProps) {
+  const localBust = cacheBust[photo.id] ?? Date.now();
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
-
-  const busy = saving || rotating !== null || replacing;
 
   return (
     // On mobile: sheet slides up from bottom. On desktop: centred dialog.
@@ -259,7 +206,7 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-          <h3 className="font-heading font-bold text-base text-slate-900">Edit Photo</h3>
+          <h3 className="font-heading font-bold text-base text-slate-900">Photo info</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={16} /></button>
         </div>
 
@@ -277,62 +224,27 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
             />
           </div>
 
-          {/* Rotate */}
-          <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border bg-slate-50">
-            <span className="text-xs font-semibold text-muted-foreground mr-1">Rotate:</span>
-            <button onClick={() => doRotate('left')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
-              {rotating === 'left' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />} Left 90°
-            </button>
-            <button onClick={() => doRotate('right')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
-              {rotating === 'right' ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Right 90°
-            </button>
-          </div>
-
-          {/* Fields */}
-          <div className="px-5 py-4 flex flex-col gap-3">
-            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={12} /> {error}</p>}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Caption / Label</label>
-              <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. North wall framing"
-                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                onKeyDown={(e) => { if (e.key === 'Enter' && !busy) doSave(); }} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-semibold text-slate-700">Upload edited version</p>
-              <p className="text-[11px] text-slate-400 leading-snug">Download → mark up → save → upload here to replace.</p>
-              <button type="button" onClick={() => replaceRef.current?.click()} disabled={busy}
-                className="flex items-center gap-2 self-start mt-1 px-3 py-2 border border-border bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-semibold text-slate-700 rounded-lg transition-colors">
-                {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                {replacing ? 'Replacing…' : 'Choose file to replace'}
-              </button>
-              <input ref={replaceRef} type="file" accept="image/*" className="hidden"
-                onChange={(e) => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }} />
-            </div>
-            <div className="flex flex-col gap-1 pt-1">
-              {photo.uploadedByName && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
-              )}
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
-            </div>
+          {/* Photo metadata only — rotate, label, replace removed */}
+          <div className="px-5 py-4 flex flex-col gap-1.5">
+            {photo.uploadedByName && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
+            )}
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
           </div>
         </div>
 
-        {/* Footer — always visible */}
+        {/* Footer */}
         <div
-          className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
+          className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
         >
           <a href={`/api/jobs/${photo.jobId}/photos/${photo.id}/download`} download={photo.originalName ?? photo.filename}
             className="flex items-center gap-1.5 px-4 py-2 border border-border bg-white hover:bg-muted text-sm font-semibold text-slate-600 rounded-lg transition-colors">
             <Download size={13} /> Download
           </a>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} disabled={busy} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-40 transition-colors">Cancel</button>
-            <button type="button" onClick={doSave} disabled={busy}
-              className="flex items-center gap-1.5 px-5 py-2 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors">
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
-            </button>
-          </div>
+          <button type="button" onClick={onClose} className="px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">
+            Close
+          </button>
         </div>
       </motion.div>
     </div>
@@ -388,8 +300,8 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(photo); }}
               className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-              aria-label="Edit photo label"
-              title="Edit label / rotate"
+              aria-label="Photo info"
+              title="Photo info"
             >
               <Pencil size={16} />
             </button>
