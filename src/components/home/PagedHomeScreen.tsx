@@ -43,19 +43,29 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const pendingJobRef = useRef<JobOption | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function fetchJobs(q: string) {
     setLoadingJobs(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({ status: 'active', limit: '40' });
       if (q) params.set('q', q);
       const res = await fetch(`/api/jobs/search?${params}`, { credentials: 'include' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? `Search failed (${res.status})`);
+      }
       const data = await res.json() as { jobs?: JobOption[] };
       setJobs(data.jobs ?? []);
-    } catch { setJobs([]); }
-    finally { setLoadingJobs(false); }
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Could not load jobs');
+      setJobs([]);
+    } finally {
+      setLoadingJobs(false);
+    }
   }
 
   useEffect(() => { void fetchJobs(''); setTimeout(() => inputRef.current?.focus(), 120); }, []);
@@ -156,6 +166,12 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
                   {uploadError}
                 </div>
               )}
+              {fetchError && (
+                <div className="mx-4 mb-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-700 shrink-0 flex items-center justify-between gap-2">
+                  <span>{fetchError}</span>
+                  <button type="button" onClick={() => fetchJobs(query)} className="underline underline-offset-2 shrink-0">Retry</button>
+                </div>
+              )}
 
               <div className="px-4 pb-2 shrink-0">
                 <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
@@ -183,7 +199,7 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
               <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-1.5">
                 {jobs.length === 0 && !loadingJobs ? (
                   <p className="text-center text-gray-400 text-sm py-8">
-                    {query ? 'No jobs match your search' : 'No active jobs found'}
+                    {fetchError ? 'Could not load jobs — tap Retry above' : query ? 'No jobs match your search' : 'No active jobs found'}
                   </p>
                 ) : jobs.map(job => (
                   <button
@@ -652,11 +668,11 @@ export default function PagedHomeScreen({
       {/* ── Swipe container ───────────────────────────────────────────────────── */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden relative"
+        className="flex-1 min-h-0 relative"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: 'pan-y' }}
+        style={{ touchAction: 'pan-y', overflowX: 'clip', overflowY: 'visible' }}
       >
         {/* Track — 3 pages wide, slides horizontally */}
         <div
