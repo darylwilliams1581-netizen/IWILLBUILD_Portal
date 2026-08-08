@@ -2,7 +2,7 @@
  * /profile — Standalone full-page user profile
  * Includes: account details, licenses, notes, emergency contact, attachments (up to 5)
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -12,6 +12,7 @@ import {
   Smartphone, X,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
+import { useUploadQueue } from '@/hooks/useUploadQueue';
 import SecurityTab from '@/components/settings/SecurityTab';
 import InstallAppTab from '@/components/settings/InstallAppTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -64,10 +65,26 @@ export default function ProfilePage() {
 
   // ── Attachments ───────────────────────────────────────────────────────────
   const [attachments,    setAttachments]    = useState<Attachment[]>([]);
-  const [uploading,      setUploading]      = useState(false);
   const [uploadError,    setUploadError]    = useState('');
   const [deletingId,     setDeletingId]     = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const attachQ = useUploadQueue({
+    endpoint: '/api/me/profile-attachments',
+    fieldName: 'file',
+    accept: '*/*',
+    multiple: false,
+    onSuccess: (results) => {
+      const resp = results[0]?.response as { attachments?: Attachment[] } | undefined;
+      if (resp?.attachments) setAttachments(resp.attachments);
+    },
+    onError: (_id, msg) => setUploadError(msg),
+    validate: () => {
+      if (attachments.length >= 5) return 'Maximum 5 attachments allowed.';
+      return null;
+    },
+  });
+  const uploading = attachQ.isUploading;
+  const fileInputRef = attachQ.inputRef;
 
   // ── Install modal ────────────────────────────────────────────────────────
   const [installOpen, setInstallOpen] = useState(false);
@@ -142,23 +159,7 @@ export default function ProfilePage() {
     } catch { setExtrasError('Network error.'); setExtrasState('error'); } finally { setExtrasSaving(false); }
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (attachments.length >= 5) { setUploadError('Maximum 5 attachments allowed.'); return; }
-    setUploadError(''); setUploading(true);
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await fetch('/api/me/profile-attachments', { method: 'POST', credentials: 'include', body: fd });
-      const data = await res.json() as { ok?: boolean; attachments?: Attachment[]; error?: string };
-      if (!res.ok) { setUploadError(data.error ?? 'Upload failed.'); }
-      else { setAttachments(data.attachments ?? []); }
-    } catch { setUploadError('Network error.'); } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }
+
 
   async function handleDeleteAttachment(id: string) {
     setDeletingId(id);
@@ -389,7 +390,7 @@ export default function ProfilePage() {
                 </button>
               )}
             </div>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={attachQ.handleInputChange} />
 
             {uploadError && (
               <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">

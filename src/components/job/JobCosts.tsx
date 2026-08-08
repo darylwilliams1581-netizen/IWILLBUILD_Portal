@@ -392,7 +392,9 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
                 </div>
               </button>
             )}
-            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handlePhotoChange} />
+            {/* No capture= — lets iOS show the native picker sheet (Camera / Photo Library / Browse).
+                capture="environment" forces camera-only and can crash if permission not yet granted. */}
+            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handlePhotoChange} />
           </div>
 
           {/* GST preview */}

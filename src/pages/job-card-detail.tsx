@@ -22,6 +22,8 @@ import {
   ExternalLink, Upload, PenLine, RotateCcw, Image,
 } from 'lucide-react';
 
+import { useUploadQueue } from '@/hooks/useUploadQueue';
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Material { id?: number; description: string; cost: number; }
 interface Photo { id: number; file_path: string; file_name: string; caption: string | null; }
@@ -246,36 +248,20 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
 }) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  // Single file input — NO capture attribute.
-  // On iOS this triggers the native "Take Photo / Photo Library / Browse" sheet.
-  // On Android it opens the system file picker with camera option.
-  // This is the exact same pattern used by FilePanel which works reliably.
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  async function uploadFiles(files: File[]) {
-    if (!files.length) return;
-    setUploading(true);
-    setUploadError('');
-    try {
-      const fd = new FormData();
-      for (const f of files) fd.append('photos', f);
-      const res = await fetch(`/api/job-cards/${cardId}/photos`, {
-        method: 'POST',
-        credentials: 'include',
-        body: fd,
-      });
-      const data = await res.json() as { photos?: Photo[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-      onPhotosChange([...photos, ...(data.photos ?? [])]);
-    } catch (err) {
-      setUploadError(String((err as Error).message));
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }
+  const q = useUploadQueue({
+    endpoint: `/api/job-cards/${cardId}/photos`,
+    fieldName: 'photos',
+    accept: 'image/*',
+    multiple: true,
+    onSuccess: (results) => {
+      // Server returns { photos: [...] } — reload from the first result's response
+      const resp = results[0]?.response as { photos?: Photo[] } | undefined;
+      if (resp?.photos) onPhotosChange([...photos, ...resp.photos]);
+    },
+  });
+  const uploading = q.isUploading;
+  const uploadError = q.queue.find(i => i.status === 'failed')?.error ?? '';
+  const fileInputRef = q.inputRef;
 
   async function handleDelete(photoId: number) {
     try {
@@ -305,18 +291,16 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </button>
       }
     >
-      {/* Single input — no capture= so iOS shows its native picker sheet */}
+      {/* Hidden file input — no capture= so iOS shows the native picker sheet
+          (Take Photo / Photo Library / Browse). capture= forces camera-only
+          and can crash if permission not yet granted on iOS. */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={e => {
-          const files = Array.from(e.target.files ?? []);
-          if (files.length) void uploadFiles(files);
-          e.target.value = '';
-        }}
+        onChange={q.handleInputChange}
       />
 
       {uploadError && (

@@ -2,8 +2,9 @@
  * AssetPhotos — per-asset photo gallery
  * Upload, view, delete photos. Independent of inspections.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Camera, Plus, Trash2, Loader2, X, ZoomIn } from 'lucide-react';
+import { useUploadQueue } from '@/hooks/useUploadQueue';
 
 interface AssetPhoto {
   id: number;
@@ -16,9 +17,17 @@ interface AssetPhoto {
 export default function AssetPhotos({ assetId }: { assetId: number }) {
   const [photos, setPhotos] = useState<AssetPhoto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [lightbox, setLightbox] = useState<AssetPhoto | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+
+  const q = useUploadQueue({
+    endpoint: `/api/asset-manager/assets/${assetId}/photos`,
+    fieldName: 'file',
+    accept: 'image/*',
+    multiple: true,
+    onSuccess: () => { void load(); },
+  });
+  const uploading = q.isUploading;
+  const fileRef = q.inputRef;
 
   useEffect(() => { load(); }, [assetId]);
 
@@ -30,29 +39,6 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
       setPhotos(d.photos ?? []);
     } catch { /* silent */ }
     finally { setLoading(false); }
-  }
-
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const fd = new FormData();
-        fd.append('file', file);
-        const r = await fetch(`/api/asset-manager/assets/${assetId}/photos`, {
-          method: 'POST',
-          credentials: 'include',
-          body: fd,
-        });
-        if (r.ok) {
-          // Reload to get full record
-          await load();
-        }
-      }
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
-    }
   }
 
   async function deletePhoto(id: number) {
@@ -93,7 +79,7 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
           accept="image/jpeg,image/png,image/webp,image/gif"
           multiple
           className="hidden"
-          onChange={e => void handleFiles(e.target.files)}
+          onChange={q.handleInputChange}
         />
       </div>
 
