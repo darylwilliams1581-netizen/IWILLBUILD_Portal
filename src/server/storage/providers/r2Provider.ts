@@ -56,6 +56,10 @@ async function getClient() {
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
+    // Disable automatic checksum calculation — R2 does not require it and
+    // the SDK v3 hash middleware crashes on non-Buffer body types in SSR bundles.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   });
 
   return _client;
@@ -101,26 +105,17 @@ export const r2Provider: StorageProvider = {
     const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
     const key = objectKey(input.bucket, storageKey);
 
-    // AWS SDK v3 in a Vite SSR bundle can misidentify a Buffer as a stream
-    // ("Unable to calculate hash for flowing readable stream") because the
-    // bundled Buffer class reference differs from the runtime one.
-    // Copying bytes into a plain Uint8Array (not a Buffer subclass) forces
-    // the SDK's hash middleware to treat it as an in-memory blob, not a stream.
-    const rawBytes = input.buffer;
-    const bodyBytes = new Uint8Array(
-      rawBytes.buffer,
-      rawBytes.byteOffset,
-      rawBytes.byteLength,
-    );
+    // Ensure a true Node.js Buffer — Jimp v1 getBuffer() returns Uint8Array at runtime.
+    const body = Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer);
 
-    console.log(`[r2Provider] saveFile key=${key} size=${rawBytes.byteLength} bodyType=${bodyBytes.constructor.name}`);
+    console.log(`[r2Provider] saveFile key=${key} size=${body.length} isBuffer=${Buffer.isBuffer(body)}`);
 
     await client.send(new PutObjectCommand({
       Bucket: r2Bucket,
       Key: key,
-      Body: bodyBytes,
+      Body: body,
       ContentType: input.mimeType,
-      ContentLength: rawBytes.byteLength,
+      ContentLength: body.length,
       ContentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
       Metadata: {
         originalName: input.originalName,
