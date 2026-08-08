@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Plus,
@@ -312,6 +313,7 @@ interface JobFormsProps {
 }
 
 export default function JobForms({ jobId, userRole }: JobFormsProps) {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -358,8 +360,8 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
       if (!res.ok) throw new Error(data.error ?? 'Failed to start form');
       if (data.submission) {
         setSubmissions((prev) => [data.submission!, ...prev]);
-        // Open form in a new tab — job detail page stays open
-        window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener,noreferrer');
+        // Navigate within the same tab — preserves auth session
+        navigate(`/jobs/${jobId}/forms/${data.submission.id}`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start form');
@@ -369,7 +371,7 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
   }
 
   function openSubmission(s: FormSubmission) {
-    window.open(`/jobs/${jobId}/forms/${s.id}`, '_blank', 'noopener,noreferrer');
+    navigate(`/jobs/${jobId}/forms/${s.id}`);
   }
 
   async function confirmDelete() {
