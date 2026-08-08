@@ -38,15 +38,15 @@
  */
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
-import { profiles } from '../../db/schema.js';
+import { profiles, companies } from '../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { parseMultipartForm } from '../../lib/file-upload.js';
 import {
   compressImageIfNeeded,
+  applyWatermark,
   saveFile,
   deleteFile,
-  ALLOWED_IMAGE_MIMES,
 } from '../../storage/storage-service.js';
 import { randomUUID } from 'node:crypto';
 
@@ -69,30 +69,51 @@ const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 /** Returns true when the MySQL error is an unknown-column error (1054).
  *
- * Drizzle wraps MySQL errors in a DrizzleQueryError whose .message is
- * "Failed query: ..." and the real MySQL error is on .cause.
- * We must walk the cause chain to find the actual MySQL error object.
+ * Drizzle wraps MySQL errors in a DrizzleQueryError:
+ *   error.message  = "Failed query: INSERT INTO ..."   ← NOT the MySQL error
+ *   error.cause    = the real MySQL2 error object with errno/code/sqlState/sqlMessage
+ *
+ * We walk the full cause chain (up to 10 levels) and match on any of:
+ *   - errno === 1054
+ *   - code === 'ER_BAD_FIELD_ERROR'
+ *   - sqlState === '42S22'
+ *   - sqlMessage containing "Unknown column"
+ *   - message containing "Unknown column"
+ *
+ * A bare "Failed query: ..." message does NOT trigger a retry.
+ * Connection, permission, timeout, constraint, and validation errors are
+ * never matched here and will be re-thrown immediately by the caller.
  */
-function isUnknownColumnError(e: unknown): boolean {
-  // Walk the cause chain — Drizzle wraps MySQL errors in DrizzleQueryError
+export function isUnknownColumnError(e: unknown): boolean {
   let current: unknown = e;
-  while (current != null) {
-    const msg = String((current as Error)?.message ?? '');
-    const code = (current as { code?: string })?.code ?? '';
-    const errno = (current as { errno?: number })?.errno ?? 0;
-    const sqlMsg = (current as { sqlMessage?: string })?.sqlMessage ?? '';
+  let depth = 0;
+  while (current != null && depth < 10) {
+    depth++;
+    const node = current as {
+      message?: string;
+      code?: string;
+      errno?: number;
+      sqlState?: string;
+      sqlMessage?: string;
+      cause?: unknown;
+    };
+    const msg      = String(node.message ?? '');
+    const code     = String(node.code ?? '');
+    const errno    = Number(node.errno ?? 0);
+    const sqlState = String(node.sqlState ?? '');
+    const sqlMsg   = String(node.sqlMessage ?? '');
 
     if (
       errno === 1054 ||
       code === 'ER_BAD_FIELD_ERROR' ||
-      msg.includes('Unknown column') ||
-      msg.includes('ER_BAD_FIELD_ERROR') ||
-      sqlMsg.includes('Unknown column')
+      sqlState === '42S22' ||
+      sqlMsg.includes('Unknown column') ||
+      msg.includes('Unknown column')
     ) {
       return true;
     }
-    // Move to cause
-    const next = (current as { cause?: unknown })?.cause;
+
+    const next = node.cause;
     if (next === current || next == null) break;
     current = next;
   }
@@ -155,40 +176,71 @@ export default async function handler(req: Request, res: Response) {
         return res.status(400).json({ error: 'No files uploaded' });
       }
 
-      // ── MIME reclassification (magic-byte sniffing for extension-less uploads) ──
+      // ── MIME detection & JPEG-only enforcement ────────────────────────────
+      // Camera captures must be JPEG. HEIC/HEIF must never be stored directly.
+      // Processing order:
+      //   1. Detect real type from extension + magic bytes
+      //   2. Normalize image/jpg → image/jpeg
+      //   3. Reject HEIC/HEIF with a clear user-facing message
+      //   4. Reject all other non-JPEG types
       for (const f of files) {
         const ext = (f.originalname.split('.').pop() ?? '').toLowerCase();
         const noExt = !f.originalname.includes('.') || ext === f.originalname.toLowerCase();
+
+        // Step 1: reclassify application/octet-stream by extension or magic bytes
         if (
           f.mimetype === 'application/octet-stream' ||
           f.mimetype === '' ||
           f.mimetype === 'application/unknown'
         ) {
-          if (ext === 'heic' || ext === 'heif') f.mimetype = 'image/heic';
-          else if (ext === 'jpg' || ext === 'jpeg') f.mimetype = 'image/jpeg';
-          else if (ext === 'png') f.mimetype = 'image/png';
-          else if (ext === 'webp') f.mimetype = 'image/webp';
-          else if (noExt && f.buffer.length > 3) {
-            const sig = f.buffer.slice(0, 12);
-            if (sig[0] === 0xFF && sig[1] === 0xD8) f.mimetype = 'image/jpeg';
-            else if (sig[0] === 0x89 && sig[1] === 0x50) f.mimetype = 'image/png';
-            else if (sig[0] === 0x52 && sig[1] === 0x49) f.mimetype = 'image/webp';
-            else f.mimetype = 'image/jpeg';
+          if (ext === 'heic' || ext === 'heif') {
+            f.mimetype = 'image/heic';
+          } else if (ext === 'jpg' || ext === 'jpeg') {
+            f.mimetype = 'image/jpeg';
+          } else if (noExt && f.buffer.length >= 2) {
+            // Magic bytes: FF D8 = JPEG
+            if (f.buffer[0] === 0xFF && f.buffer[1] === 0xD8) {
+              f.mimetype = 'image/jpeg';
+            } else {
+              f.mimetype = 'application/octet-stream'; // unknown — will be rejected below
+            }
+          } else {
+            f.mimetype = 'application/octet-stream';
           }
         }
+
+        // Step 2: normalize image/jpg → image/jpeg; image/heif → image/heic
         if (f.mimetype === 'image/jpg') f.mimetype = 'image/jpeg';
         if (f.mimetype === 'image/heif') f.mimetype = 'image/heic';
+        if (f.mimetype === 'image/heic-sequence') f.mimetype = 'image/heic';
+        if (f.mimetype === 'image/heif-sequence') f.mimetype = 'image/heic';
 
-        // ── Blob validation: reject empty buffers ─────────────────────────────
+        // Step 3: reject empty buffers
         if (!f.buffer || f.buffer.length === 0) {
           return res.status(400).json({
             error: `"${f.originalname}" is empty — the capture may have failed on the device.`,
           });
         }
 
-        if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
+        // Step 4: reject HEIC/HEIF with a clear message (Jimp cannot reliably convert on server)
+        if (f.mimetype === 'image/heic') {
           return res.status(400).json({
-            error: `"${f.originalname}" is not a supported image type (${f.mimetype}).`,
+            error:
+              'HEIC photos are not supported. Please enable "Most Compatible" in iPhone Camera settings (Settings → Camera → Formats → Most Compatible) or upload a JPEG.',
+          });
+        }
+
+        // Step 5: reject everything that is not JPEG
+        if (f.mimetype !== 'image/jpeg') {
+          return res.status(400).json({
+            error: `"${f.originalname}" is not a supported format (${f.mimetype}). Only JPEG photos are accepted from the camera.`,
+          });
+        }
+
+        // Step 6: verify JPEG magic bytes (FF D8) for files that claim to be JPEG
+        if (f.buffer.length >= 2 && !(f.buffer[0] === 0xFF && f.buffer[1] === 0xD8)) {
+          return res.status(400).json({
+            error: `"${f.originalname}" does not appear to be a valid JPEG file.`,
           });
         }
       }
@@ -217,9 +269,19 @@ export default async function handler(req: Request, res: Response) {
       const initialStatus = jobId ? 'assigned' : 'captured';
       const saved: Array<{ id: number; storageKey: string; url: string }> = [];
 
+      // Fetch company name once for watermark text
+      let companyName = 'IWillBuild';
+      try {
+        const co = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
+        if (co?.name) companyName = co.name;
+      } catch {
+        // non-fatal — watermark will use fallback text
+      }
+
       for (const file of files) {
+        // ── Step 1: compress / resize ─────────────────────────────────────────
         let compressed: Buffer = file.buffer;
-        let outMime: string = file.mimetype;
+        let outMime = 'image/jpeg';
         try {
           const result = await compressImageIfNeeded(file.buffer, file.mimetype);
           compressed = result.buffer;
@@ -228,12 +290,25 @@ export default async function handler(req: Request, res: Response) {
           // use raw file on compress failure
         }
 
-        const ext = outMime === 'image/png' ? 'png' : 'jpg';
-        const storageKey = `${randomUUID()}.${ext}`;
+        // ── Step 2: apply watermark to pixels before storage ──────────────────
+        // If watermarking fails, we do NOT save an unwatermarked file.
+        let watermarked: Buffer;
+        try {
+          watermarked = await applyWatermark(compressed, companyName);
+        } catch (wmErr) {
+          console.error('[camera-captures] Watermark failed — aborting upload:', wmErr);
+          return res.status(500).json({
+            error: 'Photo processing failed (watermark). Please try again.',
+          });
+        }
 
-        // ── Save to storage first ─────────────────────────────────────────────
+        // Final output is always JPEG
+        outMime = 'image/jpeg';
+        const storageKey = `${randomUUID()}.jpg`;
+
+        // ── Step 3: save watermarked JPEG to storage ──────────────────────────
         const storageResult = await saveFile({
-          buffer: compressed,
+          buffer: watermarked,
           originalName: file.originalname,
           mimeType: outMime,
           bucket: BUCKET,

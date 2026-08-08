@@ -1114,28 +1114,54 @@ async function runStartupMigrations() {
   // 1a-cc-cols. Ensure camera_captures has all expected columns.
   // Uses INFORMATION_SCHEMA to check existence first — avoids relying on
   // error-message text matching which is fragile across MySQL versions.
+  //
+  // IMPORTANT: db.execute() returns [rows, fields] as a 2-element tuple.
+  // Rows are at result[0] (an array); result[0][0] is the first row object.
+  // Casting the whole result as Array<{cnt}> and reading [0].cnt is WRONG —
+  // it reads the ResultSetHeader, not the first data row.
   for (const [colName, colDef] of [
     ['original_name', 'VARCHAR(500) NULL'],
     ['bucket',        'VARCHAR(100) NULL'],
   ] as [string, string][]) {
     try {
-      const ccColRows = await db.execute(
-        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME  = 'camera_captures'
-              AND COLUMN_NAME = ${colName}`
-      ) as unknown as Array<{ cnt: number }>;
-      const ccColExists = Number(ccColRows?.[0]?.cnt ?? 0) > 0;
+      let ccColExists = false;
+      try {
+        const ccColResult = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME  = 'camera_captures'
+                AND COLUMN_NAME = ${colName}`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+        ccColExists = Number(ccColResult[0]?.[0]?.cnt ?? 0) > 0;
+      } catch (checkErr: unknown) {
+        // INFORMATION_SCHEMA query itself failed — log the real nested error
+        // and fall through to the direct ALTER with duplicate-column suppression.
+        let checkErrMsg = String((checkErr as Error)?.message ?? checkErr);
+        const checkCause = (checkErr as { cause?: unknown })?.cause;
+        if (checkCause) checkErrMsg += ` | cause: ${String((checkCause as Error)?.message ?? checkCause)}`;
+        console.warn(`[startup-migration] camera_captures existence check for ${colName} failed:`, checkErrMsg);
+        // ccColExists stays false → will attempt ALTER below
+      }
+
       if (!ccColExists) {
-        await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN \`${colName}\` ${colDef}`));
-        console.log(`[startup-migration] camera_captures: added column ${colName}`);
+        try {
+          await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN \`${colName}\` ${colDef}`));
+          console.log(`[startup-migration] camera_captures: added column ${colName}`);
+        } catch (alterErr: unknown) {
+          const alterMsg = String((alterErr as Error)?.message ?? alterErr);
+          const isDup = alterMsg.includes('ER_DUP_FIELDNAME') ||
+                        alterMsg.includes('Duplicate column name') ||
+                        alterMsg.includes('1060');
+          if (isDup) {
+            // Column already exists — existence check was wrong or race condition; harmless.
+          } else {
+            console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, alterMsg);
+          }
+        }
       }
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
-      const isDup = msg.includes('ER_DUP_FIELDNAME') || msg.includes('Duplicate column name') || msg.includes('1060');
-      if (!isDup) {
-        console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, msg);
-      }
+      console.warn(`[startup-migration] camera_captures column ensure ${colName} unexpected error:`, msg);
     }
   }
 
@@ -1546,27 +1572,44 @@ async function runStartupMigrations() {
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
-      // First confirm the table itself exists — if not, skip silently
-      const tableRows = await db.execute(
+      // First confirm the table itself exists — if not, skip silently.
+      // db.execute() returns [rows, fields] tuple; rows are at result[0].
+      const tableResult = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(tableRows?.[0]?.cnt ?? 0) === 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(tableResult[0]?.[0]?.cnt ?? 0) === 0) continue;
 
-      const checkRows = await db.execute(
-        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
-      ) as unknown as Array<{ cnt: number }>;
-      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
-      if (!exists) {
-        const query = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
-        await db.execute(sql.raw(query));
-        console.log(`[startup-migration] Added ${table}.${column}`);
+      let colExists = false;
+      try {
+        const checkResult = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+        colExists = Number(checkResult[0]?.[0]?.cnt ?? 0) > 0;
+      } catch (checkErr: unknown) {
+        // INFORMATION_SCHEMA query failed — log and attempt direct ALTER
+        let checkMsg = String((checkErr as Error)?.message ?? checkErr);
+        const checkCause = (checkErr as { cause?: unknown })?.cause;
+        if (checkCause) checkMsg += ` | cause: ${String((checkCause as Error)?.message ?? checkCause)}`;
+        console.warn(`[startup-migration] existence check failed for ${table}.${column}:`, checkMsg);
+        // colExists stays false → attempt ALTER with dup suppression below
+      }
+
+      if (!colExists) {
+        try {
+          const query = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
+          await db.execute(sql.raw(query));
+          console.log(`[startup-migration] Added ${table}.${column}`);
+        } catch (alterErr: unknown) {
+          const alterMsg = String((alterErr as Error)?.message ?? alterErr);
+          const isDup = alterMsg.includes('ER_DUP_FIELDNAME') || alterMsg.includes('Duplicate column name');
+          if (!isDup) {
+            console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, alterMsg);
+          }
+        }
       }
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
-      const isDup = msg.includes('ER_DUP_FIELDNAME') || msg.includes('Duplicate column name');
-      if (!isDup) {
-        console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, msg);
-      }
+      console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, msg);
     }
   }
 
@@ -1577,17 +1620,17 @@ async function runStartupMigrations() {
     const colInfo = await db.execute(sql.raw(
       "SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS " +
       "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_todos' AND COLUMN_NAME = 'job_id'"
-    )) as unknown as Array<{ IS_NULLABLE: string }>;
-    if (colInfo?.[0]?.IS_NULLABLE === 'NO') {
+    )) as unknown as [Array<{ IS_NULLABLE: string }>, unknown];
+    if (colInfo[0]?.[0]?.IS_NULLABLE === 'NO') {
       // Drop the FK constraint first (MySQL requires this before making the column nullable)
       // Find the FK name dynamically
       const fkRows = await db.execute(sql.raw(
         "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
         "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_todos' " +
         "AND COLUMN_NAME = 'job_id' AND REFERENCED_TABLE_NAME IS NOT NULL"
-      )) as unknown as Array<{ CONSTRAINT_NAME: string }>;
-      if (fkRows?.length) {
-        for (const row of fkRows) {
+      )) as unknown as [Array<{ CONSTRAINT_NAME: string }>, unknown];
+      if (fkRows[0]?.length) {
+        for (const row of fkRows[0]) {
           try {
             await db.execute(sql.raw(`ALTER TABLE \`job_todos\` DROP FOREIGN KEY \`${row.CONSTRAINT_NAME}\``));
             console.log(`[startup-migration] Dropped FK ${row.CONSTRAINT_NAME} from job_todos`);
@@ -1635,14 +1678,14 @@ async function runStartupMigrations() {
       // Skip if table doesn't exist yet
       const tblRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(tblRows?.[0]?.cnt ?? 0) === 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(tblRows[0]?.[0]?.cnt ?? 0) === 0) continue;
 
       // Skip if index already exists
       const idxRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND INDEX_NAME = ${indexName}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(idxRows?.[0]?.cnt ?? 0) > 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(idxRows[0]?.[0]?.cnt ?? 0) > 0) continue;
 
       const indexType = unique ? 'UNIQUE INDEX' : 'INDEX';
       const query = `ALTER TABLE \`${table}\` ADD ${indexType} \`${indexName}\` ${columns}`;
@@ -1774,8 +1817,8 @@ async function runStartupMigrations() {
       // parse errors from stale published bundles that had invalid TEXT defaults.
       const existRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${name}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(existRows?.[0]?.cnt ?? 0) > 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(existRows[0]?.[0]?.cnt ?? 0) > 0) continue;
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
@@ -1839,8 +1882,8 @@ async function runStartupMigrations() {
     try {
       const existRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${name}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(existRows?.[0]?.cnt ?? 0) > 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(existRows[0]?.[0]?.cnt ?? 0) > 0) continue;
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
@@ -1982,8 +2025,8 @@ async function runStartupMigrations() {
     try {
       const checkRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = ${column}`
-      ) as unknown as Array<{ cnt: number }>;
-      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows[0]?.[0]?.cnt ?? 0) > 0;
       if (!exists) {
         await db.execute(sql.raw(`ALTER TABLE \`user\` ADD COLUMN \`${column}\` ${definition}`));
         console.log(`[startup-migration] Added user.${column}`);
@@ -2000,8 +2043,8 @@ async function runStartupMigrations() {
   try {
     const stRows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customers' AND COLUMN_NAME = 'stakeholder_type'`
-    ) as unknown as Array<{ cnt: number }>;
-    if (Number(stRows?.[0]?.cnt ?? 0) === 0) {
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(stRows[0]?.[0]?.cnt ?? 0) === 0) {
       await db.execute(sql.raw(`ALTER TABLE \`customers\` ADD COLUMN \`stakeholder_type\` VARCHAR(50) NULL DEFAULT 'Customer'`));
       console.log('[startup-migration] Added customers.stakeholder_type');
     }
@@ -2021,8 +2064,8 @@ async function runStartupMigrations() {
     try {
       const checkRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'manual_verification_log' AND COLUMN_NAME = ${column}`
-      ) as unknown as Array<{ cnt: number }>;
-      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows[0]?.[0]?.cnt ?? 0) > 0;
       if (!exists) {
         await db.execute(sql.raw(`ALTER TABLE \`manual_verification_log\` ADD COLUMN \`${column}\` ${definition}`));
         console.log(`[startup-migration] Added manual_verification_log.${column}`);
@@ -2047,8 +2090,8 @@ async function runStartupMigrations() {
     try {
       const checkRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME = ${column}`
-      ) as unknown as Array<{ cnt: number }>;
-      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows[0]?.[0]?.cnt ?? 0) > 0;
       if (!exists) {
         await db.execute(sql.raw(`ALTER TABLE \`companies\` ADD COLUMN \`${column}\` ${definition}`));
         console.log(`[startup-migration] Added companies.${column}`);
@@ -2112,8 +2155,8 @@ async function runStartupMigrations() {
   try {
     const prColRows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'platform_role'`
-    ) as unknown as Array<{ cnt: number }>;
-    if (Number(prColRows?.[0]?.cnt ?? 0) === 0) {
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(prColRows[0]?.[0]?.cnt ?? 0) === 0) {
       await db.execute(sql.raw(`ALTER TABLE \`profiles\` ADD COLUMN \`platform_role\` VARCHAR(30) NULL DEFAULT NULL`));
       console.log('[startup-migration] profiles.platform_role column added');
     }
@@ -2154,8 +2197,8 @@ async function runStartupMigrations() {
   try {
     const palRows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'platform_activity_log'`
-    ) as unknown as Array<{ cnt: number }>;
-    if (Number(palRows?.[0]?.cnt ?? 0) === 0) {
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(palRows[0]?.[0]?.cnt ?? 0) === 0) {
       await db.execute(sql.raw(
         "CREATE TABLE platform_activity_log (" +
         "  id                    BIGINT AUTO_INCREMENT PRIMARY KEY," +
@@ -2659,8 +2702,8 @@ async function runStartupMigrations() {
     try {
       const existRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${name}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(existRows?.[0]?.cnt ?? 0) > 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(existRows[0]?.[0]?.cnt ?? 0) > 0) continue;
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
@@ -2682,8 +2725,8 @@ async function runStartupMigrations() {
     try {
       const colRows = await db.execute(
         sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
-      ) as unknown as Array<{ cnt: number }>;
-      if (Number(colRows?.[0]?.cnt ?? 0) > 0) continue;
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(colRows[0]?.[0]?.cnt ?? 0) > 0) continue;
       await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
       console.log(`[startup-migration] Added ${column} to ${table}`);
     } catch (e: unknown) {
@@ -2699,8 +2742,8 @@ async function runStartupMigrations() {
   try {
     const smsPhoneRows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sms_verification_codes' AND COLUMN_NAME = 'phone'`
-    ) as unknown as Array<{ cnt: number }>;
-    if (Number(smsPhoneRows?.[0]?.cnt ?? 0) === 0) {
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(smsPhoneRows[0]?.[0]?.cnt ?? 0) === 0) {
       await db.execute(sql.raw(`ALTER TABLE \`sms_verification_codes\` ADD COLUMN \`phone\` VARCHAR(30) NOT NULL DEFAULT ''`));
       console.log('[startup-migration] sms_verification_codes.phone added');
     }
@@ -2716,8 +2759,8 @@ async function runStartupMigrations() {
   try {
     const wcRows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'white_card_number'`
-    ) as unknown as Array<{ cnt: number }>;
-    if (Number(wcRows?.[0]?.cnt ?? 0) === 0) {
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(wcRows[0]?.[0]?.cnt ?? 0) === 0) {
       await db.execute(sql.raw(`ALTER TABLE \`profiles\` ADD COLUMN \`white_card_number\` VARCHAR(100) NULL`));
       console.log('[startup-migration] profiles.white_card_number added');
     }
