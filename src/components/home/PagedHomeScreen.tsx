@@ -108,26 +108,30 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       />
 
-      {/* Sheet — matches JobPickerSheet.tsx style */}
-      <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none">
+      {/* Sheet — centered dialog on desktop, bottom sheet on mobile */}
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
         <motion.div
-          initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="pointer-events-auto w-full bg-white rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
+          className="pointer-events-auto w-full bg-white flex flex-col overflow-hidden shadow-2xl
+            rounded-t-3xl sm:rounded-2xl"
           style={{
-            maxHeight: 'min(560px, calc(100dvh - 80px))',
+            width: 'min(520px, calc(100vw - 32px))',
+            maxHeight: 'min(600px, calc(100dvh - 80px))',
             paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
           }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-1 shrink-0">
+          {/* Drag handle — mobile only */}
+          <div className="flex justify-center pt-3 pb-1 shrink-0 sm:hidden">
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
           {/* ── Job select ── */}
           {sheetState === 'job-select' && (
-            <>
+            <div className="flex flex-col flex-1 min-h-0">
               <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
@@ -175,7 +179,8 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
 
               <div className="h-px bg-gray-100 shrink-0 mx-4" />
 
-              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+              {/* Job list — flex-1 + min-h-0 so it scrolls inside the sheet */}
+              <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-1.5">
                 {jobs.length === 0 && !loadingJobs ? (
                   <p className="text-center text-gray-400 text-sm py-8">
                     {query ? 'No jobs match your search' : 'No active jobs found'}
@@ -198,7 +203,7 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
           {/* ── Uploading ── */}
