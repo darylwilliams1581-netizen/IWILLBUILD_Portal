@@ -189,8 +189,8 @@ function loadGoogleMaps(): Promise<void> {
       // The callback name is passed as &callback= — Google calls it when the
       // Maps JS API is fully initialised (not just when the script tag loads).
       const callbackName = `__gmapsReady_${Date.now()}`;
-      (window as Record<string, unknown>)[callbackName] = () => {
-        delete (window as Record<string, unknown>)[callbackName];
+      (window as unknown as Record<string, unknown>)[callbackName] = () => {
+        delete (window as unknown as Record<string, unknown>)[callbackName];
         // Double-check: if gm_authFailure fired before the callback, reject
         if (window.__gmapsAuthError) {
           reject(new Error(window.__gmapsAuthError));
@@ -212,7 +212,7 @@ function loadGoogleMaps(): Promise<void> {
       script.async = true;
       script.defer = true;
       script.onerror = () => {
-        delete (window as Record<string, unknown>)[callbackName];
+        delete (window as unknown as Record<string, unknown>)[callbackName];
         // Classify the error — onerror fires for network failures and CSP blocks.
         // Check if the browser reported a CSP violation (best-effort).
         const cspBlocked = window.__gmapsAuthError?.includes('CSP') ?? false;

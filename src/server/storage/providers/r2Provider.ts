@@ -1,7 +1,11 @@
 /**
  * Cloudflare R2 Storage Provider
  * ─────────────────────────────────────────────────────────────────────────────
- * R2 is S3-compatible, so this uses the AWS SDK v3 with a custom endpoint.
+ * R2 is S3-compatible. Uploads use a hand-rolled AWS Signature V4 PUT request
+ * (via Node's built-in `crypto`) to avoid the AWS SDK v3 hash-middleware bug
+ * that throws "Unable to calculate hash for flowing readable stream" when the
+ * SDK is bundled by Vite SSR.  Downloads and signed URLs still use the SDK
+ * (GET requests don't trigger the hash middleware).
  *
  * Required environment variables (set via Settings → Secrets):
  *   R2_ACCOUNT_ID          — Cloudflare account ID
@@ -9,31 +13,30 @@
  *   R2_SECRET_ACCESS_KEY   — R2 API token Secret Access Key
  *   R2_BUCKET              — R2 bucket name (e.g. "iwillbuild-files")
  *   R2_PUBLIC_URL          — Optional: public bucket URL for direct serving
- *                            (e.g. https://files.iwillbuild.com)
- *                            If omitted, signed URLs are used for all downloads.
  *
  * Object key pattern:  <bucket>/<storageKey>
- *   e.g.  job-photos/a1b2c3d4-uuid.jpg
- *
- * Signed URL expiry:   1 hour by default (configurable per-call)
- *
- * R2 docs: https://developers.cloudflare.com/r2/api/s3/
  */
 
-// AWS SDK loaded lazily — keeps it out of the SSR bundle (avoids OOM on build).
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
 import { getSecret } from '#airo/secrets';
 
-async function getS3() {
-  return import('@aws-sdk/client-s3') as Promise<typeof import('@aws-sdk/client-s3')>;
+// ── AWS SDK lazy imports — ONLY used for GET/DELETE/signed URLs, never for PUT ──
+// These are intentionally NOT imported at module scope so Vite SSR does not
+// bundle the SDK hash-middleware into the initial chunk.  saveFile() uses the
+// hand-rolled SigV4 PUT below and never touches these functions.
+
+async function getS3Lazy() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return import('@aws-sdk/client-s3') as Promise<any>;
 }
-async function getPresigner() {
-  return import('@aws-sdk/s3-request-presigner') as Promise<typeof import('@aws-sdk/s3-request-presigner')>;
+async function getPresignerLazy() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return import('@aws-sdk/s3-request-presigner') as Promise<any>;
 }
 
-// ── Client factory (lazy, singleton per process) ──────────────────────────────
+// ── Client factory (lazy, singleton — used for GET/DELETE/signed URLs only) ───
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _client: any | null = null;
@@ -51,7 +54,7 @@ async function getClient() {
     );
   }
 
-  const { S3Client } = await getS3();
+  const { S3Client } = await getS3Lazy();
   _client = new S3Client({
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -65,6 +68,24 @@ function getBucket(): string {
   const bucket = getSecret('R2_BUCKET') || process.env.R2_BUCKET;
   if (!bucket) throw new Error('[r2Provider] R2_BUCKET env var is not set.');
   return bucket;
+}
+
+function getAccountId(): string {
+  const id = getSecret('R2_ACCOUNT_ID') || process.env.R2_ACCOUNT_ID;
+  if (!id) throw new Error('[r2Provider] R2_ACCOUNT_ID env var is not set.');
+  return id;
+}
+
+function getAccessKey(): string {
+  const k = getSecret('R2_ACCESS_KEY_ID') || process.env.R2_ACCESS_KEY_ID;
+  if (!k) throw new Error('[r2Provider] R2_ACCESS_KEY_ID env var is not set.');
+  return k;
+}
+
+function getSecretKey(): string {
+  const k = getSecret('R2_SECRET_ACCESS_KEY') || process.env.R2_SECRET_ACCESS_KEY;
+  if (!k) throw new Error('[r2Provider] R2_SECRET_ACCESS_KEY env var is not set.');
+  return k;
 }
 
 /** Object key stored in the DB — includes the logical bucket as a prefix */
@@ -86,6 +107,123 @@ function extFromMime(mime: string): string {
   return map[mime] ?? 'bin';
 }
 
+// ── AWS Signature V4 helpers (no SDK — avoids hash-middleware crash) ──────────
+
+function sha256hex(data: Buffer | string): string {
+  return createHash('sha256').update(data).digest('hex');
+}
+
+function hmacSha256(key: Buffer | string, data: string): Buffer {
+  return createHmac('sha256', key).update(data).digest();
+}
+
+function signingKey(secretKey: string, dateStamp: string, region: string, service: string): Buffer {
+  const kDate    = hmacSha256(`AWS4${secretKey}`, dateStamp);
+  const kRegion  = hmacSha256(kDate, region);
+  const kService = hmacSha256(kRegion, service);
+  const kSigning = hmacSha256(kService, 'aws4_request');
+  return kSigning;
+}
+
+/**
+ * Upload a buffer directly to R2 via a hand-signed AWS Signature V4 PUT.
+ * This bypasses the AWS SDK v3 hash middleware entirely.
+ */
+async function putObjectDirect(opts: {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  r2Bucket: string;
+  key: string;
+  body: Buffer;
+  contentType: string;
+  contentDisposition: string;
+  metadata: Record<string, string>;
+}): Promise<void> {
+  const { accountId, accessKeyId, secretAccessKey, r2Bucket, key, body, contentType, contentDisposition, metadata } = opts;
+
+  const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const service = 's3';
+
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'; // YYYYMMDDTHHmmssZ
+  const dateStamp = amzDate.slice(0, 8); // YYYYMMDD
+
+  const payloadHash = sha256hex(body);
+
+  // Build canonical headers — must be sorted alphabetically by header name
+  const metaHeaders: Record<string, string> = {};
+  for (const [k, v] of Object.entries(metadata)) {
+    metaHeaders[`x-amz-meta-${k.toLowerCase()}`] = v;
+  }
+
+  const allHeaders: Record<string, string> = {
+    'content-disposition': contentDisposition,
+    'content-length': String(body.length),
+    'content-type': contentType,
+    'host': `${accountId}.r2.cloudflarestorage.com`,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+    ...metaHeaders,
+  };
+
+  const sortedHeaderNames = Object.keys(allHeaders).sort();
+  const canonicalHeaders = sortedHeaderNames.map(h => `${h}:${allHeaders[h]}\n`).join('');
+  const signedHeaders = sortedHeaderNames.join(';');
+
+  const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+  const canonicalRequest = [
+    'PUT',
+    `/${encodedKey}`,
+    '', // no query string
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256hex(Buffer.from(canonicalRequest)),
+  ].join('\n');
+
+  const sigKey = signingKey(secretAccessKey, dateStamp, region, service);
+  const signature = hmacSha256(sigKey, stringToSign).toString('hex');
+
+  const authHeader = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const url = `${endpoint}/${encodedKey}`;
+  const fetchHeaders: Record<string, string> = {
+    'Authorization': authHeader,
+    'Content-Disposition': contentDisposition,
+    'Content-Length': String(body.length),
+    'Content-Type': contentType,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+  };
+  for (const [k, v] of Object.entries(metaHeaders)) {
+    fetchHeaders[k] = v;
+  }
+
+  console.log(`[r2Provider] PUT ${url} size=${body.length} contentType=${contentType}`);
+
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: fetchHeaders,
+    body,
+    // @ts-expect-error — Node 18+ fetch accepts Buffer as body
+    duplex: 'half',
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`[r2Provider] PUT failed: ${response.status} ${response.statusText} — ${text}`);
+  }
+}
+
 // ── Provider implementation ───────────────────────────────────────────────────
 
 export const r2Provider: StorageProvider = {
@@ -93,42 +231,61 @@ export const r2Provider: StorageProvider = {
   supportsSignedUrls: true,
 
   async saveFile(input: SaveFileInput): Promise<SaveFileResult> {
-    const client = await getClient();
-    const { PutObjectCommand, GetObjectCommand } = await getS3();
-    const { getSignedUrl: awsGetSignedUrl } = await getPresigner();
-    const r2Bucket = getBucket();
-    const ext = extFromMime(input.mimeType);
-    const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
-    const key = objectKey(input.bucket, storageKey);
+    const accountId    = getAccountId();
+    const accessKeyId  = getAccessKey();
+    const secretKey    = getSecretKey();
+    const r2Bucket     = getBucket();
 
-    await client.send(new PutObjectCommand({
-      Bucket: r2Bucket,
-      Key: key,
-      Body: input.buffer,
-      ContentType: input.mimeType,
-      ContentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
-      Metadata: {
+    const ext        = extFromMime(input.mimeType);
+    const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
+    const key        = objectKey(input.bucket, storageKey);
+
+    // Ensure a true Node.js Buffer regardless of what Jimp / busboy returns
+    const body = Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer);
+
+    await putObjectDirect({
+      accountId,
+      accessKeyId,
+      secretAccessKey: secretKey,
+      r2Bucket,
+      key,
+      body,
+      contentType: input.mimeType,
+      contentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
+      metadata: {
         originalName: input.originalName,
         bucket: input.bucket,
       },
-    }));
+    });
 
     const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
-    const publicUrl = publicBase
-      ? `${publicBase}/${key}`
-      : await awsGetSignedUrl(client, new GetObjectCommand({ Bucket: r2Bucket, Key: key }), { expiresIn: 3600 });
+    let publicUrl: string;
+
+    if (publicBase) {
+      publicUrl = `${publicBase}/${key}`;
+    } else {
+      // Fall back to a signed URL via the SDK (GET — no hash middleware issue)
+      const client = await getClient();
+      const { GetObjectCommand } = await getS3Lazy();
+      const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
+      publicUrl = await awsGetSignedUrl(
+        client,
+        new GetObjectCommand({ Bucket: r2Bucket, Key: key }),
+        { expiresIn: 3600 },
+      );
+    }
 
     return {
       storageKey,
       provider: 'r2',
-      sizeBytes: input.buffer.length,
+      sizeBytes: body.length,
       publicUrl,
     };
   },
 
   async getDownloadStream(storageKey: string, bucket: string): Promise<GetFileResult> {
     const client = await getClient();
-    const { GetObjectCommand } = await getS3();
+    const { GetObjectCommand } = await getS3Lazy();
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
@@ -154,7 +311,7 @@ export const r2Provider: StorageProvider = {
   async deleteFile(storageKey: string, bucket: string): Promise<void> {
     try {
       const client = await getClient();
-      const { DeleteObjectCommand } = await getS3();
+      const { DeleteObjectCommand } = await getS3Lazy();
       const r2Bucket = getBucket();
       await client.send(new DeleteObjectCommand({
         Bucket: r2Bucket,
@@ -167,8 +324,8 @@ export const r2Provider: StorageProvider = {
 
   async getSignedUrl(storageKey: string, bucket: string, expiresInSeconds = 3600): Promise<string> {
     const client = await getClient();
-    const { GetObjectCommand } = await getS3();
-    const { getSignedUrl: awsGetSignedUrl } = await getPresigner();
+    const { GetObjectCommand } = await getS3Lazy();
+    const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
@@ -192,7 +349,7 @@ export const r2Provider: StorageProvider = {
 export async function testR2Connection(): Promise<{ ok: boolean; error?: string }> {
   try {
     const client = await getClient();
-    const { HeadObjectCommand } = await getS3();
+    const { HeadObjectCommand } = await getS3Lazy();
     const r2Bucket = getBucket();
 
     try {

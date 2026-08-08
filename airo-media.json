@@ -429,5 +429,19 @@
     },
     "uploadContentHash": "0e2e71a5c0b250bc8be9b82c391f73d1df0e968116e3a59507fef6e166bf5973",
     "caption": "software platform phone desktop interface trial"
+  },
+  "debug/upload-error-screenshot": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-upload-error-screenshot-0cc085f0.png",
+    "searchQuery": "job card management app interface screen",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-08T03:48:43.641Z",
+    "lastUpdated": "2026-08-08T03:48:43.641Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-upload-error-screenshot-0cc085f0.png": "f38wenbvln_1786160094974_file_7PuOO4dn_T.png"
+    },
+    "uploadContentHash": "b9230c9ee6b575c809fcb24adb3c054e2c623525de3eccf53d03c2c763a0a082",
+    "caption": "job card management app interface screen"
   }
 }

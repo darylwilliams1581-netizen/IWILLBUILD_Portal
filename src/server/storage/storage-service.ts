@@ -249,20 +249,25 @@ export async function compressImageIfNeeded(
     }
 
     if (mimeType === 'image/png') {
-      const out: Buffer = await img.getBuffer(JimpMime.png);
-      return { buffer: out, mimeType: 'image/png' };
+      // Jimp v1 getBuffer returns Uint8Array at runtime despite Buffer type annotation.
+      // Buffer.from() with a copy ensures a true Node.js Buffer for AWS SDK v3.
+      const raw = await img.getBuffer(JimpMime.png);
+      return { buffer: Buffer.from(raw), mimeType: 'image/png' };
     }
 
     // JPEG / WebP / HEIC → output as JPEG
-    const out: Buffer = await img.getBuffer(JimpMime.jpeg, { quality: JPEG_QUALITY });
-    return { buffer: out, mimeType: 'image/jpeg' };
+    const raw = await img.getBuffer(JimpMime.jpeg, { quality: JPEG_QUALITY });
+    return { buffer: Buffer.from(raw), mimeType: 'image/jpeg' };
   } catch {
     // Jimp failed to decode this image.
     // For HEIC/HEIF: store the raw buffer as-is rather than rejecting.
     // R2 stores any binary; the download proxy streams it back to the client.
     // iOS Safari can display HEIC natively; other browsers get the proxy URL.
     console.warn(`[storage] compressImageIfNeeded: Jimp failed for mime=${mimeType} — storing raw buffer`);
-    return { buffer, mimeType };
+    // Ensure the fallback is also a true Buffer copy, not a Uint8Array reference.
+    const fallback = Buffer.from(buffer);
+    console.warn(`[storage] fallback buffer type=${fallback.constructor.name} isBuffer=${Buffer.isBuffer(fallback)} byteLength=${fallback.byteLength}`);
+    return { buffer: fallback, mimeType };
   }
 }
 
@@ -352,9 +357,15 @@ export async function getImageDimensions(
 /**
  * Save a file to the active storage provider.
  * Does NOT compress — call compressImageIfNeeded() first if needed.
+ * Guarantees the buffer passed to the provider is a true Node.js Buffer
+ * (Jimp v1 getBuffer returns Uint8Array at runtime which breaks AWS SDK v3).
  */
 export async function saveFile(input: SaveFileInput): Promise<SaveFileResult> {
-  return activeProvider.saveFile(input);
+  const safeInput: SaveFileInput = {
+    ...input,
+    buffer: Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer),
+  };
+  return activeProvider.saveFile(safeInput);
 }
 
 /**
