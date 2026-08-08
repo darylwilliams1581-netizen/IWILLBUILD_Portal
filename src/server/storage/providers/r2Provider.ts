@@ -104,8 +104,11 @@ export const r2Provider: StorageProvider = {
     await client.send(new PutObjectCommand({
       Bucket: r2Bucket,
       Key: key,
-      Body: input.buffer,
+      // Always pass a true Buffer — Uint8Array or stream causes
+      // "Unable to calculate hash for flowing readable stream" in the SDK.
+      Body: Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer),
       ContentType: input.mimeType,
+      ContentLength: input.buffer.length,
       ContentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
       Metadata: {
         originalName: input.originalName,
