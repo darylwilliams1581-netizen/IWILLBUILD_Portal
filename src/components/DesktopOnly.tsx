@@ -101,25 +101,18 @@ export default function DesktopOnly({ children, pageName = 'This page' }: Deskto
         </p>
       </div>
 
-      {/* URL hint for web users — always show the production login URL */}
-      {!native && (
-        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 max-w-xs w-full">
-          <Monitor size={14} className="text-primary shrink-0" />
-          <span className="text-primary text-xs leading-snug">
-            Visit <span className="font-semibold">iwillbuild.com</span> on your computer
-          </span>
-        </div>
-      )}
-
-      {/* Native hint */}
-      {native && (
-        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 max-w-xs w-full">
-          <Monitor size={14} className="text-primary shrink-0" />
-          <span className="text-primary text-xs leading-snug">
-            Visit <span className="font-semibold">iwillbuild.com</span> on your computer
-          </span>
-        </div>
-      )}
+      {/* Login link — shown for both native and narrow-browser */}
+      <a
+        href="https://iwillbuild.com/login"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 max-w-xs w-full hover:bg-primary/20 transition-colors"
+      >
+        <Monitor size={14} className="text-primary shrink-0" />
+        <span className="text-primary text-xs leading-snug">
+          Log in at <span className="font-semibold underline underline-offset-2">iwillbuild.com/login</span>
+        </span>
+      </a>
     </div>
   );
 }
