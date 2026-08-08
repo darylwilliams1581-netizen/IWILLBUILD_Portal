@@ -320,10 +320,17 @@ function DashboardPage({
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
-      {/* Header row: title + Add Job button */}
+      {/* Header row: title + Job Photo button + Add Job button */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-foreground">Dashboard</span>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCameraSheetOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
+          >
+            <CameraIcon size={13} strokeWidth={2.5} />
+            Job Photo
+          </button>
           <button
             onClick={onNewJob}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
@@ -377,19 +384,7 @@ function DashboardPage({
           <span className="text-[10px] text-white/60 leading-tight">Vehicle inspection check</span>
         </button>
 
-        {/* ── Job Photo tile — full-width, spans both columns ── */}
-        <button
-          onClick={() => setCameraSheetOpen(true)}
-          className="col-span-2 flex items-center gap-4 px-4 py-4 rounded-2xl bg-violet-600 text-white shadow-sm active:scale-95 transition-transform"
-        >
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <CameraIcon size={20} strokeWidth={2} />
-          </div>
-          <div className="text-left">
-            <span className="text-sm font-bold leading-tight block">Job Photo</span>
-            <span className="text-[10px] text-white/60 leading-tight">Select a job and take a photo</span>
-          </div>
-        </button>
+        {/* ── end grid ── */}
       </div>
 
       <DashboardBanner userId={userId} />
