@@ -175,7 +175,7 @@
       { "label": "Site clean and tidy?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
       { "label": "All waste removed?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
       { "label": "Client satisfied with works?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "Pending review"] },
-      { "label": "Completion Photos", "fieldType": "photo" },
+      { "label": "Completion Photos", "fieldType": "photo", "settings": { "multiple": true } },
       { "label": "Client Signature", "fieldType": "signature", "required": true },
       { "label": "Contractor Signature", "fieldType": "signature", "required": true }
     ]
