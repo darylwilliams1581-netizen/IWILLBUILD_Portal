@@ -468,6 +468,17 @@ export default function MyAccountTab() {
         <h2 className="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
           <Paperclip size={16} className="text-slate-400" />Licence Attachments
           <span className="text-xs font-normal text-slate-400">({attachments.length}/5)</span>
+          {attachments.length < 5 && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              {uploading ? 'Uploading…' : 'Add File'}
+            </button>
+          )}
         </h2>
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <p className="text-xs text-slate-500 mb-4">Upload copies of your licences and cards — always have them on hand when on site.</p>
@@ -495,7 +506,11 @@ export default function MyAccountTab() {
                     <p className="text-sm font-medium text-slate-800 truncate">{att.filename}</p>
                     <p className="text-xs text-slate-400">{formatBytes(att.size)} · {new Date(att.uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   </div>
-                  <a href={att.url} download={att.filename} className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200">
+                  <a
+                    href={`/api/me/profile-attachments/${att.id}/download`}
+                    download={att.filename}
+                    className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200"
+                  >
                     <Download size={14} />
                   </a>
                   <button
@@ -514,15 +529,7 @@ export default function MyAccountTab() {
             </div>
           )}
           {attachments.length < 5 && attachments.length > 0 && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-            >
-              {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-              {uploading ? 'Uploading…' : 'Add File'}
-            </button>
+            <p className="text-xs text-slate-400 text-center pt-2">{5 - attachments.length} slot{5 - attachments.length !== 1 ? 's' : ''} remaining</p>
           )}
         </div>
       </div>
