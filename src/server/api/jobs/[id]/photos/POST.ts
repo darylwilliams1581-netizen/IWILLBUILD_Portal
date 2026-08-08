@@ -20,6 +20,20 @@ const PHOTO_BUCKET = 'job-photos';
 const MAX_PHOTOS_PER_JOB = 200;
 const PHOTO_MAX_BYTES = 20 * 1024 * 1024;
 
+// ── In-memory idempotency cache ───────────────────────────────────────────────
+// Prevents duplicate uploads when the client retries or iOS Safari replays a
+// request. Key = `${jobId}:${clientId}`, value = the already-saved response.
+// TTL: 5 minutes — long enough to cover any retry window.
+const idempotencyCache = new Map<string, { photos: Array<{ id: number; filename: string; url: string }>; expiresAt: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+function pruneIdempotencyCache() {
+  const now = Date.now();
+  for (const [k, v] of idempotencyCache) {
+    if (v.expiresAt < now) idempotencyCache.delete(k);
+  }
+}
+
 export default async function handler(req: Request, res: Response) {
   let parsed;
   try {
@@ -90,6 +104,18 @@ export default async function handler(req: Request, res: Response) {
 
     const jobId = parseInt(String(req.params.id), 10);
     if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
+
+    // ── Idempotency check — deduplicate retried/replayed requests ─────────────
+    const clientId = (req.headers['x-client-id'] as string | undefined)?.trim();
+    if (clientId) {
+      pruneIdempotencyCache();
+      const cacheKey = `${jobId}:${clientId}`;
+      const cached = idempotencyCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        console.log(`[photos POST] idempotency hit: jobId=${jobId} clientId=${clientId} — returning cached response`);
+        return res.status(201).json({ photos: cached.photos });
+      }
+    }
 
     const job = await db.query.jobs.findFirst({
       where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)),
@@ -268,6 +294,12 @@ export default async function handler(req: Request, res: Response) {
     }
 
     res.status(201).json({ photos: saved });
+
+    // Cache the result so any immediate retry returns the same response
+    if (clientId) {
+      const cacheKey = `${jobId}:${clientId}`;
+      idempotencyCache.set(cacheKey, { photos: saved, expiresAt: Date.now() + IDEMPOTENCY_TTL_MS });
+    }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('POST /api/jobs/:id/photos error:', msg);

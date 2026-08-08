@@ -142,6 +142,7 @@ function uploadFileXhr(
   jobId: number,
   file: File,
   onProgress: (pct: number) => void,
+  clientId: string,
 ): Promise<{ id: number }> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
@@ -150,6 +151,8 @@ function uploadFileXhr(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/jobs/${jobId}/photos`);
     xhr.withCredentials = true;
+    // Server uses this to deduplicate retried/replayed requests
+    xhr.setRequestHeader('X-Client-Id', clientId);
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
@@ -293,6 +296,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
           jobId,
           file,
           (pct) => updateItem(clientId, { progress: pct }),
+          clientId,
         );
 
         // Revoke blob URL — server is now the source of truth

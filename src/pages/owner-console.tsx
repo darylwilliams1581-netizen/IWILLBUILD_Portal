@@ -813,7 +813,8 @@ export default function OwnerConsolePage() {
                         body: JSON.stringify({ reason: 'Developer support session' }),
                       });
                       if (r.ok) {
-                        window.location.href = '/dashboard';
+                        // Open in a new tab so the owner console session is preserved
+                        window.open('/home', '_blank', 'noopener');
                       } else {
                         const d = await r.json() as { error?: string };
                         alert(d.error ?? 'Failed to start impersonation.');
