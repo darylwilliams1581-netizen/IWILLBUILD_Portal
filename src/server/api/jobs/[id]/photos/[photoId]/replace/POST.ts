@@ -104,15 +104,24 @@ export default async function handler(req: Request, res: Response) {
       storageKey,
     });
 
-    // Delete old storage file (best-effort)
+    // Delete old storage files (best-effort) — original + stale thumbnail/preview
     try { await deleteFile(photo.filename, PHOTO_BUCKET); } catch { /* ignore */ }
+    if (photo.thumbnailKey) {
+      try { await deleteFile(photo.thumbnailKey, PHOTO_BUCKET); } catch { /* ignore */ }
+    }
+    if (photo.previewKey) {
+      try { await deleteFile(photo.previewKey, PHOTO_BUCKET); } catch { /* ignore */ }
+    }
 
-    // Update job_photos
+    // Update job_photos — also clear stale thumbnail/preview keys since the
+    // underlying file has been replaced and those old keys are now deleted.
     await db.update(jobPhotos).set({
       filename: result.storageKey,
       originalName: file.originalname,
       mimeType: outMime,
       sizeBytes: result.sizeBytes,
+      thumbnailKey: null,
+      previewKey: null,
     }).where(eq(jobPhotos.id, photoId));
 
     // Update canonical media_assets row if linked
