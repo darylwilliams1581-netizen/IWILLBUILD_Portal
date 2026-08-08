@@ -398,6 +398,7 @@ import jobs_id_photos_photoId_delete_363 from "./api/jobs/[id]/photos/[photoId]/
 import jobs_id_photos_photoId_patch_364 from "./api/jobs/[id]/photos/[photoId]/PATCH";
 import jobs_id_photos_photoId_download_get_365 from "./api/jobs/[id]/photos/[photoId]/download/GET";
 import jobs_id_photos_photoId_replace_post_366 from "./api/jobs/[id]/photos/[photoId]/replace/POST";
+import jobs_id_photos_photoId_lock_post from "./api/jobs/[id]/photos/[photoId]/lock/POST";
 import jobs_id_photos_photoId_report_image_get_367 from "./api/jobs/[id]/photos/[photoId]/report-image/GET";
 import jobs_id_progress_get_368 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_369 from "./api/jobs/[id]/progress/PUT";
@@ -3278,6 +3279,7 @@ app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_363);
 app.patch("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_patch_364);
 app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_365);
 app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace_post_366);
+app.post("/api/jobs/:id/photos/:photoId/lock", jobs_id_photos_photoId_lock_post);
 app.get("/api/jobs/:id/photos/:photoId/report-image", jobs_id_photos_photoId_report_image_get_367);
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_368);
 app.put("/api/jobs/:id/progress", jobs_id_progress_put_369);

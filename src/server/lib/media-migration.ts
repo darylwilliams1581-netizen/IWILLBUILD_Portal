@@ -217,5 +217,102 @@ export async function runMediaAssetsMigration(): Promise<void> {
     }
   }
 
+  // ── 6. Add locked_at to media_assets (canonical lock timestamp) ───────────────
+  if (!(await columnExists('media_assets', 'locked_at'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`media_assets\` ADD COLUMN \`locked_at\` DATETIME NULL`));
+      console.log('[media-migration] media_assets.locked_at added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] media_assets.locked_at alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 7. Add locked_by_user_id to media_assets ──────────────────────────────────
+  if (!(await columnExists('media_assets', 'locked_by_user_id'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`media_assets\` ADD COLUMN \`locked_by_user_id\` VARCHAR(36) NULL`));
+      console.log('[media-migration] media_assets.locked_by_user_id added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] media_assets.locked_by_user_id alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 8. Add locked_at to job_photos ────────────────────────────────────────────
+  if (!(await columnExists('job_photos', 'locked_at'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`job_photos\` ADD COLUMN \`locked_at\` DATETIME NULL`));
+      console.log('[media-migration] job_photos.locked_at added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] job_photos.locked_at alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 9. Add locked_by_user_id to job_photos ────────────────────────────────────
+  if (!(await columnExists('job_photos', 'locked_by_user_id'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`job_photos\` ADD COLUMN \`locked_by_user_id\` VARCHAR(36) NULL`));
+      console.log('[media-migration] job_photos.locked_by_user_id added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] job_photos.locked_by_user_id alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 10. Add locked_by_name to job_photos ──────────────────────────────────────
+  if (!(await columnExists('job_photos', 'locked_by_name'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`job_photos\` ADD COLUMN \`locked_by_name\` VARCHAR(255) NULL`));
+      console.log('[media-migration] job_photos.locked_by_name added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] job_photos.locked_by_name alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 11. Add status to job_photos ('draft' | 'locked') ─────────────────────────
+  if (!(await columnExists('job_photos', 'status'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`job_photos\` ADD COLUMN \`status\` VARCHAR(20) NOT NULL DEFAULT 'draft'`));
+      console.log('[media-migration] job_photos.status added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] job_photos.status alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 12. Add media_asset_id FK to job_photos ───────────────────────────────────
+  if (!(await columnExists('job_photos', 'media_asset_id'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`job_photos\` ADD COLUMN \`media_asset_id\` INT NULL`));
+      console.log('[media-migration] job_photos.media_asset_id added');
+    } catch (e: unknown) {
+      if (!mediaMigrationIsDupColumn(e)) {
+        console.warn('[media-migration] job_photos.media_asset_id alter failed:', mediaMigrationErrMsg(e));
+      }
+    }
+  }
+
+  // ── 13. Index on job_photos.status for fast locked-photo queries ──────────────
+  if (!(await indexExists('job_photos', 'idx_jp_status'))) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`job_photos\` ADD INDEX \`idx_jp_status\` (\`status\`)`));
+      console.log('[media-migration] job_photos idx_jp_status added');
+    } catch (e: unknown) {
+      const msg = mediaMigrationErrMsg(e);
+      if (!msg.includes('Duplicate key name') && !msg.includes('ER_DUP_KEYNAME')) {
+        console.warn('[media-migration] job_photos idx_jp_status failed:', msg);
+      }
+    }
+  }
+
   console.log('[media-migration] all media asset migrations complete');
 }

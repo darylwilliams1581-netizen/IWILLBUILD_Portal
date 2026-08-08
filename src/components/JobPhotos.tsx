@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload,
@@ -18,10 +19,13 @@ import {
   Clock,
   CheckSquare,
   Square,
+  Lock,
+  PenLine,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
 import BatchUploadSummary from '@/components/BatchUploadSummary';
+import PhotoEditor from '@/components/PhotoEditor';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +50,15 @@ export interface JobPhoto {
   /** Original image dimensions if known */
   imageWidth: number | null;
   imageHeight: number | null;
+  // ── Lock fields ────────────────────────────────────────────────────────────
+  /** 'draft' (default) or 'locked' */
+  status: 'draft' | 'locked';
+  /** ISO timestamp when the photo was locked */
+  lockedAt: string | null;
+  lockedByUserId: string | null;
+  lockedByName: string | null;
+  /** FK to canonical media_assets row */
+  mediaAssetId: number | null;
 }
 
 interface JobPhotosProps {
@@ -335,11 +348,13 @@ interface LightboxProps {
   onNavigate: (i: number) => void;
   onDelete: (photo: JobPhoto) => void;
   onEdit: (photo: JobPhoto) => void;
+  onOpenEditor: (photo: JobPhoto) => void;
   deleting: number | null;
 }
 
-function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, deleting }: LightboxProps) {
+function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, onOpenEditor, deleting }: LightboxProps) {
   const photo = photos[index];
+  const isLocked = photo.status === 'locked';
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -357,11 +372,31 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/92">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Edit"><Pencil size={16} /></button>
+        {/* Edit & Lock — canvas editor, only for unlocked photos */}
+        {!isLocked && (
+          <button onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 text-black text-xs font-bold transition-colors"
+            title="Edit & Lock">
+            <PenLine size={13} /> Edit &amp; Lock
+          </button>
+        )}
+        {/* Legacy label/rotate edit */}
+        {!isLocked && (
+          <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }}
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Edit label / rotate">
+            <Pencil size={16} />
+          </button>
+        )}
+        {/* Lock badge */}
+        {isLocked && (
+          <span className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded-lg text-amber-400 text-xs font-semibold">
+            <Lock size={12} /> Locked
+          </span>
+        )}
         <button onClick={() => { const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }}
           className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Download"><Download size={16} /></button>
-        <button onClick={() => onDelete(photo)} disabled={deleting === photo.id}
-          className="p-2 rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-50" title="Delete">
+        <button onClick={() => onDelete(photo)} disabled={deleting === photo.id || isLocked}
+          className="p-2 rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-50" title={isLocked ? 'Locked photos cannot be deleted' : 'Delete'}>
           {deleting === photo.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
         </button>
         <button onClick={onClose} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Close"><X size={16} /></button>
@@ -384,6 +419,11 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
           {photo.label && <p className="text-white font-semibold text-sm mb-0.5">{photo.label}</p>}
           <p className="text-white/50 text-xs">{photo.originalName ?? photo.filename}{photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}</p>
           {photo.uploadedByName && <p className="text-white/40 text-xs mt-0.5">{photo.uploadedByName} · {formatDateTime(photo.createdAt)}</p>}
+          {isLocked && photo.lockedByName && (
+            <p className="text-amber-400/80 text-xs mt-0.5 flex items-center justify-center gap-1">
+              <Lock size={10} /> Locked by {photo.lockedByName}
+            </p>
+          )}
           <p className="text-white/25 text-xs mt-0.5">{index + 1} / {photos.length}</p>
         </div>
       </div>
@@ -415,10 +455,11 @@ const PhotoCard = memo(function PhotoCard({
   photo, index, viewSize, isSelected, selectMode, bust,
   onTap, onToggleSelect, onEdit, onDelete,
 }: PhotoCardProps) {
+  const isLocked = photo.status === 'locked';
   return (
     <div
       className={`group relative flex flex-col ${VIEW_RADIUS[viewSize]} overflow-hidden bg-slate-100 border transition-all ${
-        isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200'
+        isSelected ? 'border-primary ring-2 ring-primary/30' : isLocked ? 'border-amber-300' : 'border-slate-200'
       }`}
     >
       {/* Thumbnail */}
@@ -444,6 +485,13 @@ const PhotoCard = memo(function PhotoCard({
           />
         )}
 
+        {/* Lock badge — top-left corner */}
+        {isLocked && (
+          <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/90 text-black rounded text-[9px] font-bold pointer-events-none">
+            <Lock size={8} /> Locked
+          </div>
+        )}
+
         {/* Select overlay */}
         {selectMode && (
           <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-primary/20' : 'bg-black/0 hover:bg-black/10'}`}>
@@ -461,15 +509,19 @@ const PhotoCard = memo(function PhotoCard({
         {/* Small-view: action buttons on hover */}
         {!selectMode && viewSize === 'small' && (
           <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-            <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
+            {!isLocked && (
+              <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
+            )}
+            {!isLocked && (
+              <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
+            )}
           </div>
         )}
       </div>
 
       {/* Metadata strip — medium and large only */}
       {viewSize !== 'small' && (
-        <div className={`bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
+        <div className={`${isLocked ? 'bg-amber-50' : 'bg-slate-50'} border-t ${isLocked ? 'border-amber-200' : 'border-slate-200'} flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
           <div className="flex items-start justify-between gap-1">
             <div className="min-w-0 flex-1">
               {photo.label
@@ -477,16 +529,24 @@ const PhotoCard = memo(function PhotoCard({
                 : <p className="text-xs text-slate-500 italic truncate">{photo.originalName ?? photo.filename}</p>
               }
             </div>
-            {!selectMode && (
+            {!selectMode && !isLocked && (
               <div className="flex items-center gap-0.5 shrink-0">
                 <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
                 <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
               </div>
             )}
+            {!selectMode && isLocked && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
+              </div>
+            )}
           </div>
           {viewSize === 'large' && photo.uploadedByName && (
             <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
+          )}
+          {isLocked && photo.lockedByName && (
+            <p className="text-[10px] text-amber-700 flex items-center gap-1 truncate font-semibold"><Lock size={9} className="shrink-0" />Locked by {photo.lockedByName}</p>
           )}
           <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
         </div>
@@ -515,6 +575,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
   const [editPhoto, setEditPhoto] = useState<JobPhoto | null>(null);
+  const [editorPhoto, setEditorPhoto] = useState<JobPhoto | null>(null);
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
   const [summaryDismissed, setSummaryDismissed] = useState(false);
 
@@ -715,6 +776,12 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
+    // Locked photos cannot be deleted
+    if (deleteConfirm.status === 'locked') {
+      setError('Locked photos cannot be deleted.');
+      setDeleteConfirm(null);
+      return;
+    }
     setDeleting(deleteConfirm.id);
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos/${deleteConfirm.id}`, { method: 'DELETE', credentials: 'include' });
@@ -737,6 +804,14 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     setCacheBust((prev) => ({ ...prev, [updated.id]: Date.now() }));
     if (editPhoto?.id === updated.id) setEditPhoto(updated);
     // Invalidate cache so next visit gets fresh data
+    photoCache.delete(jobId);
+  };
+
+  // ── Editor (canvas) saved ──────────────────────────────────────────────────
+
+  const handleEditorSaved = (updated: JobPhoto) => {
+    setPhotos((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+    setCacheBust((prev) => ({ ...prev, [updated.id]: Date.now() }));
     photoCache.delete(jobId);
   };
 
@@ -973,6 +1048,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           onNavigate={setLightboxIndex}
           onDelete={(p) => setDeleteConfirm(p)}
           onEdit={(p) => setEditPhoto(p)}
+          onOpenEditor={(p) => { setLightboxIndex(null); setEditorPhoto(p); }}
           deleting={deleting}
         />
       )}
@@ -984,6 +1060,15 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           cacheBust={cacheBust}
           onClose={() => setEditPhoto(null)}
           onSaved={handleEditSaved}
+        />
+      )}
+
+      {/* Canvas photo editor — full-screen, mounted when open */}
+      {editorPhoto && (
+        <PhotoEditor
+          photo={editorPhoto}
+          onClose={() => setEditorPhoto(null)}
+          onSaved={handleEditorSaved}
         />
       )}
 
