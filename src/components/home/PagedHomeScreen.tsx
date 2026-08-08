@@ -404,27 +404,27 @@ function DashboardPage({
         <div className="flex-1" />
 
         {/* Notification bell */}
-        <div className="[&_button]:w-11 [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-white/8 [&_button]:border [&_button]:border-white/10 [&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-white/60 [&_button:hover]:text-white [&_button:hover]:bg-white/12 [&_button]:transition-all [&_button]:active:scale-95">
+        <div className="[&_button]:w-11 [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-slate-700 [&_button]:border [&_button]:border-slate-600 [&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-slate-200 [&_button:hover]:text-white [&_button:hover]:bg-slate-600 [&_button]:transition-all [&_button]:active:scale-95">
           <NotificationBell />
         </div>
 
         {/* Profile */}
         <button
           onClick={onProfile}
-          className="w-11 h-11 rounded-xl bg-violet-500/20 border border-violet-400/25 flex items-center justify-center hover:bg-violet-500/35 active:scale-95 transition-all"
+          className="w-11 h-11 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all"
           aria-label="Profile"
         >
-          <User size={18} className="text-violet-300" />
+          <User size={18} className="text-white" />
         </button>
 
         {/* Logout */}
         <button
           onClick={onLogout}
-          className="w-11 h-11 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/25 active:scale-95 transition-all"
+          className="w-11 h-11 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all"
           aria-label="Log out"
           title="Log out"
         >
-          <LogOut size={16} className="text-white/40" />
+          <LogOut size={16} className="text-slate-200" />
         </button>
       </div>
 
