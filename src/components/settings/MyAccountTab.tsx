@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
+import AppLockSettings from '@/components/settings/AppLockSettings';
 import PhoneInput from '@/components/ui/PhoneInput';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
@@ -575,6 +576,7 @@ export default function MyAccountTab() {
 
       {/* ── Two-Factor Authentication ─────────────────────────────────── */}
       <div>
+        <AppLockSettings userEmail={me?.user?.email ?? ''} />
         <SecurityTab />
       </div>
     </div>
