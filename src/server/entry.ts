@@ -1111,32 +1111,32 @@ async function runStartupMigrations() {
     }
   }
 
-  // 1a-cc-cols. Ensure camera_captures has all expected columns
-  // (ALTER TABLE is idempotent via the duplicate-column error guard below)
-  for (const [colDef, colName] of [
-    [`original_name VARCHAR(500) NULL`, 'original_name'],
-    [`bucket VARCHAR(100) NULL`, 'bucket'],
+  // 1a-cc-cols. Ensure camera_captures has all expected columns.
+  // Uses INFORMATION_SCHEMA to check existence first — avoids relying on
+  // error-message text matching which is fragile across MySQL versions.
+  for (const [colName, colDef] of [
+    ['original_name', 'VARCHAR(500) NULL'],
+    ['bucket',        'VARCHAR(100) NULL'],
   ] as [string, string][]) {
     try {
-      await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN ${colDef}`));
-      console.log(`[startup-migration] camera_captures: added column ${colName}`);
+      const ccColRows = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME  = 'camera_captures'
+              AND COLUMN_NAME = ${colName}`
+      ) as unknown as Array<{ cnt: number }>;
+      const ccColExists = Number(ccColRows?.[0]?.cnt ?? 0) > 0;
+      if (!ccColExists) {
+        await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN \`${colName}\` ${colDef}`));
+        console.log(`[startup-migration] camera_captures: added column ${colName}`);
+      }
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
-      // ER_DUP_FIELDNAME = column already exists — expected on every run after first
-      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+      const isDup = msg.includes('ER_DUP_FIELDNAME') || msg.includes('Duplicate column name') || msg.includes('1060');
+      if (!isDup) {
         console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, msg);
       }
     }
-        // Try IF NOT EXISTS as a fallback (MySQL 8+ / MariaDB 10.3+)
-        if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME') && !msg.includes('1060')) {
-          try {
-            await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN IF NOT EXISTS ${colDef}`));
-            console.log(`[startup-migration] camera_captures: added column ${colName} (IF NOT EXISTS path)`);
-          } catch (e2: unknown) {
-            console.warn(`[startup-migration] camera_captures ALTER IF NOT EXISTS ${colName}: ${String((e2 as Error)?.message ?? e2)}`);
-          }
-        }
-
   }
 
   // Make captured_at nullable so ISO-format strings that MySQL rejects fall back to NOW()
@@ -1508,11 +1508,13 @@ async function runStartupMigrations() {
     { table: 'profiles', column: 'emergency_contact_name', definition: 'VARCHAR(255) NULL' },
     { table: 'profiles', column: 'emergency_contact_phone',definition: 'VARCHAR(50) NULL' },
     { table: 'profiles', column: 'profile_attachments',    definition: 'TEXT NULL' },
-    // ── job_photos: thumbnail + preview + dimensions + uploader (v2) ────────
+    // ── job_photos: all optional columns (v2) ────────────────────────────────
     { table: 'job_photos', column: 'original_name',         definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'label',                 definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'mime_type',             definition: 'VARCHAR(100) NULL' },
+    { table: 'job_photos', column: 'size_bytes',            definition: 'INT NULL' },
     { table: 'job_photos', column: 'uploaded_by_user_id',   definition: 'VARCHAR(36) NULL' },
     { table: 'job_photos', column: 'uploaded_by_name',      definition: 'VARCHAR(255) NULL' },
-    { table: 'job_photos', column: 'size_bytes',            definition: 'INT NULL' },
     { table: 'job_photos', column: 'caption',               definition: 'TEXT NULL' },
     { table: 'job_photos', column: 'category',              definition: 'VARCHAR(100) NULL' },
     { table: 'job_photos', column: 'thumbnail_key',         definition: 'VARCHAR(255) NULL' },
