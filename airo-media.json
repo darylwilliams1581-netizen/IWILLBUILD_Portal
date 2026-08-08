@@ -289,22 +289,24 @@
   },
   "reference/screenshot-8": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-6e997724.jpg",
-    "searchQuery": "livetrack stealth gps tracker device",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-173cd516.jpg",
+    "searchQuery": "job management interface with handwritten notes photos",
     "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-8-6e997724.jpg",
       "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg",
       "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg"
     ],
     "userModified": true,
     "createdAt": "2026-07-18T04:43:01.246Z",
-    "lastUpdated": "2026-07-28T05:03:07.680Z",
+    "lastUpdated": "2026-08-08T09:46:39.888Z",
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg",
       "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg": "f38wenbvln_1784518145049_file_6NcchjcUGF.jpg",
-      "/airo-assets/uploads/reference-screenshot-8-6e997724.jpg": "f38wenbvln_1785211270778_file_GhKCh2FWjk.jpg"
+      "/airo-assets/uploads/reference-screenshot-8-6e997724.jpg": "f38wenbvln_1785211270778_file_GhKCh2FWjk.jpg",
+      "/airo-assets/uploads/reference-screenshot-8-173cd516.jpg": "f38wenbvln_1786175896352_file_Ny4QKm5OJN.jpg"
     },
-    "uploadContentHash": "7d3c8647a786a407c1e02785316c6192547f47ddc01303744fe43986c00acf68",
-    "caption": "livetrack stealth gps tracker device"
+    "uploadContentHash": "8a5d4998c0238ed61512fe273887d38a0496d022fbbd3c193ebf4636bae58e84",
+    "caption": "job management interface with handwritten notes photos"
   },
   "uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv": {
     "mediaType": "image",
@@ -418,17 +420,20 @@
   },
   "reference/screenshot-latest": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg",
-    "searchQuery": "software platform phone desktop interface trial",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg",
+    "searchQuery": "photo assignment interface with status indicator",
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-08-07T23:30:34.817Z",
-    "lastUpdated": "2026-08-07T23:30:34.817Z",
+    "lastUpdated": "2026-08-08T09:46:39.679Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg": "f38wenbvln_1786145204557_file_bj40l5fLP-.jpg"
+      "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg": "f38wenbvln_1786145204557_file_bj40l5fLP-.jpg",
+      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg": "f38wenbvln_1786175987519_file_Qb8jN3r_R1.jpg"
     },
-    "uploadContentHash": "0e2e71a5c0b250bc8be9b82c391f73d1df0e968116e3a59507fef6e166bf5973",
-    "caption": "software platform phone desktop interface trial"
+    "uploadContentHash": "d6002d935f94564ce0bd732463a3005c977c529770ce6dcb93352dbb955f6522",
+    "caption": "photo assignment interface with status indicator"
   },
   "debug/upload-error-screenshot": {
     "mediaType": "image",
