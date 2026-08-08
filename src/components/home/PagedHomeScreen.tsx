@@ -19,7 +19,7 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, FileSpreadsheet, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, ExternalLink, Wrench, BookOpen, List } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
@@ -195,15 +195,17 @@ function DashboardPage({
 // "Desktop features" link card at the bottom.
 
 const DESKTOP_ONLY_FEATURES = [
-  { label: 'Doc Studio',   icon: FileText,        desc: 'Build document templates' },
-  { label: 'Form Studio',  icon: ClipboardList,   desc: 'Design custom forms' },
-  { label: 'Estimating',   icon: Calculator,      desc: 'Create detailed estimates' },
-  { label: 'Reports',      icon: BarChart2,       desc: 'Analytics & reporting' },
-  { label: 'Timesheets',   icon: FileSpreadsheet, desc: 'Manage timesheets' },
+  { label: 'Doc Studio',     icon: FileText,        desc: 'Build & manage document templates' },
+  { label: 'Form Studio',    icon: ClipboardList,   desc: 'Design custom forms & checklists' },
+  { label: 'Estimating',     icon: Calculator,      desc: 'Create detailed job estimates' },
+  { label: 'Asset Manager',  icon: Wrench,          desc: 'Equipment register & inspections' },
+  { label: 'Studio Library', icon: BookOpen,        desc: 'Shared content & block library' },
+  { label: 'Global Lists',   icon: List,            desc: 'Manage dropdown & list values' },
+  { label: 'User Logs',      icon: BarChart2,       desc: 'Sign-in, fleet & activity reports' },
 ];
 
 /** Keys that are desktop-only and should be hidden from the Manage tile grid */
-const DESKTOP_ONLY_KEYS = new Set(['studio_docs', 'studio_forms', 'estimating']);
+const DESKTOP_ONLY_KEYS = new Set(['studio_docs', 'studio_forms', 'estimating', 'equipment']);
 
 function ManagePage({
   icons,
