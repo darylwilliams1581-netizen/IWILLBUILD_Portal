@@ -1127,6 +1127,16 @@ async function runStartupMigrations() {
         console.warn(`[startup-migration] camera_captures ALTER ${colName}:`, msg);
       }
     }
+        // Try IF NOT EXISTS as a fallback (MySQL 8+ / MariaDB 10.3+)
+        if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME') && !msg.includes('1060')) {
+          try {
+            await db.execute(sql.raw(`ALTER TABLE camera_captures ADD COLUMN IF NOT EXISTS ${colDef}`));
+            console.log(`[startup-migration] camera_captures: added column ${colName} (IF NOT EXISTS path)`);
+          } catch (e2: unknown) {
+            console.warn(`[startup-migration] camera_captures ALTER IF NOT EXISTS ${colName}: ${String((e2 as Error)?.message ?? e2)}`);
+          }
+        }
+
   }
 
   // Make captured_at nullable so ISO-format strings that MySQL rejects fall back to NOW()

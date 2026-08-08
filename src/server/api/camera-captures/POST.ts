@@ -153,7 +153,15 @@ export default async function handler(req: Request, res: Response) {
         // Note: 'bucket' column may not exist on older DB instances (migration pending).
       // We use a conditional INSERT that works whether the column exists or not.
       // The bucket value is always the BUCKET constant so it's safe to omit.
+      // ── Tiered INSERT — gracefully handles older DB schemas ─────────────────
+      // Tier 1: full schema (bucket + original_name)
+      // Tier 2: no bucket column
+      // Tier 3: no bucket AND no original_name column (oldest live schema)
       let insertResult;
+      const isUnknownCol = (e: unknown) => {
+        const m = String((e as Error)?.message ?? e);
+        return m.includes('Unknown column') || m.includes('ER_BAD_FIELD_ERROR') || m.includes("doesn't exist");
+      };
       try {
         insertResult = await db.execute(sql`
           INSERT INTO camera_captures
@@ -164,10 +172,10 @@ export default async function handler(req: Request, res: Response) {
              ${BUCKET}, ${outMime}, ${storageResult.sizeBytes},
              ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
         `);
-      } catch (bucketColErr) {
-        const bucketMsg = String((bucketColErr as Error)?.message ?? bucketColErr);
-        // If the bucket column doesn't exist yet, retry without it
-        if (bucketMsg.includes('bucket') || bucketMsg.includes('Unknown column')) {
+      } catch (e1) {
+        if (!isUnknownCol(e1)) throw e1;
+        // Tier 2: drop bucket
+        try {
           insertResult = await db.execute(sql`
             INSERT INTO camera_captures
               (company_id, user_id, storage_key, mime_type, size_bytes,
@@ -177,8 +185,18 @@ export default async function handler(req: Request, res: Response) {
                ${outMime}, ${storageResult.sizeBytes},
                ${file.originalname}, ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
           `);
-        } else {
-          throw bucketColErr;
+        } catch (e2) {
+          if (!isUnknownCol(e2)) throw e2;
+          // Tier 3: drop bucket AND original_name
+          insertResult = await db.execute(sql`
+            INSERT INTO camera_captures
+              (company_id, user_id, storage_key, mime_type, size_bytes,
+               note, job_id, status, captured_at)
+            VALUES
+              (${profile.companyId}, ${session.user.id}, ${storageResult.storageKey},
+               ${outMime}, ${storageResult.sizeBytes},
+               ${note}, ${jobId}, ${initialStatus}, ${capturedAt})
+          `);
         }
       }
 
