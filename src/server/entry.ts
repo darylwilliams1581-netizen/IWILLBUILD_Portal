@@ -954,7 +954,9 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   // Referrer policy — don't leak full URL to third parties
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Permissions policy — disable unused browser features
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()');
+  // geolocation and camera must allow self — drivers need GPS for fleet tracking
+  // and the job-photo picker needs camera access. All other sensitive APIs remain blocked.
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self), payment=(), usb=(), bluetooth=()');
   // Disable DNS prefetching to reduce info leakage
   res.setHeader('X-DNS-Prefetch-Control', 'off');
   // COOP: same-origin-allow-popups — allows Stripe, Xero, QBO OAuth popups to
