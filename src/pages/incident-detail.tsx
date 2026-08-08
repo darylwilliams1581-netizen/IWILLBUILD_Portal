@@ -18,6 +18,7 @@ import {
   type Incident,
 } from './incidents';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
+import { useUploadQueue } from '@/hooks/useUploadQueue';
 import FormSection from '@/components/FormSection';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -337,9 +338,7 @@ export default function IncidentDetailPage() {
   const [correctiveActions, setCorrectiveActions] = useState<CorrectiveAction[]>([]);
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing
   const loadIncident = useCallback(async () => {
@@ -588,22 +587,7 @@ export default function IncidentDetailPage() {
     setThirdParties(prev => prev.filter(p => p.id !== tp.id));
   }
 
-  async function handleUploadFiles(files: FileList | null) {
-    if (!files || files.length === 0 || !incidentId) return;
-    setUploadingFiles(true);
-    try {
-      const fd = new FormData();
-      for (let i = 0; i < files.length; i++) fd.append('files', files[i]);
-      const r = await fetch(`/api/incidents/${incidentId}/attachments`, { method: 'POST', body: fd });
-      if (r.ok) {
-        const d = await r.json() as { attachments: Attachment[] };
-        setAttachments(prev => [...prev, ...d.attachments.filter(a => a.id)]);
-      }
-    } finally {
-      setUploadingFiles(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }
+
 
   async function handleDeleteAttachment(a: Attachment) {
     if (!incidentId) return;
@@ -613,6 +597,20 @@ export default function IncidentDetailPage() {
 
   const isClosed = incident?.status === 'closed';
   const pageTitle = isNew ? 'New Incident' : `Incident #${incidentId}`;
+
+  // ── Attachment upload queue ────────────────────────────────────────────────
+  const attachQ = useUploadQueue({
+    endpoint: incidentId ? `/api/incidents/${incidentId}/attachments` : '/api/incidents/0/attachments',
+    fieldName: 'files',
+    accept: 'image/*,application/pdf',
+    multiple: true,
+    onSuccess: (results) => {
+      const resp = results[0]?.response as { attachments?: Attachment[] } | undefined;
+      if (resp?.attachments) setAttachments(prev => [...prev, ...resp.attachments!.filter(a => a.id)]);
+    },
+  });
+  const uploadingFiles = attachQ.isUploading;
+  const fileInputRef = attachQ.inputRef;
 
   if (loading) {
     return (
@@ -1210,7 +1208,7 @@ export default function IncidentDetailPage() {
                       ) : undefined
                     }
                   >
-                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={e => handleUploadFiles(e.target.files)} />
+                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={attachQ.handleInputChange} />
                     {attachments.length === 0 && (
                       <div
                         className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`}

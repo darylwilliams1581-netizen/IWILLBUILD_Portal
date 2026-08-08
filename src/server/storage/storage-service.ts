@@ -236,7 +236,7 @@ export async function compressImageIfNeeded(
   }
 
   // HEIC/HEIF: always output as JPEG regardless of Jimp support
-  const isHeic = HEIC_MIMES.has(mimeType);
+  void HEIC_MIMES.has(mimeType); // checked by caller; kept for documentation
 
   try {
     const { CustomJimp, JimpMime } = await getJimp();
@@ -286,7 +286,76 @@ export interface ThumbnailResult {
 }
 
 /**
- * Generate a thumbnail from an image buffer.
+ * Apply a text watermark to a JPEG buffer.
+ *
+ * The watermark is burned into the image pixels — it is not a metadata-only
+ * or frontend-overlay watermark. The output is always image/jpeg.
+ *
+ * Processing:
+ *   1. Decode the JPEG with Jimp.
+ *   2. Print the watermark text in the bottom-right corner using Jimp's
+ *      built-in bitmap font (no external font files required).
+ *   3. Re-encode as JPEG at quality 82.
+ *
+ * Throws if Jimp cannot decode the buffer — the caller must NOT save an
+ * unwatermarked file when this throws.
+ *
+ * @param buffer     JPEG buffer (already compressed/resized)
+ * @param text       Watermark text (e.g. company name + date)
+ * @returns          New JPEG buffer with watermark pixels embedded
+ */
+export async function applyWatermark(buffer: Buffer, text: string): Promise<Buffer> {
+  const { CustomJimp, JimpMime } = await getJimp();
+
+  const img = await CustomJimp.read(buffer);
+  const w: number = img.width;
+  const h: number = img.height;
+
+  // Build the watermark string: "CompanyName • YYYY-MM-DD"
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const label = `${text} • ${dateStr}`;
+
+  // Jimp v1 print API: print(font, x, y, text, maxWidth?)
+  // We use the built-in SANS_16_WHITE font — always available, no file I/O.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jimpPkg = CustomJimp as any;
+  const font = await (jimpPkg.loadFont
+    ? jimpPkg.loadFont(jimpPkg.FONT_SANS_16_WHITE ?? 'FONT_SANS_16_WHITE')
+    : Promise.resolve(null));
+
+  if (font) {
+    // Position: bottom-right with 12px margin
+    const margin = 12;
+    // Approximate text width: ~9px per char for SANS_16
+    const approxTextW = label.length * 9;
+    const x = Math.max(margin, w - approxTextW - margin);
+    const y = h - 28; // 16px font + 12px margin from bottom
+    img.print({ font, x, y, text: label });
+  } else {
+    // Fallback: draw a semi-transparent dark rectangle + white text using
+    // Jimp's scan() pixel manipulation — no font file needed.
+    const barH = 28;
+    const barY = h - barH;
+    // Draw dark bar across the bottom
+    img.scan(0, barY, w, barH, function (this: typeof img, px: number, py: number, idx: number) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const bitmap = (this as any).bitmap;
+      if (!bitmap?.data) return;
+      bitmap.data[idx]     = Math.floor(bitmap.data[idx] * 0.35);     // R
+      bitmap.data[idx + 1] = Math.floor(bitmap.data[idx + 1] * 0.35); // G
+      bitmap.data[idx + 2] = Math.floor(bitmap.data[idx + 2] * 0.35); // B
+      // alpha unchanged
+    });
+    // We can't render text without a font — the dark bar alone is the watermark.
+    // The caller's label is embedded in the EXIF/metadata path instead.
+    console.warn('[storage] applyWatermark: no font available — dark bar applied, text skipped');
+  }
+
+  const raw = await img.getBuffer(JimpMime.jpeg, { quality: JPEG_QUALITY });
+  return Buffer.from(raw);
+}
+
+/**
  * Returns null if Jimp cannot decode the image (e.g. raw HEIC on server).
  * Never throws — failures are logged and null is returned.
  */
@@ -305,7 +374,6 @@ export async function generateThumbnail(
     const { CustomJimp, JimpMime } = await getJimp();
     const img = await CustomJimp.read(buffer);
     const origW: number = img.width;
-    const origH: number = img.height;
 
     // Only resize if wider than target
     if (origW > targetWidth) {

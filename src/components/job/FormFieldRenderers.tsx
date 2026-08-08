@@ -482,12 +482,12 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
             for (const file of files) {
               const fd = new FormData();
               fd.append('file', file);
-              fd.append('capturedAt', new Date().toISOString());
-              const res = await fetch('/api/camera-captures', { method: 'POST', body: fd, credentials: 'include' });
+              fd.append('fileCategory', 'Forms');
+              const res = await fetch('/api/files', { method: 'POST', body: fd, credentials: 'include' });
               if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? 'Upload failed'); }
-              const data = await res.json() as { captures?: Array<{ url: string }> };
-              const url = data.captures?.[0]?.url;
-              if (url) newUrls.push(url);
+              const data = await res.json() as { file?: { id: number } };
+              const fileId = data.file?.id;
+              if (fileId) newUrls.push('/api/files/' + String(fileId) + '/download');
             }
             const combined = allowMultiple ? [...urls, ...newUrls] : newUrls.slice(-1);
             onChange(combined.length === 1 ? combined[0] : JSON.stringify(combined));
@@ -498,34 +498,6 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
           }
         }, [urls, allowMultiple, onChange]);
 
-        const handleNativeCapture = useCallback(async () => {
-          try {
-            // Dynamic import so web builds don't break
-            const { Camera: CapCamera, CameraResultType, CameraSource } = await import('@capacitor/camera');
-            const photo = await CapCamera.getPhoto({
-              quality: 85,
-              allowEditing: false,
-              resultType: CameraResultType.Base64,
-              source: CameraSource.Camera,
-            });
-            if (!photo.base64String) return;
-            const mime = photo.format === 'png' ? 'image/png' : 'image/jpeg';
-            const ext = photo.format === 'png' ? 'png' : 'jpg';
-            const byteChars = atob(photo.base64String);
-            const byteNums = new Uint8Array(byteChars.length);
-            for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
-            const blob = new Blob([byteNums], { type: mime });
-            const file = new File([blob], `photo_${Date.now()}.${ext}`, { type: mime });
-            await handleFiles([file]);
-          } catch (e) {
-            // User cancelled — ignore
-            if (e instanceof Error && e.message.toLowerCase().includes('cancel')) return;
-            setUploadError(e instanceof Error ? e.message : 'Camera error');
-          }
-        }, [handleFiles]);
-
-        const isNative = typeof (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform === 'function'
-          && (window as unknown as { Capacitor: { isNativePlatform: () => boolean } }).Capacitor.isNativePlatform();
 
         const removePhoto = (idx: number) => {
           const next = urls.filter((_, i) => i !== idx);
@@ -563,7 +535,7 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
                 <button
                   type="button"
                   disabled={uploading}
-                  onClick={() => isNative ? handleNativeCapture() : fileInputRef.current?.click()}
+                  onClick={() => fileInputRef.current?.click()}
                   className={`flex items-center justify-center gap-2 h-20 rounded-xl border-2 border-dashed transition-colors ${
                     error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
                   } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}
@@ -577,7 +549,6 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   multiple={allowMultiple}
                   className="hidden"
                   onChange={(e) => { if (e.target.files?.length) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}

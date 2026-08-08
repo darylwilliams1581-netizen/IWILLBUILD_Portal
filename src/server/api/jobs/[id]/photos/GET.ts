@@ -81,7 +81,18 @@ export default async function handler(req: Request, res: Response) {
             ? getSignedUrl(p.previewKey, PHOTO_BUCKET, 3600).catch(() => null)
             : Promise.resolve(null),
         ]);
-        return { ...p, url, thumbnailUrl, previewUrl };
+        return {
+          ...p,
+          url,
+          thumbnailUrl,
+          previewUrl,
+          // Normalise lock fields so the client always gets typed values
+          status: p.status ?? 'draft',
+          lockedAt: p.lockedAt ?? null,
+          lockedByUserId: p.lockedByUserId ?? null,
+          lockedByName: p.lockedByName ?? null,
+          mediaAssetId: p.mediaAssetId ?? null,
+        };
       })
     );
 

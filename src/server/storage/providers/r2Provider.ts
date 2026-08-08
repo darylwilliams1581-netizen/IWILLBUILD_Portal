@@ -59,6 +59,7 @@ async function getClient() {
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: false, // virtual-hosted style — required by R2
   });
 
   return _client;
@@ -142,7 +143,9 @@ async function putObjectDirect(opts: {
 }): Promise<void> {
   const { accountId, accessKeyId, secretAccessKey, r2Bucket, key, body, contentType, contentDisposition, metadata } = opts;
 
-  const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+  // R2 requires virtual-hosted style: https://{bucket}.{accountId}.r2.cloudflarestorage.com/{key}
+  // Path-style (https://{accountId}.r2.cloudflarestorage.com/{bucket}/{key}) returns NoSuchBucket.
+  const host = `${r2Bucket}.${accountId}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const service = 's3';
 
@@ -162,7 +165,7 @@ async function putObjectDirect(opts: {
     'content-disposition': contentDisposition,
     'content-length': String(body.length),
     'content-type': contentType,
-    'host': `${accountId}.r2.cloudflarestorage.com`,
+    'host': host,
     'x-amz-content-sha256': payloadHash,
     'x-amz-date': amzDate,
     ...metaHeaders,
@@ -195,7 +198,7 @@ async function putObjectDirect(opts: {
 
   const authHeader = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-  const url = `${endpoint}/${encodedKey}`;
+  const url = `https://${host}/${encodedKey}`;
   const fetchHeaders: Record<string, string> = {
     'Authorization': authHeader,
     'Content-Disposition': contentDisposition,

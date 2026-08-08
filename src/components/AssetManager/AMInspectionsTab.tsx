@@ -1,13 +1,14 @@
 /**
  * Inspections Tab — list, create, edit, photos, share link
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Search, ClipboardCheck, Archive, RotateCcw, Trash2,
   Edit2, X, Check, Loader2, AlertTriangle, Share2, Camera,
   ChevronDown, ExternalLink, Copy,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
+import { useUploadQueue } from '@/hooks/useUploadQueue';
 
 interface Asset { id: number; name: string; acronym: string | null; }
 interface Inspection {
@@ -39,12 +40,21 @@ export default function AMInspectionsTab() {
   const [creating, setCreating] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [expandId, setExpandId] = useState<number | null>(null);
+
+  // ── Photo upload queue (endpoint changes with expandId) ────────────────────
+  const photoQ = useUploadQueue({
+    endpoint: expandId ? `/api/asset-manager/inspections/${expandId}/photos` : '/api/asset-manager/inspections/0/photos',
+    fieldName: 'file',
+    accept: 'image/*,application/pdf',
+    multiple: false,
+    onSuccess: () => { void load(); },
+  });
+  const uploadingFor = photoQ.isUploading ? expandId : null;
+  const fileRef = photoQ.inputRef;
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [shareResult, setShareResult] = useState<{ id: number; url: string; inspection?: Inspection } | null>(null);
   const [error, setError] = useState('');
-  const [uploadingFor, setUploadingFor] = useState<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({ asset_id: '', report_no: '', inspection_date: '', report_title: '', overall_status: 'draft', notes: '' });
 
@@ -112,23 +122,12 @@ export default function AMInspectionsTab() {
     }
   }
 
-  async function handlePhotoUpload(inspectionId: number, file: File) {
-    setUploadingFor(inspectionId);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      await fetch(`/api/asset-manager/inspections/${inspectionId}/photos`, {
-        method: 'POST', credentials: 'include', body: fd,
-      });
-      await load();
-    } catch { setError('Upload failed'); }
-    finally { setUploadingFor(null); }
-  }
+
 
   return (
     <div className="p-6 flex flex-col gap-5">
       <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f && expandId) void handlePhotoUpload(expandId, f); e.target.value = ''; }} />
+        onChange={photoQ.handleInputChange} />
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">

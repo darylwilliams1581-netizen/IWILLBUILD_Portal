@@ -97,30 +97,20 @@ export default function DesktopOnly({ children, pageName = 'This page' }: Deskto
           {pageName} is desktop only
         </h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          {native
-            ? 'Open IWILLBUILD in a desktop browser to access this area.'
-            : 'Widen your browser window or switch to a desktop to use this page.'}
+          Open IWILLBUILD in a desktop browser to access this area.
         </p>
       </div>
 
-      {/* URL hint for web users — copy the URL to open on desktop */}
-      {!native && (
-        <div className="flex items-center gap-2 bg-muted border border-border rounded-xl px-4 py-2.5 max-w-xs w-full">
-          <span className="text-muted-foreground text-xs font-mono truncate select-all">
-            {typeof window !== 'undefined' ? window.location.href : ''}
-          </span>
-        </div>
-      )}
-
-      {/* Native hint */}
-      {native && (
-        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 max-w-xs w-full">
-          <Monitor size={14} className="text-primary shrink-0" />
-          <span className="text-primary text-xs leading-snug">
-            Visit <span className="font-semibold">iwillbuild.com</span> on your computer
-          </span>
-        </div>
-      )}
+      {/* Login link */}
+      <a
+        href="https://iwillbuild.com/login"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2.5 bg-primary hover:bg-violet-700 active:bg-violet-800 text-white font-semibold text-base rounded-2xl px-8 py-4 max-w-xs w-full transition-colors shadow-lg"
+      >
+        <Monitor size={20} />
+        Open iwillbuild.com
+      </a>
     </div>
   );
 }

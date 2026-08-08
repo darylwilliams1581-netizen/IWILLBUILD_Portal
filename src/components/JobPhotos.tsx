@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload,
@@ -18,10 +18,12 @@ import {
   Clock,
   CheckSquare,
   Square,
+  Lock,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
 import BatchUploadSummary from '@/components/BatchUploadSummary';
+import PhotoEditor from '@/components/PhotoEditor';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +48,15 @@ export interface JobPhoto {
   /** Original image dimensions if known */
   imageWidth: number | null;
   imageHeight: number | null;
+  // ── Lock fields ────────────────────────────────────────────────────────────
+  /** 'draft' (default) or 'locked' */
+  status: 'draft' | 'locked';
+  /** ISO timestamp when the photo was locked */
+  lockedAt: string | null;
+  lockedByUserId: string | null;
+  lockedByName: string | null;
+  /** FK to canonical media_assets row */
+  mediaAssetId: number | null;
 }
 
 interface JobPhotosProps {
@@ -112,6 +123,24 @@ const CACHE_TTL_MS = 30_000; // 30 s stale window
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Fetch-based download — sends session cookies so the auth-gated download
+// endpoint does not return 401. The browser native <a download> omits cookies
+// on some browsers, causing "Needs authorization" errors in the downloads panel.
+async function downloadPhoto(photo: JobPhoto): Promise<void> {
+  const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = photo.originalName ?? photo.filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+}
+
 function thumbnailSrc(photo: JobPhoto, bust?: number): string {
   const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
   const base = photo.thumbnailUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
@@ -136,7 +165,10 @@ function formatBytes(bytes: number | null) {
 }
 
 function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-AU', {
+  // MySQL DATETIME strings arrive as "YYYY-MM-DD HH:MM:SS" (no T, no Z).
+  // Safari's Date constructor rejects that format — normalise to ISO 8601 first.
+  const normalised = iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z';
+  return new Date(normalised).toLocaleString('en-AU', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -159,67 +191,14 @@ interface EditModalProps {
   onSaved: (updated: JobPhoto) => void;
 }
 
-function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
-  const [label, setLabel] = useState(photo.label ?? '');
-  const [saving, setSaving] = useState(false);
-  const [rotating, setRotating] = useState<'left' | 'right' | null>(null);
-  const [replacing, setReplacing] = useState(false);
-  const [error, setError] = useState('');
-  const [localBust, setLocalBust] = useState(cacheBust[photo.id] ?? Date.now());
-  const replaceRef = useRef<HTMLInputElement>(null);
-
-  async function doRotate(dir: 'left' | 'right') {
-    setRotating(dir); setError('');
-    try {
-      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ rotate: dir }),
-      });
-      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Rotation failed');
-      setLocalBust(Date.now());
-      if (data.photo) onSaved({ ...data.photo, label: label || data.photo.label });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Rotation failed'); }
-    finally { setRotating(null); }
-  }
-
-  async function doSave() {
-    setSaving(true); setError('');
-    try {
-      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ label }),
-      });
-      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Save failed');
-      if (data.photo) onSaved(data.photo);
-      onClose();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Save failed'); }
-    finally { setSaving(false); }
-  }
-
-  async function doReplace(file: File) {
-    setReplacing(true); setError('');
-    try {
-      const fd = new FormData(); fd.append('photo', file);
-      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}/replace`, {
-        method: 'POST', credentials: 'include', body: fd,
-      });
-      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Replace failed');
-      setLocalBust(Date.now());
-      if (data.photo) onSaved({ ...data.photo, label: label || data.photo.label });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Replace failed'); }
-    finally { setReplacing(false); if (replaceRef.current) replaceRef.current.value = ''; }
-  }
+function EditModal({ photo, cacheBust, onClose, onSaved: _onSaved }: EditModalProps) {
+  const localBust = cacheBust[photo.id] ?? Date.now();
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
-
-  const busy = saving || rotating !== null || replacing;
 
   return (
     // On mobile: sheet slides up from bottom. On desktop: centred dialog.
@@ -245,7 +224,7 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-          <h3 className="font-heading font-bold text-base text-slate-900">Edit Photo</h3>
+          <h3 className="font-heading font-bold text-base text-slate-900">Photo info</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={16} /></button>
         </div>
 
@@ -263,62 +242,27 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
             />
           </div>
 
-          {/* Rotate */}
-          <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border bg-slate-50">
-            <span className="text-xs font-semibold text-muted-foreground mr-1">Rotate:</span>
-            <button onClick={() => doRotate('left')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
-              {rotating === 'left' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />} Left 90°
-            </button>
-            <button onClick={() => doRotate('right')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
-              {rotating === 'right' ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Right 90°
-            </button>
-          </div>
-
-          {/* Fields */}
-          <div className="px-5 py-4 flex flex-col gap-3">
-            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={12} /> {error}</p>}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Caption / Label</label>
-              <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. North wall framing"
-                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                onKeyDown={(e) => { if (e.key === 'Enter' && !busy) doSave(); }} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-semibold text-slate-700">Upload edited version</p>
-              <p className="text-[11px] text-slate-400 leading-snug">Download → mark up → save → upload here to replace.</p>
-              <button type="button" onClick={() => replaceRef.current?.click()} disabled={busy}
-                className="flex items-center gap-2 self-start mt-1 px-3 py-2 border border-border bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-semibold text-slate-700 rounded-lg transition-colors">
-                {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                {replacing ? 'Replacing…' : 'Choose file to replace'}
-              </button>
-              <input ref={replaceRef} type="file" accept="image/*" className="hidden"
-                onChange={(e) => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }} />
-            </div>
-            <div className="flex flex-col gap-1 pt-1">
-              {photo.uploadedByName && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
-              )}
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
-            </div>
+          {/* Photo metadata only — rotate, label, replace removed */}
+          <div className="px-5 py-4 flex flex-col gap-1.5">
+            {photo.uploadedByName && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
+            )}
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
           </div>
         </div>
 
-        {/* Footer — always visible */}
+        {/* Footer */}
         <div
-          className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
+          className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
         >
-          <a href={`/api/jobs/${photo.jobId}/photos/${photo.id}/download`} download={photo.originalName ?? photo.filename}
+          <button type="button" onClick={() => downloadPhoto(photo)}
             className="flex items-center gap-1.5 px-4 py-2 border border-border bg-white hover:bg-muted text-sm font-semibold text-slate-600 rounded-lg transition-colors">
             <Download size={13} /> Download
-          </a>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} disabled={busy} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-40 transition-colors">Cancel</button>
-            <button type="button" onClick={doSave} disabled={busy}
-              className="flex items-center gap-1.5 px-5 py-2 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors">
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
-            </button>
-          </div>
+          </button>
+          <button type="button" onClick={onClose} className="px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">
+            Close
+          </button>
         </div>
       </motion.div>
     </div>
@@ -335,11 +279,13 @@ interface LightboxProps {
   onNavigate: (i: number) => void;
   onDelete: (photo: JobPhoto) => void;
   onEdit: (photo: JobPhoto) => void;
+  onOpenEditor: (photo: JobPhoto) => void;
   deleting: number | null;
 }
 
-function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, deleting }: LightboxProps) {
+function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, onOpenEditor, deleting }: LightboxProps) {
   const photo = photos[index];
+  const isLocked = photo.status === 'locked';
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -354,44 +300,172 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
   const bust = cacheBust[photo.id];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/92">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Edit"><Pencil size={16} /></button>
-        <button onClick={() => { const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }}
-          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Download"><Download size={16} /></button>
-        <button onClick={() => onDelete(photo)} disabled={deleting === photo.id}
-          className="p-2 rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-50" title="Delete">
-          {deleting === photo.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-        </button>
-        <button onClick={onClose} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Close"><X size={16} /></button>
-      </div>
-      {index > 0 && (
-        <button onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-          <ChevronLeft size={24} />
-        </button>
-      )}
-      <div className="relative z-10 max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
-        <img
-          key={bust ?? photo.filename}
-          src={previewSrc(photo, bust)}
-          alt={photo.label ?? photo.originalName ?? 'Job photo'}
-          className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl"
-          loading="eager"
-          decoding="async"
-        />
-        <div className="text-center">
-          {photo.label && <p className="text-white font-semibold text-sm mb-0.5">{photo.label}</p>}
-          <p className="text-white/50 text-xs">{photo.originalName ?? photo.filename}{photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}</p>
-          {photo.uploadedByName && <p className="text-white/40 text-xs mt-0.5">{photo.uploadedByName} · {formatDateTime(photo.createdAt)}</p>}
-          <p className="text-white/25 text-xs mt-0.5">{index + 1} / {photos.length}</p>
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/95">
+      {/* ── Top toolbar: Download · Delete · Close ── */}
+      <div className="shrink-0 flex items-center justify-between px-3 py-2 bg-black/60 backdrop-blur-sm">
+        {/* Left: photo counter + label */}
+        <div className="flex flex-col min-w-0">
+          <span className="text-white/80 text-xs font-semibold truncate max-w-[180px]">
+            {photo.label ?? photo.originalName ?? photo.filename}
+          </span>
+          <span className="text-white/35 text-[10px]">{index + 1} / {photos.length}</span>
+        </div>
+
+        {/* Right: actions */}
+        <div className="flex items-center gap-1">
+          {/* Label/rotate edit — unlocked only */}
+          {!isLocked && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(photo); }}
+              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="Photo info"
+              title="Photo info"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
+
+          {/* Download */}
+          <button
+            onClick={() => { downloadPhoto(photo); }}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Download photo"
+            title="Download original"
+          >
+            <Download size={16} />
+          </button>
+
+          {/* Delete — disabled for locked */}
+          <button
+            onClick={() => onDelete(photo)}
+            disabled={deleting === photo.id || isLocked}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-40"
+            aria-label={isLocked ? 'Locked photos cannot be deleted' : 'Delete photo'}
+            title={isLocked ? 'Locked — cannot delete' : 'Delete'}
+          >
+            {deleting === photo.id
+              ? <Loader2 size={16} className="animate-spin" />
+              : <Trash2 size={16} />}
+          </button>
+
+          {/* Close */}
+          <button
+            onClick={onClose}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Close preview"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
         </div>
       </div>
-      {index < photos.length - 1 && (
-        <button onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-          <ChevronRight size={24} />
-        </button>
-      )}
+
+      {/* ── Photo area — fills remaining height ── */}
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+        {/* Backdrop tap-to-close */}
+        <div className="absolute inset-0" onClick={onClose} />
+
+        {/* Prev arrow */}
+        {index > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            aria-label="Previous photo"
+          >
+            <ChevronLeft size={22} />
+          </button>
+        )}
+
+        {/* Photo + overlaid edit/lock button */}
+        <div className="relative z-10 flex items-center justify-center max-w-[92vw] max-h-full">
+          <img
+            key={bust ?? photo.filename}
+            src={previewSrc(photo, bust)}
+            alt={photo.label ?? photo.originalName ?? 'Job photo'}
+            className="block max-w-full object-contain rounded-lg shadow-2xl"
+            style={{ maxHeight: 'min(calc(100dvh - 120px), calc(100vh - 120px))' }}
+            loading="eager"
+            decoding="async"
+          />
+
+          {/*
+           * ── TOP-RIGHT CORNER EDIT / LOCK BUTTON ──────────────────────────
+           * Positioned over the photo, not in the toolbar, so it is always
+           * visually associated with the image regardless of screen size.
+           * Touch target: min 44×44 px (Apple HIG / WCAG 2.5.5).
+           */}
+          {isLocked ? (
+            /* Locked: lock icon — opens read-only editor view */
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
+              className="
+                absolute top-2 right-2
+                min-w-[44px] min-h-[44px] w-11 h-11
+                flex items-center justify-center
+                rounded-xl
+                bg-amber-500/90 hover:bg-amber-400
+                text-black
+                shadow-lg shadow-black/40
+                transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300
+              "
+              aria-label="View locked photo"
+              title="Locked photo"
+            >
+              <Lock size={18} />
+            </button>
+          ) : (
+            /* Unlocked: pencil icon — opens canvas editor */
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
+              className="
+                absolute top-2 right-2
+                min-w-[44px] min-h-[44px] w-11 h-11
+                flex items-center justify-center
+                rounded-xl
+                bg-black/60 hover:bg-primary
+                text-white
+                shadow-lg shadow-black/40
+                backdrop-blur-sm
+                transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60
+              "
+              aria-label="Edit photo"
+              title="Edit photo"
+            >
+              <Pencil size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Next arrow — offset left so it never overlaps the edit/lock button */}
+        {index < photos.length - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
+            className="absolute right-14 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            aria-label="Next photo"
+          >
+            <ChevronRight size={22} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Caption bar ── */}
+      <div className="shrink-0 px-4 py-2.5 bg-black/60 backdrop-blur-sm text-center">
+        {photo.uploadedByName && (
+          <p className="text-white/45 text-xs">
+            Uploaded by {photo.uploadedByName} · {formatDateTime(photo.createdAt)}
+            {photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}
+          </p>
+        )}
+        {isLocked && photo.lockedByName && (
+          <p className="text-amber-400/90 text-xs mt-0.5 flex items-center justify-center gap-1 font-semibold">
+            <Lock size={10} />
+            Locked by {photo.lockedByName}
+            {photo.lockedAt ? ` · ${formatDateTime(photo.lockedAt)}` : ''}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -415,10 +489,11 @@ const PhotoCard = memo(function PhotoCard({
   photo, index, viewSize, isSelected, selectMode, bust,
   onTap, onToggleSelect, onEdit, onDelete,
 }: PhotoCardProps) {
+  const isLocked = photo.status === 'locked';
   return (
     <div
       className={`group relative flex flex-col ${VIEW_RADIUS[viewSize]} overflow-hidden bg-slate-100 border transition-all ${
-        isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200'
+        isSelected ? 'border-primary ring-2 ring-primary/30' : isLocked ? 'border-amber-300' : 'border-slate-200'
       }`}
     >
       {/* Thumbnail */}
@@ -444,6 +519,13 @@ const PhotoCard = memo(function PhotoCard({
           />
         )}
 
+        {/* Lock badge — top-left corner */}
+        {isLocked && (
+          <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/90 text-black rounded text-[9px] font-bold pointer-events-none">
+            <Lock size={8} /> Locked
+          </div>
+        )}
+
         {/* Select overlay */}
         {selectMode && (
           <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-primary/20' : 'bg-black/0 hover:bg-black/10'}`}>
@@ -461,15 +543,19 @@ const PhotoCard = memo(function PhotoCard({
         {/* Small-view: action buttons on hover */}
         {!selectMode && viewSize === 'small' && (
           <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-            <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
+            {!isLocked && (
+              <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
+            )}
+            {!isLocked && (
+              <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
+            )}
           </div>
         )}
       </div>
 
       {/* Metadata strip — medium and large only */}
       {viewSize !== 'small' && (
-        <div className={`bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
+        <div className={`${isLocked ? 'bg-amber-50' : 'bg-slate-50'} border-t ${isLocked ? 'border-amber-200' : 'border-slate-200'} flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
           <div className="flex items-start justify-between gap-1">
             <div className="min-w-0 flex-1">
               {photo.label
@@ -477,16 +563,24 @@ const PhotoCard = memo(function PhotoCard({
                 : <p className="text-xs text-slate-500 italic truncate">{photo.originalName ?? photo.filename}</p>
               }
             </div>
-            {!selectMode && (
+            {!selectMode && !isLocked && (
               <div className="flex items-center gap-0.5 shrink-0">
                 <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
-                <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
+                <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
+              </div>
+            )}
+            {!selectMode && isLocked && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
               </div>
             )}
           </div>
           {viewSize === 'large' && photo.uploadedByName && (
             <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
+          )}
+          {isLocked && photo.lockedByName && (
+            <p className="text-[10px] text-amber-700 flex items-center gap-1 truncate font-semibold"><Lock size={9} className="shrink-0" />Locked by {photo.lockedByName}</p>
           )}
           <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
         </div>
@@ -515,6 +609,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
   const [editPhoto, setEditPhoto] = useState<JobPhoto | null>(null);
+  const [editorPhoto, setEditorPhoto] = useState<JobPhoto | null>(null);
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
   const [summaryDismissed, setSummaryDismissed] = useState(false);
 
@@ -703,6 +798,31 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
+
+    // Pre-flight HEIC/HEIF check — reject immediately with a clear message.
+    // The server also rejects these, but catching them here avoids a failed
+    // queue entry and gives the user instant feedback.
+    const heicFiles = arr.filter((f) => {
+      const mime = f.type.toLowerCase();
+      const ext  = f.name.split('.').pop()?.toLowerCase() ?? '';
+      return mime === 'image/heic' || mime === 'image/heif' ||
+             mime === 'image/heic-sequence' || mime === 'image/heif-sequence' ||
+             ext === 'heic' || ext === 'heif';
+    });
+    if (heicFiles.length > 0) {
+      const names = heicFiles.map((f) => f.name).join(', ');
+      setUploadError(
+        `HEIC/HEIF photos are not supported: ${names}. ` +
+        `Please convert to JPEG first (on iPhone: Settings → Camera → Formats → Most Compatible).`
+      );
+      // If there are non-HEIC files in the same batch, continue with those
+      const rest = arr.filter((f) => !heicFiles.includes(f));
+      if (rest.length === 0) return;
+      if (rest.length > BATCH_LIMIT) { setOverLimitFiles(rest); return; }
+      enqueueValidated(rest);
+      return;
+    }
+
     // If user selected more than BATCH_LIMIT, show friendly dialog
     if (arr.length > BATCH_LIMIT) {
       setOverLimitFiles(arr);
@@ -715,6 +835,12 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
+    // Locked photos cannot be deleted
+    if (deleteConfirm.status === 'locked') {
+      setError('Locked photos cannot be deleted.');
+      setDeleteConfirm(null);
+      return;
+    }
     setDeleting(deleteConfirm.id);
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos/${deleteConfirm.id}`, { method: 'DELETE', credentials: 'include' });
@@ -740,6 +866,14 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     photoCache.delete(jobId);
   };
 
+  // ── Editor (canvas) saved ──────────────────────────────────────────────────
+
+  const handleEditorSaved = (updated: JobPhoto) => {
+    setPhotos((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+    setCacheBust((prev) => ({ ...prev, [updated.id]: Date.now() }));
+    photoCache.delete(jobId);
+  };
+
   // ── Select helpers ─────────────────────────────────────────────────────────
 
   const toggleSelect = useCallback((id: number) => {
@@ -760,12 +894,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const downloadSelected = useCallback(() => {
     const targets = photos.filter((p) => selected.has(p.id));
     targets.forEach((p, i) => {
-      setTimeout(() => {
-        const a = document.createElement('a');
-        a.href = `/api/jobs/${p.jobId}/photos/${p.id}/download`;
-        a.download = p.originalName ?? p.filename;
-        a.click();
-      }, i * 300);
+      setTimeout(() => { downloadPhoto(p); }, i * 400);
     });
   }, [photos, selected]);
 
@@ -973,6 +1102,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           onNavigate={setLightboxIndex}
           onDelete={(p) => setDeleteConfirm(p)}
           onEdit={(p) => setEditPhoto(p)}
+          onOpenEditor={(p) => { setLightboxIndex(null); setEditorPhoto(p); }}
           deleting={deleting}
         />
       )}
@@ -984,6 +1114,15 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           cacheBust={cacheBust}
           onClose={() => setEditPhoto(null)}
           onSaved={handleEditSaved}
+        />
+      )}
+
+      {/* Canvas photo editor — full-screen, mounted when open */}
+      {editorPhoto && (
+        <PhotoEditor
+          photo={editorPhoto}
+          onClose={() => setEditorPhoto(null)}
+          onSaved={handleEditorSaved}
         />
       )}
 

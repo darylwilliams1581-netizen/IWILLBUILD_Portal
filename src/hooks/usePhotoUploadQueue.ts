@@ -142,6 +142,7 @@ function uploadFileXhr(
   jobId: number,
   file: File,
   onProgress: (pct: number) => void,
+  clientId: string,
 ): Promise<{ id: number }> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
@@ -150,6 +151,8 @@ function uploadFileXhr(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/jobs/${jobId}/photos`);
     xhr.withCredentials = true;
+    // Server uses this to deduplicate retried/replayed requests
+    xhr.setRequestHeader('X-Client-Id', clientId);
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
@@ -293,6 +296,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
           jobId,
           file,
           (pct) => updateItem(clientId, { progress: pct }),
+          clientId,
         );
 
         // Revoke blob URL — server is now the source of truth
@@ -337,7 +341,9 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
       }
     })();
 
-    if (activeRef.current < CONCURRENCY) processNext();
+    // Note: do NOT call processNext() here again — the finally block above already
+    // chains the next item. Calling it here races against the async state update
+    // and causes the same item to be picked up twice (double-upload).
   }, [jobId, updateItem, onBatchComplete]);
 
   // ── Enqueue files ──────────────────────────────────────────────────────────
@@ -377,9 +383,11 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
 
     setQueue((prev) => [...prev, ...newItems]);
 
-    // Only kick off upload if online
+    // Only kick off upload if online — fire up to CONCURRENCY slots
     if (navigator.onLine) {
-      setTimeout(() => processNext(), 0);
+      for (let i = 0; i < Math.min(files.length, CONCURRENCY); i++) {
+        setTimeout(() => processNext(), i * 50);
+      }
     }
   }, [jobId, processNext]);
 

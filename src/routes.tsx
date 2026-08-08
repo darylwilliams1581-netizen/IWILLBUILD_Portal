@@ -101,7 +101,6 @@ const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HelpPage                = lazy(() => import('./pages/help'));
-const CameraPage              = lazy(() => import('./pages/camera'));
 // HomeScreenPage is loaded inside ShellRouter (lazy, only when app shell is active)
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
@@ -292,7 +291,6 @@ export const routes: RouteObject[] = [
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/help',          element: protect(<Suspense fallback={<PageLoader />}><HelpPage /></Suspense>), errorElement: routeError },
-  { path: '/camera',        element: protect(<Suspense fallback={<PageLoader />}><CameraPage /></Suspense>), errorElement: routeError },
   { path: '/owner-console',     element: protectDevDesktop(<OwnerConsolePage />, 'Owner Console'),   errorElement: routeError },
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },

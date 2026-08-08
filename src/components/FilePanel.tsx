@@ -209,17 +209,18 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top) - 16px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0 rounded-t-2xl bg-white">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-800 truncate">{file.label || file.originalName}</p>
             <p className="text-xs text-slate-400 truncate">{file.originalName} · {mimeLabel(file.mimeType)} · {formatBytes(file.sizeBytes)}</p>
@@ -229,94 +230,99 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
           </button>
         </div>
 
-        {/* Preview */}
-        {isImg ? (
-          <div className="bg-slate-50 flex items-center justify-center" style={{ maxHeight: '60vh', overflow: 'hidden' }}>
-            <img
-              src={fileViewUrl(file.id)}
-              alt={file.label || file.originalName}
-              className="max-w-full max-h-[60vh] object-contain"
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 bg-slate-50">
-            <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center mb-3 ${mimeColor(file.mimeType)}`}>
-              <FileIcon mime={file.mimeType} className="w-7 h-7" />
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
+          {/* Preview */}
+          {isImg ? (
+            <div className="bg-slate-50 flex items-center justify-center" style={{ maxHeight: '55vh', overflow: 'hidden' }}>
+              <img
+                src={fileViewUrl(file.id)}
+                alt={file.label || file.originalName}
+                className="max-w-full max-h-[55vh] object-contain"
+              />
             </div>
-            <p className="text-sm text-slate-500">{mimeLabel(file.mimeType)} file — no preview available</p>
-          </div>
-        )}
-
-        {/* Meta + actions */}
-        <div className="px-5 py-4 border-t border-slate-100">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-xs">
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Category</p>
-              <p className="text-slate-700 font-medium">{file.fileCategory}</p>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 bg-slate-50">
+              <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center mb-3 ${mimeColor(file.mimeType)}`}>
+                <FileIcon mime={file.mimeType} className="w-7 h-7" />
+              </div>
+              <p className="text-sm text-slate-500">{mimeLabel(file.mimeType)} file — no preview available</p>
             </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Uploaded by</p>
-              <p className="text-slate-700 font-medium">{file.uploaderName ?? '—'}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date</p>
-              <p className="text-slate-700 font-medium">
-                {new Date(file.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Size</p>
-              <p className="text-slate-700 font-medium">{formatBytes(file.sizeBytes)}</p>
-            </div>
-          </div>
-          {file.notes && (
-            <p className="text-xs text-slate-500 mb-4 bg-slate-50 rounded-lg px-3 py-2">{file.notes}</p>
           )}
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 h-9 text-sm"
-              onClick={() => window.open(`/view/file/${file.id}`, '_blank', 'noopener,noreferrer')}
-            >
-              <ExternalLink size={13} />
-              Open in new tab
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 h-9 text-sm"
-              onClick={() => setShareTarget({
-                type: 'file',
-                id: String(file.id),
-                title: file.originalName,
-                linkType: 'file_transfer',
-                defaultPermissions: ['view', 'download'],
-              })}
-            >
-              <Link2 size={13} />
-              Share / QR
-            </Button>
-            <Button
-              size="sm"
-              className="gap-1.5 h-9 text-sm"
-              onClick={() => downloadFile(file.id, file.originalName)}
-            >
-              <Download size={13} />
-              Download
-            </Button>
-            {canDelete && (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1.5 h-9 text-sm"
-                onClick={onDelete}
-              >
-                <Trash2 size={13} />
-                Delete
-              </Button>
+
+          {/* Meta */}
+          <div className="px-5 py-4 border-t border-slate-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-xs">
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Category</p>
+                <p className="text-slate-700 font-medium">{file.fileCategory}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Uploaded by</p>
+                <p className="text-slate-700 font-medium">{file.uploaderName ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date</p>
+                <p className="text-slate-700 font-medium">
+                  {new Date(file.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Size</p>
+                <p className="text-slate-700 font-medium">{formatBytes(file.sizeBytes)}</p>
+              </div>
+            </div>
+            {file.notes && (
+              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">{file.notes}</p>
             )}
           </div>
+        </div>{/* end scrollable body */}
+
+        {/* Sticky action footer — always visible, never clipped */}
+        <div className="flex flex-wrap gap-2 px-5 py-4 border-t border-slate-100 bg-white shrink-0 rounded-b-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 h-9 text-sm"
+            onClick={() => window.open(`/view/file/${file.id}`, '_blank', 'noopener,noreferrer')}
+          >
+            <ExternalLink size={13} />
+            Open in new tab
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 h-9 text-sm"
+            onClick={() => setShareTarget({
+              type: 'file',
+              id: String(file.id),
+              title: file.originalName,
+              linkType: 'file_transfer',
+              defaultPermissions: ['view', 'download'],
+            })}
+          >
+            <Link2 size={13} />
+            Share / QR
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5 h-9 text-sm"
+            onClick={() => downloadFile(file.id, file.originalName)}
+          >
+            <Download size={13} />
+            Download
+          </Button>
+          {canDelete && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-1.5 h-9 text-sm"
+              onClick={onDelete}
+            >
+              <Trash2 size={13} />
+              Delete
+            </Button>
+          )}
         </div>
       </motion.div>
     </div>
@@ -331,21 +337,25 @@ interface UploadModalProps {
   onUploaded: (f: CompanyFile) => void;
 }
 
-function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }: UploadModalProps) {
+function UploadModal({ jobId: initialJobId, fleetAssetId: initialFleetAssetId, onClose, onUploaded }: UploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [label, setLabel] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<number | undefined>(initialJobId);
+  const [selectedFleetId, setSelectedFleetId] = useState<number | undefined>(initialFleetAssetId);
   const [jobs, setJobs] = useState<Array<{ id: number; jobNumber: string; name: string }>>([]);
+  const [fleetAssets, setFleetAssets] = useState<Array<{ id: number; name: string; registration: string }>>([]);
   const [category, setCategory] = useState<string>(
-    initialJobId ? 'Job' : fleetAssetId ? 'Fleet' : 'Other'
+    initialJobId ? 'Job' : initialFleetAssetId ? 'Fleet' : 'Other'
   );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  // Searchable job picker state
+  // Searchable picker state
   const [jobSearch, setJobSearch] = useState('');
   const [jobPickerOpen, setJobPickerOpen] = useState(false);
+  const [fleetSearch, setFleetSearch] = useState('');
+  const [fleetPickerOpen, setFleetPickerOpen] = useState(false);
 
   useBodyScrollLock(true);
 
@@ -365,6 +375,23 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
       .catch(() => { /* silent */ });
   }, [initialJobId]);
 
+  // Load fleet assets for picker (only when not already scoped to a fleet asset)
+  useEffect(() => {
+    if (initialFleetAssetId) return;
+    fetch('/api/fleet?limit=200', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : { assets: [] })
+      .then((d: { assets?: Array<Record<string, unknown>> }) => {
+        const list = d.assets ?? (Array.isArray(d) ? d as Array<Record<string, unknown>> : []);
+        const mapped = list.map((a) => ({
+          id: Number(a.id),
+          name: String(a.name ?? a.make ?? ''),
+          registration: String(a.registration ?? a.rego ?? a.plate ?? ''),
+        }));
+        setFleetAssets(mapped);
+      })
+      .catch(() => { /* silent */ });
+  }, [initialFleetAssetId]);
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -380,7 +407,14 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
     setUploading(true);
     setError('');
     try {
-      const saved = await uploadFile({ file, fileCategory: category, label: label.trim() || undefined, notes: notes.trim() || undefined, jobId: selectedJobId, fleetAssetId });
+      const saved = await uploadFile({
+        file,
+        fileCategory: category,
+        label: label.trim() || undefined,
+        notes: notes.trim() || undefined,
+        jobId: selectedJobId,
+        fleetAssetId: selectedFleetId ?? initialFleetAssetId,
+      });
       onUploaded(saved);
       onClose();
     } catch (err) {
@@ -391,7 +425,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 sm:px-4 pb-[env(safe-area-inset-bottom)]">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -405,12 +439,12 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: 'min(88dvh, 640px)' }}
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-bottom) - env(safe-area-inset-top) - 32px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0 rounded-t-2xl bg-white">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
               <Upload size={15} className="text-primary" />
@@ -491,7 +525,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
                 {/* Selected job chip or open-picker button */}
                 <button
                   type="button"
-                  onClick={() => { setJobPickerOpen((v) => !v); setJobSearch(''); }}
+                  onClick={() => { setJobPickerOpen((v) => !v); setFleetPickerOpen(false); setJobSearch(''); }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left ${
                     selectedJobId
                       ? 'border-primary bg-violet-50 text-foreground'
@@ -522,7 +556,6 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
                 {/* Inline dropdown with search */}
                 {jobPickerOpen && (
                   <div className="border border-border rounded-xl overflow-hidden shadow-md bg-white">
-                    {/* Search input */}
                     <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20">
                       <Search size={13} className="text-muted-foreground shrink-0" />
                       <input
@@ -539,10 +572,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
                         </button>
                       )}
                     </div>
-
-                    {/* Job list */}
-                    <div className="max-h-48 overflow-y-auto overscroll-contain">
-                      {/* No-job option */}
+                    <div className="max-h-44 overflow-y-auto overscroll-contain">
                       <button
                         type="button"
                         onClick={() => { setSelectedJobId(undefined); setJobPickerOpen(false); setJobSearch(''); }}
@@ -553,28 +583,16 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
                       {(() => {
                         const q = jobSearch.trim().toLowerCase();
                         const filtered = q
-                          ? jobs.filter((j) =>
-                              j.name.toLowerCase().includes(q) ||
-                              j.jobNumber.toLowerCase().includes(q)
-                            )
+                          ? jobs.filter((j) => j.name.toLowerCase().includes(q) || j.jobNumber.toLowerCase().includes(q))
                           : jobs;
                         if (filtered.length === 0) {
-                          return (
-                            <p className="text-center text-xs text-muted-foreground py-4">
-                              No jobs match "{jobSearch}"
-                            </p>
-                          );
+                          return <p className="text-center text-xs text-muted-foreground py-4">No jobs match "{jobSearch}"</p>;
                         }
                         return filtered.map((j) => (
                           <button
                             key={j.id}
                             type="button"
-                            onClick={() => {
-                              setSelectedJobId(j.id);
-                              setCategory('Job');
-                              setJobPickerOpen(false);
-                              setJobSearch('');
-                            }}
+                            onClick={() => { setSelectedJobId(j.id); setCategory('Job'); setJobPickerOpen(false); setJobSearch(''); }}
                             className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors text-left hover:bg-violet-50 ${
                               selectedJobId === j.id ? 'bg-violet-50 text-primary font-semibold' : 'text-foreground'
                             }`}
@@ -582,9 +600,101 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
                             <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <span className="truncate block">{j.name}</span>
-                              {j.jobNumber && (
-                                <span className="text-xs text-muted-foreground font-mono">{j.jobNumber}</span>
-                              )}
+                              {j.jobNumber && <span className="text-xs text-muted-foreground font-mono">{j.jobNumber}</span>}
+                            </div>
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Searchable fleet asset picker — only shown on main Files page */}
+            {!initialFleetAssetId && fleetAssets.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold text-slate-600">
+                  Link to Fleet Asset <span className="font-normal text-slate-400">(optional)</span>
+                </Label>
+
+                <button
+                  type="button"
+                  onClick={() => { setFleetPickerOpen((v) => !v); setJobPickerOpen(false); setFleetSearch(''); }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left ${
+                    selectedFleetId
+                      ? 'border-primary bg-violet-50 text-foreground'
+                      : 'border-border bg-white text-muted-foreground hover:border-primary hover:bg-violet-50'
+                  }`}
+                >
+                  <span className="truncate">
+                    {selectedFleetId
+                      ? (() => { const a = fleetAssets.find((x) => x.id === selectedFleetId); return a ? `${a.name}${a.registration ? ` · ${a.registration}` : ''}` : 'Asset selected'; })()
+                      : 'No asset linked'}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {selectedFleetId && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); setSelectedFleetId(undefined); setFleetPickerOpen(false); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setSelectedFleetId(undefined); setFleetPickerOpen(false); } }}
+                        className="p-0.5 rounded text-muted-foreground hover:text-foreground"
+                      >
+                        <X size={12} />
+                      </span>
+                    )}
+                    <ChevronDown size={13} className={`transition-transform ${fleetPickerOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                {fleetPickerOpen && (
+                  <div className="border border-border rounded-xl overflow-hidden shadow-md bg-white">
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20">
+                      <Search size={13} className="text-muted-foreground shrink-0" />
+                      <input
+                        type="text"
+                        value={fleetSearch}
+                        onChange={(e) => setFleetSearch(e.target.value)}
+                        placeholder="Search by name or rego…"
+                        autoFocus
+                        className="flex-1 bg-transparent text-sm text-foreground placeholder-muted-foreground outline-none min-w-0"
+                      />
+                      {fleetSearch && (
+                        <button type="button" onClick={() => setFleetSearch('')} className="text-muted-foreground hover:text-foreground">
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-44 overflow-y-auto overscroll-contain">
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedFleetId(undefined); setFleetPickerOpen(false); setFleetSearch(''); }}
+                        className="w-full flex items-center px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors text-left"
+                      >
+                        No asset
+                      </button>
+                      {(() => {
+                        const q = fleetSearch.trim().toLowerCase();
+                        const filtered = q
+                          ? fleetAssets.filter((a) => a.name.toLowerCase().includes(q) || a.registration.toLowerCase().includes(q))
+                          : fleetAssets;
+                        if (filtered.length === 0) {
+                          return <p className="text-center text-xs text-muted-foreground py-4">No assets match "{fleetSearch}"</p>;
+                        }
+                        return filtered.map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => { setSelectedFleetId(a.id); setCategory('Fleet'); setFleetPickerOpen(false); setFleetSearch(''); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors text-left hover:bg-violet-50 ${
+                              selectedFleetId === a.id ? 'bg-violet-50 text-primary font-semibold' : 'text-foreground'
+                            }`}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="truncate block">{a.name}</span>
+                              {a.registration && <span className="text-xs text-muted-foreground font-mono">{a.registration}</span>}
                             </div>
                           </button>
                         ));
@@ -608,7 +718,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
           </div>
 
           {/* Sticky footer */}
-          <div className="flex gap-2.5 px-5 py-4 border-t border-slate-200 bg-white shrink-0">
+          <div className="flex gap-2.5 px-5 py-4 border-t border-slate-200 bg-white shrink-0 rounded-b-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-10 text-sm" disabled={uploading}>Cancel</Button>
             <Button type="submit" className="flex-1 h-10 text-sm" disabled={uploading || !file}>
               {uploading ? <><Loader2 size={14} className="animate-spin mr-1.5" />Uploading…</> : 'Upload'}
@@ -646,7 +756,7 @@ function DeleteConfirm({ file, onClose, onDeleted }: DeleteConfirmProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

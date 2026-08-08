@@ -271,6 +271,13 @@ export const jobPhotos = mysqlTable('job_photos', {
   uploadedByName: varchar('uploaded_by_name', { length: 255 }),
   caption: text('caption'),
   category: varchar('category', { length: 100 }),
+  // Lock fields — set when a photo is saved & locked via the photo editor
+  status: varchar('status', { length: 20 }).default('draft'),
+  lockedAt: timestamp('locked_at'),
+  lockedByUserId: varchar('locked_by_user_id', { length: 36 }),
+  lockedByName: varchar('locked_by_name', { length: 255 }),
+  // FK to canonical media_assets row (populated by uploadService)
+  mediaAssetId: int('media_asset_id'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
