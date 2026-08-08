@@ -104,121 +104,155 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-50 bg-black/50"
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <motion.div
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed left-0 right-0 z-50 bg-card rounded-t-2xl overflow-hidden"
-        style={{ bottom: 0, paddingBottom: 'max(env(safe-area-inset-bottom), 16px)', maxHeight: '85vh' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-border" />
-        </div>
+      {/* Sheet — matches JobPickerSheet.tsx style */}
+      <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none">
+        <motion.div
+          initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+          className="pointer-events-auto w-full bg-white rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
+          style={{
+            maxHeight: 'min(560px, calc(100dvh - 80px))',
+            paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="w-10 h-1 rounded-full bg-gray-200" />
+          </div>
 
-        {/* Job select */}
-        {sheetState === 'job-select' && (
-          <>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-                  <CameraIcon size={14} className="text-primary" />
+          {/* ── Job select ── */}
+          {sheetState === 'job-select' && (
+            <>
+              <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <CameraIcon size={17} className="text-violet-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-gray-900 font-bold text-base leading-tight">Job photo</h2>
+                    <p className="text-gray-400 text-xs leading-tight mt-0.5">Select a job, then camera opens</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground leading-tight">Job photo</p>
-                  <p className="text-xs text-muted-foreground leading-tight">Select a job, then camera opens</p>
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+                  aria-label="Close"
+                >
+                  <XIcon size={15} />
+                </button>
+              </div>
+
+              {uploadError && (
+                <div className="mx-4 mb-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-600 shrink-0">
+                  {uploadError}
+                </div>
+              )}
+
+              <div className="px-4 pb-2 shrink-0">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search jobs, job numbers…"
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                    autoComplete="off" autoCorrect="off" spellCheck={false}
+                  />
+                  {loadingJobs && <Loader2 size={13} className="animate-spin text-gray-400 shrink-0" />}
+                  {!loadingJobs && query && (
+                    <button type="button" onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                      <XIcon size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground" aria-label="Close">
-                <XIcon size={16} />
-              </button>
-            </div>
 
-            {uploadError && (
-              <div className="mx-4 mt-3 px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-xl text-xs font-semibold text-destructive">{uploadError}</div>
-            )}
+              <div className="h-px bg-gray-100 shrink-0 mx-4" />
 
-            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border mt-1">
-              <Search size={15} className="text-muted-foreground shrink-0" />
-              <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Search job number or name…"
-                className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-                autoComplete="off" autoCorrect="off" spellCheck={false}
-              />
-              {loadingJobs && <Loader2 size={13} className="animate-spin text-muted-foreground shrink-0" />}
-              {!loadingJobs && query && (
-                <button type="button" onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Clear">
-                  <XIcon size={13} />
-                </button>
-              )}
-            </div>
-
-            <div className="overflow-y-auto" style={{ maxHeight: '52vh' }}>
-              {jobs.length === 0 && !loadingJobs
-                ? <p className="text-sm text-muted-foreground text-center py-8">{query ? 'No jobs found.' : 'No active jobs.'}</p>
-                : jobs.map(job => (
-                  <button key={job.id} type="button" onClick={() => handleJobSelect(job)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/60 active:bg-muted transition-colors border-b border-border/50 last:border-b-0"
+              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+                {jobs.length === 0 && !loadingJobs ? (
+                  <p className="text-center text-gray-400 text-sm py-8">
+                    {query ? 'No jobs match your search' : 'No active jobs found'}
+                  </p>
+                ) : jobs.map(job => (
+                  <button
+                    key={job.id}
+                    type="button"
+                    onClick={() => handleJobSelect(job)}
+                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
                   >
+                    <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{job.name}</p>
-                      {job.jobNumber && <p className="text-xs text-muted-foreground mt-0.5">#{job.jobNumber}</p>}
+                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                      {job.jobNumber && (
+                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
+                      )}
                     </div>
-                    <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                    <ChevronRight size={14} className="text-gray-300 shrink-0" />
                   </button>
-                ))
-              }
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            </>
+          )}
 
-        {/* Uploading */}
-        {sheetState === 'uploading' && (
-          <div className="flex flex-col items-center justify-center gap-3 py-12 px-6">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-              <Loader2 size={28} className="animate-spin text-primary" />
+          {/* ── Uploading ── */}
+          {sheetState === 'uploading' && (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 flex-1">
+              <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center">
+                <Loader2 size={28} className="animate-spin text-violet-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-gray-900">Uploading photo…</p>
+                {selectedJob && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {selectedJob.jobNumber ? `#${selectedJob.jobNumber} — ` : ''}{selectedJob.name}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-sm font-bold text-foreground">Uploading photo…</p>
-              {selectedJob && <p className="text-xs text-muted-foreground mt-1">{selectedJob.jobNumber ? `#${selectedJob.jobNumber} — ` : ''}{selectedJob.name}</p>}
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Done */}
-        {sheetState === 'done' && (
-          <div className="flex flex-col items-center justify-center gap-4 py-10 px-6">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center">
-              <CheckCircle2 size={28} className="text-emerald-500" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-bold text-foreground">Photo uploaded</p>
-              <p className="text-xs text-muted-foreground mt-1">{doneJobName}</p>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap justify-center">
-              {doneJobId && (
-                <Link to={`/jobs/${doneJobId}/photos`} onClick={onClose}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl"
+          {/* ── Done ── */}
+          {sheetState === 'done' && (
+            <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 flex-1">
+              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                <CheckCircle2 size={28} className="text-emerald-500" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-gray-900">Photo uploaded</p>
+                <p className="text-xs text-gray-400 mt-1">{doneJobName}</p>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                {doneJobId && (
+                  <Link
+                    to={`/jobs/${doneJobId}/photos`}
+                    onClick={onClose}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl"
+                  >
+                    View photos <ExternalLink size={11} />
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setUploadError(null); picker.clear(); setSheetState('job-select'); }}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 bg-white text-gray-700 text-xs font-semibold rounded-xl"
                 >
-                  View photos <ExternalLink size={11} />
-                </Link>
-              )}
-              <button type="button"
-                onClick={() => { setUploadError(null); picker.clear(); setSheetState('job-select'); }}
-                className="flex items-center gap-1.5 px-4 py-2 border border-border bg-card text-foreground text-xs font-semibold rounded-xl"
-              >
-                <CameraIcon size={12} /> Another photo
+                  <CameraIcon size={12} /> Another photo
+                </button>
+              </div>
+              <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mt-1">
+                Done
               </button>
             </div>
-            <button type="button" onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1">Done</button>
-          </div>
-        )}
-      </motion.div>
+          )}
+        </motion.div>
+      </div>
     </>
   );
 }
