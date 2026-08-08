@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Save, Mail, Loader2, CheckCircle2, AlertCircle,
   Lock, Eye, EyeOff, KeyRound, Smartphone, BadgeCheck, RefreshCw,
-  FileText, User, ShieldAlert, Phone, Paperclip, Upload, Trash2, Download,
+  FileText, User, ShieldAlert, Phone, Paperclip, Upload, Trash2, Download, X, ZoomIn,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
@@ -205,6 +205,7 @@ interface Attachment {
   url: string;
   size: number;
   uploadedAt: string;
+  mimeType?: string;
 }
 
 export default function MyAccountTab() {
@@ -235,6 +236,7 @@ export default function MyAccountTab() {
   const [uploading,    setUploading]    = useState(false);
   const [uploadError,  setUploadError]  = useState('');
   const [deletingId,   setDeletingId]   = useState<string | null>(null);
+  const [lightboxAtt,  setLightboxAtt]  = useState<Attachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -499,37 +501,58 @@ export default function MyAccountTab() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {attachments.map((att) => (
-                <div key={att.id} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                  <FileText size={16} className="text-slate-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{att.filename}</p>
-                    <p className="text-xs text-slate-400">{formatBytes(att.size)} · {new Date(att.uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+              {attachments.map((att) => {
+                const isImage = att.mimeType?.startsWith('image/') ?? false;
+                return (
+                  <div key={att.id} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                    {isImage ? (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxAtt(att)}
+                        className="relative shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 hover:ring-2 hover:ring-violet-400 transition-all group"
+                        title="View image"
+                      >
+                        <img
+                          src={`/api/me/profile-attachments/${att.id}/thumbnail`}
+                          alt={att.filename}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
+                          <ZoomIn size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="shrink-0 w-12 h-12 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center">
+                        <FileText size={20} className="text-slate-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{att.filename}</p>
+                      <p className="text-xs text-slate-400">{formatBytes(att.size)} · {new Date(att.uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <a
+                      href={`/api/me/profile-attachments/${att.id}/download`}
+                      download={att.filename}
+                      className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200"
+                    >
+                      <Download size={14} />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAttachment(att.id)}
+                      disabled={deletingId === att.id}
+                      className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deletingId === att.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
                   </div>
-                  <a
-                    href={`/api/me/profile-attachments/${att.id}/download`}
-                    download={att.filename}
-                    className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200"
-                  >
-                    <Download size={14} />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAttachment(att.id)}
-                    disabled={deletingId === att.id}
-                    className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {deletingId === att.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
               {attachments.length < 5 && (
-                <p className="text-xs text-slate-400 text-center pt-1">{5 - attachments.length} slot{5 - attachments.length !== 1 ? 's' : ''} remaining</p>
+                <p className="text-xs text-slate-400 text-center pt-2">{5 - attachments.length} slot{5 - attachments.length !== 1 ? 's' : ''} remaining</p>
               )}
             </div>
-          )}
-          {attachments.length < 5 && attachments.length > 0 && (
-            <p className="text-xs text-slate-400 text-center pt-2">{5 - attachments.length} slot{5 - attachments.length !== 1 ? 's' : ''} remaining</p>
           )}
         </div>
       </div>
@@ -586,6 +609,50 @@ export default function MyAccountTab() {
         <AppLockSettings userEmail={me?.user?.email ?? ''} />
         <SecurityTab />
       </div>
+
+      {/* ── Image Lightbox ───────────────────────────────────────────── */}
+      {lightboxAtt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setLightboxAtt(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header bar */}
+            <div className="w-full flex items-center justify-between bg-black/60 rounded-t-xl px-4 py-2.5">
+              <p className="text-white text-sm font-medium truncate max-w-[calc(100%-80px)]">{lightboxAtt.filename}</p>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`/api/me/profile-attachments/${lightboxAtt.id}/download`}
+                  download={lightboxAtt.filename}
+                  className="text-white/70 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+                  title="Download"
+                >
+                  <Download size={16} />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightboxAtt(null)}
+                  className="text-white/70 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+                  title="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            {/* Image */}
+            <div className="bg-black rounded-b-xl overflow-hidden flex items-center justify-center max-h-[80vh] w-full">
+              <img
+                src={`/api/me/profile-attachments/${lightboxAtt.id}/thumbnail`}
+                alt={lightboxAtt.filename}
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
