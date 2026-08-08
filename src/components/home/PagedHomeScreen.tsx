@@ -26,6 +26,7 @@ import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
 import NewJobModal from '@/components/NewJobModal';
+import CameraFab from '@/components/home/CameraFab';
 
 const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
   { label: 'Console', icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600', fg: 'text-white' },
@@ -186,6 +187,8 @@ function DashboardPage({
       <NotificationList />
       <MyTasksPanel userRole={role} />
 
+      {/* Camera FAB — floats over the dashboard, opens job-picker then camera */}
+      <CameraFab />
     </div>
   );
 }
