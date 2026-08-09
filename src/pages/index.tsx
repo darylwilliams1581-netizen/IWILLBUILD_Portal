@@ -615,6 +615,29 @@ export default function HomePage() {
 
       <main suppressHydrationWarning>
 
+      {/* ── Hero responsive styles ─────────────────────────────────────────── */}
+      <style>{`
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero-cta-block {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .hero-mockups {
+          display: none;
+        }
+        @media (min-width: 900px) {
+          .hero-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .hero-mockups {
+            display: flex;
+          }
+        }
+      `}</style>
+
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section id="top" style={{
         background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 55%, #0f2d4a 100%)',
@@ -630,7 +653,7 @@ export default function HomePage() {
         <div style={{
           position: 'relative',
           maxWidth: 1180, margin: '0 auto',
-          padding: '72px 22px 64px',
+          padding: '60px 20px 52px',
           display: 'grid',
           gap: 52,
           alignItems: 'center',
@@ -689,13 +712,16 @@ export default function HomePage() {
 
             {/* CTA block */}
             <div className="hero-cta-block" style={{ marginBottom: 28 }}>
-              <Link to="/signup" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                backgroundColor: '#7c3aed', borderRadius: 9, color: '#fff',
-                padding: '15px 26px', fontWeight: 800, fontSize: 16,
-                textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.4)',
-                marginBottom: 10,
-              }}>
+              <Link
+                to="/signup"
+                className="hero-cta-primary"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  backgroundColor: 'hsl(var(--primary))', borderRadius: 9, color: '#fff',
+                  padding: '15px 26px', fontWeight: 800, fontSize: 16,
+                  textDecoration: 'none',
+                }}
+              >
                 Start 30-day free trial
                 <ArrowRight size={16} />
               </Link>
@@ -708,15 +734,15 @@ export default function HomePage() {
               }}>
                 Sign in
               </Link>
-              <p style={{ color: '#64748b', fontSize: 13, margin: '10px 0 0' }}>
+              <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
                 No setup fee. Cancel anytime.
               </p>
             </div>
           </div>
 
           {/* ── Right: dual mockup — phone + desktop side by side ── */}
-          <div style={{
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          <div className="hero-mockups" style={{
+            alignItems: 'flex-end', justifyContent: 'center',
             gap: 20, position: 'relative',
           }}>
             {/* Phone — slightly raised */}
