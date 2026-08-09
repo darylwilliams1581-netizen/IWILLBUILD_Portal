@@ -2289,9 +2289,11 @@ export default function HomeScreen() {
               {firstName}
             </p>
           </div>
-          {/* Company logo / initial badge */}
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden"
+          {/* Company logo / initial badge — tapping opens System Log (owner) or profile */}
+          <button
+            onClick={() => navigate(isPlatformOwner ? '/owner-console?tab=activity-log' : '/profile')}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden active:scale-95 transition-transform"
+            aria-label={isPlatformOwner ? 'Open system log' : 'Open profile'}
             style={{
               background: 'linear-gradient(135deg, rgba(124,58,237,0.35) 0%, rgba(251,146,60,0.20) 100%)',
               border: '1px solid rgba(255,255,255,0.10)',
@@ -2309,7 +2311,7 @@ export default function HomeScreen() {
                 {(me?.company?.name ?? 'I')[0].toUpperCase()}
               </span>
             )}
-          </div>
+          </button>
         </div>
       </div>
 
