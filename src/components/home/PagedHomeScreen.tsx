@@ -61,7 +61,12 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
       if (!res.ok) {
         throw new Error(data.error ?? `Search failed (${res.status})`);
       }
-      setJobs(data.jobs ?? []);
+      // Validate every returned job — only accept positive numeric IDs
+      const validJobs = (data.jobs ?? []).filter((job) => {
+        const numericId = Number(job.id);
+        return Number.isInteger(numericId) && numericId > 0;
+      });
+      setJobs(validJobs);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Could not load jobs');
       setJobs([]);
@@ -76,14 +81,25 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
   async function handlePhotoFile(file: File) {
     const job = pendingJobRef.current;
     if (!job) return;
+
+    // Guard: validate numeric job ID before upload — never send to /api/jobs/search or NaN
+    const numericJobId = Number(job.id);
+    if (!Number.isInteger(numericJobId) || numericJobId <= 0) {
+      setUploadError('The selected job is invalid. Please select the job again.');
+      setSheetState('job-select');
+      pendingJobRef.current = null;
+      setSelectedJob(null);
+      return;
+    }
+
     setSheetState('uploading');
     setUploadError(null);
     try {
       const fd = new FormData();
       fd.append('photo', file, file.name);
-      const res = await fetch(`/api/jobs/${job.id}/photos`, { method: 'POST', credentials: 'include', body: fd });
+      const res = await fetch(`/api/jobs/${numericJobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
       if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? `Upload failed (${res.status})`); }
-      setDoneJobId(job.id);
+      setDoneJobId(numericJobId);
       setDoneJobName(job.name);
       setSheetState('done');
     } catch (err) {
@@ -95,6 +111,12 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
   const picker = useIosMediaPicker(handlePhotoFile);
 
   const handleJobSelect = useCallback(async (job: JobOption) => {
+    // Validate numeric ID before storing — never allow "search", NaN, or non-positive
+    const numericJobId = Number(job.id);
+    if (!Number.isInteger(numericJobId) || numericJobId <= 0) {
+      setUploadError('The selected job is invalid. Please select the job again.');
+      return;
+    }
     pendingJobRef.current = job;
     setSelectedJob(job);
     await picker.openCamera({ direction: 'rear', captureQuality: 84 });
