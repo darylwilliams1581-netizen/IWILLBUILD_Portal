@@ -20,7 +20,7 @@ import {
 } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, ExternalLink, Wrench, BookOpen, List, Camera as CameraIcon, Search, X as XIcon, CheckCircle2, Loader2, ChevronRight, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Camera as CameraIcon, Search, X as XIcon, CheckCircle2, Loader2, ChevronRight, User, LogOut, ExternalLink } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
@@ -368,63 +368,35 @@ function DashboardPage({
   onNavigate,
   onNewJob,
   onOpenCamera,
-  onProfile,
-  onLogout,
 }: {
   userId: string;
   role: string;
   onNavigate: (href: string) => void;
   onNewJob: () => void;
   onOpenCamera: () => void;
-  onProfile: () => void;
-  onLogout: () => void;
 }) {
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
-      {/* Header row: action buttons */}
-      <div className="flex items-center gap-2">
-        {/* Job Photo + Add Job — left side */}
+      {/* Full-width Job Photo + Add Job row */}
+      <div className="flex items-center gap-3">
         <button
           onClick={onOpenCamera}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold shadow-sm active:scale-95 transition-transform"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform"
         >
-          <CameraIcon size={16} strokeWidth={2.5} />
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <CameraIcon size={20} strokeWidth={2} />
+          </div>
           Job Photo
         </button>
         <button
           onClick={onNewJob}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm active:scale-95 transition-transform"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform"
         >
-          <Plus size={16} strokeWidth={2.5} />
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Plus size={20} strokeWidth={2} />
+          </div>
           Add Job
-        </button>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Notification bell */}
-        <div className="[&_button]:w-11 [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-slate-700 [&_button]:border [&_button]:border-slate-600 [&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-slate-200 [&_button:hover]:text-white [&_button:hover]:bg-slate-600 [&_button]:transition-all [&_button]:active:scale-95">
-          <NotificationBell />
-        </div>
-
-        {/* Profile */}
-        <button
-          onClick={onProfile}
-          className="w-11 h-11 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all"
-          aria-label="Profile"
-        >
-          <User size={18} className="text-white" />
-        </button>
-
-        {/* Logout */}
-        <button
-          onClick={onLogout}
-          className="w-11 h-11 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all"
-          aria-label="Log out"
-          title="Log out"
-        >
-          <LogOut size={16} className="text-slate-200" />
         </button>
       </div>
 
@@ -485,16 +457,6 @@ function DashboardPage({
 // Shows management icon tiles (minus desktop-only ones) + a full-width
 // "Desktop features" link card at the bottom.
 
-const DESKTOP_ONLY_FEATURES = [
-  { label: 'Doc Studio',     icon: FileText,        desc: 'Build & manage document templates' },
-  { label: 'Form Studio',    icon: ClipboardList,   desc: 'Design custom forms & checklists' },
-  { label: 'Estimating',     icon: Calculator,      desc: 'Create detailed job estimates' },
-  { label: 'Asset Manager',  icon: Wrench,          desc: 'Equipment register & inspections' },
-  { label: 'Studio Library', icon: BookOpen,        desc: 'Shared content & block library' },
-  { label: 'Global Lists',   icon: List,            desc: 'Manage dropdown & list values' },
-  { label: 'User Logs',      icon: BarChart2,       desc: 'Sign-in, fleet & activity reports' },
-];
-
 /** Keys that are desktop-only and should be hidden from the Manage tile grid */
 const DESKTOP_ONLY_KEYS = new Set(['studio_docs', 'studio_forms', 'estimating', 'equipment']);
 
@@ -519,43 +481,6 @@ function ManagePage({
             <IconTile key={item.key} item={item} onNavigate={onNavigate} />
           ))}
         </div>
-
-        {/* ── Desktop features card ── */}
-        <a
-          href="https://iwillbuild.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex flex-col w-full rounded-2xl overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-900/60 to-violet-800/40 active:scale-[0.98] transition-transform"
-        >
-          {/* Header row */}
-          <div className="flex items-center justify-between px-4 pt-3 pb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-violet-500/30 flex items-center justify-center">
-                <Monitor size={14} className="text-violet-300" />
-              </div>
-              <span className="text-sm font-bold text-white">Desktop features</span>
-            </div>
-            <div className="flex items-center gap-1 text-violet-300">
-              <span className="text-[11px] font-semibold">iwillbuild.com</span>
-              <ExternalLink size={11} />
-            </div>
-          </div>
-
-          {/* Feature list */}
-          <div className="px-4 pb-4 flex flex-col gap-0">
-            {DESKTOP_ONLY_FEATURES.map(({ label, icon: Icon, desc }) => (
-              <div key={label} className="flex items-center gap-3 py-2 border-t border-white/10 first:border-t-0">
-                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                  <Icon size={14} className="text-violet-200" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[13px] font-semibold text-white leading-tight">{label}</span>
-                  <span className="text-[11px] text-violet-300/80 leading-tight">{desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </a>
       </div>
     </div>
   );
@@ -671,29 +596,55 @@ export default function PagedHomeScreen({
 
   return (
     <>
-    <div className="flex flex-col flex-1 min-h-0">      {/* ── Page tab bar ──────────────────────────────────────────────────────── */}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* ── Top bar: page tabs (centred) + utility buttons (right) ─────────── */}
       <div
-        className="flex items-center shrink-0 px-4 pt-2 pb-1 gap-1"
+        className="flex items-center shrink-0 px-3 pt-2 pb-1 gap-2"
         style={{ background: 'transparent' }}
       >
-        {PAGE_LABELS.map((label, i) => {
-          const Icon = PAGE_ICONS[i];
-          const active = page === i;
-          return (
-            <button
-              key={label}
-              onClick={() => setPage(i)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
-                active
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-white/60 text-gray-500 hover:bg-white/80'
-              }`}
-            >
-              <Icon size={11} strokeWidth={2.2} />
-              {label}
-            </button>
-          );
-        })}
+        {/* Centred tab pills — flex-1 so they fill available space */}
+        <div className="flex-1 flex items-center justify-center gap-1">
+          {PAGE_LABELS.map((label, i) => {
+            const Icon = PAGE_ICONS[i];
+            const active = page === i;
+            return (
+              <button
+                key={label}
+                onClick={() => setPage(i)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
+                  active
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-white/60 text-gray-500 hover:bg-white/80'
+                }`}
+              >
+                <Icon size={11} strokeWidth={2.2} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Utility buttons — notification, profile, logout */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="[&_button]:w-9 [&_button]:h-9 [&_button]:rounded-xl [&_button]:bg-slate-700 [&_button]:border [&_button]:border-slate-600 [&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-slate-200 [&_button:hover]:text-white [&_button:hover]:bg-slate-600 [&_button]:transition-all [&_button]:active:scale-95">
+            <NotificationBell />
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-9 h-9 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all"
+            aria-label="Profile"
+          >
+            <User size={16} className="text-white" />
+          </button>
+          <button
+            onClick={async () => { await signOut(); navigate('/login'); }}
+            className="w-9 h-9 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all"
+            aria-label="Log out"
+            title="Log out"
+          >
+            <LogOut size={14} className="text-slate-200" />
+          </button>
+        </div>
       </div>
 
       {/* ── Swipe container ───────────────────────────────────────────────────── */}
@@ -730,11 +681,6 @@ export default function PagedHomeScreen({
               onNavigate={onNavigate}
               onNewJob={() => setNewJobOpen(true)}
               onOpenCamera={() => setCameraSheetOpen(true)}
-              onProfile={() => navigate('/profile')}
-              onLogout={async () => {
-                await signOut();
-                navigate('/login');
-              }}
             />
           </div>
 
