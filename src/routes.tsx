@@ -291,7 +291,7 @@ export const routes: RouteObject[] = [
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/help',          element: protect(<Suspense fallback={<PageLoader />}><HelpPage /></Suspense>), errorElement: routeError },
-  { path: '/owner-console',     element: protectDevDesktop(<OwnerConsolePage />, 'Owner Console'),   errorElement: routeError },
+  { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
