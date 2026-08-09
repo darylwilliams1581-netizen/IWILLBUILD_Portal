@@ -344,7 +344,7 @@ import job_forms_id_share_get_315 from "./api/job-forms/[id]/share/GET";
 import job_forms_id_share_post_316 from "./api/job-forms/[id]/share/POST";
 import job_forms_id_send_email_post from "./api/job-forms/[id]/send-email/POST";
 import jobs_get_317 from "./api/jobs/GET";
-import jobs_search_get from "./api/jobs/search/GET";
+import jobs_search_get from "./api/jobs/search/GET.js";
 import jobs_post_318 from "./api/jobs/POST";
 import jobs_report_generate_post_319 from "./api/jobs/report/generate/POST";
 import jobs_id_get_320 from "./api/jobs/[id]/GET";

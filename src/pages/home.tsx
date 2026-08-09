@@ -242,7 +242,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   useEffect(() => {
     if (!open) return;
     setJobsLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         const list = Array.isArray(data) ? data : (data.jobs ?? []);
@@ -407,6 +407,8 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
                       <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
                         <Loader2 size={14} className="animate-spin" /> Loading jobs…
                       </div>
+                    ) : jobs.length === 0 ? (
+                      <p className="text-gray-400 text-sm py-2">No active jobs found.</p>
                     ) : (
                       <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
                         {jobs.map(job => (
@@ -1501,7 +1503,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (!open) return;
     setJobsLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         const list = Array.isArray(data) ? data : (data.jobs ?? []);
