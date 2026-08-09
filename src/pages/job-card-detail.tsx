@@ -26,7 +26,7 @@ import { useUploadQueue } from '@/hooks/useUploadQueue';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Material { id?: number; description: string; cost: number; }
-interface Photo { id: number; file_path: string; file_name: string; caption: string | null; }
+interface Photo { id: number; file_path: string; file_name: string; caption: string | null; url?: string; }
 
 interface JobCard {
   id: number;
@@ -350,9 +350,9 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map(p => (
             <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
-              <a href={p.file_path} target="_blank" rel="noopener noreferrer">
+              <a href={p.url ?? p.file_path} target="_blank" rel="noopener noreferrer">
                 <img
-                  src={p.file_path}
+                  src={p.url ?? p.file_path}
                   alt={p.caption ?? p.file_name}
                   className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                   loading="lazy"

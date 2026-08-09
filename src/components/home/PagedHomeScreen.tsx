@@ -75,7 +75,14 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
-  useEffect(() => { void fetchJobs(''); setTimeout(() => inputRef.current?.focus(), 120); }, []);
+  useEffect(() => {
+    void fetchJobs('');
+    // Only auto-focus on pointer-fine devices (desktop/mouse) — iOS Safari zooms
+    // the page when focusing an input < 16px, which widens the layout.
+    if (window.matchMedia('(pointer: fine)').matches) {
+      setTimeout(() => inputRef.current?.focus(), 120);
+    }
+  }, []);
   useEffect(() => { const t = setTimeout(() => void fetchJobs(query), 250); return () => clearTimeout(t); }, [query]);
 
   async function handlePhotoFile(file: File) {
@@ -143,16 +150,15 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
       />
 
       {/* Sheet — centered dialog on desktop, bottom sheet on mobile */}
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none overflow-x-hidden w-full max-w-full">
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="pointer-events-auto w-full bg-white flex flex-col overflow-hidden shadow-2xl
+          className="pointer-events-auto w-[calc(100%-2rem)] max-w-[520px] bg-white flex flex-col overflow-hidden shadow-2xl
             rounded-t-3xl sm:rounded-2xl"
           style={{
-            width: 'min(520px, calc(100vw - 32px))',
             maxHeight: 'min(600px, calc(100dvh - 80px))',
             paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
           }}
@@ -167,13 +173,13 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
           {sheetState === 'job-select' && (
             <div className="flex flex-col flex-1 min-h-0">
               <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
                     <CameraIcon size={17} className="text-violet-600" />
                   </div>
-                  <div>
-                    <h2 className="text-gray-900 font-bold text-base leading-tight">Job photo</h2>
-                    <p className="text-gray-400 text-xs leading-tight mt-0.5">Select a job, then camera opens</p>
+                  <div className="min-w-0">
+                    <h2 className="text-gray-900 font-bold text-base leading-tight truncate">Job photo</h2>
+                    <p className="text-gray-400 text-xs leading-tight mt-0.5 truncate">Select a job, then camera opens</p>
                   </div>
                 </div>
                 <button
@@ -205,7 +211,7 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder="Search jobs, job numbers…"
-                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                    className="flex-1 bg-transparent text-base sm:text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
                     autoComplete="off" autoCorrect="off" spellCheck={false}
                   />
                   {loadingJobs && <Loader2 size={13} className="animate-spin text-gray-400 shrink-0" />}

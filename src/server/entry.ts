@@ -744,8 +744,8 @@ import job_cards_id_put from "./api/job-cards/[id]/PUT.js";
 import job_cards_id_delete from "./api/job-cards/[id]/DELETE.js";
 import job_cards_id_invoice_post from "./api/job-cards/[id]/invoice/POST.js";
 import job_cards_id_convert_post from "./api/job-cards/[id]/convert/POST.js";
-import job_cards_id_photos_post from "./api/job-cards/[id]/photos/POST.js";
-import job_cards_id_photos_photoid_delete from "./api/job-cards/[id]/photos/[photoId]/DELETE.js";
+// job_cards_id_photos_post and job_cards_id_photos_photoid_delete are already
+// imported above as job_cards_id_photos_post_307 / job_cards_id_photos_photoId_delete_308
 // New endpoints — sign-in history, fleet usage export, supervisor force-close
 import signin_history_get from "./api/signin-history/GET.js";
 import fleet_id_usage_export_get from "./api/fleet/[id]/usage-export/GET.js";

@@ -10,6 +10,7 @@ import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { compressImageIfNeeded } from '../../../../storage/storage-service.js';
+import { getSignedUrl } from '../../../../storage/storage-service.js';
 import { uploadMedia, normaliseMime } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
@@ -55,7 +56,7 @@ export default async function handler(req: Request, res: Response) {
 
     const caption = String(parsed.fields.caption ?? '').trim() || null;
     const clientId = (req.headers['x-client-id'] as string | undefined)?.trim() || null;
-    const saved: Array<{ id: number; file_path: string; file_name: string; mime_type: string; caption: string | null }> = [];
+    const saved: Array<{ id: number; file_path: string; file_name: string; mime_type: string; caption: string | null; url: string }> = [];
 
     for (let i = 0; i < parsed.files.length; i++) {
       const file = parsed.files[i];
@@ -87,20 +88,28 @@ export default async function handler(req: Request, res: Response) {
         imageOnly: true,
         allowHeic: false,
         insertCompatibilityRow: async (ctx: CompatibilityContext) => {
+          // Store storageKey (permanent) not publicUrl (may be a 1-hour signed URL)
           const insResult = await db.execute(sql`
             INSERT INTO job_card_photos (job_card_id, company_id, file_path, file_name, mime_type, caption, uploaded_by)
-            VALUES (${cardId}, ${ctx.companyId}, ${ctx.publicUrl}, ${ctx.originalName}, ${ctx.mimeType}, ${caption}, ${ctx.userId})
+            VALUES (${cardId}, ${ctx.companyId}, ${ctx.storageKey}, ${ctx.originalName}, ${ctx.mimeType}, ${caption}, ${ctx.userId})
           `);
           return Number((insResult[0] as { insertId?: number })?.insertId ?? 0) || null;
         },
       });
 
+      // Generate a fresh signed URL for the response (storageKey is stored in DB, not the URL)
+      let freshUrl = result.url;
+      try {
+        freshUrl = await getSignedUrl(storageKey, BUCKET, 3600);
+      } catch { /* non-fatal — fall back to result.url */ }
+
       saved.push({
         id: result.destinationId ?? 0,
-        file_path: result.url,
+        file_path: storageKey,   // permanent key stored in DB
         file_name: result.originalName,
         mime_type: result.mimeType,
         caption,
+        url: freshUrl,           // fresh signed URL for immediate display
       });
     }
 
