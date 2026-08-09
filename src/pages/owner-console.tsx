@@ -8,7 +8,7 @@ import {
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut,
+  Settings, Users, Building2, LogOut, ArrowLeft,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -647,7 +647,14 @@ export default function OwnerConsolePage() {
         </Helmet>
 
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 shrink-0">
+        <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={16} />
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <Shield size={16} className="text-primary" />
