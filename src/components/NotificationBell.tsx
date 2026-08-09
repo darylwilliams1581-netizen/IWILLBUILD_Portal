@@ -146,23 +146,7 @@ export default function NotificationBell({ collapsed, onTopBar }: { collapsed?: 
       <button
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
-        style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          border: 'none',
-          background: open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
-          color: open ? '#ffffff' : 'rgba(255,255,255,0.75)',
-          cursor: 'pointer',
-          flexShrink: 0,
-          transition: 'background 0.15s, color 0.15s',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.15)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = open ? '#ffffff' : 'rgba(255,255,255,0.75)'; }}
+        className={`relative flex items-center justify-center w-9 h-9 rounded-[10px] border border-red-700/60 text-white transition-colors shrink-0 ${open ? 'bg-red-700' : 'bg-red-600 hover:bg-red-700'}`}
       >
         <Bell size={16} />
         {unreadCount > 0 && (

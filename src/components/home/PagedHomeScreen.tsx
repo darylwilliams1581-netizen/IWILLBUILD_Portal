@@ -626,7 +626,7 @@ export default function PagedHomeScreen({
 
         {/* Utility buttons — notification, profile, logout */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="[&_button]:w-9 [&_button]:h-9 [&_button]:rounded-xl [&_button]:bg-slate-700 [&_button]:border [&_button]:border-slate-600 [&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-slate-200 [&_button:hover]:text-white [&_button:hover]:bg-slate-600 [&_button]:transition-all [&_button]:active:scale-95">
+          <div className="shrink-0">
             <NotificationBell />
           </div>
           <button
