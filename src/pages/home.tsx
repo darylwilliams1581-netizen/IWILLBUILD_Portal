@@ -2269,9 +2269,9 @@ export default function HomeScreen() {
           boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Row 1: date only — actions moved to Dashboard page header */}
+        {/* Row 1: date pill */}
         <div className="flex items-center justify-between mb-2.5">
-          <p className="text-white/30 text-[10px] font-semibold tracking-[0.07em] uppercase">{dateStr}</p>
+          <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span>
         </div>
         {/* Row 2: greeting — large, bold, personal */}
         <div className="flex items-end justify-between gap-3">
@@ -2292,7 +2292,7 @@ export default function HomeScreen() {
           {/* System logo badge — tapping opens System Log (owner) or profile */}
           <button
             onClick={() => navigate(isPlatformOwner ? '/owner-console?tab=activity-log' : '/profile')}
-            className="w-32 h-32 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden active:scale-95 transition-transform"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden active:scale-95 transition-transform"
             aria-label={isPlatformOwner ? 'Open system log' : 'Open profile'}
             style={{
               background: 'transparent',
