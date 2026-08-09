@@ -1,33 +1,29 @@
 {
-  "jobId": "6813819d-57ff-4bf2-ac7b-927d0842fc52",
-  "status": "generating",
-  "prompt": "Redesign this logo for a premium construction and field management platform called IWILLBUILD. The mark should feel bold, professional, and modern — a strong geometric icon (such as a stylised hard hat, building frame, or upward-pointing chevron/arrow combined with a grid or structure motif) paired with the wordmark \"IWILLBUILD\" in a clean, heavy sans-serif. Use the brand violet as the primary accent on the icon, with crisp white for the wordmark text. The overall feel should be confident and industrial — like a serious enterprise tool, not a startup. White wordmark on the dark surface. Generous padding, tight composition.",
-  "layouts": [
-    "horizontal"
-  ],
+  "jobId": "e47e4bd1-302d-40a5-83fa-139504488960",
+  "status": "completed",
+  "prompt": "Optimise for a white header bar — ensure the wordmark and icon are dark/violet so they read clearly on white.",
+  "layouts": [],
   "slots": [
     "logo/horizontal"
   ],
-  "references": {
-    "logo": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png"
-  },
   "isRegeneration": true,
   "previousSlots": {
     "logo/horizontal": {
       "mediaType": "logo",
-      "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png",
-      "searchQuery": "A bold 3D industrial construction logo for IWILLBUILD. Left side: a chunky 3D me",
+      "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png",
+      "searchQuery": "Redesign this logo for a premium construction and field management platform call",
       "alternatives": [
-        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png",
-        "/airo-assets/uploads/airo-logo-shimmer-horizontal.svg"
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png"
       ],
       "solidUrlMap": {
         "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-solid-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png",
-        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-solid-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png"
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-solid-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png",
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-original-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
       },
       "mockupUrlMap": {
         "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-mockup-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png",
-        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-mockup-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png"
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-mockup-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png",
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
       },
       "landscapeMockupUrlMap": {
         "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-mockup-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png",
@@ -41,14 +37,70 @@
         "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png": {
           "sessionId": "3c28765c-b495-4a09-be17-af7a99a49647",
           "logoId": "a61a32f7-bd54-4bd5-ba04-daff124aaff3"
+        },
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png": {
+          "sessionId": "0093d164-2bfe-492e-9f31-6239b59fee8a",
+          "logoId": "e8455847-91bd-43aa-97e7-57cd52b87001"
         }
       },
+      "productMockupsMap": {
+        "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png": [
+          {
+            "type": "mug",
+            "label": "Mug",
+            "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-mug-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+          },
+          {
+            "type": "card",
+            "label": "Business Card",
+            "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-card-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+          },
+          {
+            "type": "tshirt",
+            "label": "T-Shirt",
+            "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-tshirt-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+          },
+          {
+            "type": "box",
+            "label": "Packaging",
+            "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-box-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+          }
+        ]
+      },
+      "productMockups": [
+        {
+          "type": "mug",
+          "label": "Mug",
+          "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-mug-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+        },
+        {
+          "type": "card",
+          "label": "Business Card",
+          "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-card-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+        },
+        {
+          "type": "tshirt",
+          "label": "T-Shirt",
+          "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-tshirt-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+        },
+        {
+          "type": "box",
+          "label": "Packaging",
+          "url": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-mockup-box-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
+        }
+      ],
       "userModified": false,
       "createdAt": "2026-06-25T21:51:06.847Z",
-      "lastUpdated": "2026-06-30T11:05:15.061Z"
+      "lastUpdated": "2026-08-09T22:39:33.700Z",
+      "surfaceMode": "dark",
+      "generatedForSurfaceColor": "#0d1117",
+      "darkSurfaceUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/0093d164-2bfe-492e-9f31-6239b59fee8a/horizontal-transparent-e8455847-91bd-43aa-97e7-57cd52b87001/logo-logo.png"
     }
   },
   "attempt": 0,
-  "createdAt": "2026-08-09T22:39:11.386Z",
-  "updatedAt": "2026-08-09T22:39:11.431Z"
+  "variant": "horizontal",
+  "createdAt": "2026-08-09T22:40:41.104Z",
+  "updatedAt": "2026-08-09T22:41:02.395Z",
+  "sessionId": "1349e84f-2f64-4268-8079-0d5f17f7d4d6",
+  "logoId": "ac7b26f8-c7ed-4edd-9e44-7dd612289a56"
 }
