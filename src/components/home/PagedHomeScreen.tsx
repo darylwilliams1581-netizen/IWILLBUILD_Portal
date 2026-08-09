@@ -599,11 +599,11 @@ export default function PagedHomeScreen({
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Top bar: page tabs (centred) + utility buttons (right) ─────────── */}
       <div
-        className="flex items-center shrink-0 px-3 pt-2 pb-1 gap-2"
+        className="flex items-center shrink-0 px-2 pt-2 pb-1 gap-1.5 overflow-hidden"
         style={{ background: 'transparent' }}
       >
-        {/* Centred tab pills — flex-1 so they fill available space */}
-        <div className="flex-1 flex items-center justify-center gap-1">
+        {/* Centred tab pills — flex-1 so they fill available space, min-w-0 prevents overflow */}
+        <div className="flex-1 min-w-0 flex items-center justify-center gap-1">
           {PAGE_LABELS.map((label, i) => {
             const Icon = PAGE_ICONS[i];
             const active = page === i;
@@ -611,7 +611,7 @@ export default function PagedHomeScreen({
               <button
                 key={label}
                 onClick={() => setPage(i)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${
                   active
                     ? 'bg-violet-600 text-white shadow-sm'
                     : 'bg-white/60 text-gray-500 hover:bg-white/80'
@@ -624,25 +624,25 @@ export default function PagedHomeScreen({
           })}
         </div>
 
-        {/* Utility buttons — notification, profile, logout */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Utility buttons — notification, profile, logout — fixed width, never shrink */}
+        <div className="flex items-center gap-1 shrink-0">
           <div className="shrink-0">
             <NotificationBell />
           </div>
           <button
             onClick={() => navigate('/profile')}
-            className="w-9 h-9 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all"
+            className="w-8 h-8 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all shrink-0"
             aria-label="Profile"
           >
-            <User size={16} className="text-white" />
+            <User size={15} className="text-white" />
           </button>
           <button
             onClick={async () => { await signOut(); navigate('/login'); }}
-            className="w-9 h-9 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all"
+            className="w-8 h-8 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all shrink-0"
             aria-label="Log out"
             title="Log out"
           >
-            <LogOut size={14} className="text-slate-200" />
+            <LogOut size={13} className="text-slate-200" />
           </button>
         </div>
       </div>

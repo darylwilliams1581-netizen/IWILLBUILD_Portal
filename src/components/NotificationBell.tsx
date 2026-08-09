@@ -146,7 +146,7 @@ export default function NotificationBell({ collapsed, onTopBar }: { collapsed?: 
       <button
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
-        className={`relative flex items-center justify-center w-9 h-9 rounded-[10px] border border-red-700/60 text-white transition-colors shrink-0 ${open ? 'bg-red-700' : 'bg-red-600 hover:bg-red-700'}`}
+        className={`relative flex items-center justify-center w-8 h-8 rounded-[10px] border border-red-700/60 text-white transition-colors shrink-0 ${open ? 'bg-red-700' : 'bg-red-600 hover:bg-red-700'}`}
       >
         <Bell size={16} />
         {unreadCount > 0 && (
