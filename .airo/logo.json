@@ -1,17 +1,33 @@
 {
-  "jobId": "1f825b50-6905-411c-b6fb-8f351f1132fc",
+  "jobId": "cc6c54c2-c81d-4440-9495-973c12454508",
   "status": "completed",
-  "prompt": "Use the purple building/hard hat geometric mark as the favicon icon — keep the icon only, no wordmark, tight padding.",
+  "prompt": "Regenerate the square app icon cleanly — the purple/violet construction helmet and building icon centered perfectly on a deep dark background (#0d1117), full bleed with generous even padding on all four sides, no white strips, no inner dark box artifact, no offset. The icon should fill the square proportionally and be perfectly centred.",
   "layouts": [],
   "slots": [
-    "logo/favicon"
+    "logo/primary"
   ],
-  "isRegeneration": false,
-  "previousSlots": {},
+  "isRegeneration": true,
+  "previousSlots": {
+    "logo/primary": {
+      "mediaType": "image",
+      "currentUrl": "/airo-assets/uploads/logo-primary-247196ec.jpg",
+      "searchQuery": "purple geometric building icon design",
+      "alternatives": [],
+      "userModified": true,
+      "createdAt": "2026-08-09T22:44:53.604Z",
+      "lastUpdated": "2026-08-09T22:44:53.604Z",
+      "uploadSources": {
+        "/airo-assets/uploads/logo-primary-247196ec.jpg": "f38wenbvln_1786315448447_file_oGdR7MlS4D.jpg"
+      },
+      "uploadContentHash": "105c6e3b1d51128d3149113f04f2e63f0528f5d10d59657a9ac801797d1d7aeb",
+      "naturalOrientation": "square",
+      "caption": "purple geometric building icon design"
+    }
+  },
   "attempt": 0,
-  "variant": "favicon",
-  "createdAt": "2026-08-09T22:44:58.751Z",
-  "updatedAt": "2026-08-09T22:45:20.119Z",
-  "sessionId": "10df0423-ec35-4a6a-b3a5-55d1b05f18f6",
-  "logoId": "3bd23c71-b3e8-4166-87fa-afaedd00a870"
+  "variant": "square",
+  "createdAt": "2026-08-09T23:38:42.339Z",
+  "updatedAt": "2026-08-09T23:39:02.253Z",
+  "sessionId": "a22d9c6c-55a5-43f4-afa6-1e2332777314",
+  "logoId": "d4f06d45-3550-4df8-8088-a5e744c25a7e"
 }

@@ -490,19 +490,24 @@
     "caption": "job card management app interface screen"
   },
   "logo/primary": {
-    "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/logo-primary-247196ec.jpg",
-    "searchQuery": "purple geometric building icon design",
+    "mediaType": "logo",
+    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/a22d9c6c-55a5-43f4-afa6-1e2332777314/transparent-d4f06d45-3550-4df8-8088-a5e744c25a7e/logo-logo.png",
+    "searchQuery": "Regenerate the square app icon cleanly — the purple/violet construction helmet a",
     "alternatives": [],
+    "logoSourceMap": {
+      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/a22d9c6c-55a5-43f4-afa6-1e2332777314/transparent-d4f06d45-3550-4df8-8088-a5e744c25a7e/logo-logo.png": {
+        "sessionId": "a22d9c6c-55a5-43f4-afa6-1e2332777314",
+        "logoId": "d4f06d45-3550-4df8-8088-a5e744c25a7e",
+        "groupId": "522477df-2aac-4e31-9f73-73a8d37c97e1"
+      }
+    },
+    "logoGroupId": "522477df-2aac-4e31-9f73-73a8d37c97e1",
     "userModified": true,
     "createdAt": "2026-08-09T22:44:53.604Z",
-    "lastUpdated": "2026-08-09T22:44:53.604Z",
-    "uploadSources": {
-      "/airo-assets/uploads/logo-primary-247196ec.jpg": "f38wenbvln_1786315448447_file_oGdR7MlS4D.jpg"
-    },
-    "uploadContentHash": "105c6e3b1d51128d3149113f04f2e63f0528f5d10d59657a9ac801797d1d7aeb",
-    "naturalOrientation": "square",
-    "caption": "purple geometric building icon design"
+    "lastUpdated": "2026-08-09T23:39:02.088Z",
+    "surfaceMode": "dark",
+    "generatedForSurfaceColor": "#0d1117",
+    "darkSurfaceUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/a22d9c6c-55a5-43f4-afa6-1e2332777314/transparent-d4f06d45-3550-4df8-8088-a5e744c25a7e/logo-logo.png"
   },
   "logo/favicon": {
     "mediaType": "logo",
