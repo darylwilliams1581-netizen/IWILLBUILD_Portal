@@ -488,5 +488,40 @@
     },
     "uploadContentHash": "b9230c9ee6b575c809fcb24adb3c054e2c623525de3eccf53d03c2c763a0a082",
     "caption": "job card management app interface screen"
+  },
+  "logo/primary": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/logo-primary-247196ec.jpg",
+    "searchQuery": "purple geometric building icon design",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-09T22:44:53.604Z",
+    "lastUpdated": "2026-08-09T22:44:53.604Z",
+    "uploadSources": {
+      "/airo-assets/uploads/logo-primary-247196ec.jpg": "f38wenbvln_1786315448447_file_oGdR7MlS4D.jpg"
+    },
+    "uploadContentHash": "105c6e3b1d51128d3149113f04f2e63f0528f5d10d59657a9ac801797d1d7aeb",
+    "naturalOrientation": "square",
+    "caption": "purple geometric building icon design"
+  },
+  "logo/favicon": {
+    "mediaType": "logo",
+    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/10df0423-ec35-4a6a-b3a5-55d1b05f18f6/favicon-transparent-3bd23c71-b3e8-4166-87fa-afaedd00a870/logo-logo.png",
+    "searchQuery": "Use the purple building/hard hat geometric mark as the favicon icon — keep the i",
+    "alternatives": [],
+    "logoSourceMap": {
+      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/10df0423-ec35-4a6a-b3a5-55d1b05f18f6/favicon-transparent-3bd23c71-b3e8-4166-87fa-afaedd00a870/logo-logo.png": {
+        "sessionId": "10df0423-ec35-4a6a-b3a5-55d1b05f18f6",
+        "logoId": "3bd23c71-b3e8-4166-87fa-afaedd00a870",
+        "groupId": "522477df-2aac-4e31-9f73-73a8d37c97e1"
+      }
+    },
+    "logoGroupId": "522477df-2aac-4e31-9f73-73a8d37c97e1",
+    "userModified": false,
+    "createdAt": "2026-08-09T22:44:58.620Z",
+    "lastUpdated": "2026-08-09T22:45:19.988Z",
+    "surfaceMode": "dark",
+    "generatedForSurfaceColor": "#0d1117",
+    "darkSurfaceUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/10df0423-ec35-4a6a-b3a5-55d1b05f18f6/favicon-transparent-3bd23c71-b3e8-4166-87fa-afaedd00a870/logo-logo.png"
   }
 }

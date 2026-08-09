@@ -4,7 +4,9 @@
     "name": "Logos",
     "createdAt": "2026-08-09T22:39:11.280Z",
     "slots": [
-      "logo/horizontal"
+      "logo/horizontal",
+      "logo/primary",
+      "logo/favicon"
     ]
   }
 ]
