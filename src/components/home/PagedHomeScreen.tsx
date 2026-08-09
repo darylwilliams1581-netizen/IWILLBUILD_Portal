@@ -56,11 +56,11 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
       const params = new URLSearchParams({ status: 'active', limit: '40' });
       if (q) params.set('q', q);
       const res = await fetch(`/api/jobs/search?${params}`, { credentials: 'include' });
+      // Read body once — avoid double-consume which causes silent parse errors
+      const data = await res.json().catch(() => ({})) as { jobs?: JobOption[]; error?: string };
       if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(d.error ?? `Search failed (${res.status})`);
+        throw new Error(data.error ?? `Search failed (${res.status})`);
       }
-      const data = await res.json() as { jobs?: JobOption[] };
       setJobs(data.jobs ?? []);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Could not load jobs');
