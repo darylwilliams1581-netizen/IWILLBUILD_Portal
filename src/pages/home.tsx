@@ -2289,22 +2289,16 @@ export default function HomeScreen() {
               {firstName}
             </p>
           </div>
-          {/* System logo badge — tapping opens System Log (owner) or profile */}
-          <button
-            onClick={() => navigate(isPlatformOwner ? '/owner-console?tab=activity-log' : '/profile')}
-            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden active:scale-95 transition-transform"
-            aria-label={isPlatformOwner ? 'Open system log' : 'Open profile'}
-            style={{
-              background: 'transparent',
-              border: 'none',
-            }}
+          {/* System logo badge — display only */}
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden"
           >
             <img
               src="/airo-assets/images/logo/primary"
               alt="IWILLBUILD"
               className="w-full h-full object-contain"
             />
-          </button>
+          </div>
         </div>
       </div>
 
