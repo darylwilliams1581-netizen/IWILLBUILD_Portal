@@ -608,35 +608,34 @@ export default function HomePage() {
         <meta name="twitter:image" content={`${site}/airo-assets/images/pages/home/og-image`} />
         {/* Structured data */}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        {/* Responsive hero styles — in <head> for Edge/strict-mode compatibility */}
+        <style>{`
+          .hero-grid {
+            grid-template-columns: 1fr;
+          }
+          .hero-cta-block {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .hero-mockups {
+            display: none;
+          }
+          @media (min-width: 900px) {
+            .hero-grid {
+              grid-template-columns: 1fr 1fr;
+            }
+            .hero-mockups {
+              display: flex;
+            }
+          }
+        `}</style>
       </Helmet>
 
       {/* ── Topbar — IWILLBUILD branded header ────────────────────────────── */}
       <Header />
 
       <main suppressHydrationWarning>
-
-      {/* ── Hero responsive styles ─────────────────────────────────────────── */}
-      <style>{`
-        .hero-grid {
-          grid-template-columns: 1fr;
-        }
-        .hero-cta-block {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .hero-mockups {
-          display: none;
-        }
-        @media (min-width: 900px) {
-          .hero-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-          .hero-mockups {
-            display: flex;
-          }
-        }
-      `}</style>
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section id="top" style={{
