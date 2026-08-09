@@ -1,7 +1,7 @@
 {
   "logo/horizontal": {
     "mediaType": "logo",
-    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png",
+    "currentUrl": "/airo-assets/uploads/airo-logo-shimmer-horizontal.svg",
     "searchQuery": "A bold 3D industrial construction logo for IWILLBUILD. Left side: a chunky 3D me",
     "alternatives": [
       "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png",
@@ -29,9 +29,11 @@
         "logoId": "a61a32f7-bd54-4bd5-ba04-daff124aaff3"
       }
     },
+    "priorUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3c28765c-b495-4a09-be17-af7a99a49647/horizontal-transparent-a61a32f7-bd54-4bd5-ba04-daff124aaff3/logo-logo.png",
     "userModified": false,
+    "pendingJobId": "6813819d-57ff-4bf2-ac7b-927d0842fc52",
     "createdAt": "2026-06-25T21:51:06.847Z",
-    "lastUpdated": "2026-06-30T11:05:15.061Z"
+    "lastUpdated": "2026-08-09T22:39:11.263Z"
   },
   "pages/home/og-image": {
     "mediaType": "generated",
