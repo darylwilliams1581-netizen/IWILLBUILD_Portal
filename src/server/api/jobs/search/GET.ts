@@ -34,7 +34,7 @@ export default async function handler(req: Request, res: Response) {
 
     const q = String(req.query.q ?? '').trim();
     const statusFilter = String(req.query.status ?? '');
-    const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? '20'), 10) || 20));
+    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? '20'), 10) || 20));
 
     const conditions = [eq(jobs.companyId, profile.companyId)];
 

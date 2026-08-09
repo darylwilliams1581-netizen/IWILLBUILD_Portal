@@ -105,7 +105,7 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (!open) { setQuery(''); return; }
     setLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
@@ -1923,7 +1923,7 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         const list = Array.isArray(data) ? data : (data.jobs ?? []);
