@@ -4,22 +4,22 @@
  * Canvas-based photo editor for job photos.
  *
  * Tools:
- *   - Rotate right (90° steps, applied to canvas immediately)
- *   - Freehand draw (pen)
- *   - Arrow (click-drag to draw a directional arrow)
- *   - Circle (click-drag to draw an ellipse)
- *   - Square (click-drag to draw a rectangle)
- *   - Text (click to place, type, Enter to commit — toolbar ✓ also commits)
- *   - Undo (per-stroke / per-action history, up to 50 steps)
- *   - Clear annotations (restores to the last loaded image state)
+ *   - Freehand pen
+ *   - Arrow (click-drag)
+ *   - Circle (click-drag, outline only)
+ *   - Rectangle (click-drag, outline only)
+ *   - Text (click to place, type, Enter/✓ to commit)
+ *   - Eraser (drag to erase annotations only — never touches photo pixels)
+ *   - Undo (up to 50 steps)
+ *   - Clear all annotations
  *
  * Save & Lock flow:
  *   1. canvas.toBlob() → JPEG
- *   2. POST /api/jobs/:jobId/photos/:photoId/replace  (replace storage file)
- *   3. POST /api/jobs/:jobId/photos/:photoId/lock     (set status = 'locked')
+ *   2. POST /api/jobs/:jobId/photos/:photoId/replace
+ *   3. POST /api/jobs/:jobId/photos/:photoId/lock
  *   4. onSaved(updatedPhoto) callback
  *
- * Locked photos: read-only view with a lock badge — no tools, no save button.
+ * Locked / readOnly photos: full-screen view, no tools, no save button.
  */
 
 import React, {
@@ -32,13 +32,12 @@ import React, {
 
 import {
   X,
-  RotateCw,
-  RotateCcw,
   Pen,
   ArrowUpRight,
   Type,
   Circle,
   Square,
+  Eraser,
   Undo2,
   Trash2,
   Lock,
@@ -46,12 +45,13 @@ import {
   AlertCircle,
   Download,
   Check,
+  Pencil,
 } from 'lucide-react';
 import type { JobPhoto } from '@/components/JobPhotos';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tool = 'draw' | 'arrow' | 'text' | 'circle' | 'square';
+type Tool = 'draw' | 'arrow' | 'text' | 'circle' | 'rectangle' | 'eraser';
 
 interface DrawStroke {
   type: 'draw';
@@ -76,8 +76,8 @@ interface CircleStroke {
   to: { x: number; y: number };
 }
 
-interface SquareStroke {
-  type: 'square';
+interface RectStroke {
+  type: 'rectangle';
   color: string;
   width: number;
   from: { x: number; y: number };
@@ -93,33 +93,38 @@ interface TextStroke {
   y: number;
 }
 
-type Stroke = DrawStroke | ArrowStroke | CircleStroke | SquareStroke | TextStroke;
+/** Eraser stores the indices of strokes it removed so Undo can restore them */
+interface EraserStroke {
+  type: 'eraser';
+  removedIndices: number[];
+}
+
+type Stroke = DrawStroke | ArrowStroke | CircleStroke | RectStroke | TextStroke | EraserStroke;
 
 interface PhotoEditorProps {
   photo: JobPhoto;
   onClose: () => void;
   onSaved: (updated: JobPhoto) => void;
   /** When true: show the image full-screen but hide all annotation tools and
-   *  the Save & Lock button. Used for contexts that have no replace/lock API
-   *  (job-card photos, asset photos, incident attachments). */
+   *  the Save & Lock button. Used for contexts that have no replace/lock API. */
   readOnly?: boolean;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Annotation colours — literal canvas values, not CSS variables.
 const ANNOTATION_COLORS = [
-  { label: 'Red',   value: '#EF4444' },
-  { label: 'White', value: '#FFFFFF' },
-  { label: 'Black', value: '#000000' },
+  { label: 'Red',    value: '#EF4444' },
+  { label: 'Yellow', value: '#FACC15' },
+  { label: 'White',  value: '#FFFFFF' },
+  { label: 'Black',  value: '#000000' },
 ] as const;
 
 const STROKE_WIDTHS = [2, 4, 8];
-// Smaller font sizes so text is not overwhelming on the photo
-const FONT_SIZES = [16, 24, 36];
-const MAX_HISTORY = 50;
+const FONT_SIZES    = [16, 24, 36];
+const MAX_HISTORY   = 50;
+const ERASER_RADIUS = 24; // px in canvas-space — touch-friendly
 
-// ── Arrow drawing helper ──────────────────────────────────────────────────────
+// ── Drawing helpers ───────────────────────────────────────────────────────────
 
 function drawArrow(
   ctx: CanvasRenderingContext2D,
@@ -129,30 +134,21 @@ function drawArrow(
   width: number,
 ) {
   const headLen = Math.max(12, width * 4);
-  const angle = Math.atan2(to.y - from.y, to.x - from.x);
-
+  const angle   = Math.atan2(to.y - from.y, to.x - from.x);
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = width;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
+  ctx.fillStyle   = color;
+  ctx.lineWidth   = width;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
   ctx.lineTo(to.x, to.y);
   ctx.stroke();
-
   ctx.beginPath();
   ctx.moveTo(to.x, to.y);
-  ctx.lineTo(
-    to.x - headLen * Math.cos(angle - Math.PI / 6),
-    to.y - headLen * Math.sin(angle - Math.PI / 6),
-  );
-  ctx.lineTo(
-    to.x - headLen * Math.cos(angle + Math.PI / 6),
-    to.y - headLen * Math.sin(angle + Math.PI / 6),
-  );
+  ctx.lineTo(to.x - headLen * Math.cos(angle - Math.PI / 6), to.y - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(to.x - headLen * Math.cos(angle + Math.PI / 6), to.y - headLen * Math.sin(angle + Math.PI / 6));
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -171,14 +167,14 @@ function drawCircle(
   const ry = Math.abs(to.y - from.y) / 2;
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = width;
+  ctx.lineWidth   = width;
   ctx.beginPath();
   ctx.ellipse(cx, cy, Math.max(rx, 1), Math.max(ry, 1), 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawSquare(
+function drawRect(
   ctx: CanvasRenderingContext2D,
   from: { x: number; y: number },
   to: { x: number; y: number },
@@ -187,22 +183,31 @@ function drawSquare(
 ) {
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = width;
+  ctx.lineWidth   = width;
   ctx.strokeRect(from.x, from.y, to.x - from.x, to.y - from.y);
   ctx.restore();
 }
 
-// ── Redraw all strokes onto a canvas context ──────────────────────────────────
+// ── Redraw all non-eraser strokes ─────────────────────────────────────────────
 
 function redrawStrokes(ctx: CanvasRenderingContext2D, strokes: Stroke[]) {
+  // Build the visible set: start with all, then remove anything erased
+  const removed = new Set<number>();
   for (const s of strokes) {
+    if (s.type === 'eraser') s.removedIndices.forEach((i) => removed.add(i));
+  }
+
+  strokes.forEach((s, idx) => {
+    if (s.type === 'eraser') return;
+    if (removed.has(idx)) return;
+
     if (s.type === 'draw') {
-      if (s.points.length < 2) continue;
+      if (s.points.length < 2) return;
       ctx.save();
       ctx.strokeStyle = s.color;
-      ctx.lineWidth = s.width;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineWidth   = s.width;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
       ctx.beginPath();
       ctx.moveTo(s.points[0].x, s.points[0].y);
       for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
@@ -212,145 +217,146 @@ function redrawStrokes(ctx: CanvasRenderingContext2D, strokes: Stroke[]) {
       drawArrow(ctx, s.from, s.to, s.color, s.width);
     } else if (s.type === 'circle') {
       drawCircle(ctx, s.from, s.to, s.color, s.width);
-    } else if (s.type === 'square') {
-      drawSquare(ctx, s.from, s.to, s.color, s.width);
+    } else if (s.type === 'rectangle') {
+      drawRect(ctx, s.from, s.to, s.color, s.width);
     } else if (s.type === 'text') {
       ctx.save();
-      ctx.fillStyle = s.color;
-      ctx.font = `bold ${s.fontSize}px sans-serif`;
+      ctx.fillStyle   = s.color;
+      ctx.font        = `bold ${s.fontSize}px sans-serif`;
       ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 3;
+      ctx.shadowBlur  = 3;
       ctx.fillText(s.text, s.x, s.y);
       ctx.restore();
     }
+  });
+}
+
+/** Returns indices of visible (non-erased) strokes whose bounding area
+ *  overlaps the eraser circle at (cx, cy). */
+function findErasedIndices(
+  strokes: Stroke[],
+  cx: number,
+  cy: number,
+  radius: number,
+): number[] {
+  const removed = new Set<number>();
+  for (const s of strokes) {
+    if (s.type === 'eraser') s.removedIndices.forEach((i) => removed.add(i));
   }
+
+  const hit: number[] = [];
+  strokes.forEach((s, idx) => {
+    if (s.type === 'eraser' || removed.has(idx)) return;
+    let touches = false;
+    if (s.type === 'draw') {
+      for (const p of s.points) {
+        const dx = p.x - cx, dy = p.y - cy;
+        if (dx * dx + dy * dy <= radius * radius) { touches = true; break; }
+      }
+    } else if (s.type === 'arrow') {
+      for (const p of [s.from, s.to]) {
+        const dx = p.x - cx, dy = p.y - cy;
+        if (dx * dx + dy * dy <= radius * radius) { touches = true; break; }
+      }
+    } else if (s.type === 'circle' || s.type === 'rectangle') {
+      // Check if eraser centre is near the bounding box
+      const minX = Math.min(s.from.x, s.to.x) - radius;
+      const maxX = Math.max(s.from.x, s.to.x) + radius;
+      const minY = Math.min(s.from.y, s.to.y) - radius;
+      const maxY = Math.max(s.from.y, s.to.y) + radius;
+      touches = cx >= minX && cx <= maxX && cy >= minY && cy <= maxY;
+    } else if (s.type === 'text') {
+      const dx = s.x - cx, dy = s.y - cy;
+      touches = dx * dx + dy * dy <= (radius * 3) * (radius * 3);
+    }
+    if (touches) hit.push(idx);
+  });
+  return hit;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false }: PhotoEditorProps) {
   const canvasRef    = useRef<HTMLCanvasElement>(null);
-  const overlayRef   = useRef<HTMLCanvasElement>(null); // live-draw preview layer
+  const overlayRef   = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Base image (rotated) — redrawn whenever rotation changes
   const baseImageRef = useRef<HTMLImageElement | null>(null);
-  const rotationRef  = useRef<number>(0); // 0 | 90 | 180 | 270
 
   // Annotation history
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const strokesRef = useRef<Stroke[]>([]);
+  const [strokes, setStrokes]   = useState<Stroke[]>([]);
+  const strokesRef              = useRef<Stroke[]>([]);
 
-  // Active tool state
-  const [tool, setTool] = useState<Tool>('draw');
-  const [color, setColor] = useState(ANNOTATION_COLORS[0].value);
+  // Active tool
+  const [tool, setTool]               = useState<Tool>('draw');
+  const [color, setColor]             = useState(ANNOTATION_COLORS[0].value);
   const [strokeWidth, setStrokeWidth] = useState(STROKE_WIDTHS[1]);
-  const [fontSize, setFontSize] = useState(FONT_SIZES[1]);
+  const [fontSize, setFontSize]       = useState(FONT_SIZES[1]);
 
   // Drawing state
   const isDrawingRef     = useRef(false);
   const currentStrokeRef = useRef<{ x: number; y: number }[]>([]);
-  const arrowStartRef    = useRef<{ x: number; y: number } | null>(null);
+  const shapeStartRef    = useRef<{ x: number; y: number } | null>(null);
 
   // Text input overlay
   const [textInput, setTextInput] = useState<{ x: number; y: number; value: string } | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
 
+  // Label editing
+  const [labelEditing, setLabelEditing] = useState(false);
+  const [labelValue, setLabelValue]     = useState(photo.label ?? '');
+  const [labelSaving, setLabelSaving]   = useState(false);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
   // Save state
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]     = useState(false);
   const [saveError, setSaveError] = useState('');
 
   const isLocked = readOnly || photo.status === 'locked';
 
-  // ── Load image into canvas ─────────────────────────────────────────────────
+  // ── Load image ─────────────────────────────────────────────────────────────
 
-  const drawBaseImage = useCallback((img: HTMLImageElement, rotation: number) => {
+  const drawBaseImage = useCallback((img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    const rotated = rotation === 90 || rotation === 270;
-
-    canvas.width  = rotated ? h : w;
-    canvas.height = rotated ? w : h;
-
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.drawImage(img, -w / 2, -h / 2);
-    ctx.restore();
-
-    // Sync overlay canvas dimensions
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
     const overlay = overlayRef.current;
-    if (overlay) {
-      overlay.width  = canvas.width;
-      overlay.height = canvas.height;
-    }
-
-    // Redraw existing strokes on top
+    if (overlay) { overlay.width = canvas.width; overlay.height = canvas.height; }
     redrawStrokes(ctx, strokesRef.current);
   }, []);
 
   useLayoutEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-
-    // URL priority: full-res original → 1000px preview → download endpoint.
-    // Always load the highest available resolution so the saved canvas is not
-    // a downscaled copy of the original.
-    const urlCandidates = [
+    const candidates = [
       photo.url,
       photo.previewUrl,
       `/api/jobs/${photo.jobId}/photos/${photo.id}/download`,
     ].filter(Boolean) as string[];
-
-    let candidateIdx = 0;
-
-    const tryNext = () => {
-      if (candidateIdx >= urlCandidates.length) return; // all failed
-      img.src = urlCandidates[candidateIdx++];
-    };
-
-    img.onload = () => {
-      baseImageRef.current = img;
-      drawBaseImage(img, rotationRef.current);
-    };
-    img.onerror = () => {
-      // Try next candidate in the fallback chain
-      tryNext();
-    };
-
+    let idx = 0;
+    const tryNext = () => { if (idx < candidates.length) img.src = candidates[idx++]; };
+    img.onload  = () => { baseImageRef.current = img; drawBaseImage(img); };
+    img.onerror = tryNext;
     tryNext();
   }, [photo, drawBaseImage]);
 
   // ── Sync strokesRef ────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    strokesRef.current = strokes;
-  }, [strokes]);
+  useEffect(() => { strokesRef.current = strokes; }, [strokes]);
 
-  // ── Redraw canvas when strokes change ─────────────────────────────────────
+  // ── Redraw on stroke change ────────────────────────────────────────────────
 
   const redrawAll = useCallback(() => {
     const canvas = canvasRef.current;
-    const img = baseImageRef.current;
+    const img    = baseImageRef.current;
     if (!canvas || !img) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    const rot = rotationRef.current;
-
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.drawImage(img, -w / 2, -h / 2);
-    ctx.restore();
-
+    ctx.drawImage(img, 0, 0);
     redrawStrokes(ctx, strokesRef.current);
   }, []);
 
@@ -361,7 +367,8 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (textInput) { setTextInput(null); return; }
+        if (textInput)    { setTextInput(null); return; }
+        if (labelEditing) { setLabelEditing(false); setLabelValue(photo.label ?? ''); return; }
         onClose();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -371,14 +378,14 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose, textInput]);
+  }, [onClose, textInput, labelEditing, photo.label]);
 
   // ── Canvas coordinate helper ───────────────────────────────────────────────
 
   function canvasPoint(e: React.MouseEvent | React.TouchEvent): { x: number; y: number } {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
+    const rect   = canvas.getBoundingClientRect();
     const scaleX = canvas.width  / rect.width;
     const scaleY = canvas.height / rect.height;
     let clientX: number, clientY: number;
@@ -389,40 +396,39 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       clientX = e.clientX;
       clientY = e.clientY;
     }
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top)  * scaleY,
-    };
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
   }
 
   // ── Pointer events ─────────────────────────────────────────────────────────
 
   const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (isLocked) return;
+    const pt = canvasPoint(e);
+
     if (tool === 'text') {
-      const pt = canvasPoint(e);
       setTextInput({ x: pt.x, y: pt.y, value: '' });
       setTimeout(() => textInputRef.current?.focus(), 50);
       return;
     }
+
     isDrawingRef.current = true;
-    const pt = canvasPoint(e);
-    if (tool === 'draw') {
+
+    if (tool === 'draw' || tool === 'eraser') {
       currentStrokeRef.current = [pt];
-    } else if (tool === 'arrow') {
-      arrowStartRef.current = pt;
+    } else {
+      // arrow / circle / rectangle
+      shapeStartRef.current = pt;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLocked, tool]);
 
   const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawingRef.current || isLocked) return;
-    const pt = canvasPoint(e);
+    const pt      = canvasPoint(e);
     const overlay = overlayRef.current;
     if (!overlay) return;
     const ctx = overlay.getContext('2d');
     if (!ctx) return;
-
     ctx.clearRect(0, 0, overlay.width, overlay.height);
 
     if (tool === 'draw') {
@@ -431,16 +437,30 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       if (pts.length < 2) return;
       ctx.save();
       ctx.strokeStyle = color;
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineWidth   = strokeWidth;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.stroke();
       ctx.restore();
-    } else if (tool === 'arrow' && arrowStartRef.current) {
-      drawArrow(ctx, arrowStartRef.current, pt, color, strokeWidth);
+    } else if (tool === 'eraser') {
+      currentStrokeRef.current.push(pt);
+      // Show eraser cursor on overlay
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, ERASER_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    } else if (tool === 'arrow' && shapeStartRef.current) {
+      drawArrow(ctx, shapeStartRef.current, pt, color, strokeWidth);
+    } else if (tool === 'circle' && shapeStartRef.current) {
+      drawCircle(ctx, shapeStartRef.current, pt, color, strokeWidth);
+    } else if (tool === 'rectangle' && shapeStartRef.current) {
+      drawRect(ctx, shapeStartRef.current, pt, color, strokeWidth);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLocked, tool, color, strokeWidth]);
@@ -448,9 +468,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   const handlePointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawingRef.current || isLocked) return;
     isDrawingRef.current = false;
-    const pt = canvasPoint(e);
-
-    // Clear overlay
+    const pt      = canvasPoint(e);
     const overlay = overlayRef.current;
     if (overlay) overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height);
 
@@ -458,15 +476,35 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       const pts = [...currentStrokeRef.current];
       currentStrokeRef.current = [];
       if (pts.length < 2) return;
-      const newStroke: DrawStroke = { type: 'draw', color, width: strokeWidth, points: pts };
-      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), newStroke]);
-    } else if (tool === 'arrow' && arrowStartRef.current) {
-      const from = arrowStartRef.current;
-      arrowStartRef.current = null;
+      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), { type: 'draw', color, width: strokeWidth, points: pts }]);
+    } else if (tool === 'eraser') {
+      const path = [...currentStrokeRef.current];
+      currentStrokeRef.current = [];
+      // Collect all strokes touched by any point along the eraser path
+      const allRemoved = new Set<number>();
+      for (const p of path) {
+        findErasedIndices(strokesRef.current, p.x, p.y, ERASER_RADIUS).forEach((i) => allRemoved.add(i));
+      }
+      if (allRemoved.size === 0) return;
+      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), { type: 'eraser', removedIndices: [...allRemoved] }]);
+    } else if (tool === 'arrow' && shapeStartRef.current) {
+      const from = shapeStartRef.current;
+      shapeStartRef.current = null;
       const dx = pt.x - from.x, dy = pt.y - from.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 5) return; // too short
-      const newStroke: ArrowStroke = { type: 'arrow', color, width: strokeWidth, from, to: pt };
-      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), newStroke]);
+      if (Math.sqrt(dx * dx + dy * dy) < 5) return;
+      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), { type: 'arrow', color, width: strokeWidth, from, to: pt }]);
+    } else if (tool === 'circle' && shapeStartRef.current) {
+      const from = shapeStartRef.current;
+      shapeStartRef.current = null;
+      const dx = pt.x - from.x, dy = pt.y - from.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 5) return;
+      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), { type: 'circle', color, width: strokeWidth, from, to: pt }]);
+    } else if (tool === 'rectangle' && shapeStartRef.current) {
+      const from = shapeStartRef.current;
+      shapeStartRef.current = null;
+      const dx = pt.x - from.x, dy = pt.y - from.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 5) return;
+      setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), { type: 'rectangle', color, width: strokeWidth, from, to: pt }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLocked, tool, color, strokeWidth]);
@@ -475,32 +513,44 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
   const commitText = useCallback(() => {
     if (!textInput || !textInput.value.trim()) { setTextInput(null); return; }
-    const newStroke: TextStroke = {
-      type: 'text',
-      color,
-      fontSize,
+    setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), {
+      type: 'text', color, fontSize,
       text: textInput.value.trim(),
-      x: textInput.x,
-      y: textInput.y,
-    };
-    setStrokes((prev) => [...prev.slice(-MAX_HISTORY + 1), newStroke]);
+      x: textInput.x, y: textInput.y,
+    }]);
     setTextInput(null);
   }, [textInput, color, fontSize]);
 
-  // ── Rotate ─────────────────────────────────────────────────────────────────
+  // ── Label save ─────────────────────────────────────────────────────────────
 
-  const rotate = useCallback((dir: 'left' | 'right') => {
-    const delta = dir === 'right' ? 90 : -90;
-    rotationRef.current = ((rotationRef.current + delta) % 360 + 360) % 360;
-    const img = baseImageRef.current;
-    if (img) drawBaseImage(img, rotationRef.current);
-  }, [drawBaseImage]);
+  const saveLabel = useCallback(async () => {
+    const trimmed = labelValue.trim();
+    setLabelSaving(true);
+    try {
+      const res = await fetch(
+        `/api/jobs/${photo.jobId}/photos/${photo.id}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: trimmed || null }),
+        },
+      );
+      if (!res.ok) throw new Error('Failed to save label');
+      // Update local display value
+      setLabelValue(trimmed);
+    } catch {
+      // Revert on error
+      setLabelValue(photo.label ?? '');
+    } finally {
+      setLabelSaving(false);
+      setLabelEditing(false);
+    }
+  }, [photo.jobId, photo.id, photo.label, labelValue]);
 
   // ── Clear annotations ──────────────────────────────────────────────────────
 
-  const clearAnnotations = useCallback(() => {
-    setStrokes([]);
-  }, []);
+  const clearAnnotations = useCallback(() => { setStrokes([]); }, []);
 
   // ── Save & Lock ────────────────────────────────────────────────────────────
 
@@ -509,18 +559,13 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     if (!canvas) return;
     setSaving(true);
     setSaveError('');
-
     try {
-      // 1. Flatten canvas to JPEG blob
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
           (b) => b ? resolve(b) : reject(new Error('Canvas export failed')),
-          'image/jpeg',
-          0.92,
+          'image/jpeg', 0.92,
         );
       });
-
-      // 2. Replace storage file
       const fd = new FormData();
       fd.append('photo', blob, 'edited.jpg');
       const replaceRes = await fetch(
@@ -530,7 +575,6 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       const replaceData = await replaceRes.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
       if (!replaceRes.ok) throw new Error(replaceData.error ?? 'Replace failed');
 
-      // 3. Lock the photo
       const lockRes = await fetch(
         `/api/jobs/${photo.jobId}/photos/${photo.id}/lock`,
         { method: 'POST', credentials: 'include' },
@@ -538,7 +582,6 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       const lockData = await lockRes.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
       if (!lockRes.ok) throw new Error(lockData.error ?? 'Lock failed');
 
-      // 4. Notify parent
       const updated = lockData.photo ?? replaceData.photo;
       if (updated) onSaved(updated);
       onClose();
@@ -549,11 +592,22 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     }
   }, [photo, onSaved, onClose]);
 
-  // ── Cursor style ───────────────────────────────────────────────────────────
+  // ── Cursor ─────────────────────────────────────────────────────────────────
 
-  const canvasCursor = isLocked ? 'default' : tool === 'text' ? 'text' : 'crosshair';
+  const canvasCursor = isLocked ? 'default' : tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair';
+
+  // ── Visible annotation count (for disabled states) ─────────────────────────
+
+  const visibleStrokeCount = (() => {
+    const removed = new Set<number>();
+    strokes.forEach((s) => { if (s.type === 'eraser') s.removedIndices.forEach((i) => removed.add(i)); });
+    return strokes.filter((s, i) => s.type !== 'eraser' && !removed.has(i)).length;
+  })();
+  const hasAnnotations = strokes.length > 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  const displayLabel = labelValue.trim() || (photo.label ?? '');
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]">
@@ -579,10 +633,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             style={{
               display: 'block',
               maxWidth: '100%',
-              // dvh fallback: Safari < 15.4 doesn't support dvh; min() picks
-              // whichever resolves — both evaluate identically on supporting
-              // browsers, and the vh value is the safe fallback.
-              maxHeight: 'min(calc(100dvh - 100px), calc(100vh - 100px))',
+              maxHeight: 'min(calc(100dvh - 110px), calc(100vh - 110px))',
               cursor: canvasCursor,
               touchAction: 'none',
             }}
@@ -595,20 +646,17 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             onTouchEnd={handlePointerUp}
           />
 
-          {/* Overlay canvas for live-draw preview */}
+          {/* Overlay canvas — live-draw preview + eraser cursor */}
           <canvas
             ref={overlayRef}
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%',
               pointerEvents: 'none',
             }}
           />
 
-          {/* Text input overlay — positioned relative to canvas */}
+          {/* Text input overlay */}
           {textInput && (
             <div
               className="absolute flex items-center gap-1"
@@ -625,26 +673,20 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
                 value={textInput.value}
                 onChange={(e) => setTextInput((prev) => prev ? { ...prev, value: e.target.value } : null)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+                  if (e.key === 'Enter')  { e.preventDefault(); commitText(); }
                   if (e.key === 'Escape') { e.preventDefault(); setTextInput(null); }
                 }}
                 className="border border-white/40 rounded outline-none px-1.5 py-0.5 font-bold bg-black/70 text-white"
-                style={{
-                  color,
-                  fontSize: `${fontSize}px`,
-                  minWidth: 80,
-                }}
+                style={{ color, fontSize: `${fontSize}px`, minWidth: 80 }}
                 placeholder="Type here…"
               />
-              {/* ✓ commit — onMouseDown fires before blur so value is still live */}
               <button
                 onMouseDown={(e) => { e.preventDefault(); commitText(); }}
                 className="w-7 h-7 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-400 text-white shadow-lg shrink-0"
-                title="Commit text (Enter)"
+                title="Commit (Enter)"
               >
                 <Check size={14} />
               </button>
-              {/* ✕ cancel */}
               <button
                 onMouseDown={(e) => { e.preventDefault(); setTextInput(null); }}
                 className="w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white shadow-lg shrink-0"
@@ -657,19 +699,16 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         </div>
       </div>
 
-      {/* ── Bottom toolbar — two stacked rows, no scroll ── */}
-      {/* Sits above the home indicator; safe-area-inset-bottom keeps it clear of
-          the iPhone home bar. Row 1 is always visible. Row 2 (annotation tools)
-          is hidden when the photo is locked. */}
+      {/* ── Bottom toolbar ── */}
       <div
         className="shrink-0 bg-slate-900 border-t border-slate-700"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        {/* Row 1 — Close / filename / locked badge / spacer / Download */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+        {/* Row 1 — Close | Label | Locked badge | Download */}
+        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-slate-800 min-h-[44px]">
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
             title="Close"
           >
             <X size={16} />
@@ -677,9 +716,52 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
           <div className="w-px h-5 bg-slate-700 shrink-0" />
 
-          <span className="text-xs text-slate-400 font-semibold truncate flex-1 min-w-0">
-            {photo.label ?? photo.originalName ?? 'Photo'}
-          </span>
+          {/* Editable label */}
+          {labelEditing ? (
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <input
+                ref={labelInputRef}
+                type="text"
+                value={labelValue}
+                onChange={(e) => setLabelValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter')  { e.preventDefault(); void saveLabel(); }
+                  if (e.key === 'Escape') { setLabelEditing(false); setLabelValue(photo.label ?? ''); }
+                }}
+                placeholder="Add photo label…"
+                className="flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                autoFocus
+              />
+              <button
+                onMouseDown={(e) => { e.preventDefault(); void saveLabel(); }}
+                disabled={labelSaving}
+                className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-full bg-green-600 hover:bg-green-500 text-white shrink-0 disabled:opacity-50"
+                title="Save label"
+              >
+                {labelSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); setLabelEditing(false); setLabelValue(photo.label ?? ''); }}
+                className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-white shrink-0"
+                title="Cancel"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setLabelEditing(true); setTimeout(() => labelInputRef.current?.focus(), 30); }}
+              className="flex items-center gap-1.5 flex-1 min-w-0 text-left group"
+              title="Edit photo label"
+            >
+              <span className={`text-xs font-semibold truncate ${displayLabel ? 'text-slate-200' : 'text-slate-500 italic'}`}>
+                {displayLabel || 'Add photo label'}
+              </span>
+              {!isLocked && (
+                <Pencil size={11} className="text-slate-500 group-hover:text-slate-300 shrink-0 transition-colors" />
+              )}
+            </button>
+          )}
 
           {photo.status === 'locked' && !readOnly && (
             <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
@@ -687,13 +769,11 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             </span>
           )}
 
-          {/* Download — always available */}
+          {/* Download */}
           <button
             type="button"
             onClick={() => {
               if (readOnly) {
-                // readOnly photos: open the signed URL in a new tab
-                // (no auth-gated /download endpoint available for these)
                 const directUrl = photo.url ?? photo.previewUrl;
                 if (directUrl) window.open(directUrl, '_blank', 'noopener,noreferrer');
                 return;
@@ -701,143 +781,142 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
               const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
               fetch(url, { credentials: 'include' })
                 .then((r) => {
-                  // Read filename from Content-Disposition header (server always sets it).
-                  // Prefer filename* (RFC 5987 UTF-8) over plain filename.
                   const cd = r.headers.get('Content-Disposition') ?? '';
                   let name = '';
                   const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
-                  if (utf8Match) {
-                    try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ }
-                  }
-                  if (!name) {
-                    const plainMatch = cd.match(/filename="?([^";]+)"?/i);
-                    if (plainMatch) name = plainMatch[1].trim();
-                  }
-                  // Final fallback — use label or originalName from the photo object
+                  if (utf8Match) { try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ } }
+                  if (!name) { const m = cd.match(/filename="?([^";]+)"?/i); if (m) name = m[1].trim(); }
                   if (!name) name = photo.label ?? photo.originalName ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
                   return r.blob().then((blob) => ({ blob, name }));
                 })
                 .then(({ blob, name }) => {
                   const objectUrl = URL.createObjectURL(blob);
                   const a = document.createElement('a');
-                  a.href = objectUrl;
-                  a.download = name;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
+                  a.href = objectUrl; a.download = name;
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
                   setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
                 })
                 .catch(console.error);
             }}
-            className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
             title="Download original"
           >
             <Download size={15} />
           </button>
         </div>
 
-        {/* Row 2 — annotation tools (hidden when locked) */}
+        {/* Row 2 — annotation tools (hidden when locked/readOnly) */}
         {!isLocked && (
-          <div className="flex items-center justify-between gap-1 px-3 py-2 flex-wrap">
-            {/* Rotate */}
-            <div className="flex items-center gap-1">
-              <button onClick={() => rotate('left')} title="Rotate left 90°"
-                className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors">
-                <RotateCcw size={15} />
+          <div
+            className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto"
+            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
+            {/* Tool buttons */}
+            {([
+              { id: 'draw',      icon: <Pen size={15} />,          title: 'Pen' },
+              { id: 'arrow',     icon: <ArrowUpRight size={15} />, title: 'Arrow' },
+              { id: 'circle',    icon: <Circle size={15} />,       title: 'Circle' },
+              { id: 'rectangle', icon: <Square size={15} />,       title: 'Rectangle' },
+              { id: 'text',      icon: <Type size={15} />,         title: 'Text' },
+              { id: 'eraser',    icon: <Eraser size={15} />,       title: 'Eraser' },
+            ] as const).map(({ id, icon, title }) => (
+              <button
+                key={id}
+                onClick={() => setTool(id)}
+                title={title}
+                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shrink-0 ${
+                  tool === id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+                }`}
+              >
+                {icon}
               </button>
-              <button onClick={() => rotate('right')} title="Rotate right 90°"
-                className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors">
-                <RotateCw size={15} />
-              </button>
-            </div>
+            ))}
 
-            <div className="w-px h-5 bg-slate-700 shrink-0" />
-
-            {/* Tool selector */}
-            <div className="flex items-center gap-1">
-              {([
-                { id: 'draw',  icon: <Pen size={15} />,          title: 'Freehand draw' },
-                { id: 'arrow', icon: <ArrowUpRight size={15} />, title: 'Arrow' },
-                { id: 'text',  icon: <Type size={15} />,         title: 'Text' },
-              ] as const).map(({ id, icon, title }) => (
-                <button key={id} onClick={() => setTool(id)} title={title}
-                  className={`p-2 rounded-lg transition-colors ${
-                    tool === id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-                  }`}>
-                  {icon}
-                </button>
-              ))}
-            </div>
-
-            <div className="w-px h-5 bg-slate-700 shrink-0" />
+            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
 
             {/* Colour swatches */}
-            <div className="flex items-center gap-1">
-              {ANNOTATION_COLORS.map(({ label, value }) => (
-                <button key={value} onClick={() => setColor(value)} title={label}
-                  className={`w-5 h-5 rounded-full border-2 transition-all ${
-                    color === value ? 'border-white scale-110' : 'border-slate-600 hover:border-slate-400'
-                  }`}
-                  style={{ background: value }}
-                />
-              ))}
-            </div>
+            {ANNOTATION_COLORS.map(({ label, value }) => (
+              <button
+                key={value}
+                onClick={() => setColor(value)}
+                title={label}
+                className={`min-w-[32px] min-h-[32px] rounded-full border-2 transition-all shrink-0 ${
+                  color === value ? 'border-white scale-110' : 'border-slate-600 hover:border-slate-400'
+                }`}
+                style={{ background: value }}
+              />
+            ))}
 
-            <div className="w-px h-5 bg-slate-700 shrink-0" />
+            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
 
-            {/* Stroke widths (draw / arrow) */}
+            {/* Stroke widths (draw / arrow / shapes / eraser) */}
             {tool !== 'text' && (
-              <div className="flex items-center gap-1">
+              <>
                 {STROKE_WIDTHS.map((w) => (
-                  <button key={w} onClick={() => setStrokeWidth(w)} title={`${w}px`}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                  <button
+                    key={w}
+                    onClick={() => setStrokeWidth(w)}
+                    title={`${w}px`}
+                    className={`min-w-[36px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shrink-0 ${
                       strokeWidth === w ? 'bg-primary' : 'hover:bg-slate-700'
-                    }`}>
+                    }`}
+                  >
                     <div className="rounded-full bg-white" style={{ width: w + 2, height: w + 2 }} />
                   </button>
                 ))}
-              </div>
+                <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
+              </>
             )}
 
             {/* Font sizes (text only) */}
             {tool === 'text' && (
-              <div className="flex items-center gap-1">
+              <>
                 {FONT_SIZES.map((s) => (
-                  <button key={s} onClick={() => setFontSize(s)} title={`${s}px`}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                  <button
+                    key={s}
+                    onClick={() => setFontSize(s)}
+                    title={`${s}px`}
+                    className={`min-w-[36px] min-h-[44px] px-1.5 flex items-center justify-center rounded-lg text-xs font-bold transition-colors shrink-0 ${
                       fontSize === s ? 'bg-primary text-primary-foreground' : 'hover:bg-slate-700 text-slate-300'
-                    }`}>
+                    }`}
+                  >
                     {s}
                   </button>
                 ))}
-              </div>
+                <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
+              </>
             )}
 
-            <div className="w-px h-5 bg-slate-700 shrink-0" />
+            {/* Undo */}
+            <button
+              onClick={() => setStrokes((p) => p.slice(0, -1))}
+              disabled={!hasAnnotations}
+              title="Undo"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0"
+            >
+              <Undo2 size={15} />
+            </button>
 
-            {/* Undo + Clear */}
-            <div className="flex items-center gap-1">
-              <button onClick={() => setStrokes((p) => p.slice(0, -1))}
-                disabled={strokes.length === 0}
-                title="Undo"
-                className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors">
-                <Undo2 size={15} />
-              </button>
-              <button onClick={clearAnnotations}
-                disabled={strokes.length === 0}
-                title="Clear all annotations"
-                className="p-2 rounded-lg hover:bg-red-800 text-slate-300 hover:text-white disabled:opacity-30 transition-colors">
-                <Trash2 size={15} />
-              </button>
-            </div>
+            {/* Clear all */}
+            <button
+              onClick={clearAnnotations}
+              disabled={!hasAnnotations}
+              title="Clear all annotations"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-red-800 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0"
+            >
+              <Trash2 size={15} />
+            </button>
 
-            <div className="w-px h-5 bg-slate-700 shrink-0" />
+            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
 
             {/* Save & Lock */}
-            <button onClick={handleSaveAndLock} disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold rounded-lg transition-colors">
+            <button
+              onClick={handleSaveAndLock}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3 min-h-[44px] bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold rounded-lg transition-colors shrink-0 whitespace-nowrap"
+            >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
               {saving ? 'Saving…' : 'Save & Lock'}
             </button>
