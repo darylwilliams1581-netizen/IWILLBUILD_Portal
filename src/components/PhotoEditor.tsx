@@ -46,6 +46,7 @@ import {
   Download,
   Check,
   Pencil,
+  RotateCw,
 } from 'lucide-react';
 import type { JobPhoto } from '@/components/JobPhotos';
 
@@ -282,6 +283,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   const containerRef = useRef<HTMLDivElement>(null);
 
   const baseImageRef = useRef<HTMLImageElement | null>(null);
+  const rotationRef  = useRef<number>(0); // 0 | 90 | 180 | 270 — preview only; applied on Save & Lock
 
   // Annotation history
   const [strokes, setStrokes]   = useState<Stroke[]>([]);
@@ -316,14 +318,25 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
   // ── Load image ─────────────────────────────────────────────────────────────
 
-  const drawBaseImage = useCallback((img: HTMLImageElement) => {
+  const drawBaseImage = useCallback((img: HTMLImageElement, rotation = 0) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    canvas.width  = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    ctx.drawImage(img, 0, 0);
+
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const rotated = rotation === 90 || rotation === 270;
+
+    canvas.width  = rotated ? h : w;
+    canvas.height = rotated ? w : h;
+
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.drawImage(img, -w / 2, -h / 2);
+    ctx.restore();
+
     const overlay = overlayRef.current;
     if (overlay) { overlay.width = canvas.width; overlay.height = canvas.height; }
     redrawStrokes(ctx, strokesRef.current);
@@ -339,7 +352,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     ].filter(Boolean) as string[];
     let idx = 0;
     const tryNext = () => { if (idx < candidates.length) img.src = candidates[idx++]; };
-    img.onload  = () => { baseImageRef.current = img; drawBaseImage(img); };
+    img.onload  = () => { baseImageRef.current = img; drawBaseImage(img, rotationRef.current); };
     img.onerror = tryNext;
     tryNext();
   }, [photo, drawBaseImage]);
@@ -356,7 +369,21 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     if (!canvas || !img) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.drawImage(img, 0, 0);
+
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const rot = rotationRef.current;
+    const rotated = rot === 90 || rot === 270;
+
+    canvas.width  = rotated ? h : w;
+    canvas.height = rotated ? w : h;
+
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((rot * Math.PI) / 180);
+    ctx.drawImage(img, -w / 2, -h / 2);
+    ctx.restore();
+
     redrawStrokes(ctx, strokesRef.current);
   }, []);
 
@@ -547,6 +574,21 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       setLabelEditing(false);
     }
   }, [photo.jobId, photo.id, photo.label, labelValue]);
+
+  // ── Rotation (preview only — applied to canvas on Save & Lock) ────────────
+
+  // We keep a React state purely to trigger a re-render so the toolbar badge
+  // updates; the actual value lives in rotationRef so pointer handlers always
+  // read the latest without stale-closure issues.
+  const [rotation, setRotation] = useState(0);
+
+  const rotateCW = useCallback(() => {
+    const next = ((rotationRef.current + 90) % 360) as 0 | 90 | 180 | 270;
+    rotationRef.current = next;
+    setRotation(next);
+    const img = baseImageRef.current;
+    if (img) drawBaseImage(img, next);
+  }, [drawBaseImage]);
 
   // ── Clear annotations ──────────────────────────────────────────────────────
 
@@ -811,6 +853,17 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto"
             style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
           >
+            {/* Rotate CW — preview only; baked in on Save & Lock */}
+            <button
+              onClick={rotateCW}
+              title={`Rotate 90° clockwise (currently ${rotation}°)`}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+            >
+              <RotateCw size={15} />
+            </button>
+
+            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
+
             {/* Tool buttons */}
             {([
               { id: 'draw',      icon: <Pen size={15} />,          title: 'Pen' },
