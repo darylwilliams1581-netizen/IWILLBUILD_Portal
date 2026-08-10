@@ -1060,7 +1060,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                 bust={cacheBust[photo.id]}
                 onTap={setLightboxIndex}
                 onToggleSelect={toggleSelect}
-                onEdit={setEditPhoto}
+                onEdit={setEditorPhoto}
                 onDelete={setDeleteConfirm}
               />
             ))}
@@ -1091,7 +1091,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
           onDelete={(p) => setDeleteConfirm(p)}
-          onEdit={(p) => setEditPhoto(p)}
+          onEdit={(p) => { setLightboxIndex(null); setEditorPhoto(p); }}
           deleting={deleting}
         />
       )}
