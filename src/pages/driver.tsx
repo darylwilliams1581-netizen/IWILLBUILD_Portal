@@ -500,7 +500,7 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
 export default function DriverPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session, refresh, stopSession, reportGpsState } = useDriverSession();
+  const { session, refresh, stopSession, reportGpsState, gpsStatus } = useDriverSession();
 
   // GPS permission — checked on mount, used to gate session start
   const { status: gpsPermStatus, request: requestGpsPerm, openSettings: openGpsSettings } = useGpsPermission();
@@ -710,7 +710,15 @@ export default function DriverPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-400">
                       <MapPin size={12} />
-                      <span className="text-xs">GPS tracking active</span>
+                      <span className="text-xs">
+                        {gpsStatus === 'live'               ? 'GPS tracking live'
+                        : gpsStatus === 'stale'             ? 'GPS signal stale'
+                        : gpsStatus === 'waiting_fix'       ? 'Waiting for GPS fix'
+                        : gpsStatus === 'denied'            ? 'Location permission denied'
+                        : gpsStatus === 'unavailable'       ? 'GPS unavailable'
+                        : gpsStatus === 'waiting_permission'? 'Location permission needed'
+                        : 'GPS initialising'}
+                      </span>
                     </div>
                   </div>
                 )}
