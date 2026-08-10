@@ -6,7 +6,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { jobFormSubmissions, formTemplates, formFields, profiles, jobs } from '../../../../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { sendEmail } from '../../../../email.js';
 
@@ -50,7 +50,7 @@ export default async function handler(req: Request, res: Response) {
 
     // Load fields for labels
     const fieldRows = submission.templateId
-      ? await db.query.formFields.findMany({ where: eq(formFields.templateId, submission.templateId), orderBy: (f, { asc }) => [asc(f.sortOrder)] })
+      ? await db.query.formFields.findMany({ where: eq(formFields.templateId, submission.templateId), orderBy: [asc(formFields.fieldOrder)] })
       : [];
 
     // Load job info

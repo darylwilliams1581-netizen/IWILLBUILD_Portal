@@ -75,6 +75,7 @@ export const Cpu = NullIcon;
 export const CreditCard = NullIcon;
 export const Crown = NullIcon;
 export const Database = NullIcon;
+export const Delete = NullIcon;
 export const DollarSign = NullIcon;
 export const Dot = NullIcon;
 export const Download = NullIcon;

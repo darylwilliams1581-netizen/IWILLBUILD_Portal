@@ -600,3 +600,9 @@ export const starterPackRuns = mysqlTable('starter_pack_runs', {
   notes:         text('notes'),
   createdAt:     timestamp('created_at').defaultNow(),
 });
+
+// ── Alias: formFields → formTemplateFields ────────────────────────────────────
+// Several handlers import `formFields` from schema. They target the same
+// form_template_fields table — this alias keeps them compiling without
+// requiring a data migration or handler rewrite.
+export const formFields = formTemplateFields;
