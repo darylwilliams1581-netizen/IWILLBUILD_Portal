@@ -1,3 +1,5 @@
+import { parseFrontmatter, type ParsedMarkdown } from './frontmatter.js';
+
 export const CONTENT_SUBDIRS = ['pages', 'data'] as const;
 export type ContentSubdir = (typeof CONTENT_SUBDIRS)[number];
 
@@ -113,6 +115,22 @@ export function classifyDirents(
     }
   }
   return entries;
+}
+
+/**
+ * The shape one collection item contributes, from its filename and raw contents.
+ *
+ * Both the emitted module and the generated `.d.ts` must agree on this, so it lives here rather
+ * than being re-derived: a second JSON-only parse path declared `unknown[]` for the `.md` posts
+ * that are the blog's default format, and omitted the `slug` this injects from the filename.
+ */
+export function normalizeCollectionItem(filename: string, raw: string): Record<string, unknown> {
+  const slug: string = filename.replace(/\.(md|json)$/, '');
+  if (filename.endsWith('.md')) {
+    const { data, content }: ParsedMarkdown = parseFrontmatter(raw);
+    return { slug, ...data, content };
+  }
+  return { slug, ...(JSON.parse(raw) as Record<string, unknown>) };
 }
 
 /** Inverse of discovery: the on-disk candidates a canonical key may name. */

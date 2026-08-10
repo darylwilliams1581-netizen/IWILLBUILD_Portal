@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc src/keys.ts --outDir dist --declaration --target ES2022 --lib ES2022 --module ESNext --moduleResolution bundler --strict --skipLibCheck --esModuleInterop --forceConsistentCasingInFileNames"
+    "build": "tsc src/keys.ts --ignoreConfig --outDir dist --declaration --target ES2022 --lib ES2022 --module nodenext --moduleResolution nodenext --strict --skipLibCheck --esModuleInterop --forceConsistentCasingInFileNames",
+    "test": "npm run build && node --input-type=module -e \"import('@airo/content-plugin/keys')\""
   },
   "devDependencies": {
     "typescript": "catalog:"
