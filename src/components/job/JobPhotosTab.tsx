@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useCallback } from 'react';
 import {
-  Upload, CheckSquare, X, Download, Send, Share2,
+  Upload, CheckSquare, X, Download, Send, Share2, Trash2,
   Grid2x2, Grid3x3, LayoutGrid, Loader2, Copy, Check,
   QrCode, ExternalLink,
 } from 'lucide-react';
@@ -144,9 +144,15 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
           </button>
         )}
 
-        {/* Download / Send — only in select mode with selection */}
+        {/* Download / Send / Delete — only in select mode with selection */}
         {selectMode && selectedCount > 0 && (
           <>
+            <button
+              onClick={() => photosRef.current?.deleteSelected()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded-lg transition-colors"
+            >
+              <Trash2 size={12} /> Delete
+            </button>
             <button
               onClick={() => photosRef.current?.downloadSelected()}
               className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-foreground text-xs font-semibold rounded-lg transition-colors"

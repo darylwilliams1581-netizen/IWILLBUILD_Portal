@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode,
   Download, Home, Upload, Share2, LayoutGrid, CheckSquare, Send,
-  Grid2x2, Grid3x3, Camera,
+  Grid2x2, Grid3x3, Camera, Trash2,
 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -256,6 +256,12 @@ export default function JobPhotosPage() {
           {selectMode && selectedCount > 0 && (
             <>
               <button
+                onClick={() => photosRef.current?.deleteSelected()}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded transition-colors"
+              >
+                <Trash2 size={12} /> Delete
+              </button>
+              <button
                 onClick={handleDownloadSelected}
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors"
               >
@@ -402,6 +408,16 @@ export default function JobPhotosPage() {
                   {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
                 </p>
               </div>
+
+              {/* Delete selected */}
+              <button
+                onClick={() => photosRef.current?.deleteSelected()}
+                disabled={selectedCount === 0}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-200 disabled:opacity-40 text-gray-600 hover:text-red-600 transition-colors touch-manipulation shrink-0"
+              >
+                <Trash2 size={16} />
+                <span className="text-[10px] font-semibold leading-none">Delete</span>
+              </button>
 
               {/* Download selected */}
               <button

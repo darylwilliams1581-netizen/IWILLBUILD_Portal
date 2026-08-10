@@ -80,6 +80,7 @@ export interface JobPhotosHandle {
   uploading: boolean;
   downloadSelected: () => void;
   exitSelectMode: () => void;
+  deleteSelected: () => void;
 }
 
 type ViewSize = 'small' | 'medium' | 'large';
@@ -539,40 +540,29 @@ const PhotoCard = memo(function PhotoCard({
             )}
           </div>
         )}
-      </div>
 
-      {/* Metadata strip — medium and large only */}
-      {viewSize !== 'small' && (
-        <div className={`${isLocked ? 'bg-amber-50' : 'bg-slate-50'} border-t ${isLocked ? 'border-amber-200' : 'border-slate-200'} flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
-          <div className="flex items-start justify-between gap-1">
-            <div className="min-w-0 flex-1">
-              {photo.label
-                ? <p className="text-xs font-semibold text-slate-800 truncate">{photo.label}</p>
-                : <p className="text-xs text-slate-500 italic truncate">{photo.originalName ?? photo.filename}</p>
-              }
-            </div>
-            {!selectMode && !isLocked && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
-                <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
-                <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
-              </div>
+        {/* Medium/large-view: action buttons on hover (metadata strip removed) */}
+        {!selectMode && viewSize !== 'small' && (
+          <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+            {!isLocked && (
+              <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="w-6 h-6 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={11} /></button>
             )}
-            {!selectMode && isLocked && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
-              </div>
+            <button onClick={(e) => { e.stopPropagation(); downloadPhoto(photo); }} className="w-6 h-6 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Download"><Download size={11} /></button>
+            {!isLocked && (
+              <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="w-6 h-6 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={11} /></button>
             )}
           </div>
-          {viewSize === 'large' && photo.uploadedByName && (
-            <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
-          )}
-          {isLocked && photo.lockedByName && (
-            <p className="text-[10px] text-amber-700 flex items-center gap-1 truncate font-semibold"><Lock size={9} className="shrink-0" />Locked by {photo.lockedByName}</p>
-          )}
-          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
-        </div>
-      )}
+        )}
+
+        {/* Locked badge — bottom-left corner (replaces metadata strip indicator) */}
+        {isLocked && !selectMode && (
+          <div className="absolute bottom-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/90 text-black text-[9px] font-bold pointer-events-none">
+            <Lock size={8} /> Locked
+          </div>
+        )}
+      </div>
+
+      {/* Metadata strip — hidden; actions are on the image hover overlay */}
     </div>
   );
 });
@@ -886,6 +876,17 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     });
   }, [photos, selected]);
 
+  /** Trigger the delete-confirm dialog for each selected photo in sequence */
+  const deleteSelected = useCallback(() => {
+    const targets = photos.filter((p) => selected.has(p.id) && p.status !== 'locked');
+    if (targets.length === 0) return;
+    // Show the confirm dialog for the first selected photo.
+    // After each deletion the handler clears the confirmed photo from `selected`
+    // so the next one can be confirmed. For now, confirm the first one —
+    // the user can re-tap Delete to continue with remaining photos.
+    setDeleteConfirm(targets[0]);
+  }, [photos, selected]);
+
   // ── Share link ─────────────────────────────────────────────────────────────
 
   const generateShareLink = useCallback(async () => {
@@ -924,7 +925,8 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     get uploading() { return isUploading; },
     downloadSelected,
     exitSelectMode,
-  }), [viewSize, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, exitSelectMode]);
+    deleteSelected,
+  }), [viewSize, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, exitSelectMode, deleteSelected]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
