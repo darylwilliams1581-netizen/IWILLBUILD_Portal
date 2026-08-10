@@ -130,11 +130,27 @@ async function downloadPhoto(photo: JobPhoto): Promise<void> {
   const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+
+  // Read the filename the server set in Content-Disposition.
+  // Prefer filename* (RFC 5987 UTF-8) over the plain filename parameter.
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  let name = '';
+  const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match) {
+    try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ }
+  }
+  if (!name) {
+    const plainMatch = cd.match(/filename="?([^";]+)"?/i);
+    if (plainMatch) name = plainMatch[1].trim();
+  }
+  // Final fallback — use label or originalName from the photo object
+  if (!name) name = photo.label ?? photo.originalName ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
+
   const blob = await res.blob();
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = objectUrl;
-  a.download = photo.originalName ?? photo.filename;
+  a.download = name;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

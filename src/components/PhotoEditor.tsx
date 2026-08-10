@@ -667,12 +667,28 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
             onClick={() => {
               const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
               fetch(url, { credentials: 'include' })
-                .then((r) => r.blob())
-                .then((blob) => {
+                .then((r) => {
+                  // Read filename from Content-Disposition header (server always sets it).
+                  // Prefer filename* (RFC 5987 UTF-8) over plain filename.
+                  const cd = r.headers.get('Content-Disposition') ?? '';
+                  let name = '';
+                  const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
+                  if (utf8Match) {
+                    try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ }
+                  }
+                  if (!name) {
+                    const plainMatch = cd.match(/filename="?([^";]+)"?/i);
+                    if (plainMatch) name = plainMatch[1].trim();
+                  }
+                  // Final fallback — use label or originalName from the photo object
+                  if (!name) name = photo.label ?? photo.originalName ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
+                  return r.blob().then((blob) => ({ blob, name }));
+                })
+                .then(({ blob, name }) => {
                   const objectUrl = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = objectUrl;
-                  a.download = photo.originalName ?? photo.filename;
+                  a.download = name;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);

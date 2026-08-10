@@ -41,10 +41,27 @@ export default async function handler(req: Request, res: Response) {
     if (!photo) return res.status(404).json({ error: 'Photo not found' });
 
     const { stream, mimeType, sizeBytes } = await getDownloadStream(photo.filename, PHOTO_BUCKET);
-    const downloadName = photo.originalName ?? photo.filename;
 
-    res.setHeader('Content-Type', photo.mimeType ?? mimeType ?? 'image/jpeg');
-    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    // Build a meaningful download filename — never expose the raw R2 storage key.
+    // Priority: label (user caption) -> originalName (upload filename) -> job+id fallback.
+    const resolvedMime = photo.mimeType ?? mimeType ?? 'image/jpeg';
+    const ext = resolvedMime.includes('png') ? '.png'
+      : resolvedMime.includes('webp') ? '.webp'
+      : '.jpg';
+
+    const rawName = (photo.label ?? '').trim()
+      || (photo.originalName ?? '').trim()
+      || `job-${jobId}-photo-${photoId}${ext}`;
+
+    const hasExt = /\.[a-zA-Z0-9]{2,5}$/.test(rawName);
+    const downloadName = hasExt ? rawName : `${rawName}${ext}`;
+
+    // RFC 5987 — Unicode-safe filename for all modern browsers
+    const encodedName = encodeURIComponent(downloadName).replace(/'/g, '%27');
+    const safeName = downloadName.replace(/"/g, '_');
+
+    res.setHeader('Content-Type', resolvedMime);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}"; filename*=UTF-8''${encodedName}`);
     if (sizeBytes > 0) res.setHeader('Content-Length', String(sizeBytes));
 
     stream.on('error', () => {
