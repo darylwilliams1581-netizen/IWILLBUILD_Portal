@@ -221,7 +221,7 @@ export default function BugReportsTab() {
   const totalOpen = counts.open + counts.in_progress;
 
   return (
-    <div className="flex h-full gap-0 overflow-hidden -m-6">
+    <div className="flex h-full gap-0 overflow-hidden">
       {/* ── Left panel: list ── */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden border-r border-slate-200">
         {/* Toolbar */}

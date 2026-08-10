@@ -776,7 +776,7 @@ export default function OwnerConsolePage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={`flex-1 min-h-0 ${tab === 'bug-reports' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
