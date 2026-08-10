@@ -43,47 +43,77 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
   const [doneJobId, setDoneJobId] = useState<number | null>(null);
   const [doneJobName, setDoneJobName] = useState('');
   const [query, setQuery] = useState('');
+  // allJobs holds the full list loaded once from /api/jobs; jobs is the filtered view
+  const [allJobs, setAllJobs] = useState<JobOption[]>([]);
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const pendingJobRef = useRef<JobOption | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function fetchJobs(q: string) {
+  // Load all jobs once from /api/jobs — no search route, no route-capture risk.
+  // Filtering is done locally so no further network requests are needed.
+  async function fetchJobs() {
     setLoadingJobs(true);
     setFetchError(null);
     try {
-      const params = new URLSearchParams({ status: 'active', limit: '40' });
-      if (q) params.set('q', q);
-      const res = await fetch(`/api/jobs/search?${params}`, { credentials: 'include' });
-      // Read body once — avoid double-consume which causes silent parse errors
-      const data = await res.json().catch(() => ({})) as { jobs?: JobOption[]; error?: string };
+      const res = await fetch('/api/jobs', { credentials: 'include' });
+      const body = await res.json().catch(() => ({})) as unknown;
       if (!res.ok) {
-        throw new Error(data.error ?? `Search failed (${res.status})`);
+        const errBody = body as { error?: string };
+        throw new Error(errBody.error ?? `Could not load jobs (${res.status})`);
       }
-      // Validate every returned job — only accept positive numeric IDs
-      const validJobs = (data.jobs ?? []).filter((job) => {
-        const numericId = Number(job.id);
-        return Number.isInteger(numericId) && numericId > 0;
-      });
+      const raw: unknown[] = Array.isArray(body) ? body : ((body as { jobs?: unknown[] }).jobs ?? []);
+      // Normalise IDs to numbers and exclude terminal statuses
+      const validJobs: JobOption[] = raw
+        .map((j) => {
+          const job = j as Record<string, unknown>;
+          return {
+            id: Number(job.id),
+            jobNumber: (job.jobNumber ?? job.job_number ?? null) as string | null,
+            name: String(job.name ?? ''),
+            status: String(job.status ?? ''),
+          };
+        })
+        .filter((job) =>
+          Number.isInteger(job.id) &&
+          job.id > 0 &&
+          !['completed', 'cancelled', 'archived'].includes(job.status.toLowerCase()),
+        );
+      setAllJobs(validJobs);
       setJobs(validJobs);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Could not load jobs');
+      setAllJobs([]);
       setJobs([]);
     } finally {
       setLoadingJobs(false);
     }
   }
 
+  // Initial load — no auto-focus on touch devices (iOS Safari zooms inputs < 16px)
   useEffect(() => {
-    void fetchJobs('');
-    // Only auto-focus on pointer-fine devices (desktop/mouse) — iOS Safari zooms
-    // the page when focusing an input < 16px, which widens the layout.
+    void fetchJobs();
     if (window.matchMedia('(pointer: fine)').matches) {
       setTimeout(() => inputRef.current?.focus(), 120);
     }
   }, []);
-  useEffect(() => { const t = setTimeout(() => void fetchJobs(query), 250); return () => clearTimeout(t); }, [query]);
+
+  // Local filtering — no network request on every keystroke
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      setJobs(allJobs);
+      return;
+    }
+    setJobs(
+      allJobs.filter(
+        (job) =>
+          job.name.toLowerCase().includes(q) ||
+          (job.jobNumber ?? '').toLowerCase().includes(q),
+      ),
+    );
+  }, [query, allJobs]);
 
   async function handlePhotoFile(file: File) {
     const job = pendingJobRef.current;
@@ -199,7 +229,7 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
               {fetchError && (
                 <div className="mx-4 mb-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-700 shrink-0 flex items-center justify-between gap-2">
                   <span>{fetchError}</span>
-                  <button type="button" onClick={() => fetchJobs(query)} className="underline underline-offset-2 shrink-0">Retry</button>
+                  <button type="button" onClick={() => void fetchJobs()} className="underline underline-offset-2 shrink-0">Retry</button>
                 </div>
               )}
 
