@@ -295,11 +295,10 @@ interface LightboxProps {
   onNavigate: (i: number) => void;
   onDelete: (photo: JobPhoto) => void;
   onEdit: (photo: JobPhoto) => void;
-  onOpenEditor: (photo: JobPhoto) => void;
   deleting: number | null;
 }
 
-function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, onOpenEditor, deleting }: LightboxProps) {
+function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, deleting }: LightboxProps) {
   const photo = photos[index];
   const isLocked = photo.status === 'locked';
 
@@ -405,52 +404,25 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
           />
 
           {/*
-           * ── TOP-RIGHT CORNER EDIT / LOCK BUTTON ──────────────────────────
-           * Positioned over the photo, not in the toolbar, so it is always
-           * visually associated with the image regardless of screen size.
-           * Touch target: min 44×44 px (Apple HIG / WCAG 2.5.5).
+           * ── TOP-RIGHT CORNER LOCK BADGE (locked photos only) ─────────────
+           * Shows a non-interactive lock badge so the user knows the photo
+           * is locked. No editor button — editing is accessed via the pencil
+           * icon in the thumbnail grid, not from the lightbox.
            */}
-          {isLocked ? (
-            /* Locked: lock icon — opens read-only editor view */
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
+          {isLocked && (
+            <div
               className="
                 absolute top-2 right-2
-                min-w-[44px] min-h-[44px] w-11 h-11
-                flex items-center justify-center
+                flex items-center gap-1 px-2 py-1
                 rounded-xl
-                bg-amber-500/90 hover:bg-amber-400
-                text-black
+                bg-amber-500/90
+                text-black text-xs font-bold
                 shadow-lg shadow-black/40
-                transition-colors
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300
+                pointer-events-none
               "
-              aria-label="View locked photo"
-              title="Locked photo"
             >
-              <Lock size={18} />
-            </button>
-          ) : (
-            /* Unlocked: pencil icon — opens canvas editor */
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpenEditor(photo); }}
-              className="
-                absolute top-2 right-2
-                min-w-[44px] min-h-[44px] w-11 h-11
-                flex items-center justify-center
-                rounded-xl
-                bg-black/60 hover:bg-primary
-                text-white
-                shadow-lg shadow-black/40
-                backdrop-blur-sm
-                transition-colors
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60
-              "
-              aria-label="Edit photo"
-              title="Edit photo"
-            >
-              <Pencil size={18} />
-            </button>
+              <Lock size={13} /> Locked
+            </div>
           )}
         </div>
 
@@ -1118,7 +1090,6 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           onNavigate={setLightboxIndex}
           onDelete={(p) => setDeleteConfirm(p)}
           onEdit={(p) => setEditPhoto(p)}
-          onOpenEditor={(p) => { setLightboxIndex(null); setEditorPhoto(p); }}
           deleting={deleting}
         />
       )}
