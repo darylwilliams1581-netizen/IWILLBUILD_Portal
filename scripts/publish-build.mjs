@@ -6,8 +6,8 @@ execSync("npx vite build --outDir dist/client", {
   shell: true
 });
 
-// Build SSR server bundle — this is what production runs
-execSync("npx vite build --ssr src/server/entry.ts --outDir dist", {
+// Build SSR server bundle — outputs dist/server.bundle.mjs via vite.config.ts SSR branch
+execSync("npx vite build --ssr", {
   stdio: "inherit",
   shell: true
 });
