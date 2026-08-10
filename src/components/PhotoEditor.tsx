@@ -4,10 +4,12 @@
  * Canvas-based photo editor for job photos.
  *
  * Tools:
- *   - Rotate left / right (90° steps, applied to canvas immediately)
+ *   - Rotate right (90° steps, applied to canvas immediately)
  *   - Freehand draw (pen)
  *   - Arrow (click-drag to draw a directional arrow)
- *   - Text (click to place, type, Enter/click-away to commit)
+ *   - Circle (click-drag to draw an ellipse)
+ *   - Square (click-drag to draw a rectangle)
+ *   - Text (click to place, type, Enter to commit — toolbar ✓ also commits)
  *   - Undo (per-stroke / per-action history, up to 50 steps)
  *   - Clear annotations (restores to the last loaded image state)
  *
@@ -30,23 +32,25 @@ import React, {
 
 import {
   X,
-  RotateCcw,
   RotateCw,
   Pen,
   ArrowUpRight,
   Type,
+  Circle,
+  Square,
   Undo2,
   Trash2,
   Lock,
   Loader2,
   AlertCircle,
   Download,
+  Check,
 } from 'lucide-react';
 import type { JobPhoto } from '@/components/JobPhotos';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tool = 'draw' | 'arrow' | 'text';
+type Tool = 'draw' | 'arrow' | 'text' | 'circle' | 'square';
 
 interface DrawStroke {
   type: 'draw';
@@ -63,6 +67,22 @@ interface ArrowStroke {
   to: { x: number; y: number };
 }
 
+interface CircleStroke {
+  type: 'circle';
+  color: string;
+  width: number;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}
+
+interface SquareStroke {
+  type: 'square';
+  color: string;
+  width: number;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}
+
 interface TextStroke {
   type: 'text';
   color: string;
@@ -72,7 +92,7 @@ interface TextStroke {
   y: number;
 }
 
-type Stroke = DrawStroke | ArrowStroke | TextStroke;
+type Stroke = DrawStroke | ArrowStroke | CircleStroke | SquareStroke | TextStroke;
 
 interface PhotoEditorProps {
   photo: JobPhoto;
@@ -82,9 +102,7 @@ interface PhotoEditorProps {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Annotation colours — these are annotation ink colours applied directly to
-// canvas pixels, not UI theme colours. They must be literal values because
-// they are passed to CanvasRenderingContext2D.strokeStyle / fillStyle.
+// Annotation colours — literal canvas values, not CSS variables.
 const ANNOTATION_COLORS = [
   { label: 'Red',   value: '#EF4444' },
   { label: 'White', value: '#FFFFFF' },
@@ -92,7 +110,8 @@ const ANNOTATION_COLORS = [
 ] as const;
 
 const STROKE_WIDTHS = [2, 4, 8];
-const FONT_SIZES = [32, 48, 72];
+// Smaller font sizes so text is not overwhelming on the photo
+const FONT_SIZES = [16, 24, 36];
 const MAX_HISTORY = 50;
 
 // ── Arrow drawing helper ──────────────────────────────────────────────────────
@@ -114,13 +133,11 @@ function drawArrow(
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  // Shaft
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
   ctx.lineTo(to.x, to.y);
   ctx.stroke();
 
-  // Arrowhead
   ctx.beginPath();
   ctx.moveTo(to.x, to.y);
   ctx.lineTo(
@@ -133,6 +150,40 @@ function drawArrow(
   );
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
+}
+
+function drawCircle(
+  ctx: CanvasRenderingContext2D,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  color: string,
+  width: number,
+) {
+  const cx = (from.x + to.x) / 2;
+  const cy = (from.y + to.y) / 2;
+  const rx = Math.abs(to.x - from.x) / 2;
+  const ry = Math.abs(to.y - from.y) / 2;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, Math.max(rx, 1), Math.max(ry, 1), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSquare(
+  ctx: CanvasRenderingContext2D,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  color: string,
+  width: number,
+) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.strokeRect(from.x, from.y, to.x - from.x, to.y - from.y);
   ctx.restore();
 }
 
@@ -154,6 +205,10 @@ function redrawStrokes(ctx: CanvasRenderingContext2D, strokes: Stroke[]) {
       ctx.restore();
     } else if (s.type === 'arrow') {
       drawArrow(ctx, s.from, s.to, s.color, s.width);
+    } else if (s.type === 'circle') {
+      drawCircle(ctx, s.from, s.to, s.color, s.width);
+    } else if (s.type === 'square') {
+      drawSquare(ctx, s.from, s.to, s.color, s.width);
     } else if (s.type === 'text') {
       ctx.save();
       ctx.fillStyle = s.color;
