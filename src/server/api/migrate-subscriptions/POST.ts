@@ -24,7 +24,7 @@ export default async function handler(req: Request, res: Response) {
           AND TABLE_NAME = ${table}
           AND COLUMN_NAME = ${col}
       `);
-      const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+      const cnt = ((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0]?.cnt ?? 0;
       if (cnt === 0) {
         await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${definition}`));
       }

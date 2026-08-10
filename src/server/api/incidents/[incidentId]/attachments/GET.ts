@@ -24,12 +24,12 @@ export default async function handler(req: Request, res: Response) {
     const incidentId = parseInt(req.params.incidentId, 10);
     if (isNaN(incidentId)) return res.status(400).json({ error: 'Invalid ID' });
 
-    const attachments = await db.execute(sql.raw(
+    const attachments = (await db.execute(sql.raw(
       `SELECT id, file_type, original_name, mime_type, size_bytes, public_url, created_at
        FROM incident_attachments
        WHERE incident_id = ${incidentId} AND company_id = ${profile.companyId}
        ORDER BY created_at ASC`
-    )) as unknown as Array<Record<string, unknown>>;
+    )) as unknown as [Array<Record<string, unknown>>, unknown])[0];
 
     return res.json({ attachments: attachments ?? [] });
   } catch (e) {

@@ -12,9 +12,9 @@ export default async function handler(req: Request, res: Response) {
     const { password, token } = req.body as { password?: string; token?: string };
     if (!password) return res.status(400).json({ error: 'Current password is required.' });
 
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT password, totp_secret, two_factor_enabled FROM \`user\` WHERE id = '${userId}' LIMIT 1`
-    )) as unknown as Array<{ password: string | null; totp_secret: string | null; two_factor_enabled: number }>;
+    )) as unknown as [Array<{ password: string | null; totp_secret: string | null; two_factor_enabled: number }>, unknown])[0];
 
     const userRow = rows[0];
     if (!userRow) return res.status(404).json({ error: 'User not found.' });

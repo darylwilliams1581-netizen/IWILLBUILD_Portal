@@ -14,9 +14,9 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'A 6-digit code is required.' });
     }
 
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT totp_secret FROM \`user\` WHERE id = '${userId}' LIMIT 1`
-    )) as unknown as Array<{ totp_secret: string | null }>;
+    )) as unknown as [Array<{ totp_secret: string | null }>, unknown])[0];
 
     const secret = rows[0]?.totp_secret;
     if (!secret) return res.status(400).json({ error: 'No pending 2FA setup found. Please restart setup.' });

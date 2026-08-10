@@ -240,19 +240,24 @@
   },
   "debug/current-error": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/debug-current-error-a76ee59e.jpg",
-    "searchQuery": "",
+    "currentUrl": "/airo-assets/uploads/debug-current-error-b1643a16.jpg",
+    "searchQuery": "bug report form with category dropdown",
     "alternatives": [
+      "/airo-assets/uploads/debug-current-error-e7e4a24b.jpg",
+      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg",
       "/airo-assets/uploads/debug-current-error-987023a9.jpg"
     ],
     "userModified": true,
     "createdAt": "2026-07-11T02:40:15.547Z",
-    "lastUpdated": "2026-07-22T18:14:16.897Z",
+    "lastUpdated": "2026-08-10T14:30:53.215Z",
     "uploadSources": {
       "/airo-assets/uploads/debug-current-error-987023a9.jpg": "f38wenbvln_1783734873845_file_QmHrafxyAN.jpg",
-      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg": "f38wenbvln_1784667669262_file_eEA2OY-Bhs.jpg"
+      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg": "f38wenbvln_1784667669262_file_eEA2OY-Bhs.jpg",
+      "/airo-assets/uploads/debug-current-error-e7e4a24b.jpg": "f38wenbvln_1786371123017_file_jI6AL72N89.jpg",
+      "/airo-assets/uploads/debug-current-error-b1643a16.jpg": "f38wenbvln_1786371883163_file_whjl3AhJ7i.jpg"
     },
-    "uploadContentHash": "7c0cb32c6dd82cda8d4ea5ead12521e28bff9ff7efdeb5223d213db0008b81ff"
+    "uploadContentHash": "2c2fa2d54928474ef17dfe714854031507599c9dbd16b922d5b5d1194bb3b296",
+    "caption": "bug report form with category dropdown"
   },
   "debug/screenshot-081835": {
     "mediaType": "image",

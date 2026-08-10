@@ -14,9 +14,9 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'A 6-digit code is required.' });
     }
 
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT totp_secret, two_factor_enabled FROM \`user\` WHERE id = '${userId}' LIMIT 1`
-    )) as unknown as Array<{ totp_secret: string | null; two_factor_enabled: number }>;
+    )) as unknown as [Array<{ totp_secret: string | null; two_factor_enabled: number }>, unknown])[0];
 
     const userRow = rows[0];
     if (!userRow?.two_factor_enabled || !userRow.totp_secret) {

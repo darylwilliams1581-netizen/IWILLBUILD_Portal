@@ -10,7 +10,7 @@ async function ensureColumn(table: string, column: string, definition: string, r
         AND TABLE_NAME = ${table}
         AND COLUMN_NAME = ${column}
     `);
-    const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+    const cnt = ((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0]?.cnt ?? 0;
     if (cnt === 0) {
       await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
       results.push(`Added ${column} to ${table}`);

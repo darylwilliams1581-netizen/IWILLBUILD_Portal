@@ -1,8 +1,11 @@
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
 import { createRequire } from "module";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ---------------------------------------------------------------------------
 // Optional platform plugin loader
@@ -146,6 +149,7 @@ if (corsOrigins.length === 0) {
 
 // ---------------------------------------------------------------------------
 export default defineConfig(({ mode, isSsrBuild }) => ({
+  root: __dirname,
   envPrefix: ["VITE_", "SITE_"],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),

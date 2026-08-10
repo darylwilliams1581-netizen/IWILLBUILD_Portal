@@ -29,9 +29,9 @@ export default async function handler(req: Request, res: Response) {
           WHERE TABLE_SCHEMA = DATABASE()
             AND TABLE_NAME = 'profiles'
             AND COLUMN_NAME = 'notification_prefs'`
-    ) as unknown as Array<{ COLUMN_NAME: string }>;
+    ) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];
 
-    if (cols.length === 0) {
+    if ((cols[0] as Array<unknown>).length === 0) {
       await db.execute(sql`ALTER TABLE profiles ADD COLUMN notification_prefs TEXT NULL`);
     }
 

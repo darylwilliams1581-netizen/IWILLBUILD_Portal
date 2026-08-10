@@ -30,9 +30,9 @@ export default async function handler(req: Request, res: Response) {
     const attachId = parseInt(req.params.attachId, 10);
     if (isNaN(incidentId) || isNaN(attachId)) return res.status(400).json({ error: 'Invalid ID' });
 
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT id, storage_key FROM incident_attachments WHERE id = ${attachId} AND incident_id = ${incidentId} AND company_id = ${profile.companyId} LIMIT 1`
-    )) as unknown as Array<{ id: number; storage_key: string }>;
+    )) as unknown as [Array<{ id: number; storage_key: string }>, unknown])[0];
 
     if (!rows || rows.length === 0) return res.status(404).json({ error: 'Attachment not found' });
 

@@ -3,7 +3,8 @@
  *
  * Fetches /airo-media.json to discover which media slots have mediaType 'video',
  * then uses a MutationObserver to replace <img> elements referencing those slots
- * with <video> elements (autoplay, muted, loop, playsInline).
+ * with <video> elements (autoplay, muted, loop, playsInline). Reconciles the
+ * reverse direction too, so a video→image replacement can't leave a blank area.
  *
  * Loaded synchronously in <head> so the observer is active before React hydrates.
  * Works in both dev and production modes — in dev mode the Vite plugin also handles
@@ -59,6 +60,27 @@
     el.setAttribute(CLEAR_BG_ATTR, 'true')
   }
 
+  function restoreBackgroundVideoHost(el) {
+    if (!el.getAttribute(CLEAR_BG_ATTR)) return
+    el.style.removeProperty('background-color')
+    el.removeAttribute(CLEAR_BG_ATTR)
+  }
+
+  // Requires the slot to be present in the manifest: an absent entry means
+  // "unknown", not "image", and must never downgrade a video to an <img>.
+  // Relies on mediaType being required on every slot write (@airo/shared MediaSlot).
+  // A slot missing mediaType is skipped at ingest below, so it stays "unknown" and
+  // a source-authored <video> for it is left alone rather than swapped.
+  function isImageSlot(slotPath) {
+    return !!slotPath
+      && Object.prototype.hasOwnProperty.call(mediaTypes, slotPath)
+      && mediaTypes[slotPath] !== 'video'
+  }
+
+  function isVideoSlot(slotPath) {
+    return !!slotPath && mediaTypes[slotPath] === 'video'
+  }
+
   function extractSlotPath(url) {
     if (!url) return null
     var prefixes = [SLOT_PREFIX_IMAGES, SLOT_PREFIX_VIDEOS]
@@ -74,9 +96,21 @@
 
   function patchImg(img) {
     if (!img.src) return
-    if (img.getAttribute('data-airo-video-patched')) return
     var slotPath = extractSlotPath(img.src)
-    if (!slotPath || mediaTypes[slotPath] !== 'video') return
+
+    if (img.getAttribute('data-airo-video-patched')) {
+      // Slot reverted to image — reveal the img and drop the injected video.
+      // Also covers the orphan case where React already removed the video.
+      if (isImageSlot(slotPath)) {
+        var stale = img.parentNode && img.parentNode.querySelector('video[data-slot="' + slotPath + '"]')
+        if (stale) stale.remove()
+        img.removeAttribute('data-airo-video-patched')
+        img.style.display = ''
+      }
+      return
+    }
+
+    if (!isVideoSlot(slotPath)) return
 
     // Remove any existing video for this slot to prevent duplicates after re-renders
     var existing = img.parentNode && img.parentNode.querySelector('video[data-slot="' + slotPath + '"]')
@@ -107,7 +141,7 @@
     var urlMatch = bgImage.match(/url\(["']?([^"')]+)["']?\)/)
     if (!urlMatch || !urlMatch[1]) return
     var slotPath = extractSlotPath(urlMatch[1])
-    if (!slotPath || mediaTypes[slotPath] !== 'video') return
+    if (!isVideoSlot(slotPath)) return
 
     // If already patched and video exists, just re-hide background (React may have restored it)
     if (el.getAttribute('data-airo-video-bg-patched') === slotPath) {
@@ -135,7 +169,50 @@
     el.insertBefore(video, el.firstChild)
   }
 
+  function unpatchVideo(video) {
+    if (video.hasAttribute('data-airo-bg-video')) return
+    // dev-tools owns its provisional preview nodes (data-airo-media-preview)
+    if (video.hasAttribute('data-airo-media-preview')) return
+    var slotPath = video.getAttribute('data-slot') || extractSlotPath(video.src)
+    if (!isImageSlot(slotPath)) return
+
+    var prevImg = video.previousElementSibling
+    var patchedImg = prevImg && prevImg.tagName === 'IMG' && prevImg.getAttribute('data-airo-video-patched')
+      ? prevImg
+      : null
+
+    if (patchedImg || video.hasAttribute('data-airo-video')) {
+      if (patchedImg) {
+        patchedImg.removeAttribute('data-airo-video-patched')
+        patchedImg.style.display = ''
+      }
+      video.remove()
+      return
+    }
+
+    // Source declares <video> for a slot that now holds an image — swap in an
+    // <img> so the asset renders instead of leaving an empty video box.
+    var img = document.createElement('img')
+    img.src = SLOT_PREFIX_IMAGES + slotPath
+    img.className = video.className
+    img.style.cssText = video.style.cssText
+    img.alt = video.getAttribute('aria-label') || ''
+    if (video.parentNode) video.parentNode.replaceChild(img, video)
+  }
+
+  function unpatchBgElement(el) {
+    var slotPath = el.getAttribute('data-airo-video-bg-patched')
+    if (!isImageSlot(slotPath)) return
+    var bgVideo = el.querySelector('video[data-airo-bg-video]')
+    if (bgVideo) bgVideo.remove()
+    el.removeAttribute('data-airo-video-bg-patched')
+    restoreBackgroundVideoHost(el)
+    el.style.backgroundImage = 'url(' + JSON.stringify(SLOT_PREFIX_IMAGES + slotPath) + ')'
+  }
+
   function patchAll() {
+    document.querySelectorAll('video').forEach(unpatchVideo)
+    document.querySelectorAll('[data-airo-video-bg-patched]').forEach(unpatchBgElement)
     document.querySelectorAll('img').forEach(patchImg)
     // Check elements with inline background styles or already-patched elements
     document.querySelectorAll('[style*="background"], [data-airo-video-bg-patched]').forEach(patchBgElement)
@@ -144,7 +221,7 @@
     // so this is safe but slightly more expensive — only run when we have video slots.
     var hasVideoSlots = false
     for (var k in mediaTypes) {
-      if (mediaTypes[k] === 'video') { hasVideoSlots = true; break }
+      if (isVideoSlot(k)) { hasVideoSlots = true; break }
     }
     if (hasVideoSlots) {
       document.querySelectorAll('section, div, header, main, [class*="hero"], [class*="banner"], [class*="background"]').forEach(function (el) {
@@ -183,7 +260,10 @@
               var node = added[j]
               if (node instanceof HTMLImageElement) {
                 patchImg(node)
+              } else if (node instanceof HTMLVideoElement) {
+                unpatchVideo(node)
               } else if (node instanceof HTMLElement) {
+                node.querySelectorAll('video').forEach(unpatchVideo)
                 node.querySelectorAll('img').forEach(patchImg)
                 // Check added elements for background-image video slots
                 patchBgElement(node)

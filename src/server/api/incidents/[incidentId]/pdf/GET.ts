@@ -57,29 +57,29 @@ export default async function handler(req: Request, res: Response) {
     if (isNaN(incidentId)) return res.status(400).json({ error: 'Invalid ID' });
 
     // Fetch incident
-    const [inc] = await db.execute(sql.raw(
+    const [inc] = (await db.execute(sql.raw(
       `SELECT i.*, c.name AS company_name
        FROM incidents i
        LEFT JOIN companies c ON c.id = i.company_id
        WHERE i.id = ${incidentId} AND i.company_id = ${profile.companyId}
        LIMIT 1`
-    )) as unknown as Array<Record<string, unknown>>;
+    )) as unknown as [Array<Record<string, unknown>>, unknown])[0];
     if (!inc) return res.status(404).json({ error: 'Not found' });
 
     // Fetch corrective actions
-    const actions = await db.execute(sql.raw(
+    const actions = (await db.execute(sql.raw(
       `SELECT * FROM incident_corrective_actions WHERE incident_id = ${incidentId} ORDER BY id ASC`
-    )) as unknown as Array<Record<string, unknown>>;
+    )) as unknown as [Array<Record<string, unknown>>, unknown])[0];
 
     // Fetch third parties
-    const thirds = await db.execute(sql.raw(
+    const thirds = (await db.execute(sql.raw(
       `SELECT * FROM incident_third_parties WHERE incident_id = ${incidentId} ORDER BY id ASC`
-    )) as unknown as Array<Record<string, unknown>>;
+    )) as unknown as [Array<Record<string, unknown>>, unknown])[0];
 
     // Fetch attachments (images only for inline display)
-    const attachments = await db.execute(sql.raw(
+    const attachments = ((await db.execute(sql.raw(
       `SELECT * FROM incident_attachments WHERE incident_id = ${incidentId} ORDER BY created_at ASC`
-    )).catch(() => []) as unknown as Array<Record<string, unknown>>;
+    )).catch(() => [[]])) as unknown as [Array<Record<string, unknown>>, unknown])[0];
 
     const severityColour: Record<string, string> = {
       low: '#16a34a', medium: '#d97706', high: '#dc2626', critical: '#7f1d1d',

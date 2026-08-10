@@ -25,9 +25,9 @@ export default async function handler(req: Request, res: Response) {
           WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'company_settings'
           AND COLUMN_NAME = 'pdf_json'`
-    ) as unknown as Array<{ COLUMN_NAME: string }>;
+    ) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];
 
-    const exists = Array.isArray(cols) && cols.length > 0;
+    const exists = Array.isArray(cols[0]) && (cols[0] as Array<unknown>).length > 0;
     if (!exists) {
       await db.execute(sql`ALTER TABLE company_settings ADD COLUMN pdf_json LONGTEXT NULL`);
     }

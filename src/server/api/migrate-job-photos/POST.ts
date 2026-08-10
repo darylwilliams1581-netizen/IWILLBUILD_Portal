@@ -35,7 +35,7 @@ export default async function handler(_req: Request, res: Response) {
         AND TABLE_NAME = 'job_photos'
         AND COLUMN_NAME = 'uploaded_by_user_id'
     `);
-    const cnt = Number((rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0);
+    const cnt = Number(((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0]?.cnt ?? 0);
     if (cnt === 0) {
       await db.execute(sql`ALTER TABLE job_photos ADD COLUMN uploaded_by_user_id VARCHAR(36) NULL`);
       results.push('added uploaded_by_user_id');
@@ -54,7 +54,7 @@ export default async function handler(_req: Request, res: Response) {
         AND TABLE_NAME = 'job_photos'
         AND COLUMN_NAME = 'uploaded_by_name'
     `);
-    const cnt = Number((rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0);
+    const cnt = Number(((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0]?.cnt ?? 0);
     if (cnt === 0) {
       await db.execute(sql`ALTER TABLE job_photos ADD COLUMN uploaded_by_name VARCHAR(255) NULL`);
       results.push('added uploaded_by_name');
