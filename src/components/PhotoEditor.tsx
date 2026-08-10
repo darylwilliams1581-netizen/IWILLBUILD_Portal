@@ -559,6 +559,14 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     setTimeout(() => labelInputRef.current?.focus(), 60);
   }, [labelValue]);
 
+  // Lock body scroll while label modal is open (prevents background page scroll on iOS)
+  useEffect(() => {
+    if (!labelModalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [labelModalOpen]);
+
   const saveLabel = useCallback(async () => {
     const trimmed = labelDraft.trim();
     setLabelSaving(true);
@@ -660,7 +668,10 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   const displayLabel = labelValue.trim();
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]" style={{ overflowX: 'clip' }}>
+    <div
+      className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]"
+      style={{ overflowX: 'clip', paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
 
       {/* ── Error banner ── */}
       {saveError && (
