@@ -853,20 +853,17 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             maxWidth: '100vw',
           }}
         >
-          {/* Edit tools — opens sheet */}
+          {/* Pen — opens sheet, highlights when sheet open */}
           <button
-            onClick={() => setSheetOpen(true)}
-            className={`flex items-center gap-2 flex-1 justify-center min-h-[44px] rounded-xl text-sm font-semibold transition-colors ${
+            onClick={() => setSheetOpen((o) => !o)}
+            title="Annotation tools"
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors shrink-0 ${
               sheetOpen
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
             }`}
           >
-            <Pen size={15} />
-            <span>Edit tools</span>
-            {tool !== 'draw' && (
-              <span className="text-xs opacity-70 capitalize">{tool}</span>
-            )}
+            <Pen size={16} />
           </button>
 
           {/* Undo */}
@@ -877,6 +874,38 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0"
           >
             <Undo2 size={16} />
+          </button>
+
+          {/* Eraser */}
+          <button
+            onClick={() => { setTool('eraser'); setSheetOpen(true); }}
+            title="Eraser"
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors shrink-0 ${
+              tool === 'eraser'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
+            }`}
+          >
+            <Eraser size={16} />
+          </button>
+
+          {/* Rotate CW */}
+          <button
+            onClick={rotateCW}
+            title={`Rotate CW (${rotation}°)`}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+          >
+            <RotateCw size={16} />
+          </button>
+
+          {/* Clear */}
+          <button
+            onClick={clearAnnotations}
+            disabled={!hasAnnotations}
+            title="Clear all annotations"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-red-900 text-slate-300 hover:text-red-300 disabled:opacity-30 transition-colors shrink-0"
+          >
+            <Trash2 size={16} />
           </button>
 
           {/* Save & Lock */}
