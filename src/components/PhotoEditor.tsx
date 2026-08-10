@@ -33,6 +33,7 @@ import React, {
 import {
   X,
   RotateCw,
+  RotateCcw,
   Pen,
   ArrowUpRight,
   Type,
