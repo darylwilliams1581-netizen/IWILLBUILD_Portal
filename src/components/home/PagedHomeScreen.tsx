@@ -18,9 +18,9 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Camera as CameraIcon, Search, X as XIcon, CheckCircle2, Loader2, ChevronRight, User, LogOut, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Camera as CameraIcon, Search, X as XIcon, Loader2, ChevronRight, User, LogOut } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
@@ -28,31 +28,25 @@ import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
 import NewJobModal from '@/components/NewJobModal';
-import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
-import { IosMediaInputs } from '@/components/IosMediaInputs';
-import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 import { signOut } from '@/lib/auth/auth-client';
 
 interface JobOption { id: number; jobNumber: string | null; name: string; status: string; }
-type SheetState = 'closed' | 'job-select' | 'uploading' | 'done';
 
+/**
+ * JobPickerSheet — select a job then navigate to its Photos page.
+ * No camera launch, no upload state. The Job Photos page handles all
+ * photo-picker options (Photo Library / Take Photo / Choose Files).
+ */
 function JobPickerSheet({ onClose }: { onClose: () => void }) {
-  const [sheetState, setSheetState] = useState<SheetState>('job-select');
-  const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [doneJobId, setDoneJobId] = useState<number | null>(null);
-  const [doneJobName, setDoneJobName] = useState('');
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  // allJobs holds the full list loaded once from /api/jobs; jobs is the filtered view
   const [allJobs, setAllJobs] = useState<JobOption[]>([]);
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const pendingJobRef = useRef<JobOption | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load all jobs once from /api/jobs — no search route, no route-capture risk.
-  // Filtering is done locally so no further network requests are needed.
+  // Load all active jobs once — no search route, no route-capture risk.
   async function fetchJobs() {
     setLoadingJobs(true);
     setFetchError(null);
@@ -64,7 +58,6 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
         throw new Error(errBody.error ?? `Could not load jobs (${res.status})`);
       }
       const raw: unknown[] = Array.isArray(body) ? body : ((body as { jobs?: unknown[] }).jobs ?? []);
-      // Normalise IDs to numbers and exclude terminal statuses
       const validJobs: JobOption[] = raw
         .map((j) => {
           const job = j as Record<string, unknown>;
@@ -102,10 +95,7 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
   // Local filtering — no network request on every keystroke
   useEffect(() => {
     const q = query.trim().toLowerCase();
-    if (!q) {
-      setJobs(allJobs);
-      return;
-    }
+    if (!q) { setJobs(allJobs); return; }
     setJobs(
       allJobs.filter(
         (job) =>
@@ -115,62 +105,16 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
     );
   }, [query, allJobs]);
 
-  async function handlePhotoFile(file: File) {
-    const job = pendingJobRef.current;
-    if (!job) return;
-
-    // Guard: validate numeric job ID before upload — never send to /api/jobs/search or NaN
-    const numericJobId = Number(job.id);
-    if (!Number.isInteger(numericJobId) || numericJobId <= 0) {
-      setUploadError('The selected job is invalid. Please select the job again.');
-      setSheetState('job-select');
-      pendingJobRef.current = null;
-      setSelectedJob(null);
-      return;
-    }
-
-    setSheetState('uploading');
-    setUploadError(null);
-    try {
-      const fd = new FormData();
-      fd.append('photo', file, file.name);
-      const res = await fetch(`/api/jobs/${numericJobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
-      if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? `Upload failed (${res.status})`); }
-      setDoneJobId(numericJobId);
-      setDoneJobName(job.name);
-      setSheetState('done');
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed');
-      setSheetState('job-select');
-    }
-  }
-
-  const picker = useIosMediaPicker(handlePhotoFile);
-
-  const handleJobSelect = useCallback(async (job: JobOption) => {
-    // Validate numeric ID before storing — never allow "search", NaN, or non-positive
-    const numericJobId = Number(job.id);
-    if (!Number.isInteger(numericJobId) || numericJobId <= 0) {
-      setUploadError('The selected job is invalid. Please select the job again.');
-      return;
-    }
-    pendingJobRef.current = job;
-    setSelectedJob(job);
-    await picker.openCamera({ direction: 'rear', captureQuality: 84 });
-  }, [picker]);
+  const handleJobSelect = useCallback((job: JobOption) => {
+    // Validate numeric ID — never navigate with NaN, "search", or non-positive
+    const jobId = Number(job.id);
+    if (!Number.isInteger(jobId) || jobId <= 0) return;
+    onClose();
+    navigate(`/jobs/${jobId}/photos`);
+  }, [navigate, onClose]);
 
   return (
     <>
-      <IosMediaInputs picker={picker as Parameters<typeof IosMediaInputs>[0]['picker']} />
-      {picker.explainer && (
-        <PermissionExplainerModal
-          type={picker.explainer.type}
-          denied={picker.explainer.denied}
-          onNotNow={picker.explainer.onNotNow}
-          onEnable={picker.explainer.onEnable}
-        />
-      )}
-
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -179,15 +123,14 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       />
 
-      {/* Sheet — centered dialog on desktop, bottom sheet on mobile */}
+      {/* Sheet — bottom sheet on mobile, centered dialog on desktop */}
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none w-full max-w-full overflow-x-hidden px-4">
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="pointer-events-auto w-full max-w-[520px] bg-white flex flex-col overflow-hidden shadow-2xl
-            rounded-t-3xl sm:rounded-2xl"
+          className="pointer-events-auto w-full max-w-[520px] bg-white flex flex-col overflow-hidden shadow-2xl rounded-t-3xl sm:rounded-2xl"
           style={{
             maxHeight: 'min(600px, calc(100dvh - 80px))',
             paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
@@ -199,139 +142,80 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* ── Job select ── */}
-          {sheetState === 'job-select' && (
-            <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
-                    <CameraIcon size={17} className="text-violet-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-gray-900 font-bold text-base leading-tight truncate">Job photo</h2>
-                    <p className="text-gray-400 text-xs leading-tight mt-0.5 truncate">Select a job, then camera opens</p>
-                  </div>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
-                  aria-label="Close"
-                >
-                  <XIcon size={15} />
-                </button>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+                <CameraIcon size={17} className="text-violet-600" />
               </div>
+              <div className="min-w-0">
+                <h2 className="text-gray-900 font-bold text-base leading-tight truncate">Job photo</h2>
+                <p className="text-gray-400 text-xs leading-tight mt-0.5 truncate">Select a job to open its Photos page</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+              aria-label="Close"
+            >
+              <XIcon size={15} />
+            </button>
+          </div>
 
-              {uploadError && (
-                <div className="mx-4 mb-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-600 shrink-0">
-                  {uploadError}
-                </div>
-              )}
-              {fetchError && (
-                <div className="mx-4 mb-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-700 shrink-0 flex items-center justify-between gap-2">
-                  <span>{fetchError}</span>
-                  <button type="button" onClick={() => void fetchJobs()} className="underline underline-offset-2 shrink-0">Retry</button>
-                </div>
-              )}
+          {fetchError && (
+            <div className="mx-4 mb-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-700 shrink-0 flex items-center justify-between gap-2">
+              <span>{fetchError}</span>
+              <button type="button" onClick={() => void fetchJobs()} className="underline underline-offset-2 shrink-0">Retry</button>
+            </div>
+          )}
 
-              <div className="px-4 pb-2 shrink-0">
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-                  <Search size={14} className="text-gray-400 shrink-0" />
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    placeholder="Search jobs, job numbers…"
-                    className="flex-1 bg-transparent text-base sm:text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
-                    autoComplete="off" autoCorrect="off" spellCheck={false}
-                  />
-                  {loadingJobs && <Loader2 size={13} className="animate-spin text-gray-400 shrink-0" />}
-                  {!loadingJobs && query && (
-                    <button type="button" onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
-                      <XIcon size={13} />
-                    </button>
+          {/* Search */}
+          <div className="px-4 pb-2 shrink-0">
+            <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+              <Search size={14} className="text-gray-400 shrink-0" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search jobs, job numbers…"
+                className="flex-1 bg-transparent text-base sm:text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                autoComplete="off" autoCorrect="off" spellCheck={false}
+              />
+              {loadingJobs && <Loader2 size={13} className="animate-spin text-gray-400 shrink-0" />}
+              {!loadingJobs && query && (
+                <button type="button" onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                  <XIcon size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 shrink-0 mx-4" />
+
+          {/* Job list */}
+          <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-1.5">
+            {jobs.length === 0 && !loadingJobs ? (
+              <p className="text-center text-gray-400 text-sm py-8">
+                {fetchError ? 'Could not load jobs — tap Retry above' : query ? 'No jobs match your search' : 'No active jobs found'}
+              </p>
+            ) : jobs.map(job => (
+              <button
+                key={job.id}
+                type="button"
+                onClick={() => handleJobSelect(job)}
+                className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
+              >
+                <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                  {job.jobNumber && (
+                    <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
                   )}
                 </div>
-              </div>
-
-              <div className="h-px bg-gray-100 shrink-0 mx-4" />
-
-              {/* Job list — flex-1 + min-h-0 so it scrolls inside the sheet */}
-              <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-1.5">
-                {jobs.length === 0 && !loadingJobs ? (
-                  <p className="text-center text-gray-400 text-sm py-8">
-                    {fetchError ? 'Could not load jobs — tap Retry above' : query ? 'No jobs match your search' : 'No active jobs found'}
-                  </p>
-                ) : jobs.map(job => (
-                  <button
-                    key={job.id}
-                    type="button"
-                    onClick={() => handleJobSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={14} className="text-gray-300 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Uploading ── */}
-          {sheetState === 'uploading' && (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 flex-1">
-              <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center">
-                <Loader2 size={28} className="animate-spin text-violet-600" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-gray-900">Uploading photo…</p>
-                {selectedJob && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    {selectedJob.jobNumber ? `#${selectedJob.jobNumber} — ` : ''}{selectedJob.name}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Done ── */}
-          {sheetState === 'done' && (
-            <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 flex-1">
-              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 size={28} className="text-emerald-500" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-gray-900">Photo uploaded</p>
-                <p className="text-xs text-gray-400 mt-1">{doneJobName}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap justify-center">
-                {doneJobId && (
-                  <Link
-                    to={`/jobs/${doneJobId}/photos`}
-                    onClick={onClose}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl"
-                  >
-                    View photos <ExternalLink size={11} />
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={() => { setUploadError(null); picker.clear(); setSheetState('job-select'); }}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 bg-white text-gray-700 text-xs font-semibold rounded-xl"
-                >
-                  <CameraIcon size={12} /> Another photo
-                </button>
-              </div>
-              <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mt-1">
-                Done
+                <ChevronRight size={14} className="text-gray-300 shrink-0" />
               </button>
-            </div>
-          )}
+            ))}
+          </div>
         </motion.div>
       </div>
     </>

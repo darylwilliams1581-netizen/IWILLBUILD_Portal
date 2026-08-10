@@ -496,9 +496,16 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-black">
-      {/* ── Toolbar ── */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border-b border-slate-700 shrink-0 overflow-x-auto">
+    <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]">
+      {/* ── Safe-area spacer + Toolbar ── */}
+      {/* The safe-area wrapper pushes the toolbar below the iPhone status bar /
+          notch / Dynamic Island. The toolbar itself stays horizontally scrollable
+          on narrow phones so controls are never clipped. */}
+      <div
+        className="shrink-0 bg-slate-900"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700 overflow-x-auto">
         {/* Close */}
         <button
           onClick={onClose}
@@ -650,7 +657,8 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
         >
           <Download size={15} />
         </button>
-      </div>
+      </div>{/* end toolbar inner */}
+      </div>{/* end safe-area wrapper */}
 
       {/* ── Error banner ── */}
       {saveError && (
@@ -664,7 +672,7 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
       {/* ── Canvas area ── */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto flex items-center justify-center bg-black p-2"
+        className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-black p-2"
       >
         <div className="relative" style={{ display: 'inline-block', lineHeight: 0 }}>
           {/* Base canvas */}

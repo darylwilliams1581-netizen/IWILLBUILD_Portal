@@ -427,33 +427,6 @@ export default function JobPhotosPage() {
         )}
       </div>
 
-      {/* ── Floating camera FAB — mobile only, above bottom bar ── */}
-      {!selectMode && (
-        <div
-          className="fixed z-30 left-1/2 -translate-x-1/2 md:hidden"
-          style={{ bottom: 'calc(max(env(safe-area-inset-bottom), 8px) + 56px + 16px)' }}
-        >
-          <motion.button
-            onClick={() => photosRef.current?.openCamera()}
-            disabled={uploading || atLimit}
-            aria-label="Take a photo"
-            title="Take a photo"
-            animate={{ rotate: [0, -6, 6, -4, 4, -2, 2, 0] }}
-            transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }}
-            whileTap={{ scale: 0.92 }}
-            className="w-16 h-16 rounded-full disabled:opacity-50 touch-manipulation overflow-hidden p-0 border-0 bg-transparent"
-            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
-          >
-            <img
-              src="/airo-assets/images/ui/camera-fab-icon"
-              alt="Camera"
-              className="w-full h-full object-cover rounded-full"
-              draggable={false}
-            />
-          </motion.button>
-        </div>
-      )}
-
       {/* ── Share link sheet ── */}
       <AnimatePresence>
         {shareUrl && (
