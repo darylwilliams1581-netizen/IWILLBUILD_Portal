@@ -33,7 +33,7 @@ export default async function handler(_req: Request, res: Response) {
         AND TABLE_NAME = 'companies'
         AND COLUMN_NAME = 'setup_checklist_json'
     `);
-    const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+    const cnt = ((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0]?.cnt ?? 0;
     if (cnt === 0) {
       await db.execute(sql`ALTER TABLE companies ADD COLUMN setup_checklist_json TEXT`);
       results.push('Added setup_checklist_json to companies');

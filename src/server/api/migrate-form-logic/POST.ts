@@ -12,7 +12,7 @@ export default async function handler(_req: Request, res: Response) {
         AND TABLE_NAME = 'form_template_fields'
         AND COLUMN_NAME = 'logic_json'
     `);
-    const count = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+    const count = ((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0]?.cnt ?? 0;
 
     if (Number(count) === 0) {
       await db.execute(sql`

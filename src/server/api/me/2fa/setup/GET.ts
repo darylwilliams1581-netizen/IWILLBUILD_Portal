@@ -11,9 +11,9 @@ export default async function handler(req: Request, res: Response) {
     const userId = auth.session.user.id;
     const email  = auth.session.user.email ?? userId;
 
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT two_factor_enabled FROM \`user\` WHERE id = '${userId}' LIMIT 1`
-    )) as unknown as Array<{ two_factor_enabled: number }>;
+    )) as unknown as [Array<{ two_factor_enabled: number }>, unknown])[0];
 
     if (rows[0]?.two_factor_enabled) return res.json({ alreadyEnabled: true });
 

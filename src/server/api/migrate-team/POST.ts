@@ -14,7 +14,7 @@ export default async function handler(_req: Request, res: Response) {
         AND TABLE_NAME = ${table}
         AND COLUMN_NAME = ${column}
     `);
-    const row = (rows as unknown as Array<{ cnt: number }>)[0];
+    const row = ((rows as unknown as [Array<{ cnt: number }>, unknown])[0])[0];
     return Number(row?.cnt ?? 0) > 0;
   }
 

@@ -35,15 +35,15 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     // ── Verify job belongs to company ─────────────────────────────────────
-    const jobRows = await db.execute(
+    const jobRows = (await db.execute(
       sql.raw(`SELECT id FROM jobs WHERE id = ${jobId} AND company_id = ${companyId} LIMIT 1`)
-    ) as unknown as Array<{ id: number }>;
+    ) as unknown as [Array<{ id: number }>, unknown])[0];
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
 
     // ── Check for open sign-in (signed in, not yet signed out) ────────────
     // Strategy: count sign-ins minus sign-outs for this user+job.
     // If net > 0, they are already signed in.
-    const countRows = await db.execute(
+    const countRows = (await db.execute(
       sql.raw(`
         SELECT
           SUM(CASE WHEN action = 'signin'  THEN 1 ELSE 0 END) AS ins,
@@ -51,7 +51,7 @@ export default async function handler(req: Request, res: Response) {
         FROM job_attendance
         WHERE job_id = ${jobId} AND user_id = '${userId.replace(/'/g, '')}'
       `)
-    ) as unknown as Array<{ ins: number; outs: number }>;
+    ) as unknown as [Array<{ ins: number; outs: number }>, unknown])[0];
 
     const ins  = Number(countRows?.[0]?.ins  ?? 0);
     const outs = Number(countRows?.[0]?.outs ?? 0);

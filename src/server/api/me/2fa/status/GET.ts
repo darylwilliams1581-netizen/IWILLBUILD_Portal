@@ -15,14 +15,14 @@ export default async function handler(req: Request, res: Response) {
     const auth = await getSessionAndProfile(req, res);
     if (!auth) return;
 
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT two_factor_enabled, sms_2fa_enabled, sms_2fa_phone
        FROM \`user\` WHERE id = '${auth.session.user.id}' LIMIT 1`
-    )) as unknown as Array<{
+    )) as unknown as [Array<{
       two_factor_enabled: number;
       sms_2fa_enabled: number;
       sms_2fa_phone: string | null;
-    }>;
+    }>, unknown])[0];
 
     const row = rows[0];
     const totpEnabled = !!row?.two_factor_enabled;

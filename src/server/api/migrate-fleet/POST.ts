@@ -13,7 +13,7 @@ export default async function handler(_req: Request, res: Response) {
       SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'fleet_assets'
     `);
-    const existing = (cols as unknown as Array<{ COLUMN_NAME: string }>).map((c) => c.COLUMN_NAME);
+    const existing = ((cols as unknown as [Array<{ COLUMN_NAME: string }>, unknown])[0]).map((c) => c.COLUMN_NAME);
 
     if (!existing.includes('asset_number')) {
       await db.execute(sql`ALTER TABLE fleet_assets ADD COLUMN asset_number VARCHAR(50)`);

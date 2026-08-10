@@ -57,9 +57,9 @@ export default async function handler(req: Request, res: Response) {
     const userId = session.user.id;
 
     // Fetch the user's SMS 2FA phone
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT sms_2fa_enabled, sms_2fa_phone FROM \`user\` WHERE id = '${userId}' LIMIT 1`
-    )) as unknown as Array<{ sms_2fa_enabled: number; sms_2fa_phone: string | null }>;
+    )) as unknown as [Array<{ sms_2fa_enabled: number; sms_2fa_phone: string | null }>, unknown])[0];
 
     const userRow = rows[0];
     if (!userRow?.sms_2fa_enabled || !userRow.sms_2fa_phone) {

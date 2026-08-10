@@ -49,7 +49,7 @@ export default async function handler(req: Request, res: Response) {
     const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
     if (!safeId) return res.status(400).json({ error: 'Invalid report ID.' });
 
-    const rows = await db.execute(sql.raw(`
+    const rawRows = await db.execute(sql.raw(`
       SELECT br.id, br.submitted_by_user_id, br.submitted_by_name, br.submitted_by_email,
              br.company_id, br.category, br.description, br.page_url, br.user_agent,
              br.screenshot_path, br.screenshot_bucket, br.status, br.resolution_note,
@@ -61,7 +61,8 @@ export default async function handler(req: Request, res: Response) {
       LEFT JOIN companies c ON c.id = br.company_id
       WHERE br.id = '${safeId}'
       LIMIT 1
-    `)) as unknown as BugReportRow[];
+    `)) as unknown as [BugReportRow[], unknown];
+    const rows = rawRows[0];
 
     if (!rows.length) return res.status(404).json({ error: 'Report not found.' });
     const report = rows[0];

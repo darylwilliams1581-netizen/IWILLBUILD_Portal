@@ -32,7 +32,8 @@ export default async function handler(req: Request, res: Response) {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const [rows, countRows] = await Promise.all([
+    // db.execute() returns [[rows...], metadata] — actual rows are at index [0]
+    const [rawRows, rawCount] = await Promise.all([
       db.execute(sql.raw(`
         SELECT br.id, br.submitted_by_user_id, br.submitted_by_name, br.submitted_by_email,
                br.company_id, br.category, br.description, br.page_url, br.user_agent,
@@ -46,11 +47,13 @@ export default async function handler(req: Request, res: Response) {
         ${where}
         ORDER BY br.created_at DESC
         LIMIT ${limit} OFFSET ${offset}
-      `)) as unknown as Array<Record<string, unknown>>,
+      `)) as unknown as [Array<Record<string, unknown>>, unknown],
       db.execute(sql.raw(`
         SELECT COUNT(*) AS total FROM bug_reports br ${where}
-      `)) as unknown as Array<{ total: number }>,
+      `)) as unknown as [Array<{ total: number }>, unknown],
     ]);
+    const rows = rawRows[0];
+    const countRows = rawCount[0];
 
     // Generate signed URLs for screenshots
     const reports = await Promise.all(rows.map(async (r) => {
@@ -68,9 +71,10 @@ export default async function handler(req: Request, res: Response) {
     }));
 
     // Count by status for badge
-    const statusCounts = await db.execute(sql.raw(`
+    const rawStatusCounts = await db.execute(sql.raw(`
       SELECT status, COUNT(*) AS cnt FROM bug_reports GROUP BY status
-    `)) as unknown as Array<{ status: string; cnt: number }>;
+    `)) as unknown as [Array<{ status: string; cnt: number }>, unknown];
+    const statusCounts = rawStatusCounts[0];
 
     const counts = { open: 0, in_progress: 0, resolved: 0, closed: 0 };
     for (const row of statusCounts) {

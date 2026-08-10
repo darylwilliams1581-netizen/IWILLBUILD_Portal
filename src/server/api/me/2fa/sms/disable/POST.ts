@@ -24,9 +24,9 @@ export default async function handler(req: Request, res: Response) {
     if (!password) return res.status(400).json({ error: 'Current password is required.' });
 
     // Verify password
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT password, sms_2fa_enabled FROM \`user\` WHERE id = '${userId}' LIMIT 1`
-    )) as unknown as Array<{ password: string | null; sms_2fa_enabled: number }>;
+    )) as unknown as [Array<{ password: string | null; sms_2fa_enabled: number }>, unknown])[0];
 
     const userRow = rows[0];
     if (!userRow) return res.status(404).json({ error: 'User not found.' });

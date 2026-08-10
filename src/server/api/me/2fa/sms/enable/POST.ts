@@ -45,19 +45,19 @@ export default async function handler(req: Request, res: Response) {
     const nowStr = now.toISOString().slice(0, 19).replace('T', ' ');
 
     // Verify the setup OTP (stored with prefix 'setup:')
-    const rows = await db.execute(sql.raw(
+    const rows = (await db.execute(sql.raw(
       `SELECT id, code_hash, attempts, verified_at
        FROM sms_verification_codes
        WHERE user_id = '${userId}'
          AND phone = 'setup:${e164}'
          AND expires_at > '${nowStr}'
        LIMIT 1`
-    )) as unknown as Array<{
+    )) as unknown as [Array<{
       id: string;
       code_hash: string;
       attempts: number;
       verified_at: string | null;
-    }>;
+    }>, unknown])[0];
 
     const row = rows[0];
     if (!row) {
