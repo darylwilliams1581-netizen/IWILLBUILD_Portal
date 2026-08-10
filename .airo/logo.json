@@ -1,17 +1,22 @@
 {
-  "jobId": "1b6fa77a-0a6b-42c4-8f78-d7fc5201b8bd",
-  "status": "completed",
-  "prompt": "",
-  "layouts": [],
-  "slots": [
-    "logo/favicon"
+  "jobId": "7ad063f8-8700-4fff-93ee-8c16eba6d7d0",
+  "status": "generating",
+  "prompt": "Remove all text — remove the \"IWILLBUILD\" wordmark completely. Keep ONLY the icon mark: the gold hard hat dome on top and the purple building/skyscraper silhouette below it. No text, no tagline, no brand name. Just the icon centered with generous padding. Square composition.",
+  "layouts": [
+    "square"
   ],
+  "slots": [
+    "logo/primary"
+  ],
+  "references": {
+    "logo": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/2ba852bd-b863-4b47-91b9-0e7eb7b18367/horizontal-transparent-7ddf0b36-342e-4f85-89b6-9e52aba83909/logo-logo.png",
+    "inspiration": [
+      "https://f38wenbvln.agent.c36.airoapp.ai/files/uploads/f38wenbvln/f38wenbvln_1786376097238_file_nDio5OQIVB.jpg?sig=T474drQul6S3fumbxQUnhLZN9wq-uaM2cEQx3sKJVbw&exp=1786462497"
+    ]
+  },
   "isRegeneration": false,
   "previousSlots": {},
   "attempt": 0,
-  "variant": "favicon",
-  "createdAt": "2026-08-10T15:34:20.615Z",
-  "updatedAt": "2026-08-10T15:34:47.138Z",
-  "sessionId": "790890aa-1c41-44b6-b1b6-ea50b913c0fb",
-  "logoId": "b056b3e1-ca9a-4032-a4c7-b800fd954b95"
+  "createdAt": "2026-08-10T15:35:46.773Z",
+  "updatedAt": "2026-08-10T15:35:46.777Z"
 }
