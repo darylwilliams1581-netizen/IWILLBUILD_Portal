@@ -440,7 +440,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <OfflineBanner />
           <PwaInstallPrompt />
         </DeferredMount>
-        <div suppressHydrationWarning className="flex-1 flex flex-col" style={{ overflowX: 'clip' }}>
+        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col" style={{ overflowX: 'clip' }}>
           {children}
         </div>
       </div>

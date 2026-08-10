@@ -240,19 +240,22 @@
   },
   "debug/current-error": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/debug-current-error-a76ee59e.jpg",
-    "searchQuery": "",
+    "currentUrl": "/airo-assets/uploads/debug-current-error-e7e4a24b.jpg",
+    "searchQuery": "developer console interface bug reports dashboard",
     "alternatives": [
+      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg",
       "/airo-assets/uploads/debug-current-error-987023a9.jpg"
     ],
     "userModified": true,
     "createdAt": "2026-07-11T02:40:15.547Z",
-    "lastUpdated": "2026-07-22T18:14:16.897Z",
+    "lastUpdated": "2026-08-10T14:20:58.829Z",
     "uploadSources": {
       "/airo-assets/uploads/debug-current-error-987023a9.jpg": "f38wenbvln_1783734873845_file_QmHrafxyAN.jpg",
-      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg": "f38wenbvln_1784667669262_file_eEA2OY-Bhs.jpg"
+      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg": "f38wenbvln_1784667669262_file_eEA2OY-Bhs.jpg",
+      "/airo-assets/uploads/debug-current-error-e7e4a24b.jpg": "f38wenbvln_1786371123017_file_jI6AL72N89.jpg"
     },
-    "uploadContentHash": "7c0cb32c6dd82cda8d4ea5ead12521e28bff9ff7efdeb5223d213db0008b81ff"
+    "uploadContentHash": "63ee63ec796e6868d8fcac4a2cc81de689a9fbfcd5219c3319384677baf06e58",
+    "caption": "developer console interface bug reports dashboard"
   },
   "debug/screenshot-081835": {
     "mediaType": "image",

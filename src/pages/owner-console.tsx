@@ -631,11 +631,11 @@ export default function OwnerConsolePage() {
     : null;
 
   return (
-    <div className="flex-1 bg-[#F4F5F7] flex flex-col lg:pt-[104px]">
+    <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg:pt-[104px]">
       <DesktopTopBar />
       <DesktopDock />
 
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <Helmet>
           <title>Developer Console — IWILLBUILD Portal</title>
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
