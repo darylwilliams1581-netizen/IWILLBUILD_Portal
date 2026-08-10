@@ -1,22 +1,17 @@
 {
-  "jobId": "7ad063f8-8700-4fff-93ee-8c16eba6d7d0",
-  "status": "generating",
-  "prompt": "Remove all text — remove the \"IWILLBUILD\" wordmark completely. Keep ONLY the icon mark: the gold hard hat dome on top and the purple building/skyscraper silhouette below it. No text, no tagline, no brand name. Just the icon centered with generous padding. Square composition.",
-  "layouts": [
-    "square"
-  ],
+  "jobId": "56ef23ab-fcc6-40d8-9504-fe7c4144956a",
+  "status": "completed",
+  "prompt": "Icon only — the hard hat with gold dome sitting above the purple building/skyscraper mark. No text, no wordmark, no \"IWILLBUILD\" name. Just the icon mark centered with generous padding, clean and bold.",
+  "layouts": [],
   "slots": [
     "logo/primary"
   ],
-  "references": {
-    "logo": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/2ba852bd-b863-4b47-91b9-0e7eb7b18367/horizontal-transparent-7ddf0b36-342e-4f85-89b6-9e52aba83909/logo-logo.png",
-    "inspiration": [
-      "https://f38wenbvln.agent.c36.airoapp.ai/files/uploads/f38wenbvln/f38wenbvln_1786376097238_file_nDio5OQIVB.jpg?sig=T474drQul6S3fumbxQUnhLZN9wq-uaM2cEQx3sKJVbw&exp=1786462497"
-    ]
-  },
   "isRegeneration": false,
   "previousSlots": {},
   "attempt": 0,
-  "createdAt": "2026-08-10T15:35:46.773Z",
-  "updatedAt": "2026-08-10T15:35:46.777Z"
+  "variant": "square",
+  "createdAt": "2026-08-10T15:36:15.368Z",
+  "updatedAt": "2026-08-10T15:36:39.328Z",
+  "sessionId": "e55dd25c-768b-48d5-b7bd-5e28465b6126",
+  "logoId": "6eb18af3-6d12-4612-93b1-ae5c55cf8ed4"
 }
