@@ -201,91 +201,6 @@ function devLog(msg: string, data?: Record<string, unknown>) {
 
 // ── Edit Modal (lazy-mounted) ─────────────────────────────────────────────────
 
-interface EditModalProps {
-  photo: JobPhoto;
-  cacheBust: Record<number, number>;
-  onClose: () => void;
-  onSaved: (updated: JobPhoto) => void;
-}
-
-function EditModal({ photo, cacheBust, onClose, onSaved: _onSaved }: EditModalProps) {
-  const localBust = cacheBust[photo.id] ?? Date.now();
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  return (
-    // On mobile: sheet slides up from bottom. On desktop: centred dialog.
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col"
-        style={{
-          // On mobile: fill up to 92dvh so it doesn't go behind the status bar
-          maxHeight: 'min(92dvh, 700px)',
-          // On desktop: normal max-height
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Drag handle — mobile only */}
-        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-          <h3 className="font-heading font-bold text-base text-slate-900">Photo info</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={16} /></button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 overscroll-contain">
-          {/* Photo preview — capped height so it doesn't dominate on small phones */}
-          <div className="bg-slate-100 flex items-center justify-center" style={{ height: 'min(180px, 30dvh)' }}>
-            <img
-              key={localBust}
-              src={previewSrc(photo, localBust)}
-              alt={photo.label ?? photo.originalName ?? 'Photo'}
-              className="max-w-full max-h-full object-contain"
-              // Prevent crash if the image URL fails to load
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </div>
-
-          {/* Photo metadata only — rotate, label, replace removed */}
-          <div className="px-5 py-4 flex flex-col gap-1.5">
-            {photo.uploadedByName && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
-            )}
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div
-          className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
-        >
-          <button type="button" onClick={() => downloadPhoto(photo)}
-            className="flex items-center gap-1.5 px-4 py-2 border border-border bg-white hover:bg-muted text-sm font-semibold text-slate-600 rounded-lg transition-colors">
-            <Download size={13} /> Download
-          </button>
-          <button type="button" onClick={onClose} className="px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">
-            Close
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 // ── Lightbox (lazy-mounted) ───────────────────────────────────────────────────
 
 interface LightboxProps {
@@ -582,11 +497,10 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const [error, setError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Lightbox + EditModal are null until opened — zero DOM cost when closed
+  // Lightbox + editor are null until opened — zero DOM cost when closed
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
-  const [editPhoto, setEditPhoto] = useState<JobPhoto | null>(null);
   const [editorPhoto, setEditorPhoto] = useState<JobPhoto | null>(null);
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
   const [summaryDismissed, setSummaryDismissed] = useState(false);
@@ -839,7 +753,6 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const handleEditSaved = (updated: JobPhoto) => {
     setPhotos((prev) => prev.map((p) => p.id === updated.id ? updated : p));
     setCacheBust((prev) => ({ ...prev, [updated.id]: Date.now() }));
-    if (editPhoto?.id === updated.id) setEditPhoto(updated);
     // Invalidate cache so next visit gets fresh data
     photoCache.delete(jobId);
   };
@@ -1097,15 +1010,6 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       )}
 
       {/* Edit modal — only mounted when open */}
-      {editPhoto && (
-        <EditModal
-          photo={editPhoto}
-          cacheBust={cacheBust}
-          onClose={() => setEditPhoto(null)}
-          onSaved={handleEditSaved}
-        />
-      )}
-
       {/* Canvas photo editor — full-screen, mounted when open */}
       {editorPhoto && (
         <PhotoEditor
