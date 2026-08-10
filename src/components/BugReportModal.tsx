@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { snapshotDiagBuffer, pushDiagEvent, type DiagEvent } from '@/lib/diagnosticBuffer';
+import { compressScreenshot } from '@/lib/imageCompressor';
+import { getStorageDiagnostics, type StorageDiagnostics } from '@/lib/storageDiagnostics';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -143,6 +145,7 @@ export default function BugReportModal() {
   const [errorMsg, setErrorMsg]       = useState('');
   const [diagExpanded, setDiagExpanded] = useState(false);
   const [diagPreview, setDiagPreview] = useState<DiagEvent[]>([]);
+  const [storageDiag, setStorageDiag] = useState<StorageDiagnostics | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function openModal() {
@@ -155,10 +158,14 @@ export default function BugReportModal() {
     setScreenshotPreview(null);
     setErrorMsg('');
     setDiagExpanded(false);
+    // Load storage diagnostics non-blocking — shown in diagnostic preview
+    void getStorageDiagnostics().then(setStorageDiag).catch(() => { /* non-fatal */ });
   }
 
   function closeModal() {
     if (phase === 'submitting') return;
+    // Revoke preview URL on close to free memory immediately
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     setPhase('idle');
   }
 
@@ -169,14 +176,17 @@ export default function BugReportModal() {
       setErrorMsg('Screenshot must be under 10 MB.');
       return;
     }
+    // Revoke any previous preview URL to free memory
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     setScreenshot(file);
     setErrorMsg('');
-    const reader = new FileReader();
-    reader.onload = (ev) => setScreenshotPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    // Use object URL — never store base64 in state (can be 2–5 MB for phone screenshots)
+    setScreenshotPreview(URL.createObjectURL(file));
   }
 
   function removeScreenshot() {
+    // Revoke the object URL to release memory immediately
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     setScreenshot(null);
     setScreenshotPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -203,7 +213,26 @@ export default function BugReportModal() {
           meta: gpsDiag as Record<string, string | number | boolean>,
         });
       }
-      const enrichedDeviceCtx = { ...deviceCtx, ...gpsDiag };
+
+      // Always include storage diagnostics — useful for photos/upload bugs
+      let storageDiagCtx: Record<string, string | number | boolean> = {};
+      try {
+        const sd = await getStorageDiagnostics();
+        storageDiagCtx = {
+          storage_queued_items:  sd.queue.queuedItemCount,
+          storage_queued_bytes:  sd.queue.totalQueuedBytes,
+          storage_manager_api:   sd.storageManagerSupported,
+          ...(sd.quota ? {
+            storage_used_pct:    sd.quota.usedPercent,
+            storage_level:       sd.quota.level,
+          } : {}),
+          ...(sd.queue.lastUploadFailureAt ? {
+            last_upload_failure: sd.queue.lastUploadFailureAt,
+          } : {}),
+        };
+      } catch { /* non-fatal */ }
+
+      const enrichedDeviceCtx = { ...deviceCtx, ...gpsDiag, ...storageDiagCtx };
 
       const formData = new FormData();
       formData.append('category', category);
@@ -215,7 +244,15 @@ export default function BugReportModal() {
       formData.append('current_route', window.location.pathname);
       formData.append('diagnostic_events', JSON.stringify(diagSnapshot));
       formData.append('device_context', JSON.stringify(enrichedDeviceCtx));
-      if (screenshot) formData.append('screenshot', screenshot);
+
+      // Compress screenshot before upload — max 1280px, 0.75q
+      // This reduces a typical phone screenshot from ~3 MB to ~200–400 KB
+      if (screenshot) {
+        const compressed = await compressScreenshot(screenshot);
+        formData.append('screenshot', compressed);
+        // Revoke the preview URL now — we no longer need it in memory
+        if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+      }
 
       const res = await fetch('/api/bug-reports', {
         method: 'POST',
@@ -425,6 +462,26 @@ export default function BugReportModal() {
                   </button>
                   {diagExpanded && (
                     <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 max-h-40 overflow-y-auto">
+                      {/* Storage diagnostics row */}
+                      {storageDiag && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-2 pb-2 border-b border-slate-200">
+                          {storageDiag.storageManagerSupported && storageDiag.quota && (
+                            <span className="text-[10px] text-slate-400">
+                              Storage: <span className={storageDiag.quota.level === 'critical' ? 'text-red-500 font-semibold' : storageDiag.quota.level === 'low' ? 'text-amber-500 font-semibold' : 'text-slate-500'}>
+                                {storageDiag.quota.usedPercent}% used
+                              </span>
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400">
+                            Queue: <span className="text-slate-500">{storageDiag.queue.queuedItemCount} items ({storageDiag.queue.totalQueuedSizeLabel})</span>
+                          </span>
+                          {storageDiag.queue.lastUploadFailureAt && (
+                            <span className="text-[10px] text-amber-500">
+                              Last failure: {new Date(storageDiag.queue.lastUploadFailureAt).toLocaleTimeString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {diagPreview.length === 0 ? (
                         <p className="text-[11px] text-slate-400 italic">No diagnostic events captured yet.</p>
                       ) : (

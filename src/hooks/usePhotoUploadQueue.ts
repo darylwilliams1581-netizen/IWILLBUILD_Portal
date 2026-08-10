@@ -25,7 +25,9 @@ import {
   removePhoto,
   loadPendingPhotos,
   incrementAttempts,
+  checkQueueCapacity,
 } from '@/lib/offlinePhotoStore';
+import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -186,6 +188,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
   const [queue, setQueue] = useState<PendingPhoto[]>([]);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [restoredFromDevice, setRestoredFromDevice] = useState(false);
+  const [storageWarning, setStorageWarning] = useState<string | null>(null);
 
   const activeRef  = useRef(0);
   const queueRef   = useRef<PendingPhoto[]>([]);
@@ -305,6 +308,8 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
 
         // Remove from IDB — confirmed synced
         void removePhoto(clientId);
+        // Clear last-failure record on any successful upload
+        clearUploadFailure();
 
         updateItem(clientId, {
           status:            'synced',
@@ -316,6 +321,8 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Upload failed';
+        // Record failure timestamp for diagnostics
+        recordUploadFailure();
         updateItem(clientId, {
           status: 'failed',
           error:  msg,
@@ -348,10 +355,21 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
 
   // ── Enqueue files ──────────────────────────────────────────────────────────
 
-  const enqueueFiles = useCallback((files: File[]) => {
+  const enqueueFiles = useCallback(async (files: File[]) => {
     const now = Date.now();
+    const newItems: PendingPhoto[] = [];
 
-    const newItems: PendingPhoto[] = files.map((file, i) => {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // Check queue capacity before saving each file
+      const capacityError = await checkQueueCapacity(jobId, file.size);
+      if (capacityError) {
+        setStorageWarning(capacityError);
+        // Still process any files already accepted before hitting the limit
+        break;
+      }
+
       const clientId = nextClientId();
       const isPreviewable = canPreview(file);
       const localPreviewUrl = isPreviewable ? URL.createObjectURL(file) : null;
@@ -367,7 +385,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
         attempts:   0,
       });
 
-      return {
+      newItems.push({
         clientId,
         fileName:          file.name,
         mimeType:          file.type || 'application/octet-stream',
@@ -378,14 +396,21 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
         error:             null,
         _file:             file,
         restoredFromDevice: false,
-      };
-    });
+      });
+    }
+
+    if (newItems.length === 0) return;
 
     setQueue((prev) => [...prev, ...newItems]);
 
+    // Check storage health after enqueue — show warning if low
+    void getStorageWarningMessage().then(msg => {
+      if (msg) setStorageWarning(msg);
+    });
+
     // Only kick off upload if online — fire up to CONCURRENCY slots
     if (navigator.onLine) {
-      for (let i = 0; i < Math.min(files.length, CONCURRENCY); i++) {
+      for (let i = 0; i < Math.min(newItems.length, CONCURRENCY); i++) {
         setTimeout(() => processNext(), i * 50);
       }
     }
@@ -430,6 +455,8 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
   ).length;
   const totalCount = queue.length;
 
+  const dismissStorageWarning = useCallback(() => setStorageWarning(null), []);
+
   return {
     queue,
     isUploading,
@@ -440,6 +467,9 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
     savedCount,
     pendingCount,
     totalCount,
+    /** Non-null when storage is low or queue is full — show to user */
+    storageWarning,
+    dismissStorageWarning,
     enqueueFiles,
     retryItem,
     removeItem,
