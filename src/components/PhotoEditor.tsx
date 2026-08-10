@@ -660,7 +660,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   const displayLabel = labelValue.trim();
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]">
+    <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]" style={{ overflowX: 'clip' }}>
 
       {/* ── Error banner ── */}
       {saveError && (
@@ -751,8 +751,8 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
       {/* ── Bottom toolbar ── */}
       <div
-        className="shrink-0 bg-slate-900 border-t border-slate-700"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="shrink-0 bg-slate-900 border-t border-slate-700 w-full"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', overflowX: 'clip' }}
       >
         {/* Row 1 — Close | Label | Locked badge | Download */}
         <div className="flex items-center gap-2 px-2 py-1.5 border-b border-slate-800 min-h-[44px]">
@@ -829,7 +829,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         {/* Row 2 — annotation tools (hidden when locked/readOnly) */}
         {!isLocked && (
           <div
-            className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto"
+            className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto min-w-0"
             style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
           >
             {/* Rotate CW — preview only; baked in on Save & Lock */}
