@@ -8,7 +8,7 @@ import {
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut, ArrowLeft,
+  Settings, Users, Building2, LogOut, ArrowLeft, Bug,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -34,6 +34,7 @@ import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
+import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -353,11 +354,13 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed'>(
-    (searchParams.get('tab') as 'support-setup' | 'health-check' | null) === 'support-setup' ? 'support-setup'
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports'>(
+    (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | null) === 'support-setup' ? 'support-setup'
     : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
+    : (searchParams.get('tab') as 'bug-reports' | null) === 'bug-reports' ? 'bug-reports'
     : 'overview'
   );
+  const [bugReportCount, setBugReportCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
   const [enteringSupport, setEnteringSupport] = useState<number | null>(null);
@@ -503,16 +506,19 @@ export default function OwnerConsolePage() {
     if (!quiet) setLoading(true);
     else setRefreshing(true);
     try {
-      const [s, c, u, a] = await Promise.all([
+      const [s, c, u, a, br] = await Promise.all([
         fetch('/api/owner-console/stats', { credentials: 'include' }).then((r) => r.json()),
         fetch('/api/owner-console/companies', { credentials: 'include' }).then((r) => r.json()),
         fetch('/api/owner-console/users', { credentials: 'include' }).then((r) => r.json()),
         fetch('/api/owner-console/activity?limit=100', { credentials: 'include' }).then((r) => r.json()),
+        fetch('/api/bug-reports?status=open&limit=1', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ counts: { open: 0, in_progress: 0 } })),
       ]);
       setStats(s as Stats);
       setCompanies((c as { companies: Company[] }).companies ?? []);
       setUsers((u as { users: OcUser[] }).users ?? []);
       setActivity((a as { events: ActivityEvent[] }).events ?? []);
+      const brCounts = (br as { counts?: { open?: number; in_progress?: number } }).counts ?? {};
+      setBugReportCount((brCounts.open ?? 0) + (brCounts.in_progress ?? 0));
     } catch (e) {
       console.error('Owner console load error:', e);
     } finally {
@@ -747,6 +753,17 @@ export default function OwnerConsolePage() {
               Health Check
             </span>
           </Tab>
+          <Tab active={tab === 'bug-reports'} onClick={() => { setTab('bug-reports'); setSearchParams({ tab: 'bug-reports' }); }}>
+            <span className="flex items-center gap-1.5">
+              <Bug size={12} />
+              Bug Reports
+              {bugReportCount > 0 && (
+                <span className="bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-none">
+                  {bugReportCount}
+                </span>
+              )}
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -922,6 +939,9 @@ export default function OwnerConsolePage() {
               {tab === 'accounting-smoke' && <AccountingSmokeTestTab />}
 
               {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
+
+              {/* ── Bug Reports ── */}
+              {tab === 'bug-reports' && <BugReportsTab />}
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (

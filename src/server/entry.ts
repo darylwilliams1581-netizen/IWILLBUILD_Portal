@@ -529,6 +529,9 @@ import owner_console_companies_usage_get_487 from "./api/owner-console/companies
 import owner_console_companies_id_limits_put_488 from "./api/owner-console/companies/[id]/limits/PUT.js";
 import owner_console_form_templates_get_489 from "./api/owner-console/form-templates/GET.js";
 import owner_console_form_templates_post_490 from "./api/owner-console/form-templates/POST.js";
+import bug_reports_get from "./api/bug-reports/GET.js";
+import bug_reports_post from "./api/bug-reports/POST.js";
+import bug_reports_id_patch from "./api/bug-reports/[id]/PATCH.js";
 import owner_console_library_items_get_491 from "./api/owner-console/library/items/GET.js";
 import owner_console_library_items_post_492 from "./api/owner-console/library/items/POST.js";
 import owner_console_library_items_id_delete_493 from "./api/owner-console/library/items/[id]/DELETE.js";
@@ -1809,6 +1812,10 @@ async function runStartupMigrations() {
     {
       name: 'sms_verification_codes',
       ddl: "CREATE TABLE IF NOT EXISTS sms_verification_codes (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
+    },
+    {
+      name: 'bug_reports',
+      ddl: "CREATE TABLE IF NOT EXISTS bug_reports (id VARCHAR(36) NOT NULL PRIMARY KEY, submitted_by_user_id VARCHAR(36) NOT NULL, submitted_by_name VARCHAR(255) NOT NULL DEFAULT '', submitted_by_email VARCHAR(255) NOT NULL DEFAULT '', company_id INT NULL, category VARCHAR(100) NOT NULL DEFAULT '', description TEXT NOT NULL, page_url VARCHAR(500) NOT NULL DEFAULT '', user_agent VARCHAR(500) NOT NULL DEFAULT '', screenshot_path VARCHAR(500) NULL, screenshot_bucket VARCHAR(100) NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', resolution_note TEXT NULL, resolved_by_name VARCHAR(255) NULL, resolved_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_created (created_at DESC), INDEX idx_user (submitted_by_user_id))",
     },
     {
       name: 'trusted_devices',
@@ -3354,6 +3361,9 @@ app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_
 app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_488);
 app.get("/api/owner-console/form-templates", owner_console_form_templates_get_489);
 app.post("/api/owner-console/form-templates", owner_console_form_templates_post_490);
+app.get("/api/bug-reports", bug_reports_get);
+app.post("/api/bug-reports", bug_reports_post);
+app.patch("/api/bug-reports/:id", bug_reports_id_patch);
 app.get("/api/owner-console/library/items", owner_console_library_items_get_491);
 app.post("/api/owner-console/library/items", owner_console_library_items_post_492);
 app.delete("/api/owner-console/library/items/:id", owner_console_library_items_id_delete_493);
