@@ -5,6 +5,7 @@ import {
   RouterProvider,
   createBrowserRouter,
   type RouteObject,
+  useLocation,
 } from 'react-router-dom';
 
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
@@ -12,6 +13,16 @@ import RootLayout from './layouts/RootLayout';
 import { routes } from './routes';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import CapacitorInit from '@/components/CapacitorInit';
+import { recordRouteChange } from '@/lib/diagnosticCapture';
+
+// ── Route change tracker ──────────────────────────────────────────────────────
+function RouteChangeTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    recordRouteChange(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
 
 const CookieBanner = lazy(() =>
   import('@/components/CookieBanner').catch((error) => {
@@ -101,6 +112,7 @@ export default function App() {
   const router = useMemo(() => {
     const layoutElement = (
       <StaleShimBoundary>
+        <RouteChangeTracker />
         <RootLayout>
           <Outlet />
         </RootLayout>

@@ -2,15 +2,20 @@
  * BugReportModal
  * ─────────────────────────────────────────────────────────────────────────────
  * Floating action button + slide-up modal for submitting bug reports.
- * Any authenticated user can use this from any page.
+ *
+ * Visibility: Manager / Admin / Owner / Platform Owner only.
+ * Attaches a 60-second diagnostic snapshot and safe device context.
+ * Does NOT auto-capture screenshots — user must explicitly attach one.
  *
  * Usage: <BugReportModal /> — drop it anywhere in the layout tree.
  */
 import { useState, useRef } from 'react';
 import {
   Bug, X, Image, ChevronDown, Send, CheckCircle2,
-  AlertCircle, Loader2, Paperclip,
+  AlertCircle, Loader2, Paperclip, ChevronRight, Info,
 } from 'lucide-react';
+import { usePermissions } from '@/lib/usePermissions';
+import { snapshotDiagBuffer, type DiagEvent } from '@/lib/diagnosticBuffer';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -27,26 +32,90 @@ export const BUG_CATEGORIES = [
   { value: 'other',           label: 'Other' },
 ] as const;
 
+// ── Roles allowed to see the FAB ──────────────────────────────────────────────
+const ALLOWED_ROLES = new Set(['manager', 'admin', 'owner']);
+
+// ── Device context (safe, no GPS coords) ─────────────────────────────────────
+function collectDeviceContext(): Record<string, string | number | boolean> {
+  const ctx: Record<string, string | number | boolean> = {};
+  try {
+    ctx.viewport_w = window.innerWidth;
+    ctx.viewport_h = window.innerHeight;
+    ctx.pixel_ratio = window.devicePixelRatio ?? 1;
+    ctx.online = navigator.onLine;
+    ctx.platform = navigator.platform ?? 'unknown';
+    // Detect Capacitor native
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = (window as any).Capacitor;
+    if (cap) {
+      ctx.capacitor = true;
+      ctx.native_platform = cap.getPlatform?.() ?? 'unknown';
+    } else {
+      ctx.capacitor = false;
+      // Detect PWA
+      const isPwa =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigator as any).standalone === true;
+      ctx.pwa = isPwa;
+    }
+  } catch { /* non-fatal */ }
+  return ctx;
+}
+
+function detectPlatform(): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = (window as any).Capacitor;
+    if (cap) {
+      const p = cap.getPlatform?.() ?? 'native';
+      return p === 'ios' ? 'ios' : p === 'android' ? 'android' : 'native';
+    }
+    if (window.matchMedia('(display-mode: standalone)').matches ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigator as any).standalone === true) {
+      return 'pwa';
+    }
+    return 'web';
+  } catch {
+    return 'web';
+  }
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 type Phase = 'idle' | 'open' | 'submitting' | 'success';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BugReportModal() {
+  const { role, isPlatformOwner, loading: permsLoading } = usePermissions();
+
+  // Role gate — only show to manager/admin/owner/platform-owner
+  const canSeeFab = !permsLoading && (
+    isPlatformOwner ||
+    (role !== null && ALLOWED_ROLES.has(role))
+  );
+
   const [phase, setPhase]             = useState<Phase>('idle');
   const [category, setCategory]       = useState('');
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot]   = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [errorMsg, setErrorMsg]       = useState('');
+  const [diagExpanded, setDiagExpanded] = useState(false);
+  const [diagPreview, setDiagPreview] = useState<DiagEvent[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function openModal() {
+    const snap = snapshotDiagBuffer();
+    setDiagPreview(snap);
     setPhase('open');
     setCategory('');
     setDescription('');
     setScreenshot(null);
     setScreenshotPreview(null);
     setErrorMsg('');
+    setDiagExpanded(false);
   }
 
   function closeModal() {
@@ -81,11 +150,21 @@ export default function BugReportModal() {
     setPhase('submitting');
 
     try {
+      // Take a fresh snapshot at submission time
+      const diagSnapshot = snapshotDiagBuffer();
+      const deviceCtx = collectDeviceContext();
+      const platform = detectPlatform();
+
       const formData = new FormData();
       formData.append('category', category);
       formData.append('description', description.trim());
       formData.append('page_url', window.location.href);
       formData.append('user_agent', navigator.userAgent);
+      formData.append('platform', platform);
+      formData.append('app_version', __APP_VERSION__);
+      formData.append('current_route', window.location.pathname);
+      formData.append('diagnostic_events', JSON.stringify(diagSnapshot));
+      formData.append('device_context', JSON.stringify(deviceCtx));
       if (screenshot) formData.append('screenshot', screenshot);
 
       const res = await fetch('/api/bug-reports', {
@@ -109,6 +188,9 @@ export default function BugReportModal() {
     }
   }
 
+  // Don't render anything until permissions are known, or if not allowed
+  if (!canSeeFab) return null;
+
   return (
     <>
       {/* ── FAB ── */}
@@ -116,7 +198,12 @@ export default function BugReportModal() {
         <button
           onClick={openModal}
           title="Report a bug"
-          className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+          aria-label="Report a bug"
+          className="fixed z-40 w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+          style={{
+            bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+            right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+          }}
         >
           <Bug size={20} className="text-slate-300" />
         </button>
@@ -124,7 +211,13 @@ export default function BugReportModal() {
 
       {/* ── Success toast ── */}
       {phase === 'success' && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-xl">
+        <div
+          className="fixed z-50 flex items-center gap-2.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-xl"
+          style={{
+            bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+            right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+          }}
+        >
           <CheckCircle2 size={16} />
           Bug report submitted — thanks!
         </div>
@@ -133,15 +226,21 @@ export default function BugReportModal() {
       {/* ── Modal backdrop ── */}
       {(phase === 'open' || phase === 'submitting') && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          style={{
+            paddingLeft: 'env(safe-area-inset-left, 0px)',
+            paddingRight: 'env(safe-area-inset-right, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
           <div
-            className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - 1rem)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center">
                   <Bug size={15} className="text-red-500" />
@@ -155,126 +254,177 @@ export default function BugReportModal() {
                 onClick={closeModal}
                 disabled={phase === 'submitting'}
                 className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40"
+                aria-label="Close"
               >
                 <X size={15} />
               </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
-              {/* Category dropdown */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Category
-                </label>
-                <div className="relative">
-                  <select
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                    className="w-full appearance-none border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary pr-8"
-                    disabled={phase === 'submitting'}
-                  >
-                    <option value="">Select a category…</option>
-                    {BUG_CATEGORIES.map(c => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            {/* Scrollable form body */}
+            <div className="overflow-y-auto flex-1">
+              <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
+                {/* Category dropdown */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Category
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                      className="w-full appearance-none border border-slate-200 rounded-lg px-3 py-2.5 text-base sm:text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary pr-8"
+                      disabled={phase === 'submitting'}
+                    >
+                      <option value="">Select a category…</option>
+                      {BUG_CATEGORIES.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-              </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Description <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="What happened? What were you trying to do? What did you expect to happen?"
-                  rows={4}
-                  maxLength={2000}
-                  disabled={phase === 'submitting'}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-slate-300"
-                />
-                <p className="text-right text-[11px] text-slate-300 mt-0.5">{description.length}/2000</p>
-              </div>
+                {/* Description */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Description <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="What happened? What were you trying to do? What did you expect?"
+                    rows={4}
+                    maxLength={2000}
+                    disabled={phase === 'submitting'}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-base sm:text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-slate-300"
+                  />
+                  <p className="text-right text-[11px] text-slate-300 mt-0.5">{description.length}/2000</p>
+                </div>
 
-              {/* Screenshot */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Screenshot <span className="text-slate-300 font-normal normal-case">(optional)</span>
-                </label>
+                {/* Screenshot */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Screenshot <span className="text-slate-300 font-normal normal-case">(optional)</span>
+                  </label>
 
-                {screenshotPreview ? (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                    <img
-                      src={screenshotPreview}
-                      alt="Screenshot preview"
-                      className="w-full max-h-40 object-contain"
-                    />
+                  {/* Privacy notice for screenshot */}
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2 leading-relaxed">
+                    The screenshot may contain information visible on your screen and will be sent to IWILLBUILD support.
+                  </p>
+
+                  {screenshotPreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                      <img
+                        src={screenshotPreview}
+                        alt="Screenshot preview"
+                        className="w-full max-h-40 object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeScreenshot}
+                        disabled={phase === 'submitting'}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
+                        aria-label="Remove screenshot"
+                      >
+                        <X size={12} />
+                      </button>
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full">
+                        <Image size={10} />
+                        {screenshot?.name}
+                      </div>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={removeScreenshot}
+                      onClick={() => fileInputRef.current?.click()}
                       disabled={phase === 'submitting'}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
+                      className="w-full border-2 border-dashed border-slate-200 hover:border-primary/40 rounded-xl py-5 flex flex-col items-center gap-2 text-slate-400 hover:text-primary transition-colors disabled:opacity-50"
                     >
-                      <X size={12} />
+                      <Paperclip size={18} />
+                      <span className="text-xs font-medium">Attach screenshot</span>
+                      <span className="text-[11px] opacity-60">PNG, JPG, WebP — max 10 MB</span>
                     </button>
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full">
-                      <Image size={10} />
-                      {screenshot?.name}
-                    </div>
+                  )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* Diagnostic info notice + expandable preview */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="flex items-start gap-2.5 px-3 py-3 bg-slate-50">
+                    <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-slate-500 leading-relaxed flex-1">
+                      This report includes basic device information and the previous 60 seconds of technical events.
+                      It does not include passwords, form contents or exact location.
+                    </p>
                   </div>
-                ) : (
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={phase === 'submitting'}
-                    className="w-full border-2 border-dashed border-slate-200 hover:border-primary/40 rounded-xl py-5 flex flex-col items-center gap-2 text-slate-400 hover:text-primary transition-colors disabled:opacity-50"
+                    onClick={() => setDiagExpanded(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-slate-500 hover:bg-slate-50 transition-colors border-t border-slate-200"
                   >
-                    <Paperclip size={18} />
-                    <span className="text-xs font-medium">Attach screenshot</span>
-                    <span className="text-[11px] opacity-60">PNG, JPG, WebP — max 10 MB</span>
+                    <span className="font-medium">Diagnostic information ({diagPreview.length} events)</span>
+                    <ChevronRight size={12} className={`transition-transform ${diagExpanded ? 'rotate-90' : ''}`} />
                   </button>
+                  {diagExpanded && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 max-h-40 overflow-y-auto">
+                      {diagPreview.length === 0 ? (
+                        <p className="text-[11px] text-slate-400 italic">No diagnostic events captured yet.</p>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          {diagPreview.map((ev, i) => {
+                            const secsAgo = Math.round((Date.now() - ev.ts) / 1000);
+                            return (
+                              <div key={i} className="flex items-start gap-2 text-[10px] text-slate-500">
+                                <span className="text-slate-400 shrink-0 font-mono w-10 text-right">-{secsAgo}s</span>
+                                <span className="text-slate-400 shrink-0 bg-slate-200 px-1 rounded">{ev.type}</span>
+                                <span className="break-all">{ev.msg}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Error */}
+                {errorMsg && (
+                  <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                    <AlertCircle size={13} className="shrink-0" />{errorMsg}
+                  </div>
                 )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </div>
+                {/* Current page hint */}
+                <p className="text-[11px] text-slate-300 -mt-1">
+                  Page: <span className="font-mono">{window.location.pathname}</span>
+                </p>
 
-              {/* Error */}
-              {errorMsg && (
-                <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
-                  <AlertCircle size={13} className="shrink-0" />{errorMsg}
-                </div>
-              )}
-
-              {/* Current page hint */}
-              <p className="text-[11px] text-slate-300 -mt-1">
-                Page: <span className="font-mono">{window.location.pathname}</span>
-              </p>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={phase === 'submitting' || !description.trim()}
-                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm py-3 rounded-xl transition-colors disabled:opacity-50"
-              >
-                {phase === 'submitting'
-                  ? <><Loader2 size={15} className="animate-spin" />Submitting…</>
-                  : <><Send size={14} />Submit Bug Report</>
-                }
-              </button>
-            </form>
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={phase === 'submitting' || !description.trim()}
+                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm py-3 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {phase === 'submitting'
+                    ? <><Loader2 size={15} className="animate-spin" />Submitting…</>
+                    : <><Send size={14} />Submit Bug Report</>
+                  }
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
     </>
   );
 }
+
+// ── App version constant (injected by Vite define) ────────────────────────────
+declare const __APP_VERSION__: string;

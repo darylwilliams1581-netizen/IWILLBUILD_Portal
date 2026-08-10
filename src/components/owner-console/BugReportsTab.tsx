@@ -1,14 +1,18 @@
 /**
  * BugReportsTab — Owner Console tab for reviewing and resolving bug reports.
+ * Includes diagnostic timeline (platform-owner only).
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
   Bug, RefreshCw, Search, X, ChevronDown, ExternalLink,
   CheckCircle2, Clock, AlertCircle, Loader2, Image,
   User, Building2, Monitor, Calendar, Tag, MessageSquare,
-  Circle, ArrowRight,
+  Circle, ArrowRight, Activity, Copy, Download, ChevronRight,
+  Smartphone, Globe, Wifi, WifiOff,
 } from 'lucide-react';
 import { BUG_CATEGORIES } from '@/components/BugReportModal';
+import { usePermissions } from '@/lib/usePermissions';
+import type { DiagEvent } from '@/lib/diagnosticBuffer';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,6 +31,10 @@ interface BugReport {
   resolution_note: string | null;
   resolved_by_name: string | null;
   resolved_at: string | null;
+  platform: string | null;
+  app_version: string | null;
+  current_route: string | null;
+  diagnostic_events: string | null; // JSON string
   created_at: string;
 }
 
@@ -62,6 +70,23 @@ function categoryLabel(value: string): string {
   return BUG_CATEGORIES.find(c => c.value === value)?.label ?? value.replace(/_/g, ' ');
 }
 
+function parseDiagEvents(raw: string | null): DiagEvent[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as DiagEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function platformIcon(platform: string | null) {
+  if (!platform) return <Globe size={11} />;
+  if (platform === 'ios' || platform === 'android' || platform === 'native') return <Smartphone size={11} />;
+  if (platform === 'pwa') return <Wifi size={11} />;
+  return <Globe size={11} />;
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   open:        { label: 'Open',        color: 'bg-red-100 text-red-700 border-red-200',      icon: <Circle size={10} className="fill-red-500 text-red-500" /> },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10} /> },
@@ -69,9 +94,28 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   closed:      { label: 'Closed',      color: 'bg-slate-100 text-slate-500 border-slate-200', icon: <X size={10} /> },
 };
 
+const DIAG_TYPE_COLORS: Record<string, string> = {
+  route_change:        'bg-blue-100 text-blue-700',
+  action:              'bg-violet-100 text-violet-700',
+  js_error:            'bg-red-100 text-red-700',
+  unhandled_rejection: 'bg-red-100 text-red-700',
+  api_request:         'bg-slate-100 text-slate-600',
+  network_change:      'bg-amber-100 text-amber-700',
+  permission_change:   'bg-orange-100 text-orange-700',
+  camera_state:        'bg-cyan-100 text-cyan-700',
+  gps_state:           'bg-green-100 text-green-700',
+  driver_session:      'bg-teal-100 text-teal-700',
+  map_state:           'bg-indigo-100 text-indigo-700',
+  app_state:           'bg-slate-100 text-slate-600',
+  feature_flag:        'bg-purple-100 text-purple-700',
+  error_boundary:      'bg-red-100 text-red-700',
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BugReportsTab() {
+  const { isPlatformOwner } = usePermissions();
+
   const [reports, setReports]     = useState<BugReport[]>([]);
   const [counts, setCounts]       = useState<Counts>({ open: 0, in_progress: 0, resolved: 0, closed: 0 });
   const [total, setTotal]         = useState(0);
@@ -88,6 +132,8 @@ export default function BugReportsTab() {
   const [resNote, setResNote]     = useState('');
   const [saving, setSaving]       = useState(false);
   const [saveMsg, setSaveMsg]     = useState('');
+  const [diagExpanded, setDiagExpanded] = useState(false);
+  const [copyMsg, setCopyMsg]     = useState('');
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
@@ -122,13 +168,37 @@ export default function BugReportsTab() {
       if (!res.ok || !d.ok) { setSaveMsg(d.error ?? 'Failed to update.'); return; }
       setSaveMsg('Saved');
       setTimeout(() => setSaveMsg(''), 2000);
-      // Refresh list and update selected
       await load(true);
       if (selected?.id === id) {
-        setSelected(prev => prev ? { ...prev, ...patch, status: (patch.status ?? prev.status) as BugReport['status'], resolution_note: patch.resolution_note ?? prev.resolution_note } : null);
+        setSelected(prev => prev ? {
+          ...prev,
+          ...patch,
+          status: (patch.status ?? prev.status) as BugReport['status'],
+          resolution_note: patch.resolution_note ?? prev.resolution_note,
+        } : null);
       }
     } catch { setSaveMsg('Network error.'); }
     finally { setSaving(false); }
+  }
+
+  function handleCopyDiag(events: DiagEvent[]) {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(events, null, 2));
+      setCopyMsg('Copied!');
+      setTimeout(() => setCopyMsg(''), 2000);
+    } catch { setCopyMsg('Failed'); }
+  }
+
+  function handleDownloadDiag(events: DiagEvent[], reportId: string) {
+    try {
+      const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bug-report-${reportId.slice(0, 8)}-diagnostics.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
   }
 
   const totalOpen = counts.open + counts.in_progress;
@@ -147,6 +217,9 @@ export default function BugReportsTab() {
                 <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                   {totalOpen}
                 </span>
+              )}
+              {total > 0 && (
+                <span className="text-[11px] text-slate-400">{total} total</span>
               )}
             </div>
             <button
@@ -238,12 +311,12 @@ export default function BugReportsTab() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); }}
+                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); setDiagExpanded(false); }}
                     className={`w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-violet-50 border-l-2 border-l-primary' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sc.color}`}>
                             {sc.icon}
                             {sc.label}
@@ -251,6 +324,12 @@ export default function BugReportsTab() {
                           {r.category && (
                             <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
                               {categoryLabel(r.category)}
+                            </span>
+                          )}
+                          {r.platform && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400">
+                              {platformIcon(r.platform)}
+                              {r.platform}
                             </span>
                           )}
                         </div>
@@ -263,6 +342,9 @@ export default function BugReportsTab() {
                           <span>·</span>
                           <span>{timeAgo(r.created_at)}</span>
                           {r.screenshot_path && <><span>·</span><Image size={10} /></>}
+                          {r.diagnostic_events && r.diagnostic_events !== '[]' && (
+                            <><span>·</span><Activity size={10} /></>
+                          )}
                         </div>
                       </div>
                       <ArrowRight size={13} className="text-slate-300 shrink-0 mt-1" />
@@ -276,155 +358,259 @@ export default function BugReportsTab() {
       </div>
 
       {/* ── Right panel: detail drawer ── */}
-      <div className={`flex flex-col bg-white transition-all duration-200 ${selected ? 'w-[420px] shrink-0' : 'w-0 overflow-hidden'}`}>
-        {selected && (
-          <>
-            {/* Detail header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-              <h3 className="font-bold text-slate-800 text-sm">Bug Detail</h3>
-              <button
-                onClick={() => setSelected(null)}
-                className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
-              {/* Status + actions */}
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {(['open', 'in_progress', 'resolved', 'closed'] as const).map(s => {
-                    const sc = STATUS_CONFIG[s];
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => void updateReport(selected.id, { status: s })}
-                        disabled={saving || selected.status === s}
-                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
-                          selected.status === s
-                            ? sc.color + ' cursor-default'
-                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {sc.icon}
-                        {sc.label}
-                      </button>
-                    );
-                  })}
-                </div>
+      <div className={`flex flex-col bg-white transition-all duration-200 ${selected ? 'w-[460px] shrink-0' : 'w-0 overflow-hidden'}`}>
+        {selected && (() => {
+          const diagEvents = parseDiagEvents(selected.diagnostic_events);
+          return (
+            <>
+              {/* Detail header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+                <h3 className="font-bold text-slate-800 text-sm">Bug Detail</h3>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={14} />
+                </button>
               </div>
 
-              {/* Meta */}
-              <div className="bg-slate-50 rounded-xl p-4 flex flex-col gap-2.5">
-                <div className="flex items-start gap-2.5">
-                  <User size={13} className="text-slate-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-slate-700">{selected.submitted_by_name || '—'}</p>
-                    <p className="text-[11px] text-slate-400">{selected.submitted_by_email}</p>
+              <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+                {/* Status + actions */}
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(['open', 'in_progress', 'resolved', 'closed'] as const).map(s => {
+                      const sc = STATUS_CONFIG[s];
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => void updateReport(selected.id, { status: s })}
+                          disabled={saving || selected.status === s}
+                          className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                            selected.status === s
+                              ? sc.color + ' cursor-default'
+                              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {sc.icon}
+                          {sc.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                {selected.company_name && (
-                  <div className="flex items-center gap-2.5">
-                    <Building2 size={13} className="text-slate-400 shrink-0" />
-                    <p className="text-xs text-slate-600">{selected.company_name}</p>
-                  </div>
-                )}
-                {selected.category && (
-                  <div className="flex items-center gap-2.5">
-                    <Tag size={13} className="text-slate-400 shrink-0" />
-                    <p className="text-xs text-slate-600">{categoryLabel(selected.category)}</p>
-                  </div>
-                )}
-                <div className="flex items-center gap-2.5">
-                  <Calendar size={13} className="text-slate-400 shrink-0" />
-                  <p className="text-xs text-slate-600">{fmtDate(selected.created_at)}</p>
-                </div>
-                {selected.page_url && (
+
+                {/* Meta */}
+                <div className="bg-slate-50 rounded-xl p-4 flex flex-col gap-2.5">
                   <div className="flex items-start gap-2.5">
-                    <ExternalLink size={13} className="text-slate-400 shrink-0 mt-0.5" />
-                    <a
-                      href={selected.page_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline break-all"
-                    >
-                      {selected.page_url}
+                    <User size={13} className="text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-700">{selected.submitted_by_name || '—'}</p>
+                      <p className="text-[11px] text-slate-400">{selected.submitted_by_email}</p>
+                    </div>
+                  </div>
+                  {selected.company_name && (
+                    <div className="flex items-center gap-2.5">
+                      <Building2 size={13} className="text-slate-400 shrink-0" />
+                      <p className="text-xs text-slate-600">{selected.company_name}</p>
+                    </div>
+                  )}
+                  {selected.category && (
+                    <div className="flex items-center gap-2.5">
+                      <Tag size={13} className="text-slate-400 shrink-0" />
+                      <p className="text-xs text-slate-600">{categoryLabel(selected.category)}</p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2.5">
+                    <Calendar size={13} className="text-slate-400 shrink-0" />
+                    <p className="text-xs text-slate-600">{fmtDate(selected.created_at)}</p>
+                  </div>
+                  {(selected.platform || selected.app_version) && (
+                    <div className="flex items-center gap-2.5">
+                      {platformIcon(selected.platform)}
+                      <p className="text-xs text-slate-600">
+                        {selected.platform ?? 'web'}
+                        {selected.app_version ? ` · v${selected.app_version}` : ''}
+                      </p>
+                    </div>
+                  )}
+                  {selected.current_route && (
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle size={13} className="text-slate-400 shrink-0" />
+                      <p className="text-xs text-slate-500 font-mono">{selected.current_route}</p>
+                    </div>
+                  )}
+                  {selected.page_url && (
+                    <div className="flex items-start gap-2.5">
+                      <ExternalLink size={13} className="text-slate-400 shrink-0 mt-0.5" />
+                      <a
+                        href={selected.page_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline break-all"
+                      >
+                        {selected.page_url}
+                      </a>
+                    </div>
+                  )}
+                  {selected.user_agent && (
+                    <div className="flex items-start gap-2.5">
+                      <Monitor size={13} className="text-slate-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-slate-400 break-all leading-relaxed">{selected.user_agent}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</p>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4">
+                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
+                  </div>
+                </div>
+
+                {/* Screenshot */}
+                {selected.screenshotUrl && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Screenshot</p>
+                    <a href={selected.screenshotUrl} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={selected.screenshotUrl}
+                        alt="Bug screenshot"
+                        className="w-full rounded-xl border border-slate-200 hover:opacity-90 transition-opacity cursor-zoom-in"
+                      />
                     </a>
                   </div>
                 )}
-                {selected.user_agent && (
-                  <div className="flex items-start gap-2.5">
-                    <Monitor size={13} className="text-slate-400 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-slate-400 break-all leading-relaxed">{selected.user_agent}</p>
+
+                {/* ── Diagnostic timeline (platform-owner only) ── */}
+                {isPlatformOwner && (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setDiagExpanded(v => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Activity size={13} className="text-slate-500" />
+                        <span className="text-xs font-semibold text-slate-700">
+                          Diagnostic timeline — 60 seconds before report
+                        </span>
+                        <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
+                          {diagEvents.length} events
+                        </span>
+                      </div>
+                      <ChevronRight size={13} className={`text-slate-400 transition-transform ${diagExpanded ? 'rotate-90' : ''}`} />
+                    </button>
+
+                    {diagExpanded && (
+                      <>
+                        {/* Copy / Download actions */}
+                        <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 bg-white">
+                          <button
+                            onClick={() => handleCopyDiag(diagEvents)}
+                            className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700 transition-colors"
+                          >
+                            <Copy size={11} />
+                            {copyMsg || 'Copy diagnostics'}
+                          </button>
+                          <span className="text-slate-200">|</span>
+                          <button
+                            onClick={() => handleDownloadDiag(diagEvents, selected.id)}
+                            className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700 transition-colors"
+                          >
+                            <Download size={11} />
+                            Download JSON
+                          </button>
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="border-t border-slate-100 max-h-72 overflow-y-auto">
+                          {diagEvents.length === 0 ? (
+                            <div className="flex items-center gap-2 px-4 py-4 text-slate-400">
+                              <WifiOff size={13} />
+                              <p className="text-xs italic">No diagnostic events captured for this report.</p>
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-slate-50">
+                              {diagEvents.map((ev, i) => {
+                                const reportTs = new Date(selected.created_at).getTime();
+                                const secsAgo = Math.round((reportTs - ev.ts) / 1000);
+                                const typeColor = DIAG_TYPE_COLORS[ev.type] ?? 'bg-slate-100 text-slate-600';
+                                return (
+                                  <div key={i} className="flex items-start gap-2.5 px-4 py-2 hover:bg-slate-50">
+                                    <span className="text-[10px] text-slate-400 font-mono shrink-0 w-10 text-right mt-0.5">
+                                      -{secsAgo}s
+                                    </span>
+                                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${typeColor}`}>
+                                      {ev.type.replace(/_/g, ' ')}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[11px] text-slate-700 break-all leading-relaxed">{ev.msg}</p>
+                                      {ev.route && ev.route !== window.location.pathname && (
+                                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">{ev.route}</p>
+                                      )}
+                                      {ev.status !== undefined && (
+                                        <span className={`text-[10px] font-semibold ${ev.status >= 400 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                          {ev.status}
+                                          {ev.duration !== undefined ? ` · ${ev.duration}ms` : ''}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Resolution note */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Resolution Note</p>
+                  <textarea
+                    value={resNote}
+                    onChange={e => setResNote(e.target.value)}
+                    placeholder="Add notes about the fix, workaround, or reason for closing…"
+                    rows={3}
+                    maxLength={2000}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-slate-300"
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <div>
+                      {saveMsg && (
+                        <span className={`text-xs font-semibold ${saveMsg === 'Saved' ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {saveMsg}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => void updateReport(selected.id, { resolution_note: resNote })}
+                      disabled={saving}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {saving ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />}
+                      Save note
+                    </button>
+                  </div>
+                </div>
+
+                {/* Resolved info */}
+                {selected.resolved_at && (
+                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <p className="text-xs text-emerald-700">
+                      Resolved by <strong>{selected.resolved_by_name ?? 'owner'}</strong> on {fmtDate(selected.resolved_at)}
+                    </p>
                   </div>
                 )}
               </div>
-
-              {/* Description */}
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</p>
-                <div className="bg-white border border-slate-200 rounded-xl p-4">
-                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
-                </div>
-              </div>
-
-              {/* Screenshot */}
-              {selected.screenshotUrl && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Screenshot</p>
-                  <a href={selected.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={selected.screenshotUrl}
-                      alt="Bug screenshot"
-                      className="w-full rounded-xl border border-slate-200 hover:opacity-90 transition-opacity cursor-zoom-in"
-                    />
-                  </a>
-                </div>
-              )}
-
-              {/* Resolution note */}
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Resolution Note</p>
-                <textarea
-                  value={resNote}
-                  onChange={e => setResNote(e.target.value)}
-                  placeholder="Add notes about the fix, workaround, or reason for closing…"
-                  rows={3}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-slate-300"
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <div>
-                    {saveMsg && (
-                      <span className={`text-xs font-semibold ${saveMsg === 'Saved' ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {saveMsg}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => void updateReport(selected.id, { resolution_note: resNote })}
-                    disabled={saving}
-                    className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />}
-                    Save note
-                  </button>
-                </div>
-              </div>
-
-              {/* Resolved info */}
-              {selected.resolved_at && (
-                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                  <p className="text-xs text-emerald-700">
-                    Resolved by <strong>{selected.resolved_by_name ?? 'owner'}</strong> on {fmtDate(selected.resolved_at)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+            </>
+          );
+        })()}
 
         {/* Empty state */}
         {!selected && (

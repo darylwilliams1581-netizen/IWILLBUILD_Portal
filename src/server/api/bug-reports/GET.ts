@@ -38,6 +38,7 @@ export default async function handler(req: Request, res: Response) {
                br.company_id, br.category, br.description, br.page_url, br.user_agent,
                br.screenshot_path, br.screenshot_bucket, br.status, br.resolution_note,
                br.resolved_by_name, br.resolved_at,
+               br.platform, br.app_version, br.current_route, br.diagnostic_events,
                br.created_at, br.updated_at,
                c.name AS company_name
         FROM bug_reports br

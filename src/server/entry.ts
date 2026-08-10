@@ -1543,6 +1543,11 @@ async function runStartupMigrations() {
     { table: 'job_delays', column: 'work_condition',  definition: 'VARCHAR(100) NULL' },
     { table: 'job_delays', column: 'rainfall_mm',     definition: 'DECIMAL(6,1) NULL' },
     { table: 'job_delays', column: 'ground_condition',definition: 'VARCHAR(100) NULL' },
+    // ── bug_reports: diagnostic context columns (added 2026-08-10) ──────────
+    { table: 'bug_reports', column: 'platform',          definition: "VARCHAR(50) NOT NULL DEFAULT 'web'" },
+    { table: 'bug_reports', column: 'app_version',       definition: "VARCHAR(50) NOT NULL DEFAULT ''" },
+    { table: 'bug_reports', column: 'current_route',     definition: "VARCHAR(300) NOT NULL DEFAULT ''" },
+    { table: 'bug_reports', column: 'diagnostic_events', definition: 'MEDIUMTEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1815,7 +1820,7 @@ async function runStartupMigrations() {
     },
     {
       name: 'bug_reports',
-      ddl: "CREATE TABLE IF NOT EXISTS bug_reports (id VARCHAR(36) NOT NULL PRIMARY KEY, submitted_by_user_id VARCHAR(36) NOT NULL, submitted_by_name VARCHAR(255) NOT NULL DEFAULT '', submitted_by_email VARCHAR(255) NOT NULL DEFAULT '', company_id INT NULL, category VARCHAR(100) NOT NULL DEFAULT '', description TEXT NOT NULL, page_url VARCHAR(500) NOT NULL DEFAULT '', user_agent VARCHAR(500) NOT NULL DEFAULT '', screenshot_path VARCHAR(500) NULL, screenshot_bucket VARCHAR(100) NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', resolution_note TEXT NULL, resolved_by_name VARCHAR(255) NULL, resolved_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_created (created_at DESC), INDEX idx_user (submitted_by_user_id))",
+      ddl: "CREATE TABLE IF NOT EXISTS bug_reports (id VARCHAR(36) NOT NULL PRIMARY KEY, submitted_by_user_id VARCHAR(36) NOT NULL, submitted_by_name VARCHAR(255) NOT NULL DEFAULT '', submitted_by_email VARCHAR(255) NOT NULL DEFAULT '', company_id INT NULL, category VARCHAR(100) NOT NULL DEFAULT '', description TEXT NOT NULL, page_url VARCHAR(500) NOT NULL DEFAULT '', user_agent VARCHAR(500) NOT NULL DEFAULT '', screenshot_path VARCHAR(500) NULL, screenshot_bucket VARCHAR(100) NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', resolution_note TEXT NULL, resolved_by_name VARCHAR(255) NULL, resolved_at DATETIME NULL, platform VARCHAR(50) NOT NULL DEFAULT 'web', app_version VARCHAR(50) NOT NULL DEFAULT '', current_route VARCHAR(300) NOT NULL DEFAULT '', diagnostic_events MEDIUMTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_created (created_at DESC), INDEX idx_user (submitted_by_user_id))",
     },
     {
       name: 'trusted_devices',

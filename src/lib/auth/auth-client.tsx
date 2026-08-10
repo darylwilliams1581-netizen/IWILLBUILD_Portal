@@ -288,6 +288,11 @@ export function LogoutButton({
     setIsLoading(true);
     try {
       clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
+      // Reset diagnostic buffer on logout — clears any buffered events
+      try {
+        const { resetDiagnosticBuffer } = await import('@/lib/diagnosticBuffer');
+        resetDiagnosticBuffer();
+      } catch { /* non-fatal */ }
       await signOut();
       // Native app → always return to login (never the public landing page)
       // Web browser → /login (same behaviour, landing page is at /)

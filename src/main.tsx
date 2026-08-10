@@ -44,9 +44,13 @@ import App from './App';
 import './styles/globals.css';
 import './lib/i18n';
 import { installSessionFetchInterceptor } from '@/lib/auth/session-fetch-interceptor';
+import { initDiagnosticCapture } from '@/lib/diagnosticCapture';
 
 // Install session expiry header interceptor before any fetch calls are made
 installSessionFetchInterceptor();
+
+// Start diagnostic event capture (safe, never blocks, never records sensitive data)
+initDiagnosticCapture();
 
 if (import.meta.env.MODE === 'development') {
   const meta = document.createElement('meta');
