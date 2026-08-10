@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink, MessageSquare } from 'lucide-react';
 import { signIn, useSession } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
@@ -48,8 +48,11 @@ export default function LoginPage() {
 
   // 2FA challenge state
   const [needs2FA, setNeeds2FA] = useState(false);
+  const [tfa2Method, setTfa2Method] = useState<'totp' | 'sms' | null>(null);
   const [tfaToken, setTfaToken] = useState('');
   const [tfaLoading, setTfaLoading] = useState(false);
+  const [smsMaskedPhone, setSmsMaskedPhone] = useState('');
+  const [smsResendState, setSmsResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   // Unverified email state — shown instead of generic error
   const [unverified, setUnverified] = useState(false);
@@ -206,9 +209,23 @@ export default function LoginPage() {
       stampSessionExpiry();
       // Check if 2FA is required
       const tfaRes = await fetch('/api/me/2fa/status', { credentials: 'include' });
-      const tfaData = await tfaRes.json() as { enabled?: boolean };
+      const tfaData = await tfaRes.json() as { enabled?: boolean; method?: 'totp' | 'sms' | null; maskedPhone?: string };
       if (tfaData.enabled) {
         setLoading(false);
+        setTfa2Method(tfaData.method ?? 'totp');
+        if (tfaData.method === 'sms') {
+          // Trigger SMS send immediately
+          setSmsMaskedPhone(tfaData.maskedPhone ?? '');
+          setSmsResendState('sending');
+          try {
+            const sendRes = await fetch('/api/me/2fa/sms/send', { method: 'POST', credentials: 'include' });
+            const sendData = await sendRes.json() as { ok?: boolean; maskedPhone?: string; error?: string };
+            if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
+            setSmsResendState('sent');
+          } catch {
+            setSmsResendState('idle');
+          }
+        }
         setNeeds2FA(true);
         return;
       }
@@ -276,14 +293,15 @@ export default function LoginPage() {
 
   async function handle2FA(e: React.FormEvent) {
     e.preventDefault();
-    if (tfaToken.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); return; }
+    if (tfaToken.length !== 6) { setError('Enter the 6-digit code.'); return; }
     setError(''); setTfaLoading(true);
     try {
-      const res = await fetch('/api/me/2fa/verify', {
+      const endpoint = tfa2Method === 'sms' ? '/api/me/2fa/sms/verify' : '/api/me/2fa/verify';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ token: tfaToken }),
+        body: JSON.stringify({ token: tfaToken, code: tfaToken }),
       });
       const d = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) { setError(d.error ?? 'Invalid code. Please try again.'); return; }
@@ -295,6 +313,21 @@ export default function LoginPage() {
       navigate(from2fa, { replace: true });
     } catch { setError('Something went wrong. Please try again.'); }
     finally { setTfaLoading(false); }
+  }
+
+  async function handleSmsResend() {
+    setSmsResendState('sending');
+    setError('');
+    try {
+      const res = await fetch('/api/me/2fa/sms/send', { method: 'POST', credentials: 'include' });
+      const d = await res.json() as { ok?: boolean; maskedPhone?: string; error?: string };
+      if (d.maskedPhone) setSmsMaskedPhone(d.maskedPhone);
+      setSmsResendState('sent');
+      setTimeout(() => setSmsResendState('idle'), 30_000);
+    } catch {
+      setSmsResendState('idle');
+      setError('Failed to resend. Please try again.');
+    }
   }
 
   return (
@@ -427,11 +460,19 @@ export default function LoginPage() {
             <div className="px-8 py-8">
               <div className="flex flex-col items-center mb-6">
                 <div className="w-12 h-12 bg-violet-500/10 border border-violet-600/30 rounded-xl flex items-center justify-center mb-3">
-                  <ShieldCheck size={22} className="text-primary" />
+                  {tfa2Method === 'sms'
+                    ? <MessageSquare size={22} className="text-primary" />
+                    : <ShieldCheck size={22} className="text-primary" />
+                  }
                 </div>
                 <h2 className="text-white font-bold text-base">Two-Factor Authentication</h2>
                 <p className="text-white/40 text-xs mt-1 text-center">
-                  Enter the 6-digit code from your authenticator app.
+                  {tfa2Method === 'sms'
+                    ? smsMaskedPhone
+                      ? `We sent a code to ${smsMaskedPhone}`
+                      : 'We sent a 6-digit code to your phone.'
+                    : 'Enter the 6-digit code from your authenticator app.'
+                  }
                 </p>
               </div>
 
@@ -469,9 +510,27 @@ export default function LoginPage() {
                   }
                 </button>
 
+                {/* Resend button for SMS */}
+                {tfa2Method === 'sms' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSmsResend()}
+                    disabled={smsResendState === 'sending' || smsResendState === 'sent'}
+                    className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 disabled:opacity-50 transition-colors"
+                  >
+                    {smsResendState === 'sending' ? (
+                      <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />Sending…</>
+                    ) : smsResendState === 'sent' ? (
+                      <><CheckCircle2 size={12} className="text-green-400" />Code sent</>
+                    ) : (
+                      <><RefreshCw size={12} />Resend code</>
+                    )}
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => { setNeeds2FA(false); setTfaToken(''); setError(''); }}
+                  onClick={() => { setNeeds2FA(false); setTfaToken(''); setError(''); setTfa2Method(null); }}
                   className="text-xs text-white/30 hover:text-white/50 transition-colors"
                 >
                   Back to login

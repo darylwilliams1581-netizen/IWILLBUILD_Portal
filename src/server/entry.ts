@@ -455,6 +455,11 @@ import me_2fa_enable_post_420 from "./api/me/2fa/enable/POST.js";
 import me_2fa_setup_get_421 from "./api/me/2fa/setup/GET.js";
 import me_2fa_status_get_422 from "./api/me/2fa/status/GET.js";
 import me_2fa_verify_post_423 from "./api/me/2fa/verify/POST.js";
+import me_2fa_sms_send_post from "./api/me/2fa/sms/send/POST.js";
+import me_2fa_sms_verify_post from "./api/me/2fa/sms/verify/POST.js";
+import me_2fa_sms_enable_post from "./api/me/2fa/sms/enable/POST.js";
+import me_2fa_sms_disable_post from "./api/me/2fa/sms/disable/POST.js";
+import me_2fa_sms_send_setup_post from "./api/me/2fa/sms/send-setup/POST.js";
 import me_active_status_get_424 from "./api/me/active-status/GET.js";
 import me_change_password_post_425 from "./api/me/change-password/POST.js";
 import me_email_status_get_426 from "./api/me/email-status/GET.js";
@@ -1349,6 +1354,9 @@ async function runStartupMigrations() {
     // ── user: TOTP 2FA ────────────────────────────────────────────────────────
     { table: 'user', column: 'totp_secret',        definition: 'VARCHAR(64) NULL' },
     { table: 'user', column: 'two_factor_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── user: SMS 2FA ─────────────────────────────────────────────────────────
+    { table: 'user', column: 'sms_2fa_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'user', column: 'sms_2fa_phone',   definition: 'VARCHAR(30) NULL' },
     // ── Dazza AI — per-company OpenAI key ────────────────────────────────────
     { table: 'company_settings', column: 'openai_api_key',      definition: 'TEXT NULL' },
     // ── Xero — per-company OAuth config (shelved; columns kept for schema continuity) ──
@@ -3272,6 +3280,11 @@ app.post("/api/me/2fa/enable", me_2fa_enable_post_420);
 app.get("/api/me/2fa/setup", me_2fa_setup_get_421);
 app.get("/api/me/2fa/status", me_2fa_status_get_422);
 app.post("/api/me/2fa/verify", me_2fa_verify_post_423);
+app.post("/api/me/2fa/sms/send", me_2fa_sms_send_post);
+app.post("/api/me/2fa/sms/verify", me_2fa_sms_verify_post);
+app.post("/api/me/2fa/sms/enable", me_2fa_sms_enable_post);
+app.post("/api/me/2fa/sms/disable", me_2fa_sms_disable_post);
+app.post("/api/me/2fa/sms/send-setup", me_2fa_sms_send_setup_post);
 app.get("/api/me/active-status", me_active_status_get_424);
 app.post("/api/me/change-password", me_change_password_post_425);
 app.get("/api/me/email-status", me_email_status_get_426);
