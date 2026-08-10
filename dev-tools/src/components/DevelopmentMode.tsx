@@ -1445,12 +1445,14 @@ export default function DevelopmentMode() {
           setIsEditModeActive(true);
           setIsAnnotationModeActive(false);
           window.__airoEditModeActive = true;
+          document.documentElement.dataset.airoEditMode = 'true';
           window.dispatchEvent(new CustomEvent('airo:edit-mode-change', { detail: { active: true } }));
           return;
         }
         if (event.data && event.data.type === 'EDIT_MODE_DISABLED') {
           setIsEditModeActive(false);
           window.__airoEditModeActive = false;
+          delete document.documentElement.dataset.airoEditMode;
           window.dispatchEvent(new CustomEvent('airo:edit-mode-change', { detail: { active: false } }));
           setCarouselSlotEdit(false);
           setCarouselToolbarPause(false);
@@ -1466,6 +1468,7 @@ export default function DevelopmentMode() {
           setIsAnnotationModeActive(true);
           setIsEditModeActive(false);
           window.__airoEditModeActive = false;
+          delete document.documentElement.dataset.airoEditMode;
           window.dispatchEvent(new CustomEvent('airo:edit-mode-change', { detail: { active: false } }));
           setCarouselSlotEdit(false);
           setCarouselToolbarPause(false);

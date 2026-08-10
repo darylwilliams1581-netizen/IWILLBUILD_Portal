@@ -180,8 +180,8 @@ export function QuickEditBar({
           aria-pressed={isListening}
           title={
             isListening
-              ? t("devtools_quick_edit_stop_listening", "Stop listening")
-              : t("devtools_quick_edit_start_listening", "Start listening")
+              ? t("devtools_quick_edit_stop_listening", "Stop voice recording")
+              : t("devtools_quick_edit_start_listening", "Start voice recording")
           }
           style={{
             ...MIC_BTN_BASE_STYLES,
