@@ -334,6 +334,9 @@ import job_cards_id_convert_post_305 from "./api/job-cards/[id]/convert/POST.js"
 import job_cards_id_invoice_post_306 from "./api/job-cards/[id]/invoice/POST.js";
 import job_cards_id_photos_post_307 from "./api/job-cards/[id]/photos/POST.js";
 import job_cards_id_photos_photoId_delete_308 from "./api/job-cards/[id]/photos/[photoId]/DELETE.js";
+import job_cards_id_photos_photoId_patch from "./api/job-cards/[id]/photos/[photoId]/PATCH.js";
+import job_cards_id_photos_photoId_download_get from "./api/job-cards/[id]/photos/[photoId]/download/GET.js";
+import job_cards_id_photos_photoId_save_and_lock_post from "./api/job-cards/[id]/photos/[photoId]/save-and-lock/POST.js";
 import job_costs_post_309 from "./api/job-costs/POST.js";
 import job_forms_id_delete_310 from "./api/job-forms/[id]/DELETE.js";
 import job_forms_id_get_311 from "./api/job-forms/[id]/GET.js";
@@ -2674,6 +2677,48 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── Job Card Photos: lock + version columns (PhotoEditor pilot) ──────────────
+  // Additive, backward-compatible. Safe to run multiple times (IF NOT EXISTS).
+  // Existing rows default to locked=0, all other new columns NULL.
+  //
+  // Columns:
+  //   locked             — 0=unlocked, 1=locked
+  //   locked_at          — when it was locked
+  //   locked_by          — userId who locked it
+  //   original_file_path — R2 key of the original upload (set once on first Save & Lock)
+  //   edited_file_path   — R2 key of the edited version (same as file_path after lock)
+  //   edited_at          — when the edit was saved
+  //   edited_by          — userId who saved the edit
+  //
+  // Rollback: DROP COLUMN IF EXISTS each of the above (safe before pilot goes live).
+  const jcpLockCols: Array<{ column: string; definition: string }> = [
+    { column: 'locked',             definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { column: 'locked_at',          definition: 'DATETIME NULL' },
+    { column: 'locked_by',          definition: 'VARCHAR(36) NULL' },
+    { column: 'original_file_path', definition: 'VARCHAR(1000) NULL' },
+    { column: 'edited_file_path',   definition: 'VARCHAR(1000) NULL' },
+    { column: 'edited_at',          definition: 'DATETIME NULL' },
+    { column: 'edited_by',          definition: 'VARCHAR(36) NULL' },
+  ];
+  for (const { column, definition } of jcpLockCols) {
+    try {
+      const [colCheck] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME   = 'job_card_photos'
+              AND COLUMN_NAME  = ${column}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(colCheck?.[0]?.cnt ?? 0) > 0) continue;
+      await db.execute(sql.raw(`ALTER TABLE job_card_photos ADD COLUMN ${column} ${definition}`));
+      console.log(`[startup-migration] job_card_photos.${column} added`);
+    } catch (e: unknown) {
+      const msg = migrationErrMsg(e);
+      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] job_card_photos.${column} ALTER failed:`, msg);
+      }
+    }
+  }
+
   // ── Job Cards: back-link columns on invoices and jobs ─────────────────────────
   // source_job_card_id on invoices — permanent link from invoice back to its source card
   // source_job_card_id on jobs     — permanent link from a converted job back to its source card
@@ -3106,6 +3151,9 @@ app.post("/api/job-cards/:id/convert", job_cards_id_convert_post_305);
 app.post("/api/job-cards/:id/invoice", job_cards_id_invoice_post_306);
 app.post("/api/job-cards/:id/photos", job_cards_id_photos_post_307);
 app.delete("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoId_delete_308);
+app.patch("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoId_patch);
+app.get("/api/job-cards/:id/photos/:photoId/download", job_cards_id_photos_photoId_download_get);
+app.post("/api/job-cards/:id/photos/:photoId/save-and-lock", job_cards_id_photos_photoId_save_and_lock_post);
 app.post("/api/job-costs", job_costs_post_309);
 app.delete("/api/job-forms/:id", job_forms_id_delete_310);
 app.get("/api/job-forms/:id", job_forms_id_get_311);

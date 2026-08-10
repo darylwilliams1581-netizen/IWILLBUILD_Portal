@@ -50,6 +50,53 @@ import {
 } from 'lucide-react';
 import type { JobPhoto } from '@/components/JobPhotos';
 
+// ── EditorConfig — generic adapter interface ──────────────────────────────────
+//
+// Callers supply this instead of a raw JobPhoto so the editor never hard-codes
+// API routes. Each photo context (Job Photos, Job Card Photos, …) creates its
+// own adapter that maps its data shape to this interface.
+//
+// Required fields:
+//   imageUrl      — signed URL for the photo (used to load the canvas)
+//   photoId       — numeric DB id of the photo record
+//   label         — current caption/label (may be null)
+//   createdAt     — ISO string or display string for the "Date" row in the sheet
+//   isLocked      — whether the photo is already locked
+//   canEdit       — whether the current user may annotate and save
+//
+// Callbacks (all optional — omit to disable the corresponding action):
+//   onDownload    — called when the user taps Download; receives no args
+//   onSaveLabel   — called with the new label string when the user saves the label modal
+//   onSaveAndLock — called with the canvas Blob when the user taps Save & Lock;
+//                   should return a Promise that resolves to the updated record
+//   onClose       — called when the editor is dismissed
+//   onSaved       — called after a successful Save & Lock with the updated record
+//
+// Display-only metadata (shown in the Photo details sheet section):
+//   jobName       — optional job/card name shown read-only
+//   jobNumber     — optional job number shown read-only
+//
+export interface EditorConfig {
+  // Core
+  imageUrl:       string;
+  photoId:        number;
+  label:          string | null;
+  createdAt:      string;
+  isLocked:       boolean;
+  canEdit:        boolean;
+
+  // Display metadata
+  jobName?:       string;
+  jobNumber?:     string;
+
+  // Callbacks
+  onClose:        () => void;
+  onDownload?:    () => void;
+  onSaveLabel?:   (label: string | null) => Promise<void>;
+  onSaveAndLock?: (blob: Blob) => Promise<void>;
+  onSaved?:       () => void;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Tool = 'draw' | 'arrow' | 'text' | 'circle' | 'rectangle' | 'eraser';
@@ -103,12 +150,17 @@ interface EraserStroke {
 type Stroke = DrawStroke | ArrowStroke | CircleStroke | RectStroke | TextStroke | EraserStroke;
 
 interface PhotoEditorProps {
-  photo: JobPhoto;
+  /** Legacy Job Photo shape — required when config is not supplied. */
+  photo?: JobPhoto;
   onClose: () => void;
-  onSaved: (updated: JobPhoto) => void;
+  onSaved: (updated?: JobPhoto) => void;
   /** When true: show the image full-screen but hide all annotation tools and
    *  the Save & Lock button. Used for contexts that have no replace/lock API. */
   readOnly?: boolean;
+  /** Optional EditorConfig adapter — when supplied, overrides the default
+   *  Job Photo API routes. Used by Job Card Photos and future adapters.
+   *  When config is provided, photo may be omitted. */
+  config?: EditorConfig;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -277,7 +329,32 @@ function findErasedIndices(
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false }: PhotoEditorProps) {
+export default function PhotoEditor({ photo: photoProp, onClose, onSaved, readOnly = false, config }: PhotoEditorProps) {
+  // When config is supplied, photo may be omitted. Create a safe fallback so
+  // all legacy photo.xxx accesses below remain valid without per-field guards.
+  const photo: JobPhoto = photoProp ?? {
+    id: config?.photoId ?? 0,
+    jobId: 0,
+    companyId: 0,
+    filename: '',
+    originalName: '',
+    label: config?.label ?? null,
+    mimeType: null,
+    sizeBytes: null,
+    uploadedByUserId: null,
+    uploadedByName: null,
+    createdAt: config?.createdAt ?? '',
+    url: config?.imageUrl ?? null,
+    thumbnailUrl: config?.imageUrl ?? null,
+    previewUrl: config?.imageUrl ?? null,
+    imageWidth: null,
+    imageHeight: null,
+    status: config?.isLocked ? 'locked' : 'draft',
+    lockedAt: null,
+    lockedByUserId: null,
+    lockedByName: null,
+    mediaAssetId: null,
+  };
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const overlayRef   = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -316,7 +393,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   const [saving, setSaving]     = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  const isLocked = readOnly || photo.status === 'locked';
+  const isLocked = config ? (config.isLocked || !config.canEdit) : (readOnly || photo.status === 'locked');
 
   // ── Load image ─────────────────────────────────────────────────────────────
 
@@ -347,17 +424,21 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   useLayoutEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    const candidates = [
-      photo.url,
-      photo.previewUrl,
-      `/api/jobs/${photo.jobId}/photos/${photo.id}/download`,
-    ].filter(Boolean) as string[];
+    // When a config adapter is supplied, use its imageUrl as the primary source.
+    // Fall back to the download endpoint only for the legacy Job Photo path.
+    const candidates = config
+      ? [config.imageUrl].filter(Boolean) as string[]
+      : [
+          photo.url,
+          photo.previewUrl,
+          `/api/jobs/${photo.jobId}/photos/${photo.id}/download`,
+        ].filter(Boolean) as string[];
     let idx = 0;
     const tryNext = () => { if (idx < candidates.length) img.src = candidates[idx++]; };
     img.onload  = () => { baseImageRef.current = img; drawBaseImage(img, rotationRef.current); };
     img.onerror = tryNext;
     tryNext();
-  }, [photo, drawBaseImage]);
+  }, [photo, config, drawBaseImage]);
 
   // ── Sync strokesRef ────────────────────────────────────────────────────────
 
@@ -572,16 +653,22 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     setLabelSaving(true);
     setLabelError('');
     try {
-      const res = await fetch(
-        `/api/jobs/${photo.jobId}/photos/${photo.id}`,
-        {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ label: trimmed || null }),
-        },
-      );
-      if (!res.ok) throw new Error('Failed to save label');
+      if (config?.onSaveLabel) {
+        // Adapter-supplied callback — no hardcoded route
+        await config.onSaveLabel(trimmed || null);
+      } else {
+        // Legacy Job Photo path
+        const res = await fetch(
+          `/api/jobs/${photo.jobId}/photos/${photo.id}`,
+          {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label: trimmed || null }),
+          },
+        );
+        if (!res.ok) throw new Error('Failed to save label');
+      }
       setLabelValue(trimmed);
       setLabelModalOpen(false);
     } catch {
@@ -589,7 +676,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     } finally {
       setLabelSaving(false);
     }
-  }, [photo.jobId, photo.id, labelDraft]);
+  }, [config, photo.jobId, photo.id, labelDraft]);
 
   // ── Rotation (preview only — applied to canvas on Save & Lock) ────────────
 
@@ -624,31 +711,40 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
           'image/jpeg', 0.92,
         );
       });
-      const fd = new FormData();
-      fd.append('photo', blob, 'edited.jpg');
-      const replaceRes = await fetch(
-        `/api/jobs/${photo.jobId}/photos/${photo.id}/replace`,
-        { method: 'POST', credentials: 'include', body: fd },
-      );
-      const replaceData = await replaceRes.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!replaceRes.ok) throw new Error(replaceData.error ?? 'Replace failed');
 
-      const lockRes = await fetch(
-        `/api/jobs/${photo.jobId}/photos/${photo.id}/lock`,
-        { method: 'POST', credentials: 'include' },
-      );
-      const lockData = await lockRes.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
-      if (!lockRes.ok) throw new Error(lockData.error ?? 'Lock failed');
+      if (config?.onSaveAndLock) {
+        // Adapter-supplied callback — no hardcoded routes
+        await config.onSaveAndLock(blob);
+        config.onSaved?.();
+        config.onClose();
+      } else {
+        // Legacy Job Photo path
+        const fd = new FormData();
+        fd.append('photo', blob, 'edited.jpg');
+        const replaceRes = await fetch(
+          `/api/jobs/${photo.jobId}/photos/${photo.id}/replace`,
+          { method: 'POST', credentials: 'include', body: fd },
+        );
+        const replaceData = await replaceRes.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
+        if (!replaceRes.ok) throw new Error(replaceData.error ?? 'Replace failed');
 
-      const updated = lockData.photo ?? replaceData.photo;
-      if (updated) onSaved(updated);
-      onClose();
+        const lockRes = await fetch(
+          `/api/jobs/${photo.jobId}/photos/${photo.id}/lock`,
+          { method: 'POST', credentials: 'include' },
+        );
+        const lockData = await lockRes.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
+        if (!lockRes.ok) throw new Error(lockData.error ?? 'Lock failed');
+
+        const updated = lockData.photo ?? replaceData.photo;
+        if (updated) onSaved(updated);
+        onClose();
+      }
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
     }
-  }, [photo, onSaved, onClose]);
+  }, [config, photo, onSaved, onClose]);
 
   // ── Sheet open state ───────────────────────────────────────────────────────
 
@@ -720,7 +816,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         </button>
 
         {/* Locked badge */}
-        {photo.status === 'locked' && !readOnly && (
+        {(config ? config.isLocked : photo.status === 'locked') && !readOnly && (
           <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
             <Lock size={11} /> Locked
           </span>
@@ -732,6 +828,10 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         <button
           type="button"
           onClick={() => {
+            if (config?.onDownload) {
+              config.onDownload();
+              return;
+            }
             if (readOnly) {
               const directUrl = photo.url ?? photo.previewUrl;
               if (directUrl) window.open(directUrl, '_blank', 'noopener,noreferrer');
@@ -1082,24 +1182,29 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
                 <span className="text-xs text-slate-500 font-medium">Photo details</span>
 
                 {/* Job name (read-only) */}
-                {(photo as JobPhoto & { jobName?: string }).jobName && (
+                {(config?.jobName ?? (photo as JobPhoto & { jobName?: string }).jobName) && (
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500 w-12 shrink-0">Job</span>
                     <span className="flex-1 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-400 truncate">
-                      {(photo as JobPhoto & { jobName?: string }).jobName}
+                      {config?.jobName ?? (photo as JobPhoto & { jobName?: string }).jobName}
                     </span>
                   </div>
                 )}
 
                 {/* Capture date (read-only) */}
-                {photo.createdAt && (
+                {(config?.createdAt ?? photo.createdAt) && (
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500 w-12 shrink-0">Date</span>
                     <span className="flex-1 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-400">
-                      {new Date(photo.createdAt).toLocaleDateString('en-AU', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit',
-                      })}
+                      {(() => {
+                        const raw = config?.createdAt ?? photo.createdAt;
+                        try {
+                          return new Date(raw).toLocaleDateString('en-AU', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          });
+                        } catch { return raw; }
+                      })()}
                     </span>
                   </div>
                 )}

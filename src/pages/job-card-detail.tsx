@@ -24,7 +24,10 @@ import {
 
 import { useUploadQueue } from '@/hooks/useUploadQueue';
 import PhotoEditor from '@/components/PhotoEditor';
+import type { EditorConfig } from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
+import { usePermissions } from '@/lib/usePermissions';
+import { JOB_CARD_PHOTO_EDITOR_ENABLED } from '@/lib/featureFlags';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Material { id?: number; description: string; cost: number; }
@@ -245,18 +248,102 @@ function SignaturePad({ value, onChange }: { value: string | null; onChange: (v:
 }
 
 // ── Photo upload section ──────────────────────────────────────────────────────
-function PhotoSection({ cardId, photos, onPhotosChange }: {
+function PhotoSection({ cardId, photos, onPhotosChange, cardTitle }: {
   cardId: number;
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
+  cardTitle?: string;
 }) {
-  const [editorPhoto, setEditorPhoto] = useState<JobPhoto | null>(null);
+  const { isAdmin } = usePermissions();
+  const editorEnabled = JOB_CARD_PHOTO_EDITOR_ENABLED && isAdmin;
 
-  /** Map a job-card Photo → minimal JobPhoto so PhotoEditor can display it */
+  const [editorConfig, setEditorConfig] = useState<EditorConfig | null>(null);
+
+  /** Build an EditorConfig adapter for a Job Card photo */
+  function buildConfig(p: Photo): EditorConfig {
+    const cardIdStr = String(cardId);
+    const photoIdStr = String(p.id);
+
+    return {
+      imageUrl:  p.url ?? p.file_path,
+      photoId:   p.id,
+      label:     p.caption,
+      createdAt: '',          // job_card_photos has no created_at exposed in the Photo type yet
+      isLocked:  false,       // locked column added by migration; default false until row is updated
+      canEdit:   editorEnabled,
+      jobName:   cardTitle,
+
+      onClose: () => setEditorConfig(null),
+
+      onDownload: () => {
+        const url = `/api/job-cards/${cardIdStr}/photos/${photoIdStr}/download`;
+        fetch(url, { credentials: 'include' })
+          .then((r) => {
+            const cd = r.headers.get('Content-Disposition') ?? '';
+            let name = '';
+            const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utf8Match) { try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ } }
+            if (!name) { const m = cd.match(/filename="?([^";]+)"?/i); if (m) name = m[1].trim(); }
+            if (!name) name = p.caption ?? p.file_name ?? `job-card-${cardId}-photo-${p.id}.jpg`;
+            return r.blob().then((blob) => ({ blob, name }));
+          })
+          .then(({ blob, name }) => {
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl; a.download = name;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+          })
+          .catch(console.error);
+      },
+
+      onSaveLabel: async (label) => {
+        const res = await fetch(`/api/job-cards/${cardIdStr}/photos/${photoIdStr}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ caption: label }),
+        });
+        if (!res.ok) throw new Error('Failed to save label');
+        // Update local state so the grid reflects the new caption
+        onPhotosChange(photos.map((ph) => ph.id === p.id ? { ...ph, caption: label } : ph));
+      },
+
+      onSaveAndLock: async (blob) => {
+        const fd = new FormData();
+        fd.append('photo', blob, 'edited.jpg');
+        const res = await fetch(`/api/job-cards/${cardIdStr}/photos/${photoIdStr}/save-and-lock`, {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+        });
+        const data = await res.json() as { ok?: boolean; error?: string; photo?: Record<string, unknown> };
+        if (!res.ok) throw new Error(data.error ?? 'Save & Lock failed');
+        // Refresh the photo list from the updated record
+        if (data.photo) {
+          const updated = data.photo;
+          onPhotosChange(photos.map((ph) =>
+            ph.id === p.id
+              ? {
+                  ...ph,
+                  file_path: String(updated.file_path ?? ph.file_path),
+                  url: typeof updated.url === 'string' ? updated.url : ph.url,
+                }
+              : ph
+          ));
+        }
+      },
+
+      onSaved: () => setEditorConfig(null),
+    };
+  }
+
+  // Legacy adapter: map job-card Photo → minimal JobPhoto for readOnly view
+  // (used when feature flag is off or user is not admin)
   function toJobPhoto(p: Photo): JobPhoto {
     return {
       id: p.id,
-      jobId: 0,           // sentinel — readOnly mode won't call /api/jobs/0/...
+      jobId: 0,
       companyId: 0,
       filename: p.file_name,
       originalName: p.file_name,
@@ -278,6 +365,8 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
       mediaAssetId: null,
     };
   }
+
+  const [legacyEditorPhoto, setLegacyEditorPhoto] = useState<JobPhoto | null>(null);
   const q = useUploadQueue({
     endpoint: `/api/job-cards/${cardId}/photos`,
     fieldName: 'photos',
@@ -302,6 +391,14 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
       onPhotosChange(photos.filter(p => p.id !== photoId));
     } catch {
       // silent — photo stays in list
+    }
+  }
+
+  function handlePhotoClick(p: Photo) {
+    if (editorEnabled) {
+      setEditorConfig(buildConfig(p));
+    } else {
+      setLegacyEditorPhoto(toJobPhoto(p));
     }
   }
 
@@ -351,7 +448,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
               Copy
             </button>
             <button
-              onClick={() => setUploadError('')}
+              onClick={() => q.clearAll()}
               className="text-[11px] font-semibold px-2 py-0.5 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
             >
               ✕
@@ -383,7 +480,7 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
               <button
                 type="button"
                 className="w-full h-full"
-                onClick={() => setEditorPhoto(toJobPhoto(p))}
+                onClick={() => handlePhotoClick(p)}
               >
                 <img
                   src={p.url ?? p.file_path}
@@ -409,12 +506,21 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </div>
       )}
     </Section>
-    {editorPhoto && (
+    {/* Full editor — admins with flag enabled */}
+    {editorConfig && (
       <PhotoEditor
-        photo={editorPhoto}
+        config={editorConfig}
+        onClose={editorConfig.onClose}
+        onSaved={() => setEditorConfig(null)}
+      />
+    )}
+    {/* Legacy read-only viewer — non-admins or flag disabled */}
+    {legacyEditorPhoto && (
+      <PhotoEditor
+        photo={legacyEditorPhoto}
         readOnly
-        onClose={() => setEditorPhoto(null)}
-        onSaved={() => setEditorPhoto(null)}
+        onClose={() => setLegacyEditorPhoto(null)}
+        onSaved={() => setLegacyEditorPhoto(null)}
       />
     )}
     </>
@@ -1294,6 +1400,7 @@ export default function JobCardDetailPage() {
                 cardId={card.id}
                 photos={card.photos}
                 onPhotosChange={(photos) => setCard(c => c ? { ...c, photos } : c)}
+                cardTitle={card.card_number}
               />
             </div>
           )}
