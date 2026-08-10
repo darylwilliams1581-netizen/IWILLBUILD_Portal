@@ -910,14 +910,14 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             <Trash2 size={16} />
           </button>
 
-          {/* Save & Lock */}
+          {/* Save & Lock — icon only */}
           <button
             onClick={handleSaveAndLock}
             disabled={saving}
-            className="flex items-center gap-1.5 px-4 min-h-[44px] bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-sm font-bold rounded-xl transition-colors shrink-0 whitespace-nowrap"
+            title="Save & Lock"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black rounded-xl transition-colors shrink-0"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-            {saving ? 'Saving…' : 'Save & Lock'}
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
           </button>
         </div>
       )}
