@@ -650,33 +650,34 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     }
   }, [photo, onSaved, onClose]);
 
-  // ── Cursor ─────────────────────────────────────────────────────────────────
+  // ── Sheet open state ───────────────────────────────────────────────────────
 
-  const canvasCursor = isLocked ? 'default' : tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair';
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  // ── Visible annotation count (for disabled states) ─────────────────────────
-
-  const visibleStrokeCount = (() => {
-    const removed = new Set<number>();
-    strokes.forEach((s) => { if (s.type === 'eraser') s.removedIndices.forEach((i) => removed.add(i)); });
-    return strokes.filter((s, i) => s.type !== 'eraser' && !removed.has(i)).length;
-  })();
-  const hasAnnotations = strokes.length > 0;
+  // Lock body scroll while sheet is open
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [sheetOpen]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const displayLabel = labelValue.trim();
+  const hasAnnotations = strokes.length > 0;
+  const canvasCursor   = isLocked ? 'default' : tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair';
+  const displayLabel   = labelValue.trim();
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]"
+      className="fixed inset-0 z-[80] flex flex-col bg-black"
       style={{
-        overflowX: 'clip',
+        height: '100dvh',
         maxWidth: '100vw',
+        overflowX: 'clip',
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-
       {/* ── Error banner ── */}
       {saveError && (
         <div className="flex items-center gap-2 px-4 py-2 bg-red-900/80 text-red-200 text-xs font-semibold shrink-0">
@@ -685,6 +686,81 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
           <button onClick={() => setSaveError('')} className="ml-auto text-red-300 hover:text-white">&times;</button>
         </div>
       )}
+
+      {/* ── Top bar: Close | label | Download ── */}
+      <div
+        className="shrink-0 flex items-center gap-2 px-2 bg-slate-900 border-b border-slate-800"
+        style={{ minHeight: 44 }}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+          title="Close"
+        >
+          <X size={16} />
+        </button>
+
+        {/* Label button */}
+        <button
+          onClick={openLabelModal}
+          title="Edit photo label"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors text-left min-w-0 flex-1"
+          style={{ maxWidth: 200 }}
+        >
+          <span
+            className={`text-xs font-semibold ${displayLabel ? 'text-slate-200' : 'text-slate-500 italic'}`}
+            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}
+          >
+            {displayLabel || 'Add label…'}
+          </span>
+          {!isLocked && <Pencil size={10} className="text-slate-500 shrink-0 ml-0.5" />}
+        </button>
+
+        {/* Locked badge */}
+        {photo.status === 'locked' && !readOnly && (
+          <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
+            <Lock size={11} /> Locked
+          </span>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Download */}
+        <button
+          type="button"
+          onClick={() => {
+            if (readOnly) {
+              const directUrl = photo.url ?? photo.previewUrl;
+              if (directUrl) window.open(directUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+            const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+            fetch(url, { credentials: 'include' })
+              .then((r) => {
+                const cd = r.headers.get('Content-Disposition') ?? '';
+                let name = '';
+                const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
+                if (utf8Match) { try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ } }
+                if (!name) { const m = cd.match(/filename="?([^";]+)"?/i); if (m) name = m[1].trim(); }
+                if (!name) name = photo.label ?? photo.originalName ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
+                return r.blob().then((blob) => ({ blob, name }));
+              })
+              .then(({ blob, name }) => {
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl; a.download = name;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+              })
+              .catch(console.error);
+          }}
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+          title="Download"
+        >
+          <Download size={15} />
+        </button>
+      </div>
 
       {/* ── Canvas area ── */}
       <div
@@ -698,7 +774,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             style={{
               display: 'block',
               maxWidth: '100%',
-              maxHeight: 'min(calc(100dvh - 110px), calc(100vh - 110px))',
+              maxHeight: 'calc(100dvh - 132px)',
               cursor: canvasCursor,
               touchAction: 'none',
             }}
@@ -764,224 +840,272 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         </div>
       </div>
 
-      {/* ── Bottom toolbar ── */}
-      <div
-        className="shrink-0 bg-slate-900 border-t border-slate-700 w-full"
-        style={{
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          overflowX: 'clip',
-          maxWidth: '100vw',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Row 1 — Close | Label | Locked badge | Download */}
-        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-slate-800 min-h-[44px]">
+      {/* ── Collapsed bottom action bar ── */}
+      {!isLocked && (
+        <div
+          className="shrink-0 flex items-center gap-2 px-3 bg-slate-900 border-t border-slate-700"
+          style={{
+            minHeight: 56,
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            paddingLeft: 'max(env(safe-area-inset-left, 0px), 12px)',
+            paddingRight: 'max(env(safe-area-inset-right, 0px), 12px)',
+            boxSizing: 'border-box',
+            maxWidth: '100vw',
+          }}
+        >
+          {/* Edit tools — opens sheet */}
           <button
-            onClick={onClose}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-            title="Close"
+            onClick={() => setSheetOpen(true)}
+            className={`flex items-center gap-2 flex-1 justify-center min-h-[44px] rounded-xl text-sm font-semibold transition-colors ${
+              sheetOpen
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+            }`}
           >
-            <X size={16} />
+            <Pen size={15} />
+            <span>Edit tools</span>
+            {tool !== 'draw' && (
+              <span className="text-xs opacity-70 capitalize">{tool}</span>
+            )}
           </button>
 
-          <div className="w-px h-5 bg-slate-700 shrink-0" />
-
-          {/* Compact label button — opens modal */}
-          {(
-            <button
-              onClick={openLabelModal}
-              title="Edit photo label"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors text-left shrink-0"
-              style={{ maxWidth: 120 }}
-            >
-              <span
-                className={`text-xs font-semibold ${labelValue ? 'text-slate-200' : 'text-slate-500 italic'}`}
-                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 88 }}
-              >
-                {labelValue || 'Add label…'}
-              </span>
-              {!isLocked && <Pencil size={10} className="text-slate-500 shrink-0" />}
-            </button>
-          )}
-
-          {photo.status === 'locked' && !readOnly && (
-            <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
-              <Lock size={11} /> Locked
-            </span>
-          )}
-
-          {/* Download */}
+          {/* Undo */}
           <button
-            type="button"
-            onClick={() => {
-              if (readOnly) {
-                const directUrl = photo.url ?? photo.previewUrl;
-                if (directUrl) window.open(directUrl, '_blank', 'noopener,noreferrer');
-                return;
-              }
-              const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
-              fetch(url, { credentials: 'include' })
-                .then((r) => {
-                  const cd = r.headers.get('Content-Disposition') ?? '';
-                  let name = '';
-                  const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
-                  if (utf8Match) { try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ } }
-                  if (!name) { const m = cd.match(/filename="?([^";]+)"?/i); if (m) name = m[1].trim(); }
-                  if (!name) name = photo.label ?? photo.originalName ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
-                  return r.blob().then((blob) => ({ blob, name }));
-                })
-                .then(({ blob, name }) => {
-                  const objectUrl = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = objectUrl; a.download = name;
-                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
-                })
-                .catch(console.error);
-            }}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-            title="Download original"
+            onClick={() => setStrokes((p) => p.slice(0, -1))}
+            disabled={!hasAnnotations}
+            title="Undo"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0"
           >
-            <Download size={15} />
+            <Undo2 size={16} />
+          </button>
+
+          {/* Save & Lock */}
+          <button
+            onClick={handleSaveAndLock}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 min-h-[44px] bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-sm font-bold rounded-xl transition-colors shrink-0 whitespace-nowrap"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+            {saving ? 'Saving…' : 'Save & Lock'}
           </button>
         </div>
+      )}
 
-        {/* Row 2 — annotation tools (hidden when locked/readOnly) */}
-        {!isLocked && (
+      {/* ── Bottom editing sheet ── */}
+      {sheetOpen && !isLocked && (
+        <>
+          {/* Backdrop */}
           <div
-            className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto min-w-0 w-full"
+            className="fixed inset-0 z-[85] bg-black/40"
+            onClick={() => setSheetOpen(false)}
+          />
+
+          {/* Sheet panel */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-[86] flex flex-col bg-slate-900 rounded-t-2xl border-t border-slate-700 shadow-2xl"
             style={{
-              scrollbarWidth: 'none',
-              WebkitOverflowScrolling: 'touch',
+              maxHeight: '70dvh',
+              width: '100%',
               maxWidth: '100vw',
               boxSizing: 'border-box',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+              paddingLeft: 'env(safe-area-inset-left, 0px)',
+              paddingRight: 'env(safe-area-inset-right, 0px)',
+              animation: 'slideUp 220ms ease-out',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Rotate CW — preview only; baked in on Save & Lock */}
-            <button
-              onClick={rotateCW}
-              title={`Rotate 90° clockwise (currently ${rotation}°)`}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-            >
-              <RotateCw size={15} />
-            </button>
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-2 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-600" />
+            </div>
 
-            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
-
-            {/* Tool buttons */}
-            {([
-              { id: 'draw',      icon: <Pen size={15} />,          title: 'Pen' },
-              { id: 'arrow',     icon: <ArrowUpRight size={15} />, title: 'Arrow' },
-              { id: 'circle',    icon: <Circle size={15} />,       title: 'Circle' },
-              { id: 'rectangle', icon: <Square size={15} />,       title: 'Rectangle' },
-              { id: 'text',      icon: <Type size={15} />,         title: 'Text' },
-              { id: 'eraser',    icon: <Eraser size={15} />,       title: 'Eraser' },
-            ] as const).map(({ id, icon, title }) => (
+            {/* Sheet header */}
+            <div className="flex items-center justify-between px-4 pb-2 shrink-0">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Annotation tools</span>
               <button
-                key={id}
-                onClick={() => setTool(id)}
-                title={title}
-                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shrink-0 ${
-                  tool === id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-                }`}
+                onClick={() => setSheetOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
               >
-                {icon}
+                <X size={15} />
               </button>
-            ))}
+            </div>
 
-            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-4 flex flex-col gap-5">
 
-            {/* Colour swatches */}
-            {ANNOTATION_COLORS.map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setColor(value)}
-                title={label}
-                className={`min-w-[32px] min-h-[32px] rounded-full border-2 transition-all shrink-0 ${
-                  color === value ? 'border-white scale-110' : 'border-slate-600 hover:border-slate-400'
-                }`}
-                style={{ background: value }}
-              />
-            ))}
+              {/* ── Section: Tools ── */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs text-slate-500 font-medium">Tools</span>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { id: 'draw',      icon: <Pen size={16} />,          label: 'Pen' },
+                    { id: 'arrow',     icon: <ArrowUpRight size={16} />, label: 'Arrow' },
+                    { id: 'circle',    icon: <Circle size={16} />,       label: 'Circle' },
+                    { id: 'rectangle', icon: <Square size={16} />,       label: 'Rect' },
+                    { id: 'text',      icon: <Type size={16} />,         label: 'Text' },
+                    { id: 'eraser',    icon: <Eraser size={16} />,       label: 'Eraser' },
+                  ] as const).map(({ id, icon, label }) => (
+                    <button
+                      key={id}
+                      onClick={() => setTool(id)}
+                      className={`flex flex-col items-center gap-1 min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+                        tool === id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      }`}
+                    >
+                      {icon}
+                      <span>{label}</span>
+                    </button>
+                  ))}
 
-            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
-
-            {/* Stroke widths (draw / arrow / shapes / eraser) */}
-            {tool !== 'text' && (
-              <>
-                {STROKE_WIDTHS.map((w) => (
+                  {/* Rotate CW */}
                   <button
-                    key={w}
-                    onClick={() => setStrokeWidth(w)}
-                    title={`${w}px`}
-                    className={`min-w-[36px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shrink-0 ${
-                      strokeWidth === w ? 'bg-primary' : 'hover:bg-slate-700'
-                    }`}
+                    onClick={rotateCW}
+                    title={`Rotate CW (${rotation}°)`}
+                    className="flex flex-col items-center gap-1 min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
                   >
-                    <div className="rounded-full bg-white" style={{ width: w + 2, height: w + 2 }} />
+                    <RotateCw size={16} />
+                    <span>Rotate</span>
                   </button>
-                ))}
-                <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
-              </>
-            )}
 
-            {/* Font sizes (text only) */}
-            {tool === 'text' && (
-              <>
-                {FONT_SIZES.map((s) => (
+                  {/* Undo */}
                   <button
-                    key={s}
-                    onClick={() => setFontSize(s)}
-                    title={`${s}px`}
-                    className={`min-w-[36px] min-h-[44px] px-1.5 flex items-center justify-center rounded-lg text-xs font-bold transition-colors shrink-0 ${
-                      fontSize === s ? 'bg-primary text-primary-foreground' : 'hover:bg-slate-700 text-slate-300'
-                    }`}
+                    onClick={() => setStrokes((p) => p.slice(0, -1))}
+                    disabled={!hasAnnotations}
+                    title="Undo"
+                    className="flex flex-col items-center gap-1 min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 transition-colors"
                   >
-                    {s}
+                    <Undo2 size={16} />
+                    <span>Undo</span>
                   </button>
-                ))}
-                <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
-              </>
-            )}
 
-            {/* Undo */}
-            <button
-              onClick={() => setStrokes((p) => p.slice(0, -1))}
-              disabled={!hasAnnotations}
-              title="Undo"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0"
-            >
-              <Undo2 size={15} />
-            </button>
+                  {/* Clear */}
+                  <button
+                    onClick={clearAnnotations}
+                    disabled={!hasAnnotations}
+                    title="Clear all"
+                    className="flex flex-col items-center gap-1 min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-red-900 text-slate-300 hover:text-red-300 disabled:opacity-30 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    <span>Clear</span>
+                  </button>
+                </div>
+              </div>
 
-            {/* Clear all */}
-            <button
-              onClick={clearAnnotations}
-              disabled={!hasAnnotations}
-              title="Clear all annotations"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-red-800 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0"
-            >
-              <Trash2 size={15} />
-            </button>
+              {/* ── Section: Style ── */}
+              <div className="flex flex-col gap-3">
+                <span className="text-xs text-slate-500 font-medium">Style</span>
 
-            <div className="w-px h-5 bg-slate-700 shrink-0 mx-0.5" />
+                {/* Colours */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs text-slate-500 w-12 shrink-0">Colour</span>
+                  <div className="flex gap-2 flex-wrap">
+                    {ANNOTATION_COLORS.map(({ label, value }) => (
+                      <button
+                        key={value}
+                        onClick={() => setColor(value)}
+                        title={label}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                          color === value ? 'border-white scale-110' : 'border-slate-600 hover:border-slate-400'
+                        }`}
+                        style={{ background: value }}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-            {/* Save & Lock */}
-            <button
-              onClick={handleSaveAndLock}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-3 min-h-[44px] bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold rounded-lg transition-colors shrink-0 whitespace-nowrap"
-            >
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
-              {saving ? 'Saving…' : 'Save & Lock'}
-            </button>
+                {/* Line width (non-text tools) */}
+                {tool !== 'text' && (
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xs text-slate-500 w-12 shrink-0">Width</span>
+                    <div className="flex gap-2">
+                      {STROKE_WIDTHS.map((w) => (
+                        <button
+                          key={w}
+                          onClick={() => setStrokeWidth(w)}
+                          title={`${w}px`}
+                          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${
+                            strokeWidth === w ? 'bg-primary' : 'bg-slate-800 hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="rounded-full bg-white" style={{ width: w + 2, height: w + 2 }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Font size (text tool) */}
+                {tool === 'text' && (
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xs text-slate-500 w-12 shrink-0">Size</span>
+                    <div className="flex gap-2">
+                      {FONT_SIZES.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setFontSize(s)}
+                          title={`${s}px`}
+                          className={`w-10 h-10 flex items-center justify-center rounded-xl text-xs font-bold transition-colors ${
+                            fontSize === s ? 'bg-primary text-primary-foreground' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Section: Photo details ── */}
+              <div className="flex flex-col gap-3">
+                <span className="text-xs text-slate-500 font-medium">Photo details</span>
+
+                {/* Label (editable) */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 w-12 shrink-0">Label</span>
+                  <button
+                    onClick={openLabelModal}
+                    className="flex-1 min-h-[40px] text-left px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm transition-colors"
+                  >
+                    <span className={displayLabel ? 'text-white' : 'text-slate-500 italic'}>
+                      {displayLabel || 'Add label…'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Job name (read-only — present when passed via extended photo object) */}
+                {(photo as JobPhoto & { jobName?: string }).jobName && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500 w-12 shrink-0">Job</span>
+                    <span className="flex-1 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-400 truncate">
+                      {(photo as JobPhoto & { jobName?: string }).jobName}
+                    </span>
+                  </div>
+                )}
+
+                {/* Capture date (read-only) */}
+                {photo.createdAt && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500 w-12 shrink-0">Date</span>
+                    <span className="flex-1 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-400">
+                      {new Date(photo.createdAt).toLocaleDateString('en-AU', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+            </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* ── Label modal ── */}
+      {/* ── Label modal (opened from top bar or sheet) ── */}
       {labelModalOpen && (
         <div
           className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center"
@@ -1065,6 +1189,14 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
           </div>
         </div>
       )}
+
+      {/* ── Slide-up keyframe ── */}
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to   { transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
