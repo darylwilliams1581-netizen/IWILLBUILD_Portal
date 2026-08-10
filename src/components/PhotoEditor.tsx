@@ -304,10 +304,12 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   const [textInput, setTextInput] = useState<{ x: number; y: number; value: string } | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
 
-  // Label editing
-  const [labelEditing, setLabelEditing] = useState(false);
-  const [labelValue, setLabelValue]     = useState(photo.label ?? '');
-  const [labelSaving, setLabelSaving]   = useState(false);
+  // Label modal
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
+  const [labelValue, setLabelValue]         = useState(photo.label ?? '');
+  const [labelDraft, setLabelDraft]         = useState('');
+  const [labelSaving, setLabelSaving]       = useState(false);
+  const [labelError, setLabelError]         = useState('');
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   // Save state
@@ -394,8 +396,8 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (textInput)    { setTextInput(null); return; }
-        if (labelEditing) { setLabelEditing(false); setLabelValue(photo.label ?? ''); return; }
+        if (textInput)     { setTextInput(null); return; }
+        if (labelModalOpen) { setLabelModalOpen(false); return; }
         onClose();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -405,7 +407,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose, textInput, labelEditing, photo.label]);
+  }, [onClose, textInput, labelModalOpen, photo.label]);
 
   // ── Canvas coordinate helper ───────────────────────────────────────────────
 
@@ -550,9 +552,17 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
   // ── Label save ─────────────────────────────────────────────────────────────
 
+  const openLabelModal = useCallback(() => {
+    setLabelDraft(labelValue);
+    setLabelError('');
+    setLabelModalOpen(true);
+    setTimeout(() => labelInputRef.current?.focus(), 60);
+  }, [labelValue]);
+
   const saveLabel = useCallback(async () => {
-    const trimmed = labelValue.trim();
+    const trimmed = labelDraft.trim();
     setLabelSaving(true);
+    setLabelError('');
     try {
       const res = await fetch(
         `/api/jobs/${photo.jobId}/photos/${photo.id}`,
@@ -564,16 +574,14 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         },
       );
       if (!res.ok) throw new Error('Failed to save label');
-      // Update local display value
       setLabelValue(trimmed);
+      setLabelModalOpen(false);
     } catch {
-      // Revert on error
-      setLabelValue(photo.label ?? '');
+      setLabelError('Could not save label. Please try again.');
     } finally {
       setLabelSaving(false);
-      setLabelEditing(false);
     }
-  }, [photo.jobId, photo.id, photo.label, labelValue]);
+  }, [photo.jobId, photo.id, labelDraft]);
 
   // ── Rotation (preview only — applied to canvas on Save & Lock) ────────────
 
@@ -649,7 +657,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const displayLabel = labelValue.trim() || (photo.label ?? '');
+  const displayLabel = labelValue.trim();
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]">
@@ -758,50 +766,21 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
           <div className="w-px h-5 bg-slate-700 shrink-0" />
 
-          {/* Editable label */}
-          {labelEditing ? (
-            <div className="flex items-center gap-1 flex-1 min-w-0">
-              <input
-                ref={labelInputRef}
-                type="text"
-                value={labelValue}
-                onChange={(e) => setLabelValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter')  { e.preventDefault(); void saveLabel(); }
-                  if (e.key === 'Escape') { setLabelEditing(false); setLabelValue(photo.label ?? ''); }
-                }}
-                placeholder="Add photo label…"
-                className="flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white outline-none focus:border-primary"
-                autoFocus
-              />
-              <button
-                onMouseDown={(e) => { e.preventDefault(); void saveLabel(); }}
-                disabled={labelSaving}
-                className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-full bg-green-600 hover:bg-green-500 text-white shrink-0 disabled:opacity-50"
-                title="Save label"
-              >
-                {labelSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-              </button>
-              <button
-                onMouseDown={(e) => { e.preventDefault(); setLabelEditing(false); setLabelValue(photo.label ?? ''); }}
-                className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-white shrink-0"
-                title="Cancel"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ) : (
+          {/* Compact label button — opens modal */}
+          {(
             <button
-              onClick={() => { setLabelEditing(true); setTimeout(() => labelInputRef.current?.focus(), 30); }}
-              className="flex items-center gap-1.5 flex-1 min-w-0 text-left group"
+              onClick={openLabelModal}
               title="Edit photo label"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors text-left shrink-0"
+              style={{ maxWidth: 120 }}
             >
-              <span className={`text-xs font-semibold truncate ${displayLabel ? 'text-slate-200' : 'text-slate-500 italic'}`}>
-                {displayLabel || 'Add photo label'}
+              <span
+                className={`text-xs font-semibold ${labelValue ? 'text-slate-200' : 'text-slate-500 italic'}`}
+                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 88 }}
+              >
+                {labelValue || 'Add label…'}
               </span>
-              {!isLocked && (
-                <Pencil size={11} className="text-slate-500 group-hover:text-slate-300 shrink-0 transition-colors" />
-              )}
+              {!isLocked && <Pencil size={10} className="text-slate-500 shrink-0" />}
             </button>
           )}
 
@@ -976,6 +955,91 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
           </div>
         )}
       </div>
+
+      {/* ── Label modal ── */}
+      {labelModalOpen && (
+        <div
+          className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center"
+          style={{ overflowX: 'hidden' }}
+          onWheel={(e) => e.preventDefault()}
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => { if (!labelSaving) setLabelModalOpen(false); }}
+          />
+
+          {/* Sheet / dialog */}
+          <div
+            className="relative bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
+            style={{ width: 'calc(100vw - 32px)', maxWidth: 420 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle — mobile only */}
+            <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-700" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700 shrink-0">
+              <h3 className="font-semibold text-sm text-white">Edit photo label</h3>
+              <button
+                onClick={() => { if (!labelSaving) setLabelModalOpen(false); }}
+                className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <input
+                ref={labelInputRef}
+                type="text"
+                value={labelDraft}
+                onChange={(e) => { setLabelDraft(e.target.value); setLabelError(''); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter')  { e.preventDefault(); void saveLabel(); }
+                  if (e.key === 'Escape') { if (!labelSaving) setLabelModalOpen(false); }
+                }}
+                placeholder="Add photo label…"
+                maxLength={120}
+                className="w-full bg-slate-800 border border-slate-600 focus:border-primary rounded-lg px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 transition-colors"
+              />
+              {labelError && (
+                <p className="flex items-center gap-1.5 text-xs text-red-400">
+                  <AlertCircle size={12} className="shrink-0" />
+                  {labelError}
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-700 shrink-0"
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+            >
+              <button
+                type="button"
+                onClick={() => setLabelModalOpen(false)}
+                disabled={labelSaving}
+                className="px-4 py-2 rounded-lg border border-slate-600 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveLabel()}
+                disabled={labelSaving}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold disabled:opacity-50 transition-colors"
+              >
+                {labelSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                {labelSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
