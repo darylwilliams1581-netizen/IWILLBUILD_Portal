@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 
 import { useUploadQueue } from '@/hooks/useUploadQueue';
+import PhotoEditor from '@/components/PhotoEditor';
+import type { JobPhoto } from '@/components/JobPhotos';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Material { id?: number; description: string; cost: number; }
@@ -248,6 +250,34 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
 }) {
+  const [editorPhoto, setEditorPhoto] = useState<JobPhoto | null>(null);
+
+  /** Map a job-card Photo → minimal JobPhoto so PhotoEditor can display it */
+  function toJobPhoto(p: Photo): JobPhoto {
+    return {
+      id: p.id,
+      jobId: 0,           // sentinel — readOnly mode won't call /api/jobs/0/...
+      companyId: 0,
+      filename: p.file_name,
+      originalName: p.file_name,
+      label: p.caption,
+      mimeType: null,
+      sizeBytes: null,
+      uploadedByUserId: null,
+      uploadedByName: null,
+      createdAt: '',
+      url: p.url ?? p.file_path,
+      thumbnailUrl: p.url ?? p.file_path,
+      previewUrl: p.url ?? p.file_path,
+      imageWidth: null,
+      imageHeight: null,
+      status: 'draft',
+      lockedAt: null,
+      lockedByUserId: null,
+      lockedByName: null,
+      mediaAssetId: null,
+    };
+  }
   const q = useUploadQueue({
     endpoint: `/api/job-cards/${cardId}/photos`,
     fieldName: 'photos',
@@ -350,14 +380,18 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map(p => (
             <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
-              <a href={p.url ?? p.file_path} target="_blank" rel="noopener noreferrer">
+              <button
+                type="button"
+                className="w-full h-full"
+                onClick={() => setEditorPhoto(toJobPhoto(p))}
+              >
                 <img
                   src={p.url ?? p.file_path}
                   alt={p.caption ?? p.file_name}
                   className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                   loading="lazy"
                 />
-              </a>
+              </button>
               <button
                 onClick={() => void handleDelete(p.id)}
                 className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -375,6 +409,14 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </div>
       )}
     </Section>
+    {editorPhoto && (
+      <PhotoEditor
+        photo={editorPhoto}
+        readOnly
+        onClose={() => setEditorPhoto(null)}
+        onSaved={() => setEditorPhoto(null)}
+      />
+    )}
     </>
   );
 }

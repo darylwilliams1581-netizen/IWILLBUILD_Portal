@@ -20,6 +20,8 @@ import {
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import { useUploadQueue } from '@/hooks/useUploadQueue';
 import FormSection from '@/components/FormSection';
+import PhotoEditor from '@/components/PhotoEditor';
+import type { JobPhoto } from '@/components/JobPhotos';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -338,7 +340,34 @@ export default function IncidentDetailPage() {
   const [correctiveActions, setCorrectiveActions] = useState<CorrectiveAction[]>([]);
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<JobPhoto | null>(null);
+
+  /** Map an incident Attachment → minimal JobPhoto for PhotoEditor (readOnly) */
+  function toJobPhoto(a: Attachment): JobPhoto {
+    return {
+      id: a.id,
+      jobId: 0,
+      companyId: 0,
+      filename: a.original_name,
+      originalName: a.original_name,
+      label: null,
+      mimeType: a.mime_type,
+      sizeBytes: a.size_bytes,
+      uploadedByUserId: null,
+      uploadedByName: null,
+      createdAt: a.created_at,
+      url: a.public_url,
+      thumbnailUrl: a.public_url,
+      previewUrl: a.public_url,
+      imageWidth: null,
+      imageHeight: null,
+      status: 'draft',
+      lockedAt: null,
+      lockedByUserId: null,
+      lockedByName: null,
+      mediaAssetId: null,
+    };
+  }
 
   // Load existing
   const loadIncident = useCallback(async () => {
@@ -1226,7 +1255,7 @@ export default function IncidentDetailPage() {
                             <div className="grid grid-cols-3 gap-2">
                               {attachments.filter(a => a.file_type === 'image').map(a => (
                                 <div key={a.id} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
-                                  <img src={a.public_url} alt={a.original_name} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(a.public_url)} />
+                                  <img src={a.public_url} alt={a.original_name} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(toJobPhoto(a))} />
                                   {!isClosed && (
                                     <button type="button" onClick={() => handleDeleteAttachment(a)} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <X size={11} />
@@ -1319,26 +1348,14 @@ export default function IncidentDetailPage() {
         </div>
       </div>
 
-      {/* Photo lightbox */}
+      {/* Photo viewer */}
       {lightboxUrl && (
-        <div
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-          onClick={() => setLightboxUrl(null)}
-        >
-          <button
-            type="button"
-            className="absolute top-4 right-4 text-white/70 hover:text-white"
-            onClick={() => setLightboxUrl(null)}
-          >
-            <X size={28} />
-          </button>
-          <img
-            src={lightboxUrl}
-            alt="Attachment"
-            className="max-w-full max-h-full rounded-xl object-contain"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
+        <PhotoEditor
+          photo={lightboxUrl}
+          readOnly
+          onClose={() => setLightboxUrl(null)}
+          onSaved={() => setLightboxUrl(null)}
+        />
       )}
 
       {/* Close modal */}

@@ -3,8 +3,10 @@
  * Upload, view, delete photos. Independent of inspections.
  */
 import { useState, useEffect } from 'react';
-import { Camera, Plus, Trash2, Loader2, X, ZoomIn } from 'lucide-react';
+import { Camera, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useUploadQueue } from '@/hooks/useUploadQueue';
+import PhotoEditor from '@/components/PhotoEditor';
+import type { JobPhoto } from '@/components/JobPhotos';
 
 interface AssetPhoto {
   id: number;
@@ -17,7 +19,34 @@ interface AssetPhoto {
 export default function AssetPhotos({ assetId }: { assetId: number }) {
   const [photos, setPhotos] = useState<AssetPhoto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lightbox, setLightbox] = useState<AssetPhoto | null>(null);
+  const [editorPhoto, setEditorPhoto] = useState<JobPhoto | null>(null);
+
+  /** Map AssetPhoto → minimal JobPhoto for PhotoEditor (readOnly) */
+  function toJobPhoto(p: AssetPhoto): JobPhoto {
+    return {
+      id: p.id,
+      jobId: 0,
+      companyId: 0,
+      filename: p.file_name,
+      originalName: p.file_name,
+      label: p.caption,
+      mimeType: null,
+      sizeBytes: null,
+      uploadedByUserId: null,
+      uploadedByName: null,
+      createdAt: p.created_at,
+      url: p.file_path,
+      thumbnailUrl: p.file_path,
+      previewUrl: p.file_path,
+      imageWidth: null,
+      imageHeight: null,
+      status: 'draft',
+      lockedAt: null,
+      lockedByUserId: null,
+      lockedByName: null,
+      mediaAssetId: null,
+    };
+  }
 
   const q = useUploadQueue({
     endpoint: `/api/asset-manager/assets/${assetId}/photos`,
@@ -48,7 +77,7 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
     });
     if (r.ok) {
       setPhotos(prev => prev.filter(p => p.id !== id));
-      if (lightbox?.id === id) setLightbox(null);
+      if (editorPhoto?.id === id) setEditorPhoto(null);
     }
   }
 
@@ -100,7 +129,7 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {photos.map(photo => (
             <div key={photo.id} className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
-              onClick={() => setLightbox(photo)}>
+              onClick={() => setEditorPhoto(toJobPhoto(photo))}>
               <img
                 src={photo.file_path}
                 alt={photo.caption ?? photo.file_name}
@@ -109,9 +138,6 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
               />
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all pointer-events-none" />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <ZoomIn size={20} className="text-white drop-shadow" />
-              </div>
               {/* Delete button */}
               <button
                 onClick={e => { e.stopPropagation(); void deletePhoto(photo.id); }}
@@ -139,30 +165,13 @@ export default function AssetPhotos({ assetId }: { assetId: number }) {
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
-            onClick={() => setLightbox(null)}
-          >
-            <X size={18} />
-          </button>
-          <img
-            src={lightbox.file_path}
-            alt={lightbox.caption ?? lightbox.file_name}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          />
-          {lightbox.caption && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-2 rounded-full">
-              {lightbox.caption}
-            </div>
-          )}
-        </div>
+      {editorPhoto && (
+        <PhotoEditor
+          photo={editorPhoto}
+          readOnly
+          onClose={() => setEditorPhoto(null)}
+          onSaved={() => setEditorPhoto(null)}
+        />
       )}
     </div>
   );

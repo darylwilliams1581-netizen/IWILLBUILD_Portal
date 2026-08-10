@@ -98,6 +98,10 @@ interface PhotoEditorProps {
   photo: JobPhoto;
   onClose: () => void;
   onSaved: (updated: JobPhoto) => void;
+  /** When true: show the image full-screen but hide all annotation tools and
+   *  the Save & Lock button. Used for contexts that have no replace/lock API
+   *  (job-card photos, asset photos, incident attachments). */
+  readOnly?: boolean;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -223,7 +227,7 @@ function redrawStrokes(ctx: CanvasRenderingContext2D, strokes: Stroke[]) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProps) {
+export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false }: PhotoEditorProps) {
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const overlayRef   = useRef<HTMLCanvasElement>(null); // live-draw preview layer
   const containerRef = useRef<HTMLDivElement>(null);
@@ -255,7 +259,7 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  const isLocked = photo.status === 'locked';
+  const isLocked = readOnly || photo.status === 'locked';
 
   // ── Load image into canvas ─────────────────────────────────────────────────
 
@@ -655,7 +659,7 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
             {photo.label ?? photo.originalName ?? 'Photo'}
           </span>
 
-          {isLocked && (
+          {photo.status === 'locked' && !readOnly && (
             <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
               <Lock size={11} /> Locked
             </span>
@@ -665,6 +669,13 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
           <button
             type="button"
             onClick={() => {
+              if (readOnly) {
+                // readOnly photos: open the signed URL in a new tab
+                // (no auth-gated /download endpoint available for these)
+                const directUrl = photo.url ?? photo.previewUrl;
+                if (directUrl) window.open(directUrl, '_blank', 'noopener,noreferrer');
+                return;
+              }
               const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
               fetch(url, { credentials: 'include' })
                 .then((r) => {
