@@ -15,7 +15,7 @@ import {
   AlertCircle, Loader2, Paperclip, ChevronRight, Info,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
-import { snapshotDiagBuffer, type DiagEvent } from '@/lib/diagnosticBuffer';
+import { snapshotDiagBuffer, pushDiagEvent, type DiagEvent } from '@/lib/diagnosticBuffer';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -58,6 +58,45 @@ function collectDeviceContext(): Record<string, string | number | boolean> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (navigator as any).standalone === true;
       ctx.pwa = isPwa;
+    }
+  } catch { /* non-fatal */ }
+  return ctx;
+}
+
+/**
+ * Collect GPS-specific diagnostics from the active driver session context
+ * stored on window by DriverSessionContext. Safe — never includes coordinates.
+ */
+function collectGpsDiagnostics(): Record<string, string | number | boolean> {
+  const ctx: Record<string, string | number | boolean> = {};
+  try {
+    // DriverSessionContext exposes a debug snapshot on window.__driverSessionDebug
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbg = (window as any).__driverSessionDebug as Record<string, unknown> | undefined;
+    if (dbg) {
+      if (typeof dbg.session_id === 'number')   ctx.active_driver_session_id = dbg.session_id;
+      if (typeof dbg.gps_status === 'string')   ctx.gps_status = dbg.gps_status;
+      if (typeof dbg.permission_status === 'string') ctx.gps_permission_status = dbg.permission_status;
+      if (typeof dbg.last_heartbeat_at === 'string') {
+        ctx.last_heartbeat_at = dbg.last_heartbeat_at;
+        const ageMs = Date.now() - new Date(dbg.last_heartbeat_at).getTime();
+        ctx.last_heartbeat_age_s = Math.round(ageMs / 1000);
+      }
+      if (typeof dbg.last_telemetry_at === 'string') {
+        ctx.last_telemetry_at = dbg.last_telemetry_at;
+        const ageMs = Date.now() - new Date(dbg.last_telemetry_at).getTime();
+        ctx.last_telemetry_age_s = Math.round(ageMs / 1000);
+      }
+      if (typeof dbg.is_tracking === 'boolean') ctx.gps_tracking_active = dbg.is_tracking;
+    }
+    // Geolocation permission via Permissions API (web only)
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(result => {
+        // Best-effort — result arrives after submission, captured in diag buffer
+        pushDiagEvent('gps_state', `Geolocation permission: ${result.state}`, {
+          meta: { permission_state: result.state },
+        });
+      }).catch(() => { /* non-fatal */ });
     }
   } catch { /* non-fatal */ }
   return ctx;
@@ -155,6 +194,17 @@ export default function BugReportModal() {
       const deviceCtx = collectDeviceContext();
       const platform = detectPlatform();
 
+      // For GPS/Maps bugs, enrich device context with GPS session diagnostics
+      const isGpsBug = category === 'maps_gps';
+      const gpsDiag = isGpsBug ? collectGpsDiagnostics() : {};
+      if (isGpsBug) {
+        // Push a summary event into the buffer so it appears in the timeline
+        pushDiagEvent('gps_state', 'GPS bug report submitted — GPS diagnostics collected', {
+          meta: gpsDiag as Record<string, string | number | boolean>,
+        });
+      }
+      const enrichedDeviceCtx = { ...deviceCtx, ...gpsDiag };
+
       const formData = new FormData();
       formData.append('category', category);
       formData.append('description', description.trim());
@@ -164,7 +214,7 @@ export default function BugReportModal() {
       formData.append('app_version', __APP_VERSION__);
       formData.append('current_route', window.location.pathname);
       formData.append('diagnostic_events', JSON.stringify(diagSnapshot));
-      formData.append('device_context', JSON.stringify(deviceCtx));
+      formData.append('device_context', JSON.stringify(enrichedDeviceCtx));
       if (screenshot) formData.append('screenshot', screenshot);
 
       const res = await fetch('/api/bug-reports', {

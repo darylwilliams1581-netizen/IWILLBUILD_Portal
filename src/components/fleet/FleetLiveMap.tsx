@@ -294,12 +294,28 @@ function buildOfficeMarkerIcon(): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
+// ── GPS staleness helper ──────────────────────────────────────────────────────
+// A GPS point is considered stale if it is older than 7 minutes.
+const GPS_STALE_MS = 7 * 60 * 1000;
+
+function isGpsStale(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return true;
+  return Date.now() - new Date(lastSeenAt).getTime() > GPS_STALE_MS;
+}
+
 function buildLiveInfoContent(session: LiveSession): string {
   const initials = getInitials(session.driver_name);
+  // Clamp speed to 0 minimum — GPS Doppler can produce small negatives when stationary
+  const speed = session.speed_kmh != null ? Math.max(0, Math.round(Number(session.speed_kmh))) : null;
+  const stale = isGpsStale(session.last_seen_at);
+  const gpsLabel = stale
+    ? `<span style="color:#f59e0b;font-weight:700;">⚠ GPS signal stale</span> · last known ${formatLastSeen(session.last_seen_at)}`
+    : `GPS updated ${formatLastSeen(session.last_seen_at)}`;
+
   return `
     <div style="font-family:system-ui,sans-serif;min-width:190px;padding:2px 0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <div style="width:32px;height:32px;border-radius:50%;background:#7c3aed;
+        <div style="width:32px;height:32px;border-radius:50%;background:${stale ? '#94a3b8' : '#7c3aed'};
           display:flex;align-items:center;justify-content:center;
           color:#fff;font-size:12px;font-weight:800;flex-shrink:0;">${initials}</div>
         <div>
@@ -308,9 +324,9 @@ function buildLiveInfoContent(session: LiveSession): string {
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:6px;border-top:1px solid #f1f5f9;">
-        ${session.speed_kmh != null ? `
+        ${speed != null ? `
           <div style="background:#f8fafc;border-radius:8px;padding:5px 8px;text-align:center;">
-            <div style="font-size:16px;font-weight:800;color:#7c3aed;">${Math.round(Number(session.speed_kmh))}</div>
+            <div style="font-size:16px;font-weight:800;color:${stale ? '#94a3b8' : '#7c3aed'};">${speed}</div>
             <div style="font-size:10px;color:#94a3b8;font-weight:600;">km/h</div>
           </div>` : ''}
         <div style="background:#f8fafc;border-radius:8px;padding:5px 8px;text-align:center;">
@@ -319,7 +335,7 @@ function buildLiveInfoContent(session: LiveSession): string {
         </div>
       </div>
       <div style="margin-top:6px;font-size:10px;color:#94a3b8;text-align:center;">
-        GPS updated ${formatLastSeen(session.last_seen_at)}
+        ${gpsLabel}
       </div>
     </div>`;
 }
@@ -353,6 +369,10 @@ function DriverCard({
   onClick: () => void;
 }) {
   const hasGps = session.lat != null && session.lng != null;
+  const stale  = isGpsStale(session.last_seen_at);
+  // Clamp speed to 0 — GPS Doppler can produce small negatives when stationary
+  const speed  = session.speed_kmh != null ? Math.max(0, Math.round(Number(session.speed_kmh))) : null;
+
   return (
     <button
       onClick={onClick}
@@ -361,14 +381,19 @@ function DriverCard({
         selected
           ? 'bg-violet-50 border-violet-300 shadow-sm'
           : 'bg-white border-slate-200 hover:border-violet-200 hover:bg-violet-50/40',
+        stale ? 'opacity-75' : '',
       ].join(' ')}
     >
       <div className="flex items-start gap-2.5">
         <div className={[
           'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
-          hasGps ? 'bg-emerald-100 border border-emerald-200' : 'bg-slate-100 border border-slate-200',
+          stale
+            ? 'bg-amber-50 border border-amber-200'
+            : hasGps
+              ? 'bg-emerald-100 border border-emerald-200'
+              : 'bg-slate-100 border border-slate-200',
         ].join(' ')}>
-          <Truck size={13} className={hasGps ? 'text-emerald-600' : 'text-slate-400'} />
+          <Truck size={13} className={stale ? 'text-amber-500' : hasGps ? 'text-emerald-600' : 'text-slate-400'} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold text-slate-800 truncate">{session.driver_name}</p>
@@ -379,20 +404,28 @@ function DriverCard({
             <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
               <Clock size={9} />{formatDuration(session.start_at)}
             </span>
-            {session.speed_kmh != null && (
+            {speed != null && (
               <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
-                <Gauge size={9} />{Math.round(session.speed_kmh)} km/h
+                <Gauge size={9} />{speed} km/h
               </span>
             )}
           </div>
-          <div className="mt-1.5">
-            <GpsStatusBadge
-              locationPermissionStatus={session.location_permission_status ?? (hasGps ? 'granted' : 'unknown')}
-              gpsStatus={session.gps_status ?? (hasGps ? 'live' : 'waiting_fix')}
-              lastSeenAt={session.last_seen_at}
-              size="sm"
-            />
-          </div>
+          {/* Stale GPS badge — shown instead of normal GpsStatusBadge when signal is old */}
+          {stale ? (
+            <div className="mt-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 w-fit">
+              <AlertCircle size={9} className="text-amber-500 shrink-0" />
+              <span className="text-[10px] font-semibold text-amber-600">GPS signal stale</span>
+            </div>
+          ) : (
+            <div className="mt-1.5">
+              <GpsStatusBadge
+                locationPermissionStatus={session.location_permission_status ?? (hasGps ? 'granted' : 'unknown')}
+                gpsStatus={session.gps_status ?? (hasGps ? 'live' : 'waiting_fix')}
+                lastSeenAt={session.last_seen_at}
+                size="sm"
+              />
+            </div>
+          )}
         </div>
       </div>
     </button>
@@ -493,8 +526,12 @@ export default function FleetLiveMap() {
   const [mapRetryKey,    setMapRetryKey]    = useState(0);
 
   // ── Derive map mode ─────────────────────────────────────────────────────────
-  const withGps = sessions.filter(s => s.lat != null && s.lng != null);
-  const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
+  // withGps = sessions that have a coordinate AND a fresh GPS fix (≤7 min old)
+  // staleGps = sessions that have coordinates but the fix is too old to trust as "live"
+  // noGps = sessions with no coordinates at all
+  const withGps  = sessions.filter(s => s.lat != null && s.lng != null && !isGpsStale(s.last_seen_at));
+  const staleGps = sessions.filter(s => s.lat != null && s.lng != null && isGpsStale(s.last_seen_at));
+  const noGps    = sessions.filter(s => s.lat == null || s.lng == null);
 
   const mapMode: MapMode = (() => {
     if (sessions.length > 0) return 'live';
@@ -949,10 +986,20 @@ export default function FleetLiveMap() {
                 {sessions.length} drivers — list view
               </span>
             ) : (
-              <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
-                <MapPin size={10} />
-                {withGps.length} on map
-              </span>
+              <>
+                {withGps.length > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
+                    <MapPin size={10} />
+                    {withGps.length} on map
+                  </span>
+                )}
+                {staleGps.length > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
+                    <AlertCircle size={10} />
+                    {staleGps.length} last known
+                  </span>
+                )}
+              </>
             )}
             {noGps.length > 0 && sessions.length <= MAX_MAP_MARKERS && (
               <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
