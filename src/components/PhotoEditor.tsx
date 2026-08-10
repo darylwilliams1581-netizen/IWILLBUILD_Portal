@@ -675,7 +675,6 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         height: '100dvh',
         maxWidth: '100vw',
         overflowX: 'clip',
-        paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
       {/* ── Error banner ── */}
@@ -690,7 +689,10 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       {/* ── Top bar: Close | label | Download ── */}
       <div
         className="shrink-0 flex items-center gap-2 px-2 bg-slate-900 border-b border-slate-800"
-        style={{ minHeight: 44 }}
+        style={{
+          minHeight: 44,
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+        }}
       >
         {/* Close */}
         <button
@@ -1092,20 +1094,7 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
               <div className="flex flex-col gap-3">
                 <span className="text-xs text-slate-500 font-medium">Photo details</span>
 
-                {/* Label (editable) */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500 w-12 shrink-0">Label</span>
-                  <button
-                    onClick={openLabelModal}
-                    className="flex-1 min-h-[40px] text-left px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm transition-colors"
-                  >
-                    <span className={displayLabel ? 'text-white' : 'text-slate-500 italic'}>
-                      {displayLabel || 'Add label…'}
-                    </span>
-                  </button>
-                </div>
-
-                {/* Job name (read-only — present when passed via extended photo object) */}
+                {/* Job name (read-only) */}
                 {(photo as JobPhoto & { jobName?: string }).jobName && (
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500 w-12 shrink-0">Job</span>
