@@ -228,6 +228,7 @@ export default function BugReportModal() {
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
           style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 3.5rem)',
             paddingLeft: 'env(safe-area-inset-left, 0px)',
             paddingRight: 'env(safe-area-inset-right, 0px)',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -236,7 +237,7 @@ export default function BugReportModal() {
         >
           <div
             className="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - 1rem)' }}
+            style={{ maxHeight: 'min(calc(100dvh - max(env(safe-area-inset-top, 0px), 3.5rem) - env(safe-area-inset-bottom, 0px)), 680px)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
