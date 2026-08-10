@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Plus,
@@ -16,9 +17,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import SkipMetricsPanel from './SkipMetricsPanel';
 import type { Job } from '@/lib/jobs-api';
-import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -136,13 +135,12 @@ function DeleteConfirm({ templateName, onConfirm, onCancel, deleting }: {
 
 // ── Submission row ────────────────────────────────────────────────────────────
 
-function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, canShare, canReset, onStatusChange }: {
+function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, canReset, onStatusChange }: {
   submission: FormSubmission;
   templateName: string;
   onOpen: () => void;
   onDelete: () => void;
   canDelete: boolean;
-  canShare: boolean;
   canReset: boolean;
   onStatusChange: () => void;
 }) {
@@ -215,15 +213,6 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
         )}
 
         <div className="flex-1" />
-
-        {canShare && (
-          <FormSharePanel
-            submissionId={submission.id}
-            submissionStatus={submission.status}
-            canReset={canReset}
-            onStatusChange={onStatusChange}
-          />
-        )}
 
         {canDelete && (
           <button
@@ -324,6 +313,7 @@ interface JobFormsProps {
 }
 
 export default function JobForms({ jobId, userRole }: JobFormsProps) {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -370,8 +360,8 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
       if (!res.ok) throw new Error(data.error ?? 'Failed to start form');
       if (data.submission) {
         setSubmissions((prev) => [data.submission!, ...prev]);
-        // Open form in a new tab — job detail page stays open
-        window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener,noreferrer');
+        // Navigate within the same tab — preserves auth session
+        navigate(`/jobs/${jobId}/forms/${data.submission.id}`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start form');
@@ -381,7 +371,7 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
   }
 
   function openSubmission(s: FormSubmission) {
-    window.open(`/jobs/${jobId}/forms/${s.id}`, '_blank', 'noopener,noreferrer');
+    navigate(`/jobs/${jobId}/forms/${s.id}`);
   }
 
   async function confirmDelete() {
@@ -469,7 +459,6 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
                     onOpen={() => openSubmission(s)}
                     onDelete={() => setDeleteTarget(s)}
                     canDelete={canDelete}
-                    canShare={true}
                     canReset={['owner', 'admin'].includes(userRole ?? '')}
                     onStatusChange={load}
                   />
@@ -505,12 +494,6 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
         )}
       </AnimatePresence>
 
-      {/* Skip logic analytics */}
-      {templates
-        .filter((t) => submissions.some((s) => s.templateId === t.id))
-        .map((t) => (
-          <SkipMetricsPanel key={t.id} templateId={t.id} />
-        ))}
     </>
   );
 }

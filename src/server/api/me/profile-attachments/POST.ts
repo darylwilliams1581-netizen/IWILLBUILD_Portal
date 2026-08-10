@@ -28,6 +28,7 @@ interface Attachment {
   url: string;
   size: number;
   uploadedAt: string;
+  mimeType?: string;
   mediaAssetId?: number;
 }
 
@@ -100,6 +101,7 @@ export default async function handler(req: Request, res: Response) {
       url: result.url,
       size: result.sizeBytes,
       uploadedAt: new Date().toISOString(),
+      mimeType: file.mimetype,
       mediaAssetId: result.mediaAssetId,
     };
 

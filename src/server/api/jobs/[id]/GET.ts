@@ -20,7 +20,11 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const jobId = parseInt(String(req.params.id), 10);
-    if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
+    // Guard: if the param is a named sub-route (e.g. "search", "report") that
+    // somehow reached this handler, return 404 rather than "Invalid job ID".
+    if (isNaN(jobId) || String(req.params.id) !== String(jobId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
 
     const job = await db.query.jobs.findFirst({
       where: eq(jobs.id, jobId),

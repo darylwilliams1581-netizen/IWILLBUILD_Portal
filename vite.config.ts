@@ -147,6 +147,9 @@ if (corsOrigins.length === 0) {
 // ---------------------------------------------------------------------------
 export default defineConfig(({ mode, isSsrBuild }) => ({
   envPrefix: ["VITE_", "SITE_"],
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
+  },
 
   plugins: [
     // ---------------------------------------------------------------------------

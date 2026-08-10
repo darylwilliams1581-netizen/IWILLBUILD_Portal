@@ -16,7 +16,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { platformOwnerGuard } from '../../../lib/platform-owner-guard.js';
+import { requirePlatformOwner as platformOwnerGuard } from '../../../lib/platform-owner-guard.js';
 
 interface TableReport {
   table: string;

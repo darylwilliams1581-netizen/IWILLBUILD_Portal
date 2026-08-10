@@ -17,6 +17,8 @@ import { lazy, Suspense, useEffect } from 'react';
 import { useShell } from '@/lib/useShell';
 import OfficeShell from '@/layouts/OfficeShell';
 import AppLockGate from '@/components/appLock/AppLockGate';
+import { DriverSessionProvider } from '@/lib/DriverSessionContext';
+import BugReportModal from '@/components/BugReportModal';
 
 // Lazy-load both home pages — only one will be rendered per session
 const HomeScreen   = lazy(() => import('@/pages/home'));
@@ -64,19 +66,25 @@ export default function ShellRouter() {
 
   if (effectiveIsAppShell) {
     return (
-      <AppLockGate>
-        <Suspense fallback={<PageLoader />}>
-          <HomeScreen />
-        </Suspense>
-      </AppLockGate>
+      <DriverSessionProvider>
+        <AppLockGate>
+          <Suspense fallback={<PageLoader />}>
+            <HomeScreen />
+          </Suspense>
+          <BugReportModal />
+        </AppLockGate>
+      </DriverSessionProvider>
     );
   }
 
   return (
-    <OfficeShell>
-      <Suspense fallback={<PageLoader />}>
-        <DashboardPage />
-      </Suspense>
-    </OfficeShell>
+    <DriverSessionProvider>
+      <OfficeShell>
+        <Suspense fallback={<PageLoader />}>
+          <DashboardPage />
+        </Suspense>
+      </OfficeShell>
+      <BugReportModal />
+    </DriverSessionProvider>
   );
 }

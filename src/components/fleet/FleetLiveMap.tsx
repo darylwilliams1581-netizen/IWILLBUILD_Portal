@@ -189,8 +189,8 @@ function loadGoogleMaps(): Promise<void> {
       // The callback name is passed as &callback= — Google calls it when the
       // Maps JS API is fully initialised (not just when the script tag loads).
       const callbackName = `__gmapsReady_${Date.now()}`;
-      (window as unknown as Record<string, unknown>)[callbackName] = () => {
-        delete (window as unknown as Record<string, unknown>)[callbackName];
+      (window as Record<string, unknown>)[callbackName] = () => {
+        delete (window as Record<string, unknown>)[callbackName];
         // Double-check: if gm_authFailure fired before the callback, reject
         if (window.__gmapsAuthError) {
           reject(new Error(window.__gmapsAuthError));
@@ -212,7 +212,7 @@ function loadGoogleMaps(): Promise<void> {
       script.async = true;
       script.defer = true;
       script.onerror = () => {
-        delete (window as unknown as Record<string, unknown>)[callbackName];
+        delete (window as Record<string, unknown>)[callbackName];
         // Classify the error — onerror fires for network failures and CSP blocks.
         // Check if the browser reported a CSP violation (best-effort).
         const cspBlocked = window.__gmapsAuthError?.includes('CSP') ?? false;
@@ -442,9 +442,23 @@ function LastKnownCard({
   );
 }
 
+// ── Stable position key — used to skip unnecessary marker updates ─────────────
+// Returns a string that only changes when the marker needs a visual update.
+// Deliberately omits heading (too noisy) and accuracy (irrelevant for display).
+function positionKey(s: LiveSession): string {
+  const lat = s.lat != null ? Number(s.lat).toFixed(5) : 'null';
+  const lng = s.lng != null ? Number(s.lng).toFixed(5) : 'null';
+  const spd = s.speed_kmh != null ? Math.round(Number(s.speed_kmh)) : 'null';
+  return `${lat},${lng},${spd}`;
+}
+
 // ── Map mode type ─────────────────────────────────────────────────────────────
 
 type MapMode = 'live' | 'last-known' | 'office' | 'empty';
+
+// Maximum number of live markers rendered on the map.
+// Above this threshold the map switches to list-only mode to prevent DOM overload.
+const MAX_MAP_MARKERS = 50;
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -452,9 +466,18 @@ export default function FleetLiveMap() {
   const mapRef          = useRef<HTMLDivElement>(null);
   const gMapRef         = useRef<GMap | null>(null);
   const liveMarkersRef  = useRef<Map<number, GMarker>>(new Map());
+  // Tracks the last position key per session so we skip icon/content rebuilds
+  // when the driver hasn't moved or changed speed since the last poll.
+  const markerKeyRef    = useRef<Map<number, string>>(new Map());
   const staticMarkersRef = useRef<GMarker[]>([]);
   const infoWinRef      = useRef<GInfoWindow | null>(null);
   const hasFitRef       = useRef(false);
+  // Tracks which session_id the info window is currently open for, so we can
+  // refresh its content when data updates without closing/reopening it.
+  const openInfoWinIdRef = useRef<number | null>(null);
+  // Tracks the session_id that was explicitly selected by a user click.
+  // We only pan when this ref changes — NOT on every data refresh.
+  const userSelectedIdRef = useRef<number | null>(null);
 
   const [sessions,       setSessions]       = useState<LiveSession[]>([]);
   const [lastKnown,      setLastKnown]      = useState<LastKnownPosition[]>([]);
@@ -617,14 +640,33 @@ export default function FleetLiveMap() {
     const map = gMapRef.current;
     const G   = window.google.maps;
 
+    // In list-only mode (>MAX_MAP_MARKERS drivers) we clear all map markers
+    // and rely solely on the sidebar list. This prevents DOM overload.
+    if (sessions.length > MAX_MAP_MARKERS) {
+      liveMarkersRef.current.forEach(m => m.setMap(null));
+      liveMarkersRef.current.clear();
+      markerKeyRef.current.clear();
+      infoWinRef.current?.close();
+      openInfoWinIdRef.current = null;
+      return;
+    }
+
     const activeIds = new Set(sessions.map(s => s.session_id));
 
     // Remove stale live markers
     liveMarkersRef.current.forEach((marker, id) => {
-      if (!activeIds.has(id)) { marker.setMap(null); liveMarkersRef.current.delete(id); }
+      if (!activeIds.has(id)) {
+        marker.setMap(null);
+        liveMarkersRef.current.delete(id);
+        markerKeyRef.current.delete(id);
+        if (openInfoWinIdRef.current === id) {
+          infoWinRef.current?.close();
+          openInfoWinIdRef.current = null;
+        }
+      }
     });
 
-    // Add / update live markers
+    // Add / update live markers — skip if position + speed unchanged
     sessions.forEach(session => {
       if (session.lat == null || session.lng == null) return;
       const lat = Number(session.lat);
@@ -632,15 +674,40 @@ export default function FleetLiveMap() {
       if (isNaN(lat) || isNaN(lng)) return;
 
       const isSelected = selectedLiveId === session.session_id;
-      const iconUrl    = buildLiveMarkerIcon(session.driver_name, isSelected);
-      const content    = buildLiveInfoContent(session);
+      const key        = positionKey(session);
+      const prevKey    = markerKeyRef.current.get(session.session_id);
+      const unchanged  = prevKey === key;
 
       const existing = liveMarkersRef.current.get(session.session_id);
       if (existing) {
-        existing.setPosition({ lat, lng });
-        existing.setIcon({ url: iconUrl, scaledSize: new G.Size(40, 48), anchor: new G.Point(20, 48) });
+        // Only update position + icon when the data actually changed.
+        // This avoids 100 SVG encodes + DOM mutations every 15s when drivers
+        // are stationary or moving slowly.
+        if (!unchanged) {
+          existing.setPosition({ lat, lng });
+          existing.setIcon({
+            url: buildLiveMarkerIcon(session.driver_name, isSelected),
+            scaledSize: new G.Size(40, 48),
+            anchor: new G.Point(20, 48),
+          });
+          markerKeyRef.current.set(session.session_id, key);
+        } else if (isSelected !== (existing.getZIndex() === 999)) {
+          // Selection state changed even though position didn't — update icon only
+          existing.setIcon({
+            url: buildLiveMarkerIcon(session.driver_name, isSelected),
+            scaledSize: new G.Size(40, 48),
+            anchor: new G.Point(20, 48),
+          });
+        }
         existing.setZIndex(isSelected ? 999 : 1);
+
+        // Refresh open info window content if this is the open session
+        if (openInfoWinIdRef.current === session.session_id && !unchanged) {
+          infoWinRef.current?.setContent(buildLiveInfoContent(session));
+        }
       } else {
+        // New marker
+        const iconUrl = buildLiveMarkerIcon(session.driver_name, isSelected);
         const marker = new G.Marker({
           position: { lat, lng },
           map,
@@ -649,11 +716,14 @@ export default function FleetLiveMap() {
           zIndex: isSelected ? 999 : 1,
         });
         marker.addListener('click', () => {
-          infoWinRef.current?.setContent(content);
+          infoWinRef.current?.setContent(buildLiveInfoContent(session));
           infoWinRef.current?.open(map, marker);
+          openInfoWinIdRef.current = session.session_id;
           setSelectedLiveId(session.session_id);
+          userSelectedIdRef.current = session.session_id;
         });
         liveMarkersRef.current.set(session.session_id, marker);
+        markerKeyRef.current.set(session.session_id, key);
       }
     });
 
@@ -747,9 +817,16 @@ export default function FleetLiveMap() {
     }
   }, [sessions, lastKnown, officePos, mapReady, selectedAssetId]);
 
-  // ── Pan to selected live driver ─────────────────────────────────────────────
+  // ── Pan to selected live driver — only on explicit user click ──────────────
+  // We track user-initiated selections in userSelectedIdRef. The pan effect
+  // only fires when selectedLiveId matches that ref, preventing the map from
+  // re-panning on every 15s data refresh when a driver is already selected.
   useEffect(() => {
     if (!selectedLiveId || !gMapRef.current) return;
+    // Only pan if this selection was triggered by a user click (not a data refresh)
+    if (userSelectedIdRef.current !== selectedLiveId) return;
+    userSelectedIdRef.current = null; // consume the intent — don't pan again on next refresh
+
     const session = sessions.find(s => s.session_id === selectedLiveId);
     if (!session || session.lat == null || session.lng == null) return;
     gMapRef.current.panTo({ lat: Number(session.lat), lng: Number(session.lng) });
@@ -758,14 +835,43 @@ export default function FleetLiveMap() {
     if (marker && infoWinRef.current) {
       infoWinRef.current.setContent(buildLiveInfoContent(session));
       infoWinRef.current.open(gMapRef.current, marker);
+      openInfoWinIdRef.current = selectedLiveId;
     }
   }, [selectedLiveId, sessions]);
 
-  // ── Initial load + auto-refresh every 5s ───────────────────────────────────
+  // ── Initial load + auto-refresh every 15s ──────────────────────────────────
+  // Pauses polling when the browser tab is hidden (Page Visibility API) to
+  // avoid wasting server resources when nobody is watching the map.
   useEffect(() => {
     void fetchSessions();
-    const interval = setInterval(() => void fetchSessions(true), 5_000);
-    return () => clearInterval(interval);
+
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    function startInterval() {
+      if (interval) return;
+      interval = setInterval(() => void fetchSessions(true), 15_000);
+    }
+    function stopInterval() {
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+
+    function onVisibilityChange() {
+      if (document.hidden) {
+        stopInterval();
+      } else {
+        // Immediately refresh when the tab becomes visible again, then restart
+        void fetchSessions(true);
+        startInterval();
+      }
+    }
+
+    startInterval();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      stopInterval();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [fetchSessions]);
 
   // ── Zoom / fit controls ─────────────────────────────────────────────────────
@@ -822,7 +928,7 @@ export default function FleetLiveMap() {
             <p className="text-sm font-bold text-slate-800">Fleet Map</p>
             <p className="text-[11px] text-slate-400 hidden sm:block">
               {mapMode === 'live'
-                ? `${sessions.length} active driver${sessions.length !== 1 ? 's' : ''} · refreshes every 5s`
+                ? `${sessions.length} active driver${sessions.length !== 1 ? 's' : ''} · refreshes every 15s`
                 : mapMode === 'last-known'
                   ? `${lastKnown.length} vehicle${lastKnown.length !== 1 ? 's' : ''} · last known positions`
                   : mapMode === 'office'
@@ -837,11 +943,18 @@ export default function FleetLiveMap() {
         {/* Mode badge */}
         {mapMode === 'live' && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
-              <MapPin size={10} />
-              {withGps.length} on map
-            </span>
-            {noGps.length > 0 && (
+            {sessions.length > MAX_MAP_MARKERS ? (
+              <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
+                <AlertCircle size={10} />
+                {sessions.length} drivers — list view
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
+                <MapPin size={10} />
+                {withGps.length} on map
+              </span>
+            )}
+            {noGps.length > 0 && sessions.length <= MAX_MAP_MARKERS && (
               <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
                 <AlertCircle size={10} />
                 {noGps.length} no GPS
@@ -902,9 +1015,11 @@ export default function FleetLiveMap() {
                   key={session.session_id}
                   session={session}
                   selected={selectedLiveId === session.session_id}
-                  onClick={() => setSelectedLiveId(
-                    selectedLiveId === session.session_id ? null : session.session_id
-                  )}
+                  onClick={() => {
+                    const next = selectedLiveId === session.session_id ? null : session.session_id;
+                    if (next !== null) userSelectedIdRef.current = next;
+                    setSelectedLiveId(next);
+                  }}
                 />
               ))
             ) : mapMode === 'last-known' ? (
@@ -1019,6 +1134,22 @@ export default function FleetLiveMap() {
             )}
           </div>
 
+          {/* ── List-only mode: too many drivers for map markers ── */}
+          {!loading && mapMode === 'live' && sessions.length > MAX_MAP_MARKERS && mapReady && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
+              <div className="bg-white/95 backdrop-blur-sm border border-amber-200 rounded-2xl px-5 py-5 shadow-lg text-center max-w-sm w-full">
+                <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-3">
+                  <Users size={22} className="text-amber-500" />
+                </div>
+                <p className="text-sm font-bold text-slate-700 mb-1">{sessions.length} active drivers</p>
+                <p className="text-xs text-slate-500 leading-snug">
+                  Map markers are disabled above {MAX_MAP_MARKERS} drivers to keep the app responsive.
+                  Use the driver list on the left to click a driver and zoom to their location.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Live mode: GPS status overlay (all drivers have no GPS) ── */}
           {!loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
@@ -1089,7 +1220,11 @@ export default function FleetLiveMap() {
                       key={session.session_id}
                       session={session}
                       selected={selectedLiveId === session.session_id}
-                      onClick={() => setSelectedLiveId(selectedLiveId === session.session_id ? null : session.session_id)}
+                      onClick={() => {
+                        const next = selectedLiveId === session.session_id ? null : session.session_id;
+                        if (next !== null) userSelectedIdRef.current = next;
+                        setSelectedLiveId(next);
+                      }}
                     />
                   ))
                   : lastKnown.map(pos => (

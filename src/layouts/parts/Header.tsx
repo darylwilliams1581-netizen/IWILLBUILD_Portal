@@ -71,9 +71,9 @@ export default function Header() {
           style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
         >
           <img
-            src="/assets/logo.png"
+            src="/airo-assets/images/logo/horizontal/light"
             alt="IWILLBUILD"
-            style={{ height: 44, width: 'auto', objectFit: 'contain', display: 'block' }}
+            style={{ height: 40, width: 'auto', maxWidth: 200, objectFit: 'contain', display: 'block' }}
           />
         </Link>
 

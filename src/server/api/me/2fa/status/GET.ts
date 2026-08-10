@@ -1,3 +1,10 @@
+/**
+ * GET /api/me/2fa/status
+ * Returns the current 2FA state for the authenticated user.
+ *
+ * Response:
+ *   { enabled: boolean, method: 'totp' | 'sms' | null, maskedPhone?: string }
+ */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
@@ -9,10 +16,26 @@ export default async function handler(req: Request, res: Response) {
     if (!auth) return;
 
     const rows = await db.execute(sql.raw(
-      `SELECT two_factor_enabled FROM \`user\` WHERE id = '${auth.session.user.id}' LIMIT 1`
-    )) as unknown as Array<{ two_factor_enabled: number }>;
+      `SELECT two_factor_enabled, sms_2fa_enabled, sms_2fa_phone
+       FROM \`user\` WHERE id = '${auth.session.user.id}' LIMIT 1`
+    )) as unknown as Array<{
+      two_factor_enabled: number;
+      sms_2fa_enabled: number;
+      sms_2fa_phone: string | null;
+    }>;
 
-    res.json({ enabled: !!rows[0]?.two_factor_enabled });
+    const row = rows[0];
+    const totpEnabled = !!row?.two_factor_enabled;
+    const smsEnabled = !!row?.sms_2fa_enabled;
+    const enabled = totpEnabled || smsEnabled;
+    const method = smsEnabled ? 'sms' : totpEnabled ? 'totp' : null;
+
+    let maskedPhone: string | undefined;
+    if (smsEnabled && row?.sms_2fa_phone) {
+      maskedPhone = row.sms_2fa_phone.replace(/\d(?=\d{4})/g, '*');
+    }
+
+    res.json({ enabled, method, maskedPhone });
   } catch (err) {
     console.error('[2fa/status]', err);
     res.status(500).json({ error: 'Failed to fetch 2FA status' });

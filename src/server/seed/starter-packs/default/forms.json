@@ -131,7 +131,7 @@
       { "label": "Recorded By", "fieldType": "short_text", "required": true },
       { "label": "Photo Category", "fieldType": "single_choice", "options": ["Progress", "Defect / Issue", "Before", "After", "Safety", "Damage", "Other"] },
       { "label": "Description", "fieldType": "long_text", "required": true },
-      { "label": "Photos", "fieldType": "photo", "required": true },
+      { "label": "Photos", "fieldType": "photo", "required": true, "settings": { "multiple": true } },
       { "label": "Notes", "fieldType": "long_text" }
     ]
   },
@@ -175,7 +175,7 @@
       { "label": "Site clean and tidy?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
       { "label": "All waste removed?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
       { "label": "Client satisfied with works?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "Pending review"] },
-      { "label": "Completion Photos", "fieldType": "photo" },
+      { "label": "Completion Photos", "fieldType": "photo", "settings": { "multiple": true } },
       { "label": "Client Signature", "fieldType": "signature", "required": true },
       { "label": "Contractor Signature", "fieldType": "signature", "required": true }
     ]

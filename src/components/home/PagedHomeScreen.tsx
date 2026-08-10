@@ -18,88 +18,103 @@ import {
   useState, useRef, useCallback, useEffect,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Monitor, FileText, ClipboardList, Calculator, BarChart2, ExternalLink, Wrench, BookOpen, List, Camera as CameraIcon, Search, X as XIcon, CheckCircle2, Loader2, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, ClipboardCheck, Camera as CameraIcon, Search, X as XIcon, Loader2, ChevronRight, User, LogOut } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
+import NotificationBell from '@/components/NotificationBell';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
 import NewJobModal from '@/components/NewJobModal';
-import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
-import { IosMediaInputs } from '@/components/IosMediaInputs';
-import PermissionExplainerModal from '@/components/PermissionExplainerModal';
+import { signOut } from '@/lib/auth/auth-client';
 
 interface JobOption { id: number; jobNumber: string | null; name: string; status: string; }
-type SheetState = 'closed' | 'job-select' | 'uploading' | 'done';
 
+/**
+ * JobPickerSheet — select a job then navigate to its Photos page.
+ * No camera launch, no upload state. The Job Photos page handles all
+ * photo-picker options (Photo Library / Take Photo / Choose Files).
+ */
 function JobPickerSheet({ onClose }: { onClose: () => void }) {
-  const [sheetState, setSheetState] = useState<SheetState>('job-select');
-  const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [doneJobId, setDoneJobId] = useState<number | null>(null);
-  const [doneJobName, setDoneJobName] = useState('');
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [allJobs, setAllJobs] = useState<JobOption[]>([]);
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
-  const pendingJobRef = useRef<JobOption | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function fetchJobs(q: string) {
+  // Load all active jobs once — no search route, no route-capture risk.
+  async function fetchJobs() {
     setLoadingJobs(true);
+    setFetchError(null);
     try {
-      const params = new URLSearchParams({ status: 'active', limit: '40' });
-      if (q) params.set('q', q);
-      const res = await fetch(`/api/jobs/search?${params}`, { credentials: 'include' });
-      const data = await res.json() as { jobs?: JobOption[] };
-      setJobs(data.jobs ?? []);
-    } catch { setJobs([]); }
-    finally { setLoadingJobs(false); }
-  }
-
-  useEffect(() => { void fetchJobs(''); setTimeout(() => inputRef.current?.focus(), 120); }, []);
-  useEffect(() => { const t = setTimeout(() => void fetchJobs(query), 250); return () => clearTimeout(t); }, [query]);
-
-  async function handlePhotoFile(file: File) {
-    const job = pendingJobRef.current;
-    if (!job) return;
-    setSheetState('uploading');
-    setUploadError(null);
-    try {
-      const fd = new FormData();
-      fd.append('photo', file, file.name);
-      const res = await fetch(`/api/jobs/${job.id}/photos`, { method: 'POST', credentials: 'include', body: fd });
-      if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? `Upload failed (${res.status})`); }
-      setDoneJobId(job.id);
-      setDoneJobName(job.name);
-      setSheetState('done');
+      const res = await fetch('/api/jobs', { credentials: 'include' });
+      const body = await res.json().catch(() => ({})) as unknown;
+      if (!res.ok) {
+        const errBody = body as { error?: string };
+        throw new Error(errBody.error ?? `Could not load jobs (${res.status})`);
+      }
+      const raw: unknown[] = Array.isArray(body) ? body : ((body as { jobs?: unknown[] }).jobs ?? []);
+      const validJobs: JobOption[] = raw
+        .map((j) => {
+          const job = j as Record<string, unknown>;
+          return {
+            id: Number(job.id),
+            jobNumber: (job.jobNumber ?? job.job_number ?? null) as string | null,
+            name: String(job.name ?? ''),
+            status: String(job.status ?? ''),
+          };
+        })
+        .filter((job) =>
+          Number.isInteger(job.id) &&
+          job.id > 0 &&
+          !['completed', 'cancelled', 'archived'].includes(job.status.toLowerCase()),
+        );
+      setAllJobs(validJobs);
+      setJobs(validJobs);
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed');
-      setSheetState('job-select');
+      setFetchError(err instanceof Error ? err.message : 'Could not load jobs');
+      setAllJobs([]);
+      setJobs([]);
+    } finally {
+      setLoadingJobs(false);
     }
   }
 
-  const picker = useIosMediaPicker(handlePhotoFile);
+  // Initial load — no auto-focus on touch devices (iOS Safari zooms inputs < 16px)
+  useEffect(() => {
+    void fetchJobs();
+    if (window.matchMedia('(pointer: fine)').matches) {
+      setTimeout(() => inputRef.current?.focus(), 120);
+    }
+  }, []);
 
-  const handleJobSelect = useCallback(async (job: JobOption) => {
-    pendingJobRef.current = job;
-    setSelectedJob(job);
-    await picker.openCamera({ direction: 'rear', captureQuality: 84 });
-  }, [picker]);
+  // Local filtering — no network request on every keystroke
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) { setJobs(allJobs); return; }
+    setJobs(
+      allJobs.filter(
+        (job) =>
+          job.name.toLowerCase().includes(q) ||
+          (job.jobNumber ?? '').toLowerCase().includes(q),
+      ),
+    );
+  }, [query, allJobs]);
+
+  const handleJobSelect = useCallback((job: JobOption) => {
+    // Validate numeric ID — never navigate with NaN, "search", or non-positive
+    const jobId = Number(job.id);
+    if (!Number.isInteger(jobId) || jobId <= 0) return;
+    onClose();
+    navigate(`/jobs/${jobId}/photos`);
+  }, [navigate, onClose]);
 
   return (
     <>
-      <IosMediaInputs picker={picker as Parameters<typeof IosMediaInputs>[0]['picker']} />
-      {picker.explainer && (
-        <PermissionExplainerModal
-          type={picker.explainer.type}
-          denied={picker.explainer.denied}
-          onNotNow={picker.explainer.onNotNow}
-          onEnable={picker.explainer.onEnable}
-        />
-      )}
-
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -108,17 +123,15 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       />
 
-      {/* Sheet — centered dialog on desktop, bottom sheet on mobile */}
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+      {/* Sheet — bottom sheet on mobile, centered dialog on desktop */}
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none w-full max-w-full overflow-x-hidden px-4">
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="pointer-events-auto w-full bg-white flex flex-col overflow-hidden shadow-2xl
-            rounded-t-3xl sm:rounded-2xl"
+          className="pointer-events-auto w-full max-w-[520px] bg-white flex flex-col overflow-hidden shadow-2xl rounded-t-3xl sm:rounded-2xl"
           style={{
-            width: 'min(520px, calc(100vw - 32px))',
             maxHeight: 'min(600px, calc(100dvh - 80px))',
             paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
           }}
@@ -129,133 +142,80 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* ── Job select ── */}
-          {sheetState === 'job-select' && (
-            <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
-                    <CameraIcon size={17} className="text-violet-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-gray-900 font-bold text-base leading-tight">Job photo</h2>
-                    <p className="text-gray-400 text-xs leading-tight mt-0.5">Select a job, then camera opens</p>
-                  </div>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
-                  aria-label="Close"
-                >
-                  <XIcon size={15} />
-                </button>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+                <CameraIcon size={17} className="text-violet-600" />
               </div>
+              <div className="min-w-0">
+                <h2 className="text-gray-900 font-bold text-base leading-tight truncate">Job photo</h2>
+                <p className="text-gray-400 text-xs leading-tight mt-0.5 truncate">Select a job to open its Photos page</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
+              aria-label="Close"
+            >
+              <XIcon size={15} />
+            </button>
+          </div>
 
-              {uploadError && (
-                <div className="mx-4 mb-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-600 shrink-0">
-                  {uploadError}
-                </div>
+          {fetchError && (
+            <div className="mx-4 mb-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-700 shrink-0 flex items-center justify-between gap-2">
+              <span>{fetchError}</span>
+              <button type="button" onClick={() => void fetchJobs()} className="underline underline-offset-2 shrink-0">Retry</button>
+            </div>
+          )}
+
+          {/* Search */}
+          <div className="px-4 pb-2 shrink-0">
+            <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+              <Search size={14} className="text-gray-400 shrink-0" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search jobs, job numbers…"
+                className="flex-1 bg-transparent text-base sm:text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
+                autoComplete="off" autoCorrect="off" spellCheck={false}
+              />
+              {loadingJobs && <Loader2 size={13} className="animate-spin text-gray-400 shrink-0" />}
+              {!loadingJobs && query && (
+                <button type="button" onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                  <XIcon size={13} />
+                </button>
               )}
+            </div>
+          </div>
 
-              <div className="px-4 pb-2 shrink-0">
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-                  <Search size={14} className="text-gray-400 shrink-0" />
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    placeholder="Search jobs, job numbers…"
-                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none min-w-0"
-                    autoComplete="off" autoCorrect="off" spellCheck={false}
-                  />
-                  {loadingJobs && <Loader2 size={13} className="animate-spin text-gray-400 shrink-0" />}
-                  {!loadingJobs && query && (
-                    <button type="button" onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
-                      <XIcon size={13} />
-                    </button>
+          <div className="h-px bg-gray-100 shrink-0 mx-4" />
+
+          {/* Job list */}
+          <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-1.5">
+            {jobs.length === 0 && !loadingJobs ? (
+              <p className="text-center text-gray-400 text-sm py-8">
+                {fetchError ? 'Could not load jobs — tap Retry above' : query ? 'No jobs match your search' : 'No active jobs found'}
+              </p>
+            ) : jobs.map(job => (
+              <button
+                key={job.id}
+                type="button"
+                onClick={() => handleJobSelect(job)}
+                className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
+              >
+                <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                  {job.jobNumber && (
+                    <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
                   )}
                 </div>
-              </div>
-
-              <div className="h-px bg-gray-100 shrink-0 mx-4" />
-
-              {/* Job list — flex-1 + min-h-0 so it scrolls inside the sheet */}
-              <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-1.5">
-                {jobs.length === 0 && !loadingJobs ? (
-                  <p className="text-center text-gray-400 text-sm py-8">
-                    {query ? 'No jobs match your search' : 'No active jobs found'}
-                  </p>
-                ) : jobs.map(job => (
-                  <button
-                    key={job.id}
-                    type="button"
-                    onClick={() => handleJobSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 border border-gray-200 rounded-2xl px-4 py-3 text-left transition-colors"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && (
-                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={14} className="text-gray-300 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Uploading ── */}
-          {sheetState === 'uploading' && (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 flex-1">
-              <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center">
-                <Loader2 size={28} className="animate-spin text-violet-600" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-gray-900">Uploading photo…</p>
-                {selectedJob && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    {selectedJob.jobNumber ? `#${selectedJob.jobNumber} — ` : ''}{selectedJob.name}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Done ── */}
-          {sheetState === 'done' && (
-            <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 flex-1">
-              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 size={28} className="text-emerald-500" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-gray-900">Photo uploaded</p>
-                <p className="text-xs text-gray-400 mt-1">{doneJobName}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap justify-center">
-                {doneJobId && (
-                  <Link
-                    to={`/jobs/${doneJobId}/photos`}
-                    onClick={onClose}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl"
-                  >
-                    View photos <ExternalLink size={11} />
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={() => { setUploadError(null); picker.clear(); setSheetState('job-select'); }}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 bg-white text-gray-700 text-xs font-semibold rounded-xl"
-                >
-                  <CameraIcon size={12} /> Another photo
-                </button>
-              </div>
-              <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mt-1">
-                Done
+                <ChevronRight size={14} className="text-gray-300 shrink-0" />
               </button>
-            </div>
-          )}
+            ))}
+          </div>
         </motion.div>
       </div>
     </>
@@ -360,25 +320,26 @@ function DashboardPage({
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
-      {/* Header row: title + Job Photo button + Add Job button */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-foreground">Dashboard</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenCamera}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
-          >
-            <CameraIcon size={13} strokeWidth={2.5} />
-            Job Photo
-          </button>
-          <button
-            onClick={onNewJob}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-transform"
-          >
-            <Plus size={13} strokeWidth={2.5} />
-            Add Job
-          </button>
-        </div>
+      {/* Full-width Job Photo + Add Job row */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onOpenCamera}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <CameraIcon size={20} strokeWidth={2} />
+          </div>
+          Job Photo
+        </button>
+        <button
+          onClick={onNewJob}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Plus size={20} strokeWidth={2} />
+          </div>
+          Add Job
+        </button>
       </div>
 
       {/* ── Quick-action grid ─────────────────────────────────────────────────── */}
@@ -438,16 +399,6 @@ function DashboardPage({
 // Shows management icon tiles (minus desktop-only ones) + a full-width
 // "Desktop features" link card at the bottom.
 
-const DESKTOP_ONLY_FEATURES = [
-  { label: 'Doc Studio',     icon: FileText,        desc: 'Build & manage document templates' },
-  { label: 'Form Studio',    icon: ClipboardList,   desc: 'Design custom forms & checklists' },
-  { label: 'Estimating',     icon: Calculator,      desc: 'Create detailed job estimates' },
-  { label: 'Asset Manager',  icon: Wrench,          desc: 'Equipment register & inspections' },
-  { label: 'Studio Library', icon: BookOpen,        desc: 'Shared content & block library' },
-  { label: 'Global Lists',   icon: List,            desc: 'Manage dropdown & list values' },
-  { label: 'User Logs',      icon: BarChart2,       desc: 'Sign-in, fleet & activity reports' },
-];
-
 /** Keys that are desktop-only and should be hidden from the Manage tile grid */
 const DESKTOP_ONLY_KEYS = new Set(['studio_docs', 'studio_forms', 'estimating', 'equipment']);
 
@@ -472,43 +423,6 @@ function ManagePage({
             <IconTile key={item.key} item={item} onNavigate={onNavigate} />
           ))}
         </div>
-
-        {/* ── Desktop features card ── */}
-        <a
-          href="https://iwillbuild.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex flex-col w-full rounded-2xl overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-900/60 to-violet-800/40 active:scale-[0.98] transition-transform"
-        >
-          {/* Header row */}
-          <div className="flex items-center justify-between px-4 pt-3 pb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-violet-500/30 flex items-center justify-center">
-                <Monitor size={14} className="text-violet-300" />
-              </div>
-              <span className="text-sm font-bold text-white">Desktop features</span>
-            </div>
-            <div className="flex items-center gap-1 text-violet-300">
-              <span className="text-[11px] font-semibold">iwillbuild.com</span>
-              <ExternalLink size={11} />
-            </div>
-          </div>
-
-          {/* Feature list */}
-          <div className="px-4 pb-4 flex flex-col gap-0">
-            {DESKTOP_ONLY_FEATURES.map(({ label, icon: Icon, desc }) => (
-              <div key={label} className="flex items-center gap-3 py-2 border-t border-white/10 first:border-t-0">
-                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                  <Icon size={14} className="text-violet-200" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[13px] font-semibold text-white leading-tight">{label}</span>
-                  <span className="text-[11px] text-violet-300/80 leading-tight">{desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </a>
       </div>
     </div>
   );
@@ -624,39 +538,65 @@ export default function PagedHomeScreen({
 
   return (
     <>
-    <div className="flex flex-col flex-1 min-h-0">      {/* ── Page tab bar ──────────────────────────────────────────────────────── */}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* ── Top bar: page tabs (centred) + utility buttons (right) ─────────── */}
       <div
-        className="flex items-center shrink-0 px-4 pt-2 pb-1 gap-1"
+        className="flex items-center shrink-0 px-2 pt-2 pb-1 gap-1.5 overflow-hidden"
         style={{ background: 'transparent' }}
       >
-        {PAGE_LABELS.map((label, i) => {
-          const Icon = PAGE_ICONS[i];
-          const active = page === i;
-          return (
-            <button
-              key={label}
-              onClick={() => setPage(i)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
-                active
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-white/60 text-gray-500 hover:bg-white/80'
-              }`}
-            >
-              <Icon size={11} strokeWidth={2.2} />
-              {label}
-            </button>
-          );
-        })}
+        {/* Centred tab pills — flex-1 so they fill available space, min-w-0 prevents overflow */}
+        <div className="flex-1 min-w-0 flex items-center justify-center gap-1">
+          {PAGE_LABELS.map((label, i) => {
+            const Icon = PAGE_ICONS[i];
+            const active = page === i;
+            return (
+              <button
+                key={label}
+                onClick={() => setPage(i)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${
+                  active
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-white/60 text-gray-500 hover:bg-white/80'
+                }`}
+              >
+                <Icon size={11} strokeWidth={2.2} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Utility buttons — notification, profile, logout — fixed width, never shrink */}
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="shrink-0">
+            <NotificationBell />
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-8 h-8 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all shrink-0"
+            aria-label="Profile"
+          >
+            <User size={15} className="text-white" />
+          </button>
+          <button
+            onClick={async () => { await signOut(); navigate('/login'); }}
+            className="w-8 h-8 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all shrink-0"
+            aria-label="Log out"
+            title="Log out"
+          >
+            <LogOut size={13} className="text-slate-200" />
+          </button>
+        </div>
       </div>
 
       {/* ── Swipe container ───────────────────────────────────────────────────── */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden relative"
+        className="flex-1 min-h-0 relative"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: 'pan-y' }}
+        style={{ touchAction: 'pan-y', overflowX: 'clip', overflowY: 'visible' }}
       >
         {/* Track — 3 pages wide, slides horizontally */}
         <div
@@ -677,7 +617,13 @@ export default function PagedHomeScreen({
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} onOpenCamera={() => setCameraSheetOpen(true)} />
+            <DashboardPage
+              userId={userId}
+              role={role}
+              onNavigate={onNavigate}
+              onNewJob={() => setNewJobOpen(true)}
+              onOpenCamera={() => setCameraSheetOpen(true)}
+            />
           </div>
 
           {/* Page 1 — Field: no scroll, tiles stretch to fill height */}

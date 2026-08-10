@@ -7,7 +7,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import FormRunner, { type FormSubmission } from '@/components/job/FormRunner';
+import FormRunner from '@/components/job/FormRunner';
+import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
 
 export default function JobFormRunnerPage() {

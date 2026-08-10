@@ -23,7 +23,7 @@ import { invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
-import NotificationBell from '@/components/NotificationBell';
+import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
@@ -92,27 +92,9 @@ function Sheet({
   );
 }
 
-// ── Camera job-picker sheet ───────────────────────────────────────────────────
+// ── Notes job picker sheet ────────────────────────────────────────────────────
 
 interface JobOption { id: number; name: string; jobNumber?: string | null; }
-
-function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
-  return (
-    <JobPickerSheet
-      open={open}
-      onClose={onClose}
-      title="Select Job"
-      subtitle="Choose a job to add photos to"
-      iconBg="bg-violet-100"
-      iconFg="text-violet-600"
-      Icon={Camera}
-      onSelect={(job) => navigate(`/jobs/${job.id}?tab=photos`)}
-    />
-  );
-}
-
-// ── Notes job picker sheet ────────────────────────────────────────────────────
 
 function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -123,7 +105,7 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (!open) { setQuery(''); return; }
     setLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
@@ -260,7 +242,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   useEffect(() => {
     if (!open) return;
     setJobsLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         const list = Array.isArray(data) ? data : (data.jobs ?? []);
@@ -425,6 +407,8 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
                       <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
                         <Loader2 size={14} className="animate-spin" /> Loading jobs…
                       </div>
+                    ) : jobs.length === 0 ? (
+                      <p className="text-gray-400 text-sm py-2">No active jobs found.</p>
                     ) : (
                       <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
                         {jobs.map(job => (
@@ -1519,7 +1503,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (!open) return;
     setJobsLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         const list = Array.isArray(data) ? data : (data.jobs ?? []);
@@ -1939,7 +1923,7 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
       .then(r => r.json())
       .then((data: { jobs?: JobOption[] } | JobOption[]) => {
         const list = Array.isArray(data) ? data : (data.jobs ?? []);
@@ -2158,7 +2142,6 @@ export default function HomeScreen() {
   const [dashOpen, setDashOpen] = useState(false); // kept for ?panel=dashboard handler below
   const [notesOpen, setNotesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [cameraPickerOpen, setCameraPickerOpen] = useState(false);
   const [notesPickerOpen, setNotesPickerOpen] = useState(false);
   const [delaysPickerOpen, setDelaysPickerOpen] = useState(false);
   const [costsPickerOpen, setCostsPickerOpen] = useState(false);
@@ -2205,7 +2188,6 @@ export default function HomeScreen() {
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
     // job-card now navigates directly to /job-cards
-    if (href === '?panel=camera') { navigate('/camera'); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
   }
@@ -2287,36 +2269,9 @@ export default function HomeScreen() {
           boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Row 1: date + actions */}
+        {/* Row 1: date pill */}
         <div className="flex items-center justify-between mb-2.5">
-          <p className="text-white/30 text-[10px] font-semibold tracking-[0.07em] uppercase">{dateStr}</p>
-          <div className="flex items-center gap-1 shrink-0">
-            <div className="[&_button]:text-white/40 [&_button:hover]:text-white [&_button]:rounded-full [&_button]:p-1.5 [&_button]:transition-colors">
-              <NotificationBell />
-            </div>
-            <button
-              onClick={() => navigate('/profile')}
-              className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-400/25 flex items-center justify-center hover:bg-violet-500/35 active:scale-95 transition-all"
-              aria-label="Profile"
-            >
-              <User size={13} className="text-violet-300" />
-            </button>
-            <button
-              onClick={async () => {
-                await signOut();
-                invalidateMeCache();
-                invalidateTerminologyCache();
-                invalidateSubscriptionCache();
-                invalidateSupportModeCache();
-                navigate('/login');
-              }}
-              title="Log out"
-              aria-label="Log out"
-              className="w-7 h-7 rounded-full bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/25 hover:border-red-400/30 active:scale-95 transition-all"
-            >
-              <LogOut size={12} className="text-white/30" />
-            </button>
-          </div>
+          <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span>
         </div>
         {/* Row 2: greeting — large, bold, personal */}
         <div className="flex items-end justify-between gap-3">
@@ -2334,26 +2289,15 @@ export default function HomeScreen() {
               {firstName}
             </p>
           </div>
-          {/* Company logo / initial badge */}
+          {/* System logo badge — display only */}
           <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, rgba(124,58,237,0.35) 0%, rgba(251,146,60,0.20) 100%)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
-            }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden"
           >
-            {me?.company?.logo_url ? (
-              <img
-                src={me.company.logo_url}
-                alt={me.company.name ?? 'Company logo'}
-                className="w-full h-full object-contain p-1"
-              />
-            ) : (
-              <span className="text-white font-black text-[15px] leading-none select-none">
-                {(me?.company?.name ?? 'I')[0].toUpperCase()}
-              </span>
-            )}
+            <img
+              src="/airo-assets/images/logo/primary"
+              alt="IWILLBUILD"
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
       </div>
@@ -2398,7 +2342,6 @@ export default function HomeScreen() {
       </Sheet>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <CameraJobPickerSheet open={cameraPickerOpen} onClose={() => setCameraPickerOpen(false)} />
       <NotesJobPickerSheet open={notesPickerOpen} onClose={() => setNotesPickerOpen(false)} />
       <DelaysJobPickerSheet open={delaysPickerOpen} onClose={() => setDelaysPickerOpen(false)} />
       <CostsJobPickerSheet open={costsPickerOpen} onClose={() => setCostsPickerOpen(false)} />

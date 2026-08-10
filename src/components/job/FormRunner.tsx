@@ -11,10 +11,12 @@ import {
   Send,
   Printer,
   Pencil,
+  Mail,
+  X,
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
-import { type FormField, type FieldLogic, parseLogic, parseSettings } from '../FormFieldBuilder';
+import { type FormField, parseSettings } from '../FormFieldBuilder';
 import SignaturePad, {
   type SignatureAnswer,
   type MultiSignatureAnswer,
@@ -26,107 +28,24 @@ import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface FormSubmission {
-  id: number;
-  jobId: number;
-  templateId: number;
-  status: string;
-  answersJson: string | null;
-  completedByName?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// Shared types/utils live in form-types.ts (keeps this file a pure default export for Fast Refresh)
+import type { FormSubmission, GpsAnswer } from './form-types';
+import { isGpsAnswer, splitIntoPages } from './form-types';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 type Answers = Record<number, AnswerValue>; // fieldId -> value
 
-// ── GPS structured answer ─────────────────────────────────────────────────────
-
-export interface GpsAnswer {
-  lat: number;
-  lng: number;
-  accuracy: number; // metres
-  timestamp: string; // ISO
-  address?: string;  // manual override
-}
-
-export function isGpsAnswer(v: unknown): v is GpsAnswer {
-  return typeof v === 'object' && v !== null && 'lat' in v && 'lng' in v;
-}
-
-export function formatGps(g: GpsAnswer): string {
-  if (g.address) return `${g.address} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})`;
-  return `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)} ±${Math.round(g.accuracy)}m`;
-}
-
-// ── Page-splitting utility ────────────────────────────────────────────────────
-// Splits a flat field list into pages at every page_break field.
-// Page 0 = fields before the first page_break.
-// Each page_break starts a new page (the page_break field itself is NOT included).
-
-export function splitIntoPages(fields: FormField[]): FormField[][] {
-  const pages: FormField[][] = [[]];
-  for (const field of fields) {
-    if (field.fieldType === 'page_break') {
-      pages.push([]);
-    } else {
-      pages[pages.length - 1].push(field);
-    }
-  }
-  // Drop trailing empty pages
-  while (pages.length > 1 && pages[pages.length - 1].length === 0) pages.pop();
-  return pages;
-}
-
 // ── Logic evaluator ───────────────────────────────────────────────────────────
 
-function evaluateLogic(logic: FieldLogic, answers: Answers): boolean {
-  if (!logic.enabled) return true;
-  const { action, triggerFieldId, operator, value } = logic;
-  if (!triggerFieldId) return true;
-
-  const triggerAnswer = answers[triggerFieldId];
-  let conditionMet = false;
-
-  switch (operator) {
-    case 'is_checked':
-      conditionMet = triggerAnswer === true;
-      break;
-    case 'is_not_checked':
-      conditionMet = triggerAnswer !== true;
-      break;
-    case 'equals':
-      conditionMet = Array.isArray(triggerAnswer)
-        ? triggerAnswer.includes(value)
-        : String(triggerAnswer ?? '').toLowerCase() === value.toLowerCase();
-      break;
-    case 'not_equals':
-      conditionMet = Array.isArray(triggerAnswer)
-        ? !triggerAnswer.includes(value)
-        : String(triggerAnswer ?? '').toLowerCase() !== value.toLowerCase();
-      break;
-    case 'contains':
-      conditionMet = Array.isArray(triggerAnswer)
-        ? triggerAnswer.some((v) => v.toLowerCase().includes(value.toLowerCase()))
-        : String(triggerAnswer ?? '').toLowerCase().includes(value.toLowerCase());
-      break;
-    default:
-      conditionMet = false;
-  }
-
-  return action === 'show' ? conditionMet : !conditionMet;
-}
-
-function useFormLogic(fields: FormField[], answers: Answers): Set<number> {
+function useFormLogic(fields: FormField[]): Set<number> {
   return useMemo(() => {
+    // Skip logic removed — all fields are always visible
     const visible = new Set<number>();
     for (const field of fields) {
-      if (evaluateLogic(parseLogic(field.logicJson), answers)) {
-        visible.add(field.id);
-      }
+      visible.add(field.id);
     }
     return visible;
-  }, [fields, answers]);
+  }, [fields]);
 }
 
 // ── Read-only answer display ──────────────────────────────────────────────────
@@ -160,7 +79,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   const [currentPage, setCurrentPage] = useState(0);
   const formTopRef = useRef<HTMLDivElement>(null);
 
-  const visibleFields = useFormLogic(fields, answers);
+  const visibleFields = useFormLogic(fields);
 
   // Split fields into pages at page_break boundaries
   const pages = useMemo(() => splitIntoPages(fields), [fields]);
@@ -302,7 +221,53 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
     }
   }
 
+  // ── Email modal state ────────────────────────────────────────────────────────
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  async function sendFormEmail() {
+    if (!emailTo.trim()) return;
+    setEmailSending(true);
+    setEmailError('');
+    try {
+      const res = await fetch(`/api/job-forms/${submission.id}/send-email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailTo.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send');
+      setEmailSent(true);
+      setTimeout(() => { setEmailModalOpen(false); setEmailSent(false); setEmailTo(''); }, 2000);
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : 'Failed to send');
+    } finally {
+      setEmailSending(false);
+    }
+  }
+
   // ── Print / PDF ─────────────────────────────────────────────────────────────
+
+  // Fetch a URL (auth-gated) and return a base64 data URL, or null on failure
+  async function fetchAsDataUrl(url: string): Promise<string | null> {
+    try {
+      const r = await fetch(url, { credentials: 'include' });
+      if (!r.ok) return null;
+      const blob = await r.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
 
   async function triggerPrint(
     printFields: FormField[],
@@ -323,6 +288,23 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         pdfStyle = d.pdf ?? {};
       }
     } catch { /* use defaults */ }
+
+    // Pre-fetch all photo answers as base64 data URLs so the print window can render them
+    // (the print window has no session cookies, so auth-gated R2 URLs won't load directly)
+    const photoDataUrls: Record<number, string[]> = {};
+    await Promise.all(
+      printFields
+        .filter((f) => (f.fieldType === 'photo') && printVisible.has(f.id))
+        .map(async (f) => {
+          const val = printAnswers[f.id];
+          if (!val) return;
+          const urls: string[] = Array.isArray(val)
+            ? val.filter((v): v is string => typeof v === 'string')
+            : typeof val === 'string' ? [val] : [];
+          const dataUrls = await Promise.all(urls.map((u) => fetchAsDataUrl(u)));
+          photoDataUrls[f.id] = dataUrls.filter((d): d is string => d !== null);
+        })
+    );
 
     const showFooter = pdfStyle.showFooterOnForms !== false;
 
@@ -376,8 +358,21 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         } else if (field.fieldType === 'url') {
           const safeHref = safeUrl(val);
           answerHtml = safeHref ? `<a href="${safeHref}">${escapeHtml(String(val))}</a>` : escapeHtml(String(val));
-        } else if (field.fieldType === 'long_text') {
+        } else if (field.fieldType === 'long_text' || field.fieldType === 'textarea') {
           answerHtml = `<p class="long-text">${escapeHtml(String(val)).replace(/\n/g, '<br/>')}</p>`;
+        } else if (field.fieldType === 'photo') {
+          const dataUrls = photoDataUrls[field.id] ?? [];
+          if (dataUrls.length > 0) {
+            answerHtml = `<div class="photo-grid">${dataUrls.map((d) =>
+              `<img src="${d}" class="photo-img" alt="Photo" />`
+            ).join('')}</div>`;
+          } else {
+            // Fallback: show count if we couldn't fetch
+            const urls: string[] = Array.isArray(val)
+              ? val.filter((v): v is string => typeof v === 'string')
+              : typeof val === 'string' ? [val] : [];
+            answerHtml = `<span class="no-answer">${urls.length} photo${urls.length !== 1 ? 's' : ''} (could not load for print)</span>`;
+          }
         } else if (field.fieldType === 'location') {
           const gps = isGpsAnswer(val) ? val : null;
           if (gps) {
@@ -416,7 +411,8 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
             }
           }
         } else {
-          answerHtml = `<span>${String(val)}</span>`;
+          // Handles: short_text, text, number, date, datetime, single_choice, select, and any other plain-value type
+          answerHtml = `<span>${escapeHtml(String(val))}</span>`;
         }
       }
 
@@ -477,6 +473,9 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   .gps-time { font-size: 11px; color: #4ade80; margin-top: 2px; }
   .gps-link { font-size: 11px; color: #16a34a; text-decoration: underline; display: inline-block; margin-top: 4px; }
   .sig-date { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+
+  .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .photo-img { width: 180px; height: 135px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; page-break-inside: avoid; }
 
   .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
   .disclaimer { font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; padding: 10px 0; line-height: 1.6; margin-top: 8px; }
@@ -577,6 +576,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   // ── Completed / read-only view ──────────────────────────────────────────────
   if (readOnly) {
     return (
+      <>
       <div className="flex flex-col gap-0 max-w-2xl mx-auto w-full">
         {/* Header */}
         <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
@@ -598,6 +598,12 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
             >
               <Printer size={12} /> Print / PDF
+            </button>
+            <button
+              onClick={() => { setEmailTo(''); setEmailError(''); setEmailSent(false); setEmailModalOpen(true); }}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
+            >
+              <Mail size={12} /> Send Email
             </button>
             <button
               onClick={reopenForm}
@@ -669,6 +675,65 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
           </button>
         </div>
       </div>
+
+      {/* ── Send Email Modal ─────────────────────────────────────────────────── */}
+      {emailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setEmailModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Mail size={15} className="text-blue-600" />
+                </div>
+                <h3 className="font-bold text-slate-800 text-sm">Send Form via Email</h3>
+              </div>
+              <button onClick={() => setEmailModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">A summary of <span className="font-semibold text-slate-700">{templateName}</span> will be sent to the address below.</p>
+            {emailSent ? (
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                <CheckCircle2 size={15} /> Email sent successfully!
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Recipient email</label>
+                  <input
+                    type="email"
+                    value={emailTo}
+                    onChange={(e) => setEmailTo(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                    onKeyDown={(e) => { if (e.key === 'Enter') void sendFormEmail(); }}
+                    autoFocus
+                  />
+                </div>
+                {emailError && (
+                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                    <AlertCircle size={12} /> {emailError}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setEmailModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void sendFormEmail()}
+                    disabled={emailSending || !emailTo.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold disabled:opacity-50 transition-colors"
+                  >
+                    {emailSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    {emailSending ? 'Sending…' : 'Send'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
@@ -778,11 +843,10 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         </div>
       )}
 
-      {/* Fields — current page only */}
+      {/* Fields — current page only, all shown (skip logic disabled) */}
       <div className="w-full flex flex-col gap-5">
         <AnimatePresence mode="popLayout">
           {currentPageFields.map((field) => {
-            if (!visibleFields.has(field.id)) return null;
             return (
               <motion.div key={field.id} layout
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}

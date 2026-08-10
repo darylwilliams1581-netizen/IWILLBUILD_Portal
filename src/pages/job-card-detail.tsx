@@ -22,9 +22,16 @@ import {
   ExternalLink, Upload, PenLine, RotateCcw, Image,
 } from 'lucide-react';
 
+import { useUploadQueue } from '@/hooks/useUploadQueue';
+import PhotoEditor from '@/components/PhotoEditor';
+import type { EditorConfig } from '@/components/PhotoEditor';
+import type { JobPhoto } from '@/components/JobPhotos';
+import { usePermissions } from '@/lib/usePermissions';
+import { JOB_CARD_PHOTO_EDITOR_ENABLED } from '@/lib/featureFlags';
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Material { id?: number; description: string; cost: number; }
-interface Photo { id: number; file_path: string; file_name: string; caption: string | null; }
+interface Photo { id: number; file_path: string; file_name: string; caption: string | null; url?: string; }
 
 interface JobCard {
   id: number;
@@ -241,41 +248,139 @@ function SignaturePad({ value, onChange }: { value: string | null; onChange: (v:
 }
 
 // ── Photo upload section ──────────────────────────────────────────────────────
-function PhotoSection({ cardId, photos, onPhotosChange }: {
+function PhotoSection({ cardId, photos, onPhotosChange, cardTitle }: {
   cardId: number;
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
+  cardTitle?: string;
 }) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  // Single file input — NO capture attribute.
-  // On iOS this triggers the native "Take Photo / Photo Library / Browse" sheet.
-  // On Android it opens the system file picker with camera option.
-  // This is the exact same pattern used by FilePanel which works reliably.
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isAdmin } = usePermissions();
+  const editorEnabled = JOB_CARD_PHOTO_EDITOR_ENABLED && isAdmin;
 
-  async function uploadFiles(files: File[]) {
-    if (!files.length) return;
-    setUploading(true);
-    setUploadError('');
-    try {
-      const fd = new FormData();
-      for (const f of files) fd.append('photos', f);
-      const res = await fetch(`/api/job-cards/${cardId}/photos`, {
-        method: 'POST',
-        credentials: 'include',
-        body: fd,
-      });
-      const data = await res.json() as { photos?: Photo[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-      onPhotosChange([...photos, ...(data.photos ?? [])]);
-    } catch (err) {
-      setUploadError(String((err as Error).message));
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const [editorConfig, setEditorConfig] = useState<EditorConfig | null>(null);
+
+  /** Build an EditorConfig adapter for a Job Card photo */
+  function buildConfig(p: Photo): EditorConfig {
+    const cardIdStr = String(cardId);
+    const photoIdStr = String(p.id);
+
+    return {
+      imageUrl:  p.url ?? p.file_path,
+      photoId:   p.id,
+      label:     p.caption,
+      createdAt: '',          // job_card_photos has no created_at exposed in the Photo type yet
+      isLocked:  false,       // locked column added by migration; default false until row is updated
+      canEdit:   editorEnabled,
+      jobName:   cardTitle,
+
+      onClose: () => setEditorConfig(null),
+
+      onDownload: () => {
+        const url = `/api/job-cards/${cardIdStr}/photos/${photoIdStr}/download`;
+        fetch(url, { credentials: 'include' })
+          .then((r) => {
+            const cd = r.headers.get('Content-Disposition') ?? '';
+            let name = '';
+            const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utf8Match) { try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ } }
+            if (!name) { const m = cd.match(/filename="?([^";]+)"?/i); if (m) name = m[1].trim(); }
+            if (!name) name = p.caption ?? p.file_name ?? `job-card-${cardId}-photo-${p.id}.jpg`;
+            return r.blob().then((blob) => ({ blob, name }));
+          })
+          .then(({ blob, name }) => {
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl; a.download = name;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+          })
+          .catch(console.error);
+      },
+
+      onSaveLabel: async (label) => {
+        const res = await fetch(`/api/job-cards/${cardIdStr}/photos/${photoIdStr}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ caption: label }),
+        });
+        if (!res.ok) throw new Error('Failed to save label');
+        // Update local state so the grid reflects the new caption
+        onPhotosChange(photos.map((ph) => ph.id === p.id ? { ...ph, caption: label } : ph));
+      },
+
+      onSaveAndLock: async (blob) => {
+        const fd = new FormData();
+        fd.append('photo', blob, 'edited.jpg');
+        const res = await fetch(`/api/job-cards/${cardIdStr}/photos/${photoIdStr}/save-and-lock`, {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+        });
+        const data = await res.json() as { ok?: boolean; error?: string; photo?: Record<string, unknown> };
+        if (!res.ok) throw new Error(data.error ?? 'Save & Lock failed');
+        // Refresh the photo list from the updated record
+        if (data.photo) {
+          const updated = data.photo;
+          onPhotosChange(photos.map((ph) =>
+            ph.id === p.id
+              ? {
+                  ...ph,
+                  file_path: String(updated.file_path ?? ph.file_path),
+                  url: typeof updated.url === 'string' ? updated.url : ph.url,
+                }
+              : ph
+          ));
+        }
+      },
+
+      onSaved: () => setEditorConfig(null),
+    };
   }
+
+  // Legacy adapter: map job-card Photo → minimal JobPhoto for readOnly view
+  // (used when feature flag is off or user is not admin)
+  function toJobPhoto(p: Photo): JobPhoto {
+    return {
+      id: p.id,
+      jobId: 0,
+      companyId: 0,
+      filename: p.file_name,
+      originalName: p.file_name,
+      label: p.caption,
+      mimeType: null,
+      sizeBytes: null,
+      uploadedByUserId: null,
+      uploadedByName: null,
+      createdAt: '',
+      url: p.url ?? p.file_path,
+      thumbnailUrl: p.url ?? p.file_path,
+      previewUrl: p.url ?? p.file_path,
+      imageWidth: null,
+      imageHeight: null,
+      status: 'draft',
+      lockedAt: null,
+      lockedByUserId: null,
+      lockedByName: null,
+      mediaAssetId: null,
+    };
+  }
+
+  const [legacyEditorPhoto, setLegacyEditorPhoto] = useState<JobPhoto | null>(null);
+  const q = useUploadQueue({
+    endpoint: `/api/job-cards/${cardId}/photos`,
+    fieldName: 'photos',
+    accept: 'image/*',
+    multiple: true,
+    onSuccess: (results) => {
+      // Server returns { photos: [...] } — reload from the first result's response
+      const resp = results[0]?.response as { photos?: Photo[] } | undefined;
+      if (resp?.photos) onPhotosChange([...photos, ...resp.photos]);
+    },
+  });
+  const uploading = q.isUploading;
+  const uploadError = q.queue.find(i => i.status === 'failed')?.error ?? '';
+  const fileInputRef = q.inputRef;
 
   async function handleDelete(photoId: number) {
     try {
@@ -286,6 +391,14 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
       onPhotosChange(photos.filter(p => p.id !== photoId));
     } catch {
       // silent — photo stays in list
+    }
+  }
+
+  function handlePhotoClick(p: Photo) {
+    if (editorEnabled) {
+      setEditorConfig(buildConfig(p));
+    } else {
+      setLegacyEditorPhoto(toJobPhoto(p));
     }
   }
 
@@ -305,24 +418,49 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </button>
       }
     >
-      {/* Single input — no capture= so iOS shows its native picker sheet */}
+      {/* Hidden file input — no capture= so iOS shows the native picker sheet
+          (Take Photo / Photo Library / Browse). capture= forces camera-only
+          and can crash if permission not yet granted on iOS. */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={e => {
-          const files = Array.from(e.target.files ?? []);
-          if (files.length) void uploadFiles(files);
-          e.target.value = '';
-        }}
+        onChange={q.handleInputChange}
       />
 
       {uploadError && (
-        <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertCircle size={13} className="shrink-0" />
-          {uploadError}
+        <div className="mb-3 bg-red-50 border border-red-200 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-red-200">
+            <AlertCircle size={13} className="shrink-0 text-red-600" />
+            <span className="text-sm font-semibold text-red-700 flex-1">Upload failed</span>
+            <button
+              onClick={() => {
+                void navigator.clipboard.writeText(uploadError).then(() => {
+                  const btn = document.getElementById('copy-upload-error-btn');
+                  if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
+                });
+              }}
+              id="copy-upload-error-btn"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+            >
+              Copy
+            </button>
+            <button
+              onClick={() => q.clearAll()}
+              className="text-[11px] font-semibold px-2 py-0.5 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          {/* user-select: text so the message is selectable on mobile */}
+          <pre
+            className="px-3 py-2 text-[11px] text-red-800 whitespace-pre-wrap break-all font-mono leading-relaxed"
+            style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+          >
+            {uploadError}
+          </pre>
         </div>
       )}
 
@@ -339,14 +477,18 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map(p => (
             <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
-              <a href={p.file_path} target="_blank" rel="noopener noreferrer">
+              <button
+                type="button"
+                className="w-full h-full"
+                onClick={() => handlePhotoClick(p)}
+              >
                 <img
-                  src={p.file_path}
+                  src={p.url ?? p.file_path}
                   alt={p.caption ?? p.file_name}
                   className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                   loading="lazy"
                 />
-              </a>
+              </button>
               <button
                 onClick={() => void handleDelete(p.id)}
                 className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -364,6 +506,23 @@ function PhotoSection({ cardId, photos, onPhotosChange }: {
         </div>
       )}
     </Section>
+    {/* Full editor — admins with flag enabled */}
+    {editorConfig && (
+      <PhotoEditor
+        config={editorConfig}
+        onClose={editorConfig.onClose}
+        onSaved={() => setEditorConfig(null)}
+      />
+    )}
+    {/* Legacy read-only viewer — non-admins or flag disabled */}
+    {legacyEditorPhoto && (
+      <PhotoEditor
+        photo={legacyEditorPhoto}
+        readOnly
+        onClose={() => setLegacyEditorPhoto(null)}
+        onSaved={() => setLegacyEditorPhoto(null)}
+      />
+    )}
     </>
   );
 }
@@ -1241,6 +1400,7 @@ export default function JobCardDetailPage() {
                 cardId={card.id}
                 photos={card.photos}
                 onPhotosChange={(photos) => setCard(c => c ? { ...c, photos } : c)}
+                cardTitle={card.card_number}
               />
             </div>
           )}

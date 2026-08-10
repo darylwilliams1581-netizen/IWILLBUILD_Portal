@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode,
   Download, Home, Upload, Share2, LayoutGrid, CheckSquare, Send,
-  Grid2x2, Grid3x3, Camera,
+  Grid2x2, Grid3x3, Camera, Trash2,
 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -256,6 +256,12 @@ export default function JobPhotosPage() {
           {selectMode && selectedCount > 0 && (
             <>
               <button
+                onClick={() => photosRef.current?.deleteSelected()}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded transition-colors"
+              >
+                <Trash2 size={12} /> Delete
+              </button>
+              <button
                 onClick={handleDownloadSelected}
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors"
               >
@@ -403,6 +409,16 @@ export default function JobPhotosPage() {
                 </p>
               </div>
 
+              {/* Delete selected */}
+              <button
+                onClick={() => photosRef.current?.deleteSelected()}
+                disabled={selectedCount === 0}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-200 disabled:opacity-40 text-gray-600 hover:text-red-600 transition-colors touch-manipulation shrink-0"
+              >
+                <Trash2 size={16} />
+                <span className="text-[10px] font-semibold leading-none">Delete</span>
+              </button>
+
               {/* Download selected */}
               <button
                 onClick={handleDownloadSelected}
@@ -426,33 +442,6 @@ export default function JobPhotosPage() {
           </div>
         )}
       </div>
-
-      {/* ── Floating camera FAB — mobile only, above bottom bar ── */}
-      {!selectMode && (
-        <div
-          className="fixed z-30 left-1/2 -translate-x-1/2 md:hidden"
-          style={{ bottom: 'calc(max(env(safe-area-inset-bottom), 8px) + 56px + 16px)' }}
-        >
-          <motion.button
-            onClick={() => photosRef.current?.openCamera()}
-            disabled={uploading || atLimit}
-            aria-label="Take a photo"
-            title="Take a photo"
-            animate={{ rotate: [0, -6, 6, -4, 4, -2, 2, 0] }}
-            transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }}
-            whileTap={{ scale: 0.92 }}
-            className="w-16 h-16 rounded-full disabled:opacity-50 touch-manipulation overflow-hidden p-0 border-0 bg-transparent"
-            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
-          >
-            <img
-              src="/airo-assets/images/ui/camera-fab-icon"
-              alt="Camera"
-              className="w-full h-full object-cover rounded-full"
-              draggable={false}
-            />
-          </motion.button>
-        </div>
-      )}
 
       {/* ── Share link sheet ── */}
       <AnimatePresence>
