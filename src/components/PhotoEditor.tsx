@@ -27,7 +27,7 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
-import { motion } from 'motion/react';
+
 import {
   X,
   RotateCcw,
@@ -497,168 +497,6 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]">
-      {/* ── Safe-area spacer + Toolbar ── */}
-      {/* The safe-area wrapper pushes the toolbar below the iPhone status bar /
-          notch / Dynamic Island. The toolbar itself stays horizontally scrollable
-          on narrow phones so controls are never clipped. */}
-      <div
-        className="shrink-0 bg-slate-900"
-        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-      >
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700 overflow-x-auto">
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-          title="Close"
-        >
-          <X size={16} />
-        </button>
-
-        <div className="w-px h-6 bg-slate-700 shrink-0" />
-
-        {/* Photo name */}
-        <span className="text-xs text-slate-400 font-semibold truncate max-w-[120px] shrink-0">
-          {photo.label ?? photo.originalName ?? 'Photo'}
-        </span>
-
-        {isLocked && (
-          <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
-            <Lock size={11} /> Locked
-          </span>
-        )}
-
-        <div className="flex-1" />
-
-        {!isLocked && (
-          <>
-            {/* Rotate */}
-            <button onClick={() => rotate('left')} title="Rotate left 90°"
-              className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0">
-              <RotateCcw size={15} />
-            </button>
-            <button onClick={() => rotate('right')} title="Rotate right 90°"
-              className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0">
-              <RotateCw size={15} />
-            </button>
-
-            <div className="w-px h-6 bg-slate-700 shrink-0" />
-
-            {/* Tool selector */}
-            {([
-              { id: 'draw',  icon: <Pen size={15} />,          title: 'Freehand draw' },
-              { id: 'arrow', icon: <ArrowUpRight size={15} />, title: 'Arrow' },
-              { id: 'text',  icon: <Type size={15} />,         title: 'Text' },
-            ] as const).map(({ id, icon, title }) => (
-              <button key={id} onClick={() => setTool(id)} title={title}
-                className={`p-2 rounded-lg transition-colors shrink-0 ${
-                  tool === id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-                }`}>
-                {icon}
-              </button>
-            ))}
-
-            <div className="w-px h-6 bg-slate-700 shrink-0" />
-
-            {/* Annotation colour swatches */}
-            <div className="flex items-center gap-1 shrink-0">
-              {ANNOTATION_COLORS.map(({ label, value }) => (
-                <button key={value} onClick={() => setColor(value)} title={label}
-                  className={`w-5 h-5 rounded-full border-2 transition-all ${
-                    color === value ? 'border-white scale-110' : 'border-slate-600 hover:border-slate-400'
-                  }`}
-                  style={{ background: value }}
-                />
-              ))}
-            </div>
-
-            <div className="w-px h-6 bg-slate-700 shrink-0" />
-
-            {/* Stroke width (draw / arrow) */}
-            {tool !== 'text' && (
-              <div className="flex items-center gap-1 shrink-0">
-                {STROKE_WIDTHS.map((w) => (
-                  <button key={w} onClick={() => setStrokeWidth(w)} title={`${w}px`}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                      strokeWidth === w ? 'bg-primary' : 'hover:bg-slate-700'
-                    }`}>
-                    <div className="rounded-full bg-white" style={{ width: w + 2, height: w + 2 }} />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Font size (text only) */}
-            {tool === 'text' && (
-              <div className="flex items-center gap-1 shrink-0">
-                {FONT_SIZES.map((s) => (
-                  <button key={s} onClick={() => setFontSize(s)} title={`${s}px`}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
-                      fontSize === s ? 'bg-primary text-primary-foreground' : 'hover:bg-slate-700 text-slate-300'
-                    }`}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="w-px h-6 bg-slate-700 shrink-0" />
-
-            {/* Undo */}
-            <button onClick={() => setStrokes((p) => p.slice(0, -1))}
-              disabled={strokes.length === 0}
-              title="Undo (⌘Z)"
-              className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0">
-              <Undo2 size={15} />
-            </button>
-
-            {/* Clear annotations */}
-            <button onClick={clearAnnotations}
-              disabled={strokes.length === 0}
-              title="Clear all annotations"
-              className="p-2 rounded-lg hover:bg-red-800 text-slate-300 hover:text-white disabled:opacity-30 transition-colors shrink-0">
-              <Trash2 size={15} />
-            </button>
-
-            <div className="w-px h-6 bg-slate-700 shrink-0" />
-
-            {/* Save & Lock */}
-            <button onClick={handleSaveAndLock} disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold rounded-lg transition-colors shrink-0">
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
-              {saving ? 'Saving…' : 'Save & Lock'}
-            </button>
-          </>
-        )}
-
-        {/* Download (always available) */}
-        <button
-          type="button"
-          onClick={() => {
-            const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
-            fetch(url, { credentials: 'include' })
-              .then((r) => r.blob())
-              .then((blob) => {
-                const objectUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = objectUrl;
-                a.download = photo.originalName ?? photo.filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
-              })
-              .catch(console.error);
-          }}
-          className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-          title="Download original"
-        >
-          <Download size={15} />
-        </button>
-      </div>{/* end toolbar inner */}
-      </div>{/* end safe-area wrapper */}
 
       {/* ── Error banner ── */}
       {saveError && (
@@ -738,17 +576,170 @@ export default function PhotoEditor({ photo, onClose, onSaved }: PhotoEditorProp
         </div>
       </div>
 
-      {/* ── Locked overlay hint ── */}
-      {isLocked && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2.5 bg-amber-500/90 text-black text-sm font-bold rounded-full shadow-xl pointer-events-none"
-        >
-          <Lock size={14} />
-          This photo is locked — no further edits allowed
-        </motion.div>
-      )}
+      {/* ── Bottom toolbar — two stacked rows, no scroll ── */}
+      {/* Sits above the home indicator; safe-area-inset-bottom keeps it clear of
+          the iPhone home bar. Row 1 is always visible. Row 2 (annotation tools)
+          is hidden when the photo is locked. */}
+      <div
+        className="shrink-0 bg-slate-900 border-t border-slate-700"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        {/* Row 1 — Close / filename / locked badge / spacer / Download */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
+
+          <div className="w-px h-5 bg-slate-700 shrink-0" />
+
+          <span className="text-xs text-slate-400 font-semibold truncate flex-1 min-w-0">
+            {photo.label ?? photo.originalName ?? 'Photo'}
+          </span>
+
+          {isLocked && (
+            <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/40 rounded-md text-amber-400 text-xs font-semibold shrink-0">
+              <Lock size={11} /> Locked
+            </span>
+          )}
+
+          {/* Download — always available */}
+          <button
+            type="button"
+            onClick={() => {
+              const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+              fetch(url, { credentials: 'include' })
+                .then((r) => r.blob())
+                .then((blob) => {
+                  const objectUrl = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = objectUrl;
+                  a.download = photo.originalName ?? photo.filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+                })
+                .catch(console.error);
+            }}
+            className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+            title="Download original"
+          >
+            <Download size={15} />
+          </button>
+        </div>
+
+        {/* Row 2 — annotation tools (hidden when locked) */}
+        {!isLocked && (
+          <div className="flex items-center justify-between gap-1 px-3 py-2 flex-wrap">
+            {/* Rotate */}
+            <div className="flex items-center gap-1">
+              <button onClick={() => rotate('left')} title="Rotate left 90°"
+                className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors">
+                <RotateCcw size={15} />
+              </button>
+              <button onClick={() => rotate('right')} title="Rotate right 90°"
+                className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors">
+                <RotateCw size={15} />
+              </button>
+            </div>
+
+            <div className="w-px h-5 bg-slate-700 shrink-0" />
+
+            {/* Tool selector */}
+            <div className="flex items-center gap-1">
+              {([
+                { id: 'draw',  icon: <Pen size={15} />,          title: 'Freehand draw' },
+                { id: 'arrow', icon: <ArrowUpRight size={15} />, title: 'Arrow' },
+                { id: 'text',  icon: <Type size={15} />,         title: 'Text' },
+              ] as const).map(({ id, icon, title }) => (
+                <button key={id} onClick={() => setTool(id)} title={title}
+                  className={`p-2 rounded-lg transition-colors ${
+                    tool === id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+                  }`}>
+                  {icon}
+                </button>
+              ))}
+            </div>
+
+            <div className="w-px h-5 bg-slate-700 shrink-0" />
+
+            {/* Colour swatches */}
+            <div className="flex items-center gap-1">
+              {ANNOTATION_COLORS.map(({ label, value }) => (
+                <button key={value} onClick={() => setColor(value)} title={label}
+                  className={`w-5 h-5 rounded-full border-2 transition-all ${
+                    color === value ? 'border-white scale-110' : 'border-slate-600 hover:border-slate-400'
+                  }`}
+                  style={{ background: value }}
+                />
+              ))}
+            </div>
+
+            <div className="w-px h-5 bg-slate-700 shrink-0" />
+
+            {/* Stroke widths (draw / arrow) */}
+            {tool !== 'text' && (
+              <div className="flex items-center gap-1">
+                {STROKE_WIDTHS.map((w) => (
+                  <button key={w} onClick={() => setStrokeWidth(w)} title={`${w}px`}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                      strokeWidth === w ? 'bg-primary' : 'hover:bg-slate-700'
+                    }`}>
+                    <div className="rounded-full bg-white" style={{ width: w + 2, height: w + 2 }} />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Font sizes (text only) */}
+            {tool === 'text' && (
+              <div className="flex items-center gap-1">
+                {FONT_SIZES.map((s) => (
+                  <button key={s} onClick={() => setFontSize(s)} title={`${s}px`}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                      fontSize === s ? 'bg-primary text-primary-foreground' : 'hover:bg-slate-700 text-slate-300'
+                    }`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="w-px h-5 bg-slate-700 shrink-0" />
+
+            {/* Undo + Clear */}
+            <div className="flex items-center gap-1">
+              <button onClick={() => setStrokes((p) => p.slice(0, -1))}
+                disabled={strokes.length === 0}
+                title="Undo"
+                className="p-2 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 transition-colors">
+                <Undo2 size={15} />
+              </button>
+              <button onClick={clearAnnotations}
+                disabled={strokes.length === 0}
+                title="Clear all annotations"
+                className="p-2 rounded-lg hover:bg-red-800 text-slate-300 hover:text-white disabled:opacity-30 transition-colors">
+                <Trash2 size={15} />
+              </button>
+            </div>
+
+            <div className="w-px h-5 bg-slate-700 shrink-0" />
+
+            {/* Save & Lock */}
+            <button onClick={handleSaveAndLock} disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold rounded-lg transition-colors">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
+              {saving ? 'Saving…' : 'Save & Lock'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
