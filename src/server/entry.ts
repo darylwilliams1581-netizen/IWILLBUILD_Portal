@@ -532,6 +532,7 @@ import owner_console_form_templates_post_490 from "./api/owner-console/form-temp
 import bug_reports_get from "./api/bug-reports/GET.js";
 import bug_reports_post from "./api/bug-reports/POST.js";
 import bug_reports_id_patch from "./api/bug-reports/[id]/PATCH.js";
+import bug_reports_id_export_bundle_get from "./api/bug-reports/[id]/export-bundle/GET.js";
 import owner_console_library_items_get_491 from "./api/owner-console/library/items/GET.js";
 import owner_console_library_items_post_492 from "./api/owner-console/library/items/POST.js";
 import owner_console_library_items_id_delete_493 from "./api/owner-console/library/items/[id]/DELETE.js";
@@ -1548,6 +1549,9 @@ async function runStartupMigrations() {
     { table: 'bug_reports', column: 'app_version',       definition: "VARCHAR(50) NOT NULL DEFAULT ''" },
     { table: 'bug_reports', column: 'current_route',     definition: "VARCHAR(300) NOT NULL DEFAULT ''" },
     { table: 'bug_reports', column: 'diagnostic_events', definition: 'MEDIUMTEXT NULL' },
+    // ── bug_reports: export audit columns (added 2026-08-10) ────────────────
+    { table: 'bug_reports', column: 'exported_at',       definition: 'DATETIME NULL' },
+    { table: 'bug_reports', column: 'exported_by',       definition: "VARCHAR(255) NOT NULL DEFAULT ''" },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1820,7 +1824,7 @@ async function runStartupMigrations() {
     },
     {
       name: 'bug_reports',
-      ddl: "CREATE TABLE IF NOT EXISTS bug_reports (id VARCHAR(36) NOT NULL PRIMARY KEY, submitted_by_user_id VARCHAR(36) NOT NULL, submitted_by_name VARCHAR(255) NOT NULL DEFAULT '', submitted_by_email VARCHAR(255) NOT NULL DEFAULT '', company_id INT NULL, category VARCHAR(100) NOT NULL DEFAULT '', description TEXT NOT NULL, page_url VARCHAR(500) NOT NULL DEFAULT '', user_agent VARCHAR(500) NOT NULL DEFAULT '', screenshot_path VARCHAR(500) NULL, screenshot_bucket VARCHAR(100) NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', resolution_note TEXT NULL, resolved_by_name VARCHAR(255) NULL, resolved_at DATETIME NULL, platform VARCHAR(50) NOT NULL DEFAULT 'web', app_version VARCHAR(50) NOT NULL DEFAULT '', current_route VARCHAR(300) NOT NULL DEFAULT '', diagnostic_events MEDIUMTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_created (created_at DESC), INDEX idx_user (submitted_by_user_id))",
+      ddl: "CREATE TABLE IF NOT EXISTS bug_reports (id VARCHAR(36) NOT NULL PRIMARY KEY, submitted_by_user_id VARCHAR(36) NOT NULL, submitted_by_name VARCHAR(255) NOT NULL DEFAULT '', submitted_by_email VARCHAR(255) NOT NULL DEFAULT '', company_id INT NULL, category VARCHAR(100) NOT NULL DEFAULT '', description TEXT NOT NULL, page_url VARCHAR(500) NOT NULL DEFAULT '', user_agent VARCHAR(500) NOT NULL DEFAULT '', screenshot_path VARCHAR(500) NULL, screenshot_bucket VARCHAR(100) NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', resolution_note TEXT NULL, resolved_by_name VARCHAR(255) NULL, resolved_at DATETIME NULL, platform VARCHAR(50) NOT NULL DEFAULT 'web', app_version VARCHAR(50) NOT NULL DEFAULT '', current_route VARCHAR(300) NOT NULL DEFAULT '', diagnostic_events MEDIUMTEXT NULL, exported_at DATETIME NULL, exported_by VARCHAR(255) NOT NULL DEFAULT '', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_created (created_at DESC), INDEX idx_user (submitted_by_user_id))",
     },
     {
       name: 'trusted_devices',
@@ -3369,6 +3373,7 @@ app.post("/api/owner-console/form-templates", owner_console_form_templates_post_
 app.get("/api/bug-reports", bug_reports_get);
 app.post("/api/bug-reports", bug_reports_post);
 app.patch("/api/bug-reports/:id", bug_reports_id_patch);
+app.get("/api/bug-reports/:id/export-bundle", bug_reports_id_export_bundle_get);
 app.get("/api/owner-console/library/items", owner_console_library_items_get_491);
 app.post("/api/owner-console/library/items", owner_console_library_items_post_492);
 app.delete("/api/owner-console/library/items/:id", owner_console_library_items_id_delete_493);

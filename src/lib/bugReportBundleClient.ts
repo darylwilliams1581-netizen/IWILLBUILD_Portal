@@ -1,0 +1,149 @@
+/**
+ * Client-safe helpers for the support bundle UI actions.
+ * Mirrors the server-side generator logic but runs in the browser.
+ * No server imports, no Node.js APIs.
+ */
+import type { DiagEvent } from '@/lib/diagnosticBuffer';
+
+// ── Types (mirrored from server — keep in sync) ───────────────────────────────
+
+export interface BugReportRow {
+  id: string;
+  submitted_by_user_id: string;
+  submitted_by_name: string;
+  submitted_by_email: string;
+  company_id: number | null;
+  company_name: string | null;
+  category: string;
+  description: string;
+  page_url: string;
+  user_agent: string;
+  screenshot_path: string | null;
+  screenshot_bucket: string | null;
+  status: string;
+  resolution_note: string | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
+  platform: string | null;
+  app_version: string | null;
+  current_route: string | null;
+  diagnostic_events: string | null;
+  created_at: string;
+  updated_at: string;
+  // extra fields from GET
+  screenshotUrl?: string | null;
+  exported_at?: string | null;
+  exported_by?: string | null;
+}
+
+// ── Reference number ──────────────────────────────────────────────────────────
+
+export function buildReference(report: BugReportRow): string {
+  const year = new Date(report.created_at).getFullYear();
+  const shortId = report.id.replace(/-/g, '').slice(-5).toUpperCase();
+  return `BUG-${year}-${shortId}`;
+}
+
+// ── Parse diagnostic events ───────────────────────────────────────────────────
+
+export function parseDiagEvents(raw: string | null): DiagEvent[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as DiagEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+// ── Diagnostic summary ────────────────────────────────────────────────────────
+
+interface DiagSummary {
+  online: boolean | null;
+  locationPermission: string | null;
+  gpsStatus: string | null;
+  cameraStatus: string | null;
+  lastFailedApiRequest: string | null;
+  lastJsError: string | null;
+}
+
+function extractDiagSummary(events: DiagEvent[]): DiagSummary {
+  const s: DiagSummary = {
+    online: null, locationPermission: null, gpsStatus: null,
+    cameraStatus: null, lastFailedApiRequest: null, lastJsError: null,
+  };
+  for (const ev of events) {
+    switch (ev.type) {
+      case 'network_change':
+        s.online = ev.msg.includes('online') ? true : ev.msg.includes('offline') ? false : s.online;
+        break;
+      case 'permission_change':
+        if (/location|gps/i.test(ev.msg)) s.locationPermission = ev.msg;
+        break;
+      case 'gps_state': s.gpsStatus = ev.msg; break;
+      case 'camera_state': s.cameraStatus = ev.msg; break;
+      case 'api_request':
+        if (ev.status !== undefined && ev.status >= 400) {
+          s.lastFailedApiRequest = `${ev.method ?? 'GET'} ${ev.path ?? ''} → ${ev.status}${ev.duration !== undefined ? ` (${ev.duration}ms)` : ''}`;
+        }
+        break;
+      case 'js_error': case 'unhandled_rejection': case 'error_boundary':
+        s.lastJsError = ev.msg.slice(0, 200);
+        break;
+    }
+  }
+  return s;
+}
+
+// ── summary.md (client-side) ──────────────────────────────────────────────────
+
+export function buildSummaryMd(report: BugReportRow, events: DiagEvent[]): string {
+  const ref = buildReference(report);
+  const ds = extractDiagSummary(events);
+  const fmt = (d: string | null) =>
+    d ? new Date(d).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+  const lines = [
+    `# Bug Report ${ref}`,
+    '',
+    '## Summary',
+    `- **Status:** ${report.status}`,
+    `- **Category:** ${report.category || '—'}`,
+    `- **Submitted:** ${fmt(report.created_at)} AEST`,
+    `- **User:** ${report.submitted_by_name || '(name not provided)'}`,
+    `- **Company:** ${report.company_name || '—'}`,
+    `- **Platform:** ${report.platform || 'web'}`,
+    `- **App version:** ${report.app_version || '—'}`,
+    `- **Page at submission:** ${report.current_route || report.page_url || '—'}`,
+    '',
+    '## Description',
+    '',
+    report.description.trim(),
+    '',
+  ];
+
+  if (report.resolution_note) {
+    lines.push('## Resolution notes', '', report.resolution_note.trim(), '');
+    if (report.resolved_by_name || report.resolved_at) {
+      lines.push(`_Resolved by ${report.resolved_by_name ?? 'owner'} on ${fmt(report.resolved_at)}_`, '');
+    }
+  }
+
+  lines.push(
+    '## Diagnostic summary',
+    '',
+    `- **Network:** ${ds.online === null ? 'unknown' : ds.online ? 'online' : 'offline'}`,
+    `- **Location permission:** ${ds.locationPermission ?? 'not recorded'}`,
+    `- **GPS state:** ${ds.gpsStatus ?? 'not recorded'}`,
+    `- **Camera state:** ${ds.cameraStatus ?? 'not recorded'}`,
+    `- **Last failed API request:** ${ds.lastFailedApiRequest ?? 'none'}`,
+    `- **JavaScript error:** ${ds.lastJsError ?? 'none'}`,
+    '',
+    `_Diagnostic timeline: ${events.length} event(s) captured in the 60 seconds before submission._`,
+    '',
+    '---',
+    `_Generated by IWILLBUILD support bundle export on ${new Date().toISOString()}_`,
+  );
+
+  return lines.join('\n');
+}

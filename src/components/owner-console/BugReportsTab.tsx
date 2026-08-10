@@ -1,49 +1,24 @@
 /**
  * BugReportsTab — Owner Console tab for reviewing and resolving bug reports.
- * Includes diagnostic timeline (platform-owner only).
+ * Includes diagnostic timeline (platform-owner only) and support bundle export.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Bug, RefreshCw, Search, X, ChevronDown, ExternalLink,
   CheckCircle2, Clock, AlertCircle, Loader2, Image,
   User, Building2, Monitor, Calendar, Tag, MessageSquare,
   Circle, ArrowRight, Activity, Copy, Download, ChevronRight,
-  Smartphone, Globe, Wifi, WifiOff,
+  Smartphone, Globe, WifiOff, Package, FileText,
 } from 'lucide-react';
 import { BUG_CATEGORIES } from '@/components/BugReportModal';
 import { usePermissions } from '@/lib/usePermissions';
 import type { DiagEvent } from '@/lib/diagnosticBuffer';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface BugReport {
-  id: string;
-  submitted_by_name: string;
-  submitted_by_email: string;
-  company_name: string | null;
-  category: string;
-  description: string;
-  page_url: string;
-  user_agent: string;
-  screenshot_path: string | null;
-  screenshotUrl: string | null;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
-  resolution_note: string | null;
-  resolved_by_name: string | null;
-  resolved_at: string | null;
-  platform: string | null;
-  app_version: string | null;
-  current_route: string | null;
-  diagnostic_events: string | null; // JSON string
-  created_at: string;
-}
-
-interface Counts {
-  open: number;
-  in_progress: number;
-  resolved: number;
-  closed: number;
-}
+import {
+  buildReference,
+  buildSummaryMd,
+  parseDiagEvents,
+  type BugReportRow,
+} from '@/lib/bugReportBundleClient';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -54,8 +29,7 @@ function timeAgo(dateStr: string): string {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 function fmtDate(dateStr: string | null): string {
@@ -70,28 +44,17 @@ function categoryLabel(value: string): string {
   return BUG_CATEGORIES.find(c => c.value === value)?.label ?? value.replace(/_/g, ' ');
 }
 
-function parseDiagEvents(raw: string | null): DiagEvent[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as DiagEvent[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 function platformIcon(platform: string | null) {
   if (!platform) return <Globe size={11} />;
   if (platform === 'ios' || platform === 'android' || platform === 'native') return <Smartphone size={11} />;
-  if (platform === 'pwa') return <Wifi size={11} />;
   return <Globe size={11} />;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  open:        { label: 'Open',        color: 'bg-red-100 text-red-700 border-red-200',      icon: <Circle size={10} className="fill-red-500 text-red-500" /> },
-  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10} /> },
+  open:        { label: 'Open',        color: 'bg-red-100 text-red-700 border-red-200',           icon: <Circle size={10} className="fill-red-500 text-red-500" /> },
+  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 border-amber-200',     icon: <Clock size={10} /> },
   resolved:    { label: 'Resolved',    color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 size={10} /> },
-  closed:      { label: 'Closed',      color: 'bg-slate-100 text-slate-500 border-slate-200', icon: <X size={10} /> },
+  closed:      { label: 'Closed',      color: 'bg-slate-100 text-slate-500 border-slate-200',     icon: <X size={10} /> },
 };
 
 const DIAG_TYPE_COLORS: Record<string, string> = {
@@ -111,12 +74,14 @@ const DIAG_TYPE_COLORS: Record<string, string> = {
   error_boundary:      'bg-red-100 text-red-700',
 };
 
+interface Counts { open: number; in_progress: number; resolved: number; closed: number; }
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BugReportsTab() {
   const { isPlatformOwner } = usePermissions();
 
-  const [reports, setReports]     = useState<BugReport[]>([]);
+  const [reports, setReports]     = useState<BugReportRow[]>([]);
   const [counts, setCounts]       = useState<Counts>({ open: 0, in_progress: 0, resolved: 0, closed: 0 });
   const [total, setTotal]         = useState(0);
   const [loading, setLoading]     = useState(true);
@@ -128,12 +93,17 @@ export default function BugReportsTab() {
   const [search, setSearch]                 = useState('');
 
   // Detail drawer
-  const [selected, setSelected]   = useState<BugReport | null>(null);
+  const [selected, setSelected]   = useState<BugReportRow | null>(null);
   const [resNote, setResNote]     = useState('');
   const [saving, setSaving]       = useState(false);
   const [saveMsg, setSaveMsg]     = useState('');
   const [diagExpanded, setDiagExpanded] = useState(false);
-  const [copyMsg, setCopyMsg]     = useState('');
+
+  // Export state
+  const [exporting, setExporting]   = useState(false);
+  const [exportMsg, setExportMsg]   = useState('');
+  const [copyMdMsg, setCopyMdMsg]   = useState('');
+  const [copyDiagMsg, setCopyDiagMsg] = useState('');
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
@@ -145,7 +115,7 @@ export default function BugReportsTab() {
       params.set('limit', '100');
 
       const res = await fetch(`/api/bug-reports?${params}`, { credentials: 'include' });
-      const d = await res.json() as { reports?: BugReport[]; counts?: Counts; total?: number };
+      const d = await res.json() as { reports?: BugReportRow[]; counts?: Counts; total?: number };
       setReports(d.reports ?? []);
       setCounts(d.counts ?? { open: 0, in_progress: 0, resolved: 0, closed: 0 });
       setTotal(d.total ?? 0);
@@ -153,7 +123,8 @@ export default function BugReportsTab() {
     finally { setLoading(false); setRefreshing(false); }
   }, [filterStatus, filterCategory, search]);
 
-  useEffect(() => { void load(); }, [load]);
+  // Load on mount
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function updateReport(id: string, patch: { status?: string; resolution_note?: string }) {
     setSaving(true); setSaveMsg('');
@@ -173,7 +144,7 @@ export default function BugReportsTab() {
         setSelected(prev => prev ? {
           ...prev,
           ...patch,
-          status: (patch.status ?? prev.status) as BugReport['status'],
+          status: (patch.status ?? prev.status) as BugReportRow['status'],
           resolution_note: patch.resolution_note ?? prev.resolution_note,
         } : null);
       }
@@ -181,24 +152,65 @@ export default function BugReportsTab() {
     finally { setSaving(false); }
   }
 
-  function handleCopyDiag(events: DiagEvent[]) {
+  // ── Export bundle ──────────────────────────────────────────────────────────
+  async function handleExportBundle(report: BugReportRow) {
+    setExporting(true); setExportMsg('');
     try {
-      navigator.clipboard.writeText(JSON.stringify(events, null, 2));
-      setCopyMsg('Copied!');
-      setTimeout(() => setCopyMsg(''), 2000);
-    } catch { setCopyMsg('Failed'); }
-  }
-
-  function handleDownloadDiag(events: DiagEvent[], reportId: string) {
-    try {
-      const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+      const res = await fetch(`/api/bug-reports/${report.id}/export-bundle`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        setExportMsg(d.error ?? 'Export failed.');
+        return;
+      }
+      const blob = await res.blob();
+      const ref = buildReference(report);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bug-report-${reportId.slice(0, 8)}-diagnostics.json`;
+      a.download = `${ref}-support-bundle.zip`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+      setExportMsg('Downloaded');
+      setTimeout(() => setExportMsg(''), 3000);
+    } catch {
+      setExportMsg('Network error.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // ── Copy Markdown summary ──────────────────────────────────────────────────
+  function handleCopyMarkdown(report: BugReportRow) {
+    const events = parseDiagEvents(report.diagnostic_events);
+    const md = buildSummaryMd(report, events);
+    navigator.clipboard.writeText(md).then(() => {
+      setCopyMdMsg('Copied!');
+      setTimeout(() => setCopyMdMsg(''), 2000);
+    }).catch(() => {
+      setCopyMdMsg('Failed');
+      setTimeout(() => setCopyMdMsg(''), 2000);
+    });
+  }
+
+  // ── Download diagnostics JSON ──────────────────────────────────────────────
+  function handleDownloadDiag(report: BugReportRow) {
+    const events = parseDiagEvents(report.diagnostic_events);
+    const ref = buildReference(report);
+    const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ref}-diagnostics.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setCopyDiagMsg('Downloaded');
+    setTimeout(() => setCopyDiagMsg(''), 2000);
   }
 
   const totalOpen = counts.open + counts.in_progress;
@@ -218,9 +230,7 @@ export default function BugReportsTab() {
                   {totalOpen}
                 </span>
               )}
-              {total > 0 && (
-                <span className="text-[11px] text-slate-400">{total} total</span>
-              )}
+              {total > 0 && <span className="text-[11px] text-slate-400">{total} total</span>}
             </div>
             <button
               onClick={() => void load(true)}
@@ -243,7 +253,7 @@ export default function BugReportsTab() {
             ].map(s => (
               <button
                 key={s.value}
-                onClick={() => setFilterStatus(s.value)}
+                onClick={() => { setFilterStatus(s.value); void load(); }}
                 className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                   filterStatus === s.value
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -262,12 +272,13 @@ export default function BugReportsTab() {
               <input
                 type="text"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); }}
+                onKeyDown={e => { if (e.key === 'Enter') void load(); }}
                 placeholder="Search reports…"
                 className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button onClick={() => { setSearch(''); void load(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   <X size={12} />
                 </button>
               )}
@@ -275,7 +286,7 @@ export default function BugReportsTab() {
             <div className="relative">
               <select
                 value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
+                onChange={e => { setFilterCategory(e.target.value); void load(); }}
                 className="appearance-none text-xs border border-slate-200 rounded-lg pl-3 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white text-slate-600"
               >
                 <option value="">All categories</option>
@@ -308,18 +319,18 @@ export default function BugReportsTab() {
               {reports.map(r => {
                 const sc = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.open;
                 const isSelected = selected?.id === r.id;
+                const diagEvents = parseDiagEvents(r.diagnostic_events);
                 return (
                   <button
                     key={r.id}
-                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); setDiagExpanded(false); }}
+                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); setDiagExpanded(false); setExportMsg(''); setCopyMdMsg(''); setCopyDiagMsg(''); }}
                     className={`w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-violet-50 border-l-2 border-l-primary' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sc.color}`}>
-                            {sc.icon}
-                            {sc.label}
+                            {sc.icon}{sc.label}
                           </span>
                           {r.category && (
                             <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
@@ -328,8 +339,7 @@ export default function BugReportsTab() {
                           )}
                           {r.platform && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400">
-                              {platformIcon(r.platform)}
-                              {r.platform}
+                              {platformIcon(r.platform)}{r.platform}
                             </span>
                           )}
                         </div>
@@ -342,9 +352,7 @@ export default function BugReportsTab() {
                           <span>·</span>
                           <span>{timeAgo(r.created_at)}</span>
                           {r.screenshot_path && <><span>·</span><Image size={10} /></>}
-                          {r.diagnostic_events && r.diagnostic_events !== '[]' && (
-                            <><span>·</span><Activity size={10} /></>
-                          )}
+                          {diagEvents.length > 0 && <><span>·</span><Activity size={10} /></>}
                         </div>
                       </div>
                       <ArrowRight size={13} className="text-slate-300 shrink-0 mt-1" />
@@ -358,14 +366,18 @@ export default function BugReportsTab() {
       </div>
 
       {/* ── Right panel: detail drawer ── */}
-      <div className={`flex flex-col bg-white transition-all duration-200 ${selected ? 'w-[460px] shrink-0' : 'w-0 overflow-hidden'}`}>
+      <div className={`flex flex-col bg-white transition-all duration-200 ${selected ? 'w-[480px] shrink-0' : 'w-0 overflow-hidden'}`}>
         {selected && (() => {
           const diagEvents = parseDiagEvents(selected.diagnostic_events);
+          const ref = buildReference(selected);
           return (
             <>
               {/* Detail header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-                <h3 className="font-bold text-slate-800 text-sm">Bug Detail</h3>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">{ref}</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{fmtDate(selected.created_at)}</p>
+                </div>
                 <button
                   onClick={() => setSelected(null)}
                   className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
@@ -375,6 +387,63 @@ export default function BugReportsTab() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+                {/* ── Export actions (platform-owner only) ── */}
+                {isPlatformOwner && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Export</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {/* Export support bundle */}
+                      <button
+                        onClick={() => void handleExportBundle(selected)}
+                        disabled={exporting}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                        title="Download ZIP with summary.md, report.json, timeline.jsonl and screenshot"
+                      >
+                        {exporting
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <Package size={12} />
+                        }
+                        Export support bundle
+                      </button>
+
+                      {/* Copy Markdown summary */}
+                      <button
+                        onClick={() => handleCopyMarkdown(selected)}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg transition-colors"
+                        title="Copy summary.md to clipboard"
+                      >
+                        <FileText size={12} />
+                        {copyMdMsg || 'Copy Markdown'}
+                      </button>
+
+                      {/* Download diagnostics JSON */}
+                      <button
+                        onClick={() => handleDownloadDiag(selected)}
+                        disabled={diagEvents.length === 0}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg transition-colors disabled:opacity-40"
+                        title="Download raw diagnostic events as JSON"
+                      >
+                        <Download size={12} />
+                        {copyDiagMsg || 'Download diagnostics'}
+                      </button>
+                    </div>
+
+                    {/* Export feedback */}
+                    {exportMsg && (
+                      <p className={`text-xs font-semibold ${exportMsg === 'Downloaded' ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {exportMsg}
+                      </p>
+                    )}
+
+                    {/* Export audit info */}
+                    {selected.exported_at && (
+                      <p className="text-[11px] text-slate-400">
+                        Last exported by <strong>{selected.exported_by || 'owner'}</strong> on {fmtDate(selected.exported_at)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Status + actions */}
                 <div className="flex flex-col gap-2">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
@@ -392,8 +461,7 @@ export default function BugReportsTab() {
                               : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                           }`}
                         >
-                          {sc.icon}
-                          {sc.label}
+                          {sc.icon}{sc.label}
                         </button>
                       );
                     })}
@@ -505,25 +573,6 @@ export default function BugReportsTab() {
 
                     {diagExpanded && (
                       <>
-                        {/* Copy / Download actions */}
-                        <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 bg-white">
-                          <button
-                            onClick={() => handleCopyDiag(diagEvents)}
-                            className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700 transition-colors"
-                          >
-                            <Copy size={11} />
-                            {copyMsg || 'Copy diagnostics'}
-                          </button>
-                          <span className="text-slate-200">|</span>
-                          <button
-                            onClick={() => handleDownloadDiag(diagEvents, selected.id)}
-                            className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700 transition-colors"
-                          >
-                            <Download size={11} />
-                            Download JSON
-                          </button>
-                        </div>
-
                         {/* Timeline */}
                         <div className="border-t border-slate-100 max-h-72 overflow-y-auto">
                           {diagEvents.length === 0 ? (
@@ -533,7 +582,7 @@ export default function BugReportsTab() {
                             </div>
                           ) : (
                             <div className="divide-y divide-slate-50">
-                              {diagEvents.map((ev, i) => {
+                              {[...diagEvents].sort((a, b) => a.ts - b.ts).map((ev, i) => {
                                 const reportTs = new Date(selected.created_at).getTime();
                                 const secsAgo = Math.round((reportTs - ev.ts) / 1000);
                                 const typeColor = DIAG_TYPE_COLORS[ev.type] ?? 'bg-slate-100 text-slate-600';
@@ -547,13 +596,12 @@ export default function BugReportsTab() {
                                     </span>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-[11px] text-slate-700 break-all leading-relaxed">{ev.msg}</p>
-                                      {ev.route && ev.route !== window.location.pathname && (
+                                      {ev.route && (
                                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">{ev.route}</p>
                                       )}
                                       {ev.status !== undefined && (
                                         <span className={`text-[10px] font-semibold ${ev.status >= 400 ? 'text-red-500' : 'text-emerald-600'}`}>
-                                          {ev.status}
-                                          {ev.duration !== undefined ? ` · ${ev.duration}ms` : ''}
+                                          {ev.status}{ev.duration !== undefined ? ` · ${ev.duration}ms` : ''}
                                         </span>
                                       )}
                                     </div>
