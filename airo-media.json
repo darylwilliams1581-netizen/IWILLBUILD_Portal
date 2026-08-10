@@ -574,13 +574,23 @@
   },
   "logo/primary": {
     "mediaType": "logo",
-    "currentUrl": "/airo-assets/uploads/airo-logo-shimmer-square.svg",
-    "searchQuery": "",
+    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png",
+    "searchQuery": "Icon only — the hard hat with gold dome sitting above the purple building/skyscr",
     "alternatives": [],
+    "logoSourceMap": {
+      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png": {
+        "sessionId": "e55dd25c-768b-48d5-b7bd-5e28465b6126",
+        "logoId": "6eb18af3-6d12-4612-93b1-ae5c55cf8ed4",
+        "groupId": "0fefd9ab-b765-4779-978f-3754b781b8e5"
+      }
+    },
+    "logoGroupId": "0fefd9ab-b765-4779-978f-3754b781b8e5",
     "userModified": true,
-    "pendingJobId": "56ef23ab-fcc6-40d8-9504-fe7c4144956a",
     "createdAt": "2026-08-09T22:44:53.604Z",
-    "lastUpdated": "2026-08-10T15:36:15.205Z"
+    "lastUpdated": "2026-08-10T15:36:39.149Z",
+    "surfaceMode": "dark",
+    "generatedForSurfaceColor": "#0d1117",
+    "darkSurfaceUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png"
   },
   "logo/favicon": {
     "mediaType": "logo",
