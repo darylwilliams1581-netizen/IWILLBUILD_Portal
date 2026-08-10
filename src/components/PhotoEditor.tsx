@@ -878,19 +878,6 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
             <Undo2 size={16} />
           </button>
 
-          {/* Eraser */}
-          <button
-            onClick={() => { setTool('eraser'); setSheetOpen(true); }}
-            title="Eraser"
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors shrink-0 ${
-              tool === 'eraser'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
-            }`}
-          >
-            <Eraser size={16} />
-          </button>
-
           {/* Rotate CW */}
           <button
             onClick={rotateCW}
