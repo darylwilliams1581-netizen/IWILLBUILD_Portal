@@ -610,28 +610,49 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
 
           {/* Text input overlay — positioned relative to canvas */}
           {textInput && (
-            <input
-              ref={textInputRef}
-              type="text"
-              value={textInput.value}
-              onChange={(e) => setTextInput((prev) => prev ? { ...prev, value: e.target.value } : null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); commitText(); }
-                if (e.key === 'Escape') setTextInput(null);
-              }}
-              onBlur={commitText}
-              className="absolute border border-white/40 rounded outline-none px-1.5 py-0.5 font-bold bg-black/70 text-white"
+            <div
+              className="absolute flex items-center gap-1"
               style={{
                 left: `${(textInput.x / (canvasRef.current?.width ?? 1)) * 100}%`,
                 top:  `${(textInput.y / (canvasRef.current?.height ?? 1)) * 100}%`,
                 transform: 'translateY(-100%)',
-                color,
-                fontSize: `${fontSize}px`,
-                minWidth: 80,
                 zIndex: 10,
               }}
-              placeholder="Type here…"
-            />
+            >
+              <input
+                ref={textInputRef}
+                type="text"
+                value={textInput.value}
+                onChange={(e) => setTextInput((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+                  if (e.key === 'Escape') { e.preventDefault(); setTextInput(null); }
+                }}
+                className="border border-white/40 rounded outline-none px-1.5 py-0.5 font-bold bg-black/70 text-white"
+                style={{
+                  color,
+                  fontSize: `${fontSize}px`,
+                  minWidth: 80,
+                }}
+                placeholder="Type here…"
+              />
+              {/* ✓ commit — onMouseDown fires before blur so value is still live */}
+              <button
+                onMouseDown={(e) => { e.preventDefault(); commitText(); }}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-400 text-white shadow-lg shrink-0"
+                title="Commit text (Enter)"
+              >
+                <Check size={14} />
+              </button>
+              {/* ✕ cancel */}
+              <button
+                onMouseDown={(e) => { e.preventDefault(); setTextInput(null); }}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white shadow-lg shrink-0"
+                title="Cancel (Esc)"
+              >
+                <X size={14} />
+              </button>
+            </div>
           )}
         </div>
       </div>
