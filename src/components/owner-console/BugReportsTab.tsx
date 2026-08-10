@@ -16,6 +16,7 @@ import type { DiagEvent } from '@/lib/diagnosticBuffer';
 import {
   buildReference,
   buildSummaryMd,
+  buildSanitisedDiagnostics,
   parseDiagEvents,
   type BugReportRow,
 } from '@/lib/bugReportBundleClient';
@@ -126,6 +127,9 @@ export default function BugReportsTab() {
   // Load on mount
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reload when filters change
+  useEffect(() => { void load(); }, [load]); // load is memoised on filterStatus/filterCategory/search
+
   async function updateReport(id: string, patch: { status?: string; resolution_note?: string }) {
     setSaving(true); setSaveMsg('');
     try {
@@ -196,11 +200,12 @@ export default function BugReportsTab() {
     });
   }
 
-  // ── Download diagnostics JSON ──────────────────────────────────────────────
+  // ── Download diagnostics JSON (sanitised — same rules as timeline.jsonl) ─────
   function handleDownloadDiag(report: BugReportRow) {
     const events = parseDiagEvents(report.diagnostic_events);
+    const sanitised = buildSanitisedDiagnostics(events, report.created_at);
     const ref = buildReference(report);
-    const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(sanitised, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -253,7 +258,7 @@ export default function BugReportsTab() {
             ].map(s => (
               <button
                 key={s.value}
-                onClick={() => { setFilterStatus(s.value); void load(); }}
+                onClick={() => setFilterStatus(s.value)}
                 className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                   filterStatus === s.value
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -278,7 +283,7 @@ export default function BugReportsTab() {
                 className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
               {search && (
-                <button onClick={() => { setSearch(''); void load(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   <X size={12} />
                 </button>
               )}
@@ -286,7 +291,7 @@ export default function BugReportsTab() {
             <div className="relative">
               <select
                 value={filterCategory}
-                onChange={e => { setFilterCategory(e.target.value); void load(); }}
+                onChange={e => setFilterCategory(e.target.value)}
                 className="appearance-none text-xs border border-slate-200 rounded-lg pl-3 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white text-slate-600"
               >
                 <option value="">All categories</option>

@@ -146,7 +146,7 @@ export function buildSummaryMd(report: BugReportRow, events: DiagEvent[]): strin
     `- **Company:** ${report.company_name || '—'}`,
     `- **Platform:** ${report.platform || 'web'}`,
     `- **App version:** ${report.app_version || '—'}`,
-    `- **Page at submission:** ${report.current_route || report.page_url || '—'}`,
+    `- **Page at submission:** ${(report.current_route || report.page_url || '—').split('?')[0]}`,
     '',
     '## Description',
     '',
@@ -216,6 +216,9 @@ export function buildReportJson(
     attachments.push({ filename: `screenshot.${ext}`, type: screenshotMime });
   }
 
+  // Strip query strings from route (may contain user-entered search terms)
+  const safeRoute = report.current_route ? report.current_route.split('?')[0] : null;
+
   const obj = {
     schemaVersion: 1,
     report: {
@@ -223,9 +226,9 @@ export function buildReportJson(
       reference: ref,
       status: report.status,
       category: report.category || null,
-      description: report.description,
+      // description intentionally omitted — user-entered form content
       createdAt: new Date(report.created_at).toISOString(),
-      currentRoute: report.current_route || null,
+      currentRoute: safeRoute || null,
     },
     application: {
       version: report.app_version || null,
@@ -255,16 +258,22 @@ export function buildReportJson(
   return JSON.stringify(obj, null, 2);
 }
 
-// ── timeline.jsonl ────────────────────────────────────────────────────────────
+// ── Shared sanitisation spec ──────────────────────────────────────────────────
+// These rules apply to ALL export paths: timeline.jsonl, Copy Markdown, and
+// Download diagnostics.  Client-side code mirrors this spec in
+// src/lib/bugReportBundleClient.ts — keep them in sync.
 
 const SENSITIVE_PATH_SEGMENTS = /\/(password|token|secret|auth|session|cookie|pin|otp|key|credential)/i;
 
-function sanitisePath(path: string | undefined): string | undefined {
+/** Strip query strings, UUIDs, numeric IDs, and sensitive path segments. */
+export function sanitisePath(path: string | undefined): string | undefined {
   if (!path) return path;
-  // Replace numeric IDs with :id
-  let safe = path.replace(/\/\d+/g, '/:id');
+  // Strip query string
+  let safe = path.split('?')[0];
   // Replace UUIDs
   safe = safe.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id');
+  // Replace numeric IDs
+  safe = safe.replace(/\/\d+/g, '/:id');
   // Redact sensitive segments
   if (SENSITIVE_PATH_SEGMENTS.test(safe)) {
     safe = safe.replace(SENSITIVE_PATH_SEGMENTS, '/[redacted]');
@@ -272,51 +281,90 @@ function sanitisePath(path: string | undefined): string | undefined {
   return safe;
 }
 
-function sanitiseMsg(msg: string): string {
-  // Strip file paths
-  let s = msg.replace(/(?:\/[a-zA-Z0-9_.-]+)+\.[a-zA-Z]{2,4}/g, '[file]');
-  // Strip URLs
-  s = s.replace(/https?:\/\/[^\s"')]+/g, '[url]');
+/** Strip URLs, file paths, query strings, GPS coords, tokens, and truncate. */
+export function sanitiseMsg(msg: string): string {
+  // Strip URLs (may contain tokens or coordinates)
+  let s = msg.replace(/https?:\/\/[^\s"')]+/g, '[url]');
   // Strip query strings
   s = s.replace(/\?[^\s"')]+/g, '');
+  // Strip local filesystem paths
+  s = s.replace(/(?:\/[a-zA-Z0-9_.-]+)+\.[a-zA-Z]{2,4}/g, '[file]');
+  // Strip JWT-style tokens (three base64url segments separated by dots)
+  s = s.replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[redacted]');
+  // Strip long alphanumeric strings ≥40 chars (API keys, hex tokens, etc.)
+  s = s.replace(/[A-Za-z0-9+/=_-]{40,}/g, '[redacted]');
+  // Strip GPS coordinates (lat/lng decimal patterns)
+  s = s.replace(/(?:lat|lng|latitude|longitude)[=:\s]+[-+]?\d+\.\d+/gi, '[location]');
+  s = s.replace(/[-+]?\d{1,3}\.\d{4,}\s*[,/]\s*[-+]?\d{1,3}\.\d{4,}/g, '[location]');
   return s.slice(0, 300);
 }
 
+/** Sanitise a single DiagEvent into a safe export record. */
+export function sanitiseEvent(
+  ev: DiagEvent,
+  reportTs: number,
+): Record<string, unknown> {
+  const offsetSeconds = Math.round((ev.ts - reportTs) / 1000);
+  const base: Record<string, unknown> = {
+    timestamp: new Date(ev.ts).toISOString(),
+    offsetSeconds,
+    type: ev.type,
+  };
+  if (ev.route) base.route = sanitisePath(ev.route);
+  if (ev.type === 'api_request') {
+    base.method = ev.method;
+    base.path = sanitisePath(ev.path);
+    if (ev.status !== undefined) base.status = ev.status;
+    if (ev.duration !== undefined) base.durationMs = ev.duration;
+    // No message — path+status is sufficient; avoids leaking request bodies
+  } else {
+    base.message = sanitiseMsg(ev.msg);
+  }
+  return base;
+}
+
+// ── timeline.jsonl ────────────────────────────────────────────────────────────
+
+const TIMELINE_MAX_EVENTS = 100;
+const TIMELINE_MAX_BYTES  = 64 * 1024; // 64 KB
+const TIMELINE_WINDOW_MS  = 60_000;    // 60 seconds before report
+
 export function buildTimelineJsonl(events: DiagEvent[], reportCreatedAt: string): string {
   const reportTs = new Date(reportCreatedAt).getTime();
+  const windowStart = reportTs - TIMELINE_WINDOW_MS;
 
-  // Sort oldest first, cap at 100
+  // Filter to 60-second window, sort oldest first, cap at 100
   const sorted = [...events]
+    .filter(ev => ev.ts >= windowStart && ev.ts <= reportTs + 5000) // +5s tolerance
     .sort((a, b) => a.ts - b.ts)
-    .slice(0, 100);
+    .slice(0, TIMELINE_MAX_EVENTS);
 
-  const lines = sorted.map(ev => {
-    const offsetSeconds = Math.round((ev.ts - reportTs) / 1000);
-    const base: Record<string, unknown> = {
-      timestamp: new Date(ev.ts).toISOString(),
-      offsetSeconds,
-      type: ev.type,
-    };
-    if (ev.route) base.route = ev.route;
-    base.message = sanitiseMsg(ev.msg);
-    if (ev.type === 'api_request') {
-      base.method = ev.method;
-      base.path = sanitisePath(ev.path);
-      if (ev.status !== undefined) base.status = ev.status;
-      if (ev.duration !== undefined) base.durationMs = ev.duration;
-      delete base.message; // path+status is sufficient
+  const lines: string[] = [];
+  let byteCount = 0;
+
+  for (const ev of sorted) {
+    let line: string;
+    try {
+      line = JSON.stringify(sanitiseEvent(ev, reportTs));
+    } catch {
+      continue; // skip malformed events
     }
-    return JSON.stringify(base);
-  });
+    const lineBytes = Buffer.byteLength(line + '\n', 'utf8');
+    if (byteCount + lineBytes > TIMELINE_MAX_BYTES) break;
+    lines.push(line);
+    byteCount += lineBytes;
+  }
 
-  // Append a synthetic "report submitted" sentinel
-  lines.push(JSON.stringify({
+  // Append a synthetic "report submitted" sentinel — always last, offsetSeconds: 0
+  const lastSorted = sorted[sorted.length - 1];
+  const sentinel = JSON.stringify({
     timestamp: new Date(reportTs).toISOString(),
     offsetSeconds: 0,
     type: 'bug_report',
-    route: events[events.length - 1]?.route ?? null,
+    route: lastSorted ? sanitisePath(lastSorted.route) : null,
     message: 'Report submitted',
-  }));
+  });
+  lines.push(sentinel);
 
   return lines.join('\n') + '\n';
 }

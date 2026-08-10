@@ -116,11 +116,12 @@ export default async function handler(req: Request, res: Response) {
 
     // ── 8. Audit log — record export (non-fatal if it fails) ─────────────────
     try {
-      const exporterEmail = ownerInfo.email.replace(/'/g, "''");
+      // Store the authenticated user's ID, not their email
+      const exporterId = ownerInfo.userId.replace(/'/g, "''");
       await db.execute(sql.raw(`
         UPDATE bug_reports
         SET exported_at = NOW(),
-            exported_by = '${exporterEmail}',
+            exported_by = '${exporterId}',
             updated_at  = NOW()
         WHERE id = '${safeId}'
       `));

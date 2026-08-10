@@ -2,6 +2,17 @@
  * Client-safe helpers for the support bundle UI actions.
  * Mirrors the server-side generator logic but runs in the browser.
  * No server imports, no Node.js APIs.
+ *
+ * SANITISATION SPEC — must stay in sync with support-bundle-generator.ts:
+ *   - Remove exact GPS coordinates
+ *   - Remove tokens, cookies and authorisation values
+ *   - Remove query strings
+ *   - Remove request/response bodies
+ *   - Remove user-entered form content
+ *   - Replace numeric API record IDs with :id
+ *   - Strip local filesystem paths
+ *   - Enforce 100-event and 64-KB limits
+ *   - Only include events from the 60 seconds before submission
  */
 import type { DiagEvent } from '@/lib/diagnosticBuffer';
 
@@ -56,6 +67,104 @@ export function parseDiagEvents(raw: string | null): DiagEvent[] {
   }
 }
 
+// ── Shared sanitisation (mirrors support-bundle-generator.ts) ─────────────────
+
+const SENSITIVE_PATH_SEGMENTS = /\/(password|token|secret|auth|session|cookie|pin|otp|key|credential)/i;
+
+function sanitisePath(path: string | undefined): string | undefined {
+  if (!path) return path;
+  let safe = path.split('?')[0];
+  safe = safe.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id');
+  safe = safe.replace(/\/\d+/g, '/:id');
+  if (SENSITIVE_PATH_SEGMENTS.test(safe)) {
+    safe = safe.replace(SENSITIVE_PATH_SEGMENTS, '/[redacted]');
+  }
+  return safe;
+}
+
+function sanitiseMsg(msg: string): string {
+  let s = msg.replace(/https?:\/\/[^\s"')]+/g, '[url]');
+  s = s.replace(/\?[^\s"')]+/g, '');
+  s = s.replace(/(?:\/[a-zA-Z0-9_.-]+)+\.[a-zA-Z]{2,4}/g, '[file]');
+  // Strip JWT-style tokens (three base64url segments separated by dots)
+  s = s.replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[redacted]');
+  // Strip long alphanumeric strings ≥40 chars
+  s = s.replace(/[A-Za-z0-9+/=_-]{40,}/g, '[redacted]');
+  // Strip GPS coordinates
+  s = s.replace(/(?:lat|lng|latitude|longitude)[=:\s]+[-+]?\d+\.\d+/gi, '[location]');
+  s = s.replace(/[-+]?\d{1,3}\.\d{4,}\s*[,/]\s*[-+]?\d{1,3}\.\d{4,}/g, '[location]');
+  return s.slice(0, 300);
+}
+
+function sanitiseEvent(ev: DiagEvent, reportTs: number): Record<string, unknown> {
+  const offsetSeconds = Math.round((ev.ts - reportTs) / 1000);
+  const base: Record<string, unknown> = {
+    timestamp: new Date(ev.ts).toISOString(),
+    offsetSeconds,
+    type: ev.type,
+  };
+  if (ev.route) base.route = sanitisePath(ev.route);
+  if (ev.type === 'api_request') {
+    base.method = ev.method;
+    base.path = sanitisePath(ev.path);
+    if (ev.status !== undefined) base.status = ev.status;
+    if (ev.duration !== undefined) base.durationMs = ev.duration;
+  } else {
+    base.message = sanitiseMsg(ev.msg);
+  }
+  return base;
+}
+
+const TIMELINE_MAX_EVENTS = 100;
+const TIMELINE_MAX_BYTES  = 64 * 1024;
+const TIMELINE_WINDOW_MS  = 60_000;
+
+/**
+ * Build a sanitised diagnostics array — same rules as timeline.jsonl.
+ * Used by "Download diagnostics" button.
+ * Returns an array of sanitised event objects (NOT the raw DiagEvent[]).
+ */
+export function buildSanitisedDiagnostics(
+  events: DiagEvent[],
+  reportCreatedAt: string,
+): Record<string, unknown>[] {
+  const reportTs = new Date(reportCreatedAt).getTime();
+  const windowStart = reportTs - TIMELINE_WINDOW_MS;
+
+  const sorted = [...events]
+    .filter(ev => ev.ts >= windowStart && ev.ts <= reportTs + 5000)
+    .sort((a, b) => a.ts - b.ts)
+    .slice(0, TIMELINE_MAX_EVENTS);
+
+  const result: Record<string, unknown>[] = [];
+  let byteCount = 0;
+
+  for (const ev of sorted) {
+    let sanitised: Record<string, unknown>;
+    try {
+      sanitised = sanitiseEvent(ev, reportTs);
+    } catch {
+      continue;
+    }
+    const lineBytes = new TextEncoder().encode(JSON.stringify(sanitised)).length;
+    if (byteCount + lineBytes > TIMELINE_MAX_BYTES) break;
+    result.push(sanitised);
+    byteCount += lineBytes;
+  }
+
+  // Append sentinel
+  const lastSorted = sorted[sorted.length - 1];
+  result.push({
+    timestamp: new Date(reportTs).toISOString(),
+    offsetSeconds: 0,
+    type: 'bug_report',
+    route: lastSorted ? sanitisePath(lastSorted.route) : null,
+    message: 'Report submitted',
+  });
+
+  return result;
+}
+
 // ── Diagnostic summary ────────────────────────────────────────────────────────
 
 interface DiagSummary {
@@ -78,17 +187,17 @@ function extractDiagSummary(events: DiagEvent[]): DiagSummary {
         s.online = ev.msg.includes('online') ? true : ev.msg.includes('offline') ? false : s.online;
         break;
       case 'permission_change':
-        if (/location|gps/i.test(ev.msg)) s.locationPermission = ev.msg;
+        if (/location|gps/i.test(ev.msg)) s.locationPermission = sanitiseMsg(ev.msg);
         break;
-      case 'gps_state': s.gpsStatus = ev.msg; break;
-      case 'camera_state': s.cameraStatus = ev.msg; break;
+      case 'gps_state': s.gpsStatus = sanitiseMsg(ev.msg); break;
+      case 'camera_state': s.cameraStatus = sanitiseMsg(ev.msg); break;
       case 'api_request':
         if (ev.status !== undefined && ev.status >= 400) {
-          s.lastFailedApiRequest = `${ev.method ?? 'GET'} ${ev.path ?? ''} → ${ev.status}${ev.duration !== undefined ? ` (${ev.duration}ms)` : ''}`;
+          s.lastFailedApiRequest = `${ev.method ?? 'GET'} ${sanitisePath(ev.path) ?? ''} → ${ev.status}${ev.duration !== undefined ? ` (${ev.duration}ms)` : ''}`;
         }
         break;
       case 'js_error': case 'unhandled_rejection': case 'error_boundary':
-        s.lastJsError = ev.msg.slice(0, 200);
+        s.lastJsError = sanitiseMsg(ev.msg).slice(0, 200);
         break;
     }
   }
@@ -114,7 +223,7 @@ export function buildSummaryMd(report: BugReportRow, events: DiagEvent[]): strin
     `- **Company:** ${report.company_name || '—'}`,
     `- **Platform:** ${report.platform || 'web'}`,
     `- **App version:** ${report.app_version || '—'}`,
-    `- **Page at submission:** ${report.current_route || report.page_url || '—'}`,
+    `- **Page at submission:** ${(report.current_route || report.page_url || '—').split('?')[0]}`,
     '',
     '## Description',
     '',
