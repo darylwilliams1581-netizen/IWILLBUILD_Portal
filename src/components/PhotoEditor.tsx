@@ -670,7 +670,11 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
   return (
     <div
       className="fixed inset-0 z-[80] flex flex-col bg-black h-[100dvh]"
-      style={{ overflowX: 'clip', paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      style={{
+        overflowX: 'clip',
+        maxWidth: '100vw',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+      }}
     >
 
       {/* ── Error banner ── */}
@@ -763,7 +767,12 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
       {/* ── Bottom toolbar ── */}
       <div
         className="shrink-0 bg-slate-900 border-t border-slate-700 w-full"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', overflowX: 'clip' }}
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          overflowX: 'clip',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
+        }}
       >
         {/* Row 1 — Close | Label | Locked badge | Download */}
         <div className="flex items-center gap-2 px-2 py-1.5 border-b border-slate-800 min-h-[44px]">
@@ -840,8 +849,13 @@ export default function PhotoEditor({ photo, onClose, onSaved, readOnly = false 
         {/* Row 2 — annotation tools (hidden when locked/readOnly) */}
         {!isLocked && (
           <div
-            className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto min-w-0"
-            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+            className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto min-w-0 w-full"
+            style={{
+              scrollbarWidth: 'none',
+              WebkitOverflowScrolling: 'touch',
+              maxWidth: '100vw',
+              boxSizing: 'border-box',
+            }}
           >
             {/* Rotate CW — preview only; baked in on Save & Lock */}
             <button
