@@ -750,6 +750,7 @@ import job_cards_id_convert_post from "./api/job-cards/[id]/convert/POST.js";
 import signin_history_get from "./api/signin-history/GET.js";
 import fleet_id_usage_export_get from "./api/fleet/[id]/usage-export/GET.js";
 import jobs_id_attendance_close_post from "./api/jobs/[id]/attendance/[attendanceId]/close/POST.js";
+// ── TEMPORARY DIAGNOSTICS REMOVED ─────────────────────────────────────────────
 // Asset Manager
 import sosGetHandler from "./api/sos/GET.js";
 import sosTriggerPostHandler from "./api/sos/trigger/POST.js";
@@ -2801,6 +2802,7 @@ app.post("/api/admin/set-user-company", admin_set_user_company_post_1);
 app.post("/api/admin/fix-photo-thumbnails", adminFixPhotoThumbnailsPost);
 app.post("/api/admin/fix-photo-record-fields", adminFixPhotoRecordFieldsPost);
 app.post("/api/admin/fix-all-photo-fields", adminFixAllPhotoFieldsPost);
+// (diagnostics removed)
 app.get("/api/asset-manager/assets", asset_manager_assets_get_2);
 app.post("/api/asset-manager/assets", asset_manager_assets_post_3);
 app.get("/api/asset-manager/assets/:id", asset_manager_assets_id_get_4);

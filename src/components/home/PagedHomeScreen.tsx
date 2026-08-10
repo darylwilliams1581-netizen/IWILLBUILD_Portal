@@ -150,13 +150,13 @@ function JobPickerSheet({ onClose }: { onClose: () => void }) {
       />
 
       {/* Sheet — centered dialog on desktop, bottom sheet on mobile */}
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none overflow-x-hidden w-full max-w-full">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none w-full max-w-full overflow-x-hidden px-4">
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="pointer-events-auto w-[calc(100%-2rem)] max-w-[520px] bg-white flex flex-col overflow-hidden shadow-2xl
+          className="pointer-events-auto w-full max-w-[520px] bg-white flex flex-col overflow-hidden shadow-2xl
             rounded-t-3xl sm:rounded-2xl"
           style={{
             maxHeight: 'min(600px, calc(100dvh - 80px))',
