@@ -47,8 +47,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "7.0.0"),
-        // @capacitor-community/media — not in capacitor-swift-pm; ships its own SPM package
-        .package(url: "https://github.com/capacitor-community/media.git", from: "7.0.0"),
+        // @capacitor-community/media ^9.1.0 — not in capacitor-swift-pm; ships its own SPM package
+        .package(url: "https://github.com/capacitor-community/media.git", from: "9.1.0"),
     ],
     targets: [
         .target(
