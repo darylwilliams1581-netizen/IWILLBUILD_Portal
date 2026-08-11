@@ -141,6 +141,13 @@ export interface IosMediaPickerState {
   /** Set when the user has denied camera or photo library access */
   permissionDenied: 'camera' | 'photos' | null;
   /**
+   * Set when a camera or library attempt fails completely (plugin missing or
+   * all result-type fallbacks exhausted). Callers should surface this to the
+   * user — e.g. show the existing camera error UI — rather than silently
+   * ignoring it. Cleared on the next openCamera / openLibrary call.
+   */
+  cameraError: string | null;
+  /**
    * Set when iOS returns 'limited' photo library access.
    * Limited = user selected specific photos only (iOS 14+).
    * The picker still works — we can still open the library — but the user
@@ -403,6 +410,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   const [checkingPermission, setChecking]   = useState(false);
   const [permissionDenied, setDenied]       = useState<'camera' | 'photos' | null>(null);
   const [photosLimited, setPhotosLimited]   = useState(false);
+  const [cameraError, setCameraError]       = useState<string | null>(null);
 
   // ── Explainer modal state ─────────────────────────────────────────────────
   type ExplainerState = {
@@ -452,6 +460,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   // ── Internal: check camera permission + open input ────────────────────────
   const doOpenCamera = useCallback(async (opts?: NativeCameraOptions) => {
     setDenied(null);
+    setCameraError(null);
 
     // ── Web path: click MUST happen synchronously inside the user gesture ─────
     // iOS Safari invalidates the gesture token the moment any `await` resolves,
@@ -492,6 +501,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     const CameraPlugin = getNativeCameraPlugin();
     if (!CameraPlugin) {
       console.warn('[camera] CameraPlugin not available on native — cannot open camera');
+      setCameraError('Camera is not available on this device. Please check your app installation.');
       return;
     }
 
@@ -506,6 +516,12 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       direction,
       flashMode,
       saveToGallery: false,
+      // Cap native capture resolution to 3072px on the longest side.
+      // iOS 12MP sensors can return 4032×3024 images; at quality 84 that's
+      // ~8–10 MB of base64 data. Capping at 3072 keeps the largest dimension
+      // under ~3 MB while remaining sharp enough for job-site evidence photos.
+      width: 3072,
+      height: 3072,
     };
 
     try {
@@ -584,6 +600,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       }
 
       console.warn('[camera] all 4 result type attempts failed — no photo data returned');
+      setCameraError('Could not retrieve the photo. Please try again or restart the app.');
 
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
@@ -598,6 +615,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   // ── Internal: check photos permission + open input ────────────────────────
   const doOpenLibrary = useCallback(async () => {
     setDenied(null);
+    setCameraError(null);
 
     // ── Web path: click synchronously — same Safari gesture-token rule ────────
     if (!isNative()) {
@@ -627,6 +645,9 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         allowEditing: false,
         source: CAM_SOURCE_PHOTOS,
         saveToGallery: false,
+        // Cap library pick resolution to 3072px — same budget as camera captures.
+        width: 3072,
+        height: 3072,
       };
 
       // ── Attempt 1: URI result (most reliable on iOS 17+) ──────────────────
@@ -701,6 +722,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           });
         } else {
           console.warn('[library] Camera.getPhoto({source:PHOTOS}) failed:', err);
+          setCameraError('Could not load the photo. Please try again.');
         }
       }
     } finally {
@@ -761,6 +783,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     setDenied(null);
     setPhotosLimited(false);
     setExplainer(null);
+    setCameraError(null);
   }, []);
 
   return {
@@ -769,6 +792,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     isHeic,
     checkingPermission,
     permissionDenied,
+    cameraError,
     photosLimited,
     openCamera,
     openLibrary,
