@@ -103,6 +103,10 @@ export default async function handler(req: Request, res: Response) {
       normaliseMime(file);
 
       // Compress + convert HEIC→JPEG
+      // compressImageIfNeeded has its own internal try/catch and returns the raw
+      // buffer on any Jimp failure — it should never throw. We still wrap it here
+      // as a safety net, but on failure we fall through with the raw buffer rather
+      // than returning a 400, so the photo is saved as-is instead of being lost.
       let compressed: Buffer = file.buffer;
       let outMime: string = file.mimetype;
       try {
@@ -113,10 +117,11 @@ export default async function handler(req: Request, res: Response) {
         file.mimetype = outMime;
         file.size = compressed.length;
       } catch (convErr) {
-        return res.status(400).json({
-          code: 'conversion_failed',
-          error: convErr instanceof Error ? convErr.message : 'Image conversion failed.',
-        });
+        // Compression failed — store the raw buffer rather than rejecting the upload.
+        // This preserves the photo even if Jimp can't process it (e.g. unusual PNG
+        // colour profiles, 16-bit PNGs, or bundle issues on Alpine).
+        console.warn(`[photos POST] compressImageIfNeeded threw for jobId=${jobId} mime=${file.mimetype}:`, convErr instanceof Error ? convErr.message : convErr);
+        // compressed / outMime already hold the raw values — no change needed
       }
 
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
@@ -204,7 +209,7 @@ export default async function handler(req: Request, res: Response) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     const status = (error as { status?: number }).status ?? 500;
-    console.error('POST /api/jobs/:id/photos error:', msg);
+    console.error(`[photos POST] jobId=${req.params.id} unhandled error status=${status}:`, msg);
     return res.status(status).json({ error: msg || 'Failed to upload photos' });
   }
 }

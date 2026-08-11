@@ -62,14 +62,15 @@ export default async function handler(req: Request, res: Response) {
       const file = parsed.files[i];
       normaliseMime(file);
 
-      // Compress + convert HEIC→JPEG
+      // Compress + convert HEIC→JPEG — fall through with raw buffer on failure
       try {
         const result = await compressImageIfNeeded(file.buffer, file.mimetype);
         file.buffer = result.buffer;
         file.mimetype = result.mimeType;
         file.size = result.buffer.length;
       } catch (convErr) {
-        return res.status(400).json({ error: `Could not process "${file.originalname}": ${convErr instanceof Error ? convErr.message : 'conversion failed'}` });
+        console.warn(`[job-card photos POST] compressImageIfNeeded threw for cardId=${cardId} mime=${file.mimetype}:`, convErr instanceof Error ? convErr.message : convErr);
+        // Fall through with raw buffer — photo is saved as-is rather than lost
       }
 
       const ext = file.mimetype === 'image/png' ? 'png' : 'jpg';

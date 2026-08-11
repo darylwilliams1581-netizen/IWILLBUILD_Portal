@@ -327,33 +327,24 @@ export default function JobPhotosPage() {
       >
         {/* Normal mode */}
         {!selectMode && (
-          <div className="flex items-center gap-1.5 px-3 pt-2 pb-2 min-w-0 overflow-x-clip">
-            {/* Back */}
-            <button
-              onClick={() => navigate(`/jobs/${id}`)}
-              aria-label="Back"
-              className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
-            >
-              <ArrowLeft size={16} />
-            </button>
-
-            {/* Upload — flex-1 */}
+          <div className="flex items-center gap-2 px-3 pt-2 pb-2 min-w-0 overflow-x-clip">
+            {/* Upload — square fixed icon button */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload photos"
-              className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors touch-manipulation font-semibold text-sm"
+              className="w-11 h-11 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
               aria-label="Upload photos from library"
             >
-              {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             </button>
 
             {/* Select */}
             <button
               onClick={() => handleSetSelectMode(true)}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-11 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation shrink-0"
             >
-              <CheckSquare size={15} />
+              <CheckSquare size={16} />
               <span className="text-[9px] font-semibold leading-none">Select</span>
             </button>
 
@@ -361,22 +352,22 @@ export default function JobPhotosPage() {
             <button
               onClick={() => photosRef.current?.generateShareLink()}
               disabled={photoCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-11 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0"
               title="Share view-only link"
             >
-              <Share2 size={15} />
+              <Share2 size={16} />
               <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
 
             {/* View size */}
-            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-gray-50 shrink-0 h-10">
+            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50 shrink-0 h-11">
               {(['small', 'medium', 'large'] as const).map((size) => (
                 <button
                   key={size}
                   onClick={() => handleSetViewSize(size)}
                   className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                 >
-                  {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
+                  {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
                 </button>
               ))}
             </div>

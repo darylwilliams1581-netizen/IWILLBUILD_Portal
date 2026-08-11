@@ -1,1 +1,1 @@
-public let isCapacitorApp = true
+public enum CapAppSPMPlaceholder {}
