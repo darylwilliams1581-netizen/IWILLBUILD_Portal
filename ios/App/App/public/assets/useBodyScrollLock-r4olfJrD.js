@@ -1,0 +1,1 @@
+import{r}from"./react-vendor-BA0-1TNb.js";let o=0;function u(e){r.useEffect(()=>{if(!e)return;o++;const t=document.body.style.overflow;return document.body.style.overflow="hidden",()=>{o--,o<=0&&(o=0,document.body.style.overflow=t)}},[e])}export{u};

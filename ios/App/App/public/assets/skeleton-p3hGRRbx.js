@@ -1,0 +1,1 @@
+import{j as t}from"./react-vendor-BA0-1TNb.js";import{as as m}from"./index-CsTjuhR4.js";function a({className:e,...s}){return t.jsx("div",{className:m("animate-pulse rounded-md bg-muted",e),...s})}export{a as S};
