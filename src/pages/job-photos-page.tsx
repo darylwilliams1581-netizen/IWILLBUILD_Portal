@@ -328,18 +328,15 @@ export default function JobPhotosPage() {
         {/* Normal mode */}
         {!selectMode && (
           <div className="flex items-center gap-2 px-3 pt-2 pb-2 min-w-0 overflow-x-clip">
-            {/* Upload — flex-1, full label so it's clearly tappable */}
+            {/* Upload — square fixed icon button */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload photos"
-              className="flex-1 h-11 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
+              className="w-11 h-11 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
               aria-label="Upload photos from library"
             >
-              {uploading
-                ? <Loader2 size={17} className="animate-spin" />
-                : <Upload size={17} />}
-              <span>{uploading ? 'Uploading…' : 'Upload'}</span>
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             </button>
 
             {/* Select */}
