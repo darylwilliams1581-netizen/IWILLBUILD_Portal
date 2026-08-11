@@ -560,17 +560,20 @@
   },
   "debug/upload-error-screenshot": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/debug-upload-error-screenshot-0cc085f0.png",
-    "searchQuery": "job card management app interface screen",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/debug-upload-error-screenshot-c19501b9.jpg",
+    "searchQuery": "mobile app photo sync interface with handwritten notes",
+    "alternatives": [
+      "/airo-assets/uploads/debug-upload-error-screenshot-0cc085f0.png"
+    ],
     "userModified": true,
     "createdAt": "2026-08-08T03:48:43.641Z",
-    "lastUpdated": "2026-08-08T03:48:43.641Z",
+    "lastUpdated": "2026-08-11T21:37:20.600Z",
     "uploadSources": {
-      "/airo-assets/uploads/debug-upload-error-screenshot-0cc085f0.png": "f38wenbvln_1786160094974_file_7PuOO4dn_T.png"
+      "/airo-assets/uploads/debug-upload-error-screenshot-0cc085f0.png": "f38wenbvln_1786160094974_file_7PuOO4dn_T.png",
+      "/airo-assets/uploads/debug-upload-error-screenshot-c19501b9.jpg": "f38wenbvln_1786483520186_file_94mwZfBXQ8.jpg"
     },
-    "uploadContentHash": "b9230c9ee6b575c809fcb24adb3c054e2c623525de3eccf53d03c2c763a0a082",
-    "caption": "job card management app interface screen"
+    "uploadContentHash": "18f9f6b18d414d86fc88e25cb5fe9e5920f08b74ef5a990cca87aa421bcada72",
+    "caption": "mobile app photo sync interface with handwritten notes"
   },
   "logo/primary": {
     "mediaType": "logo",
