@@ -13,28 +13,26 @@ import PackageDescription
 //   - PushNotifications.register() is a no-op
 //   - iOS Settings shows only Photos — no Camera, Location, or Notifications
 //
-// These product names match the capacitor-swift-pm package at the version
-// declared in package.json (@capacitor/* 7.x → capacitor-swift-pm 7.x).
-// After editing this file, run:
-//   npx cap sync ios
-// then open Xcode and confirm CapacitorCamera appears in the SPM dependency tree.
-//
 // ── Manual fix applied 2026-08-12 ────────────────────────────────────────────
 // Added @capacitor/filesystem and @capacitor-community/media.
 //
-// @capacitor/filesystem — CapacitorFilesystem product from capacitor-swift-pm.
-//   Required for readFile() fallback in useIosMediaPicker (attempt 4) and for
-//   the "Backup to Camera Roll" feature (saving captured photos to the Photos
-//   app via the native Filesystem API).
+// ── Manual fix applied 2026-08-12 (build 11075091 failure) ──────────────────
+// PROBLEM: Appflow build failed with:
+//   "target 'CapApp-SPM' referenced in product 'CapApp-SPM' is empty"
 //
-// @capacitor-community/media — CapacitorCommunityMedia product.
-//   Required for Media.savePhoto() which writes a captured JPEG to the iOS
-//   Photos library. Without this plugin the "Backup to Camera Roll" toggle
-//   silently does nothing — the photo is captured but never saved to Photos.
+// ROOT CAUSE: `npx cap sync ios` runs during the Appflow build and regenerates
+// Package.swift. The installed Capacitor packages are 8.4.1 but this file
+// previously referenced capacitor-swift-pm from: "7.0.0". The 8.x package has
+// a different internal layout — when Xcode resolved the 8.x tag against a
+// Package.swift that declared 7.x products, the target resolved with no source
+// files and SPM rejected it.
+//
+// FIX: Updated capacitor-swift-pm to from: "8.0.0" to match @capacitor/* 8.4.1.
+// The product names (CapacitorCamera, CapacitorGeolocation, etc.) are unchanged
+// between 7.x and 8.x — only the minimum version constraint changes.
 //
 // NOTE: @capacitor-community/media is NOT in capacitor-swift-pm. It ships its
 // own Swift package at https://github.com/capacitor-community/media.git.
-// The dependency block below adds it as a separate SPM remote package.
 // ─────────────────────────────────────────────────────────────────────────────
 
 let package = Package(
@@ -46,7 +44,8 @@ let package = Package(
             targets: ["CapApp-SPM"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "7.0.0"),
+        // Must match installed @capacitor/* version (currently 8.4.1)
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0"),
         // @capacitor-community/media ^9.1.0 — not in capacitor-swift-pm; ships its own SPM package
         .package(url: "https://github.com/capacitor-community/media.git", from: "9.1.0"),
     ],
@@ -102,7 +101,10 @@ let package = Package(
                 //   Required for "Backup to Camera Roll": saves captured JPEG blobs to
                 //   the iOS Photos library. Without this the toggle does nothing.
                 .product(name: "CapacitorCommunityMedia", package: "media"),
-            ]
+            ],
+            // Explicit path ensures SPM always finds the stub source file even
+            // when the working directory differs (e.g. Appflow CI clone paths).
+            path: "Sources/CapApp-SPM"
         )
     ]
 )
