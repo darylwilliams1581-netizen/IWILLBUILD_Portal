@@ -31,7 +31,7 @@ export default function BuildersCalcPage() {
           "about": { "@id": "https://iwillbuild.com/#organization" }
         })}</script>
       </Helmet>
-      <h1 className="sr-only">Builders Calc</h1>
+      {/* H1 visible to crawlers — positioned inside the top bar below */}
 
       {/* Top bar */}
       <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 shrink-0" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
@@ -44,7 +44,8 @@ export default function BuildersCalcPage() {
           </button>
           <div className="min-w-0">
             <p className="text-gray-400 text-xs font-medium leading-tight">Estimating</p>
-            <p className="text-gray-900 font-bold text-xl leading-tight">Builders Calc</p>
+            {/* Visible H1 — satisfies crawlers and screen readers */}
+            <h1 className="text-gray-900 font-bold text-xl leading-tight">Builders Calc</h1>
           </div>
         </div>
       </div>

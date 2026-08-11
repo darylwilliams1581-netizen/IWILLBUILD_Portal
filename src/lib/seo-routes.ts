@@ -30,43 +30,37 @@ export interface SeoRoute {
 }
 
 export const seoRoutes: SeoRoute[] = [
-  { path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-08-06" },
-  { path: "/home", changefreq: "monthly", priority: 0.8 },
-  { path: "/login", changefreq: "monthly", priority: 0.6 },
-  { path: "/signup", changefreq: "monthly", priority: 0.9 },
+  { path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-08-12" },
+  // ── Public marketing / legal ──────────────────────────────────────────────
   { path: "/privacy", changefreq: "yearly", priority: 0.4 },
   { path: "/terms", changefreq: "yearly", priority: 0.4 },
-  { path: "/check-email", changefreq: "monthly", priority: 0.2 },
-  { path: "/verify-email", changefreq: "monthly", priority: 0.2 },
-  { path: "/verify-required", changefreq: "monthly", priority: 0.2 },
-  { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
-  { path: "/reset-password", changefreq: "monthly", priority: 0.3 },
-  { path: "/login-help", changefreq: "monthly", priority: 0.3 },
   { path: "/download-app", changefreq: "monthly", priority: 0.8 },
-  { path: "/subscribe", changefreq: "monthly", priority: 0.8 },
+  { path: "/subscribe", changefreq: "monthly", priority: 0.9 },
+  // ── Auth pages — noindex in page Helmet; excluded from sitemap ────────────
+  // /login, /signup, /check-email, /verify-email, /verify-required,
+  // /forgot-password, /reset-password, /login-help  → noindex, not listed here
+  // ── App portal (authenticated — crawlers won't reach these) ──────────────
+  { path: "/home", changefreq: "monthly", priority: 0.8 },
   { path: "/driver", changefreq: "monthly", priority: 0.8 },
   { path: "/prestart", changefreq: "monthly", priority: 0.8 },
-  { path: "/site-escape", changefreq: "monthly", priority: 0.8 },
-  { path: "/portal/login", changefreq: "monthly", priority: 0.4 },
-  { path: "/portal/dashboard", changefreq: "monthly", priority: 0.5 },
-  { path: "/portal/payment-success", changefreq: "monthly", priority: 0.5 },
+  // /site-escape → redirect to /home, not a real page
   { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
-  { path: "/projects", changefreq: "monthly", priority: 0.8 },
-  { path: "/stakeholders", changefreq: "monthly", priority: 0.8 },
-  { path: "/subscription", changefreq: "monthly", priority: 0.8 },
-  { path: "/tools", changefreq: "monthly", priority: 0.8 },
+  // /projects → redirect to /jobs
+  // /stakeholders → redirect to /customers
+  // /subscription → redirect to /billing
+  // /tools → redirect to /estimating
   { path: "/jobs", changefreq: "monthly", priority: 0.8 },
   { path: "/incidents", changefreq: "monthly", priority: 0.8 },
   { path: "/risk-register", changefreq: "monthly", priority: 0.8 },
   { path: "/scheduler", changefreq: "monthly", priority: 0.8 },
   { path: "/fleet", changefreq: "monthly", priority: 0.8 },
-  { path: "/forms", changefreq: "monthly", priority: 0.8 },
+  // /forms → redirect to /studio/forms
   { path: "/files", changefreq: "monthly", priority: 0.8 },
   { path: "/estimating", changefreq: "monthly", priority: 0.8 },
   { path: "/builders-calc", changefreq: "monthly", priority: 0.8 },
   { path: "/takeoff-pad", changefreq: "monthly", priority: 0.8 },
   { path: "/safety", changefreq: "monthly", priority: 0.8 },
-  { path: "/library", changefreq: "monthly", priority: 0.8 },
+  // /library → redirect to /studio/library
   { path: "/customers", changefreq: "monthly", priority: 0.8 },
   { path: "/invoices", changefreq: "monthly", priority: 0.8 },
   { path: "/studio", changefreq: "monthly", priority: 0.8 },
@@ -79,24 +73,26 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/plan-manager", changefreq: "monthly", priority: 0.8 },
   { path: "/studio/asset-manager", changefreq: "monthly", priority: 0.5 },
   { path: "/signin-history", changefreq: "monthly", priority: 0.8 },
-  { path: "/studio/jobs", changefreq: "monthly", priority: 0.5 },
-  { path: "/studio/estimates", changefreq: "monthly", priority: 0.5 },
-  { path: "/studio/fleet", changefreq: "monthly", priority: 0.5 },
-  { path: "/studio/accounts", changefreq: "monthly", priority: 0.5 },
+  // /studio/jobs → redirect to /jobs
+  // /studio/estimates → redirect to /estimating
+  // /studio/fleet → redirect to /fleet
+  // /studio/accounts → redirect to /settings
   { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
-  { path: "/annette", changefreq: "monthly", priority: 0.8 },
+  // /annette → redirect to /owner-console?tab=health-check
   { path: "/team", changefreq: "monthly", priority: 0.8 },
-  { path: "/team/schedule", changefreq: "monthly", priority: 0.5 },
+  // /team/schedule → redirect to /scheduler?tab=team-shifts
   { path: "/quick-links", changefreq: "monthly", priority: 0.8 },
   { path: "/settings", changefreq: "monthly", priority: 0.8 },
   { path: "/profile", changefreq: "monthly", priority: 0.8 },
   { path: "/help", changefreq: "monthly", priority: 0.8 },
   { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
-  { path: "/developer-console", changefreq: "monthly", priority: 0.8 },
-  { path: "/roadmap", changefreq: "monthly", priority: 0.8 },
+  // /developer-console → redirect to /owner-console
+  // /roadmap → redirect to /dashboard
   { path: "/billing", changefreq: "monthly", priority: 0.8 },
   { path: "/lists", changefreq: "monthly", priority: 0.8 },
   { path: "/user-logs", changefreq: "monthly", priority: 0.8 },
   { path: "/job-cards", changefreq: "monthly", priority: 0.8 },
-  { path: "/job-cards/new", changefreq: "monthly", priority: 0.5 },
+  // /job-cards/new → transient form page, not a crawlable destination
+  // ── Customer portal (token-gated, not crawlable) ──────────────────────────
+  // /portal/login, /portal/dashboard, /portal/payment-success → excluded
 ];

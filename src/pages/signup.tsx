@@ -311,6 +311,7 @@ export default function SignupPage() {
       <Helmet>
         <title>Get Started Free — IWILLBUILD Fleet & Construction Portal</title>
         <meta name="description" content="Create your IWILLBUILD portal account. 30-day free trial, no credit card required. Fleet tracking, SWMS safety, jobs and more." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/signup" />
         <meta name="robots" content="noindex" />
         <meta property="og:title" content="Get Started Free — IWILLBUILD" />

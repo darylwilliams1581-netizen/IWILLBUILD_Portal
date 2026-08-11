@@ -335,6 +335,7 @@ export default function LoginPage() {
       <Helmet>
         <title>Sign In — IWILLBUILD Portal</title>
         <meta name="description" content="Sign in to the IWILLBUILD portal to manage jobs, crews, fleet, safety and more." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/login" />
         <meta name="robots" content="noindex" />
         <meta property="og:title" content="Sign In — IWILLBUILD Portal" />

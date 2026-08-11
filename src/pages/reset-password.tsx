@@ -98,6 +98,7 @@ export default function ResetPasswordPage() {
       <Helmet>
         <title>Reset Password — IWILLBUILD Portal</title>
         <meta name="description" content="Set a new password for your IWILLBUILD Portal account." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/reset-password" />
         <meta name="robots" content="noindex" />
       </Helmet>
