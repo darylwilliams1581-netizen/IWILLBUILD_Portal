@@ -501,9 +501,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     const CameraPlugin = getNativeCameraPlugin();
     if (!CameraPlugin) {
       console.warn('[camera] CameraPlugin not available on native — cannot open camera');
-      const error = 'Camera is not available on this device. Please check your app installation.';
-      setCameraError(error);
-      throw new Error(error);
+      setCameraError('Camera is not available on this device. Please check your app installation.');
+      return;
     }
 
     const nativeQuality = opts?.captureQuality ?? 84;
@@ -601,18 +600,13 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
       }
 
       console.warn('[camera] all 4 result type attempts failed — no photo data returned');
-      const error = 'Could not retrieve the photo. Please try again or restart the app.';
-      setCameraError(error);
-      throw new Error(error);
+      setCameraError('Could not retrieve the photo. Please try again or restart the app.');
 
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
       const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
       if (!isCancel) {
         console.warn('[camera] native Camera.getPhoto failed:', err);
-        const error = err instanceof Error ? err.message : 'Camera could not be opened.';
-        setCameraError(error);
-        throw new Error(error);
       }
       // Do not fall through to file input on native — getPhoto handles its own UI
     }
@@ -640,10 +634,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     // This is the correct pattern for Capacitor + WKWebView photo library access.
     const CameraPlugin = getNativeCameraPlugin();
     if (!CameraPlugin) {
-      console.warn('[library] CameraPlugin not available on native — cannot open library');
-      const error = 'Photo library is not available in this native build.';
-      setCameraError(error);
-      throw new Error(error);
+      libraryInputRef.current?.click();
+      return;
     }
 
     setChecking(true);
@@ -714,13 +706,8 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           const blob = base64ToBlob(read.base64, read.mimeType);
           const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type });
           handleFile(file);
-          return;
         }
       }
-      console.warn('[library] all result type attempts failed — no photo data returned');
-      const error = 'Could not retrieve the selected photo. Please try again or restart the app.';
-      setCameraError(error);
-      throw new Error(error);
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
       const isCancel = msg.includes('cancel') || msg.includes('dismiss') || msg.includes('no image') || msg.includes('user cancelled');
@@ -735,9 +722,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
           });
         } else {
           console.warn('[library] Camera.getPhoto({source:PHOTOS}) failed:', err);
-          const error = err instanceof Error ? err.message : 'Could not load the photo. Please try again.';
-          setCameraError(error);
-          throw new Error(error);
+          setCameraError('Could not load the photo. Please try again.');
         }
       }
     } finally {

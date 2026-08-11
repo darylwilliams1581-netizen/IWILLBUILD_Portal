@@ -4,9 +4,6 @@ import path from "path";
 import { fileURLToPath, URL } from "node:url";
 import { createRequire } from "module";
 
-const configDir = path.dirname(fileURLToPath(import.meta.url));
-const __dirname = configDir;
-
 // ---------------------------------------------------------------------------
 // Optional platform plugin loader
 // These modules only exist inside the builder sandbox. When running locally
@@ -16,6 +13,8 @@ const __dirname = configDir;
 // rest of the config can guard each usage with a simple truthiness check.
 // ---------------------------------------------------------------------------
 const _require = createRequire(import.meta.url);
+const configDir = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = configDir;
 
 function tryLoad(id: string, named?: string): ((...args: unknown[]) => unknown) | null {
   try {
@@ -73,9 +72,9 @@ function extractHostname(value: string): string {
 // already been resolved to an absolute path by Vite's resolver.
 // ---------------------------------------------------------------------------
 function e2eDbStubPlugin(): Plugin {
-  const dbDir = path.resolve(configDir, "src/server/db");
-  const configStub = path.resolve(configDir, "src/test/stubs/db-config.stub.ts");
-  const clientStub = path.resolve(configDir, "src/test/stubs/db-client.stub.ts");
+  const dbDir = path.resolve(__dirname, "src/server/db");
+  const configStub = path.resolve(__dirname, "src/test/stubs/db-config.stub.ts");
+  const clientStub = path.resolve(__dirname, "src/test/stubs/db-client.stub.ts");
 
   return {
     name: "e2e-db-stub",
