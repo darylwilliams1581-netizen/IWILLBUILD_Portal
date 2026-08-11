@@ -1,11 +1,11 @@
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { URL, fileURLToPath } from "node:url";
+import { fileURLToPath, URL } from "node:url";
 import { createRequire } from "module";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const configDir = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = configDir;
 
 // ---------------------------------------------------------------------------
 // Optional platform plugin loader
@@ -73,9 +73,9 @@ function extractHostname(value: string): string {
 // already been resolved to an absolute path by Vite's resolver.
 // ---------------------------------------------------------------------------
 function e2eDbStubPlugin(): Plugin {
-  const dbDir = path.resolve(__dirname, "src/server/db");
-  const configStub = path.resolve(__dirname, "src/test/stubs/db-config.stub.ts");
-  const clientStub = path.resolve(__dirname, "src/test/stubs/db-client.stub.ts");
+  const dbDir = path.resolve(configDir, "src/server/db");
+  const configStub = path.resolve(configDir, "src/test/stubs/db-config.stub.ts");
+  const clientStub = path.resolve(configDir, "src/test/stubs/db-client.stub.ts");
 
   return {
     name: "e2e-db-stub",
@@ -149,7 +149,7 @@ if (corsOrigins.length === 0) {
 
 // ---------------------------------------------------------------------------
 export default defineConfig(({ mode, isSsrBuild }) => ({
-  root: __dirname,
+  root: configDir,
   envPrefix: ["VITE_", "SITE_"],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),

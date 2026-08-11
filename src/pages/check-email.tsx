@@ -39,6 +39,7 @@ export default function CheckEmailPage() {
       <Helmet>
         <title>Check Your Email — IWILLBUILD Portal</title>
         <meta name="description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/check-email" />
         <meta name="robots" content="noindex, nofollow" />
         <meta property="og:title" content="Check Your Email — IWILLBUILD Portal" />

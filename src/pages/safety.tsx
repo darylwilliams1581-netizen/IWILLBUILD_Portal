@@ -44,8 +44,6 @@ export function SwmsLibraryTab() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
-  const [cleaning, setCleaning] = useState(false);
-  const [cleanMsg, setCleanMsg] = useState('');
 
   useEffect(() => {
     fetch('/api/safety/swms', { credentials: 'include' })
@@ -54,26 +52,6 @@ export function SwmsLibraryTab() {
       .catch(() => setFetchError('Failed to load SWMS library.'))
       .finally(() => setLoading(false));
   }, []);
-
-  async function handleCleanup() {
-    setCleaning(true); setCleanMsg('');
-    try {
-      const r = await fetch('/api/developer/swms-cleanup', { method: 'POST', credentials: 'include' });
-      const d = await r.json();
-      if (r.ok) {
-        setCleanMsg(`Done. ${d.log?.join('; ') || 'No changes needed.'} Counts: total=${d.counts?.total} active=${d.counts?.active} draft=${d.counts?.draft} archived=${d.counts?.archived}`);
-        const r2 = await fetch('/api/safety/swms', { credentials: 'include' });
-        const d2 = await r2.json();
-        setSwmsList(d2.swms ?? []);
-      } else {
-        setCleanMsg(d.error ?? 'Cleanup failed.');
-      }
-    } catch {
-      setCleanMsg('Cleanup failed.');
-    } finally {
-      setCleaning(false);
-    }
-  }
 
   async function handleSeed() {
     setSeeding(true); setSeedMsg('');
@@ -178,22 +156,6 @@ export function SwmsLibraryTab() {
           </button>
         </div>
       </div>
-
-      {/* Developer-only: clean up junk SWMS rows */}
-      {isPlatformOwner && (
-        <div className="flex items-center gap-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs">
-          <span className="text-amber-700 font-semibold">Dev:</span>
-          <button
-            onClick={handleCleanup}
-            disabled={cleaning}
-            className="flex items-center gap-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded transition-colors disabled:opacity-50"
-          >
-            {cleaning ? <Loader2 size={11} className="animate-spin" /> : null}
-            Clean up junk SWMS
-          </button>
-          {cleanMsg && <span className="text-amber-700 truncate max-w-xs">{cleanMsg}</span>}
-        </div>
-      )}
 
       {(importMsg || seedMsg) && (
         <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${importMsg.includes('failed') || importMsg.includes('Failed') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>

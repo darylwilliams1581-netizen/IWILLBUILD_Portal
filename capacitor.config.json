@@ -11,7 +11,7 @@
     ]
   },
   "ios": {
-    "buildNumber": "8",
+    "buildNumber": "9",
     "contentInset": "automatic",
     "backgroundColor": "#111827"
   },
@@ -25,8 +25,8 @@
       "overlaysWebView": false
     },
     "SplashScreen": {
-      "launchShowDuration": 1500,
-      "launchAutoHide": true,
+      "launchShowDuration": 3000,
+      "launchAutoHide": false,
       "backgroundColor": "#111827"
     },
     "PushNotifications": {

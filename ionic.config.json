@@ -1,0 +1,7 @@
+{
+  "name": "IWILLBUILD",
+  "type": "react",
+  "integrations": {
+    "capacitor": {}
+  }
+}

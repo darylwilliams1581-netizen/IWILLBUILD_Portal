@@ -544,6 +544,8 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     retryItem,
     removeItem,
     clearUploaded,
+    storageWarning,
+    dismissStorageWarning,
   } = usePhotoUploadQueue({
     jobId,
     onBatchComplete: (uploaded, _failed) => {
@@ -683,7 +685,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       setUploadError(`Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added. Uploading first ${remaining}.`);
     }
     setSummaryDismissed(false);
-    enqueueFiles(toAdd);
+    void enqueueFiles(toAdd);
   }, [jobId, totalCount, enqueueFiles]);
 
   const doUpload = useCallback((files: FileList | File[]) => {
@@ -888,6 +890,22 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           isOnline={isOnline}
           onDismiss={() => { setSummaryDismissed(true); clearUploaded(); }}
         />
+      )}
+
+      {/* Storage warning banner — shown when queue is full or device storage is low */}
+      {storageWarning && (
+        <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+          <svg className="shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span className="flex-1">{storageWarning}</span>
+          <button
+            type="button"
+            onClick={dismissStorageWarning}
+            className="shrink-0 text-amber-500 hover:text-amber-700 transition-colors"
+            aria-label="Dismiss storage warning"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       )}
 
       {/* Pending upload tray — compact banner list instead of card grid */}

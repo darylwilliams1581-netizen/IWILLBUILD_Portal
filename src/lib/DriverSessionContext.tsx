@@ -630,6 +630,22 @@ export function DriverSessionProvider({ children }: Props) {
     reportGpsState,
   };
 
+  // ── Debug snapshot for bug report diagnostics ────────────────────────────────
+  // Exposed on window so BugReportModal can read GPS state without prop-drilling.
+  // Safe: never includes coordinates. Updated on every render.
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__driverSessionDebug = {
+      session_id:         sessionIdRef.current,
+      gps_status:         gpsStatusRef.current,
+      permission_status:  permStatusRef.current,
+      last_telemetry_at:  lastAcceptedRef.current
+        ? new Date(lastAcceptedRef.current).toISOString()
+        : null,
+      is_tracking:        watchActiveRef.current ?? false,
+    };
+  }
+
   return (
     <DriverSessionContext.Provider value={value}>
       {children}

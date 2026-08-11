@@ -69,7 +69,10 @@ export default async function handler(req: Request, res: Response) {
     // ── Step 3: update the target column ─────────────────────────────────────
     // Build fully-raw SQL — col is whitelisted above, jsonStr and companyId
     // are embedded as escaped literals to avoid Drizzle sql.raw/sql mixing issues.
-    const escapedJson = jsonStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    // Escape for MySQL: double single-quotes (the ANSI-standard way).
+    // NEVER use backslash escaping (\') — it is unreliable in NO_BACKSLASH_ESCAPES mode
+    // and can corrupt JSON values that contain backslashes (e.g. Windows paths, regex).
+    const escapedJson = jsonStr.replace(/\\/g, '\\\\').replace(/'/g, "''");
     const updateQuery = `UPDATE company_settings SET \`${col}\` = '${escapedJson}', updated_at = NOW() WHERE company_id = ${Number(companyId)}`;
     console.log(`[PUT company-settings] Updating ${col} → ${jsonStr.slice(0, 120)}`);
     await db.execute(sql.raw(updateQuery));

@@ -183,6 +183,7 @@ export default function VerifyRequiredPage() {
       <Helmet>
         <title>Verify Your Account — IWILLBUILD Portal</title>
         <meta name="description" content="Please verify your account to access IWILLBUILD Portal." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/verify-required" />
         <meta name="robots" content="noindex" />
       </Helmet>

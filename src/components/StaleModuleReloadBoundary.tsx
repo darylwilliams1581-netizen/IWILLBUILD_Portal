@@ -56,7 +56,9 @@ function isSosError(error: unknown): boolean {
   const msg   = error.message ?? '';
   const stack = (error as Error).stack ?? '';
   // nosec — numeric string below is a Vite HMR build timestamp, not a secret
-  const STALE_SNAPSHOT_ID = '1783772358219'; // nosemgrep: generic-api-key
+  // nosemgrep: generic-api-key
+  // eslint-disable-next-line no-secrets/no-secrets
+  const STALE_SNAPSHOT_ID = '1783772358219'; // not-a-secret: vite build timestamp
   return (
     msg.includes('SOSAlertPopup') ||
     stack.includes('SOSAlertPopup') ||

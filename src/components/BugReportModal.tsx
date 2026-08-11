@@ -15,7 +15,9 @@ import {
   AlertCircle, Loader2, Paperclip, ChevronRight, Info,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
-import { snapshotDiagBuffer, type DiagEvent } from '@/lib/diagnosticBuffer';
+import { snapshotDiagBuffer, pushDiagEvent, type DiagEvent } from '@/lib/diagnosticBuffer';
+import { compressScreenshot } from '@/lib/imageCompressor';
+import { getStorageDiagnostics, type StorageDiagnostics } from '@/lib/storageDiagnostics';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,45 @@ function collectDeviceContext(): Record<string, string | number | boolean> {
   return ctx;
 }
 
+/**
+ * Collect GPS-specific diagnostics from the active driver session context
+ * stored on window by DriverSessionContext. Safe — never includes coordinates.
+ */
+function collectGpsDiagnostics(): Record<string, string | number | boolean> {
+  const ctx: Record<string, string | number | boolean> = {};
+  try {
+    // DriverSessionContext exposes a debug snapshot on window.__driverSessionDebug
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbg = (window as any).__driverSessionDebug as Record<string, unknown> | undefined;
+    if (dbg) {
+      if (typeof dbg.session_id === 'number')   ctx.active_driver_session_id = dbg.session_id;
+      if (typeof dbg.gps_status === 'string')   ctx.gps_status = dbg.gps_status;
+      if (typeof dbg.permission_status === 'string') ctx.gps_permission_status = dbg.permission_status;
+      if (typeof dbg.last_heartbeat_at === 'string') {
+        ctx.last_heartbeat_at = dbg.last_heartbeat_at;
+        const ageMs = Date.now() - new Date(dbg.last_heartbeat_at).getTime();
+        ctx.last_heartbeat_age_s = Math.round(ageMs / 1000);
+      }
+      if (typeof dbg.last_telemetry_at === 'string') {
+        ctx.last_telemetry_at = dbg.last_telemetry_at;
+        const ageMs = Date.now() - new Date(dbg.last_telemetry_at).getTime();
+        ctx.last_telemetry_age_s = Math.round(ageMs / 1000);
+      }
+      if (typeof dbg.is_tracking === 'boolean') ctx.gps_tracking_active = dbg.is_tracking;
+    }
+    // Geolocation permission via Permissions API (web only)
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(result => {
+        // Best-effort — result arrives after submission, captured in diag buffer
+        pushDiagEvent('gps_state', `Geolocation permission: ${result.state}`, {
+          meta: { permission_state: result.state },
+        });
+      }).catch(() => { /* non-fatal */ });
+    }
+  } catch { /* non-fatal */ }
+  return ctx;
+}
+
 function detectPlatform(): string {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +145,7 @@ export default function BugReportModal() {
   const [errorMsg, setErrorMsg]       = useState('');
   const [diagExpanded, setDiagExpanded] = useState(false);
   const [diagPreview, setDiagPreview] = useState<DiagEvent[]>([]);
+  const [storageDiag, setStorageDiag] = useState<StorageDiagnostics | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function openModal() {
@@ -116,10 +158,14 @@ export default function BugReportModal() {
     setScreenshotPreview(null);
     setErrorMsg('');
     setDiagExpanded(false);
+    // Load storage diagnostics non-blocking — shown in diagnostic preview
+    void getStorageDiagnostics().then(setStorageDiag).catch(() => { /* non-fatal */ });
   }
 
   function closeModal() {
     if (phase === 'submitting') return;
+    // Revoke preview URL on close to free memory immediately
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     setPhase('idle');
   }
 
@@ -130,14 +176,17 @@ export default function BugReportModal() {
       setErrorMsg('Screenshot must be under 10 MB.');
       return;
     }
+    // Revoke any previous preview URL to free memory
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     setScreenshot(file);
     setErrorMsg('');
-    const reader = new FileReader();
-    reader.onload = (ev) => setScreenshotPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    // Use object URL — never store base64 in state (can be 2–5 MB for phone screenshots)
+    setScreenshotPreview(URL.createObjectURL(file));
   }
 
   function removeScreenshot() {
+    // Revoke the object URL to release memory immediately
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     setScreenshot(null);
     setScreenshotPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -155,6 +204,36 @@ export default function BugReportModal() {
       const deviceCtx = collectDeviceContext();
       const platform = detectPlatform();
 
+      // For GPS/Maps bugs, enrich device context with GPS session diagnostics
+      const isGpsBug = category === 'maps_gps';
+      const gpsDiag = isGpsBug ? collectGpsDiagnostics() : {};
+      if (isGpsBug) {
+        // Push a summary event into the buffer so it appears in the timeline
+        pushDiagEvent('gps_state', 'GPS bug report submitted — GPS diagnostics collected', {
+          meta: gpsDiag as Record<string, string | number | boolean>,
+        });
+      }
+
+      // Always include storage diagnostics — useful for photos/upload bugs
+      let storageDiagCtx: Record<string, string | number | boolean> = {};
+      try {
+        const sd = await getStorageDiagnostics();
+        storageDiagCtx = {
+          storage_queued_items:  sd.queue.queuedItemCount,
+          storage_queued_bytes:  sd.queue.totalQueuedBytes,
+          storage_manager_api:   sd.storageManagerSupported,
+          ...(sd.quota ? {
+            storage_used_pct:    sd.quota.usedPercent,
+            storage_level:       sd.quota.level,
+          } : {}),
+          ...(sd.queue.lastUploadFailureAt ? {
+            last_upload_failure: sd.queue.lastUploadFailureAt,
+          } : {}),
+        };
+      } catch { /* non-fatal */ }
+
+      const enrichedDeviceCtx = { ...deviceCtx, ...gpsDiag, ...storageDiagCtx };
+
       const formData = new FormData();
       formData.append('category', category);
       formData.append('description', description.trim());
@@ -164,8 +243,16 @@ export default function BugReportModal() {
       formData.append('app_version', __APP_VERSION__);
       formData.append('current_route', window.location.pathname);
       formData.append('diagnostic_events', JSON.stringify(diagSnapshot));
-      formData.append('device_context', JSON.stringify(deviceCtx));
-      if (screenshot) formData.append('screenshot', screenshot);
+      formData.append('device_context', JSON.stringify(enrichedDeviceCtx));
+
+      // Compress screenshot before upload — max 1280px, 0.75q
+      // This reduces a typical phone screenshot from ~3 MB to ~200–400 KB
+      if (screenshot) {
+        const compressed = await compressScreenshot(screenshot);
+        formData.append('screenshot', compressed);
+        // Revoke the preview URL now — we no longer need it in memory
+        if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+      }
 
       const res = await fetch('/api/bug-reports', {
         method: 'POST',
@@ -375,6 +462,26 @@ export default function BugReportModal() {
                   </button>
                   {diagExpanded && (
                     <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 max-h-40 overflow-y-auto">
+                      {/* Storage diagnostics row */}
+                      {storageDiag && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-2 pb-2 border-b border-slate-200">
+                          {storageDiag.storageManagerSupported && storageDiag.quota && (
+                            <span className="text-[10px] text-slate-400">
+                              Storage: <span className={storageDiag.quota.level === 'critical' ? 'text-red-500 font-semibold' : storageDiag.quota.level === 'low' ? 'text-amber-500 font-semibold' : 'text-slate-500'}>
+                                {storageDiag.quota.usedPercent}% used
+                              </span>
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400">
+                            Queue: <span className="text-slate-500">{storageDiag.queue.queuedItemCount} items ({storageDiag.queue.totalQueuedSizeLabel})</span>
+                          </span>
+                          {storageDiag.queue.lastUploadFailureAt && (
+                            <span className="text-[10px] text-amber-500">
+                              Last failure: {new Date(storageDiag.queue.lastUploadFailureAt).toLocaleTimeString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {diagPreview.length === 0 ? (
                         <p className="text-[11px] text-slate-400 italic">No diagnostic events captured yet.</p>
                       ) : (

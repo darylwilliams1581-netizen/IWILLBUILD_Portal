@@ -161,7 +161,6 @@ import developer_seed_developer_account_post_128 from "./api/developer/seed-deve
 import developer_support_notes_get_129 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_130 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_131 from "./api/developer/support-notes/[id]/DELETE";
-import developer_swms_cleanup_post_132 from "./api/developer/swms-cleanup/POST";
 import developer_users_id_assign_company_post_133 from "./api/developer/users/[id]/assign-company/POST";
 import developer_users_id_deactivate_post_134 from "./api/developer/users/[id]/deactivate/POST";
 import developer_users_id_delete_orphan_post_135 from "./api/developer/users/[id]/delete-orphan/POST";
@@ -175,11 +174,6 @@ import developer_users_id_send_reset_email_post_142 from "./api/developer/users/
 import developer_users_id_sessions_delete_143 from "./api/developer/users/[id]/sessions/DELETE";
 import developer_users_id_sessions_get_144 from "./api/developer/users/[id]/sessions/GET";
 import developer_users_id_unlock_account_post_145 from "./api/developer/users/[id]/unlock-account/POST";
-import diag_recover_old_photos_post_146 from "./api/diag/recover-old-photos/POST";
-import diag_route_check_get_147 from "./api/diag/route-check/GET";
-import diag_run_recovery_post_148 from "./api/diag/run-recovery/POST";
-import diag_self_test_get_149 from "./api/diag/self-test/GET";
-import diag_upload_test_post_150 from "./api/diag/upload-test/POST";
 import document_templates_get_151 from "./api/document-templates/GET";
 import document_templates_post_152 from "./api/document-templates/POST";
 import document_templates_id_delete_153 from "./api/document-templates/[id]/DELETE";
@@ -1835,6 +1829,13 @@ async function runStartupMigrations() {
       ddl: "CREATE TABLE IF NOT EXISTS bug_reports (id VARCHAR(36) NOT NULL PRIMARY KEY, submitted_by_user_id VARCHAR(36) NOT NULL, submitted_by_name VARCHAR(255) NOT NULL DEFAULT '', submitted_by_email VARCHAR(255) NOT NULL DEFAULT '', company_id INT NULL, category VARCHAR(100) NOT NULL DEFAULT '', description TEXT NOT NULL, page_url VARCHAR(500) NOT NULL DEFAULT '', user_agent VARCHAR(500) NOT NULL DEFAULT '', screenshot_path VARCHAR(500) NULL, screenshot_bucket VARCHAR(100) NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', resolution_note TEXT NULL, resolved_by_name VARCHAR(255) NULL, resolved_at DATETIME NULL, platform VARCHAR(50) NOT NULL DEFAULT 'web', app_version VARCHAR(50) NOT NULL DEFAULT '', current_route VARCHAR(300) NOT NULL DEFAULT '', diagnostic_events MEDIUMTEXT NULL, exported_at DATETIME NULL, exported_by VARCHAR(255) NOT NULL DEFAULT '', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_created (created_at DESC), INDEX idx_user (submitted_by_user_id))",
     },
     {
+      // media_assets — canonical record for every file stored in R2 / local storage.
+      // job_photos.media_asset_id is a FK to this table.
+      // Must be created BEFORE job_photos so the FK column resolves.
+      name: 'media_assets',
+      ddl: "CREATE TABLE IF NOT EXISTS media_assets (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NULL, uploaded_by_user_id VARCHAR(36) NULL, storage_key VARCHAR(500) NOT NULL, bucket VARCHAR(100) NULL, original_name VARCHAR(255) NULL, mime_type VARCHAR(100) NULL, size_bytes INT NULL, image_width INT NULL, image_height INT NULL, cached_url TEXT NULL, cached_url_expires_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_storage_key (storage_key(255)), INDEX idx_company (company_id))",
+    },
+    {
       name: 'trusted_devices',
       ddl: "CREATE TABLE IF NOT EXISTS trusted_devices (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, device_fingerprint VARCHAR(512) NOT NULL, device_name VARCHAR(255) NULL, pin_hash VARCHAR(255) NULL, pin_attempts INT NOT NULL DEFAULT 0, pin_locked_until DATETIME NULL, last_used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
     },
@@ -3006,7 +3007,6 @@ app.post("/api/developer/seed-developer-account", developer_seed_developer_accou
 app.get("/api/developer/support-notes", developer_support_notes_get_129);
 app.post("/api/developer/support-notes", developer_support_notes_post_130);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_131);
-app.post("/api/developer/swms-cleanup", developer_swms_cleanup_post_132);
 app.post("/api/developer/users/:id/assign-company", developer_users_id_assign_company_post_133);
 app.post("/api/developer/users/:id/deactivate", developer_users_id_deactivate_post_134);
 app.post("/api/developer/users/:id/delete-orphan", developer_users_id_delete_orphan_post_135);
@@ -3020,11 +3020,6 @@ app.post("/api/developer/users/:id/send-reset-email", developer_users_id_send_re
 app.delete("/api/developer/users/:id/sessions", developer_users_id_sessions_delete_143);
 app.get("/api/developer/users/:id/sessions", developer_users_id_sessions_get_144);
 app.post("/api/developer/users/:id/unlock-account", developer_users_id_unlock_account_post_145);
-app.post("/api/diag/recover-old-photos", diag_recover_old_photos_post_146);
-app.get("/api/diag/route-check", diag_route_check_get_147);
-app.post("/api/diag/run-recovery", diag_run_recovery_post_148);
-app.get("/api/diag/self-test", diag_self_test_get_149);
-app.post("/api/diag/upload-test", diag_upload_test_post_150);
 app.get("/api/document-templates", document_templates_get_151);
 app.post("/api/document-templates", document_templates_post_152);
 app.delete("/api/document-templates/:id", document_templates_id_delete_153);

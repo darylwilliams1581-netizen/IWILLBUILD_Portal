@@ -72,6 +72,7 @@ export default function VerifyEmailPage() {
       <Helmet>
         <title>Verify Email — IWILLBUILD Portal</title>
         <meta name="description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/verify-email" />
         <meta name="robots" content="noindex" />
       </Helmet>

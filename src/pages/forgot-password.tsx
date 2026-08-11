@@ -103,6 +103,7 @@ export default function ForgotPasswordPage() {
       <Helmet>
         <title>Forgot Password — IWILLBUILD Portal</title>
         <meta name="description" content="Reset your IWILLBUILD Portal password." />
+        <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/forgot-password" />
         <meta name="robots" content="noindex" />
       </Helmet>

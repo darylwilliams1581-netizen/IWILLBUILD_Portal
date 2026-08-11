@@ -16,6 +16,7 @@ import {
 } from './session-recovery';
 import { clearSessionExpiry } from './session-timeout';
 import { isNativeApp } from '@/lib/native-routing';
+import { resetDiagnosticBuffer } from '@/lib/diagnosticBuffer';
 
 // Reads and consumes the sessionStorage flag set by useSessionTimeout when it
 // initiates a hard redirect to /login?reason=expired. Kept inline to avoid a
@@ -289,10 +290,7 @@ export function LogoutButton({
     try {
       clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
       // Reset diagnostic buffer on logout — clears any buffered events
-      try {
-        const { resetDiagnosticBuffer } = await import('@/lib/diagnosticBuffer');
-        resetDiagnosticBuffer();
-      } catch { /* non-fatal */ }
+      resetDiagnosticBuffer();
       await signOut();
       // Native app → always return to login (never the public landing page)
       // Web browser → /login (same behaviour, landing page is at /)
