@@ -242,6 +242,30 @@ export const dazzaThreads = mysqlTable('dazza_threads', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+// ── Media Assets ──────────────────────────────────────────────────────────────
+// Canonical record for every file stored in R2 (or local storage).
+// job_photos.media_asset_id is a FK to this table.
+// Created here so the FK column on job_photos resolves at migration time.
+export const mediaAssets = mysqlTable('media_assets', {
+  id:            int('id').primaryKey().autoincrement(),
+  companyId:     int('company_id').references(() => companies.id, { onDelete: 'set null' }),
+  uploadedByUserId: varchar('uploaded_by_user_id', { length: 36 }),
+  /** R2 / local storage object key — the permanent identifier */
+  storageKey:    varchar('storage_key', { length: 500 }).notNull(),
+  /** Bucket / container name (e.g. "job-card-photos") */
+  bucket:        varchar('bucket', { length: 100 }),
+  originalName:  varchar('original_name', { length: 255 }),
+  mimeType:      varchar('mime_type', { length: 100 }),
+  sizeBytes:     int('size_bytes'),
+  imageWidth:    int('image_width'),
+  imageHeight:   int('image_height'),
+  /** Optional: signed URL cached here for fast reads (expires, not authoritative) */
+  cachedUrl:     text('cached_url'),
+  cachedUrlExpiresAt: timestamp('cached_url_expires_at'),
+  createdAt:     timestamp('created_at').defaultNow(),
+  updatedAt:     timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const jobPhotos = mysqlTable('job_photos', {
   id: int('id').primaryKey().autoincrement(),
   jobId: int('job_id')

@@ -95,7 +95,7 @@ async function fetchMapsKey(): Promise<string> {
   if (res.status === 404) {
     const msg = 'Maps key fetch failed: GOOGLE_MAPS_API_KEY is not configured in Secrets (404).';
     console.error('[FleetLiveMap]', msg);
-    throw new Error('Google Maps API key is not configured. Add VITE_GOOGLE_MAPS_API_KEY in Settings → Secrets.');
+    throw new Error('Google Maps API key is not configured. Add GOOGLE_MAPS_API_KEY in Settings → Secrets.');
   }
 
   if (!res.ok) {
@@ -116,10 +116,10 @@ async function fetchMapsKey(): Promise<string> {
 
   const key = data.key ?? '';
   if (!key) {
-    const msg = 'Maps key fetch succeeded but key is empty. Check VITE_GOOGLE_MAPS_API_KEY secret value.';
+    const msg = 'Maps key fetch succeeded but key is empty. Check GOOGLE_MAPS_API_KEY secret value.';
     console.error('[FleetLiveMap]', msg);
     // Do NOT cache empty key — allow retry on next mount
-    throw new Error('Google Maps API key is empty. Update VITE_GOOGLE_MAPS_API_KEY in Settings → Secrets.');
+    throw new Error('Google Maps API key is empty. Update GOOGLE_MAPS_API_KEY in Settings → Secrets.');
   }
 
   console.info('[FleetLiveMap] Maps key loaded successfully.');
