@@ -164,14 +164,22 @@ function uploadFileXhr(
 
     xhr.addEventListener('load', () => {
       try {
-        const data = JSON.parse(xhr.responseText) as { photos?: { id: number }[]; error?: string };
+        const data = JSON.parse(xhr.responseText) as { photos?: { id: number }[]; error?: string; code?: string };
         if (xhr.status >= 200 && xhr.status < 300 && data.photos?.[0]) {
           resolve(data.photos[0]);
         } else {
-          reject(new Error(data.error ?? `Upload failed (${xhr.status})`));
+          // Surface the server's error message so it appears in the UI card
+          const serverMsg = data.error ?? data.code ?? null;
+          reject(new Error(serverMsg ?? `Upload failed (${xhr.status})`));
         }
       } catch {
-        reject(new Error(`Upload failed (${xhr.status})`));
+        // Response wasn't JSON — likely a proxy 413/502 or HTML error page
+        const statusHint =
+          xhr.status === 413 ? 'File too large for upload' :
+          xhr.status === 502 || xhr.status === 503 ? 'Server unavailable — will retry' :
+          xhr.status === 401 ? 'Session expired — please log in again' :
+          `Upload failed (${xhr.status})`;
+        reject(new Error(statusHint));
       }
     });
 
