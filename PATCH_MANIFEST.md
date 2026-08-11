@@ -1,6 +1,10 @@
 # IWILLBUILD TestFlight Patch Bundle
 # Version: 12
+<<<<<<< HEAD
 # Build: 10
+=======
+# Build: 9
+>>>>>>> f1df43bd23d732e573dd87e8fd3afff02c7a8ed8
 # Generated: 2026-08-12
 # Applies to: clean Airo IWILLBUILD_Portal-main download
 
@@ -12,12 +16,15 @@
 - ios\App\CapApp-SPM\Package.swift
 - package.json
 - package-lock.json
+<<<<<<< HEAD
 - vite.config.ts
 - scripts\publish-build.mjs
 - src\server\api\jobs\[id]\photos\POST.ts
 - src\server\api\job-cards\[id]\photos\POST.ts
 - src\hooks\usePhotoUploadQueue.ts
 - src\pages\job-photos-page.tsx
+=======
+>>>>>>> f1df43bd23d732e573dd87e8fd3afff02c7a8ed8
 - export-plugins\content-plugin\index.ts
 - export-plugins\content-plugin\keys.ts
 - public\airo-video-slots.js
@@ -39,10 +46,17 @@
 3. Run npm ci.
 4. Run npm run build.
 5. Run npx cap sync ios.
+<<<<<<< HEAD
 6. Verify iOS marketing version is 12 and build number is 10.
+=======
+6. Verify iOS marketing version is 12 and build number is 9.
+>>>>>>> f1df43bd23d732e573dd87e8fd3afff02c7a8ed8
 7. Build and upload to TestFlight.
 
 ## Notes
 - Do not delete the project's hidden `.git` folder during the Airo replace step. If `.git` is deleted, GitHub Desktop will show "Can't find IWILLBUILD_Portal".
 - This patch carries the TestFlight build bump plus the native plugin files for Capacitor Filesystem and Media.
+<<<<<<< HEAD
 - Camera upload fix included: if server-side image compression fails, the raw photo is saved instead of returning a 400; upload cards now show clearer server/proxy errors; mobile job-photo upload button is fixed-size square.
+=======
+>>>>>>> f1df43bd23d732e573dd87e8fd3afff02c7a8ed8

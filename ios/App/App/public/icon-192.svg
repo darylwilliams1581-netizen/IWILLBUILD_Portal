@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" fill="#111827"/>
+  <!-- Orange accent bar at top -->
+  <rect x="0" y="0" width="192" height="8" rx="4" fill="#ff6b00"/>
+  <!-- IW lettermark -->
+  <text x="96" y="118" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="80" fill="#ff6b00" text-anchor="middle" letter-spacing="-4">IW</text>
+  <!-- Tagline bar -->
+  <rect x="32" y="136" width="128" height="4" rx="2" fill="#ff6b00" opacity="0.5"/>
+</svg>

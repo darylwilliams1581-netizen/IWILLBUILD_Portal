@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IWILLBUILD — Build 10 Security Audit Fix Summary</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1a1a2e;
+    background: #f8f9fc;
+    padding: 32px 24px;
+  }
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #7C3AED 0%, #5b21b6 100%);
+    color: #fff;
+    padding: 28px 32px 24px;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .header .sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .meta-row {
+    display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .meta-pill {
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+
+  /* ── Section ── */
+  .section { padding: 24px 32px; border-bottom: 1px solid #eef0f6; }
+  .section:last-child { border-bottom: none; }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #6b7280;
+    margin-bottom: 14px;
+  }
+
+  /* ── Severity badge ── */
+  .badge {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+  .badge-critical { background: #fee2e2; color: #991b1b; }
+  .badge-high     { background: #ffedd5; color: #9a3412; }
+  .badge-low      { background: #fef9c3; color: #854d0e; }
+  .badge-done     { background: #dcfce7; color: #166534; }
+  .badge-schema   { background: #ede9fe; color: #5b21b6; }
+
+  /* ── Fix card ── */
+  .fix-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .fix-card:last-child { margin-bottom: 0; }
+  .fix-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #fafafa;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .fix-num {
+    background: #7C3AED;
+    color: #fff;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .fix-title { font-size: 13.5px; font-weight: 600; flex: 1; }
+  .fix-body { padding: 12px 16px; }
+  .fix-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .fix-row:last-child { margin-bottom: 0; }
+  .fix-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #6b7280; width: 60px; flex-shrink: 0; padding-top: 1px;
+  }
+  .fix-value { font-size: 12.5px; color: #374151; flex: 1; }
+  code {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    font-size: 11.5px;
+    color: #7C3AED;
+  }
+  .verify-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #166534;
+    margin-top: 8px;
+  }
+  .verify-box strong { font-weight: 600; }
+
+  /* ── File list ── */
+  .file-list {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+  }
+  .file-chip {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    font-size: 11px;
+    color: #374151;
+  }
+
+  /* ── Build result ── */
+  .build-box {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .build-stat { text-align: center; }
+  .build-stat .val { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .build-stat .lbl { font-size: 10.5px; color: #6b7280; margin-top: 2px; }
+
+  /* ── Test table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    background: #f3f4f6;
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass-box {
+    width: 18px; height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  /* ── Next steps ── */
+  .next-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .next-item:last-child { border-bottom: none; }
+  .next-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+  }
+  .dot-done { background: #22c55e; }
+  .dot-open { background: #f59e0b; }
+  .dot-nice { background: #94a3b8; }
+
+  /* ── Footer ── */
+  .footer {
+    background: #1a1a2e;
+    color: rgba(255,255,255,0.5);
+    padding: 14px 32px;
+    font-size: 11px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer strong { color: rgba(255,255,255,0.8); }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .page { box-shadow: none; border-radius: 0; }
+    .fix-card { break-inside: avoid; }
+    .section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>IWILLBUILD — Security Audit Fix Summary</h1>
+    <div class="sub">Build 10 · Commit <code style="background:rgba(255,255,255,0.15);color:#fff;border:none;">d1a6857e</code> · Applied 12 August 2026</div>
+    <div class="meta-row">
+      <span class="meta-pill">✅ 8 / 8 items resolved</span>
+      <span class="meta-pill">🏗 Build clean — zero errors</span>
+      <span class="meta-pill">🌐 iwillbuild.com</span>
+      <span class="meta-pill">🔒 Security pass complete</span>
+    </div>
+  </div>
+
+  <!-- Critical -->
+  <div class="section">
+    <div class="section-title">🔴 Critical (3 fixes)</div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">1</div>
+        <div class="fix-title">Removed <code>POST /api/diag/run-recovery</code></div>
+        <span class="badge badge-critical">Critical</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">Unauthenticated route that could bulk-rewrite <code>job_card_photos</code> records. No session check, no role check — callable by anyone on the internet.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">Handler file deleted. Import and route registration removed from <code>entry.ts</code>.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/server/api/diag/run-recovery/POST.ts ❌ deleted</span>
+              <span class="file-chip">src/server/entry.ts (import + route removed)</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> <code>curl -X POST https://iwillbuild.com/api/diag/run-recovery</code> → <strong>404</strong></div>
+      </div>
+    </div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">2</div>
+        <div class="fix-title">Fixed MySQL escape in <code>company-settings/PUT.ts</code></div>
+        <span class="badge badge-critical">Critical</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">Used <code>\'</code> (backslash escape) for single quotes in raw SQL. Unreliable in <code>NO_BACKSLASH_ESCAPES</code> mode — could corrupt JSON values containing backslashes (Windows paths, regex) or allow SQL injection via malformed strings.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">Changed <code>replace(/'/g, "\\'")</code> → <code>replace(/'/g, "''")</code> (ANSI-standard quote doubling). Added explanatory comment.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/server/api/company-settings/PUT.ts line 75</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> Save a company setting containing a single quote (e.g. <code>O'Brien Constructions</code>) — confirm it saves and reloads correctly without corruption.</div>
+      </div>
+    </div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">3</div>
+        <div class="fix-title">Added <code>media_assets</code> table to schema + migrations</div>
+        <span class="badge badge-schema">Schema</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value"><code>job_photos.media_asset_id</code> FK column referenced a table that didn't exist in schema or migrations — would cause FK constraint failures on any DB that enforces referential integrity.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">Added <code>export const mediaAssets = mysqlTable('media_assets', {...})</code> to <code>schema.ts</code> inserted <em>before</em> <code>jobPhotos</code> so the FK resolves at migration time. Added <code>CREATE TABLE IF NOT EXISTS media_assets (...)</code> DDL to the <code>entry.ts</code> migration array.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Columns</div>
+          <div class="fix-value"><code>id</code>, <code>company_id</code>, <code>uploaded_by_user_id</code>, <code>storage_key</code>, <code>bucket</code>, <code>original_name</code>, <code>mime_type</code>, <code>size_bytes</code>, <code>image_width</code>, <code>image_height</code>, <code>cached_url</code>, <code>cached_url_expires_at</code>, <code>created_at</code>, <code>updated_at</code></div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/server/db/schema.ts (mediaAssets table added)</span>
+              <span class="file-chip">src/server/entry.ts (DDL migration added)</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> <code>SHOW TABLES LIKE 'media_assets'</code> → exists. <code>DESCRIBE media_assets</code> → 14 columns including <code>storage_key</code>, <code>bucket</code>, <code>cached_url</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- High -->
+  <div class="section">
+    <div class="section-title">🟠 High (3 fixes)</div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">4</div>
+        <div class="fix-title">Deleted 4 dead layout backup files</div>
+        <span class="badge badge-high">High</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">Stale <code>.bak</code> and numbered duplicates of <code>RootLayout</code> could be accidentally imported, expose old code paths, or confuse future developers.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/layouts/RootLayout.tsx.bak ❌ deleted</span>
+              <span class="file-chip">src/layouts/RootLayout.tsx.bak2 ❌ deleted</span>
+              <span class="file-chip">src/layouts/RootLayout2.tsx ❌ deleted</span>
+              <span class="file-chip">src/layouts/RootLayout3.tsx ❌ deleted</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> <code>ls src/layouts/</code> — only <code>RootLayout.tsx</code>, <code>RootLayout.md</code>, <code>Dashboard.tsx</code>, <code>Website.tsx</code> remain.</div>
+      </div>
+    </div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">5</div>
+        <div class="fix-title">Removed <code>GET /api/diag/route-check</code></div>
+        <span class="badge badge-high">High</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">Marked TEMPORARY but still registered in production. Leaked the full internal route structure of the API to any authenticated caller — a reconnaissance aid for attackers.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">Handler file deleted. Import and route registration removed from <code>entry.ts</code>.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/server/api/diag/route-check/GET.ts ❌ deleted</span>
+              <span class="file-chip">src/server/entry.ts (import + route removed)</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> <code>curl https://iwillbuild.com/api/diag/route-check</code> → <strong>404</strong></div>
+      </div>
+    </div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">6</div>
+        <div class="fix-title">Added <code>try/catch</code> to 14 API handlers</div>
+        <span class="badge badge-high">High</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">Unhandled promise rejections in async Express handlers crash the Node process or hang the request with no response — causing silent failures and potential downtime.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">All 10 real app handlers wrapped with <code>try/catch</code> returning <code>500 JSON</code>. The 4 auth passthrough handlers also wrapped with <code>if (!res.headersSent)</code> guard to prevent double-response errors.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">subscription/status/GET.ts</span>
+              <span class="file-chip">settings/storage-provider/GET.ts</span>
+              <span class="file-chip">settings/storage-provider/debug/GET.ts</span>
+              <span class="file-chip">settings/storage-provider/test/POST.ts</span>
+              <span class="file-chip">owner-console/library/submissions/GET.ts</span>
+              <span class="file-chip">owner-console/library/submissions/[id]/review/POST.ts</span>
+              <span class="file-chip">admin/set-user-company/POST.ts</span>
+              <span class="file-chip">health/GET.ts</span>
+              <span class="file-chip">asset-manager/tenders/[id]/attachments/GET.ts</span>
+              <span class="file-chip">auth/[action]/GET.ts + POST.ts</span>
+              <span class="file-chip">auth/[action]/[detail]/GET.ts + POST.ts</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> Trigger a DB error on any wrapped endpoint (e.g. pass invalid ID) — confirm it returns <code>500 JSON</code> instead of hanging or crashing the server.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Low -->
+  <div class="section">
+    <div class="section-title">🟡 Low (2 fixes)</div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">7</div>
+        <div class="fix-title">Cleaned up <code>VITE_GOOGLE_MAPS_API_KEY</code> error strings</div>
+        <span class="badge badge-low">Low</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">User-facing error messages referenced <code>VITE_GOOGLE_MAPS_API_KEY</code> — the wrong secret name — misleading operators when troubleshooting Maps failures. The key is already served correctly via <code>/api/config/maps-key</code> which reads <code>GOOGLE_MAPS_API_KEY</code> with <code>VITE_GOOGLE_MAPS_API_KEY</code> as a fallback.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">Updated 3 error strings in <code>FleetLiveMap.tsx</code> to reference <code>GOOGLE_MAPS_API_KEY</code>. No secret rename required — the backend fallback handles both names.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Note</div>
+          <div class="fix-value">The secret in Settings is still named <code>VITE_GOOGLE_MAPS_API_KEY</code>. The backend reads either name. Rename the secret at your convenience — no urgency.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/components/fleet/FleetLiveMap.tsx (3 strings updated)</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> Remove Maps key, load Fleet map — error message now says <code>GOOGLE_MAPS_API_KEY</code>.</div>
+      </div>
+    </div>
+
+    <div class="fix-card">
+      <div class="fix-header">
+        <div class="fix-num">8</div>
+        <div class="fix-title">Deleted <code>developer/swms-cleanup/POST.ts</code></div>
+        <span class="badge badge-low">Low</span>
+        <span class="badge badge-done">✓ Done</span>
+      </div>
+      <div class="fix-body">
+        <div class="fix-row">
+          <div class="fix-label">Risk</div>
+          <div class="fix-value">One-time cleanup script with hardcoded company-specific SWMS titles left registered in production. No longer needed after the cleanup was run — dead code with company data baked in.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Fix</div>
+          <div class="fix-value">Handler file deleted. Import and route registration removed from <code>entry.ts</code>.</div>
+        </div>
+        <div class="fix-row">
+          <div class="fix-label">Files</div>
+          <div class="fix-value">
+            <div class="file-list">
+              <span class="file-chip">src/server/api/developer/swms-cleanup/POST.ts ❌ deleted</span>
+              <span class="file-chip">src/server/entry.ts (import + route removed)</span>
+            </div>
+          </div>
+        </div>
+        <div class="verify-box"><strong>Verify:</strong> <code>curl -X POST https://iwillbuild.com/api/developer/swms-cleanup</code> → <strong>404</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Build result -->
+  <div class="section">
+    <div class="section-title">✅ Build Verification</div>
+    <div class="build-box">
+      <div class="build-stat">
+        <div class="val">2,946</div>
+        <div class="lbl">Client modules</div>
+      </div>
+      <div class="build-stat">
+        <div class="val">3,885</div>
+        <div class="lbl">SSR modules</div>
+      </div>
+      <div class="build-stat">
+        <div class="val">0</div>
+        <div class="lbl">Errors</div>
+      </div>
+      <div class="build-stat">
+        <div class="val">0</div>
+        <div class="lbl">Warnings</div>
+      </div>
+      <div class="build-stat">
+        <div class="val">~50s</div>
+        <div class="lbl">Build time</div>
+      </div>
+      <div class="build-stat">
+        <div class="val">d1a6857e</div>
+        <div class="lbl">Commit</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test checklist -->
+  <div class="section">
+    <div class="section-title">📋 Build 11 — iPhone Test Checklist (requires physical device)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:32px">#</th>
+          <th>Test</th>
+          <th>Expected Result</th>
+          <th style="width:60px; text-align:center">Pass</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Clean install cold launch</td><td>UI within ~3s, no long white screen</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>2</td><td>Open camera first time</td><td>Explainer → system permission → camera</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>3</td><td>Capture JPEG rear camera</td><td>In tray, uploads, status done</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>4</td><td>Watermark on + capture</td><td>Stamp visible on saved image</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>5</td><td>Pick HEIC from library</td><td>Appears; if no watermark, user sees note</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>6</td><td>Deny camera then retry</td><td>Clear denied UI + Open Settings button</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>7</td><td>Backup to Camera Roll ON (plugins present)</td><td>Photo appears in iPhone Photos app</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>8</td><td>Backup toggle when plugins missing</td><td>Toggle locked or clear unavailable message</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>9</td><td>Offline: 8+ captures then online + retry</td><td>All save; app not killed (no OOM)</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>10</td><td>Job card "Take Photo" deep-link</td><td>Lands on correct job, or clear "job link failed" state</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>11</td><td>Force camera failure path (if possible)</td><td>Error landing screen shown — not silence</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+        <tr><td>12</td><td>Logout + force-quit + reopen</td><td>Clean login / session; no white screen</td><td style="text-align:center"><span class="pass-box"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Next steps -->
+  <div class="section">
+    <div class="section-title">🗺 Build 11 Remaining Work</div>
+    <div class="next-item">
+      <div class="next-dot dot-done"></div>
+      <div><strong>MUST 1–3:</strong> Filesystem + Media plugins, splash timing, camera failure throws — <em>all already applied in Build 9</em></div>
+    </div>
+    <div class="next-item">
+      <div class="next-dot dot-done"></div>
+      <div><strong>SHOULD 4:</strong> Memory caps — <code>QUEUE_MAX_ITEMS=12</code>, native capture capped at 3072px — <em>already applied</em></div>
+    </div>
+    <div class="next-item">
+      <div class="next-dot dot-open"></div>
+      <div><strong>SHOULD 5:</strong> Job link + HEIC feedback — visible message on job-link fail and HEIC watermark skip — <em>needs verification</em></div>
+    </div>
+    <div class="next-item">
+      <div class="next-dot dot-open"></div>
+      <div><strong>SHOULD 6:</strong> Remaining diag routes — scan for any leftover <code>/api/diag/*</code> — <em>needs check</em></div>
+    </div>
+    <div class="next-item">
+      <div class="next-dot dot-nice"></div>
+      <div><strong>NICE 7–9:</strong> Leftover cleanup, lock backup toggle if plugins missing, document <code>index.html</code> SOS guards — <em>optional before TestFlight</em></div>
+    </div>
+    <div class="next-item" style="border-bottom:none">
+      <div class="next-dot" style="background:#7C3AED"></div>
+      <div><strong>Mac step:</strong> <code>npm install &amp;&amp; npx cap sync ios</code> → verify <code>CapacitorFilesystem</code> + <code>CapacitorCommunityMedia</code> in Xcode SPM tree → archive for TestFlight</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span><strong>IWILLBUILD</strong> · Build 10 Security Audit · iwillbuild.com</span>
+    <span>Generated 12 August 2026 · Commit d1a6857e</span>
+  </div>
+
+</div>
+</body>
+</html>
