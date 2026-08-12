@@ -75,17 +75,21 @@ interface Job {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface WatermarkOpts {
-  showLabel:     boolean;
-  showDate:      boolean;
-  showTime:      boolean;
-  showJobNumber: boolean;
-  label:         string;
-  jobNumber:     string;
+  showLabel:   boolean;
+  showDate:    boolean;
+  showTime:    boolean;
+  showJobName: boolean;
+  label:       string;
+  jobName:     string;
 }
 
 /**
  * Composite watermark onto source and return a JPEG File.
- * All active fields are placed left-to-right in one strip at the bottom.
+ *
+ * Layout — compact two-row panel anchored to bottom-left:
+ *   Line 1: JobName — Date — Time   (only enabled values; separators removed cleanly)
+ *   Line 2: Label                   (hidden when disabled or empty; wraps if long)
+ *
  * Returns null if canvas or toBlob fails — caller must show error, not upload.
  */
 async function compositeWatermark(
@@ -112,52 +116,119 @@ async function compositeWatermark(
 
   ctx.drawImage(source, 0, 0, w, h);
 
-  // Collect active segments — values only, no labels
-  const now  = new Date();
-  const z    = (n: number) => String(n).padStart(2, '0');
-  const segs: string[] = [];
-  if (opts.showLabel     && opts.label.trim())  segs.push(opts.label.trim().slice(0, 60));
-  if (opts.showDate)                             segs.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
-  if (opts.showTime)                             segs.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
-  if (opts.showJobNumber && opts.jobNumber)      segs.push(opts.jobNumber);
+  // Build line 1: JobName — Date — Time (only enabled, joined with em-dash separator)
+  const now = new Date();
+  const z   = (n: number) => String(n).padStart(2, '0');
+  const line1Parts: string[] = [];
+  if (opts.showJobName && opts.jobName.trim()) line1Parts.push(opts.jobName.trim().slice(0, 60));
+  if (opts.showDate)  line1Parts.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
+  if (opts.showTime)  line1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
+  const line1 = line1Parts.join('  —  ');
 
-  if (segs.length > 0) {
-    const fontSize = Math.max(18, Math.round(w * 0.026));
-    const padH     = fontSize * 0.45;
-    const padV     = fontSize * 0.35;
-    const pillH    = fontSize + padV * 2;
-    const gap      = Math.round(w * 0.012);
-    const margin   = Math.round(w * 0.022);
-    const baseY    = h - margin;
+  // Build line 2: Label (hidden when off or empty)
+  const line2 = (opts.showLabel && opts.label.trim()) ? opts.label.trim().slice(0, 80) : '';
 
-    ctx.font         = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
-    ctx.textBaseline = 'middle';
-
-    let x = margin;
-    for (const seg of segs) {
-      const tw    = ctx.measureText(seg).width;
-      const pillW = tw + padH * 2;
-      const pillX = x;
-      const pillY = baseY - pillH;
-      const r     = pillH * 0.28;
-
-      ctx.save();
-      ctx.globalAlpha = 0.58;
-      ctx.fillStyle   = '#000000';
-      ctx.beginPath();
-      ctx.roundRect(pillX, pillY, pillW, pillH, r);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.save();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle   = '#ffffff';
-      ctx.fillText(seg, pillX + padH, pillY + pillH / 2);
-      ctx.restore();
-
-      x += pillW + gap;
-    }
+  const hasLine1 = line1.length > 0;
+  const hasLine2 = line2.length > 0;
+  if (!hasLine1 && !hasLine2) {
+    // No watermark at all — return image as-is
+    return new Promise<File | null>((resolve) => {
+      try {
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], fileName, { type: 'image/jpeg' }) : null),
+          'image/jpeg', 0.88,
+        );
+      } catch { resolve(null); }
+    });
   }
+
+  // Typography
+  const fontSize  = Math.max(16, Math.round(w * 0.024));
+  const lineH     = fontSize * 1.35;
+  const padH      = fontSize * 0.55;
+  const padV      = fontSize * 0.45;
+  const margin    = Math.round(w * 0.022);
+  const maxWidth  = w - margin * 2;
+
+  ctx.font         = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+  ctx.textBaseline = 'alphabetic';
+
+  // Measure lines (line2 may wrap — split into wrapped lines)
+  const wrapText = (text: string, maxW: number): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? `${current} ${word}` : word;
+      if (ctx.measureText(test).width > maxW && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  const line1Rows  = hasLine1 ? [line1] : [];
+  const line2Rows  = hasLine2 ? wrapText(line2, maxWidth - padH * 2) : [];
+  const allRows    = [...line1Rows, ...line2Rows];
+  const totalRows  = allRows.length;
+
+  const panelH = padV * 2 + totalRows * lineH - (lineH - fontSize) * 0.5;
+  const panelW = Math.min(
+    maxWidth,
+    Math.max(...allRows.map((r) => ctx.measureText(r).width)) + padH * 2,
+  );
+  const panelX = margin;
+  const panelY = h - margin - panelH;
+  const radius = fontSize * 0.32;
+
+  // Background panel
+  ctx.save();
+  ctx.globalAlpha = 0.62;
+  ctx.fillStyle   = '#000000';
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, radius);
+  ctx.fill();
+  ctx.restore();
+
+  // Divider between line1 and line2 (only when both present)
+  if (hasLine1 && hasLine2) {
+    const divY = panelY + padV + line1Rows.length * lineH - lineH * 0.15;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(panelX + padH * 0.5, divY);
+    ctx.lineTo(panelX + panelW - padH * 0.5, divY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Text rows
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle   = '#ffffff';
+  ctx.font        = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+  ctx.textBaseline = 'alphabetic';
+
+  allRows.forEach((row, i) => {
+    // Line 2 rows get slightly smaller / lighter weight
+    const isLabel = i >= line1Rows.length;
+    if (isLabel) {
+      ctx.font      = `600 ${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    } else {
+      ctx.font      = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+      ctx.fillStyle = '#ffffff';
+    }
+    const textY = panelY + padV + fontSize + i * lineH;
+    ctx.fillText(row, panelX + padH, textY, panelW - padH * 2);
+  });
+  ctx.restore();
 
   return new Promise<File | null>((resolve) => {
     try {
@@ -282,12 +353,12 @@ export default function JobPhotosCameraPage() {
 
   // ── Build watermark opts ────────────────────────────────────────────────────
   const makeOpts = useCallback((resolvedLabel: string): WatermarkOpts => ({
-    showLabel:     settings.showLabel,
-    showDate:      settings.showDate,
-    showTime:      settings.showTime,
-    showJobNumber: settings.showJobNumber,
-    label:         resolvedLabel,
-    jobNumber:     job?.jobNumber ?? '',
+    showLabel:   settings.showLabel,
+    showDate:    settings.showDate,
+    showTime:    settings.showTime,
+    showJobName: settings.showJobName,
+    label:       resolvedLabel,
+    jobName:     job?.name ?? '',
   }), [settings, job]);
 
   // ── Finalise: composite + enqueue ───────────────────────────────────────────
@@ -376,14 +447,18 @@ export default function JobPhotosCameraPage() {
     setCapturing(false);
   }, [pendingBitmap]);
 
-  // ── Live preview watermark segments ────────────────────────────────────────
+  // ── Live preview watermark (CSS only — not composited) ─────────────────────
+  // Line 1: JobName — Date — Time  (only enabled values)
+  // Line 2: Label                  (hidden when off or empty)
   const now  = new Date();
   const z    = (n: number) => String(n).padStart(2, '0');
-  const previewSegs: string[] = [];
-  if (settings.showLabel     && label.trim())       previewSegs.push(label.trim().slice(0, 60));
-  if (settings.showDate)                             previewSegs.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
-  if (settings.showTime)                             previewSegs.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
-  if (settings.showJobNumber && job?.jobNumber)      previewSegs.push(job.jobNumber);
+  const previewLine1Parts: string[] = [];
+  if (settings.showJobName && job?.name)  previewLine1Parts.push(job.name);
+  if (settings.showDate)                  previewLine1Parts.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
+  if (settings.showTime)                  previewLine1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
+  const previewLine1 = previewLine1Parts.join('  —  ');
+  const previewLine2 = (settings.showLabel && label.trim()) ? label.trim() : '';
+  const hasPreview   = previewLine1.length > 0 || previewLine2.length > 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -466,10 +541,10 @@ export default function JobPhotosCameraPage() {
         <div className="absolute inset-0 bg-white pointer-events-none z-30 opacity-70" />
       )}
 
-      {/* ── Live watermark preview strip (CSS only — not composited) ── */}
-      {camState === 'ready' && previewSegs.length > 0 && (
+      {/* ── Live watermark preview panel (CSS only — not composited) ── */}
+      {camState === 'ready' && hasPreview && (
         <div
-          className="absolute pointer-events-none z-10 flex flex-wrap gap-1.5"
+          className="absolute pointer-events-none z-10"
           style={{
             bottom: 'max(env(safe-area-inset-bottom), 10px)',
             left:   'max(env(safe-area-inset-left), 10px)',
@@ -477,14 +552,18 @@ export default function JobPhotosCameraPage() {
             marginBottom: '96px',
           }}
         >
-          {previewSegs.map((seg, i) => (
-            <span
-              key={i}
-              className="bg-black/58 text-white text-[11px] font-bold px-2 py-0.5 rounded-md leading-tight"
-            >
-              {seg}
-            </span>
-          ))}
+          <div className="inline-flex flex-col gap-0.5 bg-black/62 rounded-lg px-2.5 py-1.5 max-w-full">
+            {previewLine1 && (
+              <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">
+                {previewLine1}
+              </span>
+            )}
+            {previewLine2 && (
+              <span className="text-white/88 text-[10px] font-semibold leading-tight break-words">
+                {previewLine2}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -554,10 +633,10 @@ export default function JobPhotosCameraPage() {
           <div className="grid grid-cols-2 gap-2">
             {(
               [
-                { key: 'showLabel',     display: 'Label' },
-                { key: 'showDate',      display: 'Date' },
-                { key: 'showTime',      display: 'Time' },
-                { key: 'showJobNumber', display: 'Job number' },
+                { key: 'showJobName', display: 'Job name' },
+                { key: 'showDate',    display: 'Date' },
+                { key: 'showTime',    display: 'Time' },
+                { key: 'showLabel',   display: 'Label' },
               ] as { key: keyof typeof settings; display: string }[]
             ).map(({ key, display }) => (
               <button
@@ -573,7 +652,7 @@ export default function JobPhotosCameraPage() {
             ))}
           </div>
           <p className="text-white/38 text-[10px] mt-3 leading-relaxed">
-            Enabled values appear together at the bottom of each photo.
+            Line 1: Job name — Date — Time · Line 2: Label
           </p>
         </div>
       )}
