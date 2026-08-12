@@ -33,6 +33,7 @@ const JobsPage           = lazy(() => import('./pages/jobs'));
 const SchedulerPage      = lazy(() => import('./pages/scheduler'));
 const JobDetailPage      = lazy(() => import('./pages/job-detail'));
 const JobPhotosPage      = lazy(() => import('./pages/job-photos-page'));
+const JobPhotosCameraPage = lazy(() => import('./pages/job-photos-camera'));
 const JobFormRunnerPage  = lazy(() => import('./pages/job-form-runner'));
 const JobSignInPage      = lazy(() => import('./pages/job-signin'));
 const FleetPage          = lazy(() => import('./pages/fleet'));
@@ -223,6 +224,7 @@ export const routes: RouteObject[] = [
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   { path: '/jobs/:id/photos', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosPage /></Suspense>), errorElement: routeError },
+  { path: '/jobs/:id/camera', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosCameraPage /></Suspense>), errorElement: routeError },
   { path: '/jobs/:id/notes',    element: protect(<Suspense fallback={<PageLoader />}><JobNotesPage /></Suspense>),     errorElement: routeError },
   { path: '/jobs/:id/delays',   element: protect(<Suspense fallback={<PageLoader />}><JobDelaysPage /></Suspense>),    errorElement: routeError },
   { path: '/jobs/:id/forms',    element: protect(<Suspense fallback={<PageLoader />}><JobFormsPage /></Suspense>),     errorElement: routeError },

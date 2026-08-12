@@ -21,6 +21,7 @@ interface Job {
 export default function JobPhotosPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const openCameraPage = () => navigate(`/jobs/${id}/camera`);
   const jobId = Number(id);
 
   const photosRef = useRef<JobPhotosHandle>(null);
@@ -216,9 +217,9 @@ export default function JobPhotosPage() {
             {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
             Upload
           </button>
-          {/* Camera */}
+          {/* Camera — opens dedicated camera viewport */}
           <button
-            onClick={() => photosRef.current?.openCamera()}
+            onClick={openCameraPage}
             disabled={uploading || atLimit}
             title="Take a photo"
             className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
@@ -300,9 +301,9 @@ export default function JobPhotosPage() {
         className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 safe-bottom"
         style={{ overflowX: 'clip' }}
       >
-        {/* Normal mode — Select | [Upload FAB] | Share */}
+        {/* Normal mode — Select | [Upload FAB] | Camera | Share */}
         {!selectMode && (
-          <div className="flex items-center justify-between px-8 pt-2 pb-2">
+          <div className="flex items-center justify-between px-6 pt-2 pb-2">
             {/* Select */}
             <button
               onClick={() => handleSetSelectMode(true)}
@@ -321,6 +322,17 @@ export default function JobPhotosPage() {
               aria-label="Upload photos from library"
             >
               {uploading ? <Loader2 size={22} className="animate-spin" /> : <Upload size={22} />}
+            </button>
+
+            {/* Camera — navigates to full-screen camera viewport */}
+            <button
+              onClick={openCameraPage}
+              disabled={atLimit}
+              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
+              title="Take a photo"
+            >
+              <Camera size={18} />
+              <span className="text-[9px] font-semibold leading-none">Camera</span>
             </button>
 
             {/* Share */}
