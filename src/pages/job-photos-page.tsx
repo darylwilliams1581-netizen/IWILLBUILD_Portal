@@ -310,7 +310,7 @@ export default function JobPhotosPage() {
         className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 safe-bottom"
         style={{ overflowX: 'clip' }}
       >
-        {/* Normal mode — Select | [Upload FAB] | Camera | Share */}
+        {/* Normal mode — Select | Upload | [Camera FAB] | Share */}
         {!selectMode && (
           <div className="flex items-center justify-between px-6 pt-2 pb-2">
             {/* Select */}
@@ -322,26 +322,26 @@ export default function JobPhotosPage() {
               <span className="text-[9px] font-semibold leading-none">Select</span>
             </button>
 
-            {/* Upload — centred round FAB */}
+            {/* Upload — regular tab button */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
-              title="Upload photos"
-              className="w-16 h-16 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-full shadow-lg shadow-primary/40 transition-colors touch-manipulation shrink-0 -mt-5"
-              aria-label="Upload photos from library"
+              title="Upload photos from library"
+              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
             >
-              {uploading ? <Loader2 size={22} className="animate-spin" /> : <Upload size={22} />}
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+              <span className="text-[9px] font-semibold leading-none">Upload</span>
             </button>
 
-            {/* Camera — navigates to full-screen camera viewport */}
+            {/* Camera — centred round FAB */}
             <button
               onClick={openCameraPage}
               disabled={atLimit}
-              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
               title="Take a photo"
+              className="w-16 h-16 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-full shadow-lg shadow-primary/40 transition-colors touch-manipulation shrink-0 -mt-5"
+              aria-label="Take a photo"
             >
-              <Camera size={18} />
-              <span className="text-[9px] font-semibold leading-none">Camera</span>
+              <Camera size={22} />
             </button>
 
             {/* Share */}
