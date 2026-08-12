@@ -548,9 +548,16 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     dismissStorageWarning,
   } = usePhotoUploadQueue({
     jobId,
+    onPhotoSynced: (_id) => {
+      // Refresh the grid immediately when each photo lands on the server —
+      // don't wait for the whole batch to finish.
+      photoCache.delete(jobId);
+      void fetchPhotos(true);
+    },
     onBatchComplete: (uploaded, _failed) => {
       if (uploaded > 0) {
-        // Invalidate cache and reload first page
+        // Belt-and-suspenders: also refresh at batch end in case a per-photo
+        // refresh was missed (e.g. rapid concurrent uploads).
         photoCache.delete(jobId);
         void fetchPhotos(true);
       }
