@@ -185,10 +185,10 @@ async function compositeWatermark(
   const panelY = h - margin - panelH;
   const radius = fontSize * 0.32;
 
-  // Background panel
+  // Background panel — dark grey at 65% opacity, rounded corners, auto-expands with wrapped label
   ctx.save();
-  ctx.globalAlpha = 0.62;
-  ctx.fillStyle   = '#000000';
+  ctx.globalAlpha = 0.65;
+  ctx.fillStyle   = '#1a1a1a';
   ctx.beginPath();
   ctx.roundRect(panelX, panelY, panelW, panelH, radius);
   ctx.fill();
@@ -552,7 +552,7 @@ export default function JobPhotosCameraPage() {
             marginBottom: '96px',
           }}
         >
-          <div className="inline-flex flex-col gap-0.5 bg-black/62 rounded-lg px-2.5 py-1.5 max-w-full">
+          <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-full">
             {previewLine1 && (
               <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">
                 {previewLine1}
