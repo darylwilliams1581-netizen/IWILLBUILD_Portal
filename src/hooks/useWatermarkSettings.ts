@@ -4,11 +4,11 @@
  * Persists the four watermark overlay toggles to localStorage so the user's
  * preferences survive navigation and app restarts.
  *
- * Watermark fields:
- *   showDate      — current date (DD/MM/YYYY) in bottom-left
- *   showTime      — current time (HH:MM) appended after date
- *   showJobNumber — job number in bottom-right
- *   showLabel     — user-typed label in top-left
+ * Watermark fields (all rendered together in one bottom strip, left-to-right):
+ *   showLabel     — user-typed label
+ *   showDate      — current date (DD/MM/YYYY)
+ *   showTime      — current time (HH:MM)
+ *   showJobNumber — job number
  *
  * All default to true on first use.
  */
