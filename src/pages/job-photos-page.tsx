@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode,
-  Download, Home, Upload, Share2, LayoutGrid, CheckSquare, Send,
-  Grid2x2, Grid3x3, Camera, Trash2,
+  Download, Home, Upload, Share2, CheckSquare, Send,
+  Camera, Trash2,
 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,14 +33,7 @@ export default function JobPhotosPage() {
   const [uploading, setUploading] = useState(false);
   const [selectMode, setSelectModeLocal] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
-  const [viewSize, setViewSizeLocal] = useState<'small' | 'medium' | 'large'>(() => {
-    try {
-      const saved = localStorage.getItem('jobPhotosZoom');
-      if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
-    } catch (_) {}
-    // Default to small (3-across) on mobile, medium on desktop
-    return window.innerWidth < 768 ? 'small' : 'medium';
-  });
+  // View size is fixed to 'medium' — grid size picker removed
 
   // Share state
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -161,11 +154,6 @@ export default function JobPhotosPage() {
     if (!v) setSelectedCount(0);
   };
 
-  const handleSetViewSize = (s: 'small' | 'medium' | 'large') => {
-    setViewSizeLocal(s);
-    photosRef.current?.setViewSize(s);
-  };
-
   const atLimit = photoCount >= 200;
   const title = job ? `${job.name} — Photos` : 'Job Photos';
 
@@ -284,19 +272,6 @@ export default function JobPhotosPage() {
           >
             <Share2 size={12} /> Share
           </button>
-          {/* View size */}
-          <div className="flex items-center bg-gray-100 rounded overflow-hidden">
-            {(['small', 'medium', 'large'] as const).map((size) => (
-              <button
-                key={size}
-                onClick={() => handleSetViewSize(size)}
-                className={`px-2 py-1 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
-              >
-                {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
-              </button>
-            ))}
-          </div>
         </div>
       </header>
 
@@ -325,52 +300,39 @@ export default function JobPhotosPage() {
         className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 safe-bottom"
         style={{ overflowX: 'clip' }}
       >
-        {/* Normal mode */}
+        {/* Normal mode — Select | [Upload FAB] | Share */}
         {!selectMode && (
-          <div className="flex items-center gap-2 px-3 pt-2 pb-2 min-w-0 overflow-x-clip">
-            {/* Upload — square fixed icon button */}
+          <div className="flex items-center justify-between px-8 pt-2 pb-2">
+            {/* Select */}
+            <button
+              onClick={() => handleSetSelectMode(true)}
+              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors touch-manipulation"
+            >
+              <CheckSquare size={18} />
+              <span className="text-[9px] font-semibold leading-none">Select</span>
+            </button>
+
+            {/* Upload — centred round FAB */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload photos"
-              className="w-11 h-11 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
+              className="w-16 h-16 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-full shadow-lg shadow-primary/40 transition-colors touch-manipulation shrink-0 -mt-5"
               aria-label="Upload photos from library"
             >
-              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-            </button>
-
-            {/* Select */}
-            <button
-              onClick={() => handleSetSelectMode(true)}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-11 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation shrink-0"
-            >
-              <CheckSquare size={16} />
-              <span className="text-[9px] font-semibold leading-none">Select</span>
+              {uploading ? <Loader2 size={22} className="animate-spin" /> : <Upload size={22} />}
             </button>
 
             {/* Share */}
             <button
               onClick={() => photosRef.current?.generateShareLink()}
               disabled={photoCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-11 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
               title="Share view-only link"
             >
-              <Share2 size={16} />
+              <Share2 size={18} />
               <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
-
-            {/* View size */}
-            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50 shrink-0 h-11">
-              {(['small', 'medium', 'large'] as const).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => handleSetViewSize(size)}
-                  className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                  {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
