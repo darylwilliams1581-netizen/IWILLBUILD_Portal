@@ -2,44 +2,56 @@
  * JobPhotosCameraPage  (/jobs/:id/camera)
  * ─────────────────────────────────────────────────────────────────────────────
  * Full-screen camera viewport for capturing job photos with an optional
- * watermark overlay (date, time, job number, label).
+ * watermark overlay (Label, Date, Time, Job Number).
  *
- * Flow:
- *   1. Page mounts → shows live <video> preview via getUserMedia (web) or
- *      triggers Capacitor Camera.getPhoto() on native iOS.
- *   2. User types an optional label in the top bar.
- *   3. User taps the shutter button.
- *   4. On web: captures frame from <video> to off-screen canvas, composites
- *      watermark text, exports as JPEG blob, passes File to enqueueFiles().
- *   5. On native: useIosMediaPicker.openCamera() returns a File; we composite
- *      the watermark onto it via createImageBitmap → canvas → toBlob, then
- *      pass the new File to enqueueFiles(). Falls through with raw file if
- *      HEIC or createImageBitmap fails.
- *   6. After capture the shutter button shows a thumbnail of the last shot.
- *      Tapping it navigates back to /jobs/:id/photos.
- *   7. Settings panel (gear icon) toggles the four watermark fields.
+ * DESIGN REQUIREMENTS (from user spec):
+ *   - Persistent live <video> preview — NOT one-shot Camera.getPhoto() per press
+ *   - Five rapid photographs must work in locked mode without interruption
+ *   - Locked mode: label is set once and stamped on every photo automatically
+ *   - Unlocked mode: label prompt appears after each shutter press
+ *   - All four watermark values (Label, Date, Time, Job Number) shown together
+ *     in the bottom watermark strip — not scattered across corners
+ *   - Settings gear toggles each field independently; persisted to localStorage
+ *   - HEIC: do NOT silently upload unstamped — show error and direct user to
+ *     the original Take Photo route as fallback
+ *   - No flip/flash controls (not pre-existing, not requested)
+ *   - No markup layer changes — PhotoEditor operates on saved JPEG as before
+ *   - No database changes, no upload-pipeline changes, no metadata changes
+ *
+ * WATERMARK COMPOSITOR:
+ *   - Off-screen canvas at the image's real pixel dimensions (not CSS size)
+ *   - Semi-transparent pill behind each text segment
+ *   - All fields in one horizontal strip at the bottom of the frame
+ *   - Font size scales with image width (readable on 1080p and 4K)
+ *   - Exports JPEG at quality 0.88 — same as existing normaliseToJpeg()
+ *   - Passes resulting File to enqueueFiles() — identical to existing flow
+ *
+ * NATIVE iOS:
+ *   - Uses getUserMedia on web (persistent live preview)
+ *   - On native Capacitor: getUserMedia is available in WKWebView iOS 14.3+
+ *     and is the correct approach for a persistent viewport
+ *   - If getUserMedia is unavailable (very old WebView), shows an error with
+ *     a link back to the original Take Photo route
  *
  * CRITICAL RULES (from pre-implementation inspection):
- *   - Never use dynamic import('@capacitor/*') — always window.Capacitor.Plugins
- *   - Never use FileReader + base64 for previews — use URL.createObjectURL
+ *   - Never use dynamic import('@capacitor/*')
+ *   - Never use FileReader + base64 for previews — URL.createObjectURL only
  *   - position:fixed inside CSS transform ancestor gets trapped — no transforms
  *     on the outer container
  *   - iOS safe area: always max(env(safe-area-inset-*), Npx)
- *   - Watermark canvas uses raw image pixel dimensions, not CSS display size
- *   - HEIC guard: fall through with raw file rather than blocking save
+ *   - Canvas uses raw image pixel dimensions, not CSS display size
+ *   - HEIC: show error, do not silently upload unstamped
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2, Camera,
-  SwitchCamera, Zap, ZapOff, Tag,
+  Lock, Unlock, Tag, AlertTriangle,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
-import { isNative } from '@/lib/capacitor-plugins';
-import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,9 +73,10 @@ interface WatermarkOptions {
 }
 
 /**
- * Composite watermark text onto an ImageBitmap and return a JPEG File.
- * Uses the bitmap's natural pixel dimensions — never CSS display size.
- * Returns null if the browser cannot create a canvas (very old WebViews).
+ * Composite all active watermark fields into a single horizontal strip at the
+ * bottom of the frame. Uses the source's natural pixel dimensions.
+ *
+ * Returns null if canvas creation fails (very old WebView).
  */
 async function applyWatermark(
   source: ImageBitmap | HTMLVideoElement,
@@ -82,82 +95,70 @@ async function applyWatermark(
 
   ctx.drawImage(source, 0, 0, w, h);
 
-  // ── Watermark text ──────────────────────────────────────────────────────────
-  const now   = new Date();
-  const pad   = (n: number) => String(n).padStart(2, '0');
-  const date  = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
-  const time  = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  // ── Collect active segments ─────────────────────────────────────────────────
+  const now  = new Date();
+  const pad  = (n: number) => String(n).padStart(2, '0');
+  const date = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-  // Font size scales with image width — readable on both 1080p and 4K captures
-  const fontSize = Math.max(20, Math.round(w * 0.028));
-  ctx.font        = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
-  ctx.textBaseline = 'bottom';
+  const segments: string[] = [];
+  if (opts.showLabel     && opts.label.trim())  segments.push(opts.label.trim().slice(0, 60));
+  if (opts.showDate)                             segments.push(date);
+  if (opts.showTime)                             segments.push(time);
+  if (opts.showJobNumber && opts.jobNumber)      segments.push(opts.jobNumber);
 
-  // Semi-transparent pill background helper
-  function drawPill(text: string, x: number, y: number, align: 'left' | 'right') {
-    const pad2 = fontSize * 0.4;
-    const tw   = ctx!.measureText(text).width;
-    const bx   = align === 'right' ? x - tw - pad2 * 2 : x;
-    const by   = y - fontSize - pad2;
-    const bw   = tw + pad2 * 2;
-    const bh   = fontSize + pad2 * 1.6;
-    const r    = fontSize * 0.3;
-
-    ctx!.save();
-    ctx!.globalAlpha = 0.55;
-    ctx!.fillStyle   = '#000000';
-    ctx!.beginPath();
-    ctx!.roundRect(bx, by, bw, bh, r);
-    ctx!.fill();
-    ctx!.restore();
-
-    ctx!.save();
-    ctx!.globalAlpha = 1;
-    ctx!.fillStyle   = '#ffffff';
-    ctx!.fillText(text, align === 'right' ? x - tw - pad2 : x + pad2, y);
-    ctx!.restore();
+  if (segments.length === 0) {
+    // No watermark fields active — export as-is
+    return new Promise<File | null>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(null); return; }
+        resolve(new File([blob], fileName, { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.88);
+    });
   }
 
-  const margin = Math.round(w * 0.025);
+  // ── Draw bottom strip ───────────────────────────────────────────────────────
+  const fontSize  = Math.max(18, Math.round(w * 0.026));
+  const padH      = fontSize * 0.45;   // horizontal padding inside each pill
+  const padV      = fontSize * 0.35;   // vertical padding inside each pill
+  const pillH     = fontSize + padV * 2;
+  const gap       = Math.round(w * 0.012);
+  const margin    = Math.round(w * 0.022);
+  const bottomY   = h - margin;
 
-  // Bottom-left: date [time]
-  if (opts.showDate || opts.showTime) {
-    const parts: string[] = [];
-    if (opts.showDate) parts.push(date);
-    if (opts.showTime) parts.push(time);
-    drawPill(parts.join('  '), margin, h - margin, 'left');
-  }
+  ctx.font         = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+  ctx.textBaseline = 'middle';
 
-  // Bottom-right: job number
-  if (opts.showJobNumber && opts.jobNumber) {
-    drawPill(opts.jobNumber, w - margin, h - margin, 'right');
-  }
+  // Measure all segments first so we can lay them out left-to-right
+  const measured = segments.map((seg) => ({
+    text:  seg,
+    width: ctx.measureText(seg).width,
+  }));
 
-  // Top-left: label
-  if (opts.showLabel && opts.label.trim()) {
-    ctx.textBaseline = 'top';
-    const labelText = opts.label.trim().slice(0, 60);
-    const pad2 = fontSize * 0.4;
-    const tw   = ctx.measureText(labelText).width;
-    const bx   = margin;
-    const by   = margin;
-    const bw   = tw + pad2 * 2;
-    const bh   = fontSize + pad2 * 1.6;
-    const r    = fontSize * 0.3;
+  let x = margin;
+  for (const seg of measured) {
+    const pillW = seg.width + padH * 2;
+    const pillX = x;
+    const pillY = bottomY - pillH;
+    const r     = pillH * 0.28;
 
+    // Background pill
     ctx.save();
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.58;
     ctx.fillStyle   = '#000000';
     ctx.beginPath();
-    ctx.roundRect(bx, by, bw, bh, r);
+    ctx.roundRect(pillX, pillY, pillW, pillH, r);
     ctx.fill();
     ctx.restore();
 
+    // Text
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.fillStyle   = '#ffffff';
-    ctx.fillText(labelText, bx + pad2, by + pad2 * 0.8);
+    ctx.fillText(seg, pillX + padH, pillY + pillH / 2);
     ctx.restore();
+
+    x += pillW + gap;
   }
 
   return new Promise<File | null>((resolve) => {
@@ -193,8 +194,19 @@ export default function JobPhotosCameraPage() {
 
   // ── Watermark settings ──────────────────────────────────────────────────────
   const { settings, toggle } = useWatermarkSettings();
-  const [label, setLabel] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+
+  // ── Label mode ──────────────────────────────────────────────────────────────
+  // Locked: label is typed once and stamped on every photo without prompting.
+  // Unlocked: after each shutter press a prompt appears to confirm/change label.
+  const [labelLocked, setLabelLocked] = useState(false);
+  const [label, setLabel] = useState('');
+  // Post-capture label prompt state (unlocked mode)
+  const [pendingCapture, setPendingCapture] = useState<{
+    bitmap: ImageBitmap;
+    fileName: string;
+  } | null>(null);
+  const [pendingLabel, setPendingLabel] = useState('');
 
   // ── Upload queue ────────────────────────────────────────────────────────────
   const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId });
@@ -203,22 +215,16 @@ export default function JobPhotosCameraPage() {
   // ── Last captured thumbnail ─────────────────────────────────────────────────
   const [lastThumb, setLastThumb] = useState<string | null>(null);
 
-  // ── Web camera (getUserMedia) ───────────────────────────────────────────────
-  const videoRef  = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [flashOn, setFlashOn]       = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [capturing, setCapturing]   = useState(false);
-  const [flashAnim, setFlashAnim]   = useState(false);
+  // ── Camera stream ───────────────────────────────────────────────────────────
+  const videoRef    = useRef<HTMLVideoElement>(null);
+  const streamRef   = useRef<MediaStream | null>(null);
+  const [cameraReady, setCameraReady]   = useState(false);
+  const [cameraError, setCameraError]   = useState<string | null>(null);
+  const [capturing, setCapturing]       = useState(false);
+  const [flashAnim, setFlashAnim]       = useState(false);
+  const [noGetUserMedia, setNoGetUserMedia] = useState(false);
 
-  // ── Native iOS picker ───────────────────────────────────────────────────────
-  const picker = useIosMediaPicker();
-
-  // ── Start / stop web camera stream ─────────────────────────────────────────
-  const startStream = useCallback(async (facing: 'environment' | 'user') => {
-    // Stop any existing stream first
+  const startStream = useCallback(async () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -226,10 +232,15 @@ export default function JobPhotosCameraPage() {
     setCameraReady(false);
     setCameraError(null);
 
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setNoGetUserMedia(true);
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: facing },
+          facingMode: { ideal: 'environment' },
           width:  { ideal: 1920 },
           height: { ideal: 1080 },
         },
@@ -243,20 +254,18 @@ export default function JobPhotosCameraPage() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('Permission') || msg.includes('NotAllowed')) {
-        setCameraError('Camera access denied. Please allow camera in your browser settings.');
+      if (msg.includes('Permission') || msg.includes('NotAllowed') || msg.includes('denied')) {
+        setCameraError('Camera access denied. Please allow camera access in your device settings, then tap Retry.');
       } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
         setCameraError('No camera found on this device.');
       } else {
-        setCameraError('Could not start camera.');
+        setCameraError('Could not start camera. Tap Retry or use Take Photo instead.');
       }
     }
   }, []);
 
-  // Start stream on mount (web only)
   useEffect(() => {
-    if (isNative()) return; // native uses Capacitor picker
-    void startStream(facingMode);
+    void startStream();
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -266,154 +275,114 @@ export default function JobPhotosCameraPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Restart stream when facing mode changes (web only)
+  // Cleanup thumb on unmount
   useEffect(() => {
-    if (isNative()) return;
-    void startStream(facingMode);
+    return () => { if (lastThumb) URL.revokeObjectURL(lastThumb); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facingMode]);
-
-  // ── Flash toggle (web — torch API) ─────────────────────────────────────────
-  const toggleFlash = useCallback(async () => {
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    try {
-      const caps = track.getCapabilities() as { torch?: boolean };
-      if (!caps.torch) return;
-      await track.applyConstraints({ advanced: [{ torch: !flashOn } as MediaTrackConstraintSet] });
-      setFlashOn((v) => !v);
-    } catch { /* torch not supported */ }
-  }, [flashOn]);
+  }, []);
 
   // ── Build watermark options ─────────────────────────────────────────────────
-  const watermarkOpts = useCallback((): WatermarkOptions => ({
+  const makeWatermarkOpts = useCallback((resolvedLabel: string): WatermarkOptions => ({
     showDate:      settings.showDate,
     showTime:      settings.showTime,
     showJobNumber: settings.showJobNumber,
     showLabel:     settings.showLabel,
     jobNumber:     job?.jobNumber ?? '',
-    label,
-  }), [settings, job, label]);
+    label:         resolvedLabel,
+  }), [settings, job]);
 
-  // ── Capture — web ───────────────────────────────────────────────────────────
-  const captureWeb = useCallback(async () => {
-    if (!videoRef.current || !cameraReady || capturing) return;
-    setCapturing(true);
-    setFlashAnim(true);
-    setTimeout(() => setFlashAnim(false), 180);
-
+  // ── Finalise capture (after label is resolved) ──────────────────────────────
+  const finaliseCapture = useCallback(async (
+    source: ImageBitmap | HTMLVideoElement,
+    resolvedLabel: string,
+    fileName: string,
+  ) => {
     try {
-      const video = videoRef.current;
-      const ts    = Date.now();
-      const name  = `job-${jobId}-photo-${ts}.jpg`;
-
-      const file = await applyWatermark(video, watermarkOpts(), name);
+      const file = await applyWatermark(source, makeWatermarkOpts(resolvedLabel), fileName);
       if (!file) {
-        // Canvas failed — capture raw frame without watermark
-        const canvas = document.createElement('canvas');
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0);
-          await new Promise<void>((resolve) => {
-            canvas.toBlob((blob) => {
-              if (blob) {
-                const raw = new File([blob], name, { type: 'image/jpeg' });
-                void enqueueFiles([raw]);
-                const thumb = URL.createObjectURL(blob);
-                setLastThumb((prev) => { if (prev) URL.revokeObjectURL(prev); return thumb; });
-              }
-              resolve();
-            }, 'image/jpeg', 0.88);
-          });
-        }
+        setCameraError('Could not composite watermark. Please use Take Photo instead.');
         return;
       }
-
       void enqueueFiles([file]);
       const thumb = URL.createObjectURL(file);
       setLastThumb((prev) => { if (prev) URL.revokeObjectURL(prev); return thumb; });
     } finally {
       setCapturing(false);
     }
-  }, [cameraReady, capturing, jobId, watermarkOpts, enqueueFiles]);
+  }, [makeWatermarkOpts, enqueueFiles]);
 
-  // ── Capture — native iOS ────────────────────────────────────────────────────
-  // On native we call picker.openCamera() synchronously in the click handler
-  // (no await before the Capacitor call — required for iOS gesture token).
-  // The result arrives via picker.file state change.
-  const nativeCaptureTriggered = useRef(false);
+  // ── Shutter press ───────────────────────────────────────────────────────────
+  const handleShutter = useCallback(async () => {
+    if (!videoRef.current || !cameraReady || capturing) return;
 
-  const captureNative = useCallback(() => {
-    if (capturing) return;
-    nativeCaptureTriggered.current = true;
-    void picker.openCamera({
-      direction:      facingMode === 'user' ? 'front' : 'rear',
-      flashMode:      flashOn ? 'on' : 'auto',
-      captureQuality: 84,
-    });
-  }, [capturing, picker, facingMode, flashOn]);
+    const video = videoRef.current;
 
-  // Watch picker.file for the result
-  useEffect(() => {
-    if (!nativeCaptureTriggered.current) return;
-    if (!picker.file) return;
-    nativeCaptureTriggered.current = false;
+    // HEIC check — video stream is always raw frames, not HEIC, so this guard
+    // is for future-proofing; the real HEIC risk is the original Take Photo route.
+    // However if videoWidth/Height are 0 the stream isn't ready.
+    if (!video.videoWidth || !video.videoHeight) {
+      setCameraError('Camera not ready. Please wait a moment and try again.');
+      return;
+    }
 
-    const file = picker.file;
     setCapturing(true);
+    setFlashAnim(true);
+    setTimeout(() => setFlashAnim(false), 160);
 
-    (async () => {
+    const ts       = Date.now();
+    const fileName = `job-${jobId}-photo-${ts}.jpg`;
+
+    if (labelLocked) {
+      // Locked mode: capture immediately with current label
+      await finaliseCapture(video, label, fileName);
+    } else {
+      // Unlocked mode: capture bitmap first, then prompt for label
+      let bitmap: ImageBitmap;
       try {
-        const ts   = Date.now();
-        const name = `job-${jobId}-photo-${ts}.jpg`;
-
-        // HEIC guard — fall through with raw file, no watermark
-        if (file.type === 'image/heic' || file.type === 'image/heif') {
-          void enqueueFiles([file]);
-          picker.clear();
-          return;
-        }
-
-        let bitmap: ImageBitmap | null = null;
-        try {
-          bitmap = await createImageBitmap(file);
-        } catch {
-          // createImageBitmap failed (old WebView) — upload raw
-          void enqueueFiles([file]);
-          picker.clear();
-          return;
-        }
-
-        const watermarked = await applyWatermark(bitmap, watermarkOpts(), name);
-        bitmap.close();
-
-        const toUpload = watermarked ?? file;
-        void enqueueFiles([toUpload]);
-
-        // Thumbnail from the watermarked file
-        const thumb = URL.createObjectURL(toUpload);
-        setLastThumb((prev) => { if (prev) URL.revokeObjectURL(prev); return thumb; });
-      } finally {
+        bitmap = await createImageBitmap(video);
+      } catch {
+        setCameraError('Could not capture frame. Please try again.');
         setCapturing(false);
-        picker.clear();
+        return;
       }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picker.file]);
+      setPendingLabel(label); // pre-fill with last used label
+      setPendingCapture({ bitmap, fileName });
+      // setCapturing stays true until the prompt is resolved
+    }
+  }, [cameraReady, capturing, jobId, labelLocked, label, finaliseCapture]);
 
-  // Cleanup thumb on unmount
-  useEffect(() => {
-    return () => {
-      if (lastThumb) URL.revokeObjectURL(lastThumb);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // ── Confirm label prompt (unlocked mode) ────────────────────────────────────
+  const confirmPendingCapture = useCallback(async () => {
+    if (!pendingCapture) return;
+    const { bitmap, fileName } = pendingCapture;
+    const resolvedLabel = pendingLabel;
+    setLabel(resolvedLabel); // remember for next shot
+    setPendingCapture(null);
+    await finaliseCapture(bitmap, resolvedLabel, fileName);
+    bitmap.close();
+  }, [pendingCapture, pendingLabel, finaliseCapture]);
+
+  const discardPendingCapture = useCallback(() => {
+    if (pendingCapture) {
+      pendingCapture.bitmap.close();
+      setPendingCapture(null);
+    }
+    setCapturing(false);
+  }, [pendingCapture]);
+
+  // ── Live watermark preview text ─────────────────────────────────────────────
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const previewDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+  const previewTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  const previewSegments: string[] = [];
+  if (settings.showLabel     && label.trim())       previewSegments.push(label.trim().slice(0, 60));
+  if (settings.showDate)                             previewSegments.push(previewDate);
+  if (settings.showTime)                             previewSegments.push(previewTime);
+  if (settings.showJobNumber && job?.jobNumber)      previewSegments.push(job.jobNumber);
 
   // ── Render ──────────────────────────────────────────────────────────────────
-
-  const native = isNative();
 
   return (
     <div
@@ -422,110 +391,96 @@ export default function JobPhotosCameraPage() {
     >
       <Helmet>
         <title>Camera — IWILLBUILD</title>
-        <meta name="description" content="Capture job photos with watermark overlay." />
         <meta name="robots" content="noindex, nofollow" />
-        <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/camera`} />
       </Helmet>
-      {/* Visually hidden H1 for accessibility — camera UI has no visible heading */}
       <h1 className="sr-only">Job Camera</h1>
 
-      {/* ── Live preview (web only) ── */}
-      {!native && (
-        <div className="absolute inset-0 overflow-hidden">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            autoPlay
-            playsInline
-            muted
-          />
-          {/* Camera error overlay */}
-          {cameraError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-8 text-center">
-              <Camera size={40} className="text-gray-500" />
-              <p className="text-white text-sm font-medium">{cameraError}</p>
+      {/* ── Live preview ── */}
+      <div className="absolute inset-0 overflow-hidden">
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover"
+          autoPlay
+          playsInline
+          muted
+        />
+
+        {/* getUserMedia unavailable (old WebView) */}
+        {noGetUserMedia && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-8 text-center">
+            <AlertTriangle size={36} className="text-yellow-400" />
+            <p className="text-white text-sm font-semibold">
+              Live camera preview is not available on this device.
+            </p>
+            <p className="text-gray-400 text-xs leading-relaxed">
+              Use the original <strong className="text-white">Take Photo</strong> button on the photos page to capture images.
+            </p>
+            <button
+              onClick={() => navigate(`/jobs/${id}/photos`)}
+              className="mt-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
+            >
+              Back to Photos
+            </button>
+          </div>
+        )}
+
+        {/* Camera permission / hardware error */}
+        {cameraError && !noGetUserMedia && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 px-8 text-center">
+            <AlertTriangle size={36} className="text-yellow-400" />
+            <p className="text-white text-sm font-medium leading-relaxed">{cameraError}</p>
+            <div className="flex gap-2 mt-1">
               <button
-                onClick={() => void startStream(facingMode)}
-                className="mt-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl"
+                onClick={() => void startStream()}
+                className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl"
               >
                 Retry
               </button>
+              <button
+                onClick={() => navigate(`/jobs/${id}/photos`)}
+                className="px-4 py-2 bg-white/10 text-white text-sm font-semibold rounded-xl"
+              >
+                Back
+              </button>
             </div>
-          )}
-          {/* Loading overlay */}
-          {!cameraReady && !cameraError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-              <Loader2 size={32} className="animate-spin text-white/60" />
-            </div>
-          )}
-        </div>
-      )}
+            <p className="text-gray-500 text-xs mt-1">
+              Or use <strong className="text-gray-300">Take Photo</strong> on the photos page as a fallback.
+            </p>
+          </div>
+        )}
 
-      {/* Native: dark background with instruction */}
-      {native && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-950">
-          <Camera size={48} className="text-gray-600" />
-          <p className="text-gray-400 text-sm text-center px-8">
-            Tap the shutter to open the camera
-          </p>
-        </div>
-      )}
+        {/* Loading */}
+        {!cameraReady && !cameraError && !noGetUserMedia && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+            <Loader2 size={32} className="animate-spin text-white/60" />
+          </div>
+        )}
+      </div>
 
       {/* ── Flash animation ── */}
       {flashAnim && (
         <div className="absolute inset-0 bg-white pointer-events-none z-30 opacity-70" />
       )}
 
-      {/* ── Watermark preview overlay (live, CSS only — not composited) ── */}
-      {!native && cameraReady && (
-        <div className="absolute inset-0 pointer-events-none z-10">
-          {/* Bottom-left: date/time */}
-          {(settings.showDate || settings.showTime) && (
-            <div
-              className="absolute bottom-0 left-0 flex items-center gap-1"
-              style={{
-                bottom: 'max(env(safe-area-inset-bottom), 10px)',
-                left:   'max(env(safe-area-inset-left), 10px)',
-                marginBottom: '80px', // above shutter bar
-              }}
+      {/* ── Live watermark preview overlay (CSS only — not composited) ── */}
+      {cameraReady && previewSegments.length > 0 && (
+        <div
+          className="absolute left-0 right-0 pointer-events-none z-10 flex flex-wrap gap-1.5"
+          style={{
+            bottom: 'max(env(safe-area-inset-bottom), 10px)',
+            left:   'max(env(safe-area-inset-left), 10px)',
+            right:  'max(env(safe-area-inset-right), 10px)',
+            marginBottom: '90px', // above shutter bar
+          }}
+        >
+          {previewSegments.map((seg, i) => (
+            <span
+              key={i}
+              className="bg-black/58 text-white text-[11px] font-bold px-2 py-0.5 rounded-md leading-tight"
             >
-              <span className="bg-black/55 text-white text-[11px] font-bold px-2 py-0.5 rounded-md leading-tight">
-                {settings.showDate && new Date().toLocaleDateString('en-AU')}
-                {settings.showDate && settings.showTime && '  '}
-                {settings.showTime && new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })}
-              </span>
-            </div>
-          )}
-          {/* Bottom-right: job number */}
-          {settings.showJobNumber && job?.jobNumber && (
-            <div
-              className="absolute bottom-0 right-0"
-              style={{
-                bottom: 'max(env(safe-area-inset-bottom), 10px)',
-                right:  'max(env(safe-area-inset-right), 10px)',
-                marginBottom: '80px',
-              }}
-            >
-              <span className="bg-black/55 text-white text-[11px] font-bold px-2 py-0.5 rounded-md leading-tight">
-                {job.jobNumber}
-              </span>
-            </div>
-          )}
-          {/* Top-left: label */}
-          {settings.showLabel && label.trim() && (
-            <div
-              className="absolute top-0 left-0"
-              style={{
-                top:  'max(env(safe-area-inset-top), 10px)',
-                left: 'max(env(safe-area-inset-left), 10px)',
-                marginTop: '52px', // below top bar
-              }}
-            >
-              <span className="bg-black/55 text-white text-[11px] font-bold px-2 py-0.5 rounded-md leading-tight max-w-[200px] truncate block">
-                {label.trim()}
-              </span>
-            </div>
-          )}
+              {seg}
+            </span>
+          ))}
         </div>
       )}
 
@@ -553,7 +508,7 @@ export default function JobPhotosCameraPage() {
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Add label…"
+            placeholder={labelLocked ? 'Label (locked)…' : 'Add label…'}
             maxLength={60}
             className="flex-1 bg-transparent text-white text-sm placeholder-white/40 outline-none min-w-0"
             style={{ fontSize: '16px' }} // prevent iOS zoom
@@ -564,6 +519,18 @@ export default function JobPhotosCameraPage() {
             </button>
           )}
         </div>
+
+        {/* Lock toggle */}
+        <button
+          onClick={() => setLabelLocked((v) => !v)}
+          className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shrink-0 ${
+            labelLocked ? 'bg-primary text-white' : 'bg-black/40 text-white/70 hover:bg-black/60'
+          }`}
+          aria-label={labelLocked ? 'Label locked — tap to unlock' : 'Label unlocked — tap to lock'}
+          title={labelLocked ? 'Label locked for all shots' : 'Prompt for label after each shot'}
+        >
+          {labelLocked ? <Lock size={15} /> : <Unlock size={15} />}
+        </button>
 
         {/* Settings */}
         <button
@@ -577,11 +544,9 @@ export default function JobPhotosCameraPage() {
 
       {/* ── Settings panel ── */}
       {showSettings && (
-        <div
-          className="relative z-20 mx-3 mb-2 bg-black/75 backdrop-blur-sm rounded-2xl p-4 shrink-0"
-        >
+        <div className="relative z-20 mx-3 mb-2 bg-black/75 backdrop-blur-sm rounded-2xl p-4 shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-white text-sm font-semibold">Watermark</p>
+            <p className="text-white text-sm font-semibold">Watermark fields</p>
             <button onClick={() => setShowSettings(false)} className="text-white/50 hover:text-white">
               <X size={15} />
             </button>
@@ -589,10 +554,10 @@ export default function JobPhotosCameraPage() {
           <div className="grid grid-cols-2 gap-2">
             {(
               [
+                { key: 'showLabel',     label: 'Label' },
                 { key: 'showDate',      label: 'Date' },
                 { key: 'showTime',      label: 'Time' },
                 { key: 'showJobNumber', label: 'Job number' },
-                { key: 'showLabel',     label: 'Label' },
               ] as { key: keyof typeof settings; label: string }[]
             ).map(({ key, label: lbl }) => (
               <button
@@ -609,10 +574,13 @@ export default function JobPhotosCameraPage() {
               </button>
             ))}
           </div>
+          <p className="text-white/40 text-[10px] mt-3 leading-relaxed">
+            All active fields appear together in the bottom watermark strip.
+          </p>
         </div>
       )}
 
-      {/* ── Spacer — pushes bottom bar down ── */}
+      {/* ── Spacer ── */}
       <div className="flex-1" />
 
       {/* ── Bottom shutter bar ── */}
@@ -623,7 +591,7 @@ export default function JobPhotosCameraPage() {
           paddingTop:    '16px',
         }}
       >
-        {/* Last photo thumbnail / back button */}
+        {/* Last photo thumbnail / back */}
         <button
           onClick={() => navigate(`/jobs/${id}/photos`)}
           className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation"
@@ -643,81 +611,81 @@ export default function JobPhotosCameraPage() {
 
         {/* Shutter */}
         <button
-          onClick={native ? captureNative : () => void captureWeb()}
-          disabled={capturing || (!native && !cameraReady)}
+          onClick={() => void handleShutter()}
+          disabled={capturing || !cameraReady || !!cameraError || noGetUserMedia}
           className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-50 touch-manipulation active:scale-95 transition-transform shrink-0"
           aria-label="Take photo"
         >
-          {capturing ? (
+          {capturing && !pendingCapture ? (
             <Loader2 size={28} className="animate-spin text-white" />
           ) : (
             <div className="w-14 h-14 rounded-full bg-white" />
           )}
         </button>
 
-        {/* Flip / Flash */}
-        <div className="flex flex-col items-center gap-3 shrink-0">
-          {/* Flip camera */}
-          <button
-            onClick={() => setFacingMode((v) => v === 'environment' ? 'user' : 'environment')}
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors touch-manipulation"
-            aria-label="Flip camera"
-          >
-            <SwitchCamera size={18} />
-          </button>
-          {/* Flash (web only — native uses captureQuality) */}
-          {!native && (
-            <button
-              onClick={() => void toggleFlash()}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors touch-manipulation ${
-                flashOn ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
-              aria-label={flashOn ? 'Flash on' : 'Flash off'}
-            >
-              {flashOn ? <Zap size={18} /> : <ZapOff size={18} />}
-            </button>
-          )}
-          {/* Upload status indicator */}
+        {/* Upload status / capture count */}
+        <div className="w-14 h-14 flex flex-col items-center justify-center gap-1 shrink-0">
           {isUploading && (
-            <div className="w-10 h-10 rounded-full bg-primary/80 flex items-center justify-center">
-              <Loader2 size={16} className="animate-spin text-white" />
-            </div>
+            <Loader2 size={16} className="animate-spin text-white/60" />
+          )}
+          {captureCount > 0 && (
+            <span className="text-white/60 text-[10px] font-bold">{captureCount}</span>
+          )}
+          {!isUploading && captureCount === 0 && (
+            <Camera size={16} className="text-white/30" />
           )}
         </div>
       </div>
 
-      {/* Native picker inputs (hidden) */}
-      {native && <div ref={picker.inputsRef} />}
-
-      {/* Permission explainer modal */}
-      {picker.explainer && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 bg-black/60">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <h3 className="font-bold text-base text-gray-900 mb-2">
-              {picker.explainer.denied ? 'Camera access denied' : 'Camera access needed'}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {picker.explainer.denied
-                ? 'Please enable camera access in Settings to take photos.'
-                : 'IWILLBUILD needs camera access to capture job photos.'}
+      {/* ── Unlocked mode: label prompt after capture ── */}
+      {pendingCapture && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 bg-black/70">
+          <div className="bg-gray-900 rounded-2xl p-5 w-full max-w-sm border border-white/10">
+            <p className="text-white text-sm font-semibold mb-1">Add a label</p>
+            <p className="text-gray-400 text-xs mb-3">
+              Optional. Leave blank to skip. Lock the label in the top bar to skip this prompt.
             </p>
+            <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 h-11 mb-4">
+              <Tag size={14} className="text-white/50 shrink-0" />
+              <input
+                type="text"
+                value={pendingLabel}
+                onChange={(e) => setPendingLabel(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void confirmPendingCapture(); }}
+                placeholder="e.g. North wall, Level 2…"
+                maxLength={60}
+                autoFocus
+                className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none"
+                style={{ fontSize: '16px' }}
+              />
+              {pendingLabel && (
+                <button onClick={() => setPendingLabel('')} className="text-white/40 hover:text-white shrink-0">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
-                onClick={picker.explainer.onNotNow}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                onClick={discardPendingCapture}
+                className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-gray-400 hover:text-white transition-colors"
               >
-                Not now
+                Discard
               </button>
               <button
-                onClick={() => void picker.explainer!.onEnable()}
+                onClick={() => void confirmPendingCapture()}
                 className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold"
               >
-                {picker.explainer.denied ? 'Open Settings' : 'Allow'}
+                Save photo
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Permission explainer (if needed by native bridge) ── */}
+      {/* Note: on native Capacitor, getUserMedia permission is handled by the
+          WKWebView permission delegate. If denied, startStream() sets cameraError
+          which shows the Retry / Back UI above. No separate explainer needed. */}
     </div>
   );
 }

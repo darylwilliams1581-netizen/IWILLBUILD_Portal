@@ -217,14 +217,23 @@ export default function JobPhotosPage() {
             {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
             Upload
           </button>
-          {/* Camera — opens dedicated camera viewport */}
+          {/* Take Photo — original OS camera sheet (unchanged) */}
+          <button
+            onClick={() => photosRef.current?.openCamera()}
+            disabled={uploading || atLimit}
+            title="Take a photo (OS camera)"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
+          >
+            <Camera size={12} /> Take Photo
+          </button>
+          {/* Watermark Camera — opens dedicated camera viewport */}
           <button
             onClick={openCameraPage}
             disabled={uploading || atLimit}
-            title="Take a photo"
+            title="Take a photo with watermark"
             className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
           >
-            <Camera size={12} /> Camera
+            <Camera size={12} /> Watermark
           </button>
           {/* Select */}
           {!selectMode ? (
