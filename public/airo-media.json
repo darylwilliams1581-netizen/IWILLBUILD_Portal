@@ -614,5 +614,19 @@
     "surfaceMode": "dark",
     "generatedForSurfaceColor": "#0d1117",
     "darkSurfaceUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/790890aa-1c41-44b6-b1b6-ea50b913c0fb/favicon-transparent-b056b3e1-ca9a-4032-a4c7-b800fd954b95/logo-logo.png"
+  },
+  "debug/bug-07cfb-back-button": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-bug-07cfb-back-button-87fd9680.jpg",
+    "searchQuery": "project sync interface four photos synced",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-12T18:08:27.783Z",
+    "lastUpdated": "2026-08-12T18:08:27.783Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-bug-07cfb-back-button-87fd9680.jpg": "f38wenbvln_1786557913000_file_WVI0Z_sINE.jpg"
+    },
+    "uploadContentHash": "5542530dca485ab4264a8894531e0550337894fd31ad010e953d3d63b3822fc8",
+    "caption": "project sync interface four photos synced"
   }
 }
