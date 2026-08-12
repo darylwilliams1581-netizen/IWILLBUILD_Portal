@@ -567,7 +567,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       photoCache.delete(jobId);
       void fetchPhotos(true);
     },
-    onBatchComplete: (uploaded, _failed) => {
+    onBatchComplete: (uploaded, failed) => {
       if (uploaded > 0) {
         // Belt-and-suspenders: also refresh at batch end in case a per-photo
         // refresh was missed (e.g. rapid concurrent uploads).
@@ -575,6 +575,16 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         void fetchPhotos(true);
       }
       setSummaryDismissed(false);
+
+      // Auto-clear synced items when the whole batch finished without failures.
+      // Give the "X photos synced" banner 1.8 s to show before dismissing so
+      // the user gets visual confirmation, then clear automatically.
+      if (failed === 0 && uploaded > 0) {
+        setTimeout(() => {
+          clearUploaded();
+          setSummaryDismissed(true);
+        }, 1800);
+      }
     },
   });
 
@@ -935,7 +945,8 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
               {isUploading ? 'Syncing…' : !isOnline ? 'Saved on device' : 'Ready to sync'}
             </p>
-            {!isUploading && (
+            {/* Only show "Clear done" when there are synced items to clear */}
+            {!isUploading && uploadedCount > 0 && (
               <button
                 onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
                 className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold transition-colors"
