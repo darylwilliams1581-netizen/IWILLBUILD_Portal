@@ -557,6 +557,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     retryItem,
     removeItem,
     clearUploaded,
+    syncNow,
     storageWarning,
     dismissStorageWarning,
   } = usePhotoUploadQueue({
@@ -945,15 +946,26 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
               {isUploading ? 'Syncing…' : !isOnline ? 'Saved on device' : 'Ready to sync'}
             </p>
-            {/* Only show "Clear done" when there are synced items to clear */}
-            {!isUploading && uploadedCount > 0 && (
-              <button
-                onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
-                className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold transition-colors"
-              >
-                Clear done
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Sync now — shown when online with saved items waiting and not already uploading */}
+              {!isUploading && isOnline && savedCount > 0 && (
+                <button
+                  onClick={syncNow}
+                  className="text-[11px] text-violet-600 hover:text-violet-800 font-semibold transition-colors"
+                >
+                  Sync now
+                </button>
+              )}
+              {/* Clear done — shown only when there are synced items to clear */}
+              {!isUploading && uploadedCount > 0 && (
+                <button
+                  onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
+                  className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold transition-colors"
+                >
+                  Clear done
+                </button>
+              )}
+            </div>
           </div>
           {queue.map((item) => (
             <PendingPhotoCard

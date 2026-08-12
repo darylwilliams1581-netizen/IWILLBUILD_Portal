@@ -486,6 +486,20 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: U
 
   const dismissStorageWarning = useCallback(() => setStorageWarning(null), []);
 
+  /**
+   * Manually kick the upload queue — call this when the user taps "Sync now".
+   * Safe to call at any time; no-ops if already uploading or offline.
+   * Fills up to CONCURRENCY slots from the current 'saved' items.
+   */
+  const syncNow = useCallback(() => {
+    if (!navigator.onLine) return;
+    const saved = queueRef.current.filter((i) => i.status === 'saved');
+    const slots = Math.min(saved.length, CONCURRENCY) - activeRef.current;
+    for (let i = 0; i < slots; i++) {
+      setTimeout(() => processNext(), i * 50);
+    }
+  }, [processNext]);
+
   return {
     queue,
     isUploading,
@@ -504,5 +518,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: U
     removeItem,
     clearUploaded,
     clearAll,
+    /** Manually trigger upload of all saved items — for use when auto-sync didn't fire */
+    syncNow,
   };
 }
