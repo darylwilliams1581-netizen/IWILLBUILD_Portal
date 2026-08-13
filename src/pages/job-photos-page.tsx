@@ -207,24 +207,23 @@ export default function JobPhotosPage() {
 
         {/* Desktop toolbar actions */}
         <div className="hidden md:flex items-center gap-1.5 shrink-0">
-          {/* Upload */}
+          {/* Upload — icon only, no fill */}
           <button
             onClick={() => photosRef.current?.openFilePicker()}
             disabled={uploading || atLimit}
-            title="Upload up to 10 photos at a time"
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold rounded transition-colors"
+            title="Upload photos"
+            className="flex items-center justify-center w-8 h-8 border border-border hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition-colors"
           >
-            {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-            Upload
+            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
           </button>
-          {/* Camera — launches dedicated camera page for this job */}
+          {/* Camera — icon only, purple */}
           <button
             onClick={openCameraPage}
             disabled={uploading || atLimit}
             title="Take a photo"
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
+            className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors"
           >
-            <Camera size={12} /> Camera
+            <Camera size={16} />
           </button>
           {/* Select */}
           {!selectMode ? (
@@ -303,36 +302,36 @@ export default function JobPhotosPage() {
       >
         {/* Normal mode — Upload | Camera | Select | Share */}
         {!selectMode && (
-          <div className="flex items-center justify-between px-6 pt-2 pb-2">
-            {/* Upload */}
+          <div className="flex items-center justify-around px-4 pt-2 pb-2">
+            {/* Upload — icon only, no fill */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload photos from library"
-              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
+              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
             >
-              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+              {uploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
               <span className="text-[9px] font-semibold leading-none">Upload</span>
             </button>
 
-            {/* Camera — launches dedicated camera page for this job */}
+            {/* Camera — purple, bigger */}
             <button
               onClick={openCameraPage}
               disabled={atLimit}
               title="Take a photo"
-              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl bg-primary text-white hover:bg-violet-700 disabled:opacity-40 transition-colors touch-manipulation"
+              className="flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-2xl bg-primary hover:bg-violet-700 disabled:opacity-40 text-white shadow-lg shadow-primary/30 transition-colors touch-manipulation"
               aria-label="Take a photo"
             >
-              <Camera size={18} />
+              <Camera size={24} />
               <span className="text-[9px] font-semibold leading-none">Camera</span>
             </button>
 
             {/* Select */}
             <button
               onClick={() => handleSetSelectMode(true)}
-              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors touch-manipulation"
+              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors touch-manipulation"
             >
-              <CheckSquare size={18} />
+              <CheckSquare size={20} />
               <span className="text-[9px] font-semibold leading-none">Select</span>
             </button>
 
@@ -340,10 +339,10 @@ export default function JobPhotosPage() {
             <button
               onClick={() => photosRef.current?.generateShareLink()}
               disabled={photoCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
+              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
               title="Share view-only link"
             >
-              <Share2 size={18} />
+              <Share2 size={20} />
               <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
           </div>
