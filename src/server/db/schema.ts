@@ -6,7 +6,6 @@ import {
   timestamp,
   int,
   date,
-  double,
 } from 'drizzle-orm/mysql-core';
 
 // ── BetterAuth required tables ──────────────────────────────────────────────
@@ -303,10 +302,6 @@ export const jobPhotos = mysqlTable('job_photos', {
   lockedByName: varchar('locked_by_name', { length: 255 }),
   // FK to canonical media_assets row (populated by uploadService)
   mediaAssetId: int('media_asset_id'),
-  // GPS coordinates captured at photo time (nullable — web fallback may be unavailable)
-  gpsLat:       double('gps_lat'),
-  gpsLng:       double('gps_lng'),
-  gpsAccuracy:  double('gps_accuracy'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

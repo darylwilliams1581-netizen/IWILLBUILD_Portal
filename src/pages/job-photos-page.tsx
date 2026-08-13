@@ -217,23 +217,14 @@ export default function JobPhotosPage() {
             {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
             Upload
           </button>
-          {/* Take Photo — original OS camera sheet (unchanged) */}
-          <button
-            onClick={() => photosRef.current?.openCamera()}
-            disabled={uploading || atLimit}
-            title="Take a photo (OS camera)"
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
-          >
-            <Camera size={12} /> Take Photo
-          </button>
-          {/* Watermark Camera — opens dedicated camera viewport */}
+          {/* Camera — launches dedicated camera page for this job */}
           <button
             onClick={openCameraPage}
             disabled={uploading || atLimit}
-            title="Take a photo with watermark"
+            title="Take a photo"
             className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors"
           >
-            <Camera size={12} /> Watermark
+            <Camera size={12} /> Camera
           </button>
           {/* Select */}
           {!selectMode ? (
@@ -338,10 +329,11 @@ export default function JobPhotosPage() {
               onClick={openCameraPage}
               disabled={atLimit}
               title="Take a photo"
-              className="w-16 h-16 flex items-center justify-center bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-full shadow-lg shadow-primary/40 transition-colors touch-manipulation shrink-0 -mt-5"
+              className="flex flex-col items-center justify-center gap-0.5 w-16 h-16 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-full shadow-lg shadow-primary/40 transition-colors touch-manipulation shrink-0 -mt-5"
               aria-label="Take a photo"
             >
-              <Camera size={22} />
+              <Camera size={20} />
+              <span className="text-[9px] font-semibold leading-none">Camera</span>
             </button>
 
             {/* Share */}

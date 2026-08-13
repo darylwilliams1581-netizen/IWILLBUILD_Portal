@@ -56,11 +56,10 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2,
   Lock, Unlock, AlertTriangle, Pencil,
-  Zap, ZapOff, FlipHorizontal2, MapPin,
+  Zap, ZapOff, FlipHorizontal2,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
-import { getNativeGeo } from '@/lib/capacitor-plugins';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -386,56 +385,8 @@ export default function JobPhotosCameraPage() {
   const [pendingLabel,    setPendingLabel]    = useState('');
   const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── GPS location ─────────────────────────────────────────────────────────────
-  // Read once on mount. Three outcomes: locked | denied | unavailable.
-  // GPS is never mandatory — photos save fine without it.
-  type GpsStatus = 'acquiring' | 'locked' | 'denied' | 'unavailable';
-  const [gpsStatus, setGpsStatus] = useState<GpsStatus>('acquiring');
-  const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timeout = setTimeout(() => {
-      if (!cancelled) setGpsStatus((s) => s === 'acquiring' ? 'unavailable' : s);
-    }, 12000);
-
-    async function readLocation() {
-      try {
-        const nativeGeo = getNativeGeo();
-        if (nativeGeo) {
-          const pos = await nativeGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
-          if (!cancelled) {
-            setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
-            setGpsStatus('locked');
-          }
-        } else if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              if (!cancelled) {
-                setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
-                setGpsStatus('locked');
-              }
-            },
-            (err) => {
-              if (!cancelled) setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable');
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
-          );
-        } else {
-          if (!cancelled) setGpsStatus('unavailable');
-        }
-      } catch {
-        if (!cancelled) setGpsStatus('unavailable');
-      }
-    }
-
-    void readLocation();
-    return () => { cancelled = true; clearTimeout(timeout); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── Upload queue ────────────────────────────────────────────────────────────
-  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId, gps });
+  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId });
   const videoRef  = useRef<HTMLVideoElement>(null);
   const lensRef   = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -692,7 +643,7 @@ export default function JobPhotosCameraPage() {
     <div className="fixed inset-0 z-50 bg-black flex flex-col" style={{ userSelect: 'none' }}>
       <Helmet>
         <title>Camera — IWILLBUILD</title>
-        <meta name="description" content="Take watermarked job site photos with GPS location tagging." />
+        <meta name="description" content="Take watermarked job site photos." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/camera`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -938,24 +889,6 @@ export default function JobPhotosCameraPage() {
                 {isUploading && (
                   <Loader2 size={10} className="animate-spin text-white/40" />
                 )}
-                {/* GPS status dot */}
-                <span
-                  title={
-                    gpsStatus === 'locked'      ? `GPS locked (±${Math.round(gps?.accuracy ?? 0)} m)` :
-                    gpsStatus === 'acquiring'   ? 'Acquiring GPS…' :
-                    gpsStatus === 'denied'      ? 'Location permission denied' :
-                                                  'GPS unavailable'
-                  }
-                  className={`inline-flex items-center gap-0.5 text-[9px] font-bold leading-none ${
-                    gpsStatus === 'locked'    ? 'text-green-400' :
-                    gpsStatus === 'acquiring' ? 'text-yellow-400' :
-                                               'text-white/30'
-                  }`}
-                >
-                  <MapPin size={8} />
-                  {gpsStatus === 'locked'    ? 'GPS' :
-                   gpsStatus === 'acquiring' ? '…'   : '—'}
-                </span>
               </>
             )}
           </div>
