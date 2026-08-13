@@ -666,7 +666,7 @@ export default function JobPhotosCameraPage() {
       >
         {/* Back */}
         <button
-          onClick={() => navigate(`/jobs/${id}/photos`)}
+          onClick={() => navigate(`/jobs/${id}?tab=photos`)}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0"
           aria-label="Back to photos"
         >
@@ -740,7 +740,7 @@ export default function JobPhotosCameraPage() {
               Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
             </p>
             <button
-              onClick={() => navigate(`/jobs/${id}/photos`)}
+              onClick={() => navigate(`/jobs/${id}?tab=photos`)}
               className="mt-1 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
             >
               Back to Photos
@@ -761,7 +761,7 @@ export default function JobPhotosCameraPage() {
                 Retry
               </button>
               <button
-                onClick={() => navigate(`/jobs/${id}/photos`)}
+                onClick={() => navigate(`/jobs/${id}?tab=photos`)}
                 className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl"
               >
                 Back
@@ -827,7 +827,7 @@ export default function JobPhotosCameraPage() {
 
           {/* Back / gallery thumbnail */}
           <button
-            onClick={() => navigate(`/jobs/${id}/photos`)}
+            onClick={() => navigate(`/jobs/${id}?tab=photos`)}
             className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation"
             aria-label="Back to photos"
           >
@@ -1174,7 +1174,7 @@ export default function JobPhotosCameraPage() {
                 Cancel
               </button>
               <button
-                onClick={() => navigate(`/jobs/${id}/photos`)}
+                onClick={() => navigate(`/jobs/${id}?tab=photos`)}
                 className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors"
               >
                 Use original camera

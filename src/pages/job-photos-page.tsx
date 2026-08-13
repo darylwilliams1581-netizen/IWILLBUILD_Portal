@@ -171,7 +171,7 @@ export default function JobPhotosPage() {
       <header className="h-11 bg-white border-b border-gray-200 flex items-center gap-2 px-3 shrink-0 sticky top-0 z-10 safe-top">
         {/* Back */}
         <button
-          onClick={() => navigate(`/jobs/${id}`)}
+          onClick={() => navigate(`/jobs/${id}?tab=photos`)}
           className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
           aria-label="Back"
         >
