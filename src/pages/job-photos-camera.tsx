@@ -56,6 +56,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2,
   Lock, Unlock, AlertTriangle, Camera, Pencil,
+  Zap, ZapOff, FlipHorizontal2,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
@@ -309,12 +310,45 @@ export default function JobPhotosCameraPage() {
   const [capturing, setCapturing] = useState(false);
   const [flashAnim, setFlashAnim] = useState(false);
 
+  // ── Facing mode (rear / front) ──────────────────────────────────────────────
+  type FacingMode = 'environment' | 'user';
+  const [facingMode, setFacingMode] = useState<FacingMode>('environment');
+  const facingModeRef = useRef<FacingMode>('environment');
+
+  // ── Flash mode ──────────────────────────────────────────────────────────────
+  // 'auto' | 'on' | 'off'  — maps to ImageCapture torch where supported
+  type FlashMode = 'auto' | 'on' | 'off';
+  const [flashMode, setFlashMode] = useState<FlashMode>('auto');
+  const flashModeRef = useRef<FlashMode>('auto');
+  // Whether the device actually supports torch control (detected after stream starts)
+  const [torchSupported, setTorchSupported] = useState(false);
+
+  /**
+   * Apply the current flash/torch state to the active video track.
+   * Silently no-ops if the track or browser does not support applyConstraints/torch.
+   */
+  const applyFlash = useCallback(async (mode: FlashMode, stream: MediaStream) => {
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      // @ts-expect-error — torch is not in the standard TS lib yet
+      const caps = track.getCapabilities?.() as { torch?: boolean } | undefined;
+      if (!caps?.torch) return;
+      const torch = mode === 'on';
+      // 'auto' is not a valid torch value — treat as off (device handles auto at OS level)
+      // @ts-expect-error
+      await track.applyConstraints({ advanced: [{ torch }] });
+    } catch {
+      // Torch not supported or permission denied — ignore silently
+    }
+  }, []);
+
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
 
-  const startStream = useCallback(async () => {
+  const startStream = useCallback(async (facing: FacingMode = facingModeRef.current) => {
     stopStream();
     setCamState('loading');
     setCamErrMsg('');
@@ -326,7 +360,7 @@ export default function JobPhotosCameraPage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -334,6 +368,16 @@ export default function JobPhotosCameraPage() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+
+      // Detect torch support
+      const track = stream.getVideoTracks()[0];
+      // @ts-expect-error
+      const caps = track?.getCapabilities?.() as { torch?: boolean } | undefined;
+      setTorchSupported(!!caps?.torch);
+
+      // Apply current flash mode to the new stream
+      await applyFlash(flashModeRef.current, stream);
+
       setCamState('ready');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -346,7 +390,7 @@ export default function JobPhotosCameraPage() {
       }
       setCamState('error');
     }
-  }, [stopStream]);
+  }, [stopStream, applyFlash]);
 
   useEffect(() => {
     void startStream();
@@ -356,6 +400,23 @@ export default function JobPhotosCameraPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Flip camera ─────────────────────────────────────────────────────────────
+  const handleFlip = useCallback(() => {
+    const next: FacingMode = facingModeRef.current === 'environment' ? 'user' : 'environment';
+    facingModeRef.current = next;
+    setFacingMode(next);
+    void startStream(next);
+  }, [startStream]);
+
+  // ── Cycle flash mode ─────────────────────────────────────────────────────────
+  const handleFlashCycle = useCallback(async () => {
+    const order: FlashMode[] = ['auto', 'on', 'off'];
+    const next = order[(order.indexOf(flashModeRef.current) + 1) % order.length];
+    flashModeRef.current = next;
+    setFlashMode(next);
+    if (streamRef.current) await applyFlash(next, streamRef.current);
+  }, [applyFlash]);
 
   // ── Composition error state ─────────────────────────────────────────────────
   const [composeError, setComposeError] = useState(false);
@@ -496,11 +557,12 @@ export default function JobPhotosCameraPage() {
       </Helmet>
       <h1 className="sr-only">Job Camera</h1>
 
-      {/* ── Top bar: Back + job name only ── */}
+      {/* ── Top bar: Back · job name · Flash · Flip ── */}
       <div
         className="relative z-20 flex items-center gap-2 px-3 shrink-0 bg-gradient-to-b from-black/70 to-transparent"
         style={{ paddingTop: 'max(env(safe-area-inset-top), 10px)', paddingBottom: '10px' }}
       >
+        {/* Back */}
         <button
           onClick={() => navigate(`/jobs/${id}/photos`)}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0"
@@ -508,9 +570,47 @@ export default function JobPhotosCameraPage() {
         >
           <ArrowLeft size={18} />
         </button>
+
+        {/* Job name */}
         <span className="flex-1 text-white text-sm font-semibold truncate px-1">
           {job?.name ?? 'Camera'}
         </span>
+
+        {/* Flash cycle button */}
+        <button
+          onClick={() => void handleFlashCycle()}
+          disabled={!torchSupported}
+          className={`flex items-center gap-1 px-2.5 h-9 rounded-full transition-colors shrink-0 ${
+            !torchSupported
+              ? 'bg-black/20 text-white/25 cursor-default'
+              : flashMode === 'on'
+                ? 'bg-yellow-400/20 text-yellow-300'
+                : flashMode === 'off'
+                  ? 'bg-black/40 text-white/40'
+                  : 'bg-black/40 text-white/80'   /* auto */
+          }`}
+          aria-label={`Flash: ${flashMode}`}
+          title={torchSupported ? `Flash: ${flashMode} — tap to cycle` : 'Flash not supported on this device'}
+        >
+          {flashMode === 'off'
+            ? <ZapOff size={16} />
+            : <Zap size={16} className={flashMode === 'on' ? 'fill-yellow-300' : ''} />
+          }
+          <span className="text-[10px] font-bold leading-none tracking-wide">
+            {flashMode === 'auto' ? 'AUTO' : flashMode === 'on' ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {/* Flip camera */}
+        <button
+          onClick={handleFlip}
+          disabled={camState === 'loading'}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0 disabled:opacity-40"
+          aria-label={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+          title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+        >
+          <FlipHorizontal2 size={18} />
+        </button>
       </div>
 
       {/* ── Lens area — picture frame + live preview ── */}
