@@ -541,14 +541,10 @@ export default function PagedHomeScreen({
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Top bar: page tabs (centred) + utility buttons (right) ─────────── */}
       <div
-        className="flex items-center shrink-0 px-2 pt-2 pb-1.5"
-        style={{ background: 'transparent' }}
+        className="flex items-center shrink-0 px-2 pt-2 pb-1.5 gap-1.5"
       >
-        {/* Utility buttons LEFT placeholder — mirrors right side so pills stay truly centred */}
-        <div className="w-[88px] shrink-0" />
-
-        {/* Centred tab pills — flex-1 so they fill remaining space */}
-        <div className="flex-1 flex items-center justify-center gap-1">
+        {/* Centred tab pills — flex-1 so they fill available space, min-w-0 prevents overflow */}
+        <div className="flex-1 min-w-0 flex items-center justify-center gap-1">
           {PAGE_LABELS.map((label, i) => {
             const Icon = PAGE_ICONS[i];
             const active = page === i;
@@ -569,8 +565,8 @@ export default function PagedHomeScreen({
           })}
         </div>
 
-        {/* Utility buttons — notification, profile, logout — fixed width, never shrink */}
-        <div className="w-[88px] flex items-center justify-end gap-1 shrink-0">
+        {/* Utility buttons — notification, profile, logout */}
+        <div className="flex items-center gap-1 shrink-0">
           <div className="shrink-0">
             <NotificationBell />
           </div>
