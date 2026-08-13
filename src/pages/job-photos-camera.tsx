@@ -292,6 +292,7 @@ export default function JobPhotosCameraPage() {
 
   // ── Camera stream ───────────────────────────────────────────────────────────
   const videoRef  = useRef<HTMLVideoElement>(null);
+  const lensRef   = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   type CamState = 'loading' | 'ready' | 'error' | 'unavailable';
@@ -474,102 +475,6 @@ export default function JobPhotosCameraPage() {
       </Helmet>
       <h1 className="sr-only">Job Camera</h1>
 
-      {/* ── Live preview ── */}
-      <div className="absolute inset-0 overflow-hidden">
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          autoPlay
-          playsInline
-          muted
-        />
-
-        {/* getUserMedia unavailable */}
-        {camState === 'unavailable' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-8 text-center">
-            <AlertTriangle size={36} className="text-yellow-400" />
-            <p className="text-white text-sm font-semibold">
-              Live camera preview is not available on this device.
-            </p>
-            <p className="text-gray-400 text-xs leading-relaxed">
-              Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
-            </p>
-            <button
-              onClick={() => navigate(`/jobs/${id}/photos`)}
-              className="mt-1 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
-            >
-              Back to Photos
-            </button>
-          </div>
-        )}
-
-        {/* Camera error */}
-        {camState === 'error' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/88 px-8 text-center">
-            <AlertTriangle size={36} className="text-yellow-400" />
-            <p className="text-white text-sm font-medium leading-relaxed">{camErrMsg}</p>
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => void startStream()}
-                className="px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
-              >
-                Retry
-              </button>
-              <button
-                onClick={() => navigate(`/jobs/${id}/photos`)}
-                className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl"
-              >
-                Back
-              </button>
-            </div>
-            <p className="text-gray-500 text-xs mt-1">
-              Or use <strong className="text-gray-300">Take Photo</strong> on the photos page.
-            </p>
-          </div>
-        )}
-
-        {/* Loading */}
-        {camState === 'loading' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-            <Loader2 size={32} className="animate-spin text-white/60" />
-          </div>
-        )}
-      </div>
-
-      {/* ── Black picture frame around lens area ── */}
-      <div className="camera-lens-frame absolute inset-0 pointer-events-none z-10" />
-
-      {/* ── Flash animation ── */}
-      {flashAnim && (
-        <div className="absolute inset-0 bg-white pointer-events-none z-30 opacity-70" />
-      )}
-
-      {/* ── Live watermark preview panel (CSS only — not composited) ── */}
-      {camState === 'ready' && hasPreview && (
-        <div
-          className="absolute pointer-events-none z-10"
-          style={{
-            bottom: 'max(env(safe-area-inset-bottom), 10px)',
-            left:   'max(env(safe-area-inset-left), 10px)',
-            right:  'max(env(safe-area-inset-right), 10px)',
-            marginBottom: '96px',
-          }}
-        >
-          <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-full">
-            {previewLine1 && (
-              <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">
-                {previewLine1}
-              </span>
-            )}
-            {previewLine2 && (
-              <span className="text-white/88 text-[10px] font-semibold leading-tight break-words">
-                {previewLine2}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── Top bar ── */}
       <div
         className="relative z-20 flex items-center gap-2 px-3 bg-gradient-to-b from-black/70 to-transparent shrink-0"
@@ -660,8 +565,94 @@ export default function JobPhotosCameraPage() {
         </div>
       )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* ── Lens area — picture frame + live preview ── */}
+      <div
+        ref={lensRef}
+        className="relative flex-1 min-h-0 overflow-hidden camera-lens-frame"
+      >
+        {/* Live video */}
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          autoPlay
+          playsInline
+          muted
+        />
+
+        {/* getUserMedia unavailable */}
+        {camState === 'unavailable' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-8 text-center">
+            <AlertTriangle size={36} className="text-yellow-400" />
+            <p className="text-white text-sm font-semibold">
+              Live camera preview is not available on this device.
+            </p>
+            <p className="text-gray-400 text-xs leading-relaxed">
+              Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
+            </p>
+            <button
+              onClick={() => navigate(`/jobs/${id}/photos`)}
+              className="mt-1 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
+            >
+              Back to Photos
+            </button>
+          </div>
+        )}
+
+        {/* Camera error */}
+        {camState === 'error' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/88 px-8 text-center">
+            <AlertTriangle size={36} className="text-yellow-400" />
+            <p className="text-white text-sm font-medium leading-relaxed">{camErrMsg}</p>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => void startStream()}
+                className="px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => navigate(`/jobs/${id}/photos`)}
+                className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl"
+              >
+                Back
+              </button>
+            </div>
+            <p className="text-gray-500 text-xs mt-1">
+              Or use <strong className="text-gray-300">Take Photo</strong> on the photos page.
+            </p>
+          </div>
+        )}
+
+        {/* Loading */}
+        {camState === 'loading' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+            <Loader2 size={32} className="animate-spin text-white/60" />
+          </div>
+        )}
+
+        {/* Flash animation */}
+        {flashAnim && (
+          <div className="absolute inset-0 bg-white pointer-events-none z-30 opacity-70" />
+        )}
+
+        {/* Live watermark preview (CSS only — not composited into JPEG) */}
+        {camState === 'ready' && hasPreview && (
+          <div className="absolute bottom-3 left-3 right-3 pointer-events-none z-10">
+            <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-full">
+              {previewLine1 && (
+                <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">
+                  {previewLine1}
+                </span>
+              )}
+              {previewLine2 && (
+                <span className="text-white text-[10px] font-semibold leading-tight break-words">
+                  {previewLine2}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── Bottom shutter bar ── */}
       <div
