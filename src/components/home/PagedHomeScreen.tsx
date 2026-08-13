@@ -320,6 +320,9 @@ function DashboardPage({
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
+      {/* ── Banner — sits at the very top so it's immediately visible ── */}
+      <DashboardBanner userId={userId} />
+
       {/* Full-width Job Photo + Add Job row */}
       <div className="flex items-center gap-3">
         <button
@@ -388,7 +391,6 @@ function DashboardPage({
         {/* ── end grid ── */}
       </div>
 
-      <DashboardBanner userId={userId} />
       <NotificationList />
       <MyTasksPanel userRole={role} />
     </div>
