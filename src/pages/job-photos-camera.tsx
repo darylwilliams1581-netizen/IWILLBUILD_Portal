@@ -401,6 +401,11 @@ export default function JobPhotosCameraPage() {
   const [lastThumb, setLastThumb] = useState<string | null>(null);
   const lastThumbRef = useRef<string | null>(null);
 
+  // ── Session photo counter & limit ───────────────────────────────────────────
+  const SESSION_MAX = 10;
+  const [sessionCount, setSessionCount] = useState(0);
+  const sessionLimitReached = sessionCount >= SESSION_MAX;
+
   // ── Facing mode (rear / front) ──────────────────────────────────────────────
   type FacingMode = 'environment' | 'user';
   const [facingMode, setFacingMode] = useState<FacingMode>('environment');
