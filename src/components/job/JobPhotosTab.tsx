@@ -4,12 +4,11 @@
  * Embeds the full photos experience (grid + toolbar) inside the job-detail
  * tab panel so it stays within the sidebar layout — no full-screen navigate.
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Upload, Camera, CheckSquare, X, Download, Send, Share2, Trash2,
-  Grid2x2, Grid3x3, LayoutGrid, Loader2, Copy, Check,
-  QrCode, ExternalLink,
+  Upload, Camera,
+  Grid2x2, Grid3x3, LayoutGrid, Loader2,
 } from 'lucide-react';
 import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
 
@@ -24,11 +23,9 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
   const photosRef = useRef<JobPhotosHandle>(null);
   const navigate  = useNavigate();
 
-  const [photoCount, setPhotoCount]       = useState(0);
-  const [uploading, setUploading]         = useState(false);
-  const [selectMode, setSelectModeLocal]  = useState(false);
-  const [selectedCount, setSelectedCount] = useState(0);
-  const [viewSize, setViewSizeLocal]      = useState<ViewSize>(() => {
+  const [photoCount, setPhotoCount] = useState(0);
+  const [uploading, setUploading]   = useState(false);
+  const [viewSize, setViewSizeLocal] = useState<ViewSize>(() => {
     try {
       const s = localStorage.getItem('jobPhotosZoom');
       if (s === 'small' || s === 'medium' || s === 'large') return s;
@@ -36,74 +33,13 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
     return window.innerWidth < 768 ? 'small' : 'medium';
   });
 
-  // Share / QR state
-  const [shareUrl, setShareUrl]   = useState<string | null>(null);
-  const [copied, setCopied]       = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [copiedQr, setCopiedQr]   = useState(false);
-  const [sendMsg, setSendMsg]     = useState<string | null>(null);
-
   const atLimit = photoCount >= 200;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleSetSelectMode = (v: boolean) => {
-    setSelectModeLocal(v);
-    photosRef.current?.setSelectMode(v);
-    if (!v) setSelectedCount(0);
-  };
-
   const handleSetViewSize = (s: ViewSize) => {
     setViewSizeLocal(s);
     photosRef.current?.setViewSize(s);
   };
-
-  const handleShareLink = useCallback((url: string) => {
-    setShareUrl(url);
-    setCopied(false);
-    setCopiedQr(false);
-    import('qrcode').then((mod) => {
-      const QRCode = mod.default ?? mod;
-      return (QRCode as { toDataURL: (url: string, opts: object) => Promise<string> })
-        .toDataURL(url, { width: 300, margin: 2, color: { dark: '#111827', light: '#ffffff' } });
-    })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(null));
-  }, []);
-
-  const copyLink = async () => {
-    if (!shareUrl) return;
-    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { /* silent */ }
-  };
-
-  const copyQr = async () => {
-    if (!qrDataUrl) return;
-    try {
-      const blob = await (await fetch(qrDataUrl)).blob();
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      setCopiedQr(true); setTimeout(() => setCopiedQr(false), 2500);
-    } catch { /* silent */ }
-  };
-
-  const downloadQr = () => {
-    if (!qrDataUrl) return;
-    const a = document.createElement('a');
-    a.href = qrDataUrl; a.download = `job-${jobId}-share-qr.png`; a.click();
-  };
-
-  const handleSendSelected = useCallback(async () => {
-    setSendMsg(null);
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: `${jobName ?? 'Job'} — Photos`, url: window.location.href });
-        return;
-      } catch { /* cancelled */ }
-    }
-    try {
-      const res  = await fetch(`/api/jobs/${jobId}/photos/share`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
-      const data = await res.json() as { shareUrl?: string };
-      if (data.shareUrl) { await navigator.clipboard.writeText(data.shareUrl).catch(() => {}); setSendMsg('Share link copied'); setTimeout(() => setSendMsg(null), 3000); }
-    } catch { setSendMsg('Could not generate share link'); setTimeout(() => setSendMsg(null), 3000); }
-  }, [jobId, jobName]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -117,74 +53,24 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
           {photoCount} photo{photoCount !== 1 ? 's' : ''}
         </span>
 
-        {/* Upload */}
+        {/* Upload — icon only, no fill */}
         <button
           onClick={() => photosRef.current?.openFilePicker()}
           disabled={uploading || atLimit}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+          title="Upload photos"
+          className="flex items-center justify-center w-8 h-8 border border-border hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition-colors"
         >
-          {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-          Upload
+          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
         </button>
 
-        {/* Camera — navigate to dedicated camera page for this job */}
+        {/* Camera — bigger, purple */}
         <button
           onClick={() => navigate(`/jobs/${jobId}/camera`)}
           disabled={uploading || atLimit}
           title="Take a photo"
-          className="flex items-center justify-center px-2.5 py-1.5 bg-muted hover:bg-gray-200 disabled:opacity-50 text-foreground rounded-lg transition-colors"
+          className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors"
         >
-          <Camera size={12} />
-        </button>
-
-        {/* Select / Done */}
-        {!selectMode ? (
-          <button
-            onClick={() => handleSetSelectMode(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-foreground text-xs font-semibold rounded-lg transition-colors"
-          >
-            <CheckSquare size={12} /> Select
-          </button>
-        ) : (
-          <button
-            onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-foreground text-xs font-semibold rounded-lg transition-colors"
-          >
-            <X size={12} /> Done {selectedCount > 0 && `(${selectedCount})`}
-          </button>
-        )}
-
-        {/* Download / Send / Delete — only in select mode with selection */}
-        {selectMode && selectedCount > 0 && (
-          <>
-            <button
-              onClick={() => photosRef.current?.deleteSelected()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded-lg transition-colors"
-            >
-              <Trash2 size={12} /> Delete
-            </button>
-            <button
-              onClick={() => photosRef.current?.downloadSelected()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-foreground text-xs font-semibold rounded-lg transition-colors"
-            >
-              <Download size={12} /> Download
-            </button>
-            <button
-              onClick={() => void handleSendSelected()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-foreground text-xs font-semibold rounded-lg transition-colors"
-            >
-              <Send size={12} /> Send
-            </button>
-          </>
-        )}
-
-        {/* Share */}
-        <button
-          onClick={() => photosRef.current?.generateShareLink()}
-          disabled={photoCount === 0}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 disabled:opacity-40 text-foreground text-xs font-semibold rounded-lg transition-colors"
-        >
-          <Share2 size={12} /> Share
+          <Camera size={16} />
         </button>
 
         {/* View size toggle */}
@@ -202,60 +88,13 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
         </div>
       </div>
 
-      {/* ── Send feedback ── */}
-      {sendMsg && (
-        <div className="mx-4 mt-2 text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2">{sendMsg}</div>
-      )}
-
-      {/* ── Share panel ── */}
-      {shareUrl && (
-        <div className="mx-4 mt-3 bg-white border border-border rounded-xl p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-foreground">Share link</p>
-            <button onClick={() => setShareUrl(null)} className="text-muted-foreground hover:text-foreground transition-colors">
-              <X size={14} />
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              value={shareUrl}
-              className="flex-1 min-w-0 text-xs px-2.5 py-1.5 border border-border rounded-lg bg-muted font-mono"
-            />
-            <button onClick={() => void copyLink()} className="flex items-center gap-1 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-xs font-semibold rounded-lg transition-colors shrink-0">
-              {copied ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-            <a href={shareUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-xs font-semibold rounded-lg transition-colors shrink-0">
-              <ExternalLink size={12} /> Open
-            </a>
-          </div>
-          {qrDataUrl && (
-            <div className="flex items-start gap-3">
-              <img src={qrDataUrl} alt="QR code" className="w-20 h-20 rounded border border-border" />
-              <div className="flex flex-col gap-1.5">
-                <button onClick={() => void copyQr()} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-xs font-semibold rounded-lg transition-colors">
-                  {copiedQr ? <Check size={12} className="text-green-600" /> : <QrCode size={12} />}
-                  {copiedQr ? 'Copied' : 'Copy QR'}
-                </button>
-                <button onClick={downloadQr} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 text-xs font-semibold rounded-lg transition-colors">
-                  <Download size={12} /> Download QR
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Photo grid ── */}
       <div className="px-2 py-2 md:px-4 md:py-4">
         <JobPhotos
           ref={photosRef}
           jobId={jobId}
-          onShareLink={handleShareLink}
           onPhotoCount={setPhotoCount}
           onUploading={setUploading}
-          onSelectionChange={setSelectedCount}
         />
       </div>
     </div>
