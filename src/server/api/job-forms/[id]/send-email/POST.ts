@@ -1,7 +1,11 @@
 /**
  * POST /api/job-forms/:id/send-email
- * Sends a plain-text summary of a completed form submission to a given email address.
+ * Sends a completed (or in-progress) form submission via email with a PDF attachment.
  * Body: { to: string }
+ *
+ * PDF is generated server-side with pdf-lib (Alpine-safe, no native deps).
+ * The email body contains a plain-text summary; the PDF is attached as
+ * "<FormName>.pdf" so the recipient can print or archive it.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
@@ -9,6 +13,150 @@ import { jobFormSubmissions, formTemplates, formFields, profiles, jobs } from '.
 import { eq, and, asc } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { sendEmail } from '../../../../email.js';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function sanitise(s: string): string {
+  return s.replace(/[^\x20-\x7E]/g, '?');
+}
+
+function wrapText(text: string, maxChars: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if ((current + ' ' + word).trim().length > maxChars) {
+      if (current) lines.push(current.trim());
+      current = word;
+    } else {
+      current = (current + ' ' + word).trim();
+    }
+  }
+  if (current) lines.push(current.trim());
+  return lines.length ? lines : [''];
+}
+
+// ── PDF builder ───────────────────────────────────────────────────────────────
+
+interface PdfField { label: string; value: string; required: boolean; }
+
+async function buildPdf(opts: {
+  templateName: string;
+  status: string;
+  jobLabel: string;
+  completedBy: string;
+  dateStr: string;
+  fields: PdfField[];
+}): Promise<Uint8Array> {
+  const { templateName, status, jobLabel, completedBy, dateStr, fields } = opts;
+
+  const doc = await PDFDocument.create();
+  const fontBold   = await doc.embedFont(StandardFonts.HelveticaBold);
+  const fontNormal = await doc.embedFont(StandardFonts.Helvetica);
+
+  const PAGE_W = 595;   // A4 portrait pt
+  const PAGE_H = 842;
+  const MARGIN  = 48;
+  const COL_W   = PAGE_W - MARGIN * 2;
+
+  // Colour palette
+  const PURPLE = rgb(0.486, 0.227, 0.929);  // #7C3AED
+  const SLATE9 = rgb(0.094, 0.118, 0.157);  // slate-900
+  const SLATE5 = rgb(0.388, 0.447, 0.502);  // slate-500
+  const SLATE2 = rgb(0.882, 0.906, 0.929);  // slate-200
+  const WHITE  = rgb(1, 1, 1);
+  const EMERALD = rgb(0.047, 0.647, 0.439); // emerald-600
+
+  let page = doc.addPage([PAGE_W, PAGE_H]);
+  let y = PAGE_H - MARGIN;
+
+  function newPage() {
+    page = doc.addPage([PAGE_W, PAGE_H]);
+    y = PAGE_H - MARGIN;
+  }
+
+  function ensureSpace(needed: number) {
+    if (y - needed < MARGIN + 20) newPage();
+  }
+
+  // ── Header band ──────────────────────────────────────────────────────────────
+  page.drawRectangle({ x: 0, y: PAGE_H - 72, width: PAGE_W, height: 72, color: PURPLE });
+
+  // Title
+  const titleLines = wrapText(sanitise(templateName), 52);
+  const titleSize = titleLines.length > 1 ? 14 : 16;
+  let titleY = PAGE_H - 26;
+  for (const line of titleLines) {
+    page.drawText(line, { x: MARGIN, y: titleY, size: titleSize, font: fontBold, color: WHITE });
+    titleY -= titleSize + 3;
+  }
+
+  // Status badge (top-right)
+  const statusLabel = status === 'completed' || status === 'submitted' ? 'Completed' : 'In Progress';
+  const badgeColor  = status === 'completed' || status === 'submitted' ? EMERALD : rgb(0.855, 0.647, 0.125);
+  const badgeW = 76;
+  const badgeX = PAGE_W - MARGIN - badgeW;
+  page.drawRectangle({ x: badgeX, y: PAGE_H - 52, width: badgeW, height: 20, color: badgeColor, borderRadius: 4 });
+  page.drawText(statusLabel, { x: badgeX + 6, y: PAGE_H - 46, size: 9, font: fontBold, color: WHITE });
+
+  y = PAGE_H - 72 - 18;
+
+  // ── Meta row ─────────────────────────────────────────────────────────────────
+  const metaParts: string[] = [];
+  if (jobLabel)    metaParts.push(`Job: ${sanitise(jobLabel)}`);
+  if (completedBy) metaParts.push(`By: ${sanitise(completedBy)}`);
+  if (dateStr)     metaParts.push(sanitise(dateStr));
+
+  if (metaParts.length) {
+    page.drawText(metaParts.join('   ·   '), { x: MARGIN, y, size: 8.5, font: fontNormal, color: SLATE5 });
+    y -= 14;
+  }
+
+  // Divider
+  page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.5, color: SLATE2 });
+  y -= 16;
+
+  // ── Fields ───────────────────────────────────────────────────────────────────
+  for (const f of fields) {
+    const labelText = sanitise(f.label) + (f.required ? ' *' : '');
+    const valueText = sanitise(f.value);
+
+    // Label
+    ensureSpace(28);
+    page.drawText(labelText, { x: MARGIN, y, size: 9, font: fontBold, color: SLATE9 });
+    y -= 13;
+
+    // Value — wrap long lines
+    const valueLines = wrapText(valueText, 90);
+    for (const vl of valueLines) {
+      ensureSpace(14);
+      page.drawText(vl, { x: MARGIN + 8, y, size: 9, font: fontNormal, color: SLATE5 });
+      y -= 13;
+    }
+
+    y -= 6; // gap between fields
+
+    // Light separator every field
+    if (y > MARGIN + 20) {
+      page.drawLine({ start: { x: MARGIN, y: y + 2 }, end: { x: PAGE_W - MARGIN, y: y + 2 }, thickness: 0.3, color: rgb(0.93, 0.94, 0.95) });
+    }
+  }
+
+  // ── Footer on every page ─────────────────────────────────────────────────────
+  const pageCount = doc.getPageCount();
+  for (let i = 0; i < pageCount; i++) {
+    const pg = doc.getPage(i);
+    pg.drawText(`IWILLBUILD  ·  Page ${i + 1} of ${pageCount}`, {
+      x: MARGIN, y: 24, size: 7.5, font: fontNormal, color: SLATE5,
+    });
+    pg.drawLine({ start: { x: MARGIN, y: 34 }, end: { x: PAGE_W - MARGIN, y: 34 }, thickness: 0.3, color: SLATE2 });
+  }
+
+  return doc.save();
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -29,7 +177,7 @@ export default async function handler(req: Request, res: Response) {
     const { to } = req.body as { to?: string };
     if (!to?.trim()) return res.status(400).json({ error: 'Recipient email is required' });
 
-    // Load submission
+    // ── Load submission ───────────────────────────────────────────────────────
     const submission = await db.query.jobFormSubmissions.findFirst({
       where: and(
         eq(jobFormSubmissions.id, id),
@@ -38,7 +186,7 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!submission) return res.status(404).json({ error: 'Submission not found' });
 
-    // Load template name
+    // ── Template name ─────────────────────────────────────────────────────────
     let templateName = 'Form';
     if (submission.templateId) {
       const tpl = await db.query.formTemplates.findFirst({
@@ -48,64 +196,101 @@ export default async function handler(req: Request, res: Response) {
       if (tpl?.name) templateName = tpl.name;
     }
 
-    // Load fields for labels
+    // ── Field definitions ─────────────────────────────────────────────────────
     const fieldRows = submission.templateId
-      ? await db.query.formFields.findMany({ where: eq(formFields.templateId, submission.templateId), orderBy: [asc(formFields.fieldOrder)] })
+      ? await db.query.formFields.findMany({
+          where: eq(formFields.templateId, submission.templateId),
+          orderBy: [asc(formFields.fieldOrder)],
+        })
       : [];
 
-    // Load job info
+    // ── Job label ─────────────────────────────────────────────────────────────
     let jobLabel = '';
     if (submission.jobId) {
-      const jobRow = await db.query.jobs.findFirst({ where: eq(jobs.id, submission.jobId), columns: { jobNumber: true, name: true } });
+      const jobRow = await db.query.jobs.findFirst({
+        where: eq(jobs.id, submission.jobId),
+        columns: { jobNumber: true, name: true },
+      });
       if (jobRow) jobLabel = [jobRow.jobNumber, jobRow.name].filter(Boolean).join(' — ');
     }
 
-    // Parse answers
+    // ── Parse answers ─────────────────────────────────────────────────────────
     let answers: Record<string, unknown> = {};
-    try { if (submission.answersJson) answers = JSON.parse(submission.answersJson) as Record<string, unknown>; } catch { /* ignore */ }
+    try {
+      if (submission.answersJson) answers = JSON.parse(submission.answersJson) as Record<string, unknown>;
+    } catch { /* ignore */ }
 
-    // Build plain-text body
-    const lines: string[] = [
-      `Form: ${templateName}`,
-      `Status: ${submission.status === 'completed' ? 'Completed' : 'In Progress'}`,
-      jobLabel ? `Job: ${jobLabel}` : '',
-      submission.completedByName ? `Completed by: ${submission.completedByName}` : '',
-      submission.updatedAt ? `Date: ${new Date(submission.updatedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '',
-      '',
-      '─────────────────────────────',
-      '',
-    ].filter((l) => l !== undefined);
+    // ── Build field list for PDF + plain-text ─────────────────────────────────
+    const SKIP_TYPES = ['section', 'instruction', 'instruction_image', 'page_break'];
+    const pdfFields: { label: string; value: string; required: boolean }[] = [];
+    const textLines: string[] = [];
 
     for (const field of fieldRows) {
-      const skipTypes = ['section', 'instruction', 'instruction_image', 'page_break'];
-      if (skipTypes.includes(field.fieldType)) continue;
+      if (SKIP_TYPES.includes(field.fieldType)) continue;
       const val = answers[String(field.id)];
       const empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
       let display = empty ? '(no answer)' : String(val);
       if (Array.isArray(val)) display = val.join(', ');
-      if (field.fieldType === 'photo') display = empty ? '(no photo)' : '[Photo attached]';
+      if (field.fieldType === 'photo')     display = empty ? '(no photo)' : '[Photo attached]';
       if (field.fieldType === 'signature') display = empty ? '(no signature)' : '[Signature captured]';
-      if (field.fieldType === 'location') {
-        if (!empty && typeof val === 'object' && val !== null && 'lat' in val) {
-          const g = val as { lat: number; lng: number; accuracy?: number; address?: string };
-          display = g.address ? `${g.address} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})` : `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`;
-        }
+      if (field.fieldType === 'location' && !empty && typeof val === 'object' && val !== null && 'lat' in val) {
+        const g = val as { lat: number; lng: number; address?: string };
+        display = g.address ? `${g.address} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})` : `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`;
       }
-      lines.push(`${field.label}${field.required ? ' *' : ''}`);
-      lines.push(`  ${display}`);
-      lines.push('');
+      pdfFields.push({ label: field.label, value: display, required: !!field.required });
+      textLines.push(`${field.label}${field.required ? ' *' : ''}`);
+      textLines.push(`  ${display}`);
+      textLines.push('');
     }
 
-    lines.push('─────────────────────────────');
-    lines.push('Sent from IWILLBUILD');
+    const dateStr = submission.updatedAt
+      ? new Date(submission.updatedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
 
-    const htmlLines = lines.map((l) => l === '' ? '<br/>' : `<p style="margin:0 0 4px">${l.replace(/─+/g, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0"/>')}</p>`);
+    // ── Generate PDF ──────────────────────────────────────────────────────────
+    const pdfBytes = await buildPdf({
+      templateName,
+      status: submission.status,
+      jobLabel,
+      completedBy: submission.completedByName ?? '',
+      dateStr,
+      fields: pdfFields,
+    });
 
+    const safeFileName = templateName.replace(/[^a-zA-Z0-9\-_ ]/g, '').trim() || 'form';
+
+    // ── Plain-text email body ─────────────────────────────────────────────────
+    const headerLines = [
+      `Form: ${templateName}`,
+      `Status: ${submission.status === 'completed' || submission.status === 'submitted' ? 'Completed' : 'In Progress'}`,
+      jobLabel ? `Job: ${jobLabel}` : '',
+      submission.completedByName ? `Completed by: ${submission.completedByName}` : '',
+      dateStr ? `Date: ${dateStr}` : '',
+      '',
+      '─────────────────────────────',
+      '',
+    ].filter(Boolean);
+
+    const allTextLines = [...headerLines, ...textLines, '─────────────────────────────', 'Sent from IWILLBUILD'];
+    const htmlLines = allTextLines.map((l) =>
+      l === ''
+        ? '<br/>'
+        : `<p style="margin:0 0 4px">${l.replace(/─+/g, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0"/>')}</p>`,
+    );
+
+    // ── Send email with PDF attachment ────────────────────────────────────────
     await sendEmail({
       to: to.trim(),
-      subject: `${templateName}${jobLabel ? ' — ' + jobLabel : ''} (${submission.status === 'completed' ? 'Completed' : 'Draft'})`,
-      text: lines.join('\n'),
-      html: `<div style="font-family:sans-serif;font-size:14px;color:#1e293b;max-width:600px">${htmlLines.join('')}</div>`,
+      subject: `${templateName}${jobLabel ? ' — ' + jobLabel : ''} (${submission.status === 'completed' || submission.status === 'submitted' ? 'Completed' : 'Draft'})`,
+      text: allTextLines.join('\n'),
+      html: `<div style="font-family:sans-serif;font-size:14px;color:#1e293b;max-width:600px">${htmlLines.join('')}<p style="margin-top:16px;font-size:12px;color:#64748b">PDF attached — ${safeFileName}.pdf</p></div>`,
+      attachments: [
+        {
+          filename: `${safeFileName}.pdf`,
+          content: Buffer.from(pdfBytes),
+          contentType: 'application/pdf',
+        },
+      ],
     });
 
     return res.json({ ok: true });

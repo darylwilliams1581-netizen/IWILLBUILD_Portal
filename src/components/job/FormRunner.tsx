@@ -592,24 +592,27 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
             </div>
             <h2 className="font-heading font-bold text-base text-slate-900 truncate">{templateName}</h2>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
+              title="Print / PDF"
+              className="p-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
             >
-              <Printer size={12} /> Print / PDF
+              <Printer size={14} />
             </button>
             <button
               onClick={() => { setEmailTo(''); setEmailError(''); setEmailSent(false); setEmailModalOpen(true); }}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
+              title="Email with PDF"
+              className="p-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
             >
-              <Mail size={12} /> Send Email
+              <Mail size={14} />
             </button>
             <button
               onClick={reopenForm}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
+              title="Edit / Reopen"
+              className="p-2 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
             >
-              <Pencil size={12} /> Edit / Reopen
+              <Pencil size={14} />
             </button>
           </div>
         </div>
@@ -663,15 +666,23 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         </div>
 
         {/* Footer */}
-        <div className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
+        <div className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-2 mb-4">
           <button onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
             Back to Forms
           </button>
           <button
             onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors"
+            title="Print / PDF"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
           >
-            <Printer size={14} /> Print / PDF
+            <Printer size={16} />
+          </button>
+          <button
+            onClick={() => { setEmailTo(''); setEmailError(''); setEmailSent(false); setEmailModalOpen(true); }}
+            title="Email with PDF"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
+          >
+            <Mail size={16} />
           </button>
         </div>
       </div>
@@ -685,13 +696,13 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
                 <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
                   <Mail size={15} className="text-blue-600" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-sm">Send Form via Email</h3>
+                <h3 className="font-bold text-slate-800 text-sm">Email form with PDF</h3>
               </div>
               <button onClick={() => setEmailModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
                 <X size={15} />
               </button>
             </div>
-            <p className="text-xs text-slate-500">A summary of <span className="font-semibold text-slate-700">{templateName}</span> will be sent to the address below.</p>
+            <p className="text-xs text-slate-500">A PDF of <span className="font-semibold text-slate-700">{templateName}</span> will be attached and sent to the address below.</p>
             {emailSent ? (
               <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
                 <CheckCircle2 size={15} /> Email sent successfully!
@@ -783,9 +794,10 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, true)}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-500 transition-colors"
+            title="Print draft"
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-500 transition-colors"
           >
-            <Printer size={12} /> Print Draft
+            <Printer size={14} />
           </button>
           <div className="text-right">
             <p className="text-xs font-bold text-slate-700">{answeredCount}/{visibleInputFields.length}</p>

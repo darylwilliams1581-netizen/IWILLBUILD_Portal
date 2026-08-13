@@ -16,6 +16,7 @@ import {
   ChevronDown,
   PlayCircle,
   Share2,
+  Mail,
 } from 'lucide-react';
 import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 import { motion, AnimatePresence } from 'motion/react';
@@ -149,6 +150,33 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
   const isCompleted = submission.status === 'completed' || submission.status === 'submitted';
   const isSubmitted = submission.status === 'submitted';
   const [shareOpen, setShareOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  async function sendEmail() {
+    if (!emailTo.trim()) return;
+    setEmailSending(true);
+    setEmailError('');
+    try {
+      const res = await fetch(`/api/job-forms/${submission.id}/send-email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailTo.trim() }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send');
+      setEmailSent(true);
+      setTimeout(() => { setEmailOpen(false); setEmailSent(false); setEmailTo(''); }, 2000);
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : 'Failed to send');
+    } finally {
+      setEmailSending(false);
+    }
+  }
 
   return (
     <motion.div
@@ -181,77 +209,78 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
         <ExternalLink size={12} className="text-slate-300 shrink-0" />
       </div>
 
-      {/* Action bar */}
+      {/* Action bar — icon-only buttons, consistent across all states */}
       <div className="px-3 pb-3 pt-2 border-t border-slate-100 bg-slate-50/60 flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
 
-        {/* Row 1 — primary actions */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Primary action: Continue (in-progress) or View (completed) */}
           {isCompleted ? (
-            <>
-              <button
-                onClick={onOpen}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 transition-colors"
-              >
-                <Eye size={12} /> View
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpen(); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
-              >
-                <Printer size={12} /> Print / PDF
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setShareOpen(o => !o); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-violet-300 hover:text-violet-600 text-slate-600 transition-colors"
-              >
-                <Share2 size={12} /> Share
-              </button>
-            </>
+            <button
+              onClick={onOpen}
+              title="View form"
+              className="p-2 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 transition-colors"
+            >
+              <Eye size={14} />
+            </button>
           ) : (
-            <>
-              <button
-                onClick={onOpen}
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
-              >
-                <PlayCircle size={12} /> Continue
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpen(); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
-              >
-                <Printer size={12} /> Print / PDF
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setShareOpen(o => !o); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-violet-300 hover:text-violet-600 text-slate-600 transition-colors"
-              >
-                <Share2 size={12} /> Share
-              </button>
-            </>
+            <button
+              onClick={onOpen}
+              title="Continue filling out"
+              className="p-2 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
+            >
+              <PlayCircle size={14} />
+            </button>
+          )}
+
+          {/* Print / PDF */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            title="Print / PDF"
+            className="p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
+          >
+            <Printer size={14} />
+          </button>
+
+          {/* Email with PDF */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setEmailTo(''); setEmailError(''); setEmailSent(false); setEmailOpen(true); }}
+            title="Email with PDF"
+            className="p-2 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-600 transition-colors"
+          >
+            <Mail size={14} />
+          </button>
+
+          {/* Share link */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShareOpen(o => !o); }}
+            title="Share link"
+            className={`p-2 rounded-lg bg-white border transition-colors ${shareOpen ? 'border-violet-400 text-violet-600' : 'border-slate-200 hover:border-violet-300 hover:text-violet-600 text-slate-600'}`}
+          >
+            <Share2 size={14} />
+          </button>
+
+          {/* Reopen — completed but not submitted */}
+          {!isSubmitted && isCompleted && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              title="Reopen / edit"
+              className="p-2 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
+            >
+              <RotateCcw size={14} />
+            </button>
+          )}
+
+          {/* Delete — role-gated */}
+          {canDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              title="Delete form"
+              className="p-2 rounded-lg bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-400 hover:text-red-600 transition-colors ml-auto"
+            >
+              <Trash2 size={14} />
+            </button>
           )}
         </div>
-
-        {/* Row 2 — secondary / destructive */}
-        {((!isSubmitted && isCompleted) || canDelete) && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {!isSubmitted && isCompleted && (
-              <button
-                onClick={onOpen}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
-              >
-                <RotateCcw size={12} /> Reopen
-              </button>
-            )}
-            {canDelete && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-500 transition-colors"
-              >
-                <Trash2 size={12} /> Delete
-              </button>
-            )}
-          </div>
-        )}
 
         {/* Share panel — expands inline */}
         {shareOpen && (
@@ -265,6 +294,72 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
           </div>
         )}
       </div>
+
+      {/* Email modal */}
+      {emailOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setEmailOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Mail size={15} className="text-blue-600" />
+                </div>
+                <h3 className="font-bold text-slate-800 text-sm">Email form with PDF</h3>
+              </div>
+              <button onClick={() => setEmailOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              A PDF of <span className="font-semibold text-slate-700">{templateName}</span> will be attached and sent to the address below.
+            </p>
+            {emailSent ? (
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                <CheckCircle2 size={15} /> Sent successfully!
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Recipient email</label>
+                  <input
+                    type="email"
+                    value={emailTo}
+                    onChange={(e) => setEmailTo(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                    onKeyDown={(e) => { if (e.key === 'Enter') void sendEmail(); }}
+                    autoFocus
+                  />
+                </div>
+                {emailError && (
+                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                    <AlertCircle size={12} /> {emailError}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setEmailOpen(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void sendEmail()}
+                    disabled={emailSending || !emailTo.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold disabled:opacity-50 transition-colors"
+                  >
+                    {emailSending ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                    {emailSending ? 'Sending…' : 'Send'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
