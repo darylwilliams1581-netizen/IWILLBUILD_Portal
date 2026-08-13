@@ -76,6 +76,30 @@ interface Job {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Sanitize a label string before display or storage.
+ *
+ * Allows: letters, numbers, spaces, standard punctuation, common symbols, emoji.
+ * Removes: HTML tags, script content, control characters (except newlines which
+ *           are collapsed to a single space), and excess whitespace.
+ * Does NOT strip normal construction punctuation (-, /, #, @, &, etc.).
+ */
+function sanitizeLabel(raw: string): string {
+  return raw
+    // Strip HTML tags (including script/style content)
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    // Collapse newlines / carriage returns to a space
+    .replace(/[\r\n]+/g, ' ')
+    // Remove C0/C1 control characters (except regular space U+0020)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+    // Collapse multiple spaces to one
+    .replace(/ {2,}/g, ' ')
+    .trim();
+}
+
+/**
  * Wrap a label string into at most 2 lines of ~60 chars each.
  * Prefers word-boundary wraps; hard-wraps at 60 if no space found.
  * Total input is capped at 120 characters before wrapping.
@@ -147,7 +171,10 @@ async function compositeWatermark(
   const line1 = line1Parts.join('  —  ');
 
   // Build line 2: Label (hidden when off or empty; max 120 chars, max 2 wrapped lines)
-  const line2 = (opts.showLabel && opts.label.trim()) ? opts.label.trim() : '';
+  // Sanitize here as defence-in-depth — the value should already be clean from input handlers
+  const line2 = (opts.showLabel && opts.label.trim())
+    ? sanitizeLabel(opts.label).trim().slice(0, 120)
+    : '';
 
   const hasLine1 = line1.length > 0;
   const hasLine2 = line2.length > 0;
@@ -487,7 +514,7 @@ export default function JobPhotosCameraPage() {
       catch { setComposeError(true); setCapturing(false); return; }
       setPendingBitmap(bitmap);
       setPendingFileName(fileName);
-      setPendingLabel(label); // pre-fill with last used value
+      setPendingLabel(sanitizeLabel(label).slice(0, 120)); // pre-fill with last used value
     }
   }, [camState, capturing, jobId, labelLocked, label, settings.showLabel, finalise]);
 
@@ -519,13 +546,14 @@ export default function JobPhotosCameraPage() {
 
   // ── Watermark popup helpers ─────────────────────────────────────────────────
   const openWatermarkPopup = useCallback(() => {
-    setDraftLabel(label);
+    setDraftLabel(sanitizeLabel(label).slice(0, 120));
     setDraftLocked(labelLocked);
     setShowWatermarkPopup(true);
   }, [label, labelLocked]);
 
   const commitWatermarkPopup = useCallback(() => {
-    setLabel(draftLabel);
+    // Sanitize once more on commit — single source of truth
+    setLabel(sanitizeLabel(draftLabel).slice(0, 120));
     setLabelLocked(draftLocked);
     setShowWatermarkPopup(false);
   }, [draftLabel, draftLocked]);
@@ -879,7 +907,7 @@ export default function JobPhotosCameraPage() {
                   <Pencil size={13} className="text-white/40 shrink-0 mt-0.5" />
                   <textarea
                     value={draftLabel}
-                    onChange={(e) => setDraftLabel(e.target.value.slice(0, 120))}
+                    onChange={(e) => setDraftLabel(sanitizeLabel(e.target.value).slice(0, 120))}
                     placeholder="Label (optional)…"
                     maxLength={120}
                     rows={2}
@@ -960,7 +988,7 @@ export default function JobPhotosCameraPage() {
                 <textarea
                   ref={pendingLabelRef}
                   value={pendingLabel}
-                  onChange={(e) => setPendingLabel(e.target.value.slice(0, 120))}
+                  onChange={(e) => setPendingLabel(sanitizeLabel(e.target.value).slice(0, 120))}
                   placeholder="e.g. North wall, Level 2, damaged flashing…"
                   maxLength={120}
                   rows={2}
