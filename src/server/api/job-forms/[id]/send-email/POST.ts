@@ -66,7 +66,6 @@ async function buildPdf(opts: {
   const SLATE5 = rgb(0.388, 0.447, 0.502);  // slate-500
   const SLATE2 = rgb(0.882, 0.906, 0.929);  // slate-200
   const WHITE  = rgb(1, 1, 1);
-  const EMERALD = rgb(0.047, 0.647, 0.439); // emerald-600
 
   let page = doc.addPage([PAGE_W, PAGE_H]);
   let y = PAGE_H - MARGIN;
@@ -92,13 +91,7 @@ async function buildPdf(opts: {
     titleY -= titleSize + 3;
   }
 
-  // Status badge (top-right)
-  const statusLabel = status === 'completed' || status === 'submitted' ? 'Completed' : 'In Progress';
-  const badgeColor  = status === 'completed' || status === 'submitted' ? EMERALD : rgb(0.855, 0.647, 0.125);
-  const badgeW = 76;
-  const badgeX = PAGE_W - MARGIN - badgeW;
-  page.drawRectangle({ x: badgeX, y: PAGE_H - 52, width: badgeW, height: 20, color: badgeColor, borderRadius: 4 });
-  page.drawText(statusLabel, { x: badgeX + 6, y: PAGE_H - 46, size: 9, font: fontBold, color: WHITE });
+
 
   y = PAGE_H - 72 - 18;
 
