@@ -15,7 +15,9 @@ import {
   ExternalLink,
   ChevronDown,
   PlayCircle,
+  Share2,
 } from 'lucide-react';
+import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Job } from '@/lib/jobs-api';
 
@@ -146,6 +148,7 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
 }) {
   const isCompleted = submission.status === 'completed' || submission.status === 'submitted';
   const isSubmitted = submission.status === 'submitted';
+  const [shareOpen, setShareOpen] = useState(false);
 
   return (
     <motion.div
@@ -179,22 +182,59 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center gap-1.5 px-3 pb-3 pt-0 border-t border-slate-100 bg-slate-50/60 flex-wrap">
-        {isCompleted ? (
-          <>
-            <button
-              onClick={onOpen}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 transition-colors"
-            >
-              <Eye size={12} /> View
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpen(); }}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
-            >
-              <Printer size={12} /> Print / PDF
-            </button>
-            {!isSubmitted && (
+      <div className="px-3 pb-3 pt-2 border-t border-slate-100 bg-slate-50/60 flex flex-col gap-2">
+
+        {/* Row 1 — primary actions */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isCompleted ? (
+            <>
+              <button
+                onClick={onOpen}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 transition-colors"
+              >
+                <Eye size={12} /> View
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
+              >
+                <Printer size={12} /> Print / PDF
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShareOpen(o => !o); }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-violet-300 hover:text-violet-600 text-slate-600 transition-colors"
+              >
+                <Share2 size={12} /> Share
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onOpen}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
+              >
+                <PlayCircle size={12} /> Continue
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
+              >
+                <Printer size={12} /> Print / PDF
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShareOpen(o => !o); }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-violet-300 hover:text-violet-600 text-slate-600 transition-colors"
+              >
+                <Share2 size={12} /> Share
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Row 2 — secondary / destructive */}
+        {((!isSubmitted && isCompleted) || canDelete) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {!isSubmitted && isCompleted && (
               <button
                 onClick={onOpen}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
@@ -202,25 +242,27 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
                 <RotateCcw size={12} /> Reopen
               </button>
             )}
-          </>
-        ) : (
-          <button
-            onClick={onOpen}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
-          >
-            <PlayCircle size={12} /> Continue
-          </button>
+            {canDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-500 transition-colors"
+              >
+                <Trash2 size={12} /> Delete
+              </button>
+            )}
+          </div>
         )}
 
-        <div className="flex-1" />
-
-        {canDelete && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-red-300 hover:text-red-500 text-slate-400 transition-colors"
-          >
-            <Trash2 size={12} /> Delete
-          </button>
+        {/* Share panel — expands inline */}
+        {shareOpen && (
+          <div className="mt-1">
+            <FormSharePanel
+              submissionId={submission.id}
+              submissionStatus={submission.status}
+              canReset={canReset}
+              onStatusChange={onStatusChange}
+            />
+          </div>
         )}
       </div>
     </motion.div>
