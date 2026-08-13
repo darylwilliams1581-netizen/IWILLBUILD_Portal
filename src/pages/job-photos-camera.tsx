@@ -386,21 +386,9 @@ export default function JobPhotosCameraPage() {
   const [pendingLabel,    setPendingLabel]    = useState('');
   const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Upload queue ────────────────────────────────────────────────────────────
-  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId, gps });
-
-  // ── Thumbnail of last saved photo ───────────────────────────────────────────
-  const [lastThumb, setLastThumb] = useState<string | null>(null);
-  const lastThumbRef = useRef<string | null>(null);
-  useEffect(() => { lastThumbRef.current = lastThumb; }, [lastThumb]);
-
-  // ── Session photo counter ────────────────────────────────────────────────────
-  const SESSION_MAX = 10;
-  const [sessionCount, setSessionCount] = useState(0);
-  const sessionLimitReached = sessionCount >= SESSION_MAX;
-
   // ── GPS location ─────────────────────────────────────────────────────────────
-  // 'acquiring' → 'locked' | 'denied' | 'unavailable'
+  // Read once on mount. Three outcomes: locked | denied | unavailable.
+  // GPS is never mandatory — photos save fine without it.
   type GpsStatus = 'acquiring' | 'locked' | 'denied' | 'unavailable';
   const [gpsStatus, setGpsStatus] = useState<GpsStatus>('acquiring');
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
@@ -408,12 +396,11 @@ export default function JobPhotosCameraPage() {
   useEffect(() => {
     let cancelled = false;
     const timeout = setTimeout(() => {
-      if (!cancelled && gpsStatus === 'acquiring') setGpsStatus('unavailable');
-    }, 12000); // give up after 12 s
+      if (!cancelled) setGpsStatus((s) => s === 'acquiring' ? 'unavailable' : s);
+    }, 12000);
 
     async function readLocation() {
       try {
-        // Try Capacitor native plugin first (iOS/Android), fall back to web API
         const nativeGeo = getNativeGeo();
         if (nativeGeo) {
           const pos = await nativeGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
@@ -430,9 +417,7 @@ export default function JobPhotosCameraPage() {
               }
             },
             (err) => {
-              if (!cancelled) {
-                setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable');
-              }
+              if (!cancelled) setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable');
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
           );
@@ -445,12 +430,12 @@ export default function JobPhotosCameraPage() {
     }
 
     void readLocation();
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
+    return () => { cancelled = true; clearTimeout(timeout); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Upload queue ────────────────────────────────────────────────────────────
+  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId, gps });
   const videoRef  = useRef<HTMLVideoElement>(null);
   const lensRef   = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -953,6 +938,24 @@ export default function JobPhotosCameraPage() {
                 {isUploading && (
                   <Loader2 size={10} className="animate-spin text-white/40" />
                 )}
+                {/* GPS status dot */}
+                <span
+                  title={
+                    gpsStatus === 'locked'      ? `GPS locked (±${Math.round(gps?.accuracy ?? 0)} m)` :
+                    gpsStatus === 'acquiring'   ? 'Acquiring GPS…' :
+                    gpsStatus === 'denied'      ? 'Location permission denied' :
+                                                  'GPS unavailable'
+                  }
+                  className={`inline-flex items-center gap-0.5 text-[9px] font-bold leading-none ${
+                    gpsStatus === 'locked'    ? 'text-green-400' :
+                    gpsStatus === 'acquiring' ? 'text-yellow-400' :
+                                               'text-white/30'
+                  }`}
+                >
+                  <MapPin size={8} />
+                  {gpsStatus === 'locked'    ? 'GPS' :
+                   gpsStatus === 'acquiring' ? '…'   : '—'}
+                </span>
               </>
             )}
           </div>

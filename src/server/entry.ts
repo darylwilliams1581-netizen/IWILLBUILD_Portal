@@ -2812,6 +2812,21 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] profiles.white_card_number alter failed:', msg);
     }
   }
+
+  // ── job_photos GPS columns ────────────────────────────────────────────────
+  for (const col of [
+    'ALTER TABLE job_photos ADD COLUMN gps_lat      DOUBLE NULL',
+    'ALTER TABLE job_photos ADD COLUMN gps_lng      DOUBLE NULL',
+    'ALTER TABLE job_photos ADD COLUMN gps_accuracy DOUBLE NULL',
+  ]) {
+    try {
+      await db.execute(sql.raw(col));
+    } catch (e: unknown) {
+      if (!isDupColumnError(e)) {
+        console.warn('[startup-migration] job_photos GPS column failed:', migrationErrMsg(e));
+      }
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
