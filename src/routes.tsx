@@ -225,6 +225,7 @@ export const routes: RouteObject[] = [
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   { path: '/jobs/:id/photos', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosPage /></Suspense>), errorElement: routeError },
   { path: '/jobs/:id/camera', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosCameraPage /></Suspense>), errorElement: routeError },
+  { path: '/job-cards/:id/camera', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosCameraPage /></Suspense>), errorElement: routeError },
   { path: '/jobs/:id/notes',    element: protect(<Suspense fallback={<PageLoader />}><JobNotesPage /></Suspense>),     errorElement: routeError },
   { path: '/jobs/:id/delays',   element: protect(<Suspense fallback={<PageLoader />}><JobDelaysPage /></Suspense>),    errorElement: routeError },
   { path: '/jobs/:id/forms',    element: protect(<Suspense fallback={<PageLoader />}><JobFormsPage /></Suspense>),     errorElement: routeError },

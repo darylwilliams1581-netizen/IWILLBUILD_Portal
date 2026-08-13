@@ -20,6 +20,7 @@ import {
   Clock, FileText, Camera, User, MapPin,
   Wrench, DollarSign, StickyNote, ClipboardCheck,
   ExternalLink, Upload, PenLine, RotateCcw, Image,
+  Grid2x2, Grid3x3, LayoutGrid, Loader2,
 } from 'lucide-react';
 
 import { useUploadQueue } from '@/hooks/useUploadQueue';
@@ -255,7 +256,23 @@ function PhotoSection({ cardId, photos, onPhotosChange, cardTitle }: {
   cardTitle?: string;
 }) {
   const { isAdmin } = usePermissions();
+  const navigate = useNavigate();
   const editorEnabled = JOB_CARD_PHOTO_EDITOR_ENABLED && isAdmin;
+
+  type ViewSize = 'small' | 'medium' | 'large';
+  const [viewSize, setViewSize] = useState<ViewSize>(() => {
+    try {
+      const s = localStorage.getItem('jobCardPhotosZoom');
+      if (s === 'small' || s === 'medium' || s === 'large') return s;
+    } catch (_) {}
+    return window.innerWidth < 768 ? 'small' : 'medium';
+  });
+  const handleSetViewSize = (s: ViewSize) => {
+    setViewSize(s);
+    try { localStorage.setItem('jobCardPhotosZoom', s); } catch (_) {}
+  };
+
+  const colsClass = viewSize === 'large' ? 'grid-cols-2 sm:grid-cols-3' : viewSize === 'small' ? 'grid-cols-4 sm:grid-cols-5 md:grid-cols-6' : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5';
 
   const [editorConfig, setEditorConfig] = useState<EditorConfig | null>(null);
 
@@ -407,20 +424,55 @@ function PhotoSection({ cardId, photos, onPhotosChange, cardTitle }: {
     <Section
       title={`Photos${photos.length > 0 ? ` (${photos.length})` : ''}`}
       icon={Camera}
-      action={
+    >
+      {/* ── Toolbar: Upload | Camera | tile-size toggle ── */}
+      <div className="flex items-center gap-1.5 mb-3">
+        {/* Photo count */}
+        <span className="text-xs text-muted-foreground mr-1 shrink-0">
+          {photos.length} photo{photos.length !== 1 ? 's' : ''}
+        </span>
+
+        {/* Upload — icon only, bordered, no fill */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors disabled:opacity-50"
+          title="Upload photos"
+          className="flex items-center justify-center w-8 h-8 border border-border hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition-colors"
         >
-          {uploading ? <RefreshCw size={11} className="animate-spin" /> : <Upload size={11} />}
-          {uploading ? 'Uploading…' : 'Add photos'}
+          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
         </button>
-      }
-    >
-      {/* Hidden file input — no capture= so iOS shows the native picker sheet
-          (Take Photo / Photo Library / Browse). capture= forces camera-only
-          and can crash if permission not yet granted on iOS. */}
+
+        {/* Camera — purple, icon only */}
+        <button
+          onClick={() => navigate(`/job-cards/${cardId}/camera`, {
+            state: {
+              uploadEndpoint: `/api/job-cards/${cardId}/photos`,
+              backPath: `/job-cards/${cardId}`,
+              jobName: cardTitle,
+            },
+          })}
+          title="Take a photo"
+          className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 text-white rounded-lg transition-colors"
+        >
+          <Camera size={16} />
+        </button>
+
+        {/* Tile size toggle */}
+        <div className="ml-auto flex items-center bg-muted rounded-lg overflow-hidden shrink-0">
+          {(['small', 'medium', 'large'] as const).map((size) => (
+            <button
+              key={size}
+              onClick={() => handleSetViewSize(size)}
+              title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
+              className={`px-2 py-1.5 transition-colors ${viewSize === size ? 'bg-white text-gray-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -474,7 +526,7 @@ function PhotoSection({ cardId, photos, onPhotosChange, cardTitle }: {
           <span className="text-[11px]">Camera, gallery or files</span>
         </button>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+        <div className={`grid ${colsClass} gap-2`}>
           {photos.map(p => (
             <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
               <button

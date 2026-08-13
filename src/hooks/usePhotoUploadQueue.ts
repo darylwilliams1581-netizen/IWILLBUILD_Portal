@@ -54,6 +54,8 @@ export interface PendingPhoto {
 
 interface UsePhotoUploadQueueOptions {
   jobId: number;
+  /** Override the upload endpoint. Defaults to /api/jobs/:jobId/photos */
+  uploadEndpoint?: string;
   onBatchComplete?: (uploaded: number, failed: number) => void;
   /** Called immediately after each individual photo is confirmed on the server */
   onPhotoSynced?: (serverPhotoId: number) => void;
@@ -147,13 +149,14 @@ function uploadFileXhr(
   file: File,
   onProgress: (pct: number) => void,
   clientId: string,
+  uploadEndpoint?: string,
 ): Promise<{ id: number }> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
     fd.append('photos', file);
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/jobs/${jobId}/photos`);
+    xhr.open('POST', uploadEndpoint ?? `/api/jobs/${jobId}/photos`);
     xhr.withCredentials = true;
     // Server uses this to deduplicate retried/replayed requests
     xhr.setRequestHeader('X-Client-Id', clientId);
@@ -194,7 +197,7 @@ function uploadFileXhr(
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: UsePhotoUploadQueueOptions) {
+export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, onPhotoSynced }: UsePhotoUploadQueueOptions) {
   const [queue, setQueue] = useState<PendingPhoto[]>([]);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [restoredFromDevice, setRestoredFromDevice] = useState(false);
@@ -330,6 +333,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: U
           file,
           (pct) => updateItem(clientId, { progress: pct }),
           clientId,
+          uploadEndpoint,
         );
 
         // Revoke blob URL — server is now the source of truth

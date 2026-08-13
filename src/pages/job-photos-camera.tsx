@@ -51,7 +51,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2,
@@ -348,12 +348,22 @@ async function compositeWatermark(
 export default function JobPhotosCameraPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Optional overrides passed via navigate state (e.g. from job-card-detail)
+  const locationState = location.state as { uploadEndpoint?: string; backPath?: string; jobName?: string } | null;
+  const uploadEndpointOverride = locationState?.uploadEndpoint;
+  const backPath = locationState?.backPath;
+  const jobNameOverride = locationState?.jobName;
+
   const jobId = Number(id);
 
   // ── Job metadata ────────────────────────────────────────────────────────────
   const [job, setJob] = useState<Job | null>(null);
   useEffect(() => {
     if (!id) return;
+    // If a name was passed via state (job card mode), skip the API fetch
+    if (jobNameOverride) return;
     fetch(`/api/jobs/${id}`, { credentials: 'include' })
       .then(async (r) => {
         if (!r.ok) return;
@@ -362,7 +372,7 @@ export default function JobPhotosCameraPage() {
         setJob((data && 'job' in data ? data.job : data as Job) ?? null);
       })
       .catch(() => {});
-  }, [id]);
+  }, [id, jobNameOverride]);
 
   // ── Watermark settings ──────────────────────────────────────────────────────
   const { settings, toggle, update } = useWatermarkSettings();
@@ -386,7 +396,7 @@ export default function JobPhotosCameraPage() {
   const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Upload queue ────────────────────────────────────────────────────────────
-  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId });
+  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId, uploadEndpoint: uploadEndpointOverride });
   const videoRef  = useRef<HTMLVideoElement>(null);
   const lensRef   = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -524,7 +534,7 @@ export default function JobPhotosCameraPage() {
     showTime:    settings.showTime,
     showJobName: settings.showJobName,
     label:       resolvedLabel,
-    jobName:     job?.name ?? '',
+    jobName:     jobNameOverride ?? job?.name ?? '',
     orientation: settings.orientation,
   }), [settings, job]);
 
@@ -636,7 +646,7 @@ export default function JobPhotosCameraPage() {
   const now  = new Date();
   const z    = (n: number) => String(n).padStart(2, '0');
   const previewLine1Parts: string[] = [];
-  if (settings.showJobName && job?.name)  previewLine1Parts.push(job.name);
+  if (settings.showJobName && (jobNameOverride ?? job?.name))  previewLine1Parts.push((jobNameOverride ?? job?.name)!);
   if (settings.showDate)                  previewLine1Parts.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
   if (settings.showTime)                  previewLine1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
   const previewLine1     = previewLine1Parts.join('  —  ');
@@ -666,7 +676,7 @@ export default function JobPhotosCameraPage() {
       >
         {/* Back */}
         <button
-          onClick={() => navigate(`/jobs/${id}?tab=photos`)}
+          onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0"
           aria-label="Back to photos"
         >
@@ -675,7 +685,7 @@ export default function JobPhotosCameraPage() {
 
         {/* Job name */}
         <span className="flex-1 text-white text-sm font-semibold truncate px-1">
-          {job?.name ?? 'Camera'}
+          {(jobNameOverride ?? job?.name) ?? 'Camera'}
         </span>
 
         {/* Flash cycle button */}
@@ -740,7 +750,7 @@ export default function JobPhotosCameraPage() {
               Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
             </p>
             <button
-              onClick={() => navigate(`/jobs/${id}?tab=photos`)}
+              onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
               className="mt-1 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
             >
               Back to Photos
@@ -761,7 +771,7 @@ export default function JobPhotosCameraPage() {
                 Retry
               </button>
               <button
-                onClick={() => navigate(`/jobs/${id}?tab=photos`)}
+                onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
                 className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl"
               >
                 Back
@@ -827,7 +837,7 @@ export default function JobPhotosCameraPage() {
 
           {/* Back / gallery thumbnail */}
           <button
-            onClick={() => navigate(`/jobs/${id}?tab=photos`)}
+            onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
             className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation"
             aria-label="Back to photos"
           >
@@ -1174,7 +1184,7 @@ export default function JobPhotosCameraPage() {
                 Cancel
               </button>
               <button
-                onClick={() => navigate(`/jobs/${id}?tab=photos`)}
+                onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
                 className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors"
               >
                 Use original camera
