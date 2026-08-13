@@ -289,7 +289,7 @@ export default function JobPhotosCameraPage() {
   const [pendingBitmap,   setPendingBitmap]   = useState<ImageBitmap | null>(null);
   const [pendingFileName, setPendingFileName] = useState('');
   const [pendingLabel,    setPendingLabel]    = useState('');
-  const pendingLabelRef = useRef<HTMLInputElement>(null);
+  const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Upload queue ────────────────────────────────────────────────────────────
   const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId });
@@ -954,25 +954,43 @@ export default function JobPhotosCameraPage() {
                 <> Use the <Lock size={10} className="inline mx-0.5 text-gray-400" /> lock to reuse a label for rapid shots.</>
               )}
             </p>
-            <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 h-11 mb-4">
-              <Pencil size={14} className="text-white/50 shrink-0" />
-              <input
-                ref={pendingLabelRef}
-                type="text"
-                value={pendingLabel}
-                onChange={(e) => setPendingLabel(e.target.value.slice(0, 120))}
-                onKeyDown={(e) => { if (e.key === 'Enter') void confirmPending(); }}
-                placeholder="e.g. North wall, Level 2…"
-                maxLength={120}
-                autoFocus
-                className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none"
-                style={{ fontSize: '16px' }}
-              />
-              {pendingLabel && (
-                <button onClick={() => setPendingLabel('')} className="text-white/40 hover:text-white shrink-0">
-                  <X size={13} />
-                </button>
-              )}
+            <div className="bg-white/10 rounded-xl px-3 pt-2.5 pb-2 mb-1">
+              <div className="flex items-start gap-2">
+                <Pencil size={14} className="text-white/50 shrink-0 mt-0.5" />
+                <textarea
+                  ref={pendingLabelRef}
+                  value={pendingLabel}
+                  onChange={(e) => setPendingLabel(e.target.value.slice(0, 120))}
+                  placeholder="e.g. North wall, Level 2, damaged flashing…"
+                  maxLength={120}
+                  rows={2}
+                  autoFocus
+                  className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none resize-none leading-snug overflow-hidden break-words"
+                  style={{
+                    fontSize: '16px',
+                    lineHeight: '1.4',
+                    height: 'calc(2 * 16px * 1.4)',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                />
+                {pendingLabel && (
+                  <button
+                    onClick={() => setPendingLabel('')}
+                    className="text-white/40 hover:text-white shrink-0 mt-0.5"
+                    aria-label="Clear label"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between mb-4 px-1">
+              <span className="text-white/30 text-[10px]">~60 chars per line · 2 lines max</span>
+              <span className={`text-[10px] ${pendingLabel.length >= 110 ? 'text-yellow-400' : 'text-white/40'}`}>
+                {pendingLabel.length} / 120
+              </span>
             </div>
             <div className="flex gap-2">
               <button
