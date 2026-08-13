@@ -220,7 +220,7 @@ async function compositeWatermark(
     const isLabel = i >= line1Rows.length;
     if (isLabel) {
       ctx.font      = `600 ${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif`;
-      ctx.fillStyle = 'rgba(255,255,255,0.88)';
+      ctx.fillStyle = '#ffffff';
     } else {
       ctx.font      = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
       ctx.fillStyle = '#ffffff';
