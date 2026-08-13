@@ -56,10 +56,11 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2,
   Lock, Unlock, AlertTriangle, Pencil,
-  Zap, ZapOff, FlipHorizontal2,
+  Zap, ZapOff, FlipHorizontal2, MapPin,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
+import { getNativeGeo } from '@/lib/capacitor-plugins';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -386,7 +387,7 @@ export default function JobPhotosCameraPage() {
   const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Upload queue ────────────────────────────────────────────────────────────
-  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId });
+  const { enqueueFiles, queue, isUploading } = usePhotoUploadQueue({ jobId, gps });
 
   // ── Thumbnail of last saved photo ───────────────────────────────────────────
   const [lastThumb, setLastThumb] = useState<string | null>(null);
@@ -397,6 +398,59 @@ export default function JobPhotosCameraPage() {
   const SESSION_MAX = 10;
   const [sessionCount, setSessionCount] = useState(0);
   const sessionLimitReached = sessionCount >= SESSION_MAX;
+
+  // ── GPS location ─────────────────────────────────────────────────────────────
+  // 'acquiring' → 'locked' | 'denied' | 'unavailable'
+  type GpsStatus = 'acquiring' | 'locked' | 'denied' | 'unavailable';
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>('acquiring');
+  const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled && gpsStatus === 'acquiring') setGpsStatus('unavailable');
+    }, 12000); // give up after 12 s
+
+    async function readLocation() {
+      try {
+        // Try Capacitor native plugin first (iOS/Android), fall back to web API
+        const nativeGeo = getNativeGeo();
+        if (nativeGeo) {
+          const pos = await nativeGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+          if (!cancelled) {
+            setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+            setGpsStatus('locked');
+          }
+        } else if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              if (!cancelled) {
+                setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+                setGpsStatus('locked');
+              }
+            },
+            (err) => {
+              if (!cancelled) {
+                setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable');
+              }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+          );
+        } else {
+          if (!cancelled) setGpsStatus('unavailable');
+        }
+      } catch {
+        if (!cancelled) setGpsStatus('unavailable');
+      }
+    }
+
+    void readLocation();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const videoRef  = useRef<HTMLVideoElement>(null);
   const lensRef   = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -653,6 +707,8 @@ export default function JobPhotosCameraPage() {
     <div className="fixed inset-0 z-50 bg-black flex flex-col" style={{ userSelect: 'none' }}>
       <Helmet>
         <title>Camera — IWILLBUILD</title>
+        <meta name="description" content="Take watermarked job site photos with GPS location tagging." />
+        <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/camera`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <h1 className="sr-only">Job Camera</h1>

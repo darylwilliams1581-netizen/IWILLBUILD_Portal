@@ -57,6 +57,8 @@ interface UsePhotoUploadQueueOptions {
   onBatchComplete?: (uploaded: number, failed: number) => void;
   /** Called immediately after each individual photo is confirmed on the server */
   onPhotoSynced?: (serverPhotoId: number) => void;
+  /** GPS coordinates to attach to every photo uploaded in this session */
+  gps?: { lat: number; lng: number; accuracy: number } | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -147,10 +149,16 @@ function uploadFileXhr(
   file: File,
   onProgress: (pct: number) => void,
   clientId: string,
+  gps?: { lat: number; lng: number; accuracy: number } | null,
 ): Promise<{ id: number }> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
     fd.append('photos', file);
+    if (gps) {
+      fd.append('gps_lat',      String(gps.lat));
+      fd.append('gps_lng',      String(gps.lng));
+      fd.append('gps_accuracy', String(gps.accuracy));
+    }
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/jobs/${jobId}/photos`);
@@ -194,7 +202,7 @@ function uploadFileXhr(
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: UsePhotoUploadQueueOptions) {
+export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced, gps }: UsePhotoUploadQueueOptions) {
   const [queue, setQueue] = useState<PendingPhoto[]>([]);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [restoredFromDevice, setRestoredFromDevice] = useState(false);
@@ -203,6 +211,9 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: U
   const activeRef  = useRef(0);
   const queueRef   = useRef<PendingPhoto[]>([]);
   queueRef.current = queue;
+  // Keep a ref to GPS so processNext (stable callback) always reads the latest value
+  const gpsRef = useRef(gps);
+  gpsRef.current = gps;
 
   // ── Kick uploads whenever new 'saved' items appear in the queue ───────────
   // This runs *after* the setQueue state flush, so queueRef.current is always
@@ -330,6 +341,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete, onPhotoSynced }: U
           file,
           (pct) => updateItem(clientId, { progress: pct }),
           clientId,
+          gpsRef.current,
         );
 
         // Revoke blob URL — server is now the source of truth

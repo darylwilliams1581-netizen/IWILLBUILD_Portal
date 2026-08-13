@@ -94,6 +94,11 @@ export default async function handler(req: Request, res: Response) {
     const label = typeof parsed.fields?.label === 'string' ? parsed.fields.label.trim() : null;
     const uploaderName = session.user.name ?? session.user.email ?? null;
 
+    // GPS fields — sent as strings from FormData, parsed to float (null if absent/invalid)
+    const gpsLat     = parseFloat(String(parsed.fields?.gps_lat  ?? '')) || null;
+    const gpsLng     = parseFloat(String(parsed.fields?.gps_lng  ?? '')) || null;
+    const gpsAccuracy = parseFloat(String(parsed.fields?.gps_accuracy ?? '')) || null;
+
     const saved: Array<{ id: number; filename: string; url: string }> = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -162,6 +167,9 @@ export default async function handler(req: Request, res: Response) {
             imageHeight: imgHeight,
             uploadedByUserId: ctx.userId,
             uploadedByName: uploaderName,
+            gpsLat:      gpsLat      ?? undefined,
+            gpsLng:      gpsLng      ?? undefined,
+            gpsAccuracy: gpsAccuracy ?? undefined,
           }).$returningId();
           return inserted.id;
         },
