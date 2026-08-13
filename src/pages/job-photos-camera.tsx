@@ -772,40 +772,46 @@ export default function JobPhotosCameraPage() {
               ))}
             </div>
 
-            {/* Label input */}
-            <div className="mb-1">
-              <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-3 h-11">
-                <Pencil size={13} className="text-white/40 shrink-0" />
-                <input
-                  type="text"
-                  value={draftLabel}
-                  onChange={(e) => setDraftLabel(e.target.value.slice(0, 120))}
-                  placeholder="Label (optional)…"
-                  maxLength={120}
-                  className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none"
-                  style={{ fontSize: '16px' }}
-                />
-                {draftLabel && (
-                  <button onClick={() => setDraftLabel('')} className="text-white/40 hover:text-white shrink-0">
-                    <X size={13} />
-                  </button>
-                )}
+            {/* Label input — 2-line textarea */}
+            <div className="mb-4">
+              <div className="relative bg-white/10 rounded-xl px-3 pt-2.5 pb-2">
+                <div className="flex items-start gap-1.5">
+                  <Pencil size={13} className="text-white/40 shrink-0 mt-0.5" />
+                  <textarea
+                    value={draftLabel}
+                    onChange={(e) => setDraftLabel(e.target.value.slice(0, 120))}
+                    placeholder="Label (optional)…"
+                    maxLength={120}
+                    rows={2}
+                    className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none resize-none leading-snug overflow-hidden break-words"
+                    style={{
+                      fontSize: '16px',
+                      lineHeight: '1.4',
+                      /* Exactly 2 lines: 2 × (16px × 1.4) = 44.8px — no third line visible */
+                      height: 'calc(2 * 16px * 1.4)',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  />
+                  {draftLabel && (
+                    <button
+                      onClick={() => setDraftLabel('')}
+                      className="text-white/40 hover:text-white shrink-0 mt-0.5"
+                      aria-label="Clear label"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between mt-1 px-1">
-                <span className="text-white/30 text-[10px]">Up to 2 lines · ~60 chars per line</span>
-                <span className="text-white/40 text-[10px]">{draftLabel.length} / 120</span>
+                <span className="text-white/30 text-[10px]">~60 chars per line · 2 lines max</span>
+                <span className={`text-[10px] ${draftLabel.length >= 110 ? 'text-yellow-400' : 'text-white/40'}`}>
+                  {draftLabel.length} / 120
+                </span>
               </div>
             </div>
-
-            {/* Label preview */}
-            {draftLabel.trim() && settings.showLabel && (
-              <div className="mb-4 px-3 py-2 bg-white/5 rounded-xl">
-                <p className="text-white/50 text-[10px] font-medium mb-1 uppercase tracking-wide">Preview — label</p>
-                {wrapLabel(draftLabel.trim()).map((row, i) => (
-                  <p key={i} className="text-white text-[10px] font-semibold leading-tight">{row}</p>
-                ))}
-              </div>
-            )}
 
             {/* Lock toggle inside popup */}
             <button
