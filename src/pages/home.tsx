@@ -2278,7 +2278,7 @@ export default function HomeScreen() {
           <div className="min-w-0">
             <p className="text-white/50 text-[11px] font-medium leading-tight mb-0.5">{greeting}</p>
             <p
-              className="font-extrabold text-[28px] leading-none tracking-[-0.03em] truncate"
+              className="font-extrabold text-[22px] leading-tight tracking-[-0.03em] truncate"
               style={{
                 background: 'linear-gradient(100deg, #ffffff 0%, #c4b5fd 55%, #fb923c 100%)',
                 WebkitBackgroundClip: 'text',

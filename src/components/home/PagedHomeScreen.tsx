@@ -541,8 +541,7 @@ export default function PagedHomeScreen({
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Top bar: page tabs (centred) + utility buttons (right) ─────────── */}
       <div
-        className="flex items-center shrink-0 px-2 pt-2 pb-1 gap-1.5 overflow-hidden"
-        style={{ background: 'transparent' }}
+        className="flex items-center shrink-0 px-2 pt-2 pb-1.5 gap-1.5"
       >
         {/* Centred tab pills — flex-1 so they fill available space, min-w-0 prevents overflow */}
         <div className="flex-1 min-w-0 flex items-center justify-center gap-1">
@@ -566,7 +565,7 @@ export default function PagedHomeScreen({
           })}
         </div>
 
-        {/* Utility buttons — notification, profile, logout — fixed width, never shrink */}
+        {/* Utility buttons — notification, profile, logout */}
         <div className="flex items-center gap-1 shrink-0">
           <div className="shrink-0">
             <NotificationBell />

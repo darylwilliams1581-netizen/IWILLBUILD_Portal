@@ -54,7 +54,11 @@ export interface PendingPhoto {
 
 interface UsePhotoUploadQueueOptions {
   jobId: number;
+  /** Override the upload endpoint. Defaults to /api/jobs/:jobId/photos */
+  uploadEndpoint?: string;
   onBatchComplete?: (uploaded: number, failed: number) => void;
+  /** Called immediately after each individual photo is confirmed on the server */
+  onPhotoSynced?: (serverPhotoId: number) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -145,13 +149,14 @@ function uploadFileXhr(
   file: File,
   onProgress: (pct: number) => void,
   clientId: string,
+  uploadEndpoint?: string,
 ): Promise<{ id: number }> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
     fd.append('photos', file);
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/jobs/${jobId}/photos`);
+    xhr.open('POST', uploadEndpoint ?? `/api/jobs/${jobId}/photos`);
     xhr.withCredentials = true;
     // Server uses this to deduplicate retried/replayed requests
     xhr.setRequestHeader('X-Client-Id', clientId);
@@ -192,7 +197,7 @@ function uploadFileXhr(
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQueueOptions) {
+export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, onPhotoSynced }: UsePhotoUploadQueueOptions) {
   const [queue, setQueue] = useState<PendingPhoto[]>([]);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [restoredFromDevice, setRestoredFromDevice] = useState(false);
@@ -201,6 +206,26 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
   const activeRef  = useRef(0);
   const queueRef   = useRef<PendingPhoto[]>([]);
   queueRef.current = queue;
+
+  // ── Kick uploads whenever new 'saved' items appear in the queue ───────────
+  // This runs *after* the setQueue state flush, so queueRef.current is always
+  // up-to-date when processNext reads it. This replaces the setTimeout kick
+  // inside enqueueFiles which was racing against the async state update and
+  // causing the first photo to sit idle until a second was added.
+  const prevSavedCountRef = useRef(0);
+  useEffect(() => {
+    const savedCount = queue.filter((i) => i.status === 'saved').length;
+    if (savedCount > prevSavedCountRef.current && navigator.onLine) {
+      // New 'saved' items arrived — fill up to CONCURRENCY upload slots
+      const slots = Math.min(savedCount, CONCURRENCY) - activeRef.current;
+      for (let i = 0; i < slots; i++) {
+        setTimeout(() => processNext(), i * 50);
+      }
+    }
+    prevSavedCountRef.current = savedCount;
+  // processNext is stable (useCallback with stable deps) — safe to include
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue]);
 
   // ── Network listeners ──────────────────────────────────────────────────────
 
@@ -308,6 +333,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
           file,
           (pct) => updateItem(clientId, { progress: pct }),
           clientId,
+          uploadEndpoint,
         );
 
         // Revoke blob URL — server is now the source of truth
@@ -327,6 +353,9 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
           error:             null,
           restoredFromDevice: false,
         });
+
+        // Notify immediately — grid refreshes per-photo, not just at batch end
+        onPhotoSynced?.(result.id);
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Upload failed';
         // Record failure timestamp for diagnostics
@@ -416,12 +445,8 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
       if (msg) setStorageWarning(msg);
     });
 
-    // Only kick off upload if online — fire up to CONCURRENCY slots
-    if (navigator.onLine) {
-      for (let i = 0; i < Math.min(newItems.length, CONCURRENCY); i++) {
-        setTimeout(() => processNext(), i * 50);
-      }
-    }
+    // Upload kick is handled by the useEffect that watches for new 'saved'
+    // items — it fires after the setQueue state flush so queueRef is current.
   }, [jobId, processNext]);
 
   // ── Retry a failed item ────────────────────────────────────────────────────
@@ -465,6 +490,20 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
 
   const dismissStorageWarning = useCallback(() => setStorageWarning(null), []);
 
+  /**
+   * Manually kick the upload queue — call this when the user taps "Sync now".
+   * Safe to call at any time; no-ops if already uploading or offline.
+   * Fills up to CONCURRENCY slots from the current 'saved' items.
+   */
+  const syncNow = useCallback(() => {
+    if (!navigator.onLine) return;
+    const saved = queueRef.current.filter((i) => i.status === 'saved');
+    const slots = Math.min(saved.length, CONCURRENCY) - activeRef.current;
+    for (let i = 0; i < slots; i++) {
+      setTimeout(() => processNext(), i * 50);
+    }
+  }, [processNext]);
+
   return {
     queue,
     isUploading,
@@ -483,5 +522,7 @@ export function usePhotoUploadQueue({ jobId, onBatchComplete }: UsePhotoUploadQu
     removeItem,
     clearUploaded,
     clearAll,
+    /** Manually trigger upload of all saved items — for use when auto-sync didn't fire */
+    syncNow,
   };
 }

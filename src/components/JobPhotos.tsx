@@ -232,8 +232,17 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/95">
-      {/* ── Top toolbar: Download · Delete · Close ── */}
-      <div className="shrink-0 flex items-center justify-between px-3 py-2 bg-black/60 backdrop-blur-sm">
+      {/*
+       * ── Top toolbar ──────────────────────────────────────────────────────────
+       * safe-top: padding-top = env(safe-area-inset-top) so the toolbar clears
+       * the iOS status bar notch/Dynamic Island on every device.
+       * The toolbar itself sits at z-50 (inherited from the root) so it is
+       * always above the photo image layer (z-10).
+       */}
+      <div
+        className="shrink-0 flex items-center justify-between px-3 pb-2 bg-black/80 backdrop-blur-sm"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 10px)' }}
+      >
         {/* Left: photo counter + label */}
         <div className="flex flex-col min-w-0">
           <span className="text-white/80 text-xs font-semibold truncate max-w-[180px]">
@@ -296,34 +305,35 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
         {/* Backdrop tap-to-close */}
         <div className="absolute inset-0" onClick={onClose} />
 
-        {/* Prev arrow */}
+        {/*
+         * Prev / Next arrows: z-20 so they always render above the photo
+         * container (z-10). pointer-events-auto ensures taps reach them even
+         * when the backdrop div sits underneath.
+         */}
         {index > 0 && (
           <button
             onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
             aria-label="Previous photo"
           >
             <ChevronLeft size={22} />
           </button>
         )}
 
-        {/* Photo + overlaid edit/lock button */}
+        {/* Photo + overlaid lock badge */}
         <div className="relative z-10 flex items-center justify-center max-w-[92vw] max-h-full">
           <img
             key={bust ?? photo.filename}
             src={previewSrc(photo, bust)}
             alt={photo.label ?? photo.originalName ?? 'Job photo'}
             className="block max-w-full object-contain rounded-lg shadow-2xl"
-            style={{ maxHeight: 'min(calc(100dvh - 120px), calc(100vh - 120px))' }}
+            style={{ maxHeight: 'min(calc(100dvh - 140px), calc(100vh - 140px))' }}
             loading="eager"
             decoding="async"
           />
 
           {/*
            * ── TOP-RIGHT CORNER LOCK BADGE (locked photos only) ─────────────
-           * Shows a non-interactive lock badge so the user knows the photo
-           * is locked. No editor button — editing is accessed via the pencil
-           * icon in the thumbnail grid, not from the lightbox.
            */}
           {isLocked && (
             <div
@@ -342,11 +352,11 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
           )}
         </div>
 
-        {/* Next arrow — offset left so it never overlaps the edit/lock button */}
+        {/* Next arrow — z-20 so it sits above the photo layer */}
         {index < photos.length - 1 && (
           <button
             onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
-            className="absolute right-14 top-1/2 -translate-y-1/2 z-10 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
             aria-label="Next photo"
           >
             <ChevronRight size={22} />
@@ -354,8 +364,11 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
         )}
       </div>
 
-      {/* ── Caption bar ── */}
-      <div className="shrink-0 px-4 py-2.5 bg-black/60 backdrop-blur-sm text-center">
+      {/* ── Caption bar — respects bottom safe area (home indicator) ── */}
+      <div
+        className="shrink-0 px-4 pt-2.5 bg-black/80 backdrop-blur-sm text-center"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}
+      >
         {photo.uploadedByName && (
           <p className="text-white/45 text-xs">
             Uploaded by {photo.uploadedByName} · {formatDateTime(photo.createdAt)}
@@ -544,17 +557,35 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     retryItem,
     removeItem,
     clearUploaded,
+    syncNow,
     storageWarning,
     dismissStorageWarning,
   } = usePhotoUploadQueue({
     jobId,
-    onBatchComplete: (uploaded, _failed) => {
+    onPhotoSynced: (_id) => {
+      // Refresh the grid immediately when each photo lands on the server —
+      // don't wait for the whole batch to finish.
+      photoCache.delete(jobId);
+      void fetchPhotos(true);
+    },
+    onBatchComplete: (uploaded, failed) => {
       if (uploaded > 0) {
-        // Invalidate cache and reload first page
+        // Belt-and-suspenders: also refresh at batch end in case a per-photo
+        // refresh was missed (e.g. rapid concurrent uploads).
         photoCache.delete(jobId);
         void fetchPhotos(true);
       }
       setSummaryDismissed(false);
+
+      // Auto-clear synced items when the whole batch finished without failures.
+      // Give the "X photos synced" banner 1.8 s to show before dismissing so
+      // the user gets visual confirmation, then clear automatically.
+      if (failed === 0 && uploaded > 0) {
+        setTimeout(() => {
+          clearUploaded();
+          setSummaryDismissed(true);
+        }, 1800);
+      }
     },
   });
 
@@ -915,14 +946,26 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
               {isUploading ? 'Syncing…' : !isOnline ? 'Saved on device' : 'Ready to sync'}
             </p>
-            {!isUploading && (
-              <button
-                onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
-                className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold transition-colors"
-              >
-                Clear done
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Sync now — shown when online with saved items waiting and not already uploading */}
+              {!isUploading && isOnline && savedCount > 0 && (
+                <button
+                  onClick={syncNow}
+                  className="text-[11px] text-violet-600 hover:text-violet-800 font-semibold transition-colors"
+                >
+                  Sync now
+                </button>
+              )}
+              {/* Clear done — shown only when there are synced items to clear */}
+              {!isUploading && uploadedCount > 0 && (
+                <button
+                  onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
+                  className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold transition-colors"
+                >
+                  Clear done
+                </button>
+              )}
+            </div>
           </div>
           {queue.map((item) => (
             <PendingPhotoCard

@@ -12,27 +12,27 @@
   "id": "com.iwillbuild.portal",
   "icons": [
     {
-      "src": "/assets/app-icon-192.png",
+      "src": "/icon-192.svg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/assets/app-icon-192.png",
+      "src": "/icon-192.svg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "maskable"
     },
     {
-      "src": "/assets/app-icon-512.png",
+      "src": "/icon-512.svg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/assets/app-icon-512.png",
+      "src": "/icon-512.svg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "maskable"
     },
     {
@@ -48,28 +48,28 @@
       "short_name": "Dashboard",
       "description": "Go to dashboard",
       "url": "/dashboard",
-      "icons": [{ "src": "/assets/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
     },
     {
       "name": "Jobs",
       "short_name": "Jobs",
       "description": "View all jobs",
       "url": "/jobs",
-      "icons": [{ "src": "/assets/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
     },
     {
       "name": "Fleet",
       "short_name": "Fleet",
       "description": "Live fleet tracking",
       "url": "/fleet",
-      "icons": [{ "src": "/assets/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
     },
     {
       "name": "Safety",
       "short_name": "Safety",
       "description": "Safety forms and SWMS",
       "url": "/safety",
-      "icons": [{ "src": "/assets/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
     }
   ],
   "screenshots": [],

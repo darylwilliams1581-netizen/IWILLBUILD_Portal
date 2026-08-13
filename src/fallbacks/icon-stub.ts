@@ -250,6 +250,7 @@ export const Wrench = NullIcon;
 export const X = NullIcon;
 export const XCircle = NullIcon;
 export const Zap = NullIcon;
+export const ZapOff = NullIcon;
 export const ZoomIn = NullIcon;
 export const ZoomOut = NullIcon;
 
