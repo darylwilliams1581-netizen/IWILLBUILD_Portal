@@ -7,16 +7,12 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
-  Eye,
   Trash2,
-  Printer,
-  RotateCcw,
   X,
-  ExternalLink,
   ChevronDown,
-  PlayCircle,
-  Share2,
+  ChevronRight,
   Mail,
+  Eye,
 } from 'lucide-react';
 import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 import { motion, AnimatePresence } from 'motion/react';
@@ -187,112 +183,27 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
       transition={{ duration: 0.15 }}
       className="rounded-xl border border-slate-200 bg-white overflow-hidden"
     >
-      {/* Main row — click to open in new tab */}
+      {/* Single-line pill — click anywhere to open */}
       <div
         onClick={onOpen}
-        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
       >
-        <div className={`p-2 rounded-lg shrink-0 ${isCompleted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+        {/* Status icon */}
+        <div className={`p-1.5 rounded-lg shrink-0 ${isCompleted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
           {isCompleted
-            ? <CheckCircle2 size={14} className="text-emerald-600" />
-            : <Clock size={14} className="text-amber-600" />
+            ? <CheckCircle2 size={13} className="text-emerald-600" />
+            : <Clock size={13} className="text-amber-500" />
           }
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 truncate">{templateName}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {isCompleted ? 'Completed' : 'Started'} by {submission.completedByName ?? 'Unknown'}
-            {' · '}{fmtDate(submission.createdAt)} {fmtTime(submission.createdAt)}
-          </p>
-        </div>
+
+        {/* Name */}
+        <p className="flex-1 min-w-0 text-sm font-semibold text-slate-900 truncate">{templateName}</p>
+
+        {/* Status badge */}
         <StatusBadge status={submission.status} />
-        <ExternalLink size={12} className="text-slate-300 shrink-0" />
-      </div>
 
-      {/* Action bar — icon-only buttons, consistent across all states */}
-      <div className="px-3 pb-3 pt-2 border-t border-slate-100 bg-slate-50/60 flex flex-col gap-2">
-        <div className="flex items-center gap-1.5">
-
-          {/* Primary action: Continue (in-progress) or View (completed) */}
-          {isCompleted ? (
-            <button
-              onClick={onOpen}
-              title="View form"
-              className="p-2 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 transition-colors"
-            >
-              <Eye size={14} />
-            </button>
-          ) : (
-            <button
-              onClick={onOpen}
-              title="Continue filling out"
-              className="p-2 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
-            >
-              <PlayCircle size={14} />
-            </button>
-          )}
-
-          {/* Print / PDF */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onOpen(); }}
-            title="Print / PDF"
-            className="p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
-          >
-            <Printer size={14} />
-          </button>
-
-          {/* Email with PDF */}
-          <button
-            onClick={(e) => { e.stopPropagation(); setEmailTo(''); setEmailError(''); setEmailSent(false); setEmailOpen(true); }}
-            title="Email with PDF"
-            className="p-2 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-600 transition-colors"
-          >
-            <Mail size={14} />
-          </button>
-
-          {/* Share link */}
-          <button
-            onClick={(e) => { e.stopPropagation(); setShareOpen(o => !o); }}
-            title="Share link"
-            className={`p-2 rounded-lg bg-white border transition-colors ${shareOpen ? 'border-violet-400 text-violet-600' : 'border-slate-200 hover:border-violet-300 hover:text-violet-600 text-slate-600'}`}
-          >
-            <Share2 size={14} />
-          </button>
-
-          {/* Reopen — completed but not submitted */}
-          {!isSubmitted && isCompleted && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpen(); }}
-              title="Reopen / edit"
-              className="p-2 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
-            >
-              <RotateCcw size={14} />
-            </button>
-          )}
-
-          {/* Delete — role-gated */}
-          {canDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              title="Delete form"
-              className="p-2 rounded-lg bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-400 hover:text-red-600 transition-colors ml-auto"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Share panel — expands inline */}
-        {shareOpen && (
-          <div className="mt-1">
-            <FormSharePanel
-              submissionId={submission.id}
-              submissionStatus={submission.status}
-              canReset={canReset}
-              onStatusChange={onStatusChange}
-            />
-          </div>
-        )}
+        {/* Chevron hint */}
+        <ChevronRight size={13} className="text-slate-300 shrink-0" />
       </div>
 
       {/* Email modal */}
