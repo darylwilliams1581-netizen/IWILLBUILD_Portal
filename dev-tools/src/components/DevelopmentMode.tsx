@@ -1613,6 +1613,24 @@ export default function DevelopmentMode() {
               send({ type: 'AUDIT_RESPONSE', issues: [] })
             }
           })
+        } else if (event.data?.type === 'REQUEST_MEDIA_AUDIT') {
+          const requestId: string | undefined =
+            typeof event.data.requestId === 'string' ? event.data.requestId : undefined
+          import('../utils/domAudit').then(async ({ runMediaAudit }) => {
+            const result = await runMediaAudit()
+            if (window.parent !== window) {
+              send({ type: 'MEDIA_AUDIT_RESPONSE', requestId, result })
+            }
+          }).catch((error) => {
+            console.error('Media audit: Error running:', error)
+            if (window.parent !== window) {
+              send({
+                type: 'MEDIA_AUDIT_RESPONSE',
+                requestId,
+                result: { eligibleCount: 1, checkedCount: 0, failures: [] },
+              })
+            }
+          })
         } else if (event.data?.type === 'RELOAD_MEDIA_SLOT' && event.data.slotPath) {
           reloadMediaSlot(event.data.slotPath, event.data.isVideo)
         } else if (
