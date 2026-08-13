@@ -196,8 +196,14 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
           }
         </div>
 
-        {/* Name */}
-        <p className="flex-1 min-w-0 text-sm font-semibold text-slate-900 truncate">{templateName}</p>
+        {/* Name + meta */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-900 truncate leading-tight">{templateName}</p>
+          <p className="text-[11px] text-slate-400 leading-tight mt-0.5 truncate">
+            {fmtDate(isCompleted ? submission.updatedAt : submission.createdAt)}
+            {submission.completedByName ? ` · ${submission.completedByName}` : ''}
+          </p>
+        </div>
 
         {/* Status badge */}
         <StatusBadge status={submission.status} />
