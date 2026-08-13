@@ -397,6 +397,10 @@ export default function JobPhotosCameraPage() {
   const [capturing, setCapturing] = useState(false);
   const [flashAnim, setFlashAnim] = useState(false);
 
+  // ── Last captured thumbnail (gallery button preview) ────────────────────────
+  const [lastThumb, setLastThumb] = useState<string | null>(null);
+  const lastThumbRef = useRef<string | null>(null);
+
   // ── Facing mode (rear / front) ──────────────────────────────────────────────
   type FacingMode = 'environment' | 'user';
   const [facingMode, setFacingMode] = useState<FacingMode>('environment');
@@ -535,6 +539,7 @@ export default function JobPhotosCameraPage() {
     const thumb = URL.createObjectURL(file);
     setLastThumb((prev) => {
       if (prev) URL.revokeObjectURL(prev);
+      lastThumbRef.current = thumb;
       return thumb;
     });
     setSessionCount((n) => n + 1);
