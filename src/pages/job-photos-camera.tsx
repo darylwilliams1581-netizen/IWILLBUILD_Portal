@@ -74,6 +74,26 @@ interface Job {
 // Watermark compositor
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Wrap a label string into at most 2 lines of ~60 chars each.
+ * Prefers word-boundary wraps; hard-wraps at 60 if no space found.
+ * Total input is capped at 120 characters before wrapping.
+ */
+function wrapLabel(text: string): string[] {
+  const MAX_CHARS  = 120;
+  const LINE_WIDTH = 60;
+  const capped = text.slice(0, MAX_CHARS);
+  if (capped.length <= LINE_WIDTH) return [capped];
+
+  // Find the last space at or before position LINE_WIDTH
+  const breakAt = capped.lastIndexOf(' ', LINE_WIDTH);
+  const splitAt = breakAt > 0 ? breakAt : LINE_WIDTH;
+
+  const line1 = capped.slice(0, splitAt).trimEnd();
+  const line2 = capped.slice(splitAt).trimStart().slice(0, LINE_WIDTH);
+  return line2.length > 0 ? [line1, line2] : [line1];
+}
+
 interface WatermarkOpts {
   showLabel:   boolean;
   showDate:    boolean;
@@ -125,8 +145,8 @@ async function compositeWatermark(
   if (opts.showTime)  line1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
   const line1 = line1Parts.join('  —  ');
 
-  // Build line 2: Label (hidden when off or empty)
-  const line2 = (opts.showLabel && opts.label.trim()) ? opts.label.trim().slice(0, 80) : '';
+  // Build line 2: Label (hidden when off or empty; max 120 chars, max 2 wrapped lines)
+  const line2 = (opts.showLabel && opts.label.trim()) ? opts.label.trim() : '';
 
   const hasLine1 = line1.length > 0;
   const hasLine2 = line2.length > 0;
@@ -153,26 +173,9 @@ async function compositeWatermark(
   ctx.font         = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
   ctx.textBaseline = 'alphabetic';
 
-  // Measure lines (line2 may wrap — split into wrapped lines)
-  const wrapText = (text: string, maxW: number): string[] => {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let current = '';
-    for (const word of words) {
-      const test = current ? `${current} ${word}` : word;
-      if (ctx.measureText(test).width > maxW && current) {
-        lines.push(current);
-        current = word;
-      } else {
-        current = test;
-      }
-    }
-    if (current) lines.push(current);
-    return lines;
-  };
-
+  // Measure lines — label uses shared wrapLabel (max 2 lines, 120 chars)
   const line1Rows  = hasLine1 ? [line1] : [];
-  const line2Rows  = hasLine2 ? wrapText(line2, maxWidth - padH * 2) : [];
+  const line2Rows  = hasLine2 ? wrapLabel(line2) : [];
   const allRows    = [...line1Rows, ...line2Rows];
   const totalRows  = allRows.length;
 
@@ -457,9 +460,9 @@ export default function JobPhotosCameraPage() {
   if (settings.showJobName && job?.name)  previewLine1Parts.push(job.name);
   if (settings.showDate)                  previewLine1Parts.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
   if (settings.showTime)                  previewLine1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
-  const previewLine1 = previewLine1Parts.join('  —  ');
-  const previewLine2 = (settings.showLabel && label.trim()) ? label.trim() : '';
-  const hasPreview   = previewLine1.length > 0 || previewLine2.length > 0;
+  const previewLine1     = previewLine1Parts.join('  —  ');
+  const previewLabelRows = (settings.showLabel && label.trim()) ? wrapLabel(label.trim()) : [];
+  const hasPreview       = previewLine1.length > 0 || previewLabelRows.length > 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -489,22 +492,27 @@ export default function JobPhotosCameraPage() {
         </button>
 
         {/* Label input */}
-        <div className="flex-1 flex items-center gap-1.5 bg-black/40 rounded-full px-3 h-9 min-w-0">
-          <Tag size={13} className="text-white/60 shrink-0" />
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder={labelLocked ? 'Label (locked)…' : 'Label…'}
-            maxLength={60}
-            className="flex-1 bg-transparent text-white text-sm placeholder-white/40 outline-none min-w-0"
-            style={{ fontSize: '16px' }}
-          />
-          {label && (
-            <button onClick={() => setLabel('')} className="text-white/50 hover:text-white shrink-0">
-              <X size={13} />
-            </button>
-          )}
+        <div className="flex-1 flex flex-col min-w-0 gap-0.5">
+          <div className="flex items-center gap-1.5 bg-black/40 rounded-full px-3 h-9 min-w-0">
+            <Tag size={13} className="text-white/60 shrink-0" />
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value.slice(0, 120))}
+              placeholder={labelLocked ? 'Label (locked)…' : 'Label…'}
+              maxLength={120}
+              className="flex-1 bg-transparent text-white text-sm placeholder-white/40 outline-none min-w-0"
+              style={{ fontSize: '16px' }}
+            />
+            {label && (
+              <button onClick={() => setLabel('')} className="text-white/50 hover:text-white shrink-0">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <span className="text-right text-[10px] text-white/40 pr-3 leading-none">
+            {label.length} / 120
+          </span>
         </div>
 
         {/* Lock toggle */}
@@ -644,11 +652,11 @@ export default function JobPhotosCameraPage() {
                   {previewLine1}
                 </span>
               )}
-              {previewLine2 && (
-                <span className="text-white text-[10px] font-semibold leading-tight break-words">
-                  {previewLine2}
+              {previewLabelRows.map((row, i) => (
+                <span key={i} className="text-white text-[10px] font-semibold leading-tight break-words">
+                  {row}
                 </span>
-              )}
+              ))}
             </div>
           </div>
         )}
