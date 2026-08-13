@@ -5,8 +5,9 @@
  * tab panel so it stays within the sidebar layout — no full-screen navigate.
  */
 import { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Upload, CheckSquare, X, Download, Send, Share2, Trash2,
+  Upload, Camera, CheckSquare, X, Download, Send, Share2, Trash2,
   Grid2x2, Grid3x3, LayoutGrid, Loader2, Copy, Check,
   QrCode, ExternalLink,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ interface Props {
 
 export default function JobPhotosTab({ jobId, jobName }: Props) {
   const photosRef = useRef<JobPhotosHandle>(null);
+  const navigate  = useNavigate();
 
   const [photoCount, setPhotoCount]       = useState(0);
   const [uploading, setUploading]         = useState(false);
@@ -125,7 +127,15 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
           Upload
         </button>
 
-        {/* Camera — removed: Upload button already opens file picker which includes camera on mobile */}
+        {/* Camera — navigate to dedicated camera page for this job */}
+        <button
+          onClick={() => navigate(`/jobs/${jobId}/camera`)}
+          disabled={uploading || atLimit}
+          title="Take a photo"
+          className="flex items-center justify-center px-2.5 py-1.5 bg-muted hover:bg-gray-200 disabled:opacity-50 text-foreground rounded-lg transition-colors"
+        >
+          <Camera size={12} />
+        </button>
 
         {/* Select / Done */}
         {!selectMode ? (
