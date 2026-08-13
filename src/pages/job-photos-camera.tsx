@@ -55,7 +55,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2,
-  Lock, Unlock, Tag, AlertTriangle, Camera,
+  Lock, Unlock, AlertTriangle, Camera, Pencil,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
@@ -271,7 +271,12 @@ export default function JobPhotosCameraPage() {
 
   // ── Watermark settings ──────────────────────────────────────────────────────
   const { settings, toggle } = useWatermarkSettings();
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings,      setShowSettings]      = useState(false);
+  const [showWatermarkPopup, setShowWatermarkPopup] = useState(false);
+
+  // Draft state inside the watermark popup (committed on Done)
+  const [draftLabel,    setDraftLabel]    = useState('');
+  const [draftLocked,   setDraftLocked]   = useState(false);
 
   // ── Label state ─────────────────────────────────────────────────────────────
   const [labelLocked, setLabelLocked] = useState(false);
@@ -451,6 +456,19 @@ export default function JobPhotosCameraPage() {
     setCapturing(false);
   }, [pendingBitmap]);
 
+  // ── Watermark popup helpers ─────────────────────────────────────────────────
+  const openWatermarkPopup = useCallback(() => {
+    setDraftLabel(label);
+    setDraftLocked(labelLocked);
+    setShowWatermarkPopup(true);
+  }, [label, labelLocked]);
+
+  const commitWatermarkPopup = useCallback(() => {
+    setLabel(draftLabel);
+    setLabelLocked(draftLocked);
+    setShowWatermarkPopup(false);
+  }, [draftLabel, draftLocked]);
+
   // ── Live preview watermark (CSS only — not composited) ─────────────────────
   // Line 1: JobName — Date — Time  (only enabled values)
   // Line 2: Label                  (hidden when off or empty)
@@ -478,9 +496,9 @@ export default function JobPhotosCameraPage() {
       </Helmet>
       <h1 className="sr-only">Job Camera</h1>
 
-      {/* ── Top bar ── */}
+      {/* ── Top bar: Back + job name only ── */}
       <div
-        className="relative z-20 flex items-center gap-2 px-3 bg-gradient-to-b from-black/70 to-transparent shrink-0"
+        className="relative z-20 flex items-center gap-2 px-3 shrink-0 bg-gradient-to-b from-black/70 to-transparent"
         style={{ paddingTop: 'max(env(safe-area-inset-top), 10px)', paddingBottom: '10px' }}
       >
         <button
@@ -490,88 +508,10 @@ export default function JobPhotosCameraPage() {
         >
           <ArrowLeft size={18} />
         </button>
-
-        {/* Label input */}
-        <div className="flex-1 flex flex-col min-w-0 gap-0.5">
-          <div className="flex items-center gap-1.5 bg-black/40 rounded-full px-3 h-9 min-w-0">
-            <Tag size={13} className="text-white/60 shrink-0" />
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value.slice(0, 120))}
-              placeholder={labelLocked ? 'Label (locked)…' : 'Label…'}
-              maxLength={120}
-              className="flex-1 bg-transparent text-white text-sm placeholder-white/40 outline-none min-w-0"
-              style={{ fontSize: '16px' }}
-            />
-            {label && (
-              <button onClick={() => setLabel('')} className="text-white/50 hover:text-white shrink-0">
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          <span className="text-right text-[10px] text-white/40 pr-3 leading-none">
-            {label.length} / 120
-          </span>
-        </div>
-
-        {/* Lock toggle */}
-        <button
-          onClick={() => setLabelLocked((v) => !v)}
-          className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shrink-0 ${
-            labelLocked ? 'bg-primary text-white' : 'bg-black/40 text-white/70 hover:bg-black/60'
-          }`}
-          aria-label={labelLocked ? 'Label locked' : 'Label unlocked'}
-          title={labelLocked ? 'Tap to unlock — prompt after each shot' : 'Tap to lock — reuse label for all shots'}
-        >
-          {labelLocked ? <Lock size={15} /> : <Unlock size={15} />}
-        </button>
-
-        {/* Settings */}
-        <button
-          onClick={() => setShowSettings((v) => !v)}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0"
-          aria-label="Watermark settings"
-        >
-          <Settings size={16} />
-        </button>
+        <span className="flex-1 text-white text-sm font-semibold truncate px-1">
+          {job?.name ?? 'Camera'}
+        </span>
       </div>
-
-      {/* ── Settings panel ── */}
-      {showSettings && (
-        <div className="relative z-20 mx-3 mb-2 bg-black/78 backdrop-blur-sm rounded-2xl p-4 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-white text-sm font-semibold">Watermark fields</p>
-            <button onClick={() => setShowSettings(false)} className="text-white/50 hover:text-white">
-              <X size={15} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                { key: 'showJobName', display: 'Job name' },
-                { key: 'showDate',    display: 'Date' },
-                { key: 'showTime',    display: 'Time' },
-                { key: 'showLabel',   display: 'Label' },
-              ] as { key: keyof typeof settings; display: string }[]
-            ).map(({ key, display }) => (
-              <button
-                key={key}
-                onClick={() => toggle(key)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'
-                }`}
-              >
-                {settings[key] ? <Check size={13} /> : <X size={13} />}
-                {display}
-              </button>
-            ))}
-          </div>
-          <p className="text-white/38 text-[10px] mt-3 leading-relaxed">
-            Line 1: Job name — Date — Time · Line 2: Label
-          </p>
-        </div>
-      )}
 
       {/* ── Lens area — picture frame + live preview ── */}
       <div
@@ -643,73 +583,259 @@ export default function JobPhotosCameraPage() {
           <div className="absolute inset-0 bg-white pointer-events-none z-30 opacity-70" />
         )}
 
-        {/* Live watermark preview (CSS only — not composited into JPEG) */}
-        {camState === 'ready' && hasPreview && (
-          <div className="absolute bottom-3 left-3 right-3 pointer-events-none z-10">
-            <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-full">
-              {previewLine1 && (
-                <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">
-                  {previewLine1}
-                </span>
-              )}
-              {previewLabelRows.map((row, i) => (
-                <span key={i} className="text-white text-[10px] font-semibold leading-tight break-words">
-                  {row}
-                </span>
-              ))}
-            </div>
+        {/* ── Tappable watermark pill ── */}
+        <button
+          onClick={openWatermarkPopup}
+          className="absolute bottom-3 left-3 z-10 text-left"
+          aria-label="Edit watermark"
+        >
+          <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-[calc(100vw-1.5rem)]">
+            {previewLine1 && (
+              <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">
+                {previewLine1}
+              </span>
+            )}
+            {previewLabelRows.map((row, i) => (
+              <span key={i} className="text-white text-[10px] font-semibold leading-tight break-words">
+                {row}
+              </span>
+            ))}
+            {/* Edit hint icon */}
+            <span className="flex items-center gap-1 mt-0.5">
+              <Pencil size={9} className="text-white/40" />
+              <span className="text-white/40 text-[9px] leading-none">tap to edit</span>
+            </span>
           </div>
-        )}
+        </button>
       </div>
 
-      {/* ── Bottom shutter bar ── */}
+      {/* ── Bottom footer: Back · Lock · SHUTTER · Settings · Gallery ── */}
       <div
-        className="relative z-20 flex items-center justify-between px-8 bg-gradient-to-t from-black/80 to-transparent shrink-0"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)', paddingTop: '16px' }}
+        className="relative z-20 shrink-0 bg-gradient-to-t from-black/90 to-transparent"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)', paddingTop: '12px' }}
       >
-        {/* Thumbnail / back */}
-        <button
-          onClick={() => navigate(`/jobs/${id}/photos`)}
-          className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation"
-          aria-label="Back to photos"
-        >
-          {lastThumb ? (
-            <img src={lastThumb} alt="Last captured" className="w-full h-full object-cover" />
-          ) : (
-            <div className="flex flex-col items-center gap-0.5">
-              <ArrowLeft size={16} className="text-white/60" />
-              {queue.length > 0 && (
-                <span className="text-[9px] text-white/60 font-bold">{queue.length}</span>
-              )}
-            </div>
-          )}
-        </button>
+        <div className="flex items-center justify-between px-6">
 
-        {/* Shutter */}
-        <button
-          onClick={() => void handleShutter()}
-          disabled={camState !== 'ready' || capturing}
-          className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0"
-          aria-label="Take photo"
-        >
-          {capturing && !pendingBitmap ? (
-            <Loader2 size={28} className="animate-spin text-white" />
-          ) : (
-            <div className="w-14 h-14 rounded-full bg-white" />
-          )}
-        </button>
+          {/* Back / gallery thumbnail */}
+          <button
+            onClick={() => navigate(`/jobs/${id}/photos`)}
+            className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation"
+            aria-label="Back to photos"
+          >
+            {lastThumb ? (
+              <img src={lastThumb} alt="Last captured" className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center gap-0.5">
+                <ArrowLeft size={16} className="text-white/60" />
+                {queue.length > 0 && (
+                  <span className="text-[9px] text-white/60 font-bold">{queue.length}</span>
+                )}
+              </div>
+            )}
+          </button>
 
-        {/* Upload indicator */}
-        <div className="w-14 h-14 flex flex-col items-center justify-center gap-1 shrink-0">
-          {isUploading
-            ? <Loader2 size={16} className="animate-spin text-white/60" />
-            : <Camera size={16} className="text-white/25" />
-          }
-          {queue.length > 0 && (
-            <span className="text-[9px] text-white/55 font-bold">{queue.length}</span>
-          )}
+          {/* Lock */}
+          <button
+            onClick={() => setLabelLocked((v) => !v)}
+            className={`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-colors shrink-0 gap-0.5 ${
+              labelLocked ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'
+            }`}
+            aria-label={labelLocked ? 'Label locked — tap to unlock' : 'Label unlocked — tap to lock'}
+            title={labelLocked ? 'Tap to unlock — prompt after each shot' : 'Tap to lock — reuse label for all shots'}
+          >
+            {labelLocked ? <Lock size={16} /> : <Unlock size={16} />}
+            <span className="text-[8px] font-semibold leading-none opacity-70">
+              {labelLocked ? 'LOCKED' : 'LOCK'}
+            </span>
+          </button>
+
+          {/* Shutter — dominant centre control */}
+          <button
+            onClick={() => void handleShutter()}
+            disabled={camState !== 'ready' || capturing}
+            className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0"
+            aria-label="Take photo"
+          >
+            {capturing && !pendingBitmap ? (
+              <Loader2 size={28} className="animate-spin text-white" />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-white" />
+            )}
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => setShowSettings((v) => !v)}
+            className={`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-colors shrink-0 gap-0.5 ${
+              showSettings ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'
+            }`}
+            aria-label="Watermark settings"
+          >
+            <Settings size={16} />
+            <span className="text-[8px] font-semibold leading-none opacity-70">FIELDS</span>
+          </button>
+
+          {/* Upload indicator */}
+          <div className="w-14 h-14 flex flex-col items-center justify-center gap-1 shrink-0">
+            {isUploading
+              ? <Loader2 size={16} className="animate-spin text-white/60" />
+              : <Camera size={16} className="text-white/25" />
+            }
+            {queue.length > 0 && (
+              <span className="text-[9px] text-white/55 font-bold">{queue.length}</span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* ── Settings panel (watermark field toggles) ── */}
+      {showSettings && (
+        <div
+          className="fixed z-[55] left-0 right-0 mx-3 bg-black/90 backdrop-blur-sm rounded-2xl p-4"
+          style={{ bottom: 'calc(max(env(safe-area-inset-bottom), 16px) + 88px)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-white text-sm font-semibold">Watermark fields</p>
+            <button onClick={() => setShowSettings(false)} className="text-white/50 hover:text-white">
+              <X size={15} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { key: 'showJobName', display: 'Job name' },
+                { key: 'showDate',    display: 'Date' },
+                { key: 'showTime',    display: 'Time' },
+                { key: 'showLabel',   display: 'Label' },
+              ] as { key: keyof typeof settings; display: string }[]
+            ).map(({ key, display }) => (
+              <button
+                key={key}
+                onClick={() => toggle(key)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'
+                }`}
+              >
+                {settings[key] ? <Check size={13} /> : <X size={13} />}
+                {display}
+              </button>
+            ))}
+          </div>
+          <p className="text-white/38 text-[10px] mt-3 leading-relaxed">
+            Line 1: Job name — Date — Time · Line 2: Label
+          </p>
+        </div>
+      )}
+
+      {/* ── Watermark popup (tapping the pill) ── */}
+      {showWatermarkPopup && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowWatermarkPopup(false); }}
+        >
+          <div className="w-full bg-gray-950 rounded-t-3xl border-t border-white/10 px-5 pt-5 pb-safe">
+            {/* Handle */}
+            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5" />
+
+            <p className="text-white text-base font-semibold mb-4">Watermark</p>
+
+            {/* Date/time preview row */}
+            {(settings.showDate || settings.showTime || settings.showJobName) && (
+              <div className="mb-3 px-3 py-2 bg-white/5 rounded-xl">
+                <p className="text-white/50 text-[10px] font-medium mb-1 uppercase tracking-wide">Preview — line 1</p>
+                <p className="text-white text-[11px] font-bold leading-tight">
+                  {previewLine1 || '—'}
+                </p>
+              </div>
+            )}
+
+            {/* Toggles */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {(
+                [
+                  { key: 'showJobName', display: 'Job name' },
+                  { key: 'showDate',    display: 'Date' },
+                  { key: 'showTime',    display: 'Time' },
+                  { key: 'showLabel',   display: 'Label' },
+                ] as { key: keyof typeof settings; display: string }[]
+              ).map(({ key, display }) => (
+                <button
+                  key={key}
+                  onClick={() => toggle(key)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'
+                  }`}
+                >
+                  {settings[key] ? <Check size={13} /> : <X size={13} />}
+                  {display}
+                </button>
+              ))}
+            </div>
+
+            {/* Label input */}
+            <div className="mb-1">
+              <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-3 h-11">
+                <Pencil size={13} className="text-white/40 shrink-0" />
+                <input
+                  type="text"
+                  value={draftLabel}
+                  onChange={(e) => setDraftLabel(e.target.value.slice(0, 120))}
+                  placeholder="Label (optional)…"
+                  maxLength={120}
+                  className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none"
+                  style={{ fontSize: '16px' }}
+                />
+                {draftLabel && (
+                  <button onClick={() => setDraftLabel('')} className="text-white/40 hover:text-white shrink-0">
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-between mt-1 px-1">
+                <span className="text-white/30 text-[10px]">Up to 2 lines · ~60 chars per line</span>
+                <span className="text-white/40 text-[10px]">{draftLabel.length} / 120</span>
+              </div>
+            </div>
+
+            {/* Label preview */}
+            {draftLabel.trim() && settings.showLabel && (
+              <div className="mb-4 px-3 py-2 bg-white/5 rounded-xl">
+                <p className="text-white/50 text-[10px] font-medium mb-1 uppercase tracking-wide">Preview — label</p>
+                {wrapLabel(draftLabel.trim()).map((row, i) => (
+                  <p key={i} className="text-white text-[10px] font-semibold leading-tight">{row}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Lock toggle inside popup */}
+            <button
+              onClick={() => setDraftLocked((v) => !v)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-4 text-sm font-medium transition-colors ${
+                draftLocked ? 'bg-primary/20 text-primary border border-primary/40' : 'bg-white/10 text-white/60'
+              }`}
+            >
+              {draftLocked ? <Lock size={15} /> : <Unlock size={15} />}
+              <span>{draftLocked ? 'Label locked — reused for every shot' : 'Label unlocked — prompted after each shot'}</span>
+            </button>
+
+            {/* Cancel / Done */}
+            <div className="flex gap-3 pb-2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
+              <button
+                onClick={() => setShowWatermarkPopup(false)}
+                className="flex-1 py-3 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={commitWatermarkPopup}
+                className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Label prompt (unlocked mode, or locked+empty first shot) ── */}
       {pendingBitmap && (
@@ -723,15 +849,15 @@ export default function JobPhotosCameraPage() {
               )}
             </p>
             <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 h-11 mb-4">
-              <Tag size={14} className="text-white/50 shrink-0" />
+              <Pencil size={14} className="text-white/50 shrink-0" />
               <input
                 ref={pendingLabelRef}
                 type="text"
                 value={pendingLabel}
-                onChange={(e) => setPendingLabel(e.target.value)}
+                onChange={(e) => setPendingLabel(e.target.value.slice(0, 120))}
                 onKeyDown={(e) => { if (e.key === 'Enter') void confirmPending(); }}
                 placeholder="e.g. North wall, Level 2…"
-                maxLength={60}
+                maxLength={120}
                 autoFocus
                 className="flex-1 bg-transparent text-white text-sm placeholder-white/30 outline-none"
                 style={{ fontSize: '16px' }}
