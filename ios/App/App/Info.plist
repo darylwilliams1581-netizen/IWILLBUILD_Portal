@@ -52,7 +52,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>IWILLBUILD saves captured photos to your photo library.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>IWILLBUILD uses your location to show your position on the live map and record job site check-ins.</string>
+	<string>IWILLBUILD uses your location to display local weather on the dashboard, show your position on the live map, and record job site check-ins.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>IWILLBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.</string>
 </dict>

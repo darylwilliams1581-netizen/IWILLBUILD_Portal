@@ -26,6 +26,7 @@ import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
+import WeatherWidget from '@/components/WeatherWidget';
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
 import { isNative } from '@/lib/capacitor-plugins';
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -2269,9 +2270,10 @@ export default function HomeScreen() {
           boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Row 1: date pill */}
+        {/* Row 1: date pill + weather widget */}
         <div className="flex items-center justify-between mb-2.5">
           <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span>
+          <WeatherWidget variant="mobile" />
         </div>
         {/* Row 2: greeting — large, bold, personal */}
         <div className="flex items-end justify-between gap-3">

@@ -13,6 +13,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, Terminal, Bot, UserCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import WeatherWidget from '@/components/WeatherWidget';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
 
@@ -139,6 +140,11 @@ export default function DesktopTopBar() {
         }}>
           {headline}
         </span>
+      </div>
+
+      {/* ── Centre: weather widget ── */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 16 }}>
+        <WeatherWidget variant="desktop" />
       </div>
 
       {/* ── Right ── */}

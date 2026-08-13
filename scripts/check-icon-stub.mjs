@@ -1,31 +1,36 @@
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import fs from 'fs';
+import path from 'path';
 
-function walk(dir, files = []) {
-  for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
-    try {
-      if (statSync(p).isDirectory()) walk(p, files);
-      else if (p.endsWith('.tsx') || p.endsWith('.ts')) files.push(p);
-    } catch {}
+function walk(dir) {
+  const files = [];
+  for (const f of fs.readdirSync(dir)) {
+    const full = path.join(dir, f);
+    if (fs.statSync(full).isDirectory()) files.push(...walk(full));
+    else if (f.endsWith('.tsx') || f.endsWith('.ts')) files.push(full);
   }
   return files;
 }
 
 const used = new Set();
-for (const f of walk('src')) {
-  const src = readFileSync(f, 'utf8');
+for (const file of walk('src')) {
+  const content = fs.readFileSync(file, 'utf8');
   const re = /import\s*\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g;
   let m;
-  while ((m = re.exec(src)) !== null) {
-    const names = m[1].matchAll(/\b([A-Z][a-zA-Z0-9]+)\b/g);
-    for (const n of names) used.add(n[1]);
+  while ((m = re.exec(content)) !== null) {
+    for (const name of m[1].split(',')) {
+      const clean = name.trim().split(/\s+as\s+/)[0].trim();
+      if (clean) used.add(clean);
+    }
   }
 }
 
-const stub = readFileSync('src/fallbacks/icon-stub.ts', 'utf8');
-const exported = new Set();
-for (const m of stub.matchAll(/^export const ([A-Z][a-zA-Z0-9]+)/gm)) exported.add(m[1]);
+const stubContent = fs.readFileSync('src/fallbacks/icon-stub.ts', 'utf8');
+const stubExports = new Set([...stubContent.matchAll(/^export const (\w+)/gm)].map(m => m[1]));
 
-const missing = [...used].filter(n => !exported.has(n)).sort();
-console.log('MISSING:', missing.length ? missing.join(', ') : '(none)');
+const missing = [...used].filter(n => !stubExports.has(n)).sort();
+if (missing.length) {
+  console.log('MISSING from icon-stub:');
+  console.log(missing.join('\n'));
+} else {
+  console.log('All icons present in stub.');
+}
