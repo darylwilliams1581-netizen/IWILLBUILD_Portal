@@ -9,25 +9,31 @@
  *   Line 2: Label                         (wraps if long; hidden when empty/off)
  *
  * Settings keys:
- *   showJobName — job name (first value on line 1)
- *   showDate    — current date (DD/MM/YYYY)
- *   showTime    — current time (HH:MM)
- *   showLabel   — user-typed label (line 2)
+ *   showJobName   — job name (first value on line 1)
+ *   showDate      — current date (DD/MM/YYYY)
+ *   showTime      — current time (HH:MM)
+ *   showLabel     — user-typed label (line 2)
+ *   orientation   — '0' (bottom-left, horizontal) | '-90' (bottom-right, vertical)
  *
- * All default to true on first use.
- * Storage key bumped to v2; v1 key is migrated on first read.
+ * All boolean fields default to true on first use.
+ * orientation defaults to '0'.
+ * Storage key bumped to v3; v2/v1 keys are migrated on first read.
  */
 
 import { useState, useCallback } from 'react';
 
-const STORAGE_KEY    = 'iwb_watermark_settings_v2';
+const STORAGE_KEY    = 'iwb_watermark_settings_v3';
+const STORAGE_KEY_V2 = 'iwb_watermark_settings_v2';
 const STORAGE_KEY_V1 = 'iwb_watermark_settings_v1';
+
+export type WatermarkOrientation = '0' | '-90';
 
 export interface WatermarkSettings {
   showDate:    boolean;
   showTime:    boolean;
   showJobName: boolean;
   showLabel:   boolean;
+  orientation: WatermarkOrientation;
 }
 
 const DEFAULTS: WatermarkSettings = {
@@ -35,11 +41,12 @@ const DEFAULTS: WatermarkSettings = {
   showTime:    true,
   showJobName: true,
   showLabel:   true,
+  orientation: '0',
 };
 
 function load(): WatermarkSettings {
   try {
-    // Try v2 first
+    // Try v3 first
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<WatermarkSettings>;
@@ -48,6 +55,19 @@ function load(): WatermarkSettings {
         showTime:    parsed.showTime    ?? DEFAULTS.showTime,
         showJobName: parsed.showJobName ?? DEFAULTS.showJobName,
         showLabel:   parsed.showLabel   ?? DEFAULTS.showLabel,
+        orientation: (parsed.orientation === '-90' ? '-90' : '0'),
+      };
+    }
+    // Migrate from v2
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2);
+    if (rawV2) {
+      const p = JSON.parse(rawV2) as Record<string, boolean>;
+      return {
+        showDate:    p['showDate']    ?? DEFAULTS.showDate,
+        showTime:    p['showTime']    ?? DEFAULTS.showTime,
+        showJobName: p['showJobName'] ?? DEFAULTS.showJobName,
+        showLabel:   p['showLabel']   ?? DEFAULTS.showLabel,
+        orientation: '0',
       };
     }
     // Migrate from v1 (showJobNumber → showJobName)
@@ -59,6 +79,7 @@ function load(): WatermarkSettings {
         showTime:    p['showTime']      ?? DEFAULTS.showTime,
         showJobName: p['showJobNumber'] ?? DEFAULTS.showJobName,
         showLabel:   p['showLabel']     ?? DEFAULTS.showLabel,
+        orientation: '0',
       };
     }
     return { ...DEFAULTS };
@@ -74,7 +95,7 @@ function save(s: WatermarkSettings): void {
 export function useWatermarkSettings() {
   const [settings, setSettings] = useState<WatermarkSettings>(load);
 
-  const toggle = useCallback((key: keyof WatermarkSettings) => {
+  const toggle = useCallback((key: keyof Pick<WatermarkSettings, 'showDate' | 'showTime' | 'showJobName' | 'showLabel'>) => {
     setSettings((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       save(next);

@@ -126,14 +126,15 @@ interface WatermarkOpts {
   showJobName: boolean;
   label:       string;
   jobName:     string;
+  /** '0' = bottom-left horizontal (default); '-90' = bottom-right vertical, text reads upward */
+  orientation: '0' | '-90';
 }
 
 /**
  * Composite watermark onto source and return a JPEG File.
  *
- * Layout — compact two-row panel anchored to bottom-left:
- *   Line 1: JobName — Date — Time   (only enabled values; separators removed cleanly)
- *   Line 2: Label                   (hidden when disabled or empty; wraps if long)
+ * orientation '0'  — compact panel anchored bottom-left, horizontal text.
+ * orientation '-90' — panel anchored bottom-right, rotated CCW 90°, text reads upward.
  *
  * Returns null if canvas or toBlob fails — caller must show error, not upload.
  */
@@ -190,13 +191,16 @@ async function compositeWatermark(
     });
   }
 
-  // Typography
-  const fontSize  = Math.max(16, Math.round(w * 0.024));
+  // ── Typography (shared between both orientations) ──────────────────────────
+  // For -90° the image is landscape (w > h typically), so base font on the
+  // shorter dimension to keep the panel proportional.
+  const refDim    = opts.orientation === '-90' ? Math.min(w, h) : w;
+  const fontSize  = Math.max(16, Math.round(refDim * 0.024));
   const lineH     = fontSize * 1.35;
   const padH      = fontSize * 0.55;
   const padV      = fontSize * 0.45;
-  const margin    = Math.round(w * 0.022);
-  const maxWidth  = w - margin * 2;
+  const margin    = Math.round(refDim * 0.022);
+  const radius    = fontSize * 0.32;
 
   ctx.font         = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
   ctx.textBaseline = 'alphabetic';
@@ -208,58 +212,121 @@ async function compositeWatermark(
   const totalRows  = allRows.length;
 
   const panelH = padV * 2 + totalRows * lineH - (lineH - fontSize) * 0.5;
-  const panelW = Math.min(
-    maxWidth,
-    Math.max(...allRows.map((r) => ctx.measureText(r).width)) + padH * 2,
-  );
-  const panelX = margin;
-  const panelY = h - margin - panelH;
-  const radius = fontSize * 0.32;
 
-  // Background panel — dark grey at 65% opacity, rounded corners, auto-expands with wrapped label
-  ctx.save();
-  ctx.globalAlpha = 0.65;
-  ctx.fillStyle   = '#1a1a1a';
-  ctx.beginPath();
-  ctx.roundRect(panelX, panelY, panelW, panelH, radius);
-  ctx.fill();
-  ctx.restore();
+  if (opts.orientation === '-90') {
+    // ── Rotated mode: bottom-right corner, text reads upward ─────────────────
+    //
+    // Strategy: translate origin to the bottom-right corner, rotate CCW 90°.
+    // In the rotated coordinate system the "bottom-left" of the panel maps to
+    // the physical bottom-right of the image, and the panel grows upward
+    // (toward the physical top-right).
+    //
+    // In the rotated frame:
+    //   x-axis points upward in the physical image
+    //   y-axis points leftward in the physical image
+    //
+    // We constrain panelW to the physical image height minus two margins so
+    // the panel never overflows the top or bottom edge.
+    const maxPanelW = h - margin * 2;
+    const panelW = Math.min(
+      maxPanelW,
+      Math.max(...allRows.map((r) => ctx.measureText(r).width)) + padH * 2,
+    );
 
-  // Divider between line1 and line2 (only when both present)
-  if (hasLine1 && hasLine2) {
-    const divY = panelY + padV + line1Rows.length * lineH - lineH * 0.15;
     ctx.save();
-    ctx.globalAlpha = 0.28;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth   = 1;
+    // Move origin to bottom-right corner, then rotate CCW 90°
+    ctx.translate(w, h);
+    ctx.rotate(-Math.PI / 2);
+    // Now we're in a rotated frame where (0,0) is the physical bottom-right.
+    // Place the panel at bottom-left of this rotated frame = physical bottom-right.
+    const panelX = margin;
+    const panelY = -panelH - margin; // negative because we're above the rotated baseline
+
+    // Background panel
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle   = '#1a1a1a';
     ctx.beginPath();
-    ctx.moveTo(panelX + padH * 0.5, divY);
-    ctx.lineTo(panelX + panelW - padH * 0.5, divY);
-    ctx.stroke();
+    ctx.roundRect(panelX, panelY, panelW, panelH, radius);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Divider
+    if (hasLine1 && hasLine2) {
+      const divY = panelY + padV + line1Rows.length * lineH - lineH * 0.15;
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(panelX + padH * 0.5, divY);
+      ctx.lineTo(panelX + panelW - padH * 0.5, divY);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Text rows
+    ctx.fillStyle    = '#ffffff';
+    ctx.textBaseline = 'alphabetic';
+    allRows.forEach((row, i) => {
+      const isLabel = i >= line1Rows.length;
+      ctx.font = isLabel
+        ? `600 ${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif`
+        : `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+      const textY = panelY + padV + fontSize + i * lineH;
+      ctx.fillText(row, panelX + padH, textY, panelW - padH * 2);
+    });
+
+    ctx.restore();
+
+  } else {
+    // ── Normal mode: bottom-left corner, horizontal ───────────────────────────
+    const maxWidth = w - margin * 2;
+    const panelW = Math.min(
+      maxWidth,
+      Math.max(...allRows.map((r) => ctx.measureText(r).width)) + padH * 2,
+    );
+    const panelX = margin;
+    const panelY = h - margin - panelH;
+
+    // Background panel
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle   = '#1a1a1a';
+    ctx.beginPath();
+    ctx.roundRect(panelX, panelY, panelW, panelH, radius);
+    ctx.fill();
+    ctx.restore();
+
+    // Divider between line1 and line2 (only when both present)
+    if (hasLine1 && hasLine2) {
+      const divY = panelY + padV + line1Rows.length * lineH - lineH * 0.15;
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(panelX + padH * 0.5, divY);
+      ctx.lineTo(panelX + panelW - padH * 0.5, divY);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Text rows
+    ctx.save();
+    ctx.globalAlpha  = 1;
+    ctx.fillStyle    = '#ffffff';
+    ctx.textBaseline = 'alphabetic';
+    allRows.forEach((row, i) => {
+      const isLabel = i >= line1Rows.length;
+      ctx.font = isLabel
+        ? `600 ${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif`
+        : `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      const textY = panelY + padV + fontSize + i * lineH;
+      ctx.fillText(row, panelX + padH, textY, panelW - padH * 2);
+    });
     ctx.restore();
   }
-
-  // Text rows
-  ctx.save();
-  ctx.globalAlpha = 1;
-  ctx.fillStyle   = '#ffffff';
-  ctx.font        = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
-  ctx.textBaseline = 'alphabetic';
-
-  allRows.forEach((row, i) => {
-    // Line 2 rows get slightly smaller / lighter weight
-    const isLabel = i >= line1Rows.length;
-    if (isLabel) {
-      ctx.font      = `600 ${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif`;
-      ctx.fillStyle = '#ffffff';
-    } else {
-      ctx.font      = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
-      ctx.fillStyle = '#ffffff';
-    }
-    const textY = panelY + padV + fontSize + i * lineH;
-    ctx.fillText(row, panelX + padH, textY, panelW - padH * 2);
-  });
-  ctx.restore();
 
   return new Promise<File | null>((resolve) => {
     try {
@@ -298,7 +365,7 @@ export default function JobPhotosCameraPage() {
   }, [id]);
 
   // ── Watermark settings ──────────────────────────────────────────────────────
-  const { settings, toggle } = useWatermarkSettings();
+  const { settings, toggle, update } = useWatermarkSettings();
   const [showSettings,      setShowSettings]      = useState(false);
   const [showWatermarkPopup, setShowWatermarkPopup] = useState(false);
 
@@ -459,6 +526,7 @@ export default function JobPhotosCameraPage() {
     showJobName: settings.showJobName,
     label:       resolvedLabel,
     jobName:     job?.name ?? '',
+    orientation: settings.orientation,
   }), [settings, job]);
 
   // ── Finalise: composite + enqueue ───────────────────────────────────────────
@@ -716,9 +784,16 @@ export default function JobPhotosCameraPage() {
         )}
 
         {/* ── Tappable watermark pill ── */}
+        {/* orientation '0': bottom-left, horizontal */}
+        {/* orientation '-90': bottom-right, rotated CCW 90° — text reads upward */}
         <button
           onClick={openWatermarkPopup}
-          className="absolute bottom-3 left-3 z-10 text-left"
+          className={`absolute z-10 text-left ${
+            settings.orientation === '-90'
+              ? 'bottom-3 right-3 origin-bottom-right'
+              : 'bottom-3 left-3'
+          }`}
+          style={settings.orientation === '-90' ? { transform: 'rotate(-90deg)', transformOrigin: 'bottom right' } : undefined}
           aria-label="Edit watermark"
         >
           <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-[calc(100vw-1.5rem)]">
@@ -864,6 +939,26 @@ export default function JobPhotosCameraPage() {
           <p className="text-white/38 text-[10px] mt-3 leading-relaxed">
             Line 1: Job name — Date — Time · Line 2: Label
           </p>
+
+          {/* Orientation toggle */}
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <p className="text-white/50 text-[10px] font-medium mb-2">Watermark orientation</p>
+            <div className="flex gap-2">
+              {(['0', '-90'] as const).map((val) => (
+                <button
+                  key={val}
+                  onClick={() => update({ orientation: val })}
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                    settings.orientation === val
+                      ? 'bg-primary text-white'
+                      : 'bg-white/10 text-white/55'
+                  }`}
+                >
+                  {val === '0' ? '0°' : '−90°'}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
