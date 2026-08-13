@@ -55,7 +55,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, Settings, X, Check, Loader2,
-  Lock, Unlock, AlertTriangle, Camera, Pencil,
+  Lock, Unlock, AlertTriangle, Pencil,
   Zap, ZapOff, FlipHorizontal2,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
@@ -326,7 +326,10 @@ export default function JobPhotosCameraPage() {
   const lastThumbRef = useRef<string | null>(null);
   useEffect(() => { lastThumbRef.current = lastThumb; }, [lastThumb]);
 
-  // ── Camera stream ───────────────────────────────────────────────────────────
+  // ── Session photo counter ────────────────────────────────────────────────────
+  const SESSION_MAX = 10;
+  const [sessionCount, setSessionCount] = useState(0);
+  const sessionLimitReached = sessionCount >= SESSION_MAX;
   const videoRef  = useRef<HTMLVideoElement>(null);
   const lensRef   = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -476,6 +479,7 @@ export default function JobPhotosCameraPage() {
       if (prev) URL.revokeObjectURL(prev);
       return thumb;
     });
+    setSessionCount((n) => n + 1);
     setCapturing(false);
     return true;
   }, [makeOpts, enqueueFiles]);
@@ -780,7 +784,7 @@ export default function JobPhotosCameraPage() {
           {/* Shutter — dominant centre control */}
           <button
             onClick={() => void handleShutter()}
-            disabled={camState !== 'ready' || capturing}
+            disabled={camState !== 'ready' || capturing || sessionLimitReached}
             className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0"
             aria-label="Take photo"
           >
@@ -803,14 +807,22 @@ export default function JobPhotosCameraPage() {
             <span className="text-[8px] font-semibold leading-none opacity-70">FIELDS</span>
           </button>
 
-          {/* Upload indicator */}
-          <div className="w-14 h-14 flex flex-col items-center justify-center gap-1 shrink-0">
-            {isUploading
-              ? <Loader2 size={16} className="animate-spin text-white/60" />
-              : <Camera size={16} className="text-white/25" />
-            }
-            {queue.length > 0 && (
-              <span className="text-[9px] text-white/55 font-bold">{queue.length}</span>
+          {/* Photo counter / session status */}
+          <div className="w-14 h-14 flex flex-col items-center justify-center gap-0.5 shrink-0">
+            {sessionLimitReached ? (
+              <>
+                <span className="text-[11px] font-bold text-white/60 leading-none">10 / 10</span>
+                <span className="text-[8px] text-yellow-400/80 font-semibold leading-none text-center px-0.5">limit reached</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] font-bold text-white/50 leading-none">
+                  {sessionCount} / {SESSION_MAX}
+                </span>
+                {isUploading && (
+                  <Loader2 size={10} className="animate-spin text-white/40" />
+                )}
+              </>
             )}
           </div>
         </div>
