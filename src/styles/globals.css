@@ -1245,3 +1245,8 @@ textarea {
   }
 }
 
+/* Camera lens picture frame — black inset border overlay */
+.camera-lens-frame {
+  box-shadow: inset 0 0 0 12px black;
+}
+

@@ -536,6 +536,9 @@ export default function JobPhotosCameraPage() {
         )}
       </div>
 
+      {/* ── Black picture frame around lens area ── */}
+      <div className="camera-lens-frame absolute inset-0 pointer-events-none z-10" />
+
       {/* ── Flash animation ── */}
       {flashAnim && (
         <div className="absolute inset-0 bg-white pointer-events-none z-30 opacity-70" />
