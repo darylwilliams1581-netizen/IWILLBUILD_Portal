@@ -37,7 +37,6 @@ import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTa
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
-import BuilderTab from '@/components/owner-console/BuilderTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -790,14 +789,17 @@ export default function OwnerConsolePage() {
               </span>
             </Tab>
           )}
-          {/* Builder tab — platform owner ONLY (your GoDaddy account, not any owner role) */}
+          {/* Open GoDaddy — platform owner ONLY */}
           {isPlatformOwner && (
-            <Tab active={tab === 'builder'} onClick={() => { setTab('builder'); setSearchParams({ tab: 'builder' }); }}>
-              <span className="flex items-center gap-1.5">
-                <Code2 size={12} />
-                Builder
-              </span>
-            </Tab>
+            <a
+              href="https://sso.godaddy.com/?realm=idp"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Code2 size={12} />
+              Open GoDaddy
+            </a>
           )}
         </div>
 
@@ -972,8 +974,7 @@ export default function OwnerConsolePage() {
               {tab === 'incidents' && <IncidentQueueTab />}
               {/* ── Client Rescue ── */}
               {tab === 'client-rescue' && <ClientRescueTab />}
-              {/* ── Builder — platform owner ONLY ── */}
-              {tab === 'builder' && isPlatformOwner && <BuilderTab />}
+
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (
