@@ -401,33 +401,51 @@ function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg:
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const WELCOME_MSG = `Hi, I'm Dazza AI — your IWILLBUILD helper.
-
-I'm young and still learning. The more real data you add to IWILLBUILD, the more useful I become.
-
-I can help summarise jobs, check fleet issues, review forms, look at estimates, find missing information, help with construction calculators, and draft simple wording.
-
-**Always verify important building, safety, legal and compliance decisions with a competent person.**
-
-What do you need today?`;
+const WELCOME_MSG = `G'day Daryl. I'm Dazza, IWILLBUILD's read-only system watcher and investigator. I'm here to help you maintain the platform, investigate bugs, examine authorised system evidence, prepare repair cases and work with Annette's approved memory. I can investigate and recommend, but I cannot change business data, code, deployments or publishing state.`;
 
 // ── SSE event types ───────────────────────────────────────────────────────────
 
-interface SseToken    { type: 'token';       content: string }
-interface SseToolCall { type: 'tool_call';   name: string; status: 'running' }
+interface SseToken      { type: 'token';       content: string }
+interface SseToolCall   { type: 'tool_call';   name: string; status: 'running' }
 interface SseToolResult { type: 'tool_result'; name: string; status: 'done' }
-interface SseDone     { type: 'done';        mode: string; usedOpenAI: boolean; model?: string }
-interface SseError    { type: 'error';       message: string }
+interface SseDone       {
+  type: 'done';
+  engine: 'v3' | 'v2-rollback';
+  conversationId?: string;
+  model?: string;
+  toolsUsed?: string[];
+  // V2 compat fields
+  mode?: string;
+  usedOpenAI?: boolean;
+}
+interface SseError      { type: 'error';       message: string }
 type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
 
-// ── Tool call display names ───────────────────────────────────────────────────
+// ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
 
 const TOOL_LABELS: Record<string, string> = {
-  lookup_jobs:       'Looking up jobs…',
-  lookup_job_costs:  'Fetching cost data…',
-  lookup_fleet:      'Checking fleet…',
-  lookup_estimates:  'Loading estimates…',
-  lookup_open_todos: 'Scanning to-dos…',
+  // V2 / Drayl tools
+  lookup_jobs:                  'Looking up jobs…',
+  lookup_job_costs:             'Fetching cost data…',
+  lookup_fleet:                 'Checking fleet…',
+  lookup_estimates:             'Loading estimates…',
+  lookup_open_todos:            'Scanning to-dos…',
+  // V3 tools
+  v3_list_companies:            'Listing companies…',
+  v3_get_company_health:        'Checking company health…',
+  v3_list_users:                'Loading users…',
+  v3_get_user_detail:           'Fetching user detail…',
+  v3_list_bug_reports:          'Loading bug reports…',
+  v3_get_bug_report:            'Reading bug report…',
+  v3_get_incident:              'Loading incident…',
+  v3_list_incidents:            'Listing incidents…',
+  v3_get_subscription_status:   'Checking subscription…',
+  v3_get_approved_memory:       'Loading Annette memory…',
+  v3_list_pending_memory:       'Checking pending memory…',
+  v3_get_audit_log:             'Reading audit log…',
+  v3_get_system_stats:          'Fetching system stats…',
+  v3_get_storage_usage:         'Checking storage…',
+  v3_get_recent_errors:         'Loading recent errors…',
 };
 
 export default function DazzaAIPage() {
@@ -448,6 +466,9 @@ export default function DazzaAIPage() {
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'chat' | 'brain'>('chat');
+  // V3 conversation continuity
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -529,18 +550,23 @@ export default function DazzaAIPage() {
     }]);
 
     try {
-      const res = await fetch('/api/dazza/chat-v2/stream', {
+      // ── Canonical endpoint — server decides V3 vs V2 rollback ──────────────
+      const res = await fetch('/api/dazza/chat/stream', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text.trim() }),
+        body: JSON.stringify({
+          message: text.trim(),
+          // Send conversationId so V3 can continue the same conversation
+          ...(conversationId ? { conversationId } : {}),
+        }),
       });
 
       if (!res.ok) {
         let serverDetail = '';
         try {
-          const errData = await res.json() as { error?: string };
-          serverDetail = errData.error ?? '';
+          const errData = await res.json() as { error?: string; message?: string };
+          serverDetail = errData.message ?? errData.error ?? '';
         } catch { /* ignore */ }
         throw new Error(`HTTP ${res.status}${serverDetail ? `: ${serverDetail}` : ''}`);
       }
@@ -550,8 +576,6 @@ export default function DazzaAIPage() {
 
       const decoder = new TextDecoder();
       let buffer = '';
-      let finalMode = 'ai';
-      let usedOpenAI = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -579,24 +603,26 @@ export default function DazzaAIPage() {
           } else if (event.type === 'tool_result') {
             setActiveToolCall(null);
           } else if (event.type === 'done') {
-            finalMode = event.mode;
-            usedOpenAI = event.usedOpenAI;
             setActiveToolCall(null);
+            // Store conversation ID for continuity (V3 only)
+            if (event.conversationId) {
+              setConversationId(event.conversationId);
+            }
+            // Track active engine
+            if (event.engine) {
+              setActiveEngine(event.engine);
+            }
+            // If no AI was used (V2 fallback without key)
+            if (event.usedOpenAI === false && !event.engine) {
+              setNoApiKey(true);
+            } else {
+              setNoApiKey(false);
+            }
           } else if (event.type === 'error') {
             throw new Error(event.message);
           }
         }
       }
-
-      // Mark as context mode if no AI was used
-      if (finalMode === 'ai' && !usedOpenAI) setNoApiKey(true);
-      else setNoApiKey(false);
-
-      setMessages((prev) => prev.map((m) =>
-        m.id === assistantId
-          ? { ...m, isCalc: finalMode === 'context' }
-          : m
-      ));
 
     } catch (err) {
       const errMsg = String((err as Error)?.message ?? err);
@@ -626,6 +652,9 @@ export default function DazzaAIPage() {
   function clearChat() {
     setMessages([{ id: Date.now().toString(), role: 'assistant', content: WELCOME_MSG, timestamp: new Date() }]);
     setNoApiKey(false);
+    // Start a fresh conversation — clear the stored ID so V3 creates a new one
+    setConversationId(null);
+    setActiveEngine(null);
   }
 
   function runSimple() {
@@ -787,14 +816,34 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
               <Bot size={13} className="text-white" />
             </div>
-            <span className="font-heading font-bold text-sm leading-none text-slate-800">Dazza AI</span>
+            <span className="font-heading font-bold text-sm leading-none text-slate-800">
+              {activeEngine === 'v3' ? 'Dazza V3' : activeEngine === 'v2-rollback' ? 'Dazza V2' : 'Dazza AI'}
+            </span>
             <span className="text-[10px] text-slate-400">
               {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
             </span>
-            <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
-              Online
-            </span>
+            {activeEngine === 'v3' && (
+              <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
+                <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse inline-block" />
+                V3
+              </span>
+            )}
+            {activeEngine === 'v2-rollback' && (
+              <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                V2 rollback
+              </span>
+            )}
+            {!activeEngine && (
+              <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
+                Online
+              </span>
+            )}
+            {conversationId && (
+              <span className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-mono" title={`Conversation: ${conversationId}`}>
+                #{conversationId.slice(0, 8)}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {isAdmin && (
