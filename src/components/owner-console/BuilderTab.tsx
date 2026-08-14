@@ -14,7 +14,7 @@ import {
   ShieldCheck, AlertTriangle, RefreshCw, MonitorSmartphone,
 } from 'lucide-react';
 
-const GODADDY_LOGIN_URL = 'https://sso.godaddy.com/?app=builder&path=%2Fdevelop%2Ff38wenbvln%3FsiteId%3Df38wenbvln';
+const GODADDY_LOGIN_URL = 'https://sso.godaddy.com/?realm=idp';
 const BUILDER_URL       = 'https://airo-builder.godaddy.com/develop/f38wenbvln?siteId=f38wenbvln';
 
 export default function BuilderTab() {

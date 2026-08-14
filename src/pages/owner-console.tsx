@@ -790,12 +790,15 @@ export default function OwnerConsolePage() {
               </span>
             </Tab>
           )}
-          <Tab active={tab === 'builder'} onClick={() => { setTab('builder'); setSearchParams({ tab: 'builder' }); }}>
-            <span className="flex items-center gap-1.5">
-              <Code2 size={12} />
-              Builder
-            </span>
-          </Tab>
+          {/* Builder tab — platform owner ONLY (your GoDaddy account, not any owner role) */}
+          {isPlatformOwner && (
+            <Tab active={tab === 'builder'} onClick={() => { setTab('builder'); setSearchParams({ tab: 'builder' }); }}>
+              <span className="flex items-center gap-1.5">
+                <Code2 size={12} />
+                Builder
+              </span>
+            </Tab>
+          )}
         </div>
 
         {/* Content */}
@@ -969,8 +972,8 @@ export default function OwnerConsolePage() {
               {tab === 'incidents' && <IncidentQueueTab />}
               {/* ── Client Rescue ── */}
               {tab === 'client-rescue' && <ClientRescueTab />}
-              {/* ── Builder ── */}
-              {tab === 'builder' && <BuilderTab />}
+              {/* ── Builder — platform owner ONLY ── */}
+              {tab === 'builder' && isPlatformOwner && <BuilderTab />}
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (
