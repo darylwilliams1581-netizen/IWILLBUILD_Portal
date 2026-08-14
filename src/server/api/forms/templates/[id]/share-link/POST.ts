@@ -10,6 +10,7 @@ import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { profiles } from '../../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { APP_URL } from '../../../../../lib/app-url.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -51,8 +52,7 @@ export default async function handler(req: Request, res: Response) {
       `);
     }
 
-    const origin = req.headers.origin ?? `https://${req.headers.host}`;
-    res.json({ token, url: `${origin}/forms/fill/${token}` });
+    res.json({ token, url: `${APP_URL}/forms/fill/${token}` });
   } catch (err) {
     console.error('POST /api/forms/templates/:id/share-link error:', err);
     res.status(500).json({ error: 'Failed to generate share link' });

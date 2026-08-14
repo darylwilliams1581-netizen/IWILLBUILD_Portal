@@ -22,6 +22,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { profiles } from '../../db/schema.js';
 import { generateShareToken, hashToken } from '../../lib/share-tokens.js';
+import { APP_URL } from '../../lib/app-url.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -118,7 +119,7 @@ export default async function handler(req: Request, res: Response) {
 
     const insertId = (result as { insertId: number }).insertId;
 
-    const shareUrl = `https://iwillbuild.com/share/${rawToken}`;
+    const shareUrl = `${APP_URL}/share/${rawToken}`;
 
     return res.status(201).json({
       ok: true,

@@ -120,14 +120,14 @@ export function FormSharePanel({
   };
 
   const copyLink = async (token: string) => {
-    const url = `${window.location.origin}/external/form/${token}`;
+    const url = `https://iwillbuild.com/forms/fill/${token}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const getExternalUrl = (token: string) =>
-    `${window.location.origin}/external/form/${token}`;
+    `https://iwillbuild.com/forms/fill/${token}`;
 
   const isSubmitted = submissionStatus === 'submitted' || submissionStatus === 'locked';
 

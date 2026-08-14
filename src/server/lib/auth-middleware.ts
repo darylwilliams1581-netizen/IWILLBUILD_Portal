@@ -211,6 +211,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Secure Share Links — public token resolution (no auth required)
   { method: 'GET',  pattern: /^\/api\/secure-share\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/secure-share\/[^/]+$/ },
+  // Secure Share content delivery — public PDF view/download (token-scoped, no auth)
+  { method: 'GET',  pattern: /^\/api\/secure-share\/[^/]+\/content$/ },
   // Public SWMS sign-off — token-validated, no session required
   { method: 'GET',  pattern: /^\/api\/public\/swms\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/public\/swms\/[^/]+\/signoff$/ },

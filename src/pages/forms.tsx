@@ -5,7 +5,7 @@ import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
-  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search,
+  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
@@ -381,6 +381,8 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
   const [loading,  setLoading]  = useState(true);
   const [copied,   setCopied]   = useState(false);
   const [error,    setError]    = useState('');
+  const [revoking, setRevoking] = useState(false);
+  const [revoked,  setRevoked]  = useState(false);
 
   useEffect(() => {
     fetch(`/api/forms/templates/${templateId}/share-link`, { method: 'POST', credentials: 'include' })
@@ -398,6 +400,28 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
+  }
+
+  async function handleRevoke() {
+    if (!confirm('Revoke this share link? Anyone with the current link will no longer be able to fill out the form. Existing submissions are preserved.')) return;
+    setRevoking(true);
+    try {
+      const r = await fetch(`/api/forms/templates/${templateId}/share-link`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!r.ok) {
+        const d = await r.json() as { error?: string };
+        setError(d.error ?? 'Failed to revoke');
+        return;
+      }
+      setRevoked(true);
+      setUrl('');
+    } catch {
+      setError('Failed to revoke link');
+    } finally {
+      setRevoking(false);
+    }
   }
 
   return (
@@ -434,24 +458,38 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
           </div>
         ) : error ? (
           <p className="text-sm text-red-600">{error}</p>
+        ) : revoked ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3 text-xs text-amber-700">
+            Link revoked. Existing submissions are preserved. Reopen this modal to generate a new link.
+          </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 truncate font-mono">
-              {url}
+          <>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 truncate font-mono">
+                {url}
+              </div>
+              <button
+                onClick={copy}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
+                  copied ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:brightness-110'
+                }`}
+              >
+                {copied ? <><CheckCircle2 size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+              </button>
             </div>
             <button
-              onClick={copy}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
-                copied ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:brightness-110'
-              }`}
+              onClick={() => void handleRevoke()}
+              disabled={revoking}
+              className="mt-2 flex items-center gap-1.5 text-xs text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 w-full justify-center"
             >
-              {copied ? <><CheckCircle2 size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+              {revoking ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+              Revoke link
             </button>
-          </div>
+          </>
         )}
 
         <p className="text-[10px] text-slate-500 mt-3">
-          This link is permanent. To revoke access, contact your administrator.
+          Anyone with this link can fill out the form without logging in. Responses appear in the Submissions inbox. Use Revoke to disable the link at any time.
         </p>
       </motion.div>
     </div>

@@ -16,7 +16,7 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock,
-  Download, ExternalLink, MapPin, Upload, Shield, Key, Link2,
+  Download, ExternalLink, MapPin, Upload, Key, Link2,
 } from 'lucide-react';
 import ExternalFormPage from './external-form';
 import { Button } from '@/components/ui/button';
@@ -527,32 +527,55 @@ function SecureShareViewer({ token }: { token: string }) {
                       {link.useCount}/{link.maxUses} uses
                     </span>
                   )}
-                  {link.permissions.map((p) => (
-                    <span key={p} className="flex items-center gap-1 bg-violet-50 border border-violet-200 text-violet-800 rounded-full px-2.5 py-1 font-semibold">
-                      <Shield size={10} />
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </span>
-                  ))}
                 </div>
               </div>
 
-              {/* Target info */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center">
-                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <FileText size={22} className="text-slate-500" />
+              {/* Action card — only show actions that are actually permitted */}
+              {!isExpired && !isMaxed && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
+                      <FileText size={18} className="text-slate-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{link.title}</p>
+                      <p className="text-xs text-slate-400">Shared securely via IWILLBUILD</p>
+                    </div>
+                  </div>
+
+                  {/* View — opens PDF inline in browser */}
+                  {link.permissions.includes('view') && (link.targetType === 'estimate' || link.targetType === 'invoice') && (
+                    <a
+                      href={`/api/secure-share/${token}/content?action=view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full bg-primary text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
+                    >
+                      <ExternalLink size={14} />
+                      View document
+                    </a>
+                  )}
+
+                  {/* Download — forces save dialog */}
+                  {link.permissions.includes('download') && (link.targetType === 'estimate' || link.targetType === 'invoice') && (
+                    <a
+                      href={`/api/secure-share/${token}/content?action=download`}
+                      download
+                      className="flex items-center justify-center gap-2 w-full border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                    >
+                      <Download size={14} />
+                      Download PDF
+                    </a>
+                  )}
+
+                  {/* Unsupported type — clear message */}
+                  {link.targetType !== 'estimate' && link.targetType !== 'invoice' && (
+                    <p className="text-sm text-slate-500 text-center py-2">
+                      This document type cannot be previewed here.
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm font-semibold text-slate-700 mb-1">
-                  {link.targetType.replace(/_/g, ' ')} #{link.targetId}
-                </p>
-                <p className="text-xs text-slate-400">
-                  This link was shared securely via IWILLBUILD.
-                </p>
-                {link.permissions.includes('download') && (
-                  <p className="text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
-                    <Download size={11} /> Download access granted
-                  </p>
-                )}
-              </div>
+              )}
 
               <p className="text-center text-xs text-slate-400">
                 Shared securely via IWILLBUILD · {new Date(link.createdAt).toLocaleDateString('en-AU')}
