@@ -2,15 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, Loader2, AlertCircle, Copy, Trash2, ChevronRight,
-  ChevronDown, Check, Lock, ExternalLink, Mail, Share2, Receipt, ArrowRight,
+  ChevronDown, Check, Lock, Receipt, ArrowRight, MoreHorizontal,
 } from 'lucide-react';
 import {
   fetchEstimates, createEstimate, deleteEstimate, patchEstimateStatus,
   getEstimateStatusStyle, ESTIMATE_STATUSES, type Estimate,
 } from '@/lib/estimates-api';
 import { usePermissions } from '@/lib/usePermissions';
-import ShareLinkModal from '@/components/ShareLinkModal';
-import { composeOutlookEmail } from '@/lib/messaging/outlook';
 
 interface Props {
   jobId: number;
@@ -34,7 +32,7 @@ export default function JobEstimates({ jobId }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [statusOpenId, setStatusOpenId] = useState<number | null>(null);
   const [statusSaving, setStatusSaving] = useState<number | null>(null);
-  const [shareEst, setShareEst] = useState<Estimate | null>(null);
+  const [moreOpenId, setMoreOpenId] = useState<number | null>(null);
   const [converting, setConverting] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -166,19 +164,6 @@ export default function JobEstimates({ jobId }: Props) {
     }
   }
 
-  function handleSend(est: Estimate) {
-    composeOutlookEmail({
-      kind: 'estimate',
-      estimateNumber: (est as Estimate & { estimateNumber?: string }).estimateNumber ?? `#${est.id}`,
-      jobName: undefined,
-      customerName: (est as Estimate & { customerName?: string }).customerName ?? undefined,
-      totalAmount: est.total !== undefined
-        ? est.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
-        : undefined,
-      status: est.status,
-      link: `${window.location.origin}/view/estimate/${est.id}`,
-    });
-  }
 
   if (loading) {
     return (
@@ -394,44 +379,38 @@ export default function JobEstimates({ jobId }: Props) {
                     </button>
                   )}
 
-                  {/* Actions — hidden when locked */}
+                  {/* ⋯ overflow — Duplicate + Delete (hidden when locked) */}
                   {!isLocked && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="relative shrink-0">
                       <button
-                        onClick={() => handleSend(est)}
-                        title="Send via email"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                      >
-                        <Mail size={14} />
-                      </button>
-                      <button
-                        onClick={() => setShareEst(est)}
-                        title="Share link"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-violet-50 transition-colors"
-                      >
-                        <Share2 size={14} />
-                      </button>
-                      <button
-                        onClick={() => window.open(`/view/estimate/${est.id}`, '_blank', 'noopener,noreferrer')}
-                        title="Open in new tab"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-violet-50 transition-colors"
-                      >
-                        <ExternalLink size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDuplicate(est)}
-                        title="Duplicate"
+                        onClick={(e) => { e.stopPropagation(); setMoreOpenId(moreOpenId === est.id ? null : est.id); }}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="More options"
                       >
-                        <Copy size={14} />
+                        <MoreHorizontal size={15} />
                       </button>
-                      <button
-                        onClick={() => setDeleteId(est.id)}
-                        title="Delete"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {moreOpenId === est.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setMoreOpenId(null)} />
+                          <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[160px]">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMoreOpenId(null); void handleDuplicate(est); }}
+                              className="w-full text-left px-4 py-2 text-sm flex items-center gap-2.5 hover:bg-muted transition-colors"
+                            >
+                              <Copy size={13} className="text-muted-foreground" />
+                              Duplicate
+                            </button>
+                            <div className="border-t border-border my-1" />
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMoreOpenId(null); setDeleteId(est.id); }}
+                              className="w-full text-left px-4 py-2 text-sm flex items-center gap-2.5 hover:bg-red-50 text-red-600 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -468,16 +447,6 @@ export default function JobEstimates({ jobId }: Props) {
         </div>
       )}
 
-      {/* Share link modal */}
-      {shareEst && (
-        <ShareLinkModal
-          open={true}
-          onClose={() => setShareEst(null)}
-          targetType="estimate"
-          targetId={String(shareEst.id)}
-          title={shareEst.title}
-        />
-      )}
     </div>
   );
 }
