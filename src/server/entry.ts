@@ -113,6 +113,9 @@ import bug_reports_get_80 from "./api/bug-reports/GET";
 import bug_reports_post_81 from "./api/bug-reports/POST";
 import bug_reports_id_patch_82 from "./api/bug-reports/[id]/PATCH";
 import bug_reports_id_export_bundle_get_83 from "./api/bug-reports/[id]/export-bundle/GET";
+import bug_reports_id_analyse_post from "./api/bug-reports/[id]/analyse/POST";
+import bug_reports_id_sms_authorise_post from "./api/bug-reports/[id]/sms-authorise/POST";
+import bug_reports_id_publish_fix_post from "./api/bug-reports/[id]/publish-fix/POST";
 import company_get_84 from "./api/company/GET";
 import company_put_85 from "./api/company/PUT";
 import company_logo_post_86 from "./api/company/logo/POST";
@@ -1567,6 +1570,14 @@ async function runStartupMigrations() {
     // ── bug_reports: export audit columns (added 2026-08-10) ────────────────
     { table: 'bug_reports', column: 'exported_at',       definition: 'DATETIME NULL' },
     { table: 'bug_reports', column: 'exported_by',       definition: "VARCHAR(255) NOT NULL DEFAULT ''" },
+    // ── bug_reports: Dazza AI analysis + SMS auth (added 2026-08-14) ────────
+    { table: 'bug_reports', column: 'ai_analysis',          definition: 'TEXT NULL' },
+    { table: 'bug_reports', column: 'ai_suggested_fix',     definition: 'TEXT NULL' },
+    { table: 'bug_reports', column: 'ai_suggested_prompt',  definition: 'TEXT NULL' },
+    { table: 'bug_reports', column: 'ai_analysed_at',       definition: 'DATETIME NULL' },
+    { table: 'bug_reports', column: 'sms_auth_token',       definition: 'VARCHAR(64) NULL' },
+    { table: 'bug_reports', column: 'sms_auth_expires_at',  definition: 'DATETIME NULL' },
+    { table: 'bug_reports', column: 'sms_auth_used',        definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -2973,6 +2984,9 @@ app.get("/api/bug-reports", bug_reports_get_80);
 app.post("/api/bug-reports", bug_reports_post_81);
 app.patch("/api/bug-reports/:id", bug_reports_id_patch_82);
 app.get("/api/bug-reports/:id/export-bundle", bug_reports_id_export_bundle_get_83);
+app.post("/api/bug-reports/:id/analyse", bug_reports_id_analyse_post);
+app.post("/api/bug-reports/:id/sms-authorise", bug_reports_id_sms_authorise_post);
+app.post("/api/bug-reports/:id/publish-fix", bug_reports_id_publish_fix_post);
 app.get("/api/company", company_get_84);
 app.put("/api/company", company_put_85);
 app.post("/api/company/logo", company_logo_post_86);

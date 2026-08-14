@@ -9,6 +9,7 @@ import {
   User, Building2, Monitor, Calendar, Tag, MessageSquare,
   Circle, ArrowRight, Activity, Copy, Download, ChevronRight,
   Smartphone, Globe, WifiOff, Package, FileText,
+  Bot, Zap, Wrench, Send, ShieldCheck, Rocket, KeyRound,
 } from 'lucide-react';
 import { BUG_CATEGORIES } from '@/components/BugReportModal';
 import { usePermissions } from '@/lib/usePermissions';
@@ -105,6 +106,24 @@ export default function BugReportsTab() {
   const [exportMsg, setExportMsg]   = useState('');
   const [copyMdMsg, setCopyMdMsg]   = useState('');
   const [copyDiagMsg, setCopyDiagMsg] = useState('');
+
+  // ── Dazza AI loop state ────────────────────────────────────────────────────
+  const [aiAnalysing, setAiAnalysing]       = useState(false);
+  const [aiResult, setAiResult]             = useState<{
+    analysis: string;
+    suggestedFix: string;
+    suggestedPrompt: string;
+    smsSent: boolean;
+    smsConfigured: boolean;
+  } | null>(null);
+  const [aiError, setAiError]               = useState('');
+  const [smsCode, setSmsCode]               = useState('');
+  const [smsAuthing, setSmsAuthing]         = useState(false);
+  const [publishToken, setPublishToken]     = useState('');
+  const [smsAuthError, setSmsAuthError]     = useState('');
+  const [publishing, setPublishing]         = useState(false);
+  const [publishResult, setPublishResult]   = useState<{ ok: boolean; message: string } | null>(null);
+  const [promptCopied, setPromptCopied]     = useState(false);
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
@@ -220,6 +239,118 @@ export default function BugReportsTab() {
 
   const totalOpen = counts.open + counts.in_progress;
 
+  // ── Dazza AI handlers ──────────────────────────────────────────────────────
+
+  function resetAiState() {
+    setAiResult(null);
+    setAiError('');
+    setSmsCode('');
+    setPublishToken('');
+    setSmsAuthError('');
+    setPublishResult(null);
+    setPromptCopied(false);
+  }
+
+  async function handleRunAnalysis(report: BugReportRow) {
+    setAiAnalysing(true);
+    setAiError('');
+    setAiResult(null);
+    setPublishToken('');
+    setSmsCode('');
+    setSmsAuthError('');
+    setPublishResult(null);
+    try {
+      const res = await fetch(`/api/bug-reports/${report.id}/analyse`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const d = await res.json() as {
+        ok?: boolean;
+        analysis?: string;
+        suggestedFix?: string;
+        suggestedPrompt?: string;
+        smsSent?: boolean;
+        smsConfigured?: boolean;
+        error?: string;
+      };
+      if (!res.ok || !d.ok) {
+        setAiError(d.error ?? 'Analysis failed.');
+        return;
+      }
+      setAiResult({
+        analysis: d.analysis ?? '',
+        suggestedFix: d.suggestedFix ?? '',
+        suggestedPrompt: d.suggestedPrompt ?? '',
+        smsSent: d.smsSent ?? false,
+        smsConfigured: d.smsConfigured ?? false,
+      });
+      // Reload to pick up stored AI fields
+      await load(true);
+    } catch {
+      setAiError('Network error. Try again.');
+    } finally {
+      setAiAnalysing(false);
+    }
+  }
+
+  async function handleSmsAuthorise(report: BugReportRow) {
+    if (!smsCode.trim()) { setSmsAuthError('Enter the 6-digit code from your SMS.'); return; }
+    setSmsAuthing(true);
+    setSmsAuthError('');
+    try {
+      const res = await fetch(`/api/bug-reports/${report.id}/sms-authorise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: smsCode.trim() }),
+      });
+      const d = await res.json() as { ok?: boolean; publishToken?: string; error?: string };
+      if (!res.ok || !d.ok) {
+        setSmsAuthError(d.error ?? 'Invalid code.');
+        return;
+      }
+      setPublishToken(d.publishToken ?? '');
+    } catch {
+      setSmsAuthError('Network error.');
+    } finally {
+      setSmsAuthing(false);
+    }
+  }
+
+  async function handlePublishFix(report: BugReportRow) {
+    if (!publishToken) return;
+    setPublishing(true);
+    setPublishResult(null);
+    try {
+      const res = await fetch(`/api/bug-reports/${report.id}/publish-fix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ publishToken }),
+      });
+      const d = await res.json() as { ok?: boolean; message?: string; publishTriggered?: boolean; error?: string };
+      setPublishResult({
+        ok: d.ok ?? false,
+        message: d.message ?? d.error ?? 'Unknown result.',
+      });
+      if (d.ok) {
+        await load(true);
+        setPublishToken('');
+      }
+    } catch {
+      setPublishResult({ ok: false, message: 'Network error.' });
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  function handleCopyPrompt(prompt: string) {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 2000);
+    }).catch(() => {});
+  }
+
   return (
     <div className="flex h-full gap-0 overflow-hidden">
       {/* ── Left panel: list ── */}
@@ -328,7 +459,7 @@ export default function BugReportsTab() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); setDiagExpanded(false); setExportMsg(''); setCopyMdMsg(''); setCopyDiagMsg(''); }}
+                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); setDiagExpanded(false); setExportMsg(''); setCopyMdMsg(''); setCopyDiagMsg(''); resetAiState(); }}
                     className={`w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-violet-50 border-l-2 border-l-primary' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -620,6 +751,210 @@ export default function BugReportsTab() {
                     )}
                   </div>
                 )}
+
+                {/* ── Dazza AI Loop ─────────────────────────────────────────── */}
+                <div className="border border-violet-200 rounded-2xl overflow-hidden bg-gradient-to-br from-violet-50/60 to-slate-50">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600">
+                    <div className="flex items-center gap-2">
+                      <Bot size={14} className="text-white" />
+                      <span className="text-xs font-bold text-white tracking-wide">Dazza AI Loop</span>
+                    </div>
+                    {(selected as Record<string, unknown>).ai_analysed_at && !aiResult && (
+                      <span className="text-[10px] text-violet-200">
+                        Last analysed {timeAgo(String((selected as Record<string, unknown>).ai_analysed_at))}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex flex-col gap-3">
+                    {/* Stored AI result (from DB) */}
+                    {!aiResult && (selected as Record<string, unknown>).ai_analysis && (
+                      <div className="flex flex-col gap-2">
+                        <div className="bg-white border border-violet-100 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <Zap size={10} /> Diagnosis
+                          </p>
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                            {String((selected as Record<string, unknown>).ai_analysis)}
+                          </p>
+                        </div>
+                        {(selected as Record<string, unknown>).ai_suggested_fix && (
+                          <div className="bg-white border border-emerald-100 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <Wrench size={10} /> Suggested Fix
+                            </p>
+                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                              {String((selected as Record<string, unknown>).ai_suggested_fix)}
+                            </p>
+                          </div>
+                        )}
+                        {(selected as Record<string, unknown>).ai_suggested_prompt && (
+                          <div className="bg-white border border-amber-100 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
+                                <Send size={10} /> Airo Prompt
+                              </p>
+                              <button
+                                onClick={() => handleCopyPrompt(String((selected as Record<string, unknown>).ai_suggested_prompt))}
+                                className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
+                              >
+                                <Copy size={9} />
+                                {promptCopied ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-mono bg-amber-50 rounded-lg p-2">
+                              {String((selected as Record<string, unknown>).ai_suggested_prompt)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Live AI result (just analysed) */}
+                    {aiResult && (
+                      <div className="flex flex-col gap-2">
+                        <div className="bg-white border border-violet-100 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <Zap size={10} /> Diagnosis
+                          </p>
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResult.analysis}</p>
+                        </div>
+                        {aiResult.suggestedFix && (
+                          <div className="bg-white border border-emerald-100 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <Wrench size={10} /> Suggested Fix
+                            </p>
+                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResult.suggestedFix}</p>
+                          </div>
+                        )}
+                        {aiResult.suggestedPrompt && (
+                          <div className="bg-white border border-amber-100 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
+                                <Send size={10} /> Airo Prompt
+                              </p>
+                              <button
+                                onClick={() => handleCopyPrompt(aiResult.suggestedPrompt)}
+                                className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
+                              >
+                                <Copy size={9} />
+                                {promptCopied ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-mono bg-amber-50 rounded-lg p-2">
+                              {aiResult.suggestedPrompt}
+                            </p>
+                          </div>
+                        )}
+                        {/* SMS status */}
+                        {aiResult.smsConfigured && (
+                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${aiResult.smsSent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                            {aiResult.smsSent
+                              ? <><CheckCircle2 size={12} /> SMS auth code sent to your phone</>
+                              : <><AlertCircle size={12} /> SMS send failed — enter code manually below</>
+                            }
+                          </div>
+                        )}
+                        {!aiResult.smsConfigured && (
+                          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-500">
+                            <AlertCircle size={12} /> SMS not configured — set PLATFORM_OWNER_PHONE to enable SMS auth
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {aiError && (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-semibold">
+                        <AlertCircle size={12} /> {aiError}
+                      </div>
+                    )}
+
+                    {/* Run Analysis button */}
+                    {!aiResult && (
+                      <button
+                        onClick={() => void handleRunAnalysis(selected)}
+                        disabled={aiAnalysing}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-60 shadow-sm"
+                      >
+                        {aiAnalysing
+                          ? <><Loader2 size={12} className="animate-spin" /> Dazza is analysing…</>
+                          : <><Bot size={12} /> {(selected as Record<string, unknown>).ai_analysis ? 'Re-analyse with Dazza' : 'Analyse with Dazza AI'}</>
+                        }
+                      </button>
+                    )}
+
+                    {/* Re-analyse button (after result shown) */}
+                    {aiResult && (
+                      <button
+                        onClick={() => void handleRunAnalysis(selected)}
+                        disabled={aiAnalysing}
+                        className="flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 text-xs font-semibold transition-colors disabled:opacity-60"
+                      >
+                        {aiAnalysing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                        Re-analyse
+                      </button>
+                    )}
+
+                    {/* SMS Authorisation + Publish */}
+                    {(aiResult || (selected as Record<string, unknown>).ai_analysis) && !publishToken && !publishResult && (
+                      <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <KeyRound size={10} /> SMS Authorisation to Publish
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={smsCode}
+                            onChange={e => { setSmsCode(e.target.value.replace(/\D/g, '')); setSmsAuthError(''); }}
+                            placeholder="6-digit code"
+                            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 placeholder:text-slate-300 text-center tracking-widest font-mono"
+                          />
+                          <button
+                            onClick={() => void handleSmsAuthorise(selected)}
+                            disabled={smsAuthing || smsCode.length !== 6}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
+                          >
+                            {smsAuthing ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />}
+                            Verify
+                          </button>
+                        </div>
+                        {smsAuthError && (
+                          <p className="text-xs text-red-500 font-semibold">{smsAuthError}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Publish Fix button — unlocked after SMS auth */}
+                    {publishToken && !publishResult && (
+                      <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
+                        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-700 font-semibold">
+                          <ShieldCheck size={12} /> SMS verified — publish authorised
+                        </div>
+                        <button
+                          onClick={() => void handlePublishFix(selected)}
+                          disabled={publishing}
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold transition-all disabled:opacity-60 shadow-md"
+                        >
+                          {publishing
+                            ? <><Loader2 size={13} className="animate-spin" /> Publishing…</>
+                            : <><Rocket size={13} /> Publish Fix to Production</>
+                          }
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Publish result */}
+                    {publishResult && (
+                      <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold border ${publishResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                        {publishResult.ok ? <Rocket size={12} className="shrink-0 mt-0.5" /> : <AlertCircle size={12} className="shrink-0 mt-0.5" />}
+                        <span>{publishResult.message}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Resolution note */}
                 <div>
