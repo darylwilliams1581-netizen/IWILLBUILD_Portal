@@ -380,6 +380,7 @@ import jobs_id_delays_delayId_delete_343 from "./api/jobs/[id]/delays/[delayId]/
 import jobs_id_delays_delayId_put_344 from "./api/jobs/[id]/delays/[delayId]/PUT";
 import jobs_id_documents_get_345 from "./api/jobs/[id]/documents/GET";
 import jobs_id_documents_post_346 from "./api/jobs/[id]/documents/POST";
+import jobs_id_compose_defaults_get from "./api/jobs/[id]/compose-defaults/GET";
 import jobs_id_export_zip_get_347 from "./api/jobs/[id]/export-zip/GET";
 import jobs_id_field_docs_get_348 from "./api/jobs/[id]/field-docs/GET";
 import jobs_id_files_get_349 from "./api/jobs/[id]/files/GET";
@@ -3234,6 +3235,7 @@ app.delete("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_delete_343);
 app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put_344);
 app.get("/api/jobs/:id/documents", jobs_id_documents_get_345);
 app.post("/api/jobs/:id/documents", jobs_id_documents_post_346);
+app.get("/api/jobs/:id/compose-defaults", jobs_id_compose_defaults_get);
 app.get("/api/jobs/:id/export-zip", jobs_id_export_zip_get_347);
 app.get("/api/jobs/:id/field-docs", jobs_id_field_docs_get_348);
 app.get("/api/jobs/:id/files", jobs_id_files_get_349);
