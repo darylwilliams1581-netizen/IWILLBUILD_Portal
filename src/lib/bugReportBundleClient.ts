@@ -45,6 +45,12 @@ export interface BugReportRow {
   screenshotUrl?: string | null;
   exported_at?: string | null;
   exported_by?: string | null;
+  // Dazza AI analysis fields (added 2026-08-14)
+  ai_analysis?: string | null;
+  ai_suggested_fix?: string | null;
+  ai_suggested_prompt?: string | null;
+  ai_analysed_at?: string | null;
+  sms_auth_used?: number | null;
 }
 
 // ── Reference number ──────────────────────────────────────────────────────────

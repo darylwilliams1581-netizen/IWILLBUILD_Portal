@@ -760,43 +760,43 @@ export default function BugReportsTab() {
                       <Bot size={14} className="text-white" />
                       <span className="text-xs font-bold text-white tracking-wide">Dazza AI Loop</span>
                     </div>
-                    {(selected as Record<string, unknown>).ai_analysed_at && !aiResult && (
+                    {selected.ai_analysed_at && !aiResult && (
                       <span className="text-[10px] text-violet-200">
-                        Last analysed {timeAgo(String((selected as Record<string, unknown>).ai_analysed_at))}
+                        Last analysed {timeAgo(selected.ai_analysed_at)}
                       </span>
                     )}
                   </div>
 
                   <div className="p-4 flex flex-col gap-3">
                     {/* Stored AI result (from DB) */}
-                    {!aiResult && (selected as Record<string, unknown>).ai_analysis && (
+                    {!aiResult && selected.ai_analysis && (
                       <div className="flex flex-col gap-2">
                         <div className="bg-white border border-violet-100 rounded-xl p-3">
                           <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mb-1 flex items-center gap-1">
                             <Zap size={10} /> Diagnosis
                           </p>
                           <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-                            {String((selected as Record<string, unknown>).ai_analysis)}
+                            {selected.ai_analysis}
                           </p>
                         </div>
-                        {(selected as Record<string, unknown>).ai_suggested_fix && (
+                        {selected.ai_suggested_fix && (
                           <div className="bg-white border border-emerald-100 rounded-xl p-3">
                             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
                               <Wrench size={10} /> Suggested Fix
                             </p>
                             <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-                              {String((selected as Record<string, unknown>).ai_suggested_fix)}
+                              {selected.ai_suggested_fix}
                             </p>
                           </div>
                         )}
-                        {(selected as Record<string, unknown>).ai_suggested_prompt && (
+                        {selected.ai_suggested_prompt && (
                           <div className="bg-white border border-amber-100 rounded-xl p-3">
                             <div className="flex items-center justify-between mb-1">
                               <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
                                 <Send size={10} /> Airo Prompt
                               </p>
                               <button
-                                onClick={() => handleCopyPrompt(String((selected as Record<string, unknown>).ai_suggested_prompt))}
+                                onClick={() => handleCopyPrompt(selected.ai_suggested_prompt!)}
                                 className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
                               >
                                 <Copy size={9} />
@@ -804,7 +804,7 @@ export default function BugReportsTab() {
                               </button>
                             </div>
                             <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-mono bg-amber-50 rounded-lg p-2">
-                              {String((selected as Record<string, unknown>).ai_suggested_prompt)}
+                              {selected.ai_suggested_prompt}
                             </p>
                           </div>
                         )}
@@ -879,7 +879,7 @@ export default function BugReportsTab() {
                       >
                         {aiAnalysing
                           ? <><Loader2 size={12} className="animate-spin" /> Dazza is analysing…</>
-                          : <><Bot size={12} /> {(selected as Record<string, unknown>).ai_analysis ? 'Re-analyse with Dazza' : 'Analyse with Dazza AI'}</>
+                          : <><Bot size={12} /> {selected.ai_analysis ? 'Re-analyse with Dazza' : 'Analyse with Dazza AI'}</>
                         }
                       </button>
                     )}
@@ -897,7 +897,7 @@ export default function BugReportsTab() {
                     )}
 
                     {/* SMS Authorisation + Publish */}
-                    {(aiResult || (selected as Record<string, unknown>).ai_analysis) && !publishToken && !publishResult && (
+                    {(aiResult || selected.ai_analysis) && !publishToken && !publishResult && (
                       <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                           <KeyRound size={10} /> SMS Authorisation to Publish
