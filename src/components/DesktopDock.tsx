@@ -97,19 +97,22 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       style={{
         position: 'relative',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 3,
         flexShrink: 0,
         textDecoration: 'none',
         outline: 'none',
+        minWidth: 44,
+        maxWidth: 52,
       }}
       className="dock-icon-btn"
     >
       <div
         className="dock-tile"
         style={{
-          width: 36,
-          height: 36,
+          width: 34,
+          height: 34,
           borderRadius: 9,
           backgroundColor: item.color,
           border: active
@@ -134,46 +137,21 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
           aria-hidden="true"
         />
       </div>
-      {/* tooltip — shown via CSS on hover, no JS needed */}
-      <span
-        className="dock-tooltip"
-        style={{
-          position: 'absolute',
-          bottom: -32,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(15,23,42,0.88)',
-          color: '#fff',
-          fontSize: 11,
-          fontWeight: 600,
-          lineHeight: 1,
-          whiteSpace: 'nowrap',
-          padding: '4px 8px',
-          borderRadius: 5,
-          pointerEvents: 'none',
-          opacity: 0,
-          transition: 'opacity 120ms ease',
-          zIndex: 9999,
-        }}
-      >
-        {item.label}
-      </span>
-      {/* invisible spacer — keeps old span structure intact */}
+      {/* Permanent label below icon */}
       <span
         style={{
-          display: 'none',
-          fontSize: 8.5,
+          fontSize: 9,
           fontWeight: active ? 700 : 500,
-          color: active ? '#ffffff' : 'rgba(255,255,255,0.85)',
-          lineHeight: 1,
+          color: active ? '#ffffff' : 'rgba(255,255,255,0.75)',
+          lineHeight: 1.1,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          width: '100%',
+          maxWidth: 50,
           textAlign: 'center',
-          letterSpacing: '-0.01em',
-          paddingLeft: 1,
-          paddingRight: 1,
+          letterSpacing: '0.01em',
+          pointerEvents: 'none',
+          userSelect: 'none',
         }}
       >
         {item.label}
@@ -202,13 +180,10 @@ export default function DesktopDock() {
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.18) translateY(-1px);
+          transform: scale(1.12) translateY(-1px);
           box-shadow: 0 4px 12px rgba(15,23,42,0.35) !important;
           filter: brightness(1.12);
           z-index: 10;
-        }
-        .dock-icon-btn:hover .dock-tooltip {
-          opacity: 1 !important;
         }
         .dock-icon-btn {
           overflow: visible !important;
@@ -229,7 +204,7 @@ export default function DesktopDock() {
           background: '#1e293b',
           borderBottom: '1px solid #0f172a',
           boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
-          padding: '6px 0 6px',
+          padding: '5px 0 6px',
           alignItems: 'center',
           overflow: 'visible',
         }}

@@ -585,7 +585,7 @@ export default function TeamPage() {
   ];
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col lg:pt-[104px]">
+    <div className="flex-1 bg-slate-50 flex flex-col lg:pt-[116px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
