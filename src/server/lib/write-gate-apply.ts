@@ -41,6 +41,12 @@ const EXEMPT_SEGMENTS: string[][] = [
   ['api', 'notifications'],
   ['api', 'me'],
   ['api', 'takeoff-pad'],
+  // Public token-validated endpoints — no session, no company to gate against
+  ['api', 'secure-share'],   // password validation POST + content GET
+  ['api', 'portal'],         // customer portal (token-validated)
+  ['api', 'public'],         // SWMS signoff, form submit, job-photos
+  ['api', 'external'],       // external form completion
+  ['api', 'contact'],        // public contact form
 ];
 
 // Path suffixes that indicate a read/export operation
