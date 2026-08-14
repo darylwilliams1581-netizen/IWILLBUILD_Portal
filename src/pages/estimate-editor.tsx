@@ -5,11 +5,11 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
   AlertCircle, Lock, FileText, Printer, Check, ChevronDown,
-  Upload, Download, Share2, Calculator, BookOpen,
+  Upload, Download, Share2, Calculator, BookOpen, Mail,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import JobContextTab from '@/components/JobContextTab';
-import OutlookEmailButton from '@/components/OutlookEmailButton';
+import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
   estimateTotals, lineCalc, ESTIMATE_STATUSES, GST_MODES,
@@ -48,6 +48,7 @@ export default function EstimateEditorPage() {
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
@@ -141,6 +142,15 @@ export default function EstimateEditorPage() {
   function handleSave() {
     if (!estimate || isLocked) return;
     void save(estimate, lines);
+  }
+
+  async function handleEmail() {
+    if (!estimate) return;
+    if (dirty && !isLocked) {
+      const savedOk = await save(estimate, lines);
+      if (!savedOk) return;
+    }
+    setShowEmail(true);
   }
 
   // Save-on-back: save if dirty, then navigate
@@ -501,26 +511,17 @@ export default function EstimateEditorPage() {
               PDF
             </button>
 
-            {/* Email via Outlook */}
+            {/* Email with generated PDF attachment */}
             {estimate && (
-              <div className="shrink-0">
-                <OutlookEmailButton
-                  context={{
-                    kind: 'estimate',
-                    estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
-                    jobName: job?.name,
-                    customerName: estimate.customerName ?? undefined,
-                    totalAmount: (() => {
-                      const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST');
-                      return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
-                    })(),
-                    status: estimate.status,
-                    link: `${typeof window !== 'undefined' ? window.location.origin : 'https://iwillbuild.com'}/view/estimate/${estimate.id}`,
-                  }}
-                  size="sm"
-                  showCopy
-                />
-              </div>
+              <button
+                onClick={() => void handleEmail()}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                title="Email this quote with the PDF attached"
+              >
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+                Email
+              </button>
             )}
 
             {/* Share */}
@@ -965,6 +966,14 @@ export default function EstimateEditorPage() {
 
       {showPrint && estimate && (
         <EstimatePrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
+      )}
+      {showEmail && estimate && (
+        <SendDocumentEmailModal
+          endpoint={`/api/estimates/${estimate.id}/send-email`}
+          documentLabel="Quote"
+          documentName={`#${estimate.id} - ${estimate.title}`}
+          onClose={() => setShowEmail(false)}
+        />
       )}
       {showCostPicker && !isLocked && (
         <CostGuidePicker onInsert={insertCostItem} onClose={() => setShowCostPicker(false)} />
