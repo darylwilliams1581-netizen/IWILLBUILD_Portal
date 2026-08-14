@@ -1,18 +1,54 @@
 /**
  * POST /api/invoices/:id/send-email
- * Generates the invoice PDF and sends it to the customer (or a supplied address)
- * as an email attachment via the Airo email gateway.
+ * Generates the invoice PDF and sends it via the Airo email gateway.
  *
- * Body: { to?: string }  — optional override; falls back to customer email on record
+ * Body: {
+ *   to:        string[]
+ *   cc?:       string[]
+ *   bcc?:      string[]
+ *   subject:   string
+ *   message:   string
+ *   attachPdf: boolean
+ *   bccOwner:  boolean
+ * }
  */
 import type { Request, Response } from 'express';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
-import { eq } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { generateInvoicePdf } from '../../../../lib/pdf-generator.js';
 import { sendEmail } from '../../../../email.js';
+
+const MAX_SUBJECT = 200;
+const MAX_MESSAGE = 4000;
+const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
+const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+
+function isValidEmail(addr: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr.trim());
+}
+
+function dedupeLC(addrs: string[]): string[] {
+  const seen = new Set<string>();
+  return addrs.filter((a) => {
+    const k = a.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c)
+  );
+}
+
+function toLines(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean);
+}
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -35,7 +71,26 @@ export default async function handler(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid invoice ID' });
 
-    // Full invoice with customer + job join
+    // ── Parse + validate body ──────────────────────────────────────────────────
+    const body = req.body as Record<string, unknown>;
+    const toList  = dedupeLC(toLines(body.to));
+    const ccList  = dedupeLC(toLines(body.cc));
+    const bccList = dedupeLC(toLines(body.bcc));
+    const subject  = typeof body.subject === 'string' ? body.subject.trim() : '';
+    const message  = typeof body.message === 'string' ? body.message.trim() : '';
+    const attachPdf = body.attachPdf !== false;
+    const bccOwner  = body.bccOwner  !== false;
+
+    if (toList.length === 0) return res.status(400).json({ error: 'At least one To recipient is required.' });
+    for (const a of [...toList, ...ccList, ...bccList]) {
+      if (!isValidEmail(a)) return res.status(400).json({ error: `"${a}" is not a valid email address.` });
+    }
+    if (!subject) return res.status(400).json({ error: 'Subject is required.' });
+    if (subject.length > MAX_SUBJECT) return res.status(400).json({ error: `Subject must be ${MAX_SUBJECT} characters or fewer.` });
+    if (!message) return res.status(400).json({ error: 'Message body is required.' });
+    if (message.length > MAX_MESSAGE) return res.status(400).json({ error: `Message must be ${MAX_MESSAGE} characters or fewer.` });
+
+    // ── Fetch invoice data ─────────────────────────────────────────────────────
     const [rows] = await db.execute(sql`
       SELECT i.*,
              j.name as job_name, j.job_number, j.address as job_address,
@@ -48,7 +103,6 @@ export default async function handler(req: Request, res: Response) {
       WHERE i.id = ${id} AND i.company_id = ${profile.companyId}
       LIMIT 1
     `) as unknown as [Array<Record<string, unknown>>, unknown];
-
     if (!rows?.length) return res.status(404).json({ error: 'Invoice not found' });
     const inv = rows[0];
 
@@ -61,13 +115,11 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ total_paid?: number }>, unknown];
     const amtPaid = Number(paymentRows?.[0]?.total_paid ?? 0);
 
-    // Company details
     const [companyRows] = await db.execute(
       sql`SELECT name, abn, phone, email, address FROM companies WHERE id = ${profile.companyId} LIMIT 1`
     ) as unknown as [Array<Record<string, string>>, unknown];
     const company = companyRows?.[0] ?? {};
 
-    // PDF branding settings
     const [settingsRows] = await db.execute(
       sql`SELECT pdf_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
     ) as unknown as [Array<{ pdf_json?: string }>, unknown];
@@ -77,34 +129,34 @@ export default async function handler(req: Request, res: Response) {
       if (raw) pdfSettings = JSON.parse(raw) as Record<string, string>;
     } catch { /* ignore */ }
 
-    // Generate PDF
+    // ── Generate PDF ───────────────────────────────────────────────────────────
     const pdfBytes = await generateInvoicePdf({
       id,
-      invoice_number:       String(inv.invoice_number ?? ''),
-      status:               String(inv.status ?? 'draft'),
-      issue_date:           String(inv.issue_date ?? ''),
-      due_date:             String(inv.due_date ?? ''),
-      notes:                String(inv.notes ?? ''),
-      payment_terms:        pdfSettings.paymentTerms ?? '',
-      stripe_payment_link:  String(inv.stripe_payment_link ?? ''),
-      company_name:         String(company.name ?? ''),
-      company_abn:          String(company.abn ?? ''),
-      company_phone:        String(company.phone ?? ''),
-      company_email:        String(company.email ?? ''),
-      company_address:      String(company.address ?? ''),
-      customer_name:        String(inv.customer_name ?? ''),
-      customer_email:       String(inv.customer_email ?? ''),
-      customer_phone:       String(inv.customer_phone ?? ''),
-      customer_address:     String(inv.customer_address ?? ''),
-      customer_abn:         String(inv.customer_abn ?? ''),
-      job_name:             String(inv.job_name ?? ''),
-      job_number:           String(inv.job_number ?? ''),
-      job_address:          String(inv.job_address ?? ''),
-      subtotal:             Number(inv.subtotal ?? 0),
-      gst_total:            Number(inv.gst_amount ?? 0),
-      total:                Number(inv.total ?? 0),
-      amount_paid:          amtPaid,
-      amount_due:           Math.max(0, Number(inv.total ?? 0) - amtPaid),
+      invoice_number:      String(inv.invoice_number ?? ''),
+      status:              String(inv.status ?? 'draft'),
+      issue_date:          String(inv.issue_date ?? ''),
+      due_date:            String(inv.due_date ?? ''),
+      notes:               String(inv.notes ?? ''),
+      payment_terms:       pdfSettings.paymentTerms ?? '',
+      stripe_payment_link: String(inv.stripe_payment_link ?? ''),
+      company_name:        String(company.name ?? ''),
+      company_abn:         String(company.abn ?? ''),
+      company_phone:       String(company.phone ?? ''),
+      company_email:       String(company.email ?? ''),
+      company_address:     String(company.address ?? ''),
+      customer_name:       String(inv.customer_name ?? ''),
+      customer_email:      String(inv.customer_email ?? ''),
+      customer_phone:      String(inv.customer_phone ?? ''),
+      customer_address:    String(inv.customer_address ?? ''),
+      customer_abn:        String(inv.customer_abn ?? ''),
+      job_name:            String(inv.job_name ?? ''),
+      job_number:          String(inv.job_number ?? ''),
+      job_address:         String(inv.job_address ?? ''),
+      subtotal:            Number(inv.subtotal ?? 0),
+      gst_total:           Number(inv.gst_amount ?? 0),
+      total:               Number(inv.total ?? 0),
+      amount_paid:         amtPaid,
+      amount_due:          Math.max(0, Number(inv.total ?? 0) - amtPaid),
       lines: (lineRows ?? []).map((l) => ({
         description: String(l.description ?? ''),
         quantity:    Number(l.quantity ?? 1),
@@ -115,78 +167,67 @@ export default async function handler(req: Request, res: Response) {
       })),
     });
 
-    // Resolve recipient
-    const toOverride = typeof req.body?.to === 'string' ? req.body.to.trim() : '';
-    const toAddress  = toOverride || String(inv.customer_email ?? '');
-    if (!toAddress) return res.status(400).json({ error: 'No recipient email address. Please enter an email address or add one to the customer record.' });
+    if (attachPdf && pdfBytes.length > EMAIL_ATTACHMENT_LIMIT) {
+      return res.status(413).json({ error: 'The invoice PDF exceeds the 2 MB email attachment limit.' });
+    }
 
-    const invNum      = inv.invoice_number ? String(inv.invoice_number) : `#${id}`;
-    const customerName = inv.customer_name ? String(inv.customer_name) : '';
-    const dueDate     = inv.due_date ? new Date(String(inv.due_date)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-    const total       = Number(inv.total ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
+    // ── Resolve owner BCC ──────────────────────────────────────────────────────
+    let ownerBcced = false;
+    let finalBcc = [...bccList];
+    if (bccOwner) {
+      const [ownerRows] = await db.execute(sql`
+        SELECT u.email FROM profiles p
+        JOIN users u ON u.id = p.user_id
+        WHERE p.company_id = ${profile.companyId} AND p.role = 'owner'
+        LIMIT 1
+      `) as unknown as [Array<{ email?: string }>, unknown];
+      const ownerEmail = String(ownerRows?.[0]?.email ?? '').trim();
+      if (ownerEmail && isValidEmail(ownerEmail)) {
+        const allRecipients = [...toList, ...ccList, ...finalBcc].map((a) => a.toLowerCase());
+        if (!allRecipients.includes(ownerEmail.toLowerCase())) {
+          finalBcc = dedupeLC([...finalBcc, ownerEmail]);
+          ownerBcced = true;
+        }
+      }
+    }
+
+    // ── Build email body ───────────────────────────────────────────────────────
+    const fullText = `${message}\n\n—\n${SYSTEM_FOOTER}`;
+    const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
     const companyName = String(company.name ?? 'IWILLBUILD');
+    const invNum = inv.invoice_number ? String(inv.invoice_number) : `#${id}`;
 
-    const subject = `Invoice ${invNum}${customerName ? ` — ${customerName}` : ''}`;
-
-    const textLines = [
-      `Hi${customerName ? ` ${customerName}` : ''},`,
-      '',
-      `Please find your invoice attached.`,
-      '',
-      `─────────────────────────────────────`,
-      `Invoice No:  ${invNum}`,
-      ...(total    ? [`Amount:      ${total}`]    : []),
-      ...(dueDate  ? [`Due Date:    ${dueDate}`]  : []),
-      `─────────────────────────────────────`,
-      '',
-      `Please don't hesitate to contact us if you have any questions.`,
-      '',
-      `Kind regards,`,
-      companyName,
-    ];
-
-    const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b;background:#f8fafc;margin:0;padding:0">
-  <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-    <div style="background:#7c3aed;padding:24px 32px">
-      <p style="margin:0;font-size:20px;font-weight:800;color:#fff">${companyName}</p>
-      <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,.85)">Tax Invoice</p>
-    </div>
-    <div style="padding:32px">
-      <p style="margin:0 0 16px;font-size:15px">Hi${customerName ? ` ${customerName}` : ''},</p>
-      <p style="margin:0 0 24px;font-size:14px;color:#475569">Please find your invoice attached to this email.</p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:24px">
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <tr><td style="color:#64748b;padding:4px 0">Invoice No</td><td style="text-align:right;font-weight:600">${invNum}</td></tr>
-          ${total   ? `<tr><td style="color:#64748b;padding:4px 0">Amount</td><td style="text-align:right;font-weight:700;color:#7c3aed;font-size:15px">${total}</td></tr>` : ''}
-          ${dueDate ? `<tr><td style="color:#64748b;padding:4px 0">Due Date</td><td style="text-align:right;font-weight:600">${dueDate}</td></tr>` : ''}
-        </table>
+    const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">
+      <div style="max-width:560px;margin:24px auto">
+        <div style="background:#7c3aed;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
+          <strong style="font-size:18px">${escapeHtml(companyName)}</strong>
+          <div style="font-size:12px;opacity:.85;margin-top:4px">Invoice ${escapeHtml(invNum)}</div>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-top:0;padding:24px;border-radius:0 0 12px 12px">
+          <p style="white-space:pre-line">${escapedMessage}</p>
+        </div>
+        <div style="background:#f1f5f9;padding:12px 24px">
+          <p style="margin:0;font-size:11px;color:#94a3b8;font-style:italic">${escapeHtml(SYSTEM_FOOTER)}</p>
+        </div>
       </div>
-      <p style="margin:0 0 8px;font-size:13px;color:#475569">Please don't hesitate to contact us if you have any questions.</p>
-      <p style="margin:0;font-size:13px;color:#475569">Kind regards,<br><strong>${companyName}</strong></p>
-    </div>
-    <div style="background:#f1f5f9;padding:16px 32px;text-align:center">
-      <p style="margin:0;font-size:11px;color:#94a3b8">Sent from IWILLBUILD — iwillbuild.com</p>
-    </div>
-  </div>
-</body>
-</html>`;
+    </body></html>`;
 
     const filename = `invoice-${invNum.replace(/[^a-z0-9_\-]/gi, '-')}.pdf`;
 
-    await sendEmail({
-      to:          toAddress,
+    const result = await sendEmail({
+      to: toList,
+      cc: ccList.length ? ccList : undefined,
+      bcc: finalBcc.length ? finalBcc : undefined,
       subject,
-      text:        textLines.join('\n'),
-      html:        htmlBody,
-      fromName:    companyName,
-      attachments: [{ filename, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }],
+      text: fullText,
+      html,
+      fromName: companyName,
+      attachments: attachPdf
+        ? [{ filename, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }]
+        : undefined,
     });
 
-    return res.json({ ok: true, to: toAddress });
+    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced });
   } catch (err) {
     console.error('POST /api/invoices/:id/send-email error:', err);
     const msg = err instanceof Error ? err.message : String(err);

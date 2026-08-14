@@ -1,7 +1,17 @@
 /**
  * POST /api/job-forms/:id/send-email
- * Generates a completed-form PDF, embeds stored photos/signatures, and sends
- * the document as a real PDF attachment.
+ * Generates a completed-form PDF (with embedded photos/signatures) and sends
+ * it via the Airo email gateway.
+ *
+ * Body: {
+ *   to:        string[]
+ *   cc?:       string[]
+ *   bcc?:      string[]
+ *   subject:   string
+ *   message:   string
+ *   attachPdf: boolean
+ *   bccOwner:  boolean
+ * }
  */
 import type { Request, Response } from 'express';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -24,6 +34,28 @@ import {
 import { getAuth } from '../../../../../lib/auth/auth.js';
 
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
+const MAX_SUBJECT = 200;
+const MAX_MESSAGE = 4000;
+const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+
+function isValidEmail(addr: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr.trim());
+}
+
+function dedupeLC(addrs: string[]): string[] {
+  const seen = new Set<string>();
+  return addrs.filter((a) => {
+    const k = a.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function toLines(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean);
+}
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({
@@ -88,7 +120,6 @@ function displayValue(fieldType: string, value: unknown): string {
   if (typeof value === 'object') {
     const obj = value as Record<string, unknown>;
     if (fieldType === 'location') return String(obj.address ?? `${obj.lat ?? ''}, ${obj.lng ?? ''}`);
-    if (fieldType === 'signature') return 'Signature captured';
     try { return JSON.stringify(obj); } catch { return 'Recorded'; }
   }
   if (fieldType === 'checkbox') return value === true ? 'Checked' : 'Unchecked';
@@ -114,12 +145,26 @@ export default async function handler(req: Request, res: Response) {
     const submissionId = Number(req.params.id);
     if (!Number.isInteger(submissionId)) return res.status(400).json({ error: 'Invalid form ID' });
 
-    const to = typeof req.body?.to === 'string' ? req.body.to.trim() : '';
-    if (!to) return res.status(400).json({ error: 'Recipient email is required' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      return res.status(400).json({ error: 'Enter a valid recipient email address.' });
-    }
+    // ── Parse + validate body ──────────────────────────────────────────────────
+    const body = req.body as Record<string, unknown>;
+    const toList  = dedupeLC(toLines(body.to));
+    const ccList  = dedupeLC(toLines(body.cc));
+    const bccList = dedupeLC(toLines(body.bcc));
+    const subject  = typeof body.subject === 'string' ? body.subject.trim() : '';
+    const message  = typeof body.message === 'string' ? body.message.trim() : '';
+    const attachPdf = body.attachPdf !== false;
+    const bccOwner  = body.bccOwner  !== false;
 
+    if (toList.length === 0) return res.status(400).json({ error: 'At least one To recipient is required.' });
+    for (const a of [...toList, ...ccList, ...bccList]) {
+      if (!isValidEmail(a)) return res.status(400).json({ error: `"${a}" is not a valid email address.` });
+    }
+    if (!subject) return res.status(400).json({ error: 'Subject is required.' });
+    if (subject.length > MAX_SUBJECT) return res.status(400).json({ error: `Subject must be ${MAX_SUBJECT} characters or fewer.` });
+    if (!message) return res.status(400).json({ error: 'Message body is required.' });
+    if (message.length > MAX_MESSAGE) return res.status(400).json({ error: `Message must be ${MAX_MESSAGE} characters or fewer.` });
+
+    // ── Load submission ────────────────────────────────────────────────────────
     const submission = await db.query.jobFormSubmissions.findFirst({
       where: and(
         eq(jobFormSubmissions.id, submissionId),
@@ -188,6 +233,7 @@ export default async function handler(req: Request, res: Response) {
       if (submission.answersJson) answers = JSON.parse(submission.answersJson) as Record<string, unknown>;
     } catch { /* malformed historical answers remain blank */ }
 
+    // ── Embed photos + signatures ──────────────────────────────────────────────
     const photoIds = Array.from(new Set(fields
       .filter((field) => field.fieldType === 'photo')
       .flatMap((field) => answerUrls(answers[String(field.id)]))
@@ -234,6 +280,7 @@ export default async function handler(req: Request, res: Response) {
     });
     const status = submission.status === 'completed' ? 'Completed' : 'In Progress';
 
+    // ── Generate PDF ───────────────────────────────────────────────────────────
     const pdfBytes = await generateFormSubmissionPdf({
       title: templateName,
       status,
@@ -256,35 +303,36 @@ export default async function handler(req: Request, res: Response) {
       fieldImages,
     });
 
-    if (pdfBytes.length > EMAIL_ATTACHMENT_LIMIT) {
+    if (attachPdf && pdfBytes.length > EMAIL_ATTACHMENT_LIMIT) {
       return res.status(413).json({
         error: 'This form PDF is larger than the 2 MB email limit. Remove some photos or use Print / PDF to download it.',
       });
     }
 
-    const jobLabel = [jobNumber, jobName].filter(Boolean).join(' - ');
-    const summaryLines: string[] = [];
-    const htmlRows: string[] = [];
-    for (const field of fields) {
-      if (['section', 'instruction', 'instruction_image', 'page_break'].includes(field.fieldType)) continue;
-      const display = displayValue(field.fieldType, answers[String(field.id)]);
-      summaryLines.push(`${field.label}: ${display}`);
-      htmlRows.push(`<tr><td style="padding:5px 8px;color:#64748b;vertical-align:top">${escapeHtml(field.label)}</td><td style="padding:5px 8px;color:#1e293b">${escapeHtml(display)}</td></tr>`);
+    // ── Resolve owner BCC ──────────────────────────────────────────────────────
+    let ownerBcced = false;
+    let finalBcc = [...bccList];
+    if (bccOwner) {
+      const [ownerRows] = await db.execute(sql`
+        SELECT u.email FROM profiles p
+        JOIN users u ON u.id = p.user_id
+        WHERE p.company_id = ${profile.companyId} AND p.role = 'owner'
+        LIMIT 1
+      `) as unknown as [Array<{ email?: string }>, unknown];
+      const ownerEmail = String(ownerRows?.[0]?.email ?? '').trim();
+      if (ownerEmail && isValidEmail(ownerEmail)) {
+        const allRecipients = [...toList, ...ccList, ...finalBcc].map((a) => a.toLowerCase());
+        if (!allRecipients.includes(ownerEmail.toLowerCase())) {
+          finalBcc = dedupeLC([...finalBcc, ownerEmail]);
+          ownerBcced = true;
+        }
+      }
     }
 
-    const text = [
-      `Form: ${templateName}`,
-      `Status: ${status}`,
-      jobLabel ? `Job: ${jobLabel}` : '',
-      `Completed by: ${submission.completedByName ?? 'Unknown'}`,
-      `Date: ${completedAt}`,
-      '',
-      'The completed form is attached as a PDF.',
-      '',
-      ...summaryLines,
-      '',
-      `Sent from ${companyName}`,
-    ].filter(Boolean).join('\n');
+    // ── Build email body ───────────────────────────────────────────────────────
+    const jobLabel = [jobNumber, jobName].filter(Boolean).join(' – ');
+    const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
+    const fullText = `${message}\n\n—\n${SYSTEM_FOOTER}`;
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">
       <div style="max-width:620px;margin:24px auto">
@@ -293,8 +341,10 @@ export default async function handler(req: Request, res: Response) {
           <div style="font-size:12px;opacity:.85;margin-top:4px">${escapeHtml(jobLabel || status)}</div>
         </div>
         <div style="border:1px solid #e2e8f0;border-top:0;padding:24px;border-radius:0 0 12px 12px">
-          <p>The completed form is attached as a PDF. Photos and signatures are embedded in the attachment.</p>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:16px">${htmlRows.join('')}</table>
+          <p style="white-space:pre-line">${escapedMessage}</p>
+        </div>
+        <div style="background:#f1f5f9;padding:12px 24px">
+          <p style="margin:0;font-size:11px;color:#94a3b8;font-style:italic">${escapeHtml(SYSTEM_FOOTER)}</p>
         </div>
       </div>
     </body></html>`;
@@ -302,16 +352,20 @@ export default async function handler(req: Request, res: Response) {
     const safeTitle = templateName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 60) || 'form';
     const filename = `${safeTitle}-${submission.id}.pdf`;
 
-    await sendEmail({
-      to,
-      subject: `${templateName}${jobLabel ? ` - ${jobLabel}` : ''} (${status})`,
-      text,
+    const result = await sendEmail({
+      to: toList,
+      cc: ccList.length ? ccList : undefined,
+      bcc: finalBcc.length ? finalBcc : undefined,
+      subject,
+      text: fullText,
       html,
       fromName: companyName,
-      attachments: [{ filename, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }],
+      attachments: attachPdf
+        ? [{ filename, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }]
+        : undefined,
     });
 
-    return res.json({ ok: true, to, attachment: filename, photoCount: photoIds.length });
+    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced, photoCount: photoIds.length });
   } catch (error) {
     console.error('POST /api/job-forms/:id/send-email error:', error);
     const message = error instanceof Error ? error.message : 'Failed to send form email';

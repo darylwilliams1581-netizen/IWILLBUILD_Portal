@@ -224,6 +224,20 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
 
   // ── Email modal state ────────────────────────────────────────────────────────
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string } | null>(null);
+
+  async function openEmailModal() {
+    try {
+      const res = await fetch(`/api/job-forms/${submission.id}/compose-defaults`, { credentials: 'include' });
+      const d = res.ok
+        ? await res.json() as { to: string; subject: string; message: string }
+        : { to: '', subject: '', message: '' };
+      setEmailDefaults(d);
+    } catch {
+      setEmailDefaults({ to: '', subject: '', message: '' });
+    }
+    setEmailModalOpen(true);
+  }
 
   // ── Print / PDF ─────────────────────────────────────────────────────────────
 
@@ -575,7 +589,7 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
               <Printer size={12} /> Print / PDF
             </button>
             <button
-              onClick={() => setEmailModalOpen(true)}
+              onClick={() => void openEmailModal()}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
             >
               <Mail size={12} /> Send Email
@@ -652,12 +666,17 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
       </div>
 
       {/* ── Send Email Modal ─────────────────────────────────────────────────── */}
-      {emailModalOpen && (
+      {emailModalOpen && emailDefaults && (
         <SendDocumentEmailModal
           endpoint={`/api/job-forms/${submission.id}/send-email`}
           documentLabel="Form"
+          documentType="form"
+          documentId={submission.id}
           documentName={templateName}
-          onClose={() => setEmailModalOpen(false)}
+          defaultTo={emailDefaults.to}
+          defaultSubject={emailDefaults.subject}
+          defaultMessage={emailDefaults.message}
+          onClose={() => { setEmailModalOpen(false); setEmailDefaults(null); }}
         />
       )}
       </>

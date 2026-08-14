@@ -1083,7 +1083,6 @@ export default function InvoiceBuilderPage() {
         <SendInvoiceEmailModal
           invoiceId={invoice.id}
           invoiceNumber={invoice.invoice_number ?? `#${invoice.id}`}
-          defaultEmail={''}
           onClose={() => setShowEmailModal(false)}
         />
       )}

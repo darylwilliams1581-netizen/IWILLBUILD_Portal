@@ -49,6 +49,7 @@ export default function EstimateEditorPage() {
   const [dirty, setDirty] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string } | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
@@ -151,6 +152,18 @@ export default function EstimateEditorPage() {
     if (dirty && !isLocked) {
       const savedOk = await save(estimate, lines);
       if (!savedOk) return;
+    }
+    // Prefetch compose defaults from server
+    try {
+      const res = await fetch(`/api/estimates/${estimate.id}/compose-defaults`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json() as { to: string; subject: string; message: string };
+        setEmailDefaults(d);
+      } else {
+        setEmailDefaults({ to: '', subject: '', message: '' });
+      }
+    } catch {
+      setEmailDefaults({ to: '', subject: '', message: '' });
     }
     setShowEmail(true);
   }
@@ -965,12 +978,17 @@ export default function EstimateEditorPage() {
       {showPrint && estimate && (
         <EstimatePrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
       )}
-      {showEmail && estimate && (
+      {showEmail && estimate && emailDefaults && (
         <SendDocumentEmailModal
           endpoint={`/api/estimates/${estimate.id}/send-email`}
           documentLabel="Quote"
-          documentName={`#${estimate.id} - ${estimate.title}`}
-          onClose={() => setShowEmail(false)}
+          documentType="quote"
+          documentId={estimate.id}
+          documentName={`#${estimate.id} – ${estimate.title}`}
+          defaultTo={emailDefaults.to}
+          defaultSubject={emailDefaults.subject}
+          defaultMessage={emailDefaults.message}
+          onClose={() => { setShowEmail(false); setEmailDefaults(null); }}
         />
       )}
       {showCostPicker && !isLocked && (
