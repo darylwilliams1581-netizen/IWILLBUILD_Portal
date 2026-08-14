@@ -23,6 +23,7 @@ import {
   jobFormSubmissions,
   jobs,
   profiles,
+  user,
 } from '../../../../db/schema.js';
 import { sendEmail } from '../../../../email.js';
 import { generateFormSubmissionPdf, type FormPdfImage } from '../../../../lib/form-pdf-generator.js';
@@ -141,6 +142,10 @@ export default async function handler(req: Request, res: Response) {
     if (profile.permForms === false && profile.role !== 'owner' && profile.role !== 'admin') {
       return res.status(403).json({ error: 'No forms permission' });
     }
+
+    // Resolve sender name
+    const authorUser = await db.query.user.findFirst({ where: eq(user.id, session.user.id) });
+    const senderName = authorUser?.name ?? session.user.email ?? 'Unknown';
 
     const submissionId = Number(req.params.id);
     if (!Number.isInteger(submissionId)) return res.status(400).json({ error: 'Invalid form ID' });
@@ -365,7 +370,42 @@ export default async function handler(req: Request, res: Response) {
         : undefined,
     });
 
-    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced, photoCount: photoIds.length });
+    // ── Audit note on the linked job ───────────────────────────────────────────
+    if (submission.jobId) {
+      try {
+        const toStr = toList.join(', ');
+        const ccStr = ccList.length ? ccList.join(', ') : 'None';
+        const bccStr = ownerBcced ? 'Owner' : 'None';
+        const bodyPreview = message.length > 120 ? `${message.slice(0, 117)}…` : message;
+        const now = new Date().toLocaleString('en-AU', {
+          day: 'numeric', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane',
+        });
+        const attachment = attachPdf ? `${templateName} PDF` : 'None';
+        const jobLabel = [jobNumber, jobName].filter(Boolean).join(' — ');
+        const noteBody = [
+          `Email sent – ${templateName}`,
+          `To: ${toStr}`, `Cc: ${ccStr}`, `BCC: ${bccStr}`,
+          `Sent by: ${senderName}`, now,
+          `Subject: ${subject}`, `Body: ${bodyPreview}`,
+          `Attachment: ${attachment}`, 'Status: Accepted', `Ref: ${result.messageId}`,
+        ].join(' | ');
+
+        const authorIdEsc = session.user.id.replace(/'/g, "''");
+        const authorNameEsc = senderName.replace(/'/g, "''");
+        const bodyEsc = noteBody.replace(/'/g, "''");
+        const labelEsc = jobLabel.replace(/'/g, "''");
+
+        await db.execute(sql.raw(
+          `INSERT INTO entity_notes (company_id, entity_type, entity_id, entity_label, note_type, body, author_user_id, author_name, mentions_json)
+           VALUES (${profile.companyId}, 'job', ${submission.jobId}, '${labelEsc}', 'note', '${bodyEsc}', '${authorIdEsc}', '${authorNameEsc}', '[]')`
+        ));
+      } catch (noteErr) {
+        console.warn('POST /api/job-forms/:id/send-email — note creation failed (non-fatal):', noteErr);
+      }
+    }
+
+    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced, photoCount: photoIds.length, senderName });
   } catch (error) {
     console.error('POST /api/job-forms/:id/send-email error:', error);
     const message = error instanceof Error ? error.message : 'Failed to send form email';

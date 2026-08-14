@@ -33,7 +33,9 @@ import {
   Mail,
 } from 'lucide-react';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
-import type { JobEmailContext } from '@/components/SendDocumentEmailModal';
+import type { JobEmailContext, SendSuccessPayload } from '@/components/SendDocumentEmailModal';
+import { EmailToastContainer } from '@/components/EmailSentToast';
+import type { EmailSentToastProps } from '@/components/EmailSentToast';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
 import NotesPanel from '@/components/notes/NotesPanel';
@@ -135,6 +137,14 @@ export default function JobDetailPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: JobEmailContext } | null>(null);
   const [loadingEmailDefaults, setLoadingEmailDefaults] = useState(false);
+  const [emailToasts, setEmailToasts] = useState<EmailSentToastProps[]>([]);
+
+  const dismissToast = (id: string) => setEmailToasts((prev) => prev.filter((t) => t.id !== id));
+
+  const handleEmailSuccess = (payload: SendSuccessPayload) => {
+    const id = `toast-${Date.now()}`;
+    setEmailToasts((prev) => [...prev, { id, ...payload, onDismiss: dismissToast }]);
+  };
 
   const handleOpenEmail = async () => {
     if (!job) return;
@@ -809,17 +819,22 @@ export default function JobDetailPage() {
       {showEmailModal && emailDefaults && job && (
         <SendDocumentEmailModal
           endpoint={`/api/jobs/${job.id}/send-email`}
-          documentLabel="Job"
-          documentType="form"
+          documentLabel="Job correspondence"
+          documentType="job"
           documentId={job.id}
           documentName={job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name}
           defaultTo={emailDefaults.to}
           defaultSubject={emailDefaults.subject}
           defaultMessage={emailDefaults.message}
           job={emailDefaults.job}
+          jobId={job.id}
+          onSuccess={handleEmailSuccess}
           onClose={() => { setShowEmailModal(false); setEmailDefaults(null); }}
         />
       )}
+
+      {/* ── Email sent toasts ── */}
+      <EmailToastContainer toasts={emailToasts} onDismiss={dismissToast} />
     </div>
   );
 }

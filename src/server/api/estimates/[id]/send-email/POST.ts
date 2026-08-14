@@ -15,7 +15,7 @@
 import type { Request, Response } from 'express';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';
-import { profiles } from '../../../../db/schema.js';
+import { profiles, user } from '../../../../db/schema.js';
 import { sendEmail } from '../../../../email.js';
 import { buildEstimatePdfDocument } from '../../../../lib/estimate-pdf-document.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
@@ -65,6 +65,10 @@ export default async function handler(req: Request, res: Response) {
     if (profile.permEstimating === false && profile.role !== 'owner' && profile.role !== 'admin') {
       return res.status(403).json({ error: 'No estimating permission' });
     }
+
+    // Resolve sender name
+    const authorUser = await db.query.user.findFirst({ where: eq(user.id, session.user.id) });
+    const senderName = authorUser?.name ?? session.user.email ?? 'Unknown';
 
     const estimateId = Number(req.params.id);
     if (!Number.isInteger(estimateId)) return res.status(400).json({ error: 'Invalid quote ID' });
@@ -148,7 +152,46 @@ export default async function handler(req: Request, res: Response) {
         : undefined,
     });
 
-    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced });
+    // ── Audit note on the linked job ───────────────────────────────────────────
+    // Fetch jobId directly from the estimate record
+    try {
+      const [estRows] = await db.execute(sql`
+        SELECT job_id FROM estimates WHERE id = ${estimateId} AND company_id = ${profile.companyId} LIMIT 1
+      `) as unknown as [Array<{ job_id?: number | null }>, unknown];
+      const jobId = estRows?.[0]?.job_id ?? null;
+      if (jobId) {
+        const toStr = toList.join(', ');
+        const ccStr = ccList.length ? ccList.join(', ') : 'None';
+        const bccStr = ownerBcced ? 'Owner' : 'None';
+        const bodyPreview = message.length > 120 ? `${message.slice(0, 117)}…` : message;
+        const now = new Date().toLocaleString('en-AU', {
+          day: 'numeric', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane',
+        });
+        const attachment = attachPdf ? 'Quote PDF' : 'None';
+        const noteBody = [
+          `Email sent – Quote #${estimateId}`,
+          `To: ${toStr}`, `Cc: ${ccStr}`, `BCC: ${bccStr}`,
+          `Sent by: ${senderName}`, now,
+          `Subject: ${subject}`, `Body: ${bodyPreview}`,
+          `Attachment: ${attachment}`, 'Status: Accepted', `Ref: ${result.messageId}`,
+        ].join(' | ');
+
+        const authorIdEsc = session.user.id.replace(/'/g, "''");
+        const authorNameEsc = senderName.replace(/'/g, "''");
+        const bodyEsc = noteBody.replace(/'/g, "''");
+        const companyNameEsc = document.companyName.replace(/'/g, "''");
+
+        await db.execute(sql.raw(
+          `INSERT INTO entity_notes (company_id, entity_type, entity_id, entity_label, note_type, body, author_user_id, author_name, mentions_json)
+           VALUES (${profile.companyId}, 'job', ${jobId}, '${companyNameEsc}', 'note', '${bodyEsc}', '${authorIdEsc}', '${authorNameEsc}', '[]')`
+        ));
+      }
+    } catch (noteErr) {
+      console.warn('POST /api/estimates/:id/send-email — note creation failed (non-fatal):', noteErr);
+    }
+
+    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced, senderName });
   } catch (error) {
     console.error('POST /api/estimates/:id/send-email error:', error);
     const message = error instanceof Error ? error.message : 'Failed to send quote email';

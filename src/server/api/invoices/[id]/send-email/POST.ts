@@ -15,7 +15,7 @@
 import type { Request, Response } from 'express';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';
-import { profiles } from '../../../../db/schema.js';
+import { profiles, user } from '../../../../db/schema.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { generateInvoicePdf } from '../../../../lib/pdf-generator.js';
 import { sendEmail } from '../../../../email.js';
@@ -67,6 +67,10 @@ export default async function handler(req: Request, res: Response) {
     const isAdmin = isOwner || profile.role === 'admin' || profile.permAdmin === true;
     const canInvoices = isAdmin || profile.permInvoices !== false;
     if (!canInvoices) return res.status(403).json({ error: 'No invoice permission' });
+
+    // Resolve sender name
+    const authorUser = await db.query.user.findFirst({ where: eq(user.id, session.user.id) });
+    const senderName = authorUser?.name ?? session.user.email ?? 'Unknown';
 
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid invoice ID' });
@@ -227,7 +231,42 @@ export default async function handler(req: Request, res: Response) {
         : undefined,
     });
 
-    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced });
+    // ── Audit note on the linked job ───────────────────────────────────────────
+    const jobId = inv.job_id ? Number(inv.job_id) : null;
+    if (jobId) {
+      try {
+        const toStr = toList.join(', ');
+        const ccStr = ccList.length ? ccList.join(', ') : 'None';
+        const bccStr = ownerBcced ? 'Owner' : 'None';
+        const bodyPreview = message.length > 120 ? `${message.slice(0, 117)}…` : message;
+        const now = new Date().toLocaleString('en-AU', {
+          day: 'numeric', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane',
+        });
+        const attachment = attachPdf ? 'Invoice PDF' : 'None';
+        const noteBody = [
+          `Email sent – Invoice ${invNum}`,
+          `To: ${toStr}`, `Cc: ${ccStr}`, `BCC: ${bccStr}`,
+          `Sent by: ${senderName}`, now,
+          `Subject: ${subject}`, `Body: ${bodyPreview}`,
+          `Attachment: ${attachment}`, 'Status: Accepted', `Ref: ${result.messageId}`,
+        ].join(' | ');
+
+        const authorIdEsc = session.user.id.replace(/'/g, "''");
+        const authorNameEsc = senderName.replace(/'/g, "''");
+        const bodyEsc = noteBody.replace(/'/g, "''");
+        const companyNameEsc = companyName.replace(/'/g, "''");
+
+        await db.execute(sql.raw(
+          `INSERT INTO entity_notes (company_id, entity_type, entity_id, entity_label, note_type, body, author_user_id, author_name, mentions_json)
+           VALUES (${profile.companyId}, 'job', ${jobId}, '${companyNameEsc}', 'note', '${bodyEsc}', '${authorIdEsc}', '${authorNameEsc}', '[]')`
+        ));
+      } catch (noteErr) {
+        console.warn('POST /api/invoices/:id/send-email — note creation failed (non-fatal):', noteErr);
+      }
+    }
+
+    return res.json({ ok: true, messageId: result.messageId, attachedPdf: attachPdf, ownerBcced, senderName });
   } catch (err) {
     console.error('POST /api/invoices/:id/send-email error:', err);
     const msg = err instanceof Error ? err.message : String(err);

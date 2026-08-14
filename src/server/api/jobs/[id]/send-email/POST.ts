@@ -15,7 +15,7 @@
 import type { Request, Response } from 'express';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';
-import { profiles } from '../../../../db/schema.js';
+import { profiles, user } from '../../../../db/schema.js';
 import { sendEmail } from '../../../../email.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 
@@ -60,6 +60,10 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    // Resolve sender name
+    const authorUser = await db.query.user.findFirst({ where: eq(user.id, session.user.id) });
+    const senderName = authorUser?.name ?? session.user.email ?? 'Unknown';
 
     const jobId = Number(req.params.id);
     if (!Number.isInteger(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
@@ -132,7 +136,42 @@ export default async function handler(req: Request, res: Response) {
       text: `${message}\n\n---\n${SYSTEM_FOOTER}`,
     });
 
-    return res.json({ ok: true, messageId: result.messageId ?? `job-${jobId}-${Date.now()}`, attachedPdf: false, ownerBcced });
+    const messageId = result.messageId ?? `job-${jobId}-${Date.now()}`;
+
+    // ── Create audit note ──────────────────────────────────────────────────────
+    try {
+      const jobRow = jobRows[0];
+      const jobLabel = [String(jobRow.job_number ?? ''), String(jobRow.name ?? '')].filter(Boolean).join(' — ');
+      const toStr = toList.join(', ');
+      const ccStr = ccList.length ? ccList.join(', ') : 'None';
+      const bccStr = ownerBcced ? 'Owner' : 'None';
+      const bodyPreview = message.length > 120 ? `${message.slice(0, 117)}…` : message;
+      const now = new Date().toLocaleString('en-AU', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane',
+      });
+      const noteBody = [
+        'Email sent – Job correspondence',
+        `To: ${toStr}`, `Cc: ${ccStr}`, `BCC: ${bccStr}`,
+        `Sent by: ${senderName}`, now,
+        `Subject: ${subject}`, `Body: ${bodyPreview}`,
+        'Attachment: None', 'Status: Accepted', `Ref: ${messageId}`,
+      ].join(' | ');
+
+      const authorIdEsc = session.user.id.replace(/'/g, "''");
+      const authorNameEsc = senderName.replace(/'/g, "''");
+      const bodyEsc = noteBody.replace(/'/g, "''");
+      const labelEsc = jobLabel.replace(/'/g, "''");
+
+      await db.execute(sql.raw(
+        `INSERT INTO entity_notes (company_id, entity_type, entity_id, entity_label, note_type, body, author_user_id, author_name, mentions_json)
+         VALUES (${profile.companyId}, 'job', ${jobId}, '${labelEsc}', 'note', '${bodyEsc}', '${authorIdEsc}', '${authorNameEsc}', '[]')`
+      ));
+    } catch (noteErr) {
+      console.warn('POST /api/jobs/:id/send-email — note creation failed (non-fatal):', noteErr);
+    }
+
+    return res.json({ ok: true, messageId, attachedPdf: false, ownerBcced, senderName });
   } catch (error) {
     console.error('POST /api/jobs/:id/send-email error:', error);
     return res.status(500).json({ error: 'Failed to send email' });
