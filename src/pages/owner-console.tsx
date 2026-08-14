@@ -8,7 +8,7 @@ import {
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut, ArrowLeft, Bug,
+  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -35,6 +35,8 @@ import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTe
 
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
+import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
+import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -354,10 +356,12 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports'>(
-    (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | null) === 'support-setup' ? 'support-setup'
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue'>(
+    (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null) === 'support-setup' ? 'support-setup'
     : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
     : (searchParams.get('tab') as 'bug-reports' | null) === 'bug-reports' ? 'bug-reports'
+    : (searchParams.get('tab') as 'incidents' | null) === 'incidents' ? 'incidents'
+    : (searchParams.get('tab') as 'client-rescue' | null) === 'client-rescue' ? 'client-rescue'
     : 'overview'
   );
   const [bugReportCount, setBugReportCount] = useState(0);
@@ -764,6 +768,18 @@ export default function OwnerConsolePage() {
               )}
             </span>
           </Tab>
+          <Tab active={tab === 'incidents'} onClick={() => { setTab('incidents'); setSearchParams({ tab: 'incidents' }); }}>
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle size={12} />
+              Incidents
+            </span>
+          </Tab>
+          <Tab active={tab === 'client-rescue'} onClick={() => { setTab('client-rescue'); setSearchParams({ tab: 'client-rescue' }); }}>
+            <span className="flex items-center gap-1.5">
+              <Phone size={12} />
+              Client Rescue
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -776,7 +792,7 @@ export default function OwnerConsolePage() {
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 ${tab === 'bug-reports' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+        <div className={`flex-1 min-h-0 ${(tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue') ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
@@ -942,6 +958,10 @@ export default function OwnerConsolePage() {
 
               {/* ── Bug Reports ── */}
               {tab === 'bug-reports' && <BugReportsTab />}
+              {/* ── Incidents ── */}
+              {tab === 'incidents' && <IncidentQueueTab />}
+              {/* ── Client Rescue ── */}
+              {tab === 'client-rescue' && <ClientRescueTab />}
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (
