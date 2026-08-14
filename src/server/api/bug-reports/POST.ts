@@ -278,7 +278,7 @@ async function triggerAutoAnalysis(
     `));
 
     // Send SMS to platform owner
-    const ownerPhone = process.env.PLATFORM_OWNER_PHONE ?? '';
+    const ownerPhone = getSecret('PLATFORM_OWNER_PHONE') ?? process.env.PLATFORM_OWNER_PHONE ?? '';
     if (isSmsConfigured() && ownerPhone) {
       const smsBody =
         `🐛 New IWILLBUILD Bug\n` +

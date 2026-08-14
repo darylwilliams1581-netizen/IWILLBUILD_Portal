@@ -858,7 +858,7 @@ export default function BugReportsTab() {
                         )}
                         {!aiResult.smsConfigured && (
                           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-500">
-                            <AlertCircle size={12} /> SMS not configured — set PLATFORM_OWNER_PHONE to enable SMS auth
+                            <AlertCircle size={12} /> SMS not configured — check Twilio secrets to enable SMS auth
                           </div>
                         )}
                       </div>

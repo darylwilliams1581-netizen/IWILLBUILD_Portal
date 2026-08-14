@@ -25,8 +25,10 @@ function esc(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-// ── Platform owner phone (stored in DB or env fallback) ───────────────────────
-const PLATFORM_OWNER_PHONE = process.env.PLATFORM_OWNER_PHONE ?? '';
+// ── Platform owner phone ──────────────────────────────────────────────────────
+function getOwnerPhone(): string {
+  return getSecret('PLATFORM_OWNER_PHONE') ?? process.env.PLATFORM_OWNER_PHONE ?? '';
+}
 
 // ── Generate 6-digit code ─────────────────────────────────────────────────────
 function generateCode(): string {
@@ -179,7 +181,8 @@ export default async function handler(req: Request, res: Response) {
     let smsSent = false;
     let smsCode = '';
 
-    if (isSmsConfigured() && PLATFORM_OWNER_PHONE) {
+    const ownerPhone = getOwnerPhone();
+    if (isSmsConfigured() && ownerPhone) {
       smsCode = generateCode();
       const codeHash = hashCode(smsCode);
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min TTL
@@ -201,7 +204,7 @@ export default async function handler(req: Request, res: Response) {
         `Auth code to publish fix: ${smsCode}\n` +
         `(Expires in 15 min)`;
 
-      smsSent = await sendSms(PLATFORM_OWNER_PHONE, smsBody);
+      smsSent = await sendSms(ownerPhone, smsBody);
     }
 
     return res.json({
