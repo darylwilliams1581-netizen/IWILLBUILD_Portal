@@ -8,7 +8,7 @@ import {
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone,
+  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -37,6 +37,7 @@ import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTa
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
+import BuilderTab from '@/components/owner-console/BuilderTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -789,10 +790,16 @@ export default function OwnerConsolePage() {
               </span>
             </Tab>
           )}
+          <Tab active={tab === 'builder'} onClick={() => { setTab('builder'); setSearchParams({ tab: 'builder' }); }}>
+            <span className="flex items-center gap-1.5">
+              <Code2 size={12} />
+              Builder
+            </span>
+          </Tab>
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 ${(tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue') ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+        <div className={`flex-1 min-h-0 ${(tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue' || tab === 'builder') ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
@@ -962,6 +969,8 @@ export default function OwnerConsolePage() {
               {tab === 'incidents' && <IncidentQueueTab />}
               {/* ── Client Rescue ── */}
               {tab === 'client-rescue' && <ClientRescueTab />}
+              {/* ── Builder ── */}
+              {tab === 'builder' && <BuilderTab />}
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (
