@@ -1886,6 +1886,98 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── Anatomy schema repair ─────────────────────────────────────────────────
+  // The safetyTables loop above only CREATEs missing tables — it skips existing
+  // ones. If anatomy_snapshots was created by an older migration endpoint with a
+  // different schema, the INSERT will fail. These ALTER TABLE … ADD COLUMN IF NOT
+  // EXISTS statements are idempotent and run on every startup to ensure the live
+  // schema always matches the INSERT in the fetch handler.
+  {
+    const anatomyAlters: Array<{ table: string; col: string; ddl: string }> = [
+      // anatomy_snapshots
+      { table: 'anatomy_snapshots', col: 'id',              ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_snapshots', col: 'source_type',     ddl: "ALTER TABLE anatomy_snapshots MODIFY COLUMN source_type ENUM('github','zip') NOT NULL" },
+      { table: 'anatomy_snapshots', col: 'repo_owner',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS repo_owner VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'repo_name',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS repo_name VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'branch',          ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS branch VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'commit_sha',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS commit_sha VARCHAR(40) NULL" },
+      { table: 'anatomy_snapshots', col: 'commit_date',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS commit_date DATETIME NULL" },
+      { table: 'anatomy_snapshots', col: 'package_sha256',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS package_sha256 VARCHAR(64) NULL" },
+      { table: 'anatomy_snapshots', col: 'snapshot_name',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS snapshot_name VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'source_desc',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS source_desc VARCHAR(500) NULL" },
+      { table: 'anatomy_snapshots', col: 'app_version',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS app_version VARCHAR(100) NULL" },
+      { table: 'anatomy_snapshots', col: 'build_number',    ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS build_number VARCHAR(100) NULL" },
+      { table: 'anatomy_snapshots', col: 'git_ref',         ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS git_ref VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'status',          ddl: "ALTER TABLE anatomy_snapshots MODIFY COLUMN status ENUM('pending','indexing','ready','failed','deleted') NOT NULL DEFAULT 'pending'" },
+      { table: 'anatomy_snapshots', col: 'is_active',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'total_files',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS total_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'indexed_files',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS indexed_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'excluded_files',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS excluded_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'quarantine_count',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS quarantine_count INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'error_message',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS error_message TEXT NULL" },
+      { table: 'anatomy_snapshots', col: 'uploader_user_id',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS uploader_user_id VARCHAR(36) NULL" },
+      { table: 'anatomy_snapshots', col: 'created_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+      { table: 'anatomy_snapshots', col: 'updated_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" },
+      // anatomy_files
+      { table: 'anatomy_files', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_files', col: 'rel_path',        ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_files', col: 'file_sha256',     ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS file_sha256 VARCHAR(64) NULL" },
+      { table: 'anatomy_files', col: 'language',        ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS language VARCHAR(50) NULL" },
+      { table: 'anatomy_files', col: 'file_type',       ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS file_type VARCHAR(50) NULL" },
+      { table: 'anatomy_files', col: 'line_count',      ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS line_count INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'byte_size',       ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS byte_size INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'is_excluded',     ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS is_excluded TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'is_quarantined',  ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS is_quarantined TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'quarantine_reason',ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS quarantine_reason VARCHAR(500) NULL" },
+      // anatomy_chunks
+      { table: 'anatomy_chunks', col: 'snapshot_id',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'file_id',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS file_id BIGINT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'rel_path',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'start_line',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS start_line INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'end_line',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS end_line INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'content',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS content MEDIUMTEXT NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'chunk_type',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS chunk_type VARCHAR(50) NULL" },
+      { table: 'anatomy_chunks', col: 'symbol_name',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS symbol_name VARCHAR(500) NULL" },
+      // anatomy_quarantine
+      { table: 'anatomy_quarantine', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'rel_path',        ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'reason',          ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS reason VARCHAR(500) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'pattern_matched', ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS pattern_matched VARCHAR(200) NULL" },
+    ];
+
+    for (const { table, col, ddl } of anatomyAlters) {
+      try {
+        // Only attempt ALTER if the table exists — avoids errors on fresh DBs
+        // where the safetyTables CREATE already built the correct schema.
+        const [tblRows] = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table}`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+        if (Number(tblRows?.[0]?.cnt ?? 0) === 0) continue; // table not yet created — skip
+
+        // Check if column already exists with correct definition
+        const [colRows] = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${col}`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+
+        // For ADD COLUMN: skip if already present. For MODIFY: always run (idempotent).
+        const isModify = ddl.includes('MODIFY COLUMN');
+        if (!isModify && Number(colRows?.[0]?.cnt ?? 0) > 0) continue;
+
+        await db.execute(sql.raw(ddl));
+        if (!isModify) {
+          console.log(`[startup-migration] anatomy: added ${table}.${col}`);
+        }
+      } catch (e: unknown) {
+        const msg = migrationErrMsg(e);
+        // Suppress "already exists" noise — these are idempotent
+        if (!msg.includes('already exists') && !msg.includes('Duplicate column')) {
+          console.warn(`[startup-migration] anatomy alter ${table}.${col}:`, msg);
+        }
+      }
+    }
+    console.log('[startup-migration] anatomy schema repair complete');
+  }
+
   // Account recovery tables (idempotent — safe to run on every startup)
   const recoveryTables = [
     {
@@ -4404,6 +4496,17 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 		// ── All migrations done — now start accepting requests ─────────────────
 		console.log('[startup] all inline migrations complete — calling app.listen');
+
+		// ── Dazza engine startup log ──────────────────────────────────────────
+		// Logs which engine will be used for Dazza chat requests.
+		// Never logs the raw secret value — only the resolved boolean.
+		try {
+			const { isDazzaV3Enabled } = await import('./lib/dazza-v3-brain.js');
+			const v3 = isDazzaV3Enabled();
+			console.log(`[startup] Dazza engine: ${v3 ? 'V3 (owner watcher)' : 'V2 rollback'} | DAZZA_V3_ENABLED resolved=${v3}`);
+		} catch (e) {
+			console.warn('[startup] Dazza engine check failed:', String(e).slice(0, 200));
+		}
 		if (_serverStarted) {
 			console.log('[startup] timeout-forced listen already fired — skipping duplicate listen');
 			return;

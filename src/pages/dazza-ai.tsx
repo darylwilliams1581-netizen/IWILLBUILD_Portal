@@ -524,6 +524,20 @@ export default function DazzaAIPage() {
     } catch { /* sessionStorage unavailable */ }
   }, [conversationId, storageKey]);
 
+  // ── Fetch server-confirmed engine on mount ────────────────────────────────
+  // The engine badge must reflect what the server actually uses, not what the
+  // client infers. This runs once when the authenticated user is known.
+  useEffect(() => {
+    if (!me?.id) return;
+    fetch('/api/dazza/engine-status', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { engine?: string } | null) => {
+        if (data?.engine === 'v3') setActiveEngine('v3');
+        else if (data?.engine === 'v2-rollback') setActiveEngine('v2-rollback');
+      })
+      .catch(() => { /* non-fatal — badge stays null until first message */ });
+  }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
   type BugFixStep = 'idle' | 'page' | 'clicked' | 'happened' | 'expected' | 'role' | 'error' | 'done';
   interface BugReport {

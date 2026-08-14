@@ -52,7 +52,7 @@ export default async function handler(req: Request, res: Response) {
       ok: false,
       stage: 'resolve_ref',
       correlationId,
-      error: `Could not resolve ref '${ref}': ${safeErr(e)}`,
+      error: `Could not resolve ref '${ref.slice(0, 100)}'. Check the branch name and GitHub token. Reference: ANAT-${correlationId}`,
     });
     return;
   }
@@ -83,12 +83,13 @@ export default async function handler(req: Request, res: Response) {
       return;
     }
   } catch (e) {
-    console.warn(`[anatomy/fetch:${correlationId}] stage=duplicate_check error:`, safeErr(e));
+    const msg = safeErr(e);
+    console.warn(`[anatomy/fetch:${correlationId}] stage=duplicate_check error:`, msg);
     res.status(500).json({
       ok: false,
       stage: 'duplicate_check',
       correlationId,
-      error: `Database error checking for existing snapshot: ${safeErr(e)}`,
+      error: `Database error. Reference: ANAT-${correlationId}`,
     });
     return;
   }
@@ -96,27 +97,30 @@ export default async function handler(req: Request, res: Response) {
   // ── Step 3: Create pending snapshot record ────────────────────────────────
   const snapshotId = randomUUID();
   try {
+    const snapshotLabel = `GitHub: ${ALLOWED_REPO.repo}@${commitSha.slice(0, 8)} (${ref})`.slice(0, 199);
     await db.execute(sql.raw(`
       INSERT INTO anatomy_snapshots
         (id, source_type, repo_owner, repo_name, branch, commit_sha, commit_date,
          snapshot_name, status, uploader_user_id, created_at, updated_at)
       VALUES
         ('${snapshotId}', 'github',
-         '${ALLOWED_REPO.owner}', '${ALLOWED_REPO.repo}',
+         '${ALLOWED_REPO.owner.replace(/'/g, "''")}',
+         '${ALLOWED_REPO.repo.replace(/'/g, "''")}',
          '${ref.replace(/'/g, "''")}',
-         '${commitSha}',
+         '${commitSha.replace(/'/g, "''")}',
          '${commitDate.replace(/'/g, "''")}',
-         '${`GitHub: ${ALLOWED_REPO.repo}@${commitSha.slice(0, 8)} (${ref})`.slice(0, 199).replace(/'/g, "''")}',
-         'pending', '${ownerInfo.userId}', NOW(), NOW())
+         '${snapshotLabel.replace(/'/g, "''")}',
+         'pending', '${ownerInfo.userId.replace(/'/g, "''")}', NOW(), NOW())
     `));
     console.log(`[anatomy/fetch:${correlationId}] snapshot ${snapshotId} created (pending)`);
   } catch (e) {
+    // Log full detail server-side; return only a safe reference to the client
     console.warn(`[anatomy/fetch:${correlationId}] stage=create_snapshot error:`, safeErr(e));
     res.status(500).json({
       ok: false,
       stage: 'create_snapshot',
       correlationId,
-      error: `Failed to create snapshot record: ${safeErr(e)}`,
+      error: `Snapshot creation failed. Reference: ANAT-${correlationId}`,
     });
     return;
   }
@@ -136,7 +140,7 @@ export default async function handler(req: Request, res: Response) {
       SET status='failed', error_message='${msg.replace(/'/g, "''")}', updated_at=NOW()
       WHERE id='${snapshotId}'
     `)).catch(() => {});
-    res.status(500).json({ ok: false, stage: 'download_archive', correlationId, error: `Archive download failed: ${msg}` });
+    res.status(500).json({ ok: false, stage: 'download_archive', correlationId, error: `Archive download failed. Reference: ANAT-${correlationId}` });
     return;
   }
 
@@ -153,7 +157,7 @@ export default async function handler(req: Request, res: Response) {
       SET status='failed', error_message='${msg.replace(/'/g, "''")}', updated_at=NOW()
       WHERE id='${snapshotId}'
     `)).catch(() => {});
-    res.status(400).json({ ok: false, stage: 'security_scan', correlationId, error: `Security scan failed: ${msg}` });
+    res.status(400).json({ ok: false, stage: 'security_scan', correlationId, error: `Security scan failed. Reference: ANAT-${correlationId}` });
     return;
   }
 
@@ -192,7 +196,7 @@ export default async function handler(req: Request, res: Response) {
       SET status='failed', error_message='${msg.replace(/'/g, "''")}', updated_at=NOW()
       WHERE id='${snapshotId}'
     `)).catch(() => {});
-    res.status(500).json({ ok: false, stage: 'index_files', correlationId, error: `Indexing failed: ${msg}` });
+    res.status(500).json({ ok: false, stage: 'index_files', correlationId, error: `Indexing failed. Reference: ANAT-${correlationId}` });
     return;
   }
 
@@ -213,7 +217,7 @@ export default async function handler(req: Request, res: Response) {
   } catch (e) {
     const msg = safeErr(e);
     console.warn(`[anatomy/fetch:${correlationId}] stage=finalise_snapshot error:`, msg);
-    res.status(500).json({ ok: false, stage: 'finalise_snapshot', correlationId, error: `Failed to finalise snapshot: ${msg}` });
+    res.status(500).json({ ok: false, stage: 'finalise_snapshot', correlationId, error: `Snapshot finalisation failed. Reference: ANAT-${correlationId}` });
     return;
   }
 
