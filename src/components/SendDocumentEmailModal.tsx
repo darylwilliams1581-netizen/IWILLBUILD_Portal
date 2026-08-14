@@ -310,7 +310,7 @@ export default function SendDocumentEmailModal({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[200] flex items-end md:items-center justify-center"
+        className="fixed inset-0 z-[200] flex items-end md:items-start md:pt-[124px] justify-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -323,7 +323,7 @@ export default function SendDocumentEmailModal({
             Desktop : centred card, max-w-3xl, two columns (job | compose)
         */}
         <motion.div
-          className="relative bg-white w-full md:max-w-3xl md:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col md:flex-row max-h-[94dvh] md:max-h-[88dvh] overflow-hidden"
+          className="relative bg-white w-full md:max-w-3xl md:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col md:flex-row max-h-[94dvh] md:max-h-[calc(100dvh-140px)] overflow-hidden"
           initial={{ y: 48, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 48, opacity: 0 }}
