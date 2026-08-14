@@ -89,6 +89,14 @@ export default async function handler(req: Request, res: Response) {
       to: customerEmail,
       subject,
       message,
+      job: {
+        jobNumber,
+        jobName,
+        jobAddress: '',
+        clientName: customerName,
+        docLabel: templateName,
+        docDetail: `${status} · ${completedAt}`,
+      },
     });
   } catch (error) {
     console.error('GET /api/job-forms/:id/compose-defaults error:', error);

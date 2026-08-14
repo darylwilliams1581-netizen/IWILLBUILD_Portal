@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import SendDocumentEmailModal from './SendDocumentEmailModal';
+import type { JobEmailContext } from './SendDocumentEmailModal';
 
 interface Props {
   invoiceId: number;
@@ -16,6 +17,7 @@ interface Defaults {
   to: string;
   subject: string;
   message: string;
+  job?: JobEmailContext;
 }
 
 export default function SendInvoiceEmailModal({ invoiceId, invoiceNumber, onClose }: Props) {
@@ -60,6 +62,7 @@ export default function SendInvoiceEmailModal({ invoiceId, invoiceNumber, onClos
       defaultTo={defaults.to}
       defaultSubject={defaults.subject}
       defaultMessage={defaults.message}
+      job={defaults.job}
       onClose={onClose}
     />
   );

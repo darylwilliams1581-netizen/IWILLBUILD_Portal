@@ -224,7 +224,7 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
 
   // ── Email modal state ────────────────────────────────────────────────────────
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string } | null>(null);
+  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: import('@/components/SendDocumentEmailModal').JobEmailContext } | null>(null);
 
   async function openEmailModal() {
     try {
@@ -676,6 +676,7 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
           defaultTo={emailDefaults.to}
           defaultSubject={emailDefaults.subject}
           defaultMessage={emailDefaults.message}
+          job={emailDefaults.job}
           onClose={() => { setEmailModalOpen(false); setEmailDefaults(null); }}
         />
       )}

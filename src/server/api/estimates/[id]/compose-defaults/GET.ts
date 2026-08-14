@@ -1,8 +1,8 @@
 /** GET /api/estimates/:id/compose-defaults — returns pre-filled compose fields for the email modal. */
 import type { Request, Response } from 'express';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';
-import { profiles } from '../../../../db/schema.js';
+import { estimates, profiles } from '../../../../db/schema.js';
 import { buildEstimatePdfDocument } from '../../../../lib/estimate-pdf-document.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 
@@ -33,6 +33,26 @@ export default async function handler(req: Request, res: Response) {
     const total = document.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
     const recipientName = document.customerName ? ` ${document.customerName}` : '';
 
+    // Fetch job details for the context card
+    const estimate = await db.query.estimates.findFirst({
+      where: and(eq(estimates.id, estimateId), eq(estimates.companyId, profile.companyId)),
+      columns: { jobId: true },
+    });
+    let jobNumber = '';
+    let jobName = '';
+    let jobAddress = '';
+    if (estimate?.jobId) {
+      const [jobRows] = await db.execute(sql`
+        SELECT job_number, name, address FROM jobs WHERE id = ${estimate.jobId} AND company_id = ${profile.companyId} LIMIT 1
+      `) as unknown as [Array<Record<string, unknown>>, unknown];
+      const jr = jobRows?.[0];
+      if (jr) {
+        jobNumber = String(jr.job_number ?? '');
+        jobName = String(jr.name ?? '');
+        jobAddress = String(jr.address ?? '');
+      }
+    }
+
     const subject = `Quote #${document.estimateId} – ${document.estimateTitle} | ${companyName}`;
     const message = [
       `Hi${recipientName},`,
@@ -53,6 +73,14 @@ export default async function handler(req: Request, res: Response) {
       to: document.customerEmail || '',
       subject,
       message,
+      job: {
+        jobNumber,
+        jobName,
+        jobAddress,
+        clientName: document.customerName ?? '',
+        docLabel: `Quote #${document.estimateId}`,
+        docDetail: `${document.estimateTitle} · ${total}`,
+      },
     });
   } catch (error) {
     console.error('GET /api/estimates/:id/compose-defaults error:', error);

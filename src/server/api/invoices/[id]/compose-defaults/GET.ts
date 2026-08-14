@@ -61,10 +61,28 @@ export default async function handler(req: Request, res: Response) {
       companyName,
     ].join('\n');
 
+    // Fetch job details for the context card
+    const [jobRows] = await db.execute(sql`
+      SELECT j.job_number, j.name AS job_name, j.address AS job_address
+      FROM invoices i
+      LEFT JOIN jobs j ON j.id = i.job_id AND j.company_id = i.company_id
+      WHERE i.id = ${id} AND i.company_id = ${profile.companyId}
+      LIMIT 1
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
+    const jobRow = jobRows?.[0] ?? {};
+
     return res.json({
       to: String(inv.customer_email ?? ''),
       subject,
       message,
+      job: {
+        jobNumber: String(jobRow.job_number ?? ''),
+        jobName: String(jobRow.job_name ?? ''),
+        jobAddress: String(jobRow.job_address ?? ''),
+        clientName: customerName,
+        docLabel: `Invoice ${invNum}`,
+        docDetail: [total, dueDate ? `Due ${dueDate}` : ''].filter(Boolean).join(' · '),
+      },
     });
   } catch (error) {
     console.error('GET /api/invoices/:id/compose-defaults error:', error);

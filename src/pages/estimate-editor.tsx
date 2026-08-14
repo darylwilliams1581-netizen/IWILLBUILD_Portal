@@ -49,7 +49,7 @@ export default function EstimateEditorPage() {
   const [dirty, setDirty] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
-  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string } | null>(null);
+  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: import('@/components/SendDocumentEmailModal').JobEmailContext } | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
@@ -988,6 +988,7 @@ export default function EstimateEditorPage() {
           defaultTo={emailDefaults.to}
           defaultSubject={emailDefaults.subject}
           defaultMessage={emailDefaults.message}
+          job={emailDefaults.job}
           onClose={() => { setShowEmail(false); setEmailDefaults(null); }}
         />
       )}
