@@ -5,8 +5,8 @@
  * Body: { status: 'called' | 'resolved' | 'escalated' | 'follow_up', note?: string }
  */
 import type { Request, Response } from 'express';
-import { getPlatformOwnerInfo } from '../../../../../../lib/platform-owner-guard.js';
-import { db } from '../../../../../../db/client.js';
+import { getPlatformOwnerInfo } from '../../../../../lib/platform-owner-guard.js';
+import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 
 function esc(s: string): string {

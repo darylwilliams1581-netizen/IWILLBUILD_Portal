@@ -10,6 +10,7 @@ import {
   Loader2, ChevronRight, Bot, Zap, Wrench, Send, Copy,
   Clock, Users, Globe, Shield, Activity, Search, X,
 } from 'lucide-react';
+import CommunicationPanel from './CommunicationPanel';
 
 interface Incident {
   id: string;
@@ -377,6 +378,14 @@ export default function IncidentQueueTab() {
                 <p className="text-[10px] text-slate-400 mt-1">Dazza will use all available tools to gather evidence and produce a full report with an Airo repair prompt.</p>
               </div>
             )}
+
+            {/* Communication panel */}
+            <div className="border-t border-slate-200 pt-4">
+              <CommunicationPanel
+                incidentId={selected.id}
+                incidentTitle={selected.title}
+              />
+            </div>
           </div>
         )}
       </div>

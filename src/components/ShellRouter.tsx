@@ -19,6 +19,7 @@ import OfficeShell from '@/layouts/OfficeShell';
 import AppLockGate from '@/components/appLock/AppLockGate';
 import { DriverSessionProvider } from '@/lib/DriverSessionContext';
 import BugReportModal from '@/components/BugReportModal';
+import BugCommunicationBanner from '@/components/dazza/BugCommunicationBanner';
 
 // Lazy-load both home pages — only one will be rendered per session
 const HomeScreen   = lazy(() => import('@/pages/home'));
@@ -72,6 +73,7 @@ export default function ShellRouter() {
             <HomeScreen />
           </Suspense>
           <BugReportModal />
+          <BugCommunicationBanner />
         </AppLockGate>
       </DriverSessionProvider>
     );
@@ -85,6 +87,7 @@ export default function ShellRouter() {
         </Suspense>
       </OfficeShell>
       <BugReportModal />
+      <BugCommunicationBanner />
     </DriverSessionProvider>
   );
 }

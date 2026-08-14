@@ -116,6 +116,7 @@ import bug_reports_id_export_bundle_get_83 from "./api/bug-reports/[id]/export-b
 import bug_reports_id_analyse_post from "./api/bug-reports/[id]/analyse/POST";
 import bug_reports_id_sms_authorise_post from "./api/bug-reports/[id]/sms-authorise/POST";
 import bug_reports_id_publish_fix_post from "./api/bug-reports/[id]/publish-fix/POST";
+import bug_reports_my_reports_get from "./api/bug-reports/my-reports/GET";
 // ── Dazza V3 ──────────────────────────────────────────────────────────────────
 import dazza_v3_chat_stream_post from "./api/dazza/v3/chat/stream/POST";
 import dazza_v3_incidents_post from "./api/dazza/v3/incidents/POST";
@@ -124,6 +125,13 @@ import dazza_v3_incidents_id_get from "./api/dazza/v3/incidents/[id]/GET";
 import dazza_v3_incidents_id_investigate_post from "./api/dazza/v3/incidents/[id]/investigate/POST";
 import dazza_v3_client_rescue_get from "./api/dazza/v3/client-rescue/GET";
 import dazza_v3_client_rescue_id_patch from "./api/dazza/v3/client-rescue/[id]/PATCH";
+// ── Dazza V3 Communications ───────────────────────────────────────────────────
+import dazza_v3_comms_get from "./api/dazza/v3/communications/GET";
+import dazza_v3_comms_post from "./api/dazza/v3/communications/POST";
+import dazza_v3_comms_owner_get from "./api/dazza/v3/communications/owner/GET";
+import dazza_v3_comms_id_patch from "./api/dazza/v3/communications/[id]/PATCH";
+import dazza_v3_comms_id_dismiss_post from "./api/dazza/v3/communications/[id]/dismiss/POST";
+import dazza_v3_comms_id_still_trouble_post from "./api/dazza/v3/communications/[id]/still-having-trouble/POST";
 import company_get_84 from "./api/company/GET";
 import company_put_85 from "./api/company/PUT";
 import company_logo_post_86 from "./api/company/logo/POST";
@@ -1750,6 +1758,9 @@ async function runStartupMigrations() {
     { name: 'dazza_client_rescue', ddl: "CREATE TABLE IF NOT EXISTS dazza_client_rescue (id VARCHAR(36) NOT NULL PRIMARY KEY, incident_id VARCHAR(36) NULL, user_id VARCHAR(36) NULL, user_name VARCHAR(255) NOT NULL DEFAULT '', user_email VARCHAR(255) NOT NULL DEFAULT '', user_phone VARCHAR(50) NOT NULL DEFAULT '', attempted_action VARCHAR(300) NOT NULL DEFAULT '', failure_description TEXT NOT NULL, recovered TINYINT(1) NOT NULL DEFAULT 0, last_successful_action VARCHAR(300) NULL, likely_cause TEXT NULL, safe_workaround TEXT NULL, suggested_call_wording TEXT NULL, rescue_status VARCHAR(30) NOT NULL DEFAULT 'needs_call', resolution_note TEXT NULL, called_at DATETIME NULL, resolved_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_incident (incident_id), INDEX idx_status (rescue_status), INDEX idx_user (user_id))" },
     { name: 'dazza_v3_conversations', ddl: "CREATE TABLE IF NOT EXISTS dazza_v3_conversations (id VARCHAR(36) NOT NULL PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, owner_user_id VARCHAR(36) NOT NULL, role VARCHAR(20) NOT NULL, content MEDIUMTEXT NOT NULL, turn_index INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_conversation (conversation_id, turn_index), INDEX idx_owner (owner_user_id))" },
     { name: 'dazza_v3_audit', ddl: "CREATE TABLE IF NOT EXISTS dazza_v3_audit (id VARCHAR(36) NOT NULL PRIMARY KEY, owner_user_id VARCHAR(36) NOT NULL, event_type VARCHAR(100) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_owner (owner_user_id), INDEX idx_event (event_type), INDEX idx_created (created_at DESC))" },
+    // ── Bug Communication Centre (added 2026-08-14) ──────────────────────────
+    { name: 'incident_communications', ddl: "CREATE TABLE IF NOT EXISTS incident_communications (id VARCHAR(36) NOT NULL PRIMARY KEY, incident_id VARCHAR(36) NULL, bug_report_id INT NULL, comm_type VARCHAR(30) NOT NULL DEFAULT 'banner', channel VARCHAR(30) NOT NULL DEFAULT 'dashboard', status VARCHAR(30) NOT NULL DEFAULT 'draft', title VARCHAR(300) NOT NULL, message TEXT NOT NULL, workaround TEXT NULL, action_label VARCHAR(100) NULL, action_url VARCHAR(500) NULL, target_scope VARCHAR(30) NOT NULL DEFAULT 'affected_users', target_company_id INT NULL, target_user_id VARCHAR(36) NULL, target_build VARCHAR(50) NULL, target_route VARCHAR(300) NULL, is_dismissible TINYINT(1) NOT NULL DEFAULT 1, is_critical TINYINT(1) NOT NULL DEFAULT 0, approved_by_user_id VARCHAR(36) NULL, approved_at DATETIME NULL, display_from DATETIME NULL, display_until DATETIME NULL, removed_at DATETIME NULL, removed_by_user_id VARCHAR(36) NULL, view_count INT NOT NULL DEFAULT 0, dismiss_count INT NOT NULL DEFAULT 0, resolve_confirm_count INT NOT NULL DEFAULT 0, still_trouble_count INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_incident (incident_id), INDEX idx_status (status), INDEX idx_scope (target_scope, status), INDEX idx_company (target_company_id))" },
+    { name: 'incident_comm_dismissals', ddl: "CREATE TABLE IF NOT EXISTS incident_comm_dismissals (id INT AUTO_INCREMENT PRIMARY KEY, comm_id VARCHAR(36) NOT NULL, user_id VARCHAR(36) NOT NULL, dismissed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comm_user (comm_id, user_id), INDEX idx_user (user_id))" },
     // OneDrive / SharePoint OAuth connections
     { name: 'onedrive_connections', ddl: "CREATE TABLE IF NOT EXISTS onedrive_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, display_name VARCHAR(255) NOT NULL DEFAULT 'OneDrive User', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     // ── Customers ─────────────────────────────────────────────────────────────
@@ -3000,6 +3011,7 @@ app.get("/api/bug-reports/:id/export-bundle", bug_reports_id_export_bundle_get_8
 app.post("/api/bug-reports/:id/analyse", bug_reports_id_analyse_post);
 app.post("/api/bug-reports/:id/sms-authorise", bug_reports_id_sms_authorise_post);
 app.post("/api/bug-reports/:id/publish-fix", bug_reports_id_publish_fix_post);
+app.get("/api/bug-reports/my-reports", bug_reports_my_reports_get);
 // ── Dazza V3 ──────────────────────────────────────────────────────────────────
 app.post("/api/dazza/v3/chat/stream", dazza_v3_chat_stream_post);
 app.post("/api/dazza/v3/incidents", dazza_v3_incidents_post);
@@ -3008,6 +3020,13 @@ app.get("/api/dazza/v3/incidents/:id", dazza_v3_incidents_id_get);
 app.post("/api/dazza/v3/incidents/:id/investigate", dazza_v3_incidents_id_investigate_post);
 app.get("/api/dazza/v3/client-rescue", dazza_v3_client_rescue_get);
 app.patch("/api/dazza/v3/client-rescue/:id", dazza_v3_client_rescue_id_patch);
+// ── Dazza V3 Communications ───────────────────────────────────────────────────
+app.get("/api/dazza/v3/communications", dazza_v3_comms_get);
+app.post("/api/dazza/v3/communications", dazza_v3_comms_post);
+app.get("/api/dazza/v3/communications/owner", dazza_v3_comms_owner_get);
+app.patch("/api/dazza/v3/communications/:id", dazza_v3_comms_id_patch);
+app.post("/api/dazza/v3/communications/:id/dismiss", dazza_v3_comms_id_dismiss_post);
+app.post("/api/dazza/v3/communications/:id/still-having-trouble", dazza_v3_comms_id_still_trouble_post);
 app.get("/api/company", company_get_84);
 app.put("/api/company", company_put_85);
 app.post("/api/company/logo", company_logo_post_86);

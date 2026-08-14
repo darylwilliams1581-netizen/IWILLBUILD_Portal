@@ -15,19 +15,14 @@
  */
 import type { Request, Response } from 'express';
 import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
-import { getAuth } from '../../../../../lib/auth/auth.js';
+import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
 import { ingestIncident, notifyOwnerOfIncident } from '../../../../lib/dazza-v3-brain.js';
 import type { V3IncidentInput } from '../../../../lib/dazza-v3-brain.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
     // Auth — any authenticated user can report an incident
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    const session = await auth.api.getSession({ headers });
+    const { session } = await getSessionAndProfile(req);
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
     const body = req.body as Partial<V3IncidentInput>;

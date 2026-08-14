@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Phone, CheckCircle2, AlertCircle, Clock, RefreshCw, Loader2,
   User, MessageSquare, ArrowRight, Copy, Check, X,
-  PhoneCall, PhoneOff, UserCheck, AlertTriangle,
+  UserCheck, AlertTriangle,
 } from 'lucide-react';
 
 interface RescueEntry {
@@ -230,7 +230,7 @@ export default function ClientRescueTab() {
                     disabled={updating === selected.id}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors disabled:opacity-60"
                   >
-                    {updating === selected.id ? <Loader2 size={11} className="animate-spin" /> : <PhoneCall size={11} />}
+                    {updating === selected.id ? <Loader2 size={11} className="animate-spin" /> : <Phone size={11} />}
                     Mark Called
                   </button>
                 )}
