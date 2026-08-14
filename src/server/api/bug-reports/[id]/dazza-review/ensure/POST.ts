@@ -19,6 +19,7 @@ import { getPlatformOwnerInfo } from '../../../../../lib/platform-owner-guard.js
 import { sendSms, isSmsConfigured } from '../../../../../lib/sms.js';
 import { getSecret } from '#airo/secrets';
 import { randomUUID } from 'node:crypto';
+import { getActiveSnapshotId, getSnapshotMeta } from '../../../../../lib/anatomy-indexer.js';
 
 function esc(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -191,12 +192,24 @@ export default async function handler(req: Request, res: Response) {
 
     // 4. Claim the slot atomically — INSERT with unique constraint
     const reviewId = randomUUID();
+
+    // Capture active anatomy snapshot at time of review
+    const anatomySnapshotId = await getActiveSnapshotId();
+    const anatomyMeta = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
+    const anatomyCommitSha  = (anatomyMeta?.commit_sha  as string | null) ?? null;
+    const anatomySourceType = (anatomyMeta?.source_type as string | null) ?? null;
+
     try {
       await db.execute(sql.raw(`
         INSERT INTO dazza_review_comments
-          (id, bug_report_id, version_label, review_status, created_at, updated_at)
+          (id, bug_report_id, version_label, review_status,
+           anatomy_snapshot_id, anatomy_commit_sha, anatomy_source_type,
+           created_at, updated_at)
         VALUES
           ('${esc(reviewId)}', '${esc(id)}', 'Dazza Initial Review', 'reviewing',
+           ${anatomySnapshotId ? `'${anatomySnapshotId}'` : 'NULL'},
+           ${anatomyCommitSha  ? `'${anatomyCommitSha}'`  : 'NULL'},
+           ${anatomySourceType ? `'${anatomySourceType}'` : 'NULL'},
            NOW(), NOW())
       `));
     } catch (insertErr: unknown) {
@@ -225,6 +238,14 @@ export default async function handler(req: Request, res: Response) {
       reviewResult = await runDazzaReview(report);
     } catch (err) {
       failureReason = err instanceof Error ? err.message.slice(0, 500) : 'Unknown error';
+    }
+
+    // Append anatomy snapshot citation to airoPrompt if available
+    if (reviewResult && anatomySnapshotId) {
+      const snapshotCitation = anatomyMeta
+        ? `\n\n---\nAnatomy snapshot used: ${String(anatomyMeta.snapshot_name ?? anatomySnapshotId)} | Source: ${anatomySourceType ?? 'unknown'} | SHA: ${anatomyCommitSha?.slice(0, 8) ?? 'n/a'}`
+        : `\n\n---\nAnatomy snapshot ID: ${anatomySnapshotId}`;
+      reviewResult.airoPrompt = (reviewResult.airoPrompt + snapshotCitation).slice(0, 8000);
     }
 
     // 6. Store result

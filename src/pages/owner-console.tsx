@@ -8,7 +8,7 @@ import {
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2,
+  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -37,6 +37,7 @@ import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTa
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
+import AnatomyTab from '@/components/owner-console/AnatomyTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -356,7 +357,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy'>(
     (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null) === 'support-setup' ? 'support-setup'
     : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
     : (searchParams.get('tab') as 'bug-reports' | null) === 'bug-reports' ? 'bug-reports'
@@ -780,6 +781,12 @@ export default function OwnerConsolePage() {
               Client Rescue
             </span>
           </Tab>
+          <Tab active={tab === 'anatomy'} onClick={() => { setTab('anatomy'); setSearchParams({ tab: 'anatomy' }); }}>
+            <span className="flex items-center gap-1.5">
+              <FileCode size={12} />
+              Anatomy
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -974,6 +981,7 @@ export default function OwnerConsolePage() {
               {tab === 'incidents' && <IncidentQueueTab />}
               {/* ── Client Rescue ── */}
               {tab === 'client-rescue' && <ClientRescueTab />}
+              {tab === 'anatomy' && <AnatomyTab />}
 
 
               {/* ── Health Check (Annette) ── */}

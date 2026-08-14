@@ -340,6 +340,119 @@ export const V3_TOOL_DEFINITIONS = [
       },
     },
   },
+  // ── Anatomy Index tools ───────────────────────────────────────────────────
+  {
+    type: 'function' as const,
+    function: {
+      name: 'search_anatomy',
+      description: 'Search the active anatomy snapshot for source code, routes, schema, or any text. Returns file paths, line ranges, and matching snippets. Use this to find where something is implemented.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query:       { type: 'string',  description: 'Search query (2-200 chars). Use specific identifiers, function names, route paths, or table names.' },
+          language:    { type: 'string',  description: 'Filter by language: typescript, javascript, sql, etc. Omit for all.' },
+          file_type:   { type: 'string',  description: 'Filter by file type: source, config, database, style, etc. Omit for all.' },
+          limit:       { type: 'number',  description: 'Max results (1-20). Default 10.' },
+          snapshot_id: { type: 'string',  description: 'Specific snapshot ID. Omit to use the active snapshot.' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'read_anatomy_file',
+      description: 'Read a specific file from the active anatomy snapshot. Returns line-numbered content. Use after search_anatomy to read the full context of a match.',
+      parameters: {
+        type: 'object',
+        properties: {
+          rel_path:    { type: 'string',  description: 'Relative file path (e.g. src/server/api/jobs/GET.ts).' },
+          start_line:  { type: 'number',  description: 'Start line (1-based). Omit for beginning.' },
+          end_line:    { type: 'number',  description: 'End line (1-based). Omit for end. Max 300 lines per call.' },
+          snapshot_id: { type: 'string',  description: 'Specific snapshot ID. Omit to use the active snapshot.' },
+        },
+        required: ['rel_path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'list_anatomy_files',
+      description: 'List files in the active anatomy snapshot, optionally filtered by path prefix or language.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path_prefix: { type: 'string',  description: 'Filter by path prefix (e.g. src/server/api/jobs).' },
+          language:    { type: 'string',  description: 'Filter by language.' },
+          file_type:   { type: 'string',  description: 'Filter by file type.' },
+          limit:       { type: 'number',  description: 'Max results (1-200). Default 50.' },
+          snapshot_id: { type: 'string',  description: 'Specific snapshot ID. Omit to use the active snapshot.' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'find_route',
+      description: 'Find API route handlers or React Router routes matching a path pattern.',
+      parameters: {
+        type: 'object',
+        properties: {
+          route_pattern: { type: 'string', description: 'Route path to search for (e.g. /api/jobs, /estimates/:id).' },
+          snapshot_id:   { type: 'string', description: 'Specific snapshot ID. Omit to use the active snapshot.' },
+        },
+        required: ['route_pattern'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'find_database_definition',
+      description: 'Find database table definitions, schema migrations, or Drizzle ORM schema for a given table or column name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          table_or_column: { type: 'string', description: 'Table name or column name to find (e.g. jobs, company_id).' },
+          snapshot_id:     { type: 'string', description: 'Specific snapshot ID. Omit to use the active snapshot.' },
+        },
+        required: ['table_or_column'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_anatomy_manifest',
+      description: 'Get the file manifest and metadata for the active anatomy snapshot. Shows what source code is available for investigation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          snapshot_id: { type: 'string', description: 'Specific snapshot ID. Omit to use the active snapshot.' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'compare_anatomy_snapshots',
+      description: 'Compare two anatomy snapshots to identify files added, removed, or changed between versions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          snapshot_id_a: { type: 'string', description: 'First (older) snapshot ID.' },
+          snapshot_id_b: { type: 'string', description: 'Second (newer) snapshot ID.' },
+        },
+        required: ['snapshot_id_a', 'snapshot_id_b'],
+      },
+    },
+  },
 ] as const;
 
 export type V3ToolName = typeof V3_TOOL_DEFINITIONS[number]['function']['name'];
@@ -383,6 +496,14 @@ async function executeV3ToolInner(
     case 'v3_platform_health':      return toolPlatformHealth();
     case 'v3_get_approved_memory':  return toolGetApprovedMemory(args);
     case 'v3_get_incident_detail':  return toolGetIncidentDetail(args);
+    // Anatomy tools
+    case 'search_anatomy':          return toolSearchAnatomy(args);
+    case 'read_anatomy_file':       return toolReadAnatomyFile(args);
+    case 'list_anatomy_files':      return toolListAnatomyFiles(args);
+    case 'find_route':              return toolFindRoute(args);
+    case 'find_database_definition': return toolFindDatabaseDefinition(args);
+    case 'get_anatomy_manifest':    return toolGetAnatomyManifest(args);
+    case 'compare_anatomy_snapshots': return toolCompareAnatomySnapshots(args);
     default:
       return err(`Unknown tool: ${name}`);
   }
@@ -804,4 +925,307 @@ async function toolGetIncidentDetail(args: Record<string, unknown>): Promise<str
   `)) as unknown as [Array<Record<string, unknown>>, unknown];
 
   return ok({ incident: rows[0], rescueEntries: rescueRows ?? [] });
+}
+
+// ── Anatomy tool implementations ──────────────────────────────────────────────
+
+import { getActiveSnapshotId } from './anatomy-indexer.js';
+
+const ANATOMY_MAX_SNIPPET = 500;
+const ANATOMY_MAX_FILE_LINES = 300;
+
+async function resolveSnapshotId(args: Record<string, unknown>): Promise<string | null> {
+  const reqId = safeStr(args.snapshot_id);
+  if (reqId) return reqId;
+  return getActiveSnapshotId();
+}
+
+async function toolSearchAnatomy(args: Record<string, unknown>): Promise<string> {
+  const query    = safeStr(args.query);
+  const language = safeStr(args.language);
+  const fileType = safeStr(args.file_type);
+  const limit    = safeInt(args.limit, 10, 20);
+
+  if (query.length < 2) return err('query must be at least 2 characters');
+
+  const snapshotId = await resolveSnapshotId(args);
+  if (!snapshotId) return err('No active anatomy snapshot. Ask Daryl to activate a snapshot first.');
+
+  // Verify snapshot
+  const [snapRows] = await db.execute(sql.raw(`
+    SELECT id, source_type, repo_name, commit_sha, snapshot_name, is_active
+    FROM anatomy_snapshots WHERE id = '${snapshotId.replace(/'/g, "''")}' AND status != 'deleted' LIMIT 1
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  if (!snapRows?.length) return err(`Snapshot ${snapshotId} not found or deleted.`);
+
+  const langFilter = language ? `AND af.language = '${language.replace(/'/g, "''")}'` : '';
+  const typeFilter = fileType ? `AND af.file_type = '${fileType.replace(/'/g, "''")}'` : '';
+  const safeQ = query.replace(/['"\\]/g, ' ').slice(0, 200);
+
+  const [rows] = await db.execute(sql.raw(`
+    SELECT ac.rel_path, ac.start_line, ac.end_line, ac.chunk_type, ac.symbol_name,
+           SUBSTRING(ac.content, 1, ${ANATOMY_MAX_SNIPPET}) AS snippet,
+           MATCH(ac.content) AGAINST ('${safeQ}' IN BOOLEAN MODE) AS relevance
+    FROM anatomy_chunks ac
+    JOIN anatomy_files af ON af.id = ac.file_id
+    WHERE ac.snapshot_id = '${snapshotId.replace(/'/g, "''")}'
+      AND af.is_excluded = 0 AND af.is_quarantined = 0
+      AND MATCH(ac.content) AGAINST ('${safeQ}' IN BOOLEAN MODE)
+      ${langFilter} ${typeFilter}
+    ORDER BY relevance DESC
+    LIMIT ${limit}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return ok({
+    query,
+    snapshot: snapRows[0],
+    results: rows ?? [],
+    resultCount: (rows ?? []).length,
+    note: 'Source: anatomy snapshot — not live production code. Verify against deployed version.',
+  });
+}
+
+async function toolReadAnatomyFile(args: Record<string, unknown>): Promise<string> {
+  const relPath   = safeStr(args.rel_path);
+  const startLine = safeInt(args.start_line, 1, 999999);
+  const endLine   = Math.min(safeInt(args.end_line, startLine + ANATOMY_MAX_FILE_LINES - 1, 999999), startLine + ANATOMY_MAX_FILE_LINES - 1);
+
+  if (!relPath) return err('rel_path is required');
+
+  const snapshotId = await resolveSnapshotId(args);
+  if (!snapshotId) return err('No active anatomy snapshot.');
+
+  // Verify snapshot
+  const [snapRows] = await db.execute(sql.raw(`
+    SELECT id, source_type, repo_name, commit_sha, snapshot_name
+    FROM anatomy_snapshots WHERE id = '${snapshotId.replace(/'/g, "''")}' AND status != 'deleted' LIMIT 1
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  if (!snapRows?.length) return err(`Snapshot ${snapshotId} not found.`);
+
+  // Get file record
+  const [fileRows] = await db.execute(sql.raw(`
+    SELECT id, language, file_type, line_count, is_excluded, is_quarantined
+    FROM anatomy_files
+    WHERE snapshot_id = '${snapshotId.replace(/'/g, "''")}' AND rel_path = '${relPath.replace(/'/g, "''")}'
+    LIMIT 1
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  if (!fileRows?.length) return err(`File not found in snapshot: ${relPath}`);
+  const fileRec = fileRows[0];
+  if (fileRec.is_excluded) return err(`File is excluded from anatomy index: ${relPath}`);
+  if (fileRec.is_quarantined) return err(`File is quarantined (secret pattern detected): ${relPath}. Path only — content not accessible.`);
+
+  // Retrieve chunks covering the requested line range
+  const [chunkRows] = await db.execute(sql.raw(`
+    SELECT start_line, end_line, content
+    FROM anatomy_chunks
+    WHERE file_id = ${fileRec.id}
+      AND end_line >= ${startLine}
+      AND start_line <= ${endLine}
+    ORDER BY start_line
+    LIMIT 20
+  `)) as unknown as [Array<{ start_line: number; end_line: number; content: string }>, unknown];
+
+  if (!chunkRows?.length) return err(`No content found for ${relPath} lines ${startLine}-${endLine}`);
+
+  // Reconstruct the requested line range from chunks
+  const allLines: string[] = [];
+  let baseLineOffset = chunkRows[0].start_line;
+  for (const chunk of chunkRows) {
+    const chunkLines = chunk.content.split('\n');
+    for (let i = 0; i < chunkLines.length; i++) {
+      const lineNum = chunk.start_line + i;
+      if (lineNum >= startLine && lineNum <= endLine) {
+        allLines.push(`${String(lineNum).padStart(4, ' ')} | ${chunkLines[i]}`);
+      }
+    }
+    baseLineOffset = chunk.end_line;
+  }
+  void baseLineOffset;
+
+  return ok({
+    relPath,
+    startLine,
+    endLine: Math.min(endLine, (fileRec.line_count as number) ?? endLine),
+    totalLines: fileRec.line_count,
+    language: fileRec.language,
+    snapshot: snapRows[0],
+    content: allLines.join('\n'),
+    note: 'Source: anatomy snapshot — not live production code.',
+  });
+}
+
+async function toolListAnatomyFiles(args: Record<string, unknown>): Promise<string> {
+  const pathPrefix = safeStr(args.path_prefix);
+  const language   = safeStr(args.language);
+  const fileType   = safeStr(args.file_type);
+  const limit      = safeInt(args.limit, 50, 200);
+
+  const snapshotId = await resolveSnapshotId(args);
+  if (!snapshotId) return err('No active anatomy snapshot.');
+
+  const [snapRows] = await db.execute(sql.raw(`
+    SELECT id, source_type, repo_name, commit_sha, snapshot_name
+    FROM anatomy_snapshots WHERE id = '${snapshotId.replace(/'/g, "''")}' AND status != 'deleted' LIMIT 1
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  if (!snapRows?.length) return err(`Snapshot ${snapshotId} not found.`);
+
+  const prefixFilter = pathPrefix ? `AND rel_path LIKE '${pathPrefix.replace(/'/g, "''").replace(/%/g, '\\%')}%'` : '';
+  const langFilter   = language   ? `AND language = '${language.replace(/'/g, "''")}'` : '';
+  const typeFilter   = fileType   ? `AND file_type = '${fileType.replace(/'/g, "''")}'` : '';
+
+  const [rows] = await db.execute(sql.raw(`
+    SELECT rel_path, language, file_type, line_count, byte_size
+    FROM anatomy_files
+    WHERE snapshot_id = '${snapshotId.replace(/'/g, "''")}' AND is_excluded = 0 AND is_quarantined = 0
+      ${prefixFilter} ${langFilter} ${typeFilter}
+    ORDER BY rel_path
+    LIMIT ${limit}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return ok({ snapshot: snapRows[0], files: rows ?? [], count: (rows ?? []).length });
+}
+
+async function toolFindRoute(args: Record<string, unknown>): Promise<string> {
+  const routePattern = safeStr(args.route_pattern);
+  if (!routePattern) return err('route_pattern is required');
+
+  const snapshotId = await resolveSnapshotId(args);
+  if (!snapshotId) return err('No active anatomy snapshot.');
+
+  // Search for route registrations and handler files
+  const safePattern = routePattern.replace(/['"\\]/g, ' ').slice(0, 200);
+
+  const [rows] = await db.execute(sql.raw(`
+    SELECT ac.rel_path, ac.start_line, ac.end_line,
+           SUBSTRING(ac.content, 1, ${ANATOMY_MAX_SNIPPET}) AS snippet,
+           MATCH(ac.content) AGAINST ('${safePattern}' IN BOOLEAN MODE) AS relevance
+    FROM anatomy_chunks ac
+    JOIN anatomy_files af ON af.id = ac.file_id
+    WHERE ac.snapshot_id = '${snapshotId.replace(/'/g, "''")}' AND af.is_excluded = 0 AND af.is_quarantined = 0
+      AND (
+        MATCH(ac.content) AGAINST ('${safePattern}' IN BOOLEAN MODE)
+        OR ac.content LIKE '%${safePattern.replace(/%/g, '\\%')}%'
+      )
+    ORDER BY relevance DESC
+    LIMIT 15
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return ok({ routePattern, results: rows ?? [], count: (rows ?? []).length });
+}
+
+async function toolFindDatabaseDefinition(args: Record<string, unknown>): Promise<string> {
+  const tableOrColumn = safeStr(args.table_or_column);
+  if (!tableOrColumn) return err('table_or_column is required');
+
+  const snapshotId = await resolveSnapshotId(args);
+  if (!snapshotId) return err('No active anatomy snapshot.');
+
+  const safeQ = tableOrColumn.replace(/['"\\]/g, ' ').slice(0, 200);
+
+  const [rows] = await db.execute(sql.raw(`
+    SELECT ac.rel_path, ac.start_line, ac.end_line,
+           SUBSTRING(ac.content, 1, ${ANATOMY_MAX_SNIPPET}) AS snippet,
+           MATCH(ac.content) AGAINST ('${safeQ}' IN BOOLEAN MODE) AS relevance
+    FROM anatomy_chunks ac
+    JOIN anatomy_files af ON af.id = ac.file_id
+    WHERE ac.snapshot_id = '${snapshotId.replace(/'/g, "''")}' AND af.is_excluded = 0 AND af.is_quarantined = 0
+      AND (af.language = 'sql' OR af.language = 'typescript' OR af.language = 'javascript')
+      AND MATCH(ac.content) AGAINST ('${safeQ}' IN BOOLEAN MODE)
+    ORDER BY
+      CASE WHEN af.language = 'sql' THEN 0 ELSE 1 END,
+      relevance DESC
+    LIMIT 15
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return ok({ tableOrColumn, results: rows ?? [], count: (rows ?? []).length });
+}
+
+async function toolGetAnatomyManifest(args: Record<string, unknown>): Promise<string> {
+  const snapshotId = await resolveSnapshotId(args);
+  if (!snapshotId) return err('No active anatomy snapshot. Ask Daryl to fetch and activate a snapshot.');
+
+  const [snapRows] = await db.execute(sql.raw(`
+    SELECT id, source_type, repo_owner, repo_name, branch, commit_sha, commit_date,
+           snapshot_name, app_version, build_number, status, is_active,
+           total_files, indexed_files, excluded_files, quarantine_count, created_at
+    FROM anatomy_snapshots WHERE id = '${snapshotId.replace(/'/g, "''")}' AND status != 'deleted' LIMIT 1
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  if (!snapRows?.length) return err(`Snapshot ${snapshotId} not found.`);
+
+  // Language breakdown
+  const [langRows] = await db.execute(sql.raw(`
+    SELECT language, COUNT(*) as file_count, SUM(line_count) as total_lines
+    FROM anatomy_files
+    WHERE snapshot_id = '${snapshotId.replace(/'/g, "''")}' AND is_excluded = 0 AND is_quarantined = 0
+    GROUP BY language ORDER BY file_count DESC
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  // Top directories
+  const [dirRows] = await db.execute(sql.raw(`
+    SELECT SUBSTRING_INDEX(rel_path, '/', 2) AS dir_prefix, COUNT(*) AS file_count
+    FROM anatomy_files
+    WHERE snapshot_id = '${snapshotId.replace(/'/g, "''")}' AND is_excluded = 0 AND is_quarantined = 0
+    GROUP BY dir_prefix ORDER BY file_count DESC LIMIT 20
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return ok({
+    snapshot:  snapRows[0],
+    languages: langRows ?? [],
+    topDirs:   dirRows ?? [],
+    note: 'This snapshot may not match the currently deployed production version. Always verify critical findings against live system evidence.',
+  });
+}
+
+async function toolCompareAnatomySnapshots(args: Record<string, unknown>): Promise<string> {
+  const idA = safeStr(args.snapshot_id_a);
+  const idB = safeStr(args.snapshot_id_b);
+  if (!idA || !idB) return err('Both snapshot_id_a and snapshot_id_b are required');
+  if (idA === idB) return err('snapshot_id_a and snapshot_id_b must be different');
+
+  // Verify both snapshots
+  const [snapRows] = await db.execute(sql.raw(`
+    SELECT id, source_type, repo_name, commit_sha, snapshot_name, created_at
+    FROM anatomy_snapshots WHERE id IN ('${idA.replace(/'/g, "''")}', '${idB.replace(/'/g, "''")}') AND status != 'deleted'
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  if ((snapRows ?? []).length < 2) return err('One or both snapshots not found or deleted.');
+
+  // Files in A
+  const [filesA] = await db.execute(sql.raw(`
+    SELECT rel_path, file_sha256 FROM anatomy_files
+    WHERE snapshot_id = '${idA.replace(/'/g, "''")}' AND is_excluded = 0 AND is_quarantined = 0
+  `)) as unknown as [Array<{ rel_path: string; file_sha256: string }>, unknown];
+
+  // Files in B
+  const [filesB] = await db.execute(sql.raw(`
+    SELECT rel_path, file_sha256 FROM anatomy_files
+    WHERE snapshot_id = '${idB.replace(/'/g, "''")}' AND is_excluded = 0 AND is_quarantined = 0
+  `)) as unknown as [Array<{ rel_path: string; file_sha256: string }>, unknown];
+
+  const mapA = new Map((filesA ?? []).map(f => [f.rel_path, f.file_sha256]));
+  const mapB = new Map((filesB ?? []).map(f => [f.rel_path, f.file_sha256]));
+
+  const added:   string[] = [];
+  const removed: string[] = [];
+  const changed: string[] = [];
+
+  for (const [path, shaB] of mapB) {
+    if (!mapA.has(path)) { added.push(path); }
+    else if (mapA.get(path) !== shaB) { changed.push(path); }
+  }
+  for (const path of mapA.keys()) {
+    if (!mapB.has(path)) removed.push(path);
+  }
+
+  return ok({
+    snapshotA: snapRows?.find(s => s.id === idA),
+    snapshotB: snapRows?.find(s => s.id === idB),
+    added:   added.slice(0, 100),
+    removed: removed.slice(0, 100),
+    changed: changed.slice(0, 100),
+    addedCount:   added.length,
+    removedCount: removed.length,
+    changedCount: changed.length,
+    note: 'Comparison based on file SHA-256 checksums from indexed content.',
+  });
 }

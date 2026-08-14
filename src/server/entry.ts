@@ -126,6 +126,17 @@ import dazza_v3_chat_stream_post from "./api/dazza/v3/chat/stream/POST";
 import dazza_v3_incidents_post from "./api/dazza/v3/incidents/POST";
 import dazza_v3_incidents_get from "./api/dazza/v3/incidents/GET";
 import dazza_v3_incidents_id_get from "./api/dazza/v3/incidents/[id]/GET";
+// ── Dazza Anatomy Index ───────────────────────────────────────────────────────
+import migrate_anatomy_post from "./api/migrate-anatomy/POST";
+import dazza_anatomy_github_test_post from "./api/dazza/anatomy/github/test-connection/POST";
+import dazza_anatomy_github_check_post from "./api/dazza/anatomy/github/check-changes/POST";
+import dazza_anatomy_github_fetch_post from "./api/dazza/anatomy/github/fetch/POST";
+import dazza_anatomy_upload_zip_post from "./api/dazza/anatomy/upload-zip/POST";
+import dazza_anatomy_snapshots_get from "./api/dazza/anatomy/snapshots/GET";
+import dazza_anatomy_snapshot_id_get from "./api/dazza/anatomy/snapshots/[id]/GET";
+import dazza_anatomy_snapshot_activate_post from "./api/dazza/anatomy/snapshots/[id]/activate/POST";
+import dazza_anatomy_snapshot_delete_post from "./api/dazza/anatomy/snapshots/[id]/delete/POST";
+import dazza_anatomy_search_post from "./api/dazza/anatomy/search/POST";
 import dazza_v3_incidents_id_investigate_post from "./api/dazza/v3/incidents/[id]/investigate/POST";
 import dazza_v3_client_rescue_get from "./api/dazza/v3/client-rescue/GET";
 import dazza_v3_client_rescue_id_patch from "./api/dazza/v3/client-rescue/[id]/PATCH";
@@ -3029,6 +3040,17 @@ app.get("/api/dazza/v3/incidents/:id", dazza_v3_incidents_id_get);
 app.post("/api/dazza/v3/incidents/:id/investigate", dazza_v3_incidents_id_investigate_post);
 app.get("/api/dazza/v3/client-rescue", dazza_v3_client_rescue_get);
 app.patch("/api/dazza/v3/client-rescue/:id", dazza_v3_client_rescue_id_patch);
+// ── Dazza Anatomy Index ───────────────────────────────────────────────────────
+app.post("/api/migrate-anatomy", requirePlatformOwner, migrate_anatomy_post);
+app.post("/api/dazza/anatomy/github/test-connection", requirePlatformOwner, dazza_anatomy_github_test_post);
+app.post("/api/dazza/anatomy/github/check-changes", requirePlatformOwner, dazza_anatomy_github_check_post);
+app.post("/api/dazza/anatomy/github/fetch", requirePlatformOwner, dazza_anatomy_github_fetch_post);
+app.post("/api/dazza/anatomy/upload-zip", requirePlatformOwner, dazza_anatomy_upload_zip_post);
+app.get("/api/dazza/anatomy/snapshots", requirePlatformOwner, dazza_anatomy_snapshots_get);
+app.get("/api/dazza/anatomy/snapshots/:id", requirePlatformOwner, dazza_anatomy_snapshot_id_get);
+app.post("/api/dazza/anatomy/snapshots/:id/activate", requirePlatformOwner, dazza_anatomy_snapshot_activate_post);
+app.post("/api/dazza/anatomy/snapshots/:id/delete", requirePlatformOwner, dazza_anatomy_snapshot_delete_post);
+app.post("/api/dazza/anatomy/search", requirePlatformOwner, dazza_anatomy_search_post);
 // ── Dazza V3 Communications ───────────────────────────────────────────────────
 app.get("/api/dazza/v3/communications", dazza_v3_comms_get);
 app.post("/api/dazza/v3/communications", dazza_v3_comms_post);

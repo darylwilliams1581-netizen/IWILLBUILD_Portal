@@ -446,6 +446,14 @@ const TOOL_LABELS: Record<string, string> = {
   v3_get_system_stats:          'Fetching system stats…',
   v3_get_storage_usage:         'Checking storage…',
   v3_get_recent_errors:         'Loading recent errors…',
+  // Anatomy tools
+  search_anatomy:               'Searching source code…',
+  read_anatomy_file:            'Reading file…',
+  list_anatomy_files:           'Listing files…',
+  find_route:                   'Finding route…',
+  find_database_definition:     'Finding database definition…',
+  get_anatomy_manifest:         'Loading anatomy manifest…',
+  compare_anatomy_snapshots:    'Comparing snapshots…',
 };
 
 export default function DazzaAIPage() {
