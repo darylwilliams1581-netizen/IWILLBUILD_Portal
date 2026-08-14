@@ -181,7 +181,7 @@ export default async function handler(req: Request, res: Response) {
     if (bccOwner) {
       const [ownerRows] = await db.execute(sql`
         SELECT u.email FROM profiles p
-        JOIN users u ON u.id = p.user_id
+        JOIN user u ON u.id = p.user_id
         WHERE p.company_id = ${profile.companyId} AND p.role = 'owner'
         LIMIT 1
       `) as unknown as [Array<{ email?: string }>, unknown];

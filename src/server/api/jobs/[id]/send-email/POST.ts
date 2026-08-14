@@ -98,7 +98,7 @@ export default async function handler(req: Request, res: Response) {
     let ownerBcced = false;
     if (bccOwner) {
       const [ownerRows] = await db.execute(sql`
-        SELECT u.email FROM users u
+        SELECT u.email FROM user u
         INNER JOIN profiles p ON p.user_id = u.id
         WHERE p.company_id = ${profile.companyId} AND p.role = 'owner'
         LIMIT 1
