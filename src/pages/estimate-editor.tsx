@@ -13,12 +13,11 @@ import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
   estimateTotals, lineCalc, ESTIMATE_STATUSES, GST_MODES,
-  type Estimate, type EstimateLine,
+  type Estimate, type EstimateLine, type LocalLine,
 } from '@/lib/estimates-api';
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
-import { type LocalLine } from '@/components/estimate/EstimatePrintModal';
 import { CostGuidePicker, RecipePicker, type CostItem, type Recipe } from '@/components/estimate/EstimatePickerModals';
 
 // ── Local helpers ─────────────────────────────────────────────────────────────
