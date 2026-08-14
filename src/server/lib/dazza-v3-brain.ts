@@ -58,8 +58,13 @@ const TOOL_ROUNDS_MAX = 8;
 
 export function isDazzaV3Enabled(): boolean {
   // Must use getSecret() — process.env is not populated in this runtime.
-  const flag = getSecret(DAZZA_V3_FEATURE_FLAG);
-  return flag === 'true' || flag === '1';
+  // Normalise: trim whitespace and compare case-insensitively.
+  const raw = getSecret(DAZZA_V3_FEATURE_FLAG);
+  const flag = (raw ?? '').trim().toLowerCase();
+  const enabled = flag === 'true' || flag === '1' || flag === 'yes';
+  // Safe log — never logs the raw value, only the resolved boolean
+  console.log(`[dazza] engine flag resolved: DAZZA_V3_ENABLED=${enabled}`);
+  return enabled;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────

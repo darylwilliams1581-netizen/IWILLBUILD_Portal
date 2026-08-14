@@ -43,8 +43,11 @@ interface Props {
 
 function fmtDate(d: string | null): string {
   if (!d) return '';
-  return new Date(d).toLocaleString('en-AU', {
-    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  // Use browser's local timezone — avoids UTC timestamps displaying as "yesterday"
+  return new Date(d).toLocaleString(undefined, {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    hour12: true,
   });
 }
 

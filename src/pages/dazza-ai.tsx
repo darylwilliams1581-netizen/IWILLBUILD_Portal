@@ -483,15 +483,34 @@ export default function DazzaAIPage() {
   const storageKey = me?.id ? `dazza_conv_id_${me.id}` : null;
 
   // Restore conversationId from sessionStorage on mount (after me is loaded)
+  // and immediately fetch + restore the message history from the server.
   useEffect(() => {
     if (!storageKey) return;
+    let stored: string | null = null;
     try {
-      const stored = sessionStorage.getItem(storageKey);
-      if (stored) {
-        setConversationId(stored);
-      }
+      stored = sessionStorage.getItem(storageKey);
     } catch { /* sessionStorage unavailable */ }
-  }, [storageKey]);
+    if (!stored) return;
+
+    setConversationId(stored);
+
+    // Fetch and restore message history for the stored conversation
+    fetch(`/api/dazza/conversation/${encodeURIComponent(stored)}/history`, {
+      credentials: 'include',
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { messages?: Array<{ role: string; content: string }> } | null) => {
+        if (!data?.messages?.length) return;
+        const restored = data.messages.map((m, i) => ({
+          id: `restored-${i}`,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          timestamp: new Date(),
+        }));
+        setMessages(restored);
+      })
+      .catch(() => { /* silent — user can still chat fresh */ });
+  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist conversationId to sessionStorage whenever it changes
   useEffect(() => {

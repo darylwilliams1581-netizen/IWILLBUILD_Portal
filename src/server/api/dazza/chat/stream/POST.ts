@@ -65,7 +65,10 @@ export default async function handler(req: Request, res: Response) {
     res.setHeader('X-Accel-Buffering', 'no');
 
     // ── Route to engine ──────────────────────────────────────────────────────
-    if (isDazzaV3Enabled()) {
+    const v3Enabled = isDazzaV3Enabled();
+    console.log(`[dazza/stream] engine selected: ${v3Enabled ? 'v3' : 'v2-rollback'} | user=${ownerInfo.userId.slice(0, 8)}`);
+
+    if (v3Enabled) {
       // ── V3 path ─────────────────────────────────────────────────────────
       await streamDazzaV3({
         ownerContext: {
@@ -87,7 +90,7 @@ export default async function handler(req: Request, res: Response) {
       });
 
     } else {
-      // ── V2 rollback (platform owner only) ───────────────────────────────
+      // ── V2 rollback (platform owner only) — V3 flag is off ──────────────
       const openAiKey = getSecret('OPENAI_API_KEY') ?? undefined;
       if (!openAiKey) {
         sseWrite(res, { type: 'error', message: 'OpenAI API key not configured. Set OPENAI_API_KEY.' });

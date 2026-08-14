@@ -14,7 +14,19 @@ import { ALLOWED_REPO, resolveRefToSha, downloadArchiveForSha } from '../../../.
 import { scanArchive } from '../../../../../lib/anatomy-security.js';
 import { indexSnapshot, computePackageSha256 } from '../../../../../lib/anatomy-indexer.js';
 
+/** Safe error string — never exposes tokens or credentials */
+function safeErr(e: unknown): string {
+  const raw = String((e as Error)?.message ?? e);
+  return raw
+    .replace(/ghp_[A-Za-z0-9]+/g, '[REDACTED]')
+    .replace(/github_pat_[A-Za-z0-9_]+/g, '[REDACTED]')
+    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .slice(0, 300);
+}
+
 export default async function handler(req: Request, res: Response) {
+  const correlationId = randomUUID().slice(0, 8).toUpperCase();
+
   const ownerInfo = await getPlatformOwnerInfo(req);
   if (!ownerInfo?.isPlatformOwner) {
     res.status(403).json({ error: 'forbidden' });
@@ -33,62 +45,98 @@ export default async function handler(req: Request, res: Response) {
     commitSha    = resolved.sha;
     commitDate   = resolved.commitDate;
     commitMessage = resolved.commitMessage;
+    console.log(`[anatomy/fetch:${correlationId}] resolved ref '${ref}' → ${commitSha.slice(0, 8)}`);
   } catch (e) {
-    res.status(400).json({ ok: false, error: `Could not resolve ref: ${String(e).slice(0, 200)}` });
+    console.warn(`[anatomy/fetch:${correlationId}] stage=resolve_ref error:`, safeErr(e));
+    res.status(400).json({
+      ok: false,
+      stage: 'resolve_ref',
+      correlationId,
+      error: `Could not resolve ref '${ref}': ${safeErr(e)}`,
+    });
     return;
   }
 
   // ── Step 2: Duplicate SHA check ───────────────────────────────────────────
-  const [existingRows] = await db.execute(sql.raw(`
-    SELECT id, status, is_active FROM anatomy_snapshots
-    WHERE repo_owner = '${ALLOWED_REPO.owner}'
-      AND repo_name  = '${ALLOWED_REPO.repo}'
-      AND commit_sha = '${commitSha}'
-      AND status != 'deleted'
-    LIMIT 1
-  `)) as unknown as [Array<{ id: string; status: string; is_active: number }>, unknown];
+  try {
+    const [existingRows] = await db.execute(sql.raw(`
+      SELECT id, status, is_active FROM anatomy_snapshots
+      WHERE repo_owner = '${ALLOWED_REPO.owner}'
+        AND repo_name  = '${ALLOWED_REPO.repo}'
+        AND commit_sha = '${commitSha}'
+        AND status != 'deleted'
+      LIMIT 1
+    `)) as unknown as [Array<{ id: string; status: string; is_active: number }>, unknown];
 
-  if (existingRows?.length) {
-    const existing = existingRows[0];
-    res.json({
-      ok: true,
-      duplicate: true,
-      snapshotId: existing.id,
-      status:     existing.status,
-      isActive:   !!existing.is_active,
-      message:    `Snapshot for SHA ${commitSha.slice(0, 8)} already exists (${existing.status}).`,
+    if (existingRows?.length) {
+      const existing = existingRows[0];
+      console.log(`[anatomy/fetch:${correlationId}] duplicate snapshot ${existing.id} (${existing.status})`);
+      res.json({
+        ok: true,
+        duplicate: true,
+        snapshotId: existing.id,
+        status:     existing.status,
+        isActive:   !!existing.is_active,
+        message:    `Snapshot for SHA ${commitSha.slice(0, 8)} already exists (${existing.status}).`,
+        correlationId,
+      });
+      return;
+    }
+  } catch (e) {
+    console.warn(`[anatomy/fetch:${correlationId}] stage=duplicate_check error:`, safeErr(e));
+    res.status(500).json({
+      ok: false,
+      stage: 'duplicate_check',
+      correlationId,
+      error: `Database error checking for existing snapshot: ${safeErr(e)}`,
     });
     return;
   }
 
   // ── Step 3: Create pending snapshot record ────────────────────────────────
   const snapshotId = randomUUID();
-  await db.execute(sql.raw(`
-    INSERT INTO anatomy_snapshots
-      (id, source_type, repo_owner, repo_name, branch, commit_sha, commit_date,
-       snapshot_name, status, uploader_user_id, created_at, updated_at)
-    VALUES
-      ('${snapshotId}', 'github',
-       '${ALLOWED_REPO.owner}', '${ALLOWED_REPO.repo}',
-       '${ref.replace(/'/g, "''")}',
-       '${commitSha}',
-       '${commitDate.replace(/'/g, "''")}',
-       'GitHub: ${ALLOWED_REPO.repo}@${commitSha.slice(0, 8)} (${ref.replace(/'/g, "''")})'.slice(0, 199),
-       'pending', '${ownerInfo.userId}', NOW(), NOW())
-  `));
+  try {
+    await db.execute(sql.raw(`
+      INSERT INTO anatomy_snapshots
+        (id, source_type, repo_owner, repo_name, branch, commit_sha, commit_date,
+         snapshot_name, status, uploader_user_id, created_at, updated_at)
+      VALUES
+        ('${snapshotId}', 'github',
+         '${ALLOWED_REPO.owner}', '${ALLOWED_REPO.repo}',
+         '${ref.replace(/'/g, "''")}',
+         '${commitSha}',
+         '${commitDate.replace(/'/g, "''")}',
+         '${`GitHub: ${ALLOWED_REPO.repo}@${commitSha.slice(0, 8)} (${ref})`.slice(0, 199).replace(/'/g, "''")}',
+         'pending', '${ownerInfo.userId}', NOW(), NOW())
+    `));
+    console.log(`[anatomy/fetch:${correlationId}] snapshot ${snapshotId} created (pending)`);
+  } catch (e) {
+    console.warn(`[anatomy/fetch:${correlationId}] stage=create_snapshot error:`, safeErr(e));
+    res.status(500).json({
+      ok: false,
+      stage: 'create_snapshot',
+      correlationId,
+      error: `Failed to create snapshot record: ${safeErr(e)}`,
+    });
+    return;
+  }
 
   // ── Step 4: Download archive ──────────────────────────────────────────────
   let archiveBuffer: Buffer;
   try {
     await db.execute(sql.raw(`UPDATE anatomy_snapshots SET status='indexing', updated_at=NOW() WHERE id='${snapshotId}'`));
+    console.log(`[anatomy/fetch:${correlationId}] downloading archive for SHA ${commitSha.slice(0, 8)}`);
     archiveBuffer = await downloadArchiveForSha(commitSha);
+    console.log(`[anatomy/fetch:${correlationId}] archive downloaded: ${archiveBuffer.length} bytes`);
   } catch (e) {
+    const msg = safeErr(e);
+    console.warn(`[anatomy/fetch:${correlationId}] stage=download_archive error:`, msg);
     await db.execute(sql.raw(`
       UPDATE anatomy_snapshots
-      SET status='failed', error_message='${String(e).slice(0, 490).replace(/'/g, "''")}', updated_at=NOW()
+      SET status='failed', error_message='${msg.replace(/'/g, "''")}', updated_at=NOW()
       WHERE id='${snapshotId}'
-    `));
-    res.status(500).json({ ok: false, error: `Archive download failed: ${String(e).slice(0, 200)}` });
+    `)).catch(() => {});
+    res.status(500).json({ ok: false, stage: 'download_archive', correlationId, error: `Archive download failed: ${msg}` });
     return;
   }
 
@@ -96,13 +144,16 @@ export default async function handler(req: Request, res: Response) {
   let scanResult: Awaited<ReturnType<typeof scanArchive>>;
   try {
     scanResult = await scanArchive(archiveBuffer, archiveBuffer.length);
+    console.log(`[anatomy/fetch:${correlationId}] security scan: ${scanResult.fileCount} files, ${scanResult.quarantined.length} quarantined, ${scanResult.excluded.length} excluded`);
   } catch (e) {
+    const msg = safeErr(e);
+    console.warn(`[anatomy/fetch:${correlationId}] stage=security_scan error:`, msg);
     await db.execute(sql.raw(`
       UPDATE anatomy_snapshots
-      SET status='failed', error_message='${String(e).slice(0, 490).replace(/'/g, "''")}', updated_at=NOW()
+      SET status='failed', error_message='${msg.replace(/'/g, "''")}', updated_at=NOW()
       WHERE id='${snapshotId}'
-    `));
-    res.status(400).json({ ok: false, error: `Security scan failed: ${String(e).slice(0, 200)}` });
+    `)).catch(() => {});
+    res.status(400).json({ ok: false, stage: 'security_scan', correlationId, error: `Security scan failed: ${msg}` });
     return;
   }
 
@@ -128,20 +179,43 @@ export default async function handler(req: Request, res: Response) {
 
   // ── Step 6: Index allowed files ───────────────────────────────────────────
   const packageSha256 = computePackageSha256(archiveBuffer);
-  const indexResult = await indexSnapshot(snapshotId, scanResult.allowed);
+  console.log(`[anatomy/fetch:${correlationId}] indexing ${scanResult.allowed.length} allowed files`);
+  let indexResult: Awaited<ReturnType<typeof indexSnapshot>>;
+  try {
+    indexResult = await indexSnapshot(snapshotId, scanResult.allowed);
+    console.log(`[anatomy/fetch:${correlationId}] indexed ${indexResult.filesIndexed} files, ${indexResult.chunksCreated} chunks`);
+  } catch (e) {
+    const msg = safeErr(e);
+    console.warn(`[anatomy/fetch:${correlationId}] stage=index_files error:`, msg);
+    await db.execute(sql.raw(`
+      UPDATE anatomy_snapshots
+      SET status='failed', error_message='${msg.replace(/'/g, "''")}', updated_at=NOW()
+      WHERE id='${snapshotId}'
+    `)).catch(() => {});
+    res.status(500).json({ ok: false, stage: 'index_files', correlationId, error: `Indexing failed: ${msg}` });
+    return;
+  }
 
   // ── Step 7: Finalise snapshot ─────────────────────────────────────────────
-  await db.execute(sql.raw(`
-    UPDATE anatomy_snapshots SET
-      status          = 'ready',
-      package_sha256  = '${packageSha256}',
-      total_files     = ${scanResult.fileCount},
-      indexed_files   = ${indexResult.filesIndexed},
-      excluded_files  = ${scanResult.excluded.length},
-      quarantine_count = ${scanResult.quarantined.length},
-      updated_at      = NOW()
-    WHERE id = '${snapshotId}'
-  `));
+  try {
+    await db.execute(sql.raw(`
+      UPDATE anatomy_snapshots SET
+        status          = 'ready',
+        package_sha256  = '${packageSha256}',
+        total_files     = ${scanResult.fileCount},
+        indexed_files   = ${indexResult.filesIndexed},
+        excluded_files  = ${scanResult.excluded.length},
+        quarantine_count = ${scanResult.quarantined.length},
+        updated_at      = NOW()
+      WHERE id = '${snapshotId}'
+    `));
+    console.log(`[anatomy/fetch:${correlationId}] snapshot ${snapshotId} finalised as 'ready'`);
+  } catch (e) {
+    const msg = safeErr(e);
+    console.warn(`[anatomy/fetch:${correlationId}] stage=finalise_snapshot error:`, msg);
+    res.status(500).json({ ok: false, stage: 'finalise_snapshot', correlationId, error: `Failed to finalise snapshot: ${msg}` });
+    return;
+  }
 
   res.json({
     ok:            true,
@@ -156,5 +230,6 @@ export default async function handler(req: Request, res: Response) {
     errors:        [...scanResult.errors, ...indexResult.errors].slice(0, 20),
     status:        'ready',
     isActive:      false,
+    correlationId,
   });
 }
