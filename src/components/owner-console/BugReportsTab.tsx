@@ -9,7 +9,7 @@ import {
   User, Building2, Monitor, Calendar, Tag, MessageSquare,
   Circle, ArrowRight, Activity, Copy, Download, ChevronRight,
   Smartphone, Globe, WifiOff, Package, FileText,
-  Bot, Zap, Wrench, Send, ShieldCheck, Rocket, KeyRound,
+  Bot, Zap, Wrench,
 } from 'lucide-react';
 import { BUG_CATEGORIES } from '@/components/BugReportModal';
 import { usePermissions } from '@/lib/usePermissions';
@@ -113,16 +113,8 @@ export default function BugReportsTab() {
     analysis: string;
     suggestedFix: string;
     suggestedPrompt: string;
-    smsSent: boolean;
-    smsConfigured: boolean;
   } | null>(null);
   const [aiError, setAiError]               = useState('');
-  const [smsCode, setSmsCode]               = useState('');
-  const [smsAuthing, setSmsAuthing]         = useState(false);
-  const [publishToken, setPublishToken]     = useState('');
-  const [smsAuthError, setSmsAuthError]     = useState('');
-  const [publishing, setPublishing]         = useState(false);
-  const [publishResult, setPublishResult]   = useState<{ ok: boolean; message: string } | null>(null);
   const [promptCopied, setPromptCopied]     = useState(false);
 
   const load = useCallback(async (showRefresh = false) => {
@@ -244,10 +236,6 @@ export default function BugReportsTab() {
   function resetAiState() {
     setAiResult(null);
     setAiError('');
-    setSmsCode('');
-    setPublishToken('');
-    setSmsAuthError('');
-    setPublishResult(null);
     setPromptCopied(false);
   }
 
@@ -255,10 +243,6 @@ export default function BugReportsTab() {
     setAiAnalysing(true);
     setAiError('');
     setAiResult(null);
-    setPublishToken('');
-    setSmsCode('');
-    setSmsAuthError('');
-    setPublishResult(null);
     try {
       const res = await fetch(`/api/bug-reports/${report.id}/analyse`, {
         method: 'POST',
@@ -269,8 +253,6 @@ export default function BugReportsTab() {
         analysis?: string;
         suggestedFix?: string;
         suggestedPrompt?: string;
-        smsSent?: boolean;
-        smsConfigured?: boolean;
         error?: string;
       };
       if (!res.ok || !d.ok) {
@@ -281,8 +263,6 @@ export default function BugReportsTab() {
         analysis: d.analysis ?? '',
         suggestedFix: d.suggestedFix ?? '',
         suggestedPrompt: d.suggestedPrompt ?? '',
-        smsSent: d.smsSent ?? false,
-        smsConfigured: d.smsConfigured ?? false,
       });
       // Reload to pick up stored AI fields
       await load(true);
@@ -290,57 +270,6 @@ export default function BugReportsTab() {
       setAiError('Network error. Try again.');
     } finally {
       setAiAnalysing(false);
-    }
-  }
-
-  async function handleSmsAuthorise(report: BugReportRow) {
-    if (!smsCode.trim()) { setSmsAuthError('Enter the 6-digit code from your SMS.'); return; }
-    setSmsAuthing(true);
-    setSmsAuthError('');
-    try {
-      const res = await fetch(`/api/bug-reports/${report.id}/sms-authorise`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ code: smsCode.trim() }),
-      });
-      const d = await res.json() as { ok?: boolean; publishToken?: string; error?: string };
-      if (!res.ok || !d.ok) {
-        setSmsAuthError(d.error ?? 'Invalid code.');
-        return;
-      }
-      setPublishToken(d.publishToken ?? '');
-    } catch {
-      setSmsAuthError('Network error.');
-    } finally {
-      setSmsAuthing(false);
-    }
-  }
-
-  async function handlePublishFix(report: BugReportRow) {
-    if (!publishToken) return;
-    setPublishing(true);
-    setPublishResult(null);
-    try {
-      const res = await fetch(`/api/bug-reports/${report.id}/publish-fix`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ publishToken }),
-      });
-      const d = await res.json() as { ok?: boolean; message?: string; publishTriggered?: boolean; error?: string };
-      setPublishResult({
-        ok: d.ok ?? false,
-        message: d.message ?? d.error ?? 'Unknown result.',
-      });
-      if (d.ok) {
-        await load(true);
-        setPublishToken('');
-      }
-    } catch {
-      setPublishResult({ ok: false, message: 'Network error.' });
-    } finally {
-      setPublishing(false);
     }
   }
 
@@ -847,20 +776,7 @@ export default function BugReportsTab() {
                             </p>
                           </div>
                         )}
-                        {/* SMS status */}
-                        {aiResult.smsConfigured && (
-                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${aiResult.smsSent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                            {aiResult.smsSent
-                              ? <><CheckCircle2 size={12} /> SMS auth code sent to your phone</>
-                              : <><AlertCircle size={12} /> SMS send failed — enter code manually below</>
-                            }
-                          </div>
-                        )}
-                        {!aiResult.smsConfigured && (
-                          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-500">
-                            <AlertCircle size={12} /> SMS not configured — check Twilio secrets to enable SMS auth
-                          </div>
-                        )}
+                        {/* SMS status — removed. No SMS auth codes. */}
                       </div>
                     )}
 
@@ -896,63 +812,9 @@ export default function BugReportsTab() {
                       </button>
                     )}
 
-                    {/* SMS Authorisation + Publish */}
-                    {(aiResult || selected.ai_analysis) && !publishToken && !publishResult && (
-                      <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                          <KeyRound size={10} /> SMS Authorisation to Publish
-                        </p>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            value={smsCode}
-                            onChange={e => { setSmsCode(e.target.value.replace(/\D/g, '')); setSmsAuthError(''); }}
-                            placeholder="6-digit code"
-                            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 placeholder:text-slate-300 text-center tracking-widest font-mono"
-                          />
-                          <button
-                            onClick={() => void handleSmsAuthorise(selected)}
-                            disabled={smsAuthing || smsCode.length !== 6}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
-                          >
-                            {smsAuthing ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />}
-                            Verify
-                          </button>
-                        </div>
-                        {smsAuthError && (
-                          <p className="text-xs text-red-500 font-semibold">{smsAuthError}</p>
-                        )}
-                      </div>
-                    )}
+                    {/* SMS Authorisation + Publish — REMOVED per owner instruction.
+                        Use "Copy Airo Prompt" below and paste manually into the builder. */}
 
-                    {/* Publish Fix button — unlocked after SMS auth */}
-                    {publishToken && !publishResult && (
-                      <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
-                        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-700 font-semibold">
-                          <ShieldCheck size={12} /> SMS verified — publish authorised
-                        </div>
-                        <button
-                          onClick={() => void handlePublishFix(selected)}
-                          disabled={publishing}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold transition-all disabled:opacity-60 shadow-md"
-                        >
-                          {publishing
-                            ? <><Loader2 size={13} className="animate-spin" /> Publishing…</>
-                            : <><Rocket size={13} /> Publish Fix to Production</>
-                          }
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Publish result */}
-                    {publishResult && (
-                      <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold border ${publishResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
-                        {publishResult.ok ? <Rocket size={12} className="shrink-0 mt-0.5" /> : <AlertCircle size={12} className="shrink-0 mt-0.5" />}
-                        <span>{publishResult.message}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 

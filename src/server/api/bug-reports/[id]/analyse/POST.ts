@@ -1,42 +1,24 @@
 /**
  * POST /api/bug-reports/:id/analyse
  * ─────────────────────────────────────────────────────────────────────────────
- * Platform-owner only.
+ * Platform-owner only. Manual trigger.
  * 1. Fetches the bug report from DB.
  * 2. Sends it to OpenAI (Dazza AI) for diagnosis.
  * 3. Stores ai_analysis, ai_suggested_fix, ai_suggested_prompt on the row.
- * 4. Generates a single-use SMS auth token and sends it to the platform owner's
- *    registered phone number via Twilio.
- * 5. Returns the AI analysis + a flag indicating whether SMS was sent.
+ * 4. Returns the AI analysis.
  *
- * The SMS contains a 6-digit code. The owner enters it in the UI to unlock
- * the "Publish Fix" button (POST /api/bug-reports/:id/publish-fix).
+ * No SMS codes. No publish tokens. No deployment triggers.
+ * The owner copies the Airo prompt manually and decides when to act.
  */
 import type { Request, Response } from 'express';
-import { randomBytes, createHash } from 'node:crypto';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
-import { sendSms, isSmsConfigured } from '../../../../lib/sms.js';
 import { getSecret } from '#airo/secrets';
 
 // ── Safe string escape ────────────────────────────────────────────────────────
 function esc(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
-
-// ── Platform owner phone ──────────────────────────────────────────────────────
-function getOwnerPhone(): string {
-  return getSecret('PLATFORM_OWNER_PHONE') ?? process.env.PLATFORM_OWNER_PHONE ?? '';
-}
-
-// ── Generate 6-digit code ─────────────────────────────────────────────────────
-function generateCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-function hashCode(code: string): string {
-  return createHash('sha256').update(code).digest('hex');
 }
 
 // ── OpenAI analysis ───────────────────────────────────────────────────────────
@@ -166,7 +148,7 @@ export default async function handler(req: Request, res: Response) {
     // 3. Run Dazza AI analysis
     const { analysis, suggestedFix, suggestedPrompt } = await analyseBugWithDazza(report);
 
-    // 4. Store AI results
+    // 4. Store AI results only — no SMS tokens, no publish tokens
     await db.execute(sql.raw(`
       UPDATE bug_reports
       SET ai_analysis = '${esc(analysis)}',
@@ -177,43 +159,11 @@ export default async function handler(req: Request, res: Response) {
       WHERE id = '${esc(id)}'
     `));
 
-    // 5. Generate SMS auth token and send to platform owner
-    let smsSent = false;
-    let smsCode = '';
-
-    const ownerPhone = getOwnerPhone();
-    if (isSmsConfigured() && ownerPhone) {
-      smsCode = generateCode();
-      const codeHash = hashCode(smsCode);
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min TTL
-
-      await db.execute(sql.raw(`
-        UPDATE bug_reports
-        SET sms_auth_token = '${esc(codeHash)}',
-            sms_auth_expires_at = '${expiresAt.toISOString().slice(0, 19).replace('T', ' ')}',
-            sms_auth_used = 0,
-            updated_at = NOW()
-        WHERE id = '${esc(id)}'
-      `));
-
-      const smsBody =
-        `🐛 IWILLBUILD Bug Alert\n` +
-        `Category: ${String(report.category ?? '').replace(/_/g, ' ')}\n` +
-        `Issue: ${String(report.description ?? '').slice(0, 100)}...\n\n` +
-        `Dazza Fix: ${suggestedFix.slice(0, 120)}\n\n` +
-        `Auth code to publish fix: ${smsCode}\n` +
-        `(Expires in 15 min)`;
-
-      smsSent = await sendSms(ownerPhone, smsBody);
-    }
-
     return res.json({
       ok: true,
       analysis,
       suggestedFix,
       suggestedPrompt,
-      smsSent,
-      smsConfigured: isSmsConfigured() && !!PLATFORM_OWNER_PHONE,
     });
   } catch (err) {
     console.error('[bug-reports/analyse]', err);

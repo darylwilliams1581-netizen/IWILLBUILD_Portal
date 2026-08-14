@@ -11,7 +11,6 @@
  * Server sets created_at — client-supplied timestamps are ignored.
  */
 import type { Request, Response } from 'express';
-import { randomBytes } from 'node:crypto';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../lib/auth-middleware.js';
@@ -190,106 +189,11 @@ export default async function handler(req: Request, res: Response) {
       )
     `));
 
-    // 8. Fire-and-forget: auto-trigger Dazza AI analysis + SMS alert
-    void triggerAutoAnalysis(id, {
-      category,
-      description,
-      page_url: pageUrl,
-      platform,
-      app_version: appVersion,
-      current_route: currentRoute,
-    });
-
+    // 8. Done — no automatic AI calls on submission.
+    // Owner manually triggers analysis via Owner Console → Bug Reports → Analyse with Dazza.
     return res.status(201).json({ ok: true, id });
   } catch (err) {
     console.error('[bug-reports/POST]', err);
     return res.status(500).json({ error: 'Failed to submit bug report.' });
-  }
-}
-
-// ── Auto-analysis (fire-and-forget) ──────────────────────────────────────────
-// Runs after the 201 response is sent. Errors are logged but never surface
-// to the user — the bug report is already saved.
-
-async function triggerAutoAnalysis(
-  id: string,
-  report: Record<string, string>,
-): Promise<void> {
-  try {
-    const { getSecret } = await import('#airo/secrets');
-    const { sendSms, isSmsConfigured } = await import('../../lib/sms.js');
-    const { createHash, createHmac } = await import('node:crypto');
-
-    const apiKey = getSecret('OPENAI_API_KEY');
-    if (!apiKey) return;
-
-    const systemPrompt = `You are Dazza, the IWILLBUILD platform AI. Analyse this bug report and return JSON with keys: "analysis", "suggestedFix", "suggestedPrompt". Be specific and technical.`;
-    const userPrompt = `Category: ${report.category}\nDescription: ${report.description?.slice(0, 1500)}\nRoute: ${report.current_route || report.page_url}\nPlatform: ${report.platform}\nVersion: ${report.app_version}`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 800,
-        response_format: { type: 'json_object' },
-      }),
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    if (!response.ok) return;
-
-    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '{}';
-    const parsed = JSON.parse(content) as { analysis?: string; suggestedFix?: string; suggestedPrompt?: string };
-
-    const analysis = (parsed.analysis ?? '').slice(0, 4000);
-    const suggestedFix = (parsed.suggestedFix ?? '').slice(0, 4000);
-    const suggestedPrompt = (parsed.suggestedPrompt ?? '').slice(0, 4000);
-
-    function esc2(s: string): string {
-      return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    }
-
-    // Generate SMS auth token
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const codeHash = createHash('sha256').update(code).digest('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    await db.execute(sql.raw(`
-      UPDATE bug_reports
-      SET ai_analysis = '${esc2(analysis)}',
-          ai_suggested_fix = '${esc2(suggestedFix)}',
-          ai_suggested_prompt = '${esc2(suggestedPrompt)}',
-          ai_analysed_at = NOW(),
-          sms_auth_token = '${esc2(codeHash)}',
-          sms_auth_expires_at = '${expiresAt.toISOString().slice(0, 19).replace('T', ' ')}',
-          sms_auth_used = 0,
-          updated_at = NOW()
-      WHERE id = '${esc2(id)}'
-    `));
-
-    // Send SMS to platform owner
-    const ownerPhone = getSecret('PLATFORM_OWNER_PHONE') ?? process.env.PLATFORM_OWNER_PHONE ?? '';
-    if (isSmsConfigured() && ownerPhone) {
-      const smsBody =
-        `🐛 New IWILLBUILD Bug\n` +
-        `${report.category?.replace(/_/g, ' ') ?? 'Unknown'}: ${report.description?.slice(0, 80) ?? ''}...\n\n` +
-        `Dazza: ${suggestedFix.slice(0, 100)}\n\n` +
-        `Auth code: ${code} (15 min)`;
-      await sendSms(ownerPhone, smsBody);
-    }
-
-    console.info(`[bug-reports] Auto-analysis complete for ${id}`);
-  } catch (err) {
-    console.warn('[bug-reports] Auto-analysis failed (non-fatal):', err);
   }
 }
