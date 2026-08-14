@@ -1,4 +1,4 @@
-/** Generate the canonical quote PDF and send it as a real attachment. */
+/** POST /api/estimates/:id/send-email — generate the canonical quote PDF and send it as a real attachment. */
 import type { Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';

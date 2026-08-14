@@ -1,4 +1,4 @@
-/** GET /api/estimates/:id/export-pdf - stream the canonical quote PDF. */
+/** GET /api/estimates/:id/export-pdf — stream the canonical quote PDF. */
 import type { Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../../../../db/client.js';

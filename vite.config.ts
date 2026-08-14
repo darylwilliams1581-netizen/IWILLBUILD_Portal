@@ -587,9 +587,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // dynamically. Externalising prevents OOM during the SSR Rollup build.
       // Those endpoints will gracefully handle the missing module at runtime.
       'mammoth',
-      // #airo/secrets is a platform-injected package.json imports alias resolved
-      // at runtime by the publish container — Rollup cannot bundle it.
-      '#airo/secrets',
       // NOTE: lucide-react and @heroicons are NOT externalized here — they are
       // aliased to a stub in resolve.alias (below) during SSR build so they
       // compile to near-zero bytes rather than their full ~53 MB on disk.
@@ -680,9 +677,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // compile to near-zero bytes rather than being externalized, so SSR
       // rendering still works in the publish container (no node_modules).
       external: (id: string) => {
-        // #airo/secrets is a package.json `imports` subpath alias injected by
-        // the publish platform at runtime — Rollup cannot resolve it at build time.
-        if (id === '#airo/secrets') return true;
         return id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf');
       },
       treeshake: {
