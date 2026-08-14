@@ -175,6 +175,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/health$/ },
   // Developer seed — internal use only, no auth required (dev environment only)
   { method: 'POST', pattern: /^\/api\/developer\/run-seed-now$/ },
+  // Developer share-security test runner — seeds and cleans up its own rows
+  { method: 'POST', pattern: /^\/api\/developer\/test-share-security$/ },
   // BetterAuth internal routes
   { method: 'GET',  pattern: /^\/api\/auth\// },
   { method: 'POST', pattern: /^\/api\/auth\// },

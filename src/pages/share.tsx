@@ -391,6 +391,11 @@ function SecureShareViewer({ token }: { token: string }) {
   const [passwordError, setPasswordError] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [validating, setValidating] = useState(false);
+  // Access proof token issued by the server after successful password validation.
+  // Passed as ?proof=TOKEN in content URLs so the server can verify the password
+  // was already validated without re-sending the password in the URL.
+  // For non-password-protected links this stays null (not needed).
+  const [proofToken, setProofToken] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/secure-share/${token}`)
@@ -414,11 +419,19 @@ function SecureShareViewer({ token }: { token: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'validate_password', password }),
       });
-      const body = await r.json() as { ok?: boolean; error?: string };
+      const body = await r.json() as { ok?: boolean; proof?: string; error?: string };
       if (!r.ok || !body.ok) { setPasswordError(body.error ?? 'Incorrect password.'); return; }
+      // Store the server-issued proof token — required for content access
+      if (body.proof) setProofToken(body.proof);
       setUnlocked(true);
     } catch { setPasswordError('Failed to validate password.'); }
     finally { setValidating(false); }
+  }
+
+  /** Build a content URL, appending the proof token when the link is password-protected. */
+  function contentUrl(action: 'view' | 'download'): string {
+    const base = `/api/secure-share/${token}/content?action=${action}`;
+    return proofToken ? `${base}&proof=${encodeURIComponent(proofToken)}` : base;
   }
 
   const isExpired = link?.expiresAt ? new Date(link.expiresAt) < new Date() : false;
@@ -546,7 +559,7 @@ function SecureShareViewer({ token }: { token: string }) {
                   {/* View — opens PDF inline in browser */}
                   {link.permissions.includes('view') && (link.targetType === 'estimate' || link.targetType === 'invoice') && (
                     <a
-                      href={`/api/secure-share/${token}/content?action=view`}
+                      href={contentUrl('view')}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 w-full bg-primary text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
@@ -559,7 +572,7 @@ function SecureShareViewer({ token }: { token: string }) {
                   {/* Download — forces save dialog */}
                   {link.permissions.includes('download') && (link.targetType === 'estimate' || link.targetType === 'invoice') && (
                     <a
-                      href={`/api/secure-share/${token}/content?action=download`}
+                      href={contentUrl('download')}
                       download
                       className="flex items-center justify-center gap-2 w-full border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 transition-colors"
                     >

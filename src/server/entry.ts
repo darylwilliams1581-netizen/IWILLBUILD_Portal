@@ -158,6 +158,7 @@ import developer_email_settings_test_post_125 from "./api/developer/email-settin
 import developer_media_backfill_report_get_126 from "./api/developer/media-backfill-report/GET";
 import developer_run_seed_now_post_127 from "./api/developer/run-seed-now/POST";
 import developer_seed_developer_account_post_128 from "./api/developer/seed-developer-account/POST";
+import developer_test_share_security_post from "./api/developer/test-share-security/POST";
 import developer_support_notes_get_129 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_130 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_131 from "./api/developer/support-notes/[id]/DELETE";
@@ -1760,6 +1761,7 @@ async function runStartupMigrations() {
     // ── Secure Share Links (QR / token-based sharing) ─────────────────────────
     { name: 'secure_share_links', ddl: "CREATE TABLE IF NOT EXISTS secure_share_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, link_type VARCHAR(30) NOT NULL DEFAULT 'file_transfer', target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, title VARCHAR(500) NOT NULL DEFAULT '', permissions_json TEXT NULL, metadata_json TEXT NULL, expires_at DATETIME NULL, password_hash VARCHAR(255) NULL, max_uses INT NULL, use_count INT NOT NULL DEFAULT 0, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id), INDEX idx_revoked (company_id, revoked))" },
     { name: 'secure_share_events', ddl: "CREATE TABLE IF NOT EXISTS secure_share_events (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, file_id INT NULL, metadata_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_company (company_id, created_at))" },
+    { name: 'secure_share_access_proofs', ddl: "CREATE TABLE IF NOT EXISTS secure_share_access_proofs (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, proof_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, used TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_proof (proof_hash), INDEX idx_expires (expires_at))" },
     // ── Platform Activity Log ─────────────────────────────────────────────────
     // NOTE: columns are also listed in colsToEnsure above for self-healing on
     // older DBs where the table already exists but is missing columns.
@@ -3016,6 +3018,7 @@ app.post("/api/developer/email-settings/test", developer_email_settings_test_pos
 app.get("/api/developer/media-backfill-report", developer_media_backfill_report_get_126);
 app.post("/api/developer/run-seed-now", developer_run_seed_now_post_127);
 app.post("/api/developer/seed-developer-account", developer_seed_developer_account_post_128);
+app.post("/api/developer/test-share-security", developer_test_share_security_post);
 app.get("/api/developer/support-notes", developer_support_notes_get_129);
 app.post("/api/developer/support-notes", developer_support_notes_post_130);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_131);

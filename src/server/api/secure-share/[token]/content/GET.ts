@@ -9,10 +9,18 @@
  * Query params:
  *   ?action=view      → Content-Disposition: inline  (browser renders PDF)
  *   ?action=download  → Content-Disposition: attachment (forces save dialog)
+ *   ?proof=TOKEN      → Required for password-protected links. The proof token
+ *                       is issued by POST /api/secure-share/:token on successful
+ *                       password validation. It is single-use, expires in 15 min,
+ *                       and is scoped to this specific share link — a proof issued
+ *                       for token A cannot unlock token B.
  *
  * Security:
  *   - Token resolved by hash — raw token never stored
- *   - Checks revoked, expiry, max_uses
+ *   - Checks revoked, expiry, max_uses before any content is generated
+ *   - Password-protected links require a valid, unexpired, unused proof token
+ *   - Proof is consumed (used=1) atomically before PDF generation
+ *   - Proof is bound to share_link_id — cross-token reuse is impossible
  *   - Verifies permission matches action (view requires 'view', download requires 'download')
  *   - Company-scoped DB lookup for the target record
  *   - use_count incremented once per successful content delivery
@@ -44,6 +52,7 @@ export default async function handler(req: Request, res: Response) {
   try {
     const { token } = req.params as { token: string };
     const action = (req.query.action as string | undefined) ?? 'view';
+    const proofRaw = (req.query.proof as string | undefined) ?? '';
 
     if (!token || token.length < 20) {
       return res.status(400).json({ error: 'Invalid token', code: 'INVALID' });
@@ -77,12 +86,61 @@ export default async function handler(req: Request, res: Response) {
     if (link.max_uses !== null && link.use_count >= link.max_uses) {
       return res.status(410).json({ error: 'This link has reached its maximum number of uses.', code: 'MAX_USES' });
     }
+
+    // ── Password-protected link: verify access proof ──────────────────────────
     if (link.password_hash) {
-      // Password-protected links must be unlocked via POST /api/secure-share/:token first
-      return res.status(403).json({ error: 'Password required.', code: 'PASSWORD_REQUIRED' });
+      if (!proofRaw || proofRaw.length < 20) {
+        return res.status(403).json({
+          error: 'Password required. Validate the password first.',
+          code: 'PASSWORD_REQUIRED',
+        });
+      }
+
+      const proofHash = hashToken(proofRaw);
+
+      // Look up the proof — must be for THIS share link, unexpired, and unused
+      const [proofRows] = await db.execute(sql`
+        SELECT id, share_link_id, expires_at, used
+        FROM secure_share_access_proofs
+        WHERE proof_hash = ${proofHash}
+        LIMIT 1
+      `) as unknown as [Array<{
+        id: number;
+        share_link_id: number;
+        expires_at: string;
+        used: number;
+      }>, unknown];
+
+      const proof = proofRows?.[0];
+
+      if (!proof) {
+        return res.status(403).json({ error: 'Invalid or expired access proof.', code: 'PROOF_INVALID' });
+      }
+      if (proof.share_link_id !== link.id) {
+        // Proof was issued for a different share link — cross-token reuse attempt
+        return res.status(403).json({ error: 'Access proof is not valid for this link.', code: 'PROOF_MISMATCH' });
+      }
+      if (proof.used) {
+        return res.status(403).json({ error: 'Access proof has already been used.', code: 'PROOF_USED' });
+      }
+      if (new Date(proof.expires_at) < new Date()) {
+        return res.status(403).json({ error: 'Access proof has expired. Please re-enter the password.', code: 'PROOF_EXPIRED' });
+      }
+
+      // Consume the proof atomically before generating the PDF
+      const [consumeResult] = await db.execute(sql`
+        UPDATE secure_share_access_proofs
+        SET used = 1
+        WHERE id = ${proof.id} AND used = 0
+      `) as unknown as [{ affectedRows: number }, unknown];
+
+      if ((consumeResult as { affectedRows: number }).affectedRows === 0) {
+        // Race condition — another request consumed it first
+        return res.status(403).json({ error: 'Access proof has already been used.', code: 'PROOF_USED' });
+      }
     }
 
-    // Verify the requested action is permitted
+    // ── Verify the requested action is permitted ──────────────────────────────
     let permissions: string[] = ['view'];
     try {
       if (link.permissions_json) permissions = JSON.parse(link.permissions_json) as string[];
