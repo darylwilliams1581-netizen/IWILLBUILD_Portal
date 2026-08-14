@@ -79,7 +79,11 @@ export default async function handler(req: Request, res: Response) {
         onToken:      (token)        => sseWrite(res, { type: 'token', content: token }),
         onToolCall:   (name, status) => sseWrite(res, { type: status === 'running' ? 'tool_call' : 'tool_result', name, status }),
         onDone:       (meta)         => sseWrite(res, { type: 'done', engine: 'v3', ...meta }),
-        onError:      (message)      => sseWrite(res, { type: 'error', message }),
+        onError:      (msg)          => {
+          // Ownership rejection — surface as a visible error (not a silent new conversation)
+          const isForbidden = msg.startsWith('FORBIDDEN:');
+          sseWrite(res, { type: 'error', message: msg, forbidden: isForbidden });
+        },
       });
 
     } else {

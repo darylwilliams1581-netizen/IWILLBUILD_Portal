@@ -472,6 +472,32 @@ export default function DazzaAIPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // ── sessionStorage key (keyed to userId so different users never share) ──
+  const storageKey = me?.id ? `dazza_conv_id_${me.id}` : null;
+
+  // Restore conversationId from sessionStorage on mount (after me is loaded)
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      if (stored) {
+        setConversationId(stored);
+      }
+    } catch { /* sessionStorage unavailable */ }
+  }, [storageKey]);
+
+  // Persist conversationId to sessionStorage whenever it changes
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      if (conversationId) {
+        sessionStorage.setItem(storageKey, conversationId);
+      } else {
+        sessionStorage.removeItem(storageKey);
+      }
+    } catch { /* sessionStorage unavailable */ }
+  }, [conversationId, storageKey]);
+
   // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
   type BugFixStep = 'idle' | 'page' | 'clicked' | 'happened' | 'expected' | 'role' | 'error' | 'done';
   interface BugReport {
@@ -652,9 +678,13 @@ export default function DazzaAIPage() {
   function clearChat() {
     setMessages([{ id: Date.now().toString(), role: 'assistant', content: WELCOME_MSG, timestamp: new Date() }]);
     setNoApiKey(false);
-    // Start a fresh conversation — clear the stored ID so V3 creates a new one
+    // Clear conversation — new chat starts fresh
     setConversationId(null);
     setActiveEngine(null);
+    // Remove from sessionStorage immediately (the useEffect will also fire, but this is instant)
+    if (storageKey) {
+      try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
+    }
   }
 
   function runSimple() {

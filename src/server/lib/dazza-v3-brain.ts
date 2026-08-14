@@ -46,7 +46,10 @@ import { sendEmail } from '../email.js';
 
 const DAZZA_V3_FEATURE_FLAG = 'DAZZA_V3_ENABLED';
 const OWNER_SUPPORT_EMAIL = 'support@iwillbuild.com';
-const MAX_CONVERSATION_TURNS = 40;
+
+// Conversation history sent to OpenAI — bounded to control cost
+const CONTEXT_RECENT_TURNS = 20;       // most recent turns included verbatim
+const SUMMARY_THRESHOLD_TURNS = 30;    // deterministic compaction kicks in above this
 const MAX_TOKENS_INVESTIGATION = 4000;
 const MAX_TOKENS_CHAT = 2000;
 const TOOL_ROUNDS_MAX = 8;
@@ -79,7 +82,13 @@ export interface V3StreamOptions {
   bugReportId?: string;
   onToken: (token: string) => void;
   onToolCall: (name: string, status: 'running' | 'done') => void;
-  onDone: (meta: { model: string; toolsUsed: string[]; conversationId: string }) => void;
+  onDone: (meta: {
+    model: string;
+    toolsUsed: string[];
+    conversationId: string;
+    inputTokens?: number;
+    outputTokens?: number;
+  }) => void;
   onError: (message: string) => void;
 }
 
@@ -174,21 +183,97 @@ When investigating an incident or bug, structure your response as:
 
 // ── Conversation management ───────────────────────────────────────────────────
 
-async function loadConversationHistory(conversationId: string): Promise<V3ChatMessage[]> {
+/**
+ * Verify that a conversation belongs to the given owner.
+ * Returns 'ok' | 'not_found' | 'forbidden'.
+ */
+async function verifyConversationOwnership(
+  conversationId: string,
+  ownerUserId: string,
+): Promise<'ok' | 'not_found' | 'forbidden'> {
   try {
     const [rows] = await db.execute(sql.raw(`
-      SELECT role, content FROM dazza_v3_conversations
+      SELECT owner_user_id FROM dazza_v3_conversations
+      WHERE conversation_id = '${conversationId.replace(/'/g, "''")}'
+      LIMIT 1
+    `)) as unknown as [Array<{ owner_user_id: string }>, unknown];
+
+    if (!rows?.length) return 'not_found';
+    if (rows[0].owner_user_id !== ownerUserId) return 'forbidden';
+    return 'ok';
+  } catch {
+    return 'not_found';
+  }
+}
+
+/**
+ * Load bounded conversation history for a given conversation.
+ *
+ * Strategy:
+ *   - If total turns ≤ SUMMARY_THRESHOLD_TURNS: return all turns verbatim.
+ *   - If total turns > SUMMARY_THRESHOLD_TURNS: return a deterministic
+ *     text summary of older turns + the most recent CONTEXT_RECENT_TURNS turns.
+ *     No extra AI call is made — the summary is built from stored content.
+ */
+async function loadBoundedHistory(conversationId: string): Promise<{
+  messages: V3ChatMessage[];
+  totalTurns: number;
+  compacted: boolean;
+}> {
+  try {
+    // Load all turns (for count + compaction)
+    const [rows] = await db.execute(sql.raw(`
+      SELECT role, content, turn_index FROM dazza_v3_conversations
       WHERE conversation_id = '${conversationId.replace(/'/g, "''")}'
       ORDER BY turn_index ASC
-      LIMIT ${MAX_CONVERSATION_TURNS * 2}
-    `)) as unknown as [Array<{ role: string; content: string }>, unknown];
+    `)) as unknown as [Array<{ role: string; content: string; turn_index: number }>, unknown];
 
-    return (rows ?? []).map(r => ({
-      role: r.role as 'user' | 'assistant' | 'system',
+    const all = rows ?? [];
+    const totalTurns = all.length;
+
+    if (totalTurns === 0) {
+      return { messages: [], totalTurns: 0, compacted: false };
+    }
+
+    if (totalTurns <= SUMMARY_THRESHOLD_TURNS) {
+      // Return all verbatim
+      return {
+        messages: all.map(r => ({ role: r.role as 'user' | 'assistant', content: r.content })),
+        totalTurns,
+        compacted: false,
+      };
+    }
+
+    // Compaction: summarise older turns deterministically, keep recent verbatim
+    const olderTurns = all.slice(0, totalTurns - CONTEXT_RECENT_TURNS);
+    const recentTurns = all.slice(totalTurns - CONTEXT_RECENT_TURNS);
+
+    // Build a deterministic summary from older turns (no AI call)
+    const summaryLines: string[] = [
+      `[Earlier conversation summary — ${olderTurns.length} turns compacted]`,
+    ];
+    for (const t of olderTurns) {
+      const snippet = t.content.slice(0, 200).replace(/\n/g, ' ');
+      summaryLines.push(`${t.role === 'user' ? 'Daryl' : 'Dazza'}: ${snippet}${t.content.length > 200 ? '…' : ''}`);
+    }
+
+    const summaryMessage: V3ChatMessage = {
+      role: 'system',
+      content: summaryLines.join('\n'),
+    };
+
+    const recentMessages: V3ChatMessage[] = recentTurns.map(r => ({
+      role: r.role as 'user' | 'assistant',
       content: r.content,
     }));
+
+    return {
+      messages: [summaryMessage, ...recentMessages],
+      totalTurns,
+      compacted: true,
+    };
   } catch {
-    return [];
+    return { messages: [], totalTurns: 0, compacted: false };
   }
 }
 
@@ -280,21 +365,52 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     return;
   }
 
-  // Resolve conversation ID
-  const conversationId = opts.conversationId ?? randomUUID();
-  const isNewConversation = !opts.conversationId;
+  // ── Conversation ID resolution + ownership enforcement ────────────────────
+  let conversationId: string;
+  let isNewConversation: boolean;
 
-  // Load conversation history
-  const history = isNewConversation ? [] : await loadConversationHistory(conversationId);
+  if (opts.conversationId) {
+    // Existing conversation — verify ownership before loading anything
+    const ownership = await verifyConversationOwnership(opts.conversationId, ownerContext.userId);
 
-  // Load approved memory
+    if (ownership === 'forbidden') {
+      // Audit the rejected attempt
+      void auditV3(ownerContext.userId, 'v3_conversation_ownership_rejected', {
+        attemptedConversationId: opts.conversationId,
+        requestingUserId: ownerContext.userId,
+      });
+      onError('FORBIDDEN: This conversation belongs to a different user.');
+      return;
+    }
+
+    if (ownership === 'not_found') {
+      // Treat as new — the ID may be stale (e.g. DB was reset)
+      conversationId = opts.conversationId;
+      isNewConversation = true;
+    } else {
+      conversationId = opts.conversationId;
+      isNewConversation = false;
+    }
+  } else {
+    conversationId = randomUUID();
+    isNewConversation = true;
+  }
+
+  // ── Load bounded history ──────────────────────────────────────────────────
+  const { messages: historyMessages, totalTurns, compacted } = isNewConversation
+    ? { messages: [], totalTurns: 0, compacted: false }
+    : await loadBoundedHistory(conversationId);
+
+  // ── Load approved memory ──────────────────────────────────────────────────
   const approvedMemory = await loadApprovedMemory();
 
-  // Audit the request
+  // ── Audit the request ─────────────────────────────────────────────────────
   void auditV3(ownerContext.userId, `v3_${mode}_request`, {
     conversationId,
+    isNewConversation,
     messageLength: userMessage.length,
-    historyTurns: history.length,
+    historyTurns: totalTurns,
+    compacted,
     incidentId: opts.incidentId,
     bugReportId: opts.bugReportId,
   });
@@ -322,12 +438,12 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
 
   const messages: OAIMessage[] = [
     { role: 'system', content: systemContent },
-    ...history.map(h => ({ role: h.role, content: h.content })),
+    ...historyMessages.map(h => ({ role: h.role as 'user' | 'assistant' | 'system', content: h.content })),
     { role: 'user', content: userMessage },
   ];
 
-  // Save user turn
-  const userTurnIndex = history.length;
+  // Save user turn (turn index = total stored turns so far)
+  const userTurnIndex = totalTurns;
   void saveConversationTurn(conversationId, ownerContext.userId, 'user', userMessage, userTurnIndex);
 
   // Model selection
@@ -336,6 +452,8 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
 
   const toolsUsed: string[] = [];
   let fullAssistantResponse = '';
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
 
   // Agentic loop
   for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
@@ -352,6 +470,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           max_tokens: maxTokens,
           temperature: mode === 'investigation' ? 0.2 : 0.3,
           stream: true,
+          stream_options: { include_usage: true },
           tools: V3_TOOL_DEFINITIONS,
           tool_choice: 'auto',
           messages,
@@ -392,6 +511,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         if (raw === '[DONE]') { finishReason = finishReason ?? 'stop'; continue; }
 
         let chunk: {
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
           choices?: Array<{
             delta?: {
               content?: string | null;
@@ -406,6 +526,12 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           }>;
         };
         try { chunk = JSON.parse(raw); } catch { continue; }
+
+        // Capture usage when OpenAI includes it (stream_options.include_usage)
+        if (chunk.usage) {
+          totalInputTokens += chunk.usage.prompt_tokens ?? 0;
+          totalOutputTokens += chunk.usage.completion_tokens ?? 0;
+        }
 
         const delta = chunk.choices?.[0]?.delta;
         const fr = chunk.choices?.[0]?.finish_reason;
@@ -478,14 +604,26 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     userTurnIndex + 1,
   );
 
-  // Audit completion
+  // Audit completion with token usage
   void auditV3(ownerContext.userId, `v3_${mode}_complete`, {
     conversationId,
+    model,
     toolsUsed,
     responseLength: fullAssistantResponse.length,
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
+    totalTokens: totalInputTokens + totalOutputTokens,
+    historyTurns: totalTurns,
+    compacted,
   });
 
-  onDone({ model, toolsUsed, conversationId });
+  onDone({
+    model,
+    toolsUsed,
+    conversationId,
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
+  });
 }
 
 // ── Incident management ───────────────────────────────────────────────────────
