@@ -63,7 +63,6 @@ function drawHeader(pdfLib: PdfLib, page: PDFPageType, boldFont: PDFFontType, re
   const { rgb } = pdfLib;
   const ORANGE = rgb(0.976, 0.451, 0.086);
   const WHITE  = rgb(1, 1, 1);
-  const MUTED  = rgb(0.502, 0.533, 0.580);
   drawRect(page, 0, PAGE_H - 70, PAGE_W, 70, ORANGE);
   drawText(page, 'IWILLBUILD', MARGIN, PAGE_H - 30, boldFont, 14, WHITE);
   drawText(page, title.toUpperCase(), MARGIN, PAGE_H - 50, boldFont, 11, WHITE);
@@ -504,7 +503,8 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
   y -= 50;
 
   // Status + ID
-  const statusColor = data.status === 'approved' ? GREEN : (data.status === 'sent' ? ORANGE : SLATE);
+  const normalStatus = (data.status ?? 'draft').toLowerCase();
+  const statusColor = normalStatus === 'approved' ? GREEN : (normalStatus === 'sent' || normalStatus === 'submitted' ? ORANGE : SLATE);
   drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
   drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
   drawText(page, `Estimate #${data.id}`, MARGIN + 90, y - 10, regularFont, 8, MUTED);
@@ -567,7 +567,10 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
   y -= 20;
 
   const markup = Number(data.markup_percent ?? 0);
-  const gstMode = data.gst_mode ?? 'inclusive';
+  const rawGstMode = String(data.gst_mode ?? 'inclusive').toLowerCase();
+  const gstMode = rawGstMode === 'add 10% gst' ? 'exclusive'
+    : rawGstMode === 'no gst' ? 'no_gst'
+    : rawGstMode;
   let subtotalEx = 0;
 
   for (let i = 0; i < data.lines.length; i++) {
@@ -652,7 +655,6 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
 
   totalsRows.forEach((row) => {
     if (row.highlight) drawRect(page, totalsX - 8, y - rowH2 + 4, totalsW + 8, rowH2, ORANGE);
-    const lw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.label, 8);
     const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
     const textColor = row.highlight ? WHITE : BLACK;
     drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
