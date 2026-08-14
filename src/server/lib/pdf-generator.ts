@@ -475,7 +475,7 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
   const { PDFDocument, rgb, StandardFonts } = pdfLib;
   const BLACK  = rgb(0, 0, 0);
   const WHITE  = rgb(1, 1, 1);
-  const ORANGE = rgb(0.976, 0.451, 0.086);
+  const PURPLE = rgb(0.486, 0.227, 0.929); // #7c3aed — system primary
   const SLATE  = rgb(0.243, 0.267, 0.322);
   const LIGHT  = rgb(0.949, 0.953, 0.961);
   const MUTED  = rgb(0.502, 0.533, 0.580);
@@ -504,7 +504,7 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
 
   // Status + ID
   const normalStatus = (data.status ?? 'draft').toLowerCase();
-  const statusColor = normalStatus === 'approved' ? GREEN : (normalStatus === 'sent' || normalStatus === 'submitted' ? ORANGE : SLATE);
+  const statusColor = normalStatus === 'approved' ? GREEN : (normalStatus === 'sent' || normalStatus === 'submitted' ? PURPLE : SLATE);
   drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
   drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
   drawText(page, `Estimate #${data.id}`, MARGIN + 90, y - 10, regularFont, 8, MUTED);
@@ -654,7 +654,7 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
   drawRect(page, totalsX - 8, y - blockH + 8, totalsW + 8, blockH, LIGHT);
 
   totalsRows.forEach((row) => {
-    if (row.highlight) drawRect(page, totalsX - 8, y - rowH2 + 4, totalsW + 8, rowH2, ORANGE);
+    if (row.highlight) drawRect(page, totalsX - 8, y - rowH2 + 4, totalsW + 8, rowH2, PURPLE);
     const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
     const textColor = row.highlight ? WHITE : BLACK;
     drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
@@ -741,7 +741,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   const { PDFDocument, rgb, StandardFonts } = pdfLib;
   const BLACK  = rgb(0, 0, 0);
   const WHITE  = rgb(1, 1, 1);
-  const ORANGE = rgb(0.976, 0.451, 0.086);
+  const PURPLE = rgb(0.486, 0.227, 0.929); // #7c3aed — system primary
   const SLATE  = rgb(0.243, 0.267, 0.322);
   const LIGHT  = rgb(0.949, 0.953, 0.961);
   const MUTED  = rgb(0.502, 0.533, 0.580);
@@ -770,7 +770,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   y -= 50;
 
   // Status + dates
-  const statusColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? ORANGE : SLATE));
+  const statusColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? PURPLE : SLATE));
   drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
   drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
   if (data.issue_date) {
@@ -868,7 +868,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   const amtDue = Number(data.amount_due ?? data.total ?? 0);
   const amtPaid = Number(data.amount_paid ?? 0);
 
-  const tRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; color?: typeof ORANGE }> = [
+  const tRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; color?: typeof PURPLE }> = [
     { label: 'Subtotal (ex. GST)', value: fmtMoney(Number(data.subtotal ?? 0)) },
     { label: 'GST (10%)',          value: fmtMoney(Number(data.gst_total ?? 0)) },
     { label: 'Total (inc. GST)',   value: fmtMoney(Number(data.total ?? 0)), bold: true },
@@ -882,7 +882,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   drawRect(page, totalsX - 8, y - blockH2 + 8, totalsW + 8, blockH2, LIGHT);
 
   tRows.forEach((row) => {
-    if (row.highlight) drawRect(page, totalsX - 8, y - 14, totalsW + 8, 18, ORANGE);
+    if (row.highlight) drawRect(page, totalsX - 8, y - 14, totalsW + 8, 18, PURPLE);
     const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
     const textColor = row.highlight ? WHITE : (row.color ?? BLACK);
     drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
@@ -903,7 +903,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     }
     drawRect(page, MARGIN, y - 28, PAGE_W - MARGIN * 2, 32, rgb(0.059, 0.067, 0.090));
     drawText(page, 'Pay online:', MARGIN + 8, y - 8, boldFont, 8, MUTED);
-    drawText(page, data.stripe_payment_link, MARGIN + 8, y - 22, regularFont, 8, ORANGE);
+    drawText(page, data.stripe_payment_link, MARGIN + 8, y - 22, regularFont, 8, PURPLE);
     y -= 44;
   }
 
