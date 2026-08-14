@@ -118,21 +118,17 @@ export async function buildEstimatePdfDocument(
   });
 
   // ── Compute grand total for email body ────────────────────────────────────
+  // GST modes stored in DB: 'No GST' | 'Add 10% GST'
   const markup = Number(estimate.markupPercent ?? 0);
   const gstMode = (estimate.gstMode ?? 'No GST').toLowerCase();
+  // 'add 10% gst' → exclusive (add GST on top); 'no gst' → no GST
+  const hasGst = gstMode === 'add 10% gst';
   let subtotalEx = 0;
   for (const l of lines) {
-    const qty = Number(l.quantity ?? 0);
-    const rate = Number(l.rate ?? 0);
-    const lineTotal = qty * rate;
-    if (gstMode === 'inclusive') {
-      subtotalEx += lineTotal / 1.1;
-    } else {
-      subtotalEx += lineTotal;
-    }
+    subtotalEx += Number(l.quantity ?? 0) * Number(l.rate ?? 0);
   }
   if (markup > 0) subtotalEx = subtotalEx * (1 + markup / 100);
-  const gstAmount = gstMode !== 'no gst' && gstMode !== 'no_gst' ? subtotalEx * 0.1 : 0;
+  const gstAmount = hasGst ? subtotalEx * 0.1 : 0;
   const total = subtotalEx + gstAmount;
 
   const slug = estimate.title.replace(/[^a-z0-9]/gi, '-').toLowerCase();

@@ -131,8 +131,10 @@ export default function EstimateEditorPage() {
       setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      return true;
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -180,10 +182,6 @@ export default function EstimateEditorPage() {
     if (isLocked) return;
     setLines((prev) => prev.map((l) => l._key === key ? { ...l, [field]: value } : l));
     setDirty(true);
-  }
-
-  function triggerSave() {
-    // No-op: kept so insertCostItem / insertRecipe can still call it for immediate saves
   }
 
   function addLine() {
@@ -274,7 +272,7 @@ export default function EstimateEditorPage() {
     setExportingCsv(true);
     try {
       const res = await fetch(`/api/estimates/${estimate.id}/export-csv`, { credentials: 'include' });
-      if (!res.ok) { alert('Export failed'); return; }
+      if (!res.ok) { window.alert('Export failed'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -296,7 +294,7 @@ export default function EstimateEditorPage() {
     setExportingPdf(true);
     try {
       const res = await fetch(`/api/estimates/${estimate.id}/export-pdf`, { credentials: 'include' });
-      if (!res.ok) { alert('PDF export failed'); return; }
+      if (!res.ok) { window.alert('PDF export failed'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -327,7 +325,7 @@ export default function EstimateEditorPage() {
     URL.revokeObjectURL(url);
   }
 
-  function handleCsvImportSuccess(result: { imported: number; lines?: Array<{ id?: number; description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }> }) {
+  function handleCsvImportSuccess(_result: { imported: number; lines?: Array<{ id?: number; description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }> }) {
     // Reload estimate lines from server after import
     if (estimate) void load(estimate.id);
   }

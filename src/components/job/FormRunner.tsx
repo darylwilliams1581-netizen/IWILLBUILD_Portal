@@ -17,7 +17,7 @@ import {
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
 import { type FormField, parseSettings } from '../FormFieldBuilder';
-import SignaturePad, {
+import {
   type SignatureAnswer,
   type MultiSignatureAnswer,
   parseSignatureAnswer,
@@ -63,7 +63,7 @@ interface FormRunnerProps {
   onComplete: () => void;
 }
 
-export default function FormRunner({ jobId, job, submission, templateName, readOnly: initialReadOnly, onBack, onComplete }: FormRunnerProps) {
+export default function FormRunner({ job, submission, templateName, readOnly: initialReadOnly, onBack, onComplete }: FormRunnerProps) {
   const [fields, setFields] = useState<FormField[]>([]);
   const [answers, setAnswers] = useState<Answers>({});
   const [loading, setLoading] = useState(true);
@@ -553,18 +553,40 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
     return (
       <>
       <div className="flex flex-col gap-0 max-w-2xl mx-auto w-full">
-        {/* Header — back chevron + form name + status badge */}
-        <div className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 flex items-center gap-2 mb-4">
-          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors shrink-0">
+        {/* Header */}
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
+          <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
             <ChevronLeft size={18} />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-slate-400 leading-none mb-0.5">Viewing completed form</p>
-            <h2 className="font-heading font-bold text-sm text-slate-900 truncate leading-tight">{templateName}</h2>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-400">Viewing completed form</p>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <CheckCircle2 size={9} /> Completed
+              </span>
+            </div>
+            <h2 className="font-heading font-bold text-base text-slate-900 truncate">{templateName}</h2>
           </div>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-            <CheckCircle2 size={9} /> Completed
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
+            >
+              <Printer size={12} /> Print / PDF
+            </button>
+            <button
+              onClick={() => setEmailModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
+            >
+              <Mail size={12} /> Send Email
+            </button>
+            <button
+              onClick={reopenForm}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
+            >
+              <Pencil size={12} /> Edit / Reopen
+            </button>
+          </div>
         </div>
 
         {apiError && (
@@ -574,7 +596,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         )}
 
         {/* Fields */}
-        <div className="w-full flex flex-col gap-5 pb-4">
+        <div className="w-full flex flex-col gap-5 pb-10">
           {fields.map((field) => {
             if (!visibleFields.has(field.id)) return null;
 
@@ -615,44 +637,16 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
           })}
         </div>
 
-        {/* Bottom action bar — icon-only, all actions */}
-        <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 flex items-center gap-1.5 mb-4">
-          {/* Back — icon only */}
-          <button
-            onClick={onBack}
-            title="Back to forms"
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-          >
-            <ChevronLeft size={16} />
+        {/* Footer */}
+        <div className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
+          <button onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+            Back to Forms
           </button>
-
-          <div className="flex-1" />
-
-          {/* Print */}
           <button
             onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
-            title="Print / PDF"
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors"
           >
-            <Printer size={15} />
-          </button>
-
-          {/* Email */}
-          <button
-            onClick={() => { setEmailTo(''); setEmailError(''); setEmailSent(false); setEmailModalOpen(true); }}
-            title="Email with PDF"
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
-          >
-            <Mail size={15} />
-          </button>
-
-          {/* Edit / Reopen */}
-          <button
-            onClick={reopenForm}
-            title="Edit / Reopen"
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
-          >
-            <Pencil size={15} />
+            <Printer size={14} /> Print / PDF
           </button>
         </div>
       </div>
@@ -716,10 +710,9 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, true)}
-            title="Print draft"
-            className="p-2 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-500 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-500 transition-colors"
           >
-            <Printer size={14} />
+            <Printer size={12} /> Print Draft
           </button>
           <div className="text-right">
             <p className="text-xs font-bold text-slate-700">{answeredCount}/{visibleInputFields.length}</p>
