@@ -39,7 +39,8 @@ function wrapText(text: string, maxChars: number): string[] {
 
 // ── PDF builder ───────────────────────────────────────────────────────────────
 
-interface PdfField { label: string; value: string; required: boolean; }
+interface PhotoEmbed { bytes: Uint8Array; mimeType: string; }
+interface PdfField { label: string; value: string; required: boolean; photos?: PhotoEmbed[]; }
 
 async function buildPdf(opts: {
   templateName: string;
@@ -120,12 +121,35 @@ async function buildPdf(opts: {
     page.drawText(labelText, { x: MARGIN, y, size: 9, font: fontBold, color: SLATE9 });
     y -= 13;
 
-    // Value — wrap long lines
-    const valueLines = wrapText(valueText, 90);
-    for (const vl of valueLines) {
-      ensureSpace(14);
-      page.drawText(vl, { x: MARGIN + 8, y, size: 9, font: fontNormal, color: SLATE5 });
-      y -= 13;
+    // Embedded photos — draw each image inline
+    if (f.photos && f.photos.length > 0) {
+      for (const photo of f.photos) {
+        try {
+          const img = photo.mimeType === 'image/png'
+            ? await doc.embedPng(photo.bytes)
+            : await doc.embedJpg(photo.bytes);
+          const MAX_W = COL_W;
+          const MAX_H = 200;
+          const scale = Math.min(MAX_W / img.width, MAX_H / img.height, 1);
+          const imgW = img.width * scale;
+          const imgH = img.height * scale;
+          ensureSpace(imgH + 12);
+          page.drawImage(img, { x: MARGIN + 8, y: y - imgH, width: imgW, height: imgH });
+          y -= imgH + 8;
+        } catch {
+          ensureSpace(14);
+          page.drawText('[Photo could not be embedded]', { x: MARGIN + 8, y, size: 9, font: fontNormal, color: SLATE5 });
+          y -= 13;
+        }
+      }
+    } else {
+      // Value — wrap long lines
+      const valueLines = wrapText(valueText, 90);
+      for (const vl of valueLines) {
+        ensureSpace(14);
+        page.drawText(vl, { x: MARGIN + 8, y, size: 9, font: fontNormal, color: SLATE5 });
+        y -= 13;
+      }
     }
 
     y -= 6; // gap between fields
@@ -215,8 +239,11 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Build field list for PDF + plain-text ─────────────────────────────────
     const SKIP_TYPES = ['section', 'instruction', 'instruction_image', 'page_break'];
-    const pdfFields: { label: string; value: string; required: boolean }[] = [];
+    const pdfFields: PdfField[] = [];
     const textLines: string[] = [];
+
+    const serverBase = `http://localhost:${process.env.PORT ?? 5173}`;
+    const cookieHeader = req.headers.cookie ?? '';
 
     for (const field of fieldRows) {
       if (SKIP_TYPES.includes(field.fieldType)) continue;
@@ -224,13 +251,47 @@ export default async function handler(req: Request, res: Response) {
       const empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
       let display = empty ? '(no answer)' : String(val);
       if (Array.isArray(val)) display = val.join(', ');
-      if (field.fieldType === 'photo')     display = empty ? '(no photo)' : '[Photo attached]';
-      if (field.fieldType === 'signature') display = empty ? '(no signature)' : '[Signature captured]';
-      if (field.fieldType === 'location' && !empty && typeof val === 'object' && val !== null && 'lat' in val) {
+
+      let photos: PhotoEmbed[] | undefined;
+
+      if (field.fieldType === 'photo') {
+        if (empty) {
+          display = '(no photo)';
+        } else {
+          // Parse photo file URLs — stored as JSON array or single string
+          const photoUrls: string[] = (() => {
+            if (Array.isArray(val)) return val.filter((v): v is string => typeof v === 'string');
+            if (typeof val === 'string') {
+              try { const p = JSON.parse(val); return Array.isArray(p) ? p : [val]; } catch { return [val]; }
+            }
+            return [];
+          })();
+          // Fetch each photo server-side and embed bytes in the PDF
+          const fetched: PhotoEmbed[] = [];
+          for (const photoUrl of photoUrls) {
+            try {
+              const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${serverBase}${photoUrl}`;
+              const photoRes = await fetch(fullUrl, { headers: { cookie: cookieHeader } });
+              if (photoRes.ok) {
+                const buf = await photoRes.arrayBuffer();
+                const ct = photoRes.headers.get('content-type') ?? 'image/jpeg';
+                fetched.push({ bytes: new Uint8Array(buf), mimeType: ct.includes('png') ? 'image/png' : 'image/jpeg' });
+              }
+            } catch { /* skip failed photo */ }
+          }
+          photos = fetched.length > 0 ? fetched : undefined;
+          display = photos
+            ? `${photos.length} photo${photos.length !== 1 ? 's' : ''} (embedded in PDF)`
+            : `${photoUrls.length} photo${photoUrls.length !== 1 ? 's' : ''} (could not load)`;
+        }
+      } else if (field.fieldType === 'signature') {
+        display = empty ? '(no signature)' : '[Signature captured]';
+      } else if (field.fieldType === 'location' && !empty && typeof val === 'object' && val !== null && 'lat' in val) {
         const g = val as { lat: number; lng: number; address?: string };
         display = g.address ? `${g.address} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})` : `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`;
       }
-      pdfFields.push({ label: field.label, value: display, required: !!field.required });
+
+      pdfFields.push({ label: field.label, value: display, required: !!field.required, photos });
       textLines.push(`${field.label}${field.required ? ' *' : ''}`);
       textLines.push(`  ${display}`);
       textLines.push('');
