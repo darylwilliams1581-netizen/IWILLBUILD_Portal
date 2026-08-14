@@ -153,7 +153,9 @@ export default function EstimatePrintModal({
 ${metaHtml}${tableHtml}${totalsHtml}${disclaimerHtml}${paymentHtml}${acceptanceHtml}${footerHtml}
 </body></html>`;
 
-    openPrintWindow(html, true);
+    // Open in a full browser tab (no popup constraints) so the user gets
+    // the browser's native PDF viewer with Save / Print controls.
+    openPrintWindow(html, false);
     setPrinting(false);
     onClose();
   }
@@ -165,7 +167,7 @@ ${metaHtml}${tableHtml}${totalsHtml}${disclaimerHtml}${paymentHtml}${acceptanceH
           <Printer size={16} className="text-primary" />
           Print / Export Quote
         </h3>
-        <p className="text-xs text-slate-400 -mt-2">Tip: in the print dialog, turn off <strong>Headers and footers</strong> for the cleanest output.</p>
+        <p className="text-xs text-slate-400 -mt-2">Opens in a new browser tab — use the browser&apos;s <strong>Print</strong> or <strong>Save as PDF</strong> option from there.</p>
         <div className="flex flex-col gap-2">
           {([
             { value: 'itemised', label: 'Full Itemised Quote', desc: 'Qty, unit, rate and line totals — full breakdown' },

@@ -14,7 +14,7 @@ export function openPrintWindow(html: string, autoPrint = false): Window | null 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
 
-  const win = window.open(url, '_blank', 'width=900,height=700');
+  const win = window.open(url, '_blank');
   if (!win) {
     URL.revokeObjectURL(url);
     return null;
