@@ -57,7 +57,9 @@ const TOOL_ROUNDS_MAX = 8;
 // ── Feature flag ──────────────────────────────────────────────────────────────
 
 export function isDazzaV3Enabled(): boolean {
-  return process.env[DAZZA_V3_FEATURE_FLAG] === 'true';
+  // Must use getSecret() — process.env is not populated in this runtime.
+  const flag = getSecret(DAZZA_V3_FEATURE_FLAG);
+  return flag === 'true' || flag === '1';
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -737,8 +739,8 @@ export async function notifyOwnerOfIncident(
   affectedUserName?: string,
   affectedCompanyName?: string,
 ): Promise<{ smsSent: boolean; emailSent: boolean }> {
-  const ownerPhone = process.env.PLATFORM_OWNER_PHONE ?? '';
-  const appUrl = process.env.APP_URL ?? 'https://iwillbuild.com';
+  const ownerPhone = getSecret('PLATFORM_OWNER_PHONE') ?? '';
+  const appUrl = getSecret('APP_URL') ?? 'https://iwillbuild.com';
   const caseLink = `${appUrl}/owner-console?tab=incidents&id=${incidentId}`;
 
   const isUrgent = severity === 'critical' || severity === 'high';

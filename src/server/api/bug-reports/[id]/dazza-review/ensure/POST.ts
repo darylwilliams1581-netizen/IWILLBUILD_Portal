@@ -193,25 +193,48 @@ export default async function handler(req: Request, res: Response) {
     // 4. Claim the slot atomically — INSERT with unique constraint
     const reviewId = randomUUID();
 
-    // Capture active anatomy snapshot at time of review
-    const anatomySnapshotId = await getActiveSnapshotId();
-    const anatomyMeta = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
-    const anatomyCommitSha  = (anatomyMeta?.commit_sha  as string | null) ?? null;
-    const anatomySourceType = (anatomyMeta?.source_type as string | null) ?? null;
+    // Capture active anatomy snapshot at time of review (best-effort — columns may not exist yet)
+    let anatomySnapshotId: string | null = null;
+    let anatomyCommitSha: string | null = null;
+    let anatomySourceType: string | null = null;
+    try {
+      anatomySnapshotId = await getActiveSnapshotId();
+      const anatomyMeta = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
+      anatomyCommitSha  = (anatomyMeta?.commit_sha  as string | null) ?? null;
+      anatomySourceType = (anatomyMeta?.source_type as string | null) ?? null;
+    } catch {
+      // Anatomy tables not yet migrated — proceed without snapshot citation
+    }
 
     try {
-      await db.execute(sql.raw(`
-        INSERT INTO dazza_review_comments
-          (id, bug_report_id, version_label, review_status,
-           anatomy_snapshot_id, anatomy_commit_sha, anatomy_source_type,
-           created_at, updated_at)
-        VALUES
-          ('${esc(reviewId)}', '${esc(id)}', 'Dazza Initial Review', 'reviewing',
-           ${anatomySnapshotId ? `'${anatomySnapshotId}'` : 'NULL'},
-           ${anatomyCommitSha  ? `'${anatomyCommitSha}'`  : 'NULL'},
-           ${anatomySourceType ? `'${anatomySourceType}'` : 'NULL'},
-           NOW(), NOW())
-      `));
+      // Try INSERT with anatomy columns first (post-migration)
+      try {
+        await db.execute(sql.raw(`
+          INSERT INTO dazza_review_comments
+            (id, bug_report_id, version_label, review_status,
+             anatomy_snapshot_id, anatomy_commit_sha, anatomy_source_type,
+             created_at, updated_at)
+          VALUES
+            ('${esc(reviewId)}', '${esc(id)}', 'Dazza Initial Review', 'reviewing',
+             ${anatomySnapshotId ? `'${anatomySnapshotId}'` : 'NULL'},
+             ${anatomyCommitSha  ? `'${anatomyCommitSha}'`  : 'NULL'},
+             ${anatomySourceType ? `'${anatomySourceType}'` : 'NULL'},
+             NOW(), NOW())
+        `));
+      } catch (colErr: unknown) {
+        const colMsg = colErr instanceof Error ? colErr.message : String(colErr);
+        // If anatomy columns don't exist yet, fall back to INSERT without them
+        if (colMsg.includes('Unknown column') || colMsg.includes('anatomy_')) {
+          await db.execute(sql.raw(`
+            INSERT INTO dazza_review_comments
+              (id, bug_report_id, version_label, review_status, created_at, updated_at)
+            VALUES
+              ('${esc(reviewId)}', '${esc(id)}', 'Dazza Initial Review', 'reviewing', NOW(), NOW())
+          `));
+        } else {
+          throw colErr;
+        }
+      }
     } catch (insertErr: unknown) {
       // Race condition — another tab already claimed it; fetch and return
       const errMsg = insertErr instanceof Error ? insertErr.message : String(insertErr);

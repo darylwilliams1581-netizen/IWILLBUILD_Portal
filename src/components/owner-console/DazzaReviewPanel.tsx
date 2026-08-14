@@ -247,6 +247,7 @@ function CommentCard({ comment }: { comment: DazzaComment }) {
 export default function DazzaReviewPanel({ report, evidenceSnapshot }: Props) {
   const [comments, setComments]         = useState<DazzaComment[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [ensureError, setEnsureError]   = useState('');
   const [runningEvidence, setRunningEvidence] = useState(false);
   const [evidenceError, setEvidenceError]     = useState('');
   const [newEvidenceDetected, setNewEvidenceDetected] = useState(false);
@@ -274,18 +275,22 @@ export default function DazzaReviewPanel({ report, evidenceSnapshot }: Props) {
 
     async function init() {
       setLoading(true);
+      setEnsureError('');
       try {
         const res = await fetch(`/api/bug-reports/${report.id}/dazza-review/ensure`, {
           method: 'POST',
           credentials: 'include',
         });
-        const d = await res.json() as { ok?: boolean; review?: DazzaComment };
-        if (d.ok) {
+        const d = await res.json() as { ok?: boolean; review?: DazzaComment; error?: string };
+        if (!res.ok || !d.ok) {
+          setEnsureError(d.error ?? `Server error ${res.status} — check logs.`);
+        } else {
           await fetchComments();
           lastReviewedSnapshot.current = evidenceSnapshot;
         }
-      } catch { /* ignore */ }
-      finally { setLoading(false); }
+      } catch (err) {
+        setEnsureError(err instanceof Error ? err.message : 'Network error starting review.');
+      } finally { setLoading(false); }
     }
 
     void init();
@@ -392,6 +397,36 @@ export default function DazzaReviewPanel({ report, evidenceSnapshot }: Props) {
         {!loading && comments.map(c => (
           <CommentCard key={c.id} comment={c} />
         ))}
+
+        {/* Ensure error */}
+        {!loading && ensureError && (
+          <div className="flex flex-col gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+            <div className="flex items-center gap-2 text-xs text-red-700 font-semibold">
+              <AlertTriangle size={12} />
+              Dazza review could not start
+            </div>
+            <p className="text-[11px] text-red-600 font-mono">{ensureError}</p>
+            <button
+              onClick={() => {
+                ensureCalled.current = false;
+                setEnsureError('');
+                setLoading(true);
+                // Re-trigger the init effect by resetting the guard
+                const id = report.id;
+                fetch(`/api/bug-reports/${id}/dazza-review/ensure`, {
+                  method: 'POST', credentials: 'include',
+                }).then(r => r.json()).then((d: { ok?: boolean; error?: string }) => {
+                  if (d.ok) { void fetchComments(); }
+                  else { setEnsureError(d.error ?? 'Retry failed.'); }
+                }).catch(e => setEnsureError(String(e))).finally(() => setLoading(false));
+              }}
+              className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors"
+            >
+              <RotateCcw size={11} />
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* No reviews yet */}
         {!loading && comments.length === 0 && (

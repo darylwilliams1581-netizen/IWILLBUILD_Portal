@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Bot, Send, User, HardHat, Truck, BarChart2,
   RefreshCw, Calculator, AlertTriangle,
-  CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
+  CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X,
 } from 'lucide-react';
@@ -56,7 +56,6 @@ const QUICK_ACTIONS = [
   { icon: ClipboardList, label: 'Incomplete forms',       prompt: 'Which jobs have incomplete or draft forms? List them with the job name and form name.' },
   { icon: BarChart2,     label: 'Estimate review',        prompt: 'Review estimates on active jobs. Flag any that are missing approved values or still in draft.' },
   { icon: CheckSquare,   label: 'Open to-dos',            prompt: 'List all open to-dos across all jobs. Group by job and highlight any that are overdue.' },
-  { icon: MessageSquare, label: 'Write client SMS',       prompt: 'Help me draft a professional SMS to send to a client about their job progress. Ask me for the job name and what to say.' },
   { icon: TrendingUp,    label: 'Job progress overview',  prompt: 'Give me a progress overview of all active jobs. Which are on track and which need attention?' },
 ];
 
@@ -1173,7 +1172,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask Dazza anything about your jobs, fleet, or data…"
+                  placeholder="Investigate, maintain, or query the IWILLBUILD system…"
                   className="flex-1 resize-none text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none bg-transparent leading-relaxed"
                   style={{ maxHeight: 120, minHeight: 24 }}
                 />
