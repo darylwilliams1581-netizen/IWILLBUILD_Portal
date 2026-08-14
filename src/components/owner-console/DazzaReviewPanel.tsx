@@ -43,8 +43,13 @@ interface Props {
 
 function fmtDate(d: string | null): string {
   if (!d) return '';
-  // Use browser's local timezone — avoids UTC timestamps displaying as "yesterday"
-  return new Date(d).toLocaleString(undefined, {
+  // MySQL DATETIME columns return bare strings like "2026-08-14 07:56:00" with no
+  // timezone suffix. Without a suffix, new Date() treats the string as LOCAL time
+  // on some engines and UTC on others — producing wrong results.
+  // Append 'Z' to force UTC parsing, then display in the browser's local timezone.
+  const iso = d.includes('T') ? d : d.replace(' ', 'T');
+  const withZ = iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z';
+  return new Date(withZ).toLocaleString(undefined, {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
     hour12: true,

@@ -62,8 +62,13 @@ export function isDazzaV3Enabled(): boolean {
   const raw = getSecret(DAZZA_V3_FEATURE_FLAG);
   const flag = (raw ?? '').trim().toLowerCase();
   const enabled = flag === 'true' || flag === '1' || flag === 'yes';
-  // Safe log — never logs the raw value, only the resolved boolean
-  console.log(`[dazza] engine flag resolved: DAZZA_V3_ENABLED=${enabled}`);
+  // Safe diagnostic — never logs the raw value, only length and resolved boolean.
+  // This lets Daryl confirm the secret is set and what value shape it has.
+  const rawLen  = (raw ?? '').length;
+  const rawFirst = rawLen > 0 ? `'${(raw ?? '')[0]}'` : '(empty)';
+  console.log(
+    `[dazza] engine flag: secret present=${rawLen > 0}, len=${rawLen}, first=${rawFirst}, resolved=${enabled}`
+  );
   return enabled;
 }
 

@@ -527,13 +527,22 @@ export default function DazzaAIPage() {
   // ── Fetch server-confirmed engine on mount ────────────────────────────────
   // The engine badge must reflect what the server actually uses, not what the
   // client infers. This runs once when the authenticated user is known.
+  const [engineDiag, setEngineDiag] = useState<{
+    secretPresent: boolean;
+    secretLength: number;
+    secretFirstChar: string;
+    secretTrimmedLower: string;
+    resolvedEnabled: boolean;
+  } | null>(null);
+
   useEffect(() => {
     if (!me?.id) return;
     fetch('/api/dazza/engine-status', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then((data: { engine?: string } | null) => {
+      .then((data: { engine?: string; _diag?: typeof engineDiag } | null) => {
         if (data?.engine === 'v3') setActiveEngine('v3');
         else if (data?.engine === 'v2-rollback') setActiveEngine('v2-rollback');
+        if (data?._diag) setEngineDiag(data._diag);
       })
       .catch(() => { /* non-fatal — badge stays null until first message */ });
   }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -901,6 +910,14 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             {activeEngine === 'v2-rollback' && (
               <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200">
                 V2 rollback
+              </span>
+            )}
+            {activeEngine === 'v2-rollback' && engineDiag && (
+              <span
+                className="hidden md:flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-full border border-red-200 font-mono cursor-help"
+                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent}, len=${engineDiag.secretLength}, first='${engineDiag.secretFirstChar}', value='${engineDiag.secretTrimmedLower}' — must be 'true' to activate V3`}
+              >
+                flag={engineDiag.secretTrimmedLower || '(empty)'}
               </span>
             )}
             {!activeEngine && (

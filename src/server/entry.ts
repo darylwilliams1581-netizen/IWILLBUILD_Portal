@@ -1894,55 +1894,53 @@ async function runStartupMigrations() {
   // schema always matches the INSERT in the fetch handler.
   {
     const anatomyAlters: Array<{ table: string; col: string; ddl: string }> = [
-      // anatomy_snapshots
-      { table: 'anatomy_snapshots', col: 'id',              ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS id VARCHAR(36) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_snapshots', col: 'source_type',     ddl: "ALTER TABLE anatomy_snapshots MODIFY COLUMN source_type ENUM('github','zip') NOT NULL" },
-      { table: 'anatomy_snapshots', col: 'repo_owner',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS repo_owner VARCHAR(200) NULL" },
-      { table: 'anatomy_snapshots', col: 'repo_name',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS repo_name VARCHAR(200) NULL" },
-      { table: 'anatomy_snapshots', col: 'branch',          ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS branch VARCHAR(200) NULL" },
-      { table: 'anatomy_snapshots', col: 'commit_sha',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS commit_sha VARCHAR(40) NULL" },
-      { table: 'anatomy_snapshots', col: 'commit_date',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS commit_date DATETIME NULL" },
-      { table: 'anatomy_snapshots', col: 'package_sha256',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS package_sha256 VARCHAR(64) NULL" },
-      { table: 'anatomy_snapshots', col: 'snapshot_name',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS snapshot_name VARCHAR(200) NULL" },
-      { table: 'anatomy_snapshots', col: 'source_desc',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS source_desc VARCHAR(500) NULL" },
-      { table: 'anatomy_snapshots', col: 'app_version',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS app_version VARCHAR(100) NULL" },
-      { table: 'anatomy_snapshots', col: 'build_number',    ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS build_number VARCHAR(100) NULL" },
-      { table: 'anatomy_snapshots', col: 'git_ref',         ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS git_ref VARCHAR(200) NULL" },
-      { table: 'anatomy_snapshots', col: 'status',          ddl: "ALTER TABLE anatomy_snapshots MODIFY COLUMN status ENUM('pending','indexing','ready','failed','deleted') NOT NULL DEFAULT 'pending'" },
-      { table: 'anatomy_snapshots', col: 'is_active',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 0" },
-      { table: 'anatomy_snapshots', col: 'total_files',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS total_files INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_snapshots', col: 'indexed_files',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS indexed_files INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_snapshots', col: 'excluded_files',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS excluded_files INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_snapshots', col: 'quarantine_count',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS quarantine_count INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_snapshots', col: 'error_message',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS error_message TEXT NULL" },
-      { table: 'anatomy_snapshots', col: 'uploader_user_id',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS uploader_user_id VARCHAR(36) NULL" },
-      { table: 'anatomy_snapshots', col: 'created_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP" },
-      { table: 'anatomy_snapshots', col: 'updated_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN IF NOT EXISTS updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" },
+      // anatomy_snapshots — ADD COLUMN only (no MODIFY; CREATE already has correct ENUM types)
+      { table: 'anatomy_snapshots', col: 'id',              ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_snapshots', col: 'repo_owner',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN repo_owner VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'repo_name',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN repo_name VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'branch',          ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN branch VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'commit_sha',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN commit_sha VARCHAR(40) NULL" },
+      { table: 'anatomy_snapshots', col: 'commit_date',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN commit_date DATETIME NULL" },
+      { table: 'anatomy_snapshots', col: 'package_sha256',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN package_sha256 VARCHAR(64) NULL" },
+      { table: 'anatomy_snapshots', col: 'snapshot_name',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN snapshot_name VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'source_desc',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN source_desc VARCHAR(500) NULL" },
+      { table: 'anatomy_snapshots', col: 'app_version',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN app_version VARCHAR(100) NULL" },
+      { table: 'anatomy_snapshots', col: 'build_number',    ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN build_number VARCHAR(100) NULL" },
+      { table: 'anatomy_snapshots', col: 'git_ref',         ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN git_ref VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'is_active',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'total_files',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN total_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'indexed_files',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN indexed_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'excluded_files',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN excluded_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'quarantine_count',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN quarantine_count INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'error_message',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN error_message TEXT NULL" },
+      { table: 'anatomy_snapshots', col: 'uploader_user_id',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN uploader_user_id VARCHAR(36) NULL" },
+      { table: 'anatomy_snapshots', col: 'created_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+      { table: 'anatomy_snapshots', col: 'updated_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" },
       // anatomy_files
-      { table: 'anatomy_files', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_files', col: 'rel_path',        ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_files', col: 'file_sha256',     ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS file_sha256 VARCHAR(64) NULL" },
-      { table: 'anatomy_files', col: 'language',        ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS language VARCHAR(50) NULL" },
-      { table: 'anatomy_files', col: 'file_type',       ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS file_type VARCHAR(50) NULL" },
-      { table: 'anatomy_files', col: 'line_count',      ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS line_count INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_files', col: 'byte_size',       ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS byte_size INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_files', col: 'is_excluded',     ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS is_excluded TINYINT(1) NOT NULL DEFAULT 0" },
-      { table: 'anatomy_files', col: 'is_quarantined',  ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS is_quarantined TINYINT(1) NOT NULL DEFAULT 0" },
-      { table: 'anatomy_files', col: 'quarantine_reason',ddl: "ALTER TABLE anatomy_files ADD COLUMN IF NOT EXISTS quarantine_reason VARCHAR(500) NULL" },
+      { table: 'anatomy_files', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_files ADD COLUMN snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_files', col: 'rel_path',        ddl: "ALTER TABLE anatomy_files ADD COLUMN rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_files', col: 'file_sha256',     ddl: "ALTER TABLE anatomy_files ADD COLUMN file_sha256 VARCHAR(64) NULL" },
+      { table: 'anatomy_files', col: 'language',        ddl: "ALTER TABLE anatomy_files ADD COLUMN language VARCHAR(50) NULL" },
+      { table: 'anatomy_files', col: 'file_type',       ddl: "ALTER TABLE anatomy_files ADD COLUMN file_type VARCHAR(50) NULL" },
+      { table: 'anatomy_files', col: 'line_count',      ddl: "ALTER TABLE anatomy_files ADD COLUMN line_count INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'byte_size',       ddl: "ALTER TABLE anatomy_files ADD COLUMN byte_size INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'is_excluded',     ddl: "ALTER TABLE anatomy_files ADD COLUMN is_excluded TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'is_quarantined',  ddl: "ALTER TABLE anatomy_files ADD COLUMN is_quarantined TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'quarantine_reason',ddl: "ALTER TABLE anatomy_files ADD COLUMN quarantine_reason VARCHAR(500) NULL" },
       // anatomy_chunks
-      { table: 'anatomy_chunks', col: 'snapshot_id',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_chunks', col: 'file_id',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS file_id BIGINT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_chunks', col: 'rel_path',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_chunks', col: 'start_line',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS start_line INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_chunks', col: 'end_line',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS end_line INT NOT NULL DEFAULT 0" },
-      { table: 'anatomy_chunks', col: 'content',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS content MEDIUMTEXT NOT NULL DEFAULT ''" },
-      { table: 'anatomy_chunks', col: 'chunk_type',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS chunk_type VARCHAR(50) NULL" },
-      { table: 'anatomy_chunks', col: 'symbol_name',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN IF NOT EXISTS symbol_name VARCHAR(500) NULL" },
+      { table: 'anatomy_chunks', col: 'snapshot_id',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'file_id',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN file_id BIGINT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'rel_path',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'start_line',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN start_line INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'end_line',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN end_line INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'content',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN content MEDIUMTEXT NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'chunk_type',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN chunk_type VARCHAR(50) NULL" },
+      { table: 'anatomy_chunks', col: 'symbol_name',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN symbol_name VARCHAR(500) NULL" },
       // anatomy_quarantine
-      { table: 'anatomy_quarantine', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_quarantine', col: 'rel_path',        ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_quarantine', col: 'reason',          ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS reason VARCHAR(500) NOT NULL DEFAULT ''" },
-      { table: 'anatomy_quarantine', col: 'pattern_matched', ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN IF NOT EXISTS pattern_matched VARCHAR(200) NULL" },
+      { table: 'anatomy_quarantine', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'rel_path',        ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'reason',          ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN reason VARCHAR(500) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'pattern_matched', ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN pattern_matched VARCHAR(200) NULL" },
     ];
 
     for (const { table, col, ddl } of anatomyAlters) {
@@ -1959,14 +1957,11 @@ async function runStartupMigrations() {
           sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${col}`
         ) as unknown as [Array<{ cnt: number }>, unknown];
 
-        // For ADD COLUMN: skip if already present. For MODIFY: always run (idempotent).
-        const isModify = ddl.includes('MODIFY COLUMN');
-        if (!isModify && Number(colRows?.[0]?.cnt ?? 0) > 0) continue;
+        // Skip if column already exists — ADD COLUMN without IF NOT EXISTS would error
+        if (Number(colRows?.[0]?.cnt ?? 0) > 0) continue;
 
         await db.execute(sql.raw(ddl));
-        if (!isModify) {
-          console.log(`[startup-migration] anatomy: added ${table}.${col}`);
-        }
+        console.log(`[startup-migration] anatomy: added ${table}.${col}`);
       } catch (e: unknown) {
         const msg = migrationErrMsg(e);
         // Suppress "already exists" noise — these are idempotent
@@ -4225,7 +4220,7 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 				console.warn('[startup] starter_pack_runs migration skipped:', (e as Error)?.message?.slice(0, 120));
 			}
 			try {
-				// Use INFORMATION_SCHEMA check — ADD COLUMN IF NOT EXISTS not supported on all MySQL versions
+				// Use INFORMATION_SCHEMA check — ADD COLUMN not supported on all MySQL versions
 				const [spCols] = await _db.execute(
 					_sql`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME IN ('starter_pack_loaded', 'starter_pack_loaded_at')`
 				) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];

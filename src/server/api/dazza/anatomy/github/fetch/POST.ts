@@ -14,14 +14,38 @@ import { ALLOWED_REPO, resolveRefToSha, downloadArchiveForSha } from '../../../.
 import { scanArchive } from '../../../../../lib/anatomy-security.js';
 import { indexSnapshot, computePackageSha256 } from '../../../../../lib/anatomy-indexer.js';
 
-/** Safe error string — never exposes tokens or credentials */
+/** Safe error string — never exposes tokens or credentials.
+ *  Extracts the real MySQL error from Drizzle's "Failed query: <SQL>" wrapper. */
 function safeErr(e: unknown): string {
-  const raw = String((e as Error)?.message ?? e);
-  return raw
+  // Walk the error chain to find sqlMessage (real MySQL error) or a non-SQL message
+  let current: unknown = e;
+  let best = '';
+  for (let depth = 0; depth < 8 && current != null; depth++) {
+    const node = current as { message?: string; sqlMessage?: string; cause?: unknown };
+    const sqlMsg = String(node.sqlMessage ?? '');
+    const msg    = String(node.message ?? '');
+    if (sqlMsg && sqlMsg !== 'undefined') { best = sqlMsg; break; }
+    if (msg && msg !== 'undefined' && !msg.startsWith('Failed query:')) { best = msg; break; }
+    if (msg.startsWith('Failed query:')) best = msg; // keep as fallback
+    const next = node.cause;
+    if (next === current || next == null) break;
+    current = next;
+  }
+  if (!best) best = String(e);
+  return best
     .replace(/ghp_[A-Za-z0-9]+/g, '[REDACTED]')
     .replace(/github_pat_[A-Za-z0-9_]+/g, '[REDACTED]')
     .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
-    .slice(0, 300);
+    .slice(0, 400);
+}
+
+/** Convert an ISO 8601 date string (e.g. "2026-08-13T10:23:45Z") to MySQL DATETIME
+ *  format ("2026-08-13 10:23:45"). MySQL DATETIME columns reject the T/Z form in
+ *  raw SQL string literals. */
+function toMysqlDatetime(iso: string): string {
+  if (!iso) return '1970-01-01 00:00:00';
+  // Replace T with space and strip trailing Z or timezone offset
+  return iso.replace('T', ' ').replace(/(\.\d+)?Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '').slice(0, 19);
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -98,6 +122,7 @@ export default async function handler(req: Request, res: Response) {
   const snapshotId = randomUUID();
   try {
     const snapshotLabel = `GitHub: ${ALLOWED_REPO.repo}@${commitSha.slice(0, 8)} (${ref})`.slice(0, 199);
+    const mysqlCommitDate = toMysqlDatetime(commitDate);
     await db.execute(sql.raw(`
       INSERT INTO anatomy_snapshots
         (id, source_type, repo_owner, repo_name, branch, commit_sha, commit_date,
@@ -108,7 +133,7 @@ export default async function handler(req: Request, res: Response) {
          '${ALLOWED_REPO.repo.replace(/'/g, "''")}',
          '${ref.replace(/'/g, "''")}',
          '${commitSha.replace(/'/g, "''")}',
-         '${commitDate.replace(/'/g, "''")}',
+         '${mysqlCommitDate}',
          '${snapshotLabel.replace(/'/g, "''")}',
          'pending', '${ownerInfo.userId.replace(/'/g, "''")}', NOW(), NOW())
     `));
