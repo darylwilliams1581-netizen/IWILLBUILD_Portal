@@ -4,7 +4,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
-  AlertCircle, Lock, FileText, Printer, Check, ChevronDown,
+  AlertCircle, Lock, FileText, Check, ChevronDown,
   Upload, Download, Share2, Calculator, BookOpen, Mail,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
@@ -18,7 +18,7 @@ import {
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
-import EstimatePrintModal, { type LocalLine } from '@/components/estimate/EstimatePrintModal';
+import { type LocalLine } from '@/components/estimate/EstimatePrintModal';
 import { CostGuidePicker, RecipePicker, type CostItem, type Recipe } from '@/components/estimate/EstimatePickerModals';
 
 // ── Local helpers ─────────────────────────────────────────────────────────────
@@ -47,7 +47,6 @@ export default function EstimateEditorPage() {
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [showPrint, setShowPrint] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: import('@/components/SendDocumentEmailModal').JobEmailContext } | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -503,15 +502,6 @@ export default function EstimateEditorPage() {
             {/* Divider */}
             <div className="w-px h-4 bg-gray-200 shrink-0 mx-0.5" />
 
-            {/* Print */}
-            <button
-              onClick={() => setShowPrint(true)}
-              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
-            >
-              <Printer size={13} />
-              Print
-            </button>
-
             {/* PDF */}
             <button
               onClick={handleExportPdf}
@@ -957,10 +947,11 @@ export default function EstimateEditorPage() {
               {!dirty && saved && <p className="text-xs text-emerald-600 font-semibold">Saved</p>}
             </div>
             <button
-              onClick={() => setShowPrint(true)}
-              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              onClick={handleExportPdf}
+              disabled={exportingPdf || !estimate}
+              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
             >
-              <Printer size={16} />
+              {exportingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             </button>
             <button
               onClick={handleSave}
@@ -975,9 +966,6 @@ export default function EstimateEditorPage() {
           </div>
         )}
 
-      {showPrint && estimate && (
-        <EstimatePrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
-      )}
       {showEmail && estimate && emailDefaults && (
         <SendDocumentEmailModal
           endpoint={`/api/estimates/${estimate.id}/send-email`}
