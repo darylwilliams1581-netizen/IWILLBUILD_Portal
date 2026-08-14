@@ -1,19 +1,17 @@
 /**
  * BugReportsTab — Owner Console tab for reviewing and resolving bug reports.
- * Includes diagnostic timeline (platform-owner only) and support bundle export.
+ * Includes diagnostic timeline and Dazza Review panel (platform-owner only).
  */
 import { useState, useCallback, useEffect } from 'react';
 import {
   Bug, RefreshCw, Search, X, ChevronDown, ExternalLink,
   CheckCircle2, Clock, AlertCircle, Loader2, Image,
   User, Building2, Monitor, Calendar, Tag, MessageSquare,
-  Circle, ArrowRight, Activity, Copy, Download, ChevronRight,
+  Circle, ArrowRight, Activity, Download, ChevronRight,
   Smartphone, Globe, WifiOff, Package, FileText,
-  Bot, Zap, Wrench, Send, ShieldCheck, Rocket, KeyRound,
 } from 'lucide-react';
 import { BUG_CATEGORIES } from '@/components/BugReportModal';
 import { usePermissions } from '@/lib/usePermissions';
-import type { DiagEvent } from '@/lib/diagnosticBuffer';
 import {
   buildReference,
   buildSummaryMd,
@@ -21,6 +19,7 @@ import {
   parseDiagEvents,
   type BugReportRow,
 } from '@/lib/bugReportBundleClient';
+import DazzaReviewPanel from './DazzaReviewPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -53,10 +52,10 @@ function platformIcon(platform: string | null) {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  open:        { label: 'Open',        color: 'bg-red-100 text-red-700 border-red-200',           icon: <Circle size={10} className="fill-red-500 text-red-500" /> },
-  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 border-amber-200',     icon: <Clock size={10} /> },
+  open:        { label: 'Open',        color: 'bg-red-100 text-red-700 border-red-200',             icon: <Circle size={10} className="fill-red-500 text-red-500" /> },
+  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 border-amber-200',       icon: <Clock size={10} /> },
   resolved:    { label: 'Resolved',    color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 size={10} /> },
-  closed:      { label: 'Closed',      color: 'bg-slate-100 text-slate-500 border-slate-200',     icon: <X size={10} /> },
+  closed:      { label: 'Closed',      color: 'bg-slate-100 text-slate-500 border-slate-200',       icon: <X size={10} /> },
 };
 
 const DIAG_TYPE_COLORS: Record<string, string> = {
@@ -78,15 +77,19 @@ const DIAG_TYPE_COLORS: Record<string, string> = {
 
 interface Counts { open: number; in_progress: number; resolved: number; closed: number; }
 
+function makeEvidenceSnapshot(r: BugReportRow): string {
+  return [r.diagnostic_events ?? '', r.screenshot_path ?? '', r.resolution_note ?? ''].join('|');
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BugReportsTab() {
   const { isPlatformOwner } = usePermissions();
 
-  const [reports, setReports]     = useState<BugReportRow[]>([]);
-  const [counts, setCounts]       = useState<Counts>({ open: 0, in_progress: 0, resolved: 0, closed: 0 });
-  const [total, setTotal]         = useState(0);
-  const [loading, setLoading]     = useState(true);
+  const [reports, setReports]       = useState<BugReportRow[]>([]);
+  const [counts, setCounts]         = useState<Counts>({ open: 0, in_progress: 0, resolved: 0, closed: 0 });
+  const [total, setTotal]           = useState(0);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
@@ -95,35 +98,17 @@ export default function BugReportsTab() {
   const [search, setSearch]                 = useState('');
 
   // Detail drawer
-  const [selected, setSelected]   = useState<BugReportRow | null>(null);
-  const [resNote, setResNote]     = useState('');
-  const [saving, setSaving]       = useState(false);
-  const [saveMsg, setSaveMsg]     = useState('');
+  const [selected, setSelected]         = useState<BugReportRow | null>(null);
+  const [resNote, setResNote]           = useState('');
+  const [saving, setSaving]             = useState(false);
+  const [saveMsg, setSaveMsg]           = useState('');
   const [diagExpanded, setDiagExpanded] = useState(false);
 
   // Export state
-  const [exporting, setExporting]   = useState(false);
-  const [exportMsg, setExportMsg]   = useState('');
-  const [copyMdMsg, setCopyMdMsg]   = useState('');
-  const [copyDiagMsg, setCopyDiagMsg] = useState('');
-
-  // ── Dazza AI loop state ────────────────────────────────────────────────────
-  const [aiAnalysing, setAiAnalysing]       = useState(false);
-  const [aiResult, setAiResult]             = useState<{
-    analysis: string;
-    suggestedFix: string;
-    suggestedPrompt: string;
-    smsSent: boolean;
-    smsConfigured: boolean;
-  } | null>(null);
-  const [aiError, setAiError]               = useState('');
-  const [smsCode, setSmsCode]               = useState('');
-  const [smsAuthing, setSmsAuthing]         = useState(false);
-  const [publishToken, setPublishToken]     = useState('');
-  const [smsAuthError, setSmsAuthError]     = useState('');
-  const [publishing, setPublishing]         = useState(false);
-  const [publishResult, setPublishResult]   = useState<{ ok: boolean; message: string } | null>(null);
-  const [promptCopied, setPromptCopied]     = useState(false);
+  const [exporting, setExporting]       = useState(false);
+  const [exportMsg, setExportMsg]       = useState('');
+  const [copyMdMsg, setCopyMdMsg]       = useState('');
+  const [copyDiagMsg, setCopyDiagMsg]   = useState('');
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
@@ -133,7 +118,6 @@ export default function BugReportsTab() {
       if (filterCategory) params.set('category', filterCategory);
       if (search)         params.set('search', search);
       params.set('limit', '100');
-
       const res = await fetch(`/api/bug-reports?${params}`, { credentials: 'include' });
       const d = await res.json() as { reports?: BugReportRow[]; counts?: Counts; total?: number };
       setReports(d.reports ?? []);
@@ -143,11 +127,8 @@ export default function BugReportsTab() {
     finally { setLoading(false); setRefreshing(false); }
   }, [filterStatus, filterCategory, search]);
 
-  // Load on mount
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reload when filters change
-  useEffect(() => { void load(); }, [load]); // load is memoised on filterStatus/filterCategory/search
+  useEffect(() => { void load(); }, [load]);
 
   async function updateReport(id: string, patch: { status?: string; resolution_note?: string }) {
     setSaving(true); setSaveMsg('');
@@ -175,13 +156,10 @@ export default function BugReportsTab() {
     finally { setSaving(false); }
   }
 
-  // ── Export bundle ──────────────────────────────────────────────────────────
   async function handleExportBundle(report: BugReportRow) {
     setExporting(true); setExportMsg('');
     try {
-      const res = await fetch(`/api/bug-reports/${report.id}/export-bundle`, {
-        credentials: 'include',
-      });
+      const res = await fetch(`/api/bug-reports/${report.id}/export-bundle`, { credentials: 'include' });
       if (!res.ok) {
         const d = await res.json() as { error?: string };
         setExportMsg(d.error ?? 'Export failed.');
@@ -191,35 +169,23 @@ export default function BugReportsTab() {
       const ref = buildReference(report);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${ref}-support-bundle.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = `${ref}-support-bundle.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setExportMsg('Downloaded');
       setTimeout(() => setExportMsg(''), 3000);
-    } catch {
-      setExportMsg('Network error.');
-    } finally {
-      setExporting(false);
-    }
+    } catch { setExportMsg('Network error.'); }
+    finally { setExporting(false); }
   }
 
-  // ── Copy Markdown summary ──────────────────────────────────────────────────
   function handleCopyMarkdown(report: BugReportRow) {
     const events = parseDiagEvents(report.diagnostic_events);
     const md = buildSummaryMd(report, events);
     navigator.clipboard.writeText(md).then(() => {
-      setCopyMdMsg('Copied!');
-      setTimeout(() => setCopyMdMsg(''), 2000);
-    }).catch(() => {
-      setCopyMdMsg('Failed');
-      setTimeout(() => setCopyMdMsg(''), 2000);
-    });
+      setCopyMdMsg('Copied!'); setTimeout(() => setCopyMdMsg(''), 2000);
+    }).catch(() => { setCopyMdMsg('Failed'); setTimeout(() => setCopyMdMsg(''), 2000); });
   }
 
-  // ── Download diagnostics JSON (sanitised — same rules as timeline.jsonl) ─────
   function handleDownloadDiag(report: BugReportRow) {
     const events = parseDiagEvents(report.diagnostic_events);
     const sanitised = buildSanitisedDiagnostics(events, report.created_at);
@@ -227,129 +193,13 @@ export default function BugReportsTab() {
     const blob = new Blob([JSON.stringify(sanitised, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `${ref}-diagnostics.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href = url; a.download = `${ref}-diagnostics.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setCopyDiagMsg('Downloaded');
-    setTimeout(() => setCopyDiagMsg(''), 2000);
+    setCopyDiagMsg('Downloaded'); setTimeout(() => setCopyDiagMsg(''), 2000);
   }
 
   const totalOpen = counts.open + counts.in_progress;
-
-  // ── Dazza AI handlers ──────────────────────────────────────────────────────
-
-  function resetAiState() {
-    setAiResult(null);
-    setAiError('');
-    setSmsCode('');
-    setPublishToken('');
-    setSmsAuthError('');
-    setPublishResult(null);
-    setPromptCopied(false);
-  }
-
-  async function handleRunAnalysis(report: BugReportRow) {
-    setAiAnalysing(true);
-    setAiError('');
-    setAiResult(null);
-    setPublishToken('');
-    setSmsCode('');
-    setSmsAuthError('');
-    setPublishResult(null);
-    try {
-      const res = await fetch(`/api/bug-reports/${report.id}/analyse`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const d = await res.json() as {
-        ok?: boolean;
-        analysis?: string;
-        suggestedFix?: string;
-        suggestedPrompt?: string;
-        smsSent?: boolean;
-        smsConfigured?: boolean;
-        error?: string;
-      };
-      if (!res.ok || !d.ok) {
-        setAiError(d.error ?? 'Analysis failed.');
-        return;
-      }
-      setAiResult({
-        analysis: d.analysis ?? '',
-        suggestedFix: d.suggestedFix ?? '',
-        suggestedPrompt: d.suggestedPrompt ?? '',
-        smsSent: d.smsSent ?? false,
-        smsConfigured: d.smsConfigured ?? false,
-      });
-      // Reload to pick up stored AI fields
-      await load(true);
-    } catch {
-      setAiError('Network error. Try again.');
-    } finally {
-      setAiAnalysing(false);
-    }
-  }
-
-  async function handleSmsAuthorise(report: BugReportRow) {
-    if (!smsCode.trim()) { setSmsAuthError('Enter the 6-digit code from your SMS.'); return; }
-    setSmsAuthing(true);
-    setSmsAuthError('');
-    try {
-      const res = await fetch(`/api/bug-reports/${report.id}/sms-authorise`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ code: smsCode.trim() }),
-      });
-      const d = await res.json() as { ok?: boolean; publishToken?: string; error?: string };
-      if (!res.ok || !d.ok) {
-        setSmsAuthError(d.error ?? 'Invalid code.');
-        return;
-      }
-      setPublishToken(d.publishToken ?? '');
-    } catch {
-      setSmsAuthError('Network error.');
-    } finally {
-      setSmsAuthing(false);
-    }
-  }
-
-  async function handlePublishFix(report: BugReportRow) {
-    if (!publishToken) return;
-    setPublishing(true);
-    setPublishResult(null);
-    try {
-      const res = await fetch(`/api/bug-reports/${report.id}/publish-fix`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ publishToken }),
-      });
-      const d = await res.json() as { ok?: boolean; message?: string; publishTriggered?: boolean; error?: string };
-      setPublishResult({
-        ok: d.ok ?? false,
-        message: d.message ?? d.error ?? 'Unknown result.',
-      });
-      if (d.ok) {
-        await load(true);
-        setPublishToken('');
-      }
-    } catch {
-      setPublishResult({ ok: false, message: 'Network error.' });
-    } finally {
-      setPublishing(false);
-    }
-  }
-
-  function handleCopyPrompt(prompt: string) {
-    navigator.clipboard.writeText(prompt).then(() => {
-      setPromptCopied(true);
-      setTimeout(() => setPromptCopied(false), 2000);
-    }).catch(() => {});
-  }
 
   return (
     <div className="flex h-full gap-0 overflow-hidden">
@@ -408,7 +258,7 @@ export default function BugReportsTab() {
               <input
                 type="text"
                 value={search}
-                onChange={e => { setSearch(e.target.value); }}
+                onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') void load(); }}
                 placeholder="Search reports…"
                 className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
@@ -459,7 +309,15 @@ export default function BugReportsTab() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => { setSelected(r); setResNote(r.resolution_note ?? ''); setSaveMsg(''); setDiagExpanded(false); setExportMsg(''); setCopyMdMsg(''); setCopyDiagMsg(''); resetAiState(); }}
+                    onClick={() => {
+                      setSelected(r);
+                      setResNote(r.resolution_note ?? '');
+                      setSaveMsg('');
+                      setDiagExpanded(false);
+                      setExportMsg('');
+                      setCopyMdMsg('');
+                      setCopyDiagMsg('');
+                    }}
                     className={`w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-violet-50 border-l-2 border-l-primary' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -523,26 +381,21 @@ export default function BugReportsTab() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+
                 {/* ── Export actions (platform-owner only) ── */}
                 {isPlatformOwner && (
                   <div className="flex flex-col gap-2">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Export</p>
                     <div className="flex gap-2 flex-wrap">
-                      {/* Export support bundle */}
                       <button
                         onClick={() => void handleExportBundle(selected)}
                         disabled={exporting}
                         className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
                         title="Download ZIP with summary.md, report.json, timeline.jsonl and screenshot"
                       >
-                        {exporting
-                          ? <Loader2 size={12} className="animate-spin" />
-                          : <Package size={12} />
-                        }
+                        {exporting ? <Loader2 size={12} className="animate-spin" /> : <Package size={12} />}
                         Export support bundle
                       </button>
-
-                      {/* Copy Markdown summary */}
                       <button
                         onClick={() => handleCopyMarkdown(selected)}
                         className="flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg transition-colors"
@@ -551,8 +404,6 @@ export default function BugReportsTab() {
                         <FileText size={12} />
                         {copyMdMsg || 'Copy Markdown'}
                       </button>
-
-                      {/* Download diagnostics JSON */}
                       <button
                         onClick={() => handleDownloadDiag(selected)}
                         disabled={diagEvents.length === 0}
@@ -563,15 +414,11 @@ export default function BugReportsTab() {
                         {copyDiagMsg || 'Download diagnostics'}
                       </button>
                     </div>
-
-                    {/* Export feedback */}
                     {exportMsg && (
                       <p className={`text-xs font-semibold ${exportMsg === 'Downloaded' ? 'text-emerald-600' : 'text-red-500'}`}>
                         {exportMsg}
                       </p>
                     )}
-
-                    {/* Export audit info */}
                     {selected.exported_at && (
                       <p className="text-[11px] text-slate-400">
                         Last exported by <strong>{selected.exported_by || 'owner'}</strong> on {fmtDate(selected.exported_at)}
@@ -706,255 +553,55 @@ export default function BugReportsTab() {
                       </div>
                       <ChevronRight size={13} className={`text-slate-400 transition-transform ${diagExpanded ? 'rotate-90' : ''}`} />
                     </button>
-
                     {diagExpanded && (
-                      <>
-                        {/* Timeline */}
-                        <div className="border-t border-slate-100 max-h-72 overflow-y-auto">
-                          {diagEvents.length === 0 ? (
-                            <div className="flex items-center gap-2 px-4 py-4 text-slate-400">
-                              <WifiOff size={13} />
-                              <p className="text-xs italic">No diagnostic events captured for this report.</p>
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-slate-50">
-                              {[...diagEvents].sort((a, b) => a.ts - b.ts).map((ev, i) => {
-                                const reportTs = new Date(selected.created_at).getTime();
-                                const secsAgo = Math.round((reportTs - ev.ts) / 1000);
-                                const typeColor = DIAG_TYPE_COLORS[ev.type] ?? 'bg-slate-100 text-slate-600';
-                                return (
-                                  <div key={i} className="flex items-start gap-2.5 px-4 py-2 hover:bg-slate-50">
-                                    <span className="text-[10px] text-slate-400 font-mono shrink-0 w-10 text-right mt-0.5">
-                                      -{secsAgo}s
-                                    </span>
-                                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${typeColor}`}>
-                                      {ev.type.replace(/_/g, ' ')}
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-[11px] text-slate-700 break-all leading-relaxed">{ev.msg}</p>
-                                      {ev.route && (
-                                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">{ev.route}</p>
-                                      )}
-                                      {ev.status !== undefined && (
-                                        <span className={`text-[10px] font-semibold ${ev.status >= 400 ? 'text-red-500' : 'text-emerald-600'}`}>
-                                          {ev.status}{ev.duration !== undefined ? ` · ${ev.duration}ms` : ''}
-                                        </span>
-                                      )}
-                                    </div>
+                      <div className="border-t border-slate-100 max-h-72 overflow-y-auto">
+                        {diagEvents.length === 0 ? (
+                          <div className="flex items-center gap-2 px-4 py-4 text-slate-400">
+                            <WifiOff size={13} />
+                            <p className="text-xs italic">No diagnostic events captured for this report.</p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-50">
+                            {[...diagEvents].sort((a, b) => a.ts - b.ts).map((ev, i) => {
+                              const reportTs = new Date(selected.created_at).getTime();
+                              const secsAgo = Math.round((reportTs - ev.ts) / 1000);
+                              const typeColor = DIAG_TYPE_COLORS[ev.type] ?? 'bg-slate-100 text-slate-600';
+                              return (
+                                <div key={i} className="flex items-start gap-2.5 px-4 py-2 hover:bg-slate-50">
+                                  <span className="text-[10px] text-slate-400 font-mono shrink-0 w-10 text-right mt-0.5">
+                                    -{secsAgo}s
+                                  </span>
+                                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${typeColor}`}>
+                                    {ev.type.replace(/_/g, ' ')}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] text-slate-700 break-all leading-relaxed">{ev.msg}</p>
+                                    {ev.route && (
+                                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{ev.route}</p>
+                                    )}
+                                    {ev.status !== undefined && (
+                                      <span className={`text-[10px] font-semibold ${ev.status >= 400 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                        {ev.status}{ev.duration !== undefined ? ` · ${ev.duration}ms` : ''}
+                                      </span>
+                                    )}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* ── Dazza AI Loop ─────────────────────────────────────────── */}
-                <div className="border border-violet-200 rounded-2xl overflow-hidden bg-gradient-to-br from-violet-50/60 to-slate-50">
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600">
-                    <div className="flex items-center gap-2">
-                      <Bot size={14} className="text-white" />
-                      <span className="text-xs font-bold text-white tracking-wide">Dazza AI Loop</span>
-                    </div>
-                    {selected.ai_analysed_at && !aiResult && (
-                      <span className="text-[10px] text-violet-200">
-                        Last analysed {timeAgo(selected.ai_analysed_at)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="p-4 flex flex-col gap-3">
-                    {/* Stored AI result (from DB) */}
-                    {!aiResult && selected.ai_analysis && (
-                      <div className="flex flex-col gap-2">
-                        <div className="bg-white border border-violet-100 rounded-xl p-3">
-                          <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-                            <Zap size={10} /> Diagnosis
-                          </p>
-                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-                            {selected.ai_analysis}
-                          </p>
-                        </div>
-                        {selected.ai_suggested_fix && (
-                          <div className="bg-white border border-emerald-100 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-                              <Wrench size={10} /> Suggested Fix
-                            </p>
-                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-                              {selected.ai_suggested_fix}
-                            </p>
-                          </div>
-                        )}
-                        {selected.ai_suggested_prompt && (
-                          <div className="bg-white border border-amber-100 rounded-xl p-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
-                                <Send size={10} /> Airo Prompt
-                              </p>
-                              <button
-                                onClick={() => handleCopyPrompt(selected.ai_suggested_prompt!)}
-                                className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
-                              >
-                                <Copy size={9} />
-                                {promptCopied ? 'Copied!' : 'Copy'}
-                              </button>
-                            </div>
-                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-mono bg-amber-50 rounded-lg p-2">
-                              {selected.ai_suggested_prompt}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Live AI result (just analysed) */}
-                    {aiResult && (
-                      <div className="flex flex-col gap-2">
-                        <div className="bg-white border border-violet-100 rounded-xl p-3">
-                          <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-                            <Zap size={10} /> Diagnosis
-                          </p>
-                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResult.analysis}</p>
-                        </div>
-                        {aiResult.suggestedFix && (
-                          <div className="bg-white border border-emerald-100 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-                              <Wrench size={10} /> Suggested Fix
-                            </p>
-                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResult.suggestedFix}</p>
-                          </div>
-                        )}
-                        {aiResult.suggestedPrompt && (
-                          <div className="bg-white border border-amber-100 rounded-xl p-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
-                                <Send size={10} /> Airo Prompt
-                              </p>
-                              <button
-                                onClick={() => handleCopyPrompt(aiResult.suggestedPrompt)}
-                                className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
-                              >
-                                <Copy size={9} />
-                                {promptCopied ? 'Copied!' : 'Copy'}
-                              </button>
-                            </div>
-                            <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-mono bg-amber-50 rounded-lg p-2">
-                              {aiResult.suggestedPrompt}
-                            </p>
-                          </div>
-                        )}
-                        {/* SMS status */}
-                        {aiResult.smsConfigured && (
-                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${aiResult.smsSent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                            {aiResult.smsSent
-                              ? <><CheckCircle2 size={12} /> SMS auth code sent to your phone</>
-                              : <><AlertCircle size={12} /> SMS send failed — enter code manually below</>
-                            }
-                          </div>
-                        )}
-                        {!aiResult.smsConfigured && (
-                          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-500">
-                            <AlertCircle size={12} /> SMS not configured — check Twilio secrets to enable SMS auth
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {aiError && (
-                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-semibold">
-                        <AlertCircle size={12} /> {aiError}
-                      </div>
-                    )}
-
-                    {/* Run Analysis button */}
-                    {!aiResult && (
-                      <button
-                        onClick={() => void handleRunAnalysis(selected)}
-                        disabled={aiAnalysing}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-60 shadow-sm"
-                      >
-                        {aiAnalysing
-                          ? <><Loader2 size={12} className="animate-spin" /> Dazza is analysing…</>
-                          : <><Bot size={12} /> {selected.ai_analysis ? 'Re-analyse with Dazza' : 'Analyse with Dazza AI'}</>
-                        }
-                      </button>
-                    )}
-
-                    {/* Re-analyse button (after result shown) */}
-                    {aiResult && (
-                      <button
-                        onClick={() => void handleRunAnalysis(selected)}
-                        disabled={aiAnalysing}
-                        className="flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 text-xs font-semibold transition-colors disabled:opacity-60"
-                      >
-                        {aiAnalysing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
-                        Re-analyse
-                      </button>
-                    )}
-
-                    {/* SMS Authorisation + Publish */}
-                    {(aiResult || selected.ai_analysis) && !publishToken && !publishResult && (
-                      <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                          <KeyRound size={10} /> SMS Authorisation to Publish
-                        </p>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            value={smsCode}
-                            onChange={e => { setSmsCode(e.target.value.replace(/\D/g, '')); setSmsAuthError(''); }}
-                            placeholder="6-digit code"
-                            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 placeholder:text-slate-300 text-center tracking-widest font-mono"
-                          />
-                          <button
-                            onClick={() => void handleSmsAuthorise(selected)}
-                            disabled={smsAuthing || smsCode.length !== 6}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
-                          >
-                            {smsAuthing ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />}
-                            Verify
-                          </button>
-                        </div>
-                        {smsAuthError && (
-                          <p className="text-xs text-red-500 font-semibold">{smsAuthError}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Publish Fix button — unlocked after SMS auth */}
-                    {publishToken && !publishResult && (
-                      <div className="border-t border-violet-100 pt-3 flex flex-col gap-2">
-                        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-700 font-semibold">
-                          <ShieldCheck size={12} /> SMS verified — publish authorised
-                        </div>
-                        <button
-                          onClick={() => void handlePublishFix(selected)}
-                          disabled={publishing}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold transition-all disabled:opacity-60 shadow-md"
-                        >
-                          {publishing
-                            ? <><Loader2 size={13} className="animate-spin" /> Publishing…</>
-                            : <><Rocket size={13} /> Publish Fix to Production</>
-                          }
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Publish result */}
-                    {publishResult && (
-                      <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold border ${publishResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
-                        {publishResult.ok ? <Rocket size={12} className="shrink-0 mt-0.5" /> : <AlertCircle size={12} className="shrink-0 mt-0.5" />}
-                        <span>{publishResult.message}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {/* ── Dazza Review (platform-owner only) ── */}
+                {isPlatformOwner && (
+                  <DazzaReviewPanel
+                    report={selected}
+                    evidenceSnapshot={makeEvidenceSnapshot(selected)}
+                  />
+                )}
 
                 {/* Resolution note */}
                 <div>

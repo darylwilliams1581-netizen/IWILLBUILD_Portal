@@ -213,7 +213,7 @@ export default async function handler(req: Request, res: Response) {
       suggestedFix,
       suggestedPrompt,
       smsSent,
-      smsConfigured: isSmsConfigured() && !!PLATFORM_OWNER_PHONE,
+      smsConfigured: isSmsConfigured() && !!getOwnerPhone(),
     });
   } catch (err) {
     console.error('[bug-reports/analyse]', err);
