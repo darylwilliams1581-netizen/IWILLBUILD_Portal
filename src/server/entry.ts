@@ -1143,6 +1143,20 @@ applyWriteGate(app);
 // interpolation slot. We use DEFAULT NULL for JSON columns and handle null
 // in the application layer (GET returns {} when null; PUT writes the real JSON).
 async function runStartupMigrations() {
+  // ── Dazza engine flag diagnostic — fires early, before any migrations ────────
+  // Safe: never logs the raw secret value, only length/first-char/resolved boolean.
+  // Uses the top-level getSecret import (already available at module load time).
+  {
+    const _rawEarly = getSecret('DAZZA_V3_ENABLED') ?? '';
+    const _trimEarly = _rawEarly.trim().toLowerCase();
+    const _v3Early = _trimEarly === 'true' || _trimEarly === '1' || _trimEarly === 'yes';
+    console.log(
+      `[startup] *** DAZZA_V3_ENABLED: present=${_rawEarly.length > 0}, len=${_rawEarly.length}, ` +
+      `first='${_rawEarly.length > 0 ? _rawEarly[0] : ''}', trimmedLower='${_trimEarly}', resolved=${_v3Early} ` +
+      `→ engine=${_v3Early ? 'V3' : 'V2-rollback'} ***`
+    );
+  }
+
   // 1. Ensure company_settings table exists
   try {
     await db.execute(sql`
@@ -4148,6 +4162,7 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 	// ── Migration IIFE starting ───────────────────────────────────────────────
 	console.log('[startup] migration IIFE starting');
+
 	void (async () => {
 			// Hoist db/sql imports once — avoids 5 redundant dynamic module
 			// evaluations and keeps Rollup's chunk graph clean.

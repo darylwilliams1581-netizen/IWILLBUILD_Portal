@@ -99,6 +99,7 @@ export default async function handler(req: Request, res: Response) {
         ok: true,
         duplicate: true,
         snapshotId: existing.id,
+        commitSha,                // ← include the resolved git SHA so the UI can display it correctly
         status:     existing.status,
         isActive:   !!existing.is_active,
         message:    `Snapshot for SHA ${commitSha.slice(0, 8)} already exists (${existing.status}).`,

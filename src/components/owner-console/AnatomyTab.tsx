@@ -454,7 +454,7 @@ export default function AnatomyTab() {
           {fetchResult && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 space-y-1">
               {fetchResult.duplicate
-                ? <div className="font-semibold">Duplicate — snapshot for SHA {shortSha(fetchResult.snapshotId as string)} already exists ({String(fetchResult.status)}).</div>
+                ? <div className="font-semibold">Duplicate — snapshot for SHA {shortSha(fetchResult.commitSha as string)} already exists ({String(fetchResult.status)}).</div>
                 : <>
                     <div className="font-semibold">Snapshot created — inactive until activated.</div>
                     <div>SHA: <span className="font-mono">{shortSha(fetchResult.commitSha as string)}</span> · {fmtDate(fetchResult.commitDate as string)}</div>
