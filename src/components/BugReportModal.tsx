@@ -107,15 +107,17 @@ function collectGpsDiagnostics(): Record<string, string | number | boolean> {
 
 function detectPlatform(): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cap = (window as any).Capacitor;
-    if (cap) {
+    // Use isNativePlatform() — the canonical Capacitor guard.
+    // window.Capacitor exists as a stub in web builds too, so checking
+    // merely `if (cap)` incorrectly labels web sessions as "native".
+    // isNativePlatform() returns true only inside a real iOS/Android shell.
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor;
+    if (cap?.isNativePlatform?.()) {
       const p = cap.getPlatform?.() ?? 'native';
       return p === 'ios' ? 'ios' : p === 'android' ? 'android' : 'native';
     }
     if (window.matchMedia('(display-mode: standalone)').matches ||
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (navigator as any).standalone === true) {
+        (navigator as unknown as { standalone?: boolean }).standalone === true) {
       return 'pwa';
     }
     return 'web';

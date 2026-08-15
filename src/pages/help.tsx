@@ -13,8 +13,7 @@ import {
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings,
-  BarChart2, FileSpreadsheet, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
+  ShieldAlert, AlertTriangle,
   ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft,
   Zap, FileStack, Map, ShieldCheck, AlertCircle, Building2,
   TableProperties, ScrollText, Link2, History, Bot, Terminal,
@@ -639,29 +638,12 @@ const GROUPS: GroupDoc[] = [
       },
     ],
   },
-  {
-    id: 'comingSoon',
-    label: 'Coming Soon',
-    description: 'Features currently in development — these will appear when released.',
-    color: 'bg-gray-100 text-gray-500 border-gray-200',
-    icons: [
-      { key: 'report',         label: 'Report',       icon: BarChart2,           bg: 'bg-blue-500',    purpose: 'Automated job and business performance reports.', howTo: ['Coming soon.'] },
-      { key: 'timesheet',      label: 'Timesheets',   icon: FileSpreadsheet,     bg: 'bg-indigo-400',  purpose: 'Digital timesheets for tracking worker hours against jobs.', howTo: ['Coming soon.'] },
-      { key: 'site_diary',     label: 'Site Diary',   icon: ClipboardSignature,  bg: 'bg-amber-600',   purpose: 'Daily site diary entries for contract records and claims.', howTo: ['Coming soon.'] },
-      { key: 'rainfall',       label: 'Rainfall',     icon: CloudRain,           bg: 'bg-sky-600',     purpose: 'Log rainfall events for delay claims and contract records.', howTo: ['Coming soon.'] },
-      { key: 'checklist',      label: 'Checklist',    icon: Clipboard,           bg: 'bg-lime-600',    purpose: 'Simple task checklists for jobs and daily work.', howTo: ['Coming soon.'] },
-      { key: 'messages',       label: 'Messages',     icon: MessageSquare,       bg: 'bg-green-500',   purpose: 'In-app messaging between team members.', howTo: ['Coming soon.'] },
-      { key: 'invoices_field', label: 'Field Invoice',icon: Wallet,              bg: 'bg-teal-500',    purpose: 'Field-accessible invoice view for workers.', howTo: ['Coming soon.'] },
-      { key: 'daily_log',      label: 'Daily Log',    icon: ClipboardList,       bg: 'bg-violet-500',  purpose: 'Daily work log for recording activities and hours.', howTo: ['Coming soon.'] },
-      { key: 'weather',        label: 'Weather',      icon: CloudRain,           bg: 'bg-cyan-400',    purpose: 'Live weather for job sites — useful for planning and delay records.', howTo: ['Coming soon.'] },
-    ],
-  },
 ];
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function HelpPage() {
   const [search, setSearch] = useState('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    field: true, safety: true, tools: true, management: true, admin: false, comingSoon: false,
+    field: true, safety: true, tools: true, management: true, admin: false,
   });
   const [openIcons, setOpenIcons] = useState<Record<string, boolean>>({});
 

@@ -976,7 +976,7 @@ export default function OwnerConsolePage() {
               {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
 
               {/* ── Bug Reports ── */}
-              {tab === 'bug-reports' && <BugReportsTab />}
+              {tab === 'bug-reports' && <BugReportsTab onCountChange={setBugReportCount} />}
               {/* ── Incidents ── */}
               {tab === 'incidents' && <IncidentQueueTab />}
               {/* ── Client Rescue ── */}

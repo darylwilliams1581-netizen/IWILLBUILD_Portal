@@ -320,6 +320,7 @@ function DashboardPage({
 
   return (
     <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
+      <div className="mx-auto w-full flex flex-col gap-4" style={{ maxWidth: 480 }}>
       {/* ── Banner — sits at the very top so it's immediately visible ── */}
       <DashboardBanner userId={userId} />
 
@@ -393,6 +394,7 @@ function DashboardPage({
 
       <NotificationList />
       <MyTasksPanel userRole={role} />
+      </div>
     </div>
   );
 }

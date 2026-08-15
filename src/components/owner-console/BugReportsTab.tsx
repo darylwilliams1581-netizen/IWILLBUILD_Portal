@@ -318,7 +318,12 @@ function FallbackModal({ text, onClose }: { text: string; onClose: () => void })
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function BugReportsTab() {
+interface BugReportsTabProps {
+  /** Called after every successful load with the current open+in_progress count */
+  onCountChange?: (count: number) => void;
+}
+
+export default function BugReportsTab({ onCountChange }: BugReportsTabProps = {}) {
   const { isPlatformOwner } = usePermissions();
 
   const [reports, setReports]       = useState<BugReportRow[]>([]);
@@ -361,9 +366,12 @@ export default function BugReportsTab() {
       params.set('limit', '100');
       const res = await fetch(`/api/bug-reports?${params}`, { credentials: 'include' });
       const d = await res.json() as { reports?: BugReportRow[]; counts?: Counts; total?: number };
+      const newCounts = d.counts ?? { open: 0, in_progress: 0, resolved: 0, closed: 0 };
       setReports(d.reports ?? []);
-      setCounts(d.counts ?? { open: 0, in_progress: 0, resolved: 0, closed: 0 });
+      setCounts(newCounts);
       setTotal(d.total ?? 0);
+      // Notify parent so the nav badge stays in sync with the live dataset
+      onCountChange?.((newCounts.open ?? 0) + (newCounts.in_progress ?? 0));
     } catch { /* ignore */ }
     finally { setLoading(false); setRefreshing(false); }
   }, [filterStatus, filterCategory, search]);
