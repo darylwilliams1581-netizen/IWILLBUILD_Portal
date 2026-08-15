@@ -479,7 +479,7 @@ export default function PagedHomeScreen({
     { group: 'tools',  label: 'Studio' },
   ];
   const fieldSections = fieldGroupDefs
-    .map(g => ({ ...g, icons: allIcons.filter(i => i.group === g.group) }))
+    .map(g => ({ ...g, icons: allIcons.filter(i => i.group === g.group && !DESKTOP_ONLY_KEYS.has(i.key)) }))
     .filter(s => s.icons.length > 0);
   const fieldIcons = fieldSections.flatMap(s => s.icons);
 
