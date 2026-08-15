@@ -71,7 +71,9 @@ async function listJobs(companyId: number, params: Record<string, string>) {
   const pg = clamp(safeInt(page, 1), 1, 9999);
   const offset = (pg - 1) * ps;
 
-  const allowed = new Set(['job_number', 'name', 'status', 'start_date', 'expected_completion', 'created_at']);
+  // BUG-2026-045FB: correct column names — expected_completion_date, progress (not progress_percent)
+  // supervisor_name does not exist; join `user` for supervisor display name
+  const allowed = new Set(['job_number', 'name', 'status', 'start_date', 'expected_completion_date', 'created_at']);
   const col = allowed.has(sortBy) ? sortBy : 'created_at';
   const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
@@ -90,16 +92,17 @@ async function listJobs(companyId: number, params: Record<string, string>) {
       j.id,
       j.job_number,
       j.name,
-      c.name AS customer_name,
+      c.name                    AS customer_name,
       j.site_address,
       j.status,
       j.start_date,
-      j.expected_completion,
-      j.supervisor_name,
-      j.progress_percent,
+      j.expected_completion_date AS expected_completion,
+      su.name                   AS supervisor_name,
+      j.progress                AS progress_percent,
       j.created_at
     FROM jobs j
-    LEFT JOIN customers c ON c.id = j.customer_id
+    LEFT JOIN customers c   ON c.id  = j.customer_id
+    LEFT JOIN \`user\` su   ON su.id = j.supervisor_user_id
     WHERE ${where}
     ORDER BY j.${col} ${dir}
     LIMIT ${ps} OFFSET ${offset}
@@ -435,8 +438,271 @@ async function listDriverLogs(companyId: number, params: Record<string, string>)
   return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
 }
 
-// ── Wave-2 list handlers ──────────────────────────────────────────────────────
+// ── Core list handlers (Wave-1 extras) ────────────────────────────────────────
 
+async function listInvoices(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, status, jobId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['invoice_number', 'title', 'status', 'issue_date', 'due_date', 'total', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`inv.company_id = ${companyId}`];
+  if (status) wheres.push(`inv.status = '${esc(status)}'`);
+  if (jobId)  wheres.push(`inv.job_id = ${safeInt(jobId, 0)}`);
+  if (dateFrom) wheres.push(`inv.issue_date >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`inv.issue_date <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(inv.invoice_number LIKE '%${s}%' OR inv.title LIKE '%${s}%' OR c.name LIKE '%${s}%' OR j.name LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT inv.id, inv.invoice_number, inv.title, c.name AS customer_name, j.name AS job_name, j.job_number,
+           inv.status, inv.issue_date, inv.due_date, inv.subtotal, inv.gst_amount, inv.total,
+           inv.amount_paid, inv.balance_due, inv.created_at
+    FROM invoices inv
+    LEFT JOIN customers c ON c.id = inv.customer_id
+    LEFT JOIN jobs j ON j.id = inv.job_id
+    WHERE ${where} ORDER BY inv.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM invoices inv LEFT JOIN customers c ON c.id = inv.customer_id LEFT JOIN jobs j ON j.id = inv.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listEstimates(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, status, jobId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['title', 'status', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`e.company_id = ${companyId}`];
+  if (status) wheres.push(`e.status = '${esc(status)}'`);
+  if (jobId)  wheres.push(`e.job_id = ${safeInt(jobId, 0)}`);
+  if (dateFrom) wheres.push(`DATE(e.created_at) >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`DATE(e.created_at) <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(e.title LIKE '%${s}%' OR j.name LIKE '%${s}%' OR j.job_number LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT e.id, e.title, j.name AS job_name, j.job_number, e.status, e.notes, e.created_at
+    FROM estimates e
+    LEFT JOIN jobs j ON j.id = e.job_id
+    WHERE ${where} ORDER BY e.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM estimates e LEFT JOIN jobs j ON j.id = e.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listCustomers(companyId: number, params: Record<string, string>) {
+  const { q, status, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['name', 'contact_person', 'email', 'status', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'name';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`c.company_id = ${companyId}`];
+  if (status) wheres.push(`c.status = '${esc(status)}'`);
+  if (q) { const s = esc(q); wheres.push(`(c.name LIKE '%${s}%' OR c.contact_person LIKE '%${s}%' OR c.email LIKE '%${s}%' OR c.phone LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT c.id, c.name, c.contact_person, c.email, c.phone, c.mobile, c.address, c.abn, c.status, c.created_at
+    FROM customers c WHERE ${where} ORDER BY c.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM customers c WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listTimeEntries(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, jobId, userId, status, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['entry_date', 'clock_in', 'total_minutes', 'status', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'entry_date';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`te.company_id = ${companyId}`];
+  if (status) wheres.push(`te.status = '${esc(status)}'`);
+  if (jobId)  wheres.push(`te.job_id = ${safeInt(jobId, 0)}`);
+  if (userId) wheres.push(`p.user_id = '${esc(userId)}'`);
+  if (dateFrom) wheres.push(`te.entry_date >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`te.entry_date <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(p.display_name LIKE '%${s}%' OR u.email LIKE '%${s}%' OR j.name LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT te.id, p.display_name AS user_name, u.email AS user_email,
+           j.name AS job_name, j.job_number,
+           te.entry_date, te.clock_in, te.clock_out, te.break_minutes, te.total_minutes,
+           te.hourly_rate, te.status, te.notes, te.created_at
+    FROM team_time_entries te
+    JOIN profiles p ON p.id = te.profile_id
+    LEFT JOIN \`user\` u ON u.id = p.user_id
+    LEFT JOIN jobs j ON j.id = te.job_id
+    WHERE ${where} ORDER BY te.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM team_time_entries te JOIN profiles p ON p.id = te.profile_id LEFT JOIN \`user\` u ON u.id = p.user_id LEFT JOIN jobs j ON j.id = te.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listFleetAssets(companyId: number, params: Record<string, string>) {
+  const { q, status, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['name', 'rego', 'type', 'status', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'name';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`fa.company_id = ${companyId}`];
+  if (status) wheres.push(`fa.status = '${esc(status)}'`);
+  if (q) { const s = esc(q); wheres.push(`(fa.name LIKE '%${s}%' OR fa.rego LIKE '%${s}%' OR fa.type LIKE '%${s}%' OR fa.make LIKE '%${s}%' OR fa.model LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT fa.id, fa.name, fa.rego, fa.type, fa.make, fa.model, fa.year,
+           fa.status, fa.odometer, fa.notes, fa.created_at
+    FROM fleet_assets fa WHERE ${where} ORDER BY fa.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM fleet_assets fa WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listSwms(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, status, jobId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['title', 'status', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`js.company_id = ${companyId}`];
+  if (jobId)  wheres.push(`js.job_id = ${safeInt(jobId, 0)}`);
+  if (dateFrom) wheres.push(`DATE(js.created_at) >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`DATE(js.created_at) <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(st.title LIKE '%${s}%' OR j.name LIKE '%${s}%' OR j.job_number LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT js.id, st.title AS swms_title, st.status, j.name AS job_name, j.job_number,
+           (SELECT COUNT(*) FROM swms_signoffs ss WHERE ss.job_swms_id = js.id) AS signoff_count,
+           js.created_at
+    FROM job_swms js
+    LEFT JOIN swms_templates st ON st.id = js.swms_template_id
+    LEFT JOIN jobs j ON j.id = js.job_id
+    WHERE ${where} ORDER BY js.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM job_swms js LEFT JOIN swms_templates st ON st.id = js.swms_template_id LEFT JOIN jobs j ON j.id = js.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listFormSubmissions(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, status, jobId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['form_title', 'status', 'submitted_at', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`jf.company_id = ${companyId}`];
+  if (status) wheres.push(`jf.status = '${esc(status)}'`);
+  if (jobId)  wheres.push(`jf.job_id = ${safeInt(jobId, 0)}`);
+  if (dateFrom) wheres.push(`DATE(jf.created_at) >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`DATE(jf.created_at) <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(jf.form_title LIKE '%${s}%' OR j.name LIKE '%${s}%' OR j.job_number LIKE '%${s}%' OR u.name LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT jf.id, jf.form_title, j.name AS job_name, j.job_number,
+           u.name AS submitted_by_name, jf.status, jf.submitted_at, jf.created_at
+    FROM job_forms jf
+    LEFT JOIN jobs j ON j.id = jf.job_id
+    LEFT JOIN \`user\` u ON u.id = jf.submitted_by_user_id
+    WHERE ${where} ORDER BY jf.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM job_forms jf LEFT JOIN jobs j ON j.id = jf.job_id LEFT JOIN \`user\` u ON u.id = jf.submitted_by_user_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listFiles(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, jobId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['original_name', 'folder', 'mime_type', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`f.company_id = ${companyId}`];
+  if (jobId)  wheres.push(`f.job_id = ${safeInt(jobId, 0)}`);
+  if (dateFrom) wheres.push(`DATE(f.created_at) >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`DATE(f.created_at) <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(f.original_name LIKE '%${s}%' OR f.folder LIKE '%${s}%' OR j.name LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT f.id, f.original_name, f.folder, f.mime_type, f.size_bytes,
+           j.name AS job_name, j.job_number, u.name AS uploaded_by_name, f.created_at
+    FROM job_files f
+    LEFT JOIN jobs j ON j.id = f.job_id
+    LEFT JOIN \`user\` u ON u.id = f.uploaded_by_user_id
+    WHERE ${where} ORDER BY f.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM job_files f LEFT JOIN jobs j ON j.id = f.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listTeamShifts(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, jobId, status, userId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['shift_date', 'title', 'status', 'start_time', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'shift_date';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`ts.company_id = ${companyId}`];
+  if (status) wheres.push(`ts.status = '${esc(status)}'`);
+  if (jobId)  wheres.push(`ts.job_id = ${safeInt(jobId, 0)}`);
+  if (userId) wheres.push(`p.user_id = '${esc(userId)}'`);
+  if (dateFrom) wheres.push(`ts.shift_date >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`ts.shift_date <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(ts.title LIKE '%${s}%' OR p.display_name LIKE '%${s}%' OR j.name LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT ts.id, ts.title, p.display_name AS user_name, u.email AS user_email,
+           j.name AS job_name, j.job_number,
+           ts.shift_date, ts.start_time, ts.end_time, ts.break_minutes, ts.status, ts.notes, ts.created_at
+    FROM team_shifts ts
+    JOIN profiles p ON p.id = ts.profile_id
+    LEFT JOIN \`user\` u ON u.id = p.user_id
+    LEFT JOIN jobs j ON j.id = ts.job_id
+    WHERE ${where} ORDER BY ts.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM team_shifts ts JOIN profiles p ON p.id = ts.profile_id LEFT JOIN \`user\` u ON u.id = p.user_id LEFT JOIN jobs j ON j.id = ts.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+async function listPurchaseOrders(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, status, jobId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+  const allowed = new Set(['po_number', 'title', 'status', 'start_date', 'total', 'created_at']);
+  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+  const wheres: string[] = [`po.company_id = ${companyId}`];
+  if (status) wheres.push(`po.status = '${esc(status)}'`);
+  if (jobId)  wheres.push(`po.job_id = ${safeInt(jobId, 0)}`);
+  if (dateFrom) wheres.push(`po.start_date >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`po.start_date <= '${esc(dateTo)}'`);
+  if (q) { const s = esc(q); wheres.push(`(po.po_number LIKE '%${s}%' OR po.title LIKE '%${s}%' OR po.assigned_to_name LIKE '%${s}%' OR j.name LIKE '%${s}%')`); }
+  const where = wheres.join(' AND ');
+  const [rows] = await db.execute(sql.raw(`
+    SELECT po.id, po.po_number, po.title, j.name AS job_name, j.job_number,
+           po.assigned_to_name, po.trade_type, po.status,
+           po.start_date, po.finish_date, po.subtotal, po.gst, po.total, po.created_at
+    FROM job_purchase_orders po
+    LEFT JOIN jobs j ON j.id = po.job_id
+    WHERE ${where} ORDER BY po.${col} ${dir} LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  const [countRows] = await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM job_purchase_orders po LEFT JOIN jobs j ON j.id = po.job_id WHERE ${where}`)) as unknown as [Array<Record<string, unknown>>, unknown];
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
+// ── Wave-2 list handlers ──────────────────────────────────────────────────────
 async function listDrawings(companyId: number, params: Record<string, string>) {
   const { q, dateFrom, dateTo, jobId, status, page, pageSize, sortBy, sortDir } = params;
   const ps = clamp(safeInt(pageSize, 50), 1, 200);
@@ -1034,6 +1300,80 @@ function assetBookingsToCsv(rows: Record<string, unknown>[], res: Response, date
   ] as (string | number | null | undefined)[]));
 }
 
+function invoicesToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Invoice #', 'Title', 'Customer', 'Job', 'Job #', 'Status', 'Issue Date', 'Due Date', 'Subtotal', 'GST', 'Total', 'Paid', 'Balance'];
+  sendCsv(res, `iwillbuild-invoices-${date}.csv`, headers, rows.map((r) => [
+    r.invoice_number, r.title, r.customer_name, r.job_name, r.job_number,
+    r.status, r.issue_date, r.due_date, r.subtotal, r.gst_amount, r.total, r.amount_paid, r.balance_due,
+  ] as (string | number | null | undefined)[]));
+}
+
+function estimatesToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Title', 'Job', 'Job #', 'Status', 'Notes', 'Created'];
+  sendCsv(res, `iwillbuild-estimates-${date}.csv`, headers, rows.map((r) => [
+    r.title, r.job_name, r.job_number, r.status, r.notes, r.created_at,
+  ] as (string | number | null | undefined)[]));
+}
+
+function customersToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Name', 'Contact Person', 'Email', 'Phone', 'Mobile', 'Address', 'ABN', 'Status', 'Created'];
+  sendCsv(res, `iwillbuild-customers-${date}.csv`, headers, rows.map((r) => [
+    r.name, r.contact_person, r.email, r.phone, r.mobile, r.address, r.abn, r.status, r.created_at,
+  ] as (string | number | null | undefined)[]));
+}
+
+function timeEntriesToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['User', 'Email', 'Job', 'Job #', 'Date', 'Clock In', 'Clock Out', 'Break (min)', 'Total (min)', 'Rate', 'Status', 'Notes'];
+  sendCsv(res, `iwillbuild-time-entries-${date}.csv`, headers, rows.map((r) => [
+    r.user_name, r.user_email, r.job_name, r.job_number,
+    r.entry_date, r.clock_in, r.clock_out, r.break_minutes, r.total_minutes, r.hourly_rate, r.status, r.notes,
+  ] as (string | number | null | undefined)[]));
+}
+
+function fleetAssetsToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Name', 'Rego', 'Type', 'Make', 'Model', 'Year', 'Status', 'Odometer', 'Notes', 'Created'];
+  sendCsv(res, `iwillbuild-fleet-assets-${date}.csv`, headers, rows.map((r) => [
+    r.name, r.rego, r.type, r.make, r.model, r.year, r.status, r.odometer, r.notes, r.created_at,
+  ] as (string | number | null | undefined)[]));
+}
+
+function swmsToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['SWMS Title', 'Job', 'Job #', 'Status', 'Signoffs', 'Created'];
+  sendCsv(res, `iwillbuild-swms-${date}.csv`, headers, rows.map((r) => [
+    r.swms_title, r.job_name, r.job_number, r.status, r.signoff_count, r.created_at,
+  ] as (string | number | null | undefined)[]));
+}
+
+function formSubmissionsToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Form', 'Job', 'Job #', 'Submitted By', 'Status', 'Submitted At', 'Created'];
+  sendCsv(res, `iwillbuild-form-submissions-${date}.csv`, headers, rows.map((r) => [
+    r.form_title, r.job_name, r.job_number, r.submitted_by_name, r.status, r.submitted_at, r.created_at,
+  ] as (string | number | null | undefined)[]));
+}
+
+function filesToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['File Name', 'Folder', 'Type', 'Size (bytes)', 'Job', 'Job #', 'Uploaded By', 'Created'];
+  sendCsv(res, `iwillbuild-files-${date}.csv`, headers, rows.map((r) => [
+    r.original_name, r.folder, r.mime_type, r.size_bytes, r.job_name, r.job_number, r.uploaded_by_name, r.created_at,
+  ] as (string | number | null | undefined)[]));
+}
+
+function teamShiftsToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Title', 'User', 'Email', 'Job', 'Job #', 'Date', 'Start', 'End', 'Break (min)', 'Status', 'Notes'];
+  sendCsv(res, `iwillbuild-team-shifts-${date}.csv`, headers, rows.map((r) => [
+    r.title, r.user_name, r.user_email, r.job_name, r.job_number,
+    r.shift_date, r.start_time, r.end_time, r.break_minutes, r.status, r.notes,
+  ] as (string | number | null | undefined)[]));
+}
+
+function purchaseOrdersToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['PO #', 'Title', 'Job', 'Job #', 'Assigned To', 'Trade', 'Status', 'Start Date', 'Finish Date', 'Subtotal', 'GST', 'Total'];
+  sendCsv(res, `iwillbuild-purchase-orders-${date}.csv`, headers, rows.map((r) => [
+    r.po_number, r.title, r.job_name, r.job_number, r.assigned_to_name, r.trade_type,
+    r.status, r.start_date, r.finish_date, r.subtotal, r.gst, r.total,
+  ] as (string | number | null | undefined)[]));
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export default async function handler(req: Request, res: Response) {
@@ -1131,6 +1471,57 @@ export default async function handler(req: Request, res: Response) {
       case 'asset-bookings': {
         const data = await listAssetBookings(companyId, csvParams);
         if (isCsv) return assetBookingsToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      // ── Wave-1 extras (previously missing) ──────────────────────────────────
+      case 'invoices': {
+        const data = await listInvoices(companyId, csvParams);
+        if (isCsv) return invoicesToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'estimates': {
+        const data = await listEstimates(companyId, csvParams);
+        if (isCsv) return estimatesToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'customers': {
+        const data = await listCustomers(companyId, csvParams);
+        if (isCsv) return customersToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'time-entries': {
+        const data = await listTimeEntries(companyId, csvParams);
+        if (isCsv) return timeEntriesToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'fleet-assets': {
+        const data = await listFleetAssets(companyId, csvParams);
+        if (isCsv) return fleetAssetsToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'swms': {
+        const data = await listSwms(companyId, csvParams);
+        if (isCsv) return swmsToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'form-submissions': {
+        const data = await listFormSubmissions(companyId, csvParams);
+        if (isCsv) return formSubmissionsToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'files': {
+        const data = await listFiles(companyId, csvParams);
+        if (isCsv) return filesToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'team-shifts': {
+        const data = await listTeamShifts(companyId, csvParams);
+        if (isCsv) return teamShiftsToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'purchase-orders': {
+        const data = await listPurchaseOrders(companyId, csvParams);
+        if (isCsv) return purchaseOrdersToCsv(data.rows as Record<string, unknown>[], res, today);
         return res.json(data);
       }
       default:
