@@ -3,9 +3,8 @@
  * Shows a scaled live preview of a generated safety poster with Print/PDF button.
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Printer, Download, Loader2 } from 'lucide-react';
+import { X, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { openPrintWindow } from '@/lib/print-html';
 import { downloadPosterAsPdf } from '@/lib/poster-pdf';
 import {
   PosterRiskMatrix, PosterEmergencyContacts, PosterEmergencyAssembly,
@@ -89,15 +88,6 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, triggerDownload]);
 
-  function handlePrint() {
-    if (!printRef.current) return;
-    const html = printRef.current.innerHTML;
-    openPrintWindow(
-      `<!DOCTYPE html><html><head><title>${title}</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`,
-      true,
-    );
-  }
-
   async function handleDownloadPdf() {
     if (!printRef.current) return;
     setDownloadingPdf(true);
@@ -139,17 +129,10 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
                 <button
                   onClick={handleDownloadPdf}
                   disabled={downloadingPdf}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                 >
                   {downloadingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
                   Download PDF
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors"
-                >
-                  <Printer size={13} />
-                  Print / PDF
                 </button>
                 <button
                   onClick={onClose}
@@ -186,8 +169,7 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
               <Download size={13} className="text-slate-400 shrink-0" />
               <p className="text-xs text-slate-400">
-                <strong className="text-slate-600">Download PDF</strong> saves a pixel-perfect copy of this poster.{' '}
-                <strong className="text-slate-600">Print / PDF</strong> opens the browser print dialog.
+                Click <strong className="text-slate-600">Download PDF</strong> to save a pixel-perfect copy of this poster.
               </p>
             </div>
           </motion.div>

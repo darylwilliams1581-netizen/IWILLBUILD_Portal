@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Printer, Save, Loader2, ChevronLeft, Download } from 'lucide-react';
+import { X, Save, Loader2, ChevronLeft, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { openPrintWindow } from '@/lib/print-html';
 import { downloadPosterAsPdf } from '@/lib/poster-pdf';
 import {
   PosterRiskMatrix, PosterEmergencyContacts, PosterEmergencyAssembly,
@@ -220,18 +219,6 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
     }
   }
 
-  function handlePrint() {
-    if (!printRef.current) return;
-    // innerHTML is from a React-rendered DOM ref — all content was set via
-    // React's JSX renderer which escapes text nodes automatically.  No
-    // user-supplied raw HTML is injected into this ref.
-    const html = printRef.current.innerHTML;
-    openPrintWindow(
-      `<!DOCTYPE html><html><head><title>Safety Poster</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`,
-      true,
-    );
-  }
-
   async function handleDownloadPdf() {
     if (!printRef.current || !selected) return;
     setDownloadingPdf(true);
@@ -243,7 +230,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
       await downloadPosterAsPdf(printRef.current, safeFilename);
     } catch (err) {
       console.error('Poster PDF download failed:', err);
-      alert('Failed to generate PDF. Please try Print / PDF instead.');
+      alert('Failed to generate PDF. Please try again.');
     } finally {
       setDownloadingPdf(false);
     }
@@ -361,12 +348,6 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                     >
                       {downloadingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                       Download PDF
-                    </button>
-                    <button
-                      onClick={handlePrint}
-                      className="flex items-center gap-2 border border-slate-200 text-slate-600 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors"
-                    >
-                      <Printer size={14} /> Print / PDF
                     </button>
                     <button
                       onClick={handleSave}
