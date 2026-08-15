@@ -60,7 +60,7 @@ export default async function handler(req: Request, res: Response) {
           ja.notes,
           ja.created_at
         FROM job_attendance ja
-        LEFT JOIN user u ON u.id = ja.user_id
+        LEFT JOIN \`user\` u ON u.id = ja.user_id
         LEFT JOIN jobs j  ON j.id = ja.job_id
         WHERE ${w.join(' AND ')}
         ORDER BY ja.created_at DESC
@@ -94,7 +94,7 @@ export default async function handler(req: Request, res: Response) {
           ful.note,
           ful.source
         FROM fleet_usage_logs ful
-        LEFT JOIN users u         ON u.id  = ful.user_id
+        LEFT JOIN \`user\` u         ON u.id  = ful.user_id
         LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
         LEFT JOIN jobs j          ON j.id  = ful.job_id
         WHERE ${w.join(' AND ')}
@@ -134,7 +134,7 @@ export default async function handler(req: Request, res: Response) {
           te.approved_at
         FROM team_time_entries te
         JOIN profiles p          ON p.id = te.profile_id
-        LEFT JOIN users u        ON u.id = p.user_id
+        LEFT JOIN \`user\` u        ON u.id = p.user_id
         LEFT JOIN jobs j         ON j.id = te.job_id
         LEFT JOIN profiles ap    ON ap.id = te.approved_by
         WHERE ${w.join(' AND ')}

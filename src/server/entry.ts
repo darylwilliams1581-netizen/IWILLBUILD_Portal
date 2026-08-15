@@ -1626,7 +1626,12 @@ async function runStartupMigrations() {
     { table: 'bug_reports', column: 'ai_analysed_at',       definition: 'DATETIME NULL' },
     { table: 'bug_reports', column: 'sms_auth_token',       definition: 'VARCHAR(64) NULL' },
     { table: 'bug_reports', column: 'sms_auth_expires_at',  definition: 'DATETIME NULL' },
-    { table: 'bug_reports', column: 'sms_auth_used',        definition: 'TINYINT(1) NOT NULL DEFAULT 0' },  ];
+    { table: 'bug_reports',       column: 'sms_auth_used',        definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // fleet_usage_logs — columns added after initial CREATE
+    { table: 'fleet_usage_logs', column: 'meter_start',           definition: 'INT NULL' },
+    { table: 'fleet_usage_logs', column: 'meter_end',             definition: 'INT NULL' },
+    { table: 'fleet_usage_logs', column: 'actor_type',            definition: "VARCHAR(30) NOT NULL DEFAULT 'employee'" },
+  ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
       // First confirm the table itself exists — if not, skip silently.

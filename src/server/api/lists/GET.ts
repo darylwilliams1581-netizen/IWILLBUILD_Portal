@@ -269,7 +269,7 @@ async function listAttendance(companyId: number, params: Record<string, string>)
   const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
   // Build WHERE on the sign-in rows (action = 'sign_in')
-  const wheres: string[] = [`si.company_id = ${companyId}`, `si.action = 'sign_in'`];
+  const wheres: string[] = [`si.company_id = ${companyId}`, `si.action = 'signin'`];
   if (jobId) wheres.push(`si.job_id = ${safeInt(jobId, 0)}`);
   if (userId) wheres.push(`si.user_id = '${esc(userId)}'`);  if (dateFrom) wheres.push(`DATE(si.created_at) >= '${esc(dateFrom)}'`);
   if (dateTo)   wheres.push(`DATE(si.created_at) <= '${esc(dateTo)}'`);
@@ -297,18 +297,18 @@ async function listAttendance(companyId: number, params: Record<string, string>)
       si.source,
       si.actor_type
     FROM job_attendance si
-    LEFT JOIN users u ON u.id = si.user_id
+    LEFT JOIN \`user\` u ON u.id = si.user_id
     LEFT JOIN jobs  j ON j.id = si.job_id
     LEFT JOIN job_attendance so
       ON  so.job_id    = si.job_id
       AND so.user_id   = si.user_id
-      AND so.action    = 'sign_out'
+      AND so.action    = 'signout'
       AND so.created_at = (
         SELECT MIN(x.created_at)
         FROM job_attendance x
         WHERE x.job_id   = si.job_id
           AND x.user_id  = si.user_id
-          AND x.action   = 'sign_out'
+          AND x.action   = 'signout'
           AND x.created_at > si.created_at
       )
     WHERE ${where}
@@ -319,7 +319,7 @@ async function listAttendance(companyId: number, params: Record<string, string>)
   const [countRows] = await db.execute(sql.raw(`
     SELECT COUNT(*) AS total
     FROM job_attendance si
-    LEFT JOIN users u ON u.id = si.user_id
+    LEFT JOIN \`user\` u ON u.id = si.user_id
     LEFT JOIN jobs  j ON j.id = si.job_id
     WHERE ${where}
   `)) as unknown as [Array<Record<string, unknown>>, unknown];
@@ -404,7 +404,7 @@ async function listDriverLogs(companyId: number, params: Record<string, string>)
       u.email               AS user_email,
       ful.actor_type,
       fa.name               AS fleet_name,
-      fa.registration       AS fleet_registration,
+      fa.rego       AS fleet_registration,
       j.name                AS job_name,
       j.job_number,
       ful.started_at,
@@ -415,7 +415,7 @@ async function listDriverLogs(companyId: number, params: Record<string, string>)
       ful.note,
       ful.source
     FROM fleet_usage_logs ful
-    LEFT JOIN users u         ON u.id  = ful.user_id
+    LEFT JOIN \`user\` u         ON u.id  = ful.user_id
     LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
     LEFT JOIN jobs j          ON j.id  = ful.job_id
     WHERE ${where}
@@ -426,7 +426,7 @@ async function listDriverLogs(companyId: number, params: Record<string, string>)
   const [countRows] = await db.execute(sql.raw(`
     SELECT COUNT(*) AS total
     FROM fleet_usage_logs ful
-    LEFT JOIN users u         ON u.id  = ful.user_id
+    LEFT JOIN \`user\` u         ON u.id  = ful.user_id
     LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
     LEFT JOIN jobs j          ON j.id  = ful.job_id
     WHERE ${where}
@@ -547,7 +547,7 @@ async function listGuestCheckins(companyId: number, params: Record<string, strin
   const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
   // Pair sign-in rows with their matching sign-out via session_id
-  const wheres: string[] = [`gc.company_id = ${companyId}`, `gc.action = 'sign_in'`];
+  const wheres: string[] = [`gc.company_id = ${companyId}`, `gc.action = 'signin'`];
   if (jobId)   wheres.push(`gc.job_id = ${safeInt(jobId, 0)}`);
   if (dateFrom) wheres.push(`DATE(gc.created_at) >= '${esc(dateFrom)}'`);
   if (dateTo)   wheres.push(`DATE(gc.created_at) <= '${esc(dateTo)}'`);
@@ -575,12 +575,12 @@ async function listGuestCheckins(companyId: number, params: Record<string, strin
     LEFT JOIN jobs j ON j.id = gc.job_id
     LEFT JOIN guest_checkins so
       ON  so.session_id = gc.session_id
-      AND so.action     = 'sign_out'
+      AND so.action     = 'signout'
       AND so.created_at = (
         SELECT MIN(x.created_at)
         FROM guest_checkins x
         WHERE x.session_id = gc.session_id
-          AND x.action     = 'sign_out'
+          AND x.action     = 'signout'
           AND x.created_at > gc.created_at
       )
     WHERE ${where}
@@ -615,7 +615,7 @@ async function listFleetPrestarts(companyId: number, params: Record<string, stri
   // jobId not applicable for fleet prestarts — ignore silently
   if (q) {
     const s = esc(q);
-    wheres.push(`(fp.operator_name LIKE '%${s}%' OR fa.name LIKE '%${s}%' OR fa.registration LIKE '%${s}%' OR fp.issue_comment LIKE '%${s}%')`);
+    wheres.push(`(fp.operator_name LIKE '%${s}%' OR fa.name LIKE '%${s}%' OR fa.rego LIKE '%${s}%' OR fp.issue_comment LIKE '%${s}%')`);
   }
   const where = wheres.join(' AND ');
 
@@ -623,7 +623,7 @@ async function listFleetPrestarts(companyId: number, params: Record<string, stri
     SELECT
       fp.id,
       fa.name          AS asset_name,
-      fa.registration  AS asset_rego,
+      fa.rego  AS asset_rego,
       fa.type          AS asset_type,
       fp.operator_name,
       fp.km_hours,
@@ -664,7 +664,7 @@ async function listFleetServiceLogs(companyId: number, params: Record<string, st
   if (dateTo)   wheres.push(`sl.service_date <= '${esc(dateTo)}'`);
   if (q) {
     const s = esc(q);
-    wheres.push(`(fa.name LIKE '%${s}%' OR fa.registration LIKE '%${s}%' OR sl.service_type LIKE '%${s}%' OR sl.provider LIKE '%${s}%' OR sl.notes LIKE '%${s}%')`);
+    wheres.push(`(fa.name LIKE '%${s}%' OR fa.rego LIKE '%${s}%' OR sl.service_type LIKE '%${s}%' OR sl.provider LIKE '%${s}%' OR sl.notes LIKE '%${s}%')`);
   }
   const where = wheres.join(' AND ');
 
@@ -672,7 +672,7 @@ async function listFleetServiceLogs(companyId: number, params: Record<string, st
     SELECT
       sl.id,
       fa.name          AS asset_name,
-      fa.registration  AS asset_rego,
+      fa.rego  AS asset_rego,
       fa.type          AS asset_type,
       sl.service_type,
       sl.service_date,
@@ -864,7 +864,7 @@ async function listAssetBookings(companyId: number, params: Record<string, strin
   if (dateTo)   wheres.push(`ab.start_date <= '${esc(dateTo)}'`);
   if (q) {
     const s = esc(q);
-    wheres.push(`(fa.name LIKE '%${s}%' OR fa.registration LIKE '%${s}%' OR j.name LIKE '%${s}%' OR ab.title LIKE '%${s}%')`);
+    wheres.push(`(fa.name LIKE '%${s}%' OR fa.rego LIKE '%${s}%' OR j.name LIKE '%${s}%' OR ab.title LIKE '%${s}%')`);
   }
   const where = wheres.join(' AND ');
 
