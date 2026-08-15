@@ -23,8 +23,27 @@ import DazzaReviewPanel from './DazzaReviewPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Parse a MySQL DATETIME string safely as UTC.
+ *
+ * MySQL returns bare strings like "2026-08-15 00:54:00" with no timezone
+ * suffix. Without a suffix, new Date() treats the value as LOCAL time on
+ * some engines, producing timestamps that are hours off.
+ * Appending 'Z' forces UTC interpretation on all engines.
+ */
+function parseMysqlDatetime(dateStr: string): Date {
+  // Already has a timezone suffix — use as-is
+  if (dateStr.includes('T') && (dateStr.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr))) {
+    return new Date(dateStr);
+  }
+  // Replace the space separator with T and append Z to force UTC
+  const iso = dateStr.replace(' ', 'T');
+  const withZ = iso.endsWith('Z') ? iso : iso + 'Z';
+  return new Date(withZ);
+}
+
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const diff = Date.now() - parseMysqlDatetime(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
@@ -35,7 +54,7 @@ function timeAgo(dateStr: string): string {
 
 function fmtDate(dateStr: string | null): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleString('en-AU', {
+  return parseMysqlDatetime(dateStr).toLocaleString('en-AU', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -563,7 +582,7 @@ export default function BugReportsTab() {
                         ) : (
                           <div className="divide-y divide-slate-50">
                             {[...diagEvents].sort((a, b) => a.ts - b.ts).map((ev, i) => {
-                              const reportTs = new Date(selected.created_at).getTime();
+                              const reportTs = parseMysqlDatetime(selected.created_at).getTime();
                               const secsAgo = Math.round((reportTs - ev.ts) / 1000);
                               const typeColor = DIAG_TYPE_COLORS[ev.type] ?? 'bg-slate-100 text-slate-600';
                               return (
@@ -596,8 +615,12 @@ export default function BugReportsTab() {
                 )}
 
                 {/* ── Dazza Review (platform-owner only) ── */}
+                {/* key={selected.id} forces a full remount on every case switch,
+                    resetting ensureCalled ref and all state so the new report's
+                    review loads immediately instead of showing the previous one. */}
                 {isPlatformOwner && (
                   <DazzaReviewPanel
+                    key={selected.id}
                     report={selected}
                     evidenceSnapshot={makeEvidenceSnapshot(selected)}
                   />
