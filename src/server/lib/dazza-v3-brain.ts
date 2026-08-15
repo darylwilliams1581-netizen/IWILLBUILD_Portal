@@ -47,28 +47,30 @@ import { sendEmail } from '../email.js';
 const DAZZA_V3_FEATURE_FLAG = 'DAZZA_V3_ENABLED';
 const OWNER_SUPPORT_EMAIL = 'support@iwillbuild.com';
 
+// Model — server-configured, never exposed to the browser.
+// o4-mini: OpenAI's current reasoning model with tool use support.
+// Falls back to gpt-4o for investigation mode where extended reasoning is less critical.
+const MODEL_REASONING = 'o4-mini';
+const MODEL_INVESTIGATION = 'gpt-4o';
+
 // Conversation history sent to OpenAI — bounded to control cost
 const CONTEXT_RECENT_TURNS = 20;       // most recent turns included verbatim
 const SUMMARY_THRESHOLD_TURNS = 30;    // deterministic compaction kicks in above this
-const MAX_TOKENS_INVESTIGATION = 4000;
-const MAX_TOKENS_CHAT = 2000;
+const MAX_TOKENS_INVESTIGATION = 8000;
+const MAX_TOKENS_CHAT = 4000;
 const TOOL_ROUNDS_MAX = 8;
 
 // ── Feature flag ──────────────────────────────────────────────────────────────
 
 export function isDazzaV3Enabled(): boolean {
-  // Must use getSecret() — process.env is not populated in this runtime.
-  // Normalise: trim whitespace and compare case-insensitively.
+  // Must use getSecret() — reads from $NOMAD_TASK_DIR/config.json in production,
+  // falls back to process.env in dev/CI.
   const raw = getSecret(DAZZA_V3_FEATURE_FLAG);
   const flag = (raw ?? '').trim().toLowerCase();
   const enabled = flag === 'true' || flag === '1' || flag === 'yes';
-  // Safe diagnostic — never logs the raw value, only length and resolved boolean.
-  // This lets Daryl confirm the secret is set and what value shape it has.
-  const rawLen  = (raw ?? '').length;
-  const rawFirst = rawLen > 0 ? `'${(raw ?? '')[0]}'` : '(empty)';
-  console.log(
-    `[dazza] engine flag: secret present=${rawLen > 0}, len=${rawLen}, first=${rawFirst}, resolved=${enabled}`
-  );
+  // Safe diagnostic — presence and resolved boolean only, never the value.
+  const present = (raw ?? '').length > 0;
+  console.log(`[dazza] engine flag: secret present=${present}, resolved=${enabled}`);
   return enabled;
 }
 
@@ -125,55 +127,36 @@ export interface V3IncidentInput {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const DAZZA_V3_SYSTEM_PROMPT = `You are Dazza, IWILLBUILD's Owner-only system watcher and investigator.
+const DAZZA_V3_SYSTEM_PROMPT = `You are Dazza, IWILLBUILD's owner-only system watcher and investigator.
+You are speaking to Daryl, the authenticated platform owner and developer.
 
-## Identity
-You are speaking to Daryl, the authenticated IWILLBUILD platform Owner and developer.
-Your purpose is to help Daryl maintain, understand and improve the IWILLBUILD system.
-You are not a customer-facing assistant. This is a private owner console.
+## READ-ONLY BOUNDARY (absolute — never violate)
+You cannot: insert, update, or delete any record; change code, config, or secrets; deploy, publish, or trigger builds; send customer communication; run shell commands; commit or push to git; trigger GitHub Actions; purchase services.
+You can write only: dazza_v3_audit entries, dazza_v3_conversations entries, dazza_incidents entries, dazza_client_rescue entries, and owner-only notifications where separately authorised.
+If asked to do anything outside this boundary, refuse clearly and explain why.
 
-## Absolute rules (never violate)
-1. OWNER-ONLY. You are speaking to Daryl. Never respond to non-owner requests.
-2. READ-ONLY. You cannot insert, update, delete, or mutate any business data, user records, or permissions.
-3. No customer communication. You can prepare suggested wording for Daryl to review and send himself.
-4. No code changes. You cannot change source code, deploy, publish, trigger Airo repairs, or change environment variables.
-5. No secrets. Never expose passwords, API keys, tokens, session secrets, or raw env vars. If a tool returns [REDACTED], do not attempt to recover or guess the value.
-6. Cite evidence. Investigate using authorised read-only tools and cite the evidence you inspected. Never claim you inspected evidence you did not access.
-7. Distinguish facts, inferences, and unknowns. Facts come from tool results. Inferences are your reasoning. Unknowns are what you cannot determine.
-8. Live portal and technical evidence outrank assumptions and general reasoning.
-9. Annette provides approved memory, previous Cases and verified outcomes. Treat approved memory as reliable context.
-10. Remember corrections within the current conversation. If Daryl corrects you, acknowledge it and carry the correction forward.
-11. Do not fall back to generic jobs/fleet assistance when Daryl is discussing system maintenance, bugs, or platform issues.
-12. You may create Dazza-owned records: conversation turns, audit entries, Case-review records, and pending-memory candidates.
-13. You may notify only the configured platform Owner where separately authorised.
+## Tool-first rule
+For any question about platform state, counts, bugs, code, or data — use the relevant read-only tools before answering. Do not answer from memory or general reasoning when tool evidence is available. Cite the tool and the specific file/line/record that supports each claim.
 
-## What Dazza CANNOT do (mutation boundary — absolute)
-- Insert, update, or delete business records, jobs, fleet, forms, estimates, users, or permissions
-- Send customer communication
-- Change source code, builds, deployments, or publishing state
-- Submit Airo repair prompts automatically
-- Send SMS authorisation codes
-- Trigger build or deployment pipelines
-- Purchase services or change subscriptions
-
-## Your personality
-- Direct, honest, and practical. Australian English.
-- Do not sugar-coat confirmed problems.
-- Use Daryl's first name when appropriate.
-- You can be blunt about what is broken and what needs fixing.
+## Evidence standards
+- Facts: come from tool results. State them as facts.
+- Inferences: your reasoning from facts. Label them as inferences.
+- Unknowns: what you could not determine. State them explicitly.
+- Never claim you inspected evidence you did not access.
 
 ## Memory priority
-1. These safety/privacy/read-only rules (immutable)
-2. Current live portal evidence (from tools)
+1. These rules (immutable)
+2. Current live tool evidence
 3. Owner-approved Annette memory (from v3_get_approved_memory)
 4. Relevant conversation history
 5. General model reasoning
-6. Unapproved learning candidates (clearly marked as PENDING — NOT VERIFIED)
+
+## Personality
+Direct, honest, practical. Australian English. Use Daryl's first name. Do not sugar-coat confirmed problems.
 
 ## Investigation output format
-When investigating an incident or bug, structure your response as:
 **WHAT HAPPENED** — facts from evidence
-**EVIDENCE** — what tool results prove it
+**EVIDENCE** — tool results and file citations (file path, line range)
 **WHO IS AFFECTED** — company, user, count
 **RECOVERED?** — did the customer recover
 **CURRENT IMPACT** — what is broken right now
@@ -183,15 +166,10 @@ When investigating an incident or bug, structure your response as:
 **MISSING EVIDENCE** — what you could not determine
 **IMMEDIATE WORKAROUND** — what Daryl can tell the customer right now
 **RECOMMENDED FIX** — specific technical fix
-**LIKELY FILES** — which files/routes are probably involved
+**LIKELY FILES** — file paths and line ranges involved
 **REGRESSION RISKS** — what else might break
 **TESTS REQUIRED** — exact test steps
-**AIRO REPAIR PROMPT** — a complete, ready-to-paste prompt for the Airo builder
-
-## Response length
-- Ordinary chat: efficient and direct — as long as needed, no arbitrary word limit
-- Investigation: as detailed as required — do not truncate
-- SMS drafts: short, clear, no secrets, include secure link`;
+**AIRO REPAIR PROMPT** — complete, ready-to-paste prompt for the Airo builder`;
 
 // ── Conversation management ───────────────────────────────────────────────────
 
@@ -458,8 +436,9 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   const userTurnIndex = totalTurns;
   void saveConversationTurn(conversationId, ownerContext.userId, 'user', userMessage, userTurnIndex);
 
-  // Model selection
-  const model = mode === 'investigation' ? 'gpt-4o' : 'gpt-4o-mini';
+  // Model selection — server-configured, never exposed to browser
+  // o4-mini: reasoning model with tool use; investigation uses gpt-4o for extended output
+  const model = mode === 'investigation' ? MODEL_INVESTIGATION : MODEL_REASONING;
   const maxTokens = mode === 'investigation' ? MAX_TOKENS_INVESTIGATION : MAX_TOKENS_CHAT;
 
   const toolsUsed: string[] = [];
@@ -467,28 +446,57 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // Agentic loop
+  // Agentic loop — Responses API for reasoning model, Chat Completions for gpt-4o
+  const useResponsesApi = model === MODEL_REASONING;
+
   for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
-    let streamRes: Response;
+    let streamRes: globalThis.Response;
     try {
-      streamRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
-          temperature: mode === 'investigation' ? 0.2 : 0.3,
-          stream: true,
-          stream_options: { include_usage: true },
-          tools: V3_TOOL_DEFINITIONS,
-          tool_choice: 'auto',
-          messages,
-        }),
-        signal: AbortSignal.timeout(60_000),
-      });
+      if (useResponsesApi) {
+        // ── OpenAI Responses API (o4-mini) ──────────────────────────────────
+        // The Responses API uses `input` instead of `messages`, and `max_output_tokens`
+        // instead of `max_tokens`. Reasoning models do not support `temperature`.
+        streamRes = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            max_output_tokens: maxTokens,
+            stream: true,
+            tools: V3_TOOL_DEFINITIONS.map(t => ({ type: 'function', ...t })),
+            tool_choice: 'auto',
+            input: messages.map(m => ({
+              role: m.role === 'tool' ? 'tool' : m.role,
+              content: m.content ?? '',
+              ...(m.role === 'tool' ? { tool_call_id: (m as { tool_call_id: string }).tool_call_id } : {}),
+            })),
+          }),
+          signal: AbortSignal.timeout(120_000),
+        });
+      } else {
+        // ── Chat Completions API (gpt-4o investigation) ──────────────────────
+        streamRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: maxTokens,
+            temperature: 0.2,
+            stream: true,
+            stream_options: { include_usage: true },
+            tools: V3_TOOL_DEFINITIONS,
+            tool_choice: 'auto',
+            messages,
+          }),
+          signal: AbortSignal.timeout(120_000),
+        });
+      }
     } catch (fetchErr) {
       onError(`OpenAI request failed: ${String(fetchErr)}`);
       return;
@@ -523,6 +531,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         if (raw === '[DONE]') { finishReason = finishReason ?? 'stop'; continue; }
 
         let chunk: {
+          // Chat Completions fields
           usage?: { prompt_tokens?: number; completion_tokens?: number };
           choices?: Array<{
             delta?: {
@@ -536,40 +545,96 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
             };
             finish_reason?: string | null;
           }>;
+          // Responses API fields
+          type?: string;
+          delta?: { content?: string; type?: string };
+          output_index?: number;
+          item?: {
+            type?: string;
+            id?: string;
+            call_id?: string;
+            name?: string;
+            arguments?: string;
+            output?: string;
+          };
+          usage?: { input_tokens?: number; output_tokens?: number };
         };
         try { chunk = JSON.parse(raw); } catch { continue; }
 
-        // Capture usage when OpenAI includes it (stream_options.include_usage)
-        if (chunk.usage) {
-          totalInputTokens += chunk.usage.prompt_tokens ?? 0;
-          totalOutputTokens += chunk.usage.completion_tokens ?? 0;
-        }
+        if (useResponsesApi) {
+          // ── Parse Responses API SSE events ──────────────────────────────
+          const evType = chunk.type;
 
-        const delta = chunk.choices?.[0]?.delta;
-        const fr = chunk.choices?.[0]?.finish_reason;
-        if (fr) finishReason = fr;
+          if (evType === 'response.output_text.delta' && chunk.delta?.content) {
+            assistantContent += chunk.delta.content;
+            fullAssistantResponse += chunk.delta.content;
+            onToken(chunk.delta.content);
+          }
 
-        if (delta?.content) {
-          assistantContent += delta.content;
-          fullAssistantResponse += delta.content;
-          onToken(delta.content);
-        }
-
-        if (delta?.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const idx = String(tc.index);
+          if (evType === 'response.function_call_arguments.delta' && chunk.delta?.content) {
+            const idx = String(chunk.output_index ?? 0);
             if (!toolCallsMap[idx]) {
-              toolCallsMap[idx] = { id: tc.id ?? '', type: 'function', function: { name: '', arguments: '' } };
+              toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
             }
-            if (tc.id) toolCallsMap[idx].id = tc.id;
-            if (tc.function?.name) toolCallsMap[idx].function.name += tc.function.name;
-            if (tc.function?.arguments) toolCallsMap[idx].function.arguments += tc.function.arguments;
+            toolCallsMap[idx].function.arguments += chunk.delta.content;
+          }
+
+          if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
+            const idx = String(chunk.output_index ?? 0);
+            toolCallsMap[idx] = {
+              id: chunk.item.call_id ?? chunk.item.id ?? '',
+              type: 'function',
+              function: { name: chunk.item.name ?? '', arguments: '' },
+            };
+          }
+
+          if (evType === 'response.completed') {
+            finishReason = 'stop';
+            // Extract usage if present
+            if (chunk.usage) {
+              totalInputTokens += (chunk.usage as { input_tokens?: number }).input_tokens ?? 0;
+              totalOutputTokens += (chunk.usage as { output_tokens?: number }).output_tokens ?? 0;
+            }
+          }
+
+          if (evType === 'response.failed' || evType === 'error') {
+            onError(`Responses API error: ${JSON.stringify(chunk).slice(0, 200)}`);
+            return;
+          }
+
+        } else {
+          // ── Parse Chat Completions SSE events ───────────────────────────
+          if (chunk.usage) {
+            totalInputTokens += chunk.usage.prompt_tokens ?? 0;
+            totalOutputTokens += chunk.usage.completion_tokens ?? 0;
+          }
+
+          const delta = chunk.choices?.[0]?.delta;
+          const fr = chunk.choices?.[0]?.finish_reason;
+          if (fr) finishReason = fr;
+
+          if (delta?.content) {
+            assistantContent += delta.content;
+            fullAssistantResponse += delta.content;
+            onToken(delta.content);
+          }
+
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = String(tc.index);
+              if (!toolCallsMap[idx]) {
+                toolCallsMap[idx] = { id: tc.id ?? '', type: 'function', function: { name: '', arguments: '' } };
+              }
+              if (tc.id) toolCallsMap[idx].id = tc.id;
+              if (tc.function?.name) toolCallsMap[idx].function.name += tc.function.name;
+              if (tc.function?.arguments) toolCallsMap[idx].function.arguments += tc.function.arguments;
+            }
           }
         }
       }
     }
 
-    const toolCallsList = Object.values(toolCallsMap);
+    const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
     messages.push({
       role: 'assistant',
       content: assistantContent || null,
@@ -586,7 +651,6 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       onToolCall(toolName, 'running');
       toolsUsed.push(toolName);
 
-      // Audit tool call
       void auditV3(ownerContext.userId, 'v3_tool_call', {
         conversationId,
         toolName,

@@ -36,10 +36,53 @@ execSync("npx vite build --ssr", {
 // with its own implementation — that's fine, this is only a fallback that reads
 // from process.env (same behaviour as the dev shim).
 
+// ── Shim: mirrors /app/airo-secrets/src/secrets-utils.ts exactly ─────────────
+//
+// The platform writes secrets to $NOMAD_TASK_DIR/config.json (default /local/config.json)
+// in the format: { "SECRET_NAME": { "VALUE": "...", "SYSTEM_MANAGED": false } }
+//
+// Only secrets with SYSTEM_MANAGED=false are accessible.
+// Falls back to process.env for local dev and CI where config.json is absent.
 const shimSrc = `
-// Runtime shim for #airo/secrets — reads from process.env.
-// The platform may replace this with a managed implementation at deploy time.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Cache parsed config to avoid repeated disk reads per request
+let _configCache = null;
+let _configReadAttempted = false;
+
+function readConfig() {
+  if (_configReadAttempted) return _configCache;
+  _configReadAttempted = true;
+  const configPath = join(process.env.NOMAD_TASK_DIR || '/local', 'config.json');
+  try {
+    const content = readFileSync(configPath, 'utf8');
+    _configCache = JSON.parse(content);
+  } catch {
+    // config.json absent (dev/CI) — fall back to process.env
+    _configCache = null;
+  }
+  return _configCache;
+}
+
 export function getSecret(name) {
+  const config = readConfig();
+  if (config !== null) {
+    const entry = config[name];
+    if (
+      entry !== null &&
+      typeof entry === 'object' &&
+      'VALUE' in entry &&
+      'SYSTEM_MANAGED' in entry &&
+      entry.SYSTEM_MANAGED === false
+    ) {
+      return typeof entry.VALUE === 'string' ? entry.VALUE : JSON.stringify(entry.VALUE);
+    }
+    // Key absent or SYSTEM_MANAGED=true — do NOT fall through to process.env
+    // (system-managed secrets must remain inaccessible)
+    return '';
+  }
+  // config.json not available — dev/CI fallback
   return process.env[name] ?? '';
 }
 `.trimStart();

@@ -413,11 +413,8 @@ interface SseDone       {
   conversationId?: string;
   model?: string;
   toolsUsed?: string[];
-  // V2 compat fields
-  mode?: string;
-  usedOpenAI?: boolean;
 }
-interface SseError      { type: 'error';       message: string }
+interface SseError      { type: 'error'; message: string; configFault?: boolean }
 type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
 
 // ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
@@ -529,9 +526,6 @@ export default function DazzaAIPage() {
   // client infers. This runs once when the authenticated user is known.
   const [engineDiag, setEngineDiag] = useState<{
     secretPresent: boolean;
-    secretLength: number;
-    secretFirstChar: string;
-    secretTrimmedLower: string;
     resolvedEnabled: boolean;
   } | null>(null);
 
@@ -539,7 +533,7 @@ export default function DazzaAIPage() {
     if (!me?.id) return;
     fetch('/api/dazza/engine-status', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then((data: { engine?: string; _diag?: typeof engineDiag } | null) => {
+      .then((data: { engine?: string; _diag?: { secretPresent: boolean; resolvedEnabled: boolean } } | null) => {
         if (data?.engine === 'v3') setActiveEngine('v3');
         else if (data?.engine === 'v2-rollback') setActiveEngine('v2-rollback');
         if (data?._diag) setEngineDiag(data._diag);
@@ -683,18 +677,23 @@ export default function DazzaAIPage() {
             if (event.conversationId) {
               setConversationId(event.conversationId);
             }
-            // Track active engine
+            // Track active engine from done event
             if (event.engine) {
               setActiveEngine(event.engine);
             }
-            // If no AI was used (V2 fallback without key)
-            if (event.usedOpenAI === false && !event.engine) {
-              setNoApiKey(true);
-            } else {
-              setNoApiKey(false);
-            }
           } else if (event.type === 'error') {
-            throw new Error(event.message);
+            const errEvt = event as SseError & { configFault?: boolean };
+            if (errEvt.configFault) {
+              // Configuration fault — show inline in the message bubble
+              setMessages((prev) => prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, content: `⚠️ ${event.message}` }
+                  : m
+              ));
+              setActiveEngine('v2-rollback');
+            } else {
+              throw new Error(event.message);
+            }
           }
         }
       }
@@ -904,7 +903,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             {activeEngine === 'v3' && (
               <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
                 <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse inline-block" />
-                V3
+                V3 · o4-mini
               </span>
             )}
             {activeEngine === 'v2-rollback' && (
@@ -915,15 +914,15 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             {activeEngine === 'v2-rollback' && engineDiag && (
               <span
                 className="hidden md:flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-full border border-red-200 font-mono cursor-help"
-                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent}, len=${engineDiag.secretLength}, first='${engineDiag.secretFirstChar}', value='${engineDiag.secretTrimmedLower}' — must be 'true' to activate V3`}
+                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent} — must be 'true' to activate V3`}
               >
-                flag={engineDiag.secretTrimmedLower || '(empty)'}
+                secret {engineDiag.secretPresent ? 'present' : 'missing'}
               </span>
             )}
             {!activeEngine && (
-              <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
-                Online
+              <span className="flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse inline-block" />
+                Checking…
               </span>
             )}
             {conversationId && (
