@@ -394,8 +394,14 @@ export default function BugReportsTab() {
   }
 
   function handleCopyPrompt() {
-    const chosen = reports.filter(r => selectedIds.has(r.id));
+    // If nothing is checked, auto-select all visible selectable reports
+    const effectiveIds = selectedCount > 0 ? selectedIds : new Set(selectableReports.map(r => r.id));
+    const chosen = reports.filter(r => effectiveIds.has(r.id));
     if (chosen.length === 0) return;
+
+    // Reflect the auto-selection in state so checkboxes update
+    if (selectedCount === 0) setSelectedIds(effectiveIds);
+
     const text = buildRepairPrompt(chosen);
 
     if (copyToastTimer.current) clearTimeout(copyToastTimer.current);
@@ -404,7 +410,6 @@ export default function BugReportsTab() {
       setCopyPromptMsg('copied');
       copyToastTimer.current = setTimeout(() => setCopyPromptMsg(''), 4000);
     }).catch(() => {
-      // Clipboard permission denied — open fallback modal
       setFallbackText(text);
     });
   }
@@ -555,13 +560,19 @@ export default function BugReportsTab() {
               {/* Copy Airo Prompt button */}
               <button
                 onClick={handleCopyPrompt}
-                disabled={selectedCount === 0}
+                disabled={selectableReports.length === 0}
                 className={`ml-auto flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
-                  selectedCount > 0
+                  selectableReports.length > 0
                     ? 'bg-violet-600 hover:bg-violet-700 text-white border-violet-600'
                     : 'bg-white text-slate-300 border-slate-200 cursor-not-allowed'
                 }`}
-                title={selectedCount === 0 ? 'Select open or in-progress cases first' : `Copy repair prompt for ${selectedCount} case${selectedCount !== 1 ? 's' : ''}`}
+                title={
+                  selectableReports.length === 0
+                    ? 'No open or in-progress cases to copy'
+                    : selectedCount > 0
+                      ? `Copy repair prompt for ${selectedCount} selected case${selectedCount !== 1 ? 's' : ''}`
+                      : `Copy repair prompt for all ${selectableReports.length} visible case${selectableReports.length !== 1 ? 's' : ''}`
+                }
               >
                 {copyPromptMsg === 'copied'
                   ? <ClipboardCheck size={12} />
@@ -569,7 +580,9 @@ export default function BugReportsTab() {
                 }
                 {selectedCount > 0
                   ? `Copy Airo Prompt (${selectedCount})`
-                  : 'Copy Airo Prompt'
+                  : selectableReports.length > 0
+                    ? `Copy Airo Prompt (${selectableReports.length})`
+                    : 'Copy Airo Prompt'
                 }
               </button>
             </div>
@@ -1010,7 +1023,7 @@ export default function BugReportsTab() {
       {copyPromptMsg === 'copied' && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-600 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg animate-in slide-in-from-bottom-2 duration-200">
           <ClipboardCheck size={13} />
-          Airo repair prompt copied — {selectedCount} case{selectedCount !== 1 ? 's' : ''} included
+          Airo repair prompt copied — {selectedIds.size} case{selectedIds.size !== 1 ? 's' : ''} included
         </div>
       )}
 
