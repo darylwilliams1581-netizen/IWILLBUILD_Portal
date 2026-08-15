@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Printer, Save, Loader2, ChevronLeft } from 'lucide-react';
+import { X, Printer, Save, Loader2, ChevronLeft, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { openPrintWindow } from '@/lib/print-html';
+import { downloadPosterAsPdf } from '@/lib/poster-pdf';
 import {
   PosterRiskMatrix, PosterEmergencyContacts, PosterEmergencyAssembly,
   PosterLifeSavingRules, PosterPPE, PosterLiftSafely, PosterSiteRules,
@@ -166,6 +167,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
   const [selected, setSelected] = useState<PosterDef | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const posterWrapRef = useRef<HTMLDivElement>(null);
   const [posterScale, setPosterScale] = useState(1);
@@ -228,6 +230,23 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
       `<!DOCTYPE html><html><head><title>Safety Poster</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`,
       true,
     );
+  }
+
+  async function handleDownloadPdf() {
+    if (!printRef.current || !selected) return;
+    setDownloadingPdf(true);
+    try {
+      const title = formData.projectName
+        ? `${selected.label} — ${formData.projectName}`
+        : selected.label;
+      const safeFilename = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      await downloadPosterAsPdf(printRef.current, safeFilename);
+    } catch (err) {
+      console.error('Poster PDF download failed:', err);
+      alert('Failed to generate PDF. Please try Print / PDF instead.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   }
 
   return (
@@ -335,6 +354,14 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm text-slate-500">Review your poster. Save it to your library or print directly.</p>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleDownloadPdf}
+                      disabled={downloadingPdf}
+                      className="flex items-center gap-2 border border-slate-200 text-slate-600 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    >
+                      {downloadingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      Download PDF
+                    </button>
                     <button
                       onClick={handlePrint}
                       className="flex items-center gap-2 border border-slate-200 text-slate-600 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors"

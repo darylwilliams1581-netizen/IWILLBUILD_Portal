@@ -687,7 +687,7 @@ export function PostersTab() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deletingGen, setDeletingGen] = useState<number | null>(null);
   const [previewPoster, setPreviewPoster] = useState<GeneratedPoster | null>(null);
-  const [downloadingPdf, setDownloadingPdf] = useState<number | null>(null);
+  const [downloadPoster, setDownloadPoster] = useState<GeneratedPoster | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -698,26 +698,6 @@ export function PostersTab() {
       setGenerated(gd.posters ?? []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
-
-  async function handleDownloadPdf(e: React.MouseEvent, poster: GeneratedPoster) {
-    e.stopPropagation();
-    setDownloadingPdf(poster.id);
-    try {
-      const res = await fetch(`/api/safety/generated-posters/${poster.id}/pdf`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${poster.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      alert('Failed to download PDF. Please try again.');
-    } finally {
-      setDownloadingPdf(null);
-    }
-  }
 
   async function handleDelete(id: number) {
     if (!confirm('Delete this poster?')) return;
@@ -801,12 +781,11 @@ export function PostersTab() {
                     <Eye size={14} />
                   </button>
                   <button
-                    onClick={(e) => handleDownloadPdf(e, p)}
-                    disabled={downloadingPdf === p.id}
+                    onClick={(e) => { e.stopPropagation(); setDownloadPoster(p); }}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Download PDF"
                   >
-                    {downloadingPdf === p.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                    <Download size={14} />
                   </button>
                   <button onClick={() => handleDeleteGenerated(p.id)} disabled={deletingGen === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                     {deletingGen === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
@@ -870,7 +849,7 @@ export function PostersTab() {
         )}
       </AnimatePresence>
 
-      {/* Poster preview modal (outside AnimatePresence so it doesn't unmount mid-animation) */}
+      {/* Poster preview modal */}
       {previewPoster && (
         <PosterPreviewModal
           open={!!previewPoster}
@@ -878,6 +857,18 @@ export function PostersTab() {
           title={previewPoster.title}
           posterType={previewPoster.poster_type}
           dataJson={previewPoster.data_json}
+        />
+      )}
+
+      {/* Download-triggered modal — renders poster off-screen, auto-downloads PDF, then closes */}
+      {downloadPoster && (
+        <PosterPreviewModal
+          open={!!downloadPoster}
+          onClose={() => setDownloadPoster(null)}
+          title={downloadPoster.title}
+          posterType={downloadPoster.poster_type}
+          dataJson={downloadPoster.data_json}
+          triggerDownload
         />
       )}
     </div>

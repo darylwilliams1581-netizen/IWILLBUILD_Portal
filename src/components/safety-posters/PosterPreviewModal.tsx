@@ -3,9 +3,10 @@
  * Shows a scaled live preview of a generated safety poster with Print/PDF button.
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Printer, Download } from 'lucide-react';
+import { X, Printer, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { openPrintWindow } from '@/lib/print-html';
+import { downloadPosterAsPdf } from '@/lib/poster-pdf';
 import {
   PosterRiskMatrix, PosterEmergencyContacts, PosterEmergencyAssembly,
   PosterLifeSavingRules, PosterPPE, PosterLiftSafely, PosterSiteRules,
@@ -26,6 +27,8 @@ interface Props {
   posterType: string;
   /** JSON string or parsed object of poster data */
   dataJson: string | Record<string, unknown>;
+  /** When true the modal auto-triggers a PDF download once the poster has rendered */
+  triggerDownload?: boolean;
 }
 
 const POSTER_WIDTH = 794; // A4 at 96 dpi
@@ -43,10 +46,12 @@ function renderPoster(type: PosterType, data: Record<string, string>) {
   }
 }
 
-export default function PosterPreviewModal({ open, onClose, title, posterType, dataJson }: Props) {
+export default function PosterPreviewModal({ open, onClose, title, posterType, dataJson, triggerDownload }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const autoDownloadFired = useRef(false);
 
   const data: Record<string, string> = (() => {
     try {
@@ -72,6 +77,18 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
     return () => obs.disconnect();
   }, [open]);
 
+  // Auto-download when triggerDownload=true — fires once after the poster renders
+  useEffect(() => {
+    if (!open || !triggerDownload || autoDownloadFired.current) return;
+    // Give the poster one animation frame to fully paint before capturing
+    const id = requestAnimationFrame(() => {
+      autoDownloadFired.current = true;
+      void handleDownloadPdf();
+    });
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, triggerDownload]);
+
   function handlePrint() {
     if (!printRef.current) return;
     const html = printRef.current.innerHTML;
@@ -79,6 +96,20 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
       `<!DOCTYPE html><html><head><title>${title}</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`,
       true,
     );
+  }
+
+  async function handleDownloadPdf() {
+    if (!printRef.current) return;
+    setDownloadingPdf(true);
+    try {
+      const safeFilename = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      await downloadPosterAsPdf(printRef.current, safeFilename);
+    } catch (err) {
+      console.error('Poster PDF download failed:', err);
+      alert('Failed to generate PDF. Please try Print / PDF instead.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   }
 
   return (
@@ -105,6 +136,14 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
                 <p className="text-xs text-slate-400 mt-0.5 capitalize">{posterType.replace(/_/g, ' ')}</p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {downloadingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  Download PDF
+                </button>
                 <button
                   onClick={handlePrint}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors"
@@ -147,7 +186,8 @@ export default function PosterPreviewModal({ open, onClose, title, posterType, d
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
               <Download size={13} className="text-slate-400 shrink-0" />
               <p className="text-xs text-slate-400">
-                Use <strong className="text-slate-600">Print / PDF</strong> to save as PDF — choose "Save as PDF" in your browser's print dialog.
+                <strong className="text-slate-600">Download PDF</strong> saves a pixel-perfect copy of this poster.{' '}
+                <strong className="text-slate-600">Print / PDF</strong> opens the browser print dialog.
               </p>
             </div>
           </motion.div>

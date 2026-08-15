@@ -685,7 +685,6 @@ import safety_documents_id_download_get_606 from "./api/safety/documents/[id]/do
 import safety_generated_posters_get_607 from "./api/safety/generated-posters/GET";
 import safety_generated_posters_post_608 from "./api/safety/generated-posters/POST";
 import safety_generated_posters_id_delete_609 from "./api/safety/generated-posters/[id]/DELETE";
-import safety_generated_posters_id_pdf_get from "./api/safety/generated-posters/[id]/pdf/GET";
 import safety_job_safety_plans_get_610 from "./api/safety/job-safety-plans/GET";
 import safety_job_safety_plans_post_611 from "./api/safety/job-safety-plans/POST";
 import safety_job_safety_plans_id_delete_612 from "./api/safety/job-safety-plans/[id]/DELETE";
@@ -3710,7 +3709,6 @@ app.get("/api/safety/documents/:id/download", safety_documents_id_download_get_6
 app.get("/api/safety/generated-posters", safety_generated_posters_get_607);
 app.post("/api/safety/generated-posters", safety_generated_posters_post_608);
 app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete_609);
-app.get("/api/safety/generated-posters/:id/pdf", safety_generated_posters_id_pdf_get);
 app.get("/api/safety/job-safety-plans", safety_job_safety_plans_get_610);
 app.post("/api/safety/job-safety-plans", safety_job_safety_plans_post_611);
 app.delete("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_delete_612);
