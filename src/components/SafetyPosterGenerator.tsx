@@ -254,7 +254,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center overflow-y-auto py-6 px-4"
+      className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center overflow-y-auto pt-6 pb-6 md:pt-[124px] px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.div
