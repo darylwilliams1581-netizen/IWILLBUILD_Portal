@@ -2,13 +2,14 @@
  * BugReportsTab — Owner Console tab for reviewing and resolving bug reports.
  * Includes diagnostic timeline and Dazza Review panel (platform-owner only).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Bug, RefreshCw, Search, X, ChevronDown, ExternalLink,
   CheckCircle2, Clock, AlertCircle, Loader2, Image,
   User, Building2, Monitor, Calendar, Tag, MessageSquare,
   Circle, ArrowRight, Activity, Download, ChevronRight,
   Smartphone, Globe, WifiOff, Package, FileText,
+  Clipboard, ClipboardCheck,
 } from 'lucide-react';
 import { BUG_CATEGORIES } from '@/components/BugReportModal';
 import { usePermissions } from '@/lib/usePermissions';
@@ -100,6 +101,221 @@ function makeEvidenceSnapshot(r: BugReportRow): string {
   return [r.diagnostic_events ?? '', r.screenshot_path ?? '', r.resolution_note ?? ''].join('|');
 }
 
+// ── Selectable statuses ───────────────────────────────────────────────────────
+
+const SELECTABLE_STATUSES = new Set(['open', 'in_progress']);
+
+// ── Sanitise route for prompt (strip query strings + tokens) ─────────────────
+
+function sanitiseRouteForPrompt(raw: string | null): string {
+  if (!raw) return '—';
+  let s = raw.split('?')[0];
+  s = s.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id');
+  s = s.replace(/\/\d+/g, '/:id');
+  return s || '—';
+}
+
+// ── Dazza review extraction ───────────────────────────────────────────────────
+
+interface DazzaLatest {
+  confidence: number | null;
+  diagnosis: string | null;
+  recommendation: string | null;
+}
+
+function extractDazzaLatest(report: BugReportRow): DazzaLatest {
+  // ai_analysis field may contain the latest Dazza review JSON
+  if (!report.ai_analysis) return { confidence: null, diagnosis: null, recommendation: null };
+  try {
+    const parsed = JSON.parse(report.ai_analysis) as Record<string, unknown>;
+    return {
+      confidence:     typeof parsed.confidence === 'number' ? parsed.confidence : null,
+      diagnosis:      typeof parsed.likely_cause === 'string' ? parsed.likely_cause
+                    : typeof parsed.what_found === 'string'   ? parsed.what_found
+                    : null,
+      recommendation: typeof parsed.recommended_fix === 'string' ? parsed.recommended_fix : null,
+    };
+  } catch {
+    return { confidence: null, diagnosis: null, recommendation: null };
+  }
+}
+
+// ── Prompt generator (deterministic, no AI, no DB, no network) ───────────────
+
+function buildRepairPrompt(cases: BugReportRow[]): string {
+  const caseBlocks = cases.map(r => {
+    const ref = buildReference(r);
+    const diagEvents = parseDiagEvents(r.diagnostic_events);
+    const dazza = extractDazzaLatest(r);
+    const route = sanitiseRouteForPrompt(r.current_route ?? r.page_url ?? null);
+
+    return [
+      `### ${ref}`,
+      '',
+      `- Status: ${r.status}`,
+      `- Category: ${r.category ? categoryLabel(r.category) : '—'}`,
+      `- Platform/version: ${r.platform ?? 'web'}${r.app_version ? ` · v${r.app_version}` : ''}`,
+      `- Route: ${route}`,
+      `- Description: ${r.description.trim()}`,
+      `- Diagnostics: ${diagEvents.length} event(s) captured`,
+      `- Screenshot: ${r.screenshot_path ? 'Yes' : 'No'}`,
+      `- Dazza confidence: ${dazza.confidence !== null ? `${dazza.confidence}%` : 'Not yet reviewed'}`,
+      `- Dazza diagnosis: ${dazza.diagnosis ?? 'Not yet reviewed'}`,
+      `- Dazza recommendation: ${dazza.recommendation ?? 'Not yet reviewed'}`,
+      '',
+      '---',
+    ].join('\n');
+  });
+
+  return [
+    '# IWILLBUILD Bug Repair Session',
+    '',
+    'Work through the selected bug cases below.',
+    '',
+    '## Mandatory workflow',
+    '',
+    'For each case:',
+    '',
+    '1. **Start**',
+    '   - Read the complete bug report, diagnostics, screenshots, route and Dazza Review.',
+    '   - Change the case to **In Progress** through the existing authenticated Bug Report API.',
+    '   - Do not update bug tables with raw SQL or temporary database scripts.',
+    '',
+    '2. **Diagnose**',
+    '   - Inspect the actual relevant source files before editing.',
+    '   - Confirm the root cause.',
+    '   - Treat Dazza\'s file and function suggestions as unverified until those paths are confirmed in the repository.',
+    '   - Do not invent missing files merely because Dazza suggested them.',
+    '',
+    '3. **Fix**',
+    '   - Make the smallest safe change that resolves the root cause.',
+    '   - Preserve unrelated functionality.',
+    '   - Do not publish or deploy.',
+    '',
+    '4. **Verify**',
+    '   - Run the full TypeScript check separately.',
+    '   - Run the production client and SSR/server builds.',
+    '   - Perform targeted preview runtime tests for the affected workflow.',
+    '   - Test nearby behaviour that could regress.',
+    '',
+    '5. **Record**',
+    '   - Save a Resolution Note through the existing authenticated Bug Report API.',
+    '   - Include:',
+    '     - Confirmed root cause',
+    '     - Files changed',
+    '     - Fix applied',
+    '     - Build results',
+    '     - Runtime tests',
+    '     - Remaining risks',
+    '',
+    '6. **Status**',
+    '   - Mark **Resolved** only after the preview workflow passes.',
+    '   - If runtime confirmation needs Daryl, Codex, TestFlight, a secret, email/SMS delivery or a physical device, leave it **In Progress** and write exactly what remains to be tested.',
+    '   - Never mark a case Closed.',
+    '   - Codex or Daryl will independently retest and close it.',
+    '',
+    '7. **Report**',
+    '   - Return one concise result per case:',
+    '',
+    '   `✅ BUG-YYYY-XXXXX — root cause → fix → tests passed → Resolved`',
+    '',
+    '   or:',
+    '',
+    '   `🟠 BUG-YYYY-XXXXX — fix prepared → waiting for [specific runtime verification] → In Progress`',
+    '',
+    '## Technical rules',
+    '',
+    '- Use `getSecret(\'NAME\')`, not `process.env.NAME`, where required by the Airo runtime.',
+    '- Interpret bare MySQL `DATETIME` strings as UTC before converting to local time.',
+    '- Convert ISO timestamps to `YYYY-MM-DD HH:MM:SS` before inserting into MySQL `DATETIME`.',
+    '- Confirm the actual return shape of `db.execute()` before reading rows.',
+    '- This MySQL version does not support `ADD COLUMN IF NOT EXISTS`; inspect `INFORMATION_SCHEMA` first, then use plain `ADD COLUMN`.',
+    '- BetterAuth\'s table is `user`, singular.',
+    '- New routes require both a handler and registration in `src/server/entry.ts`.',
+    '- Use parameterised database operations or the existing API.',
+    '- Never construct raw SQL from bug descriptions or resolution notes.',
+    '- Never expose secrets, SQL, stack traces or credentials.',
+    '- Do not publish.',
+    '',
+    '## Bug Report updates',
+    '',
+    'Reuse the existing authenticated endpoints currently used by Owner Console to:',
+    '',
+    '- Change status: `PATCH /api/bug-reports/:id` with `{ status: "in_progress" }` or `{ status: "resolved" }`',
+    '- Save resolution notes: `PATCH /api/bug-reports/:id` with `{ resolution_note: "..." }`',
+    '',
+    'Do not create or run `scripts/resolve-bugs.ts`.',
+    'Do not update `bug_reports` using raw SQL.',
+    'Do not derive the internal database ID by reversing the visible five-character case reference.',
+    '',
+    '## Selected cases',
+    '',
+    caseBlocks.join('\n'),
+  ].join('\n');
+}
+
+// ── Fallback modal (clipboard permission denied) ──────────────────────────────
+
+function FallbackModal({ text, onClose }: { text: string; onClose: () => void }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  function handleManualCopy() {
+    if (textareaRef.current) {
+      textareaRef.current.select();
+      document.execCommand('copy');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <Clipboard size={15} className="text-violet-600" />
+            <h3 className="font-bold text-slate-800 text-sm">Copy Airo Repair Prompt</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <p className="px-5 pt-3 pb-1 text-xs text-slate-500 shrink-0">
+          Clipboard access was denied. Select all and copy manually, or use the button below.
+        </p>
+        <div className="flex-1 overflow-hidden px-5 pb-2">
+          <textarea
+            ref={textareaRef}
+            readOnly
+            value={text}
+            className="w-full h-full min-h-[300px] font-mono text-[11px] text-slate-700 border border-slate-200 rounded-xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+            onClick={() => textareaRef.current?.select()}
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100 shrink-0">
+          <button
+            onClick={onClose}
+            className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Close
+          </button>
+          <button
+            onClick={handleManualCopy}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {copied ? <ClipboardCheck size={13} /> : <Clipboard size={13} />}
+            {copied ? 'Copied!' : 'Copy to clipboard'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BugReportsTab() {
@@ -129,6 +345,12 @@ export default function BugReportsTab() {
   const [copyMdMsg, setCopyMdMsg]       = useState('');
   const [copyDiagMsg, setCopyDiagMsg]   = useState('');
 
+  // ── Selection + Copy Airo Prompt ──────────────────────────────────────────
+  const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
+  const [copyPromptMsg, setCopyPromptMsg]   = useState('');   // '' | 'copied' | 'failed'
+  const [fallbackText, setFallbackText]     = useState<string | null>(null);
+  const copyToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
     try {
@@ -148,6 +370,46 @@ export default function BugReportsTab() {
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [load]);
+
+  // Clear selection when filters change (hidden reports must not stay selected)
+  useEffect(() => { setSelectedIds(new Set()); }, [filterStatus, filterCategory, search]);
+
+  // Selectable reports = only open / in_progress in the current visible list
+  const selectableReports = reports.filter(r => SELECTABLE_STATUSES.has(r.status));
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectVisible() {
+    setSelectedIds(new Set(selectableReports.map(r => r.id)));
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function handleCopyPrompt() {
+    const chosen = reports.filter(r => selectedIds.has(r.id));
+    if (chosen.length === 0) return;
+    const text = buildRepairPrompt(chosen);
+
+    if (copyToastTimer.current) clearTimeout(copyToastTimer.current);
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyPromptMsg('copied');
+      copyToastTimer.current = setTimeout(() => setCopyPromptMsg(''), 4000);
+    }).catch(() => {
+      // Clipboard permission denied — open fallback modal
+      setFallbackText(text);
+    });
+  }
+
+  const selectedCount = selectedIds.size;
 
   async function updateReport(id: string, patch: { status?: string; resolution_note?: string }) {
     setSaving(true); setSaveMsg('');
@@ -270,6 +532,49 @@ export default function BugReportsTab() {
             ))}
           </div>
 
+          {/* Copy Airo Prompt toolbar row (platform-owner only) */}
+          {isPlatformOwner && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Select visible / Clear */}
+              <button
+                onClick={selectVisible}
+                disabled={selectableReports.length === 0}
+                className="text-[11px] text-slate-500 hover:text-slate-700 underline underline-offset-2 disabled:opacity-40 disabled:no-underline transition-colors"
+              >
+                Select visible
+              </button>
+              {selectedCount > 0 && (
+                <button
+                  onClick={clearSelection}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+
+              {/* Copy Airo Prompt button */}
+              <button
+                onClick={handleCopyPrompt}
+                disabled={selectedCount === 0}
+                className={`ml-auto flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                  selectedCount > 0
+                    ? 'bg-violet-600 hover:bg-violet-700 text-white border-violet-600'
+                    : 'bg-white text-slate-300 border-slate-200 cursor-not-allowed'
+                }`}
+                title={selectedCount === 0 ? 'Select open or in-progress cases first' : `Copy repair prompt for ${selectedCount} case${selectedCount !== 1 ? 's' : ''}`}
+              >
+                {copyPromptMsg === 'copied'
+                  ? <ClipboardCheck size={12} />
+                  : <Clipboard size={12} />
+                }
+                {selectedCount > 0
+                  ? `Copy Airo Prompt (${selectedCount})`
+                  : 'Copy Airo Prompt'
+                }
+              </button>
+            </div>
+          )}
+
           {/* Search + category */}
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -324,53 +629,75 @@ export default function BugReportsTab() {
               {reports.map(r => {
                 const sc = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.open;
                 const isSelected = selected?.id === r.id;
-                const diagEvents = parseDiagEvents(r.diagnostic_events);
+                const isChecked = selectedIds.has(r.id);
+                const isSelectable = SELECTABLE_STATUSES.has(r.status);                const diagEvents = parseDiagEvents(r.diagnostic_events);
                 return (
-                  <button
+                  <div
                     key={r.id}
-                    onClick={() => {
-                      setSelected(r);
-                      setResNote(r.resolution_note ?? '');
-                      setSaveMsg('');
-                      setDiagExpanded(false);
-                      setExportMsg('');
-                      setCopyMdMsg('');
-                      setCopyDiagMsg('');
-                    }}
-                    className={`w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-violet-50 border-l-2 border-l-primary' : ''}`}
+                    className={`flex items-stretch border-b border-slate-100 last:border-0 ${isSelected ? 'bg-violet-50 border-l-2 border-l-primary' : ''}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sc.color}`}>
-                            {sc.icon}{sc.label}
-                          </span>
-                          {r.category && (
-                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                              {categoryLabel(r.category)}
-                            </span>
-                          )}
-                          {r.platform && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400">
-                              {platformIcon(r.platform)}{r.platform}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-700 font-medium line-clamp-2 leading-relaxed">
-                          {r.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400">
-                          <span>{r.submitted_by_name || r.submitted_by_email}</span>
-                          {r.company_name && <><span>·</span><span>{r.company_name}</span></>}
-                          <span>·</span>
-                          <span>{timeAgo(r.created_at)}</span>
-                          {r.screenshot_path && <><span>·</span><Image size={10} /></>}
-                          {diagEvents.length > 0 && <><span>·</span><Activity size={10} /></>}
-                        </div>
+                    {/* Checkbox column (platform-owner only, selectable statuses only) */}
+                    {isPlatformOwner && (
+                      <div className="flex items-start pt-4 pl-3 pr-1 shrink-0">
+                        {isSelectable ? (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelect(r.id)}
+                            onClick={e => e.stopPropagation()}
+                            className="w-3.5 h-3.5 rounded border-slate-300 accent-violet-600 cursor-pointer"
+                            aria-label={`Select ${buildReference(r)}`}
+                          />
+                        ) : (
+                          <span className="w-3.5 h-3.5 inline-block" aria-hidden="true" />
+                        )}
                       </div>
-                      <ArrowRight size={13} className="text-slate-300 shrink-0 mt-1" />
-                    </div>
-                  </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSelected(r);
+                        setResNote(r.resolution_note ?? '');
+                        setSaveMsg('');
+                        setDiagExpanded(false);
+                        setExportMsg('');
+                        setCopyMdMsg('');
+                        setCopyDiagMsg('');
+                      }}
+                      className="flex-1 text-left px-4 py-3.5 hover:bg-slate-50 transition-colors min-w-0"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sc.color}`}>
+                              {sc.icon}{sc.label}
+                            </span>
+                            {r.category && (
+                              <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                                {categoryLabel(r.category)}
+                              </span>
+                            )}
+                            {r.platform && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400">
+                                {platformIcon(r.platform)}{r.platform}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-700 font-medium line-clamp-2 leading-relaxed">
+                            {r.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400">
+                            <span>{r.submitted_by_name || r.submitted_by_email}</span>
+                            {r.company_name && <><span>·</span><span>{r.company_name}</span></>}
+                            <span>·</span>
+                            <span>{timeAgo(r.created_at)}</span>
+                            {r.screenshot_path && <><span>·</span><Image size={10} /></>}
+                            {diagEvents.length > 0 && <><span>·</span><Activity size={10} /></>}
+                          </div>
+                        </div>
+                        <ArrowRight size={13} className="text-slate-300 shrink-0 mt-1" />
+                      </div>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -678,6 +1005,22 @@ export default function BugReportsTab() {
           </div>
         )}
       </div>
+
+      {/* ── Copy Airo Prompt success toast ── */}
+      {copyPromptMsg === 'copied' && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-600 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg animate-in slide-in-from-bottom-2 duration-200">
+          <ClipboardCheck size={13} />
+          Airo repair prompt copied — {selectedCount} case{selectedCount !== 1 ? 's' : ''} included
+        </div>
+      )}
+
+      {/* ── Clipboard fallback modal ── */}
+      {fallbackText !== null && (
+        <FallbackModal
+          text={fallbackText}
+          onClose={() => setFallbackText(null)}
+        />
+      )}
     </div>
   );
 }
