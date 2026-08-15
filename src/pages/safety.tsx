@@ -6,7 +6,7 @@ import {
   Loader2, Check, Download, Trash2, Copy,
   BookOpen, Library, Image, AlertCircle,
   Calendar, Building2, ChevronDown, Wand2,
-  FileDown, Package, Printer, Share2, Pencil,
+  FileDown, Package, Printer, Share2, Pencil, Eye,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
@@ -687,6 +687,7 @@ export function PostersTab() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deletingGen, setDeletingGen] = useState<number | null>(null);
   const [previewPoster, setPreviewPoster] = useState<GeneratedPoster | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -697,6 +698,26 @@ export function PostersTab() {
       setGenerated(gd.posters ?? []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  async function handleDownloadPdf(e: React.MouseEvent, poster: GeneratedPoster) {
+    e.stopPropagation();
+    setDownloadingPdf(poster.id);
+    try {
+      const res = await fetch(`/api/safety/generated-posters/${poster.id}/pdf`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${poster.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(null);
+    }
+  }
 
   async function handleDelete(id: number) {
     if (!confirm('Delete this poster?')) return;
@@ -723,7 +744,7 @@ export function PostersTab() {
   const totalCount = posters.length + generated.length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-slate-500">{totalCount} poster{totalCount !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-2">
@@ -777,7 +798,15 @@ export function PostersTab() {
                     className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Preview poster"
                   >
-                    <Printer size={14} />
+                    <Eye size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => handleDownloadPdf(e, p)}
+                    disabled={downloadingPdf === p.id}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
+                    title="Download PDF"
+                  >
+                    {downloadingPdf === p.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                   </button>
                   <button onClick={() => handleDeleteGenerated(p.id)} disabled={deletingGen === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                     {deletingGen === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}

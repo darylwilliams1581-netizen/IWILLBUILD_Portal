@@ -60,7 +60,7 @@ export default async function handler(req: Request, res: Response) {
           ja.notes,
           ja.created_at
         FROM job_attendance ja
-        LEFT JOIN users u ON u.id = ja.user_id
+        LEFT JOIN user u ON u.id = ja.user_id
         LEFT JOIN jobs j  ON j.id = ja.job_id
         WHERE ${w.join(' AND ')}
         ORDER BY ja.created_at DESC
@@ -83,7 +83,7 @@ export default async function handler(req: Request, res: Response) {
           u.name                AS user_name,
           u.email               AS user_email,
           fa.name               AS fleet_name,
-          fa.registration       AS fleet_registration,
+          fa.rego AS fleet_registration,
           j.name                AS job_name,
           j.job_number,
           ful.started_at,
@@ -158,9 +158,9 @@ export default async function handler(req: Request, res: Response) {
           pal.user_id,
           pal.email,
           pal.event_type,
-          pal.entity_type,
-          pal.entity_id,
-          pal.description,
+          NULL AS entity_type,
+          NULL AS entity_id,
+          pal.reason AS description,
           pal.ip_address,
           pal.success,
           pal.created_at

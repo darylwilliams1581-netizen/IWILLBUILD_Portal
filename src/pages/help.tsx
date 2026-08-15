@@ -16,7 +16,7 @@ import {
   ShieldAlert, AlertTriangle,
   ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft,
   Zap, FileStack, Map, ShieldCheck, AlertCircle, Building2,
-  TableProperties, ScrollText, Link2, History, Bot, Terminal,
+  TableProperties, ScrollText, Link2, History,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -609,32 +609,6 @@ const GROUPS: GroupDoc[] = [
           'Use the filters to narrow by worker, job, or date range.',
           'Tap Export CSV to download the filtered records.',
         ],
-      },
-      {
-        key: 'dazza_ai',
-        label: 'Dazza AI',
-        icon: Bot,
-        bg: 'bg-violet-600',
-        purpose: 'An AI assistant built into the portal. Ask Dazza questions about your jobs, costs, safety, or anything else — it has context about your business data.',
-        howTo: [
-          'Tap Dazza AI in the top bar (Owner only).',
-          'Type your question in the chat input.',
-          'Dazza responds with answers, summaries, or suggestions.',
-          'Use it to analyse job data, draft documents, or get quick answers.',
-        ],
-        tip: 'Dazza AI is most useful for summarising job status, spotting cost overruns, and drafting safety content.',
-      },
-      {
-        key: 'dev_console',
-        label: 'Dev Console',
-        icon: Terminal,
-        bg: 'bg-green-700',
-        purpose: 'Platform owner development console. Access system diagnostics, database tools, and platform configuration.',
-        howTo: [
-          'Tap Dev Console in the top bar (Platform Owner only).',
-          'Use the available tools for system diagnostics and configuration.',
-        ],
-        tip: 'This tool is restricted to the platform owner account only.',
       },
     ],
   },
