@@ -53,10 +53,9 @@ const OWNER_SUPPORT_EMAIL = 'support@iwillbuild.com';
 // The model is resolved once per request from the secret store.
 function getDazzaModel(): string {
   const configured = getSecret('DAZZA_OPENAI_MODEL');
-  if (configured && typeof configured === 'string' && configured.trim()) {
-    return configured.trim();
-  }
-  return 'o4-mini';
+  // Value may be string or null — coerce safely.
+  const s = configured !== null ? String(configured).trim() : '';
+  return s || 'o4-mini';
 }
 // Conversation history sent to OpenAI — bounded to control cost
 const CONTEXT_RECENT_TURNS = 20;       // most recent turns included verbatim
@@ -69,12 +68,25 @@ const TOOL_ROUNDS_MAX = 8;
 
 export function isDazzaV3Enabled(): boolean {
   // getSecret() returns string | object | null (reference return type).
-  // Coerce to string safely before comparing.
+  // The platform stores secret values as JSON — the value may arrive as:
+  //   boolean true   → stored as JSON true  (typeof === 'boolean')
+  //   string "true"  → stored as JSON "true" (typeof === 'string')
+  //   number 1       → stored as JSON 1      (typeof === 'number')
+  // All three must resolve to enabled=true.
   const raw = getSecret(DAZZA_V3_FEATURE_FLAG);
-  const flag = (typeof raw === 'string' ? raw : '').trim().toLowerCase();
-  const enabled = flag === 'true' || flag === '1' || flag === 'yes';
-  const present = raw !== null && raw !== '';
-  console.log(`[dazza] engine flag: secret present=${present}, resolved=${enabled}`);
+  let enabled: boolean;
+  if (raw === null) {
+    enabled = false;
+  } else if (typeof raw === 'boolean') {
+    enabled = raw;
+  } else if (typeof raw === 'number') {
+    enabled = raw === 1;
+  } else {
+    const flag = String(raw).trim().toLowerCase();
+    enabled = flag === 'true' || flag === '1' || flag === 'yes';
+  }
+  const present = raw !== null;
+  console.log(`[dazza] engine flag: secret present=${present}, type=${typeof raw}, resolved=${enabled}`);
   return enabled;
 }
 
@@ -354,7 +366,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   }
 
   const apiKeyRaw = getSecret('OPENAI_API_KEY');
-  const apiKey = typeof apiKeyRaw === 'string' ? apiKeyRaw : null;
+  const apiKey = apiKeyRaw !== null ? String(apiKeyRaw).trim() : null;
   if (!apiKey) {
     onError('OpenAI API key not configured. Set OPENAI_API_KEY to enable Dazza V3.');
     return;

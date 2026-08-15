@@ -74,8 +74,9 @@ const SECRET_GROUPS: Record<string, string[]> = {
 
 function isPresent(name: string): boolean {
   const v = getSecret(name);
-  // Present = non-null and non-empty string
-  return v !== null && v !== '' && v !== undefined;
+  // Present = non-null. Empty string counts as present (key exists, value is empty).
+  // Boolean true/false, number, object all count as present.
+  return v !== null;
 }
 
 export default async function handler(req: Request, res: Response) {
