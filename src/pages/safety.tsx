@@ -6,7 +6,7 @@ import {
   Loader2, Check, Download, Trash2, Copy,
   BookOpen, Library, Image, AlertCircle,
   Calendar, Building2, ChevronDown, Wand2,
-  FileDown, Package, Printer, Share2, Pencil,
+  FileDown, Package, Printer, Share2, Pencil, Eye,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
@@ -687,6 +687,7 @@ export function PostersTab() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deletingGen, setDeletingGen] = useState<number | null>(null);
   const [previewPoster, setPreviewPoster] = useState<GeneratedPoster | null>(null);
+  const [downloadPoster, setDownloadPoster] = useState<GeneratedPoster | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -723,7 +724,7 @@ export function PostersTab() {
   const totalCount = posters.length + generated.length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-slate-500">{totalCount} poster{totalCount !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-2">
@@ -777,7 +778,14 @@ export function PostersTab() {
                     className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Preview poster"
                   >
-                    <Printer size={14} />
+                    <Eye size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDownloadPoster(p); }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
+                    title="Download PDF"
+                  >
+                    <Download size={14} />
                   </button>
                   <button onClick={() => handleDeleteGenerated(p.id)} disabled={deletingGen === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                     {deletingGen === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
@@ -841,7 +849,7 @@ export function PostersTab() {
         )}
       </AnimatePresence>
 
-      {/* Poster preview modal (outside AnimatePresence so it doesn't unmount mid-animation) */}
+      {/* Poster preview modal */}
       {previewPoster && (
         <PosterPreviewModal
           open={!!previewPoster}
@@ -849,6 +857,18 @@ export function PostersTab() {
           title={previewPoster.title}
           posterType={previewPoster.poster_type}
           dataJson={previewPoster.data_json}
+        />
+      )}
+
+      {/* Download-triggered modal — renders poster off-screen, auto-downloads PDF, then closes */}
+      {downloadPoster && (
+        <PosterPreviewModal
+          open={!!downloadPoster}
+          onClose={() => setDownloadPoster(null)}
+          title={downloadPoster.title}
+          posterType={downloadPoster.poster_type}
+          dataJson={downloadPoster.data_json}
+          triggerDownload
         />
       )}
     </div>
@@ -962,7 +982,7 @@ import DesktopDock from '@/components/DesktopDock';
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return (
-    <div className="flex flex-col flex-1 min-h-0 lg:pt-[104px]">
+    <div className="flex flex-col flex-1 min-h-0 lg:pt-[116px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

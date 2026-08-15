@@ -35,7 +35,7 @@ export default function FilesPage() {
   const totalSize = files.reduce((s, f) => s + f.sizeBytes, 0);
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[104px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

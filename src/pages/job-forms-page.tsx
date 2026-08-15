@@ -10,7 +10,6 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, FileText, Loader2, Plus,
   CheckCircle2, Clock, Eye, EyeOff,
-  Printer, Share2, Trash2, RotateCcw, ExternalLink,
   ChevronRight, AlertCircle,
 } from 'lucide-react';
 
@@ -44,8 +43,7 @@ export default function JobFormsPage() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [creatingForm, setCreatingForm] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [reopeningId, setReopeningId] = useState<number | null>(null);
+
 
   const load = () => {
     if (!id) { setLoading(false); return; }
@@ -83,25 +81,6 @@ export default function JobFormsPage() {
       alert(e instanceof Error ? e.message : 'Could not start form');
       setCreatingForm(false);
     }
-  };
-
-  const deleteSubmission = async (submissionId: number) => {
-    if (!confirm('Delete this form submission? This cannot be undone.')) return;
-    setDeletingId(submissionId);
-    try {
-      await fetch(`/api/jobs/${id}/forms/${submissionId}`, { method: 'DELETE', credentials: 'include' });
-      setSubmissions(prev => prev.filter(s => s.id !== submissionId));
-    } catch { /* silent */ } finally { setDeletingId(null); }
-  };
-
-  const reopenSubmission = async (submissionId: number) => {
-    setReopeningId(submissionId);
-    try {
-      const res = await fetch(`/api/jobs/${id}/forms/${submissionId}/reopen`, { method: 'POST', credentials: 'include' });
-      if (res.ok) {
-        setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, status: 'in_progress' } : s));
-      }
-    } catch { /* silent */ } finally { setReopeningId(null); }
   };
 
   const templateMap = new Map(templates.map(t => [t.id, t]));
@@ -227,14 +206,12 @@ export default function JobFormsPage() {
               </div>
             )}
 
-            {/* Submission cards */}
+            {/* Submission pills */}
             {!creatingForm && visibleSubmissions.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {visibleSubmissions.map((s, i) => {
                   const tmpl = s.templateId ? templateMap.get(s.templateId) : null;
                   const isCompleted = s.status === 'completed';
-                  const isDeleting = deletingId === s.id;
-                  const isReopening = reopeningId === s.id;
 
                   return (
                     <motion.div
@@ -242,97 +219,38 @@ export default function JobFormsPage() {
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                      style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}
+                      className="rounded-xl border border-slate-200 bg-white overflow-hidden"
                     >
-                      {/* Card header */}
-                      <div className="px-4 pt-4 pb-3 flex items-start gap-3">
-                        {/* Status dot */}
-                        <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isCompleted ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+                      <div
+                        onClick={() => navigate(`/jobs/${id}/forms/${s.id}`)}
+                        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                      >
+                        {/* Status icon */}
+                        <div className={`p-1.5 rounded-lg shrink-0 ${isCompleted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
                           {isCompleted
                             ? <CheckCircle2 size={13} className="text-emerald-600" />
-                            : <Clock size={13} className="text-amber-600" />
+                            : <Clock size={13} className="text-amber-500" />
                           }
                         </div>
+
+                        {/* Name + meta */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-gray-900 font-bold text-sm leading-snug">
+                          <p className="text-sm font-semibold text-slate-900 truncate leading-tight">
                             {tmpl?.name ?? `Form #${s.id}`}
                           </p>
-                          <p className="text-gray-400 text-xs mt-0.5">
-                            {isCompleted ? 'Completed' : 'Started'} by {s.completedByName ?? 'Unknown'}
-                            {s.createdAt ? ` · ${fmtDate(s.createdAt)}` : ''}
+                          <p className="text-[11px] text-slate-400 leading-tight mt-0.5 truncate">
+                            {fmtDate(isCompleted ? s.updatedAt : s.createdAt)}
+                            {s.completedByName ? ` · ${s.completedByName}` : ''}
                           </p>
                         </div>
+
                         {/* Status badge */}
-                        <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border ${isCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                          {isCompleted ? '✓ Completed' : '⏳ In Progress'}
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${isCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                          {isCompleted ? 'Completed' : 'In Progress'}
                         </span>
-                        {/* Open in new tab */}
-                        <button
-                          onClick={() => window.open(`/jobs/${id}/forms/${s.id}`, '_blank')}
-                          className="shrink-0 w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors"
-                          title="Open in new tab"
-                        >
-                          <ExternalLink size={12} />
-                        </button>
-                      </div>
 
-                      {/* Divider */}
-                      <div className="border-t border-gray-100 mx-4" />
-
-                      {/* Action buttons */}
-                      <div className="px-4 py-3 flex items-center gap-2 flex-wrap">
-                        {/* Primary: View or Continue */}
-                        <button
-                          onClick={() => navigate(`/jobs/${id}/forms/${s.id}`)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isCompleted ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-violet-500 hover:bg-violet-700 text-white'}`}
-                        >
-                          {isCompleted ? <Eye size={12} /> : <ChevronRight size={12} />}
-                          {isCompleted ? 'View' : 'Continue'}
-                        </button>
-
-                        {/* Print / PDF */}
-                        <button
-                          onClick={() => navigate(`/jobs/${id}/forms/${s.id}?print=1`)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-colors"
-                        >
-                          <Printer size={12} /> Print / PDF
-                        </button>
-
-                        {/* Reopen — only for completed */}
-                        {isCompleted && (
-                          <button
-                            onClick={() => void reopenSubmission(s.id)}
-                            disabled={isReopening}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 disabled:opacity-50 transition-colors"
-                          >
-                            {isReopening ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
-                            Reopen
-                          </button>
-                        )}
-
-                        <div className="flex-1" />
-
-                        {/* Share */}
-                        <button
-                          onClick={() => {
-                            const url = `${window.location.origin}/jobs/${id}/forms/${s.id}`;
-                            void navigator.clipboard?.writeText(url).then(() => alert('Link copied!'));
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-500 transition-colors"
-                        >
-                          <Share2 size={12} /> Share
-                        </button>
-
-                        {/* Delete */}
-                        <button
-                          onClick={() => void deleteSubmission(s.id)}
-                          disabled={isDeleting}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-100 bg-white hover:bg-red-50 text-xs font-semibold text-red-500 disabled:opacity-50 transition-colors"
-                        >
-                          {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                          Delete
-                        </button>
+                        {/* Chevron */}
+                        <ChevronRight size={13} className="text-slate-300 shrink-0" />
                       </div>
                     </motion.div>
                   );

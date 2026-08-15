@@ -103,6 +103,20 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
     setLoading(true);
     setError(null);
     try {
+      // SWMS sign-on links use the dedicated SWMS share-token endpoint so
+      // recipients land on /safety/sign/:token (the full view+sign workflow)
+      // rather than the generic /share/:token metadata page.
+      if (resolvedLinkType === 'swms_signon' && resolvedType === 'job_swms') {
+        const res = await fetch(`/api/safety/job-swms/${resolvedId}/share-token`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await res.json() as { token?: string; url?: string; error?: string };
+        if (!res.ok) throw new Error(data.error ?? 'Failed to create SWMS link');
+        setShareUrl(data.url ?? null);
+        return;
+      }
+
       const res = await fetch('/api/secure-share', {
         method: 'POST',
         credentials: 'include',

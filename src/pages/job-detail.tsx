@@ -30,8 +30,12 @@ import {
   AlertCircle,
   CheckSquare,
   Download,
+  Mail,
 } from 'lucide-react';
-import OutlookEmailButton from '@/components/OutlookEmailButton';
+import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
+import type { JobEmailContext, SendSuccessPayload } from '@/components/SendDocumentEmailModal';
+import { EmailToastContainer } from '@/components/EmailSentToast';
+import type { EmailSentToastProps } from '@/components/EmailSentToast';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
 import NotesPanel from '@/components/notes/NotesPanel';
@@ -130,6 +134,32 @@ export default function JobDetailPage() {
   const [editingAssetId, setEditingAssetId] = useState<number | null>(null);
   const [jobSummary, setJobSummary] = useState<JobSummary | null>(null);
   const [downloadingZip, setDownloadingZip] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: JobEmailContext } | null>(null);
+  const [loadingEmailDefaults, setLoadingEmailDefaults] = useState(false);
+  const [emailToasts, setEmailToasts] = useState<EmailSentToastProps[]>([]);
+
+  const dismissToast = (id: string) => setEmailToasts((prev) => prev.filter((t) => t.id !== id));
+
+  const handleEmailSuccess = (payload: SendSuccessPayload) => {
+    const id = `toast-${Date.now()}`;
+    setEmailToasts((prev) => [...prev, { id, ...payload, onDismiss: dismissToast }]);
+  };
+
+  const handleOpenEmail = async () => {
+    if (!job) return;
+    setLoadingEmailDefaults(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/compose-defaults`, { credentials: 'include' });
+      const data = await res.json() as { to?: string; subject?: string; message?: string; job?: JobEmailContext };
+      setEmailDefaults({ to: data.to ?? '', subject: data.subject ?? '', message: data.message ?? '', job: data.job });
+    } catch {
+      setEmailDefaults({ to: '', subject: '', message: '' });
+    } finally {
+      setLoadingEmailDefaults(false);
+      setShowEmailModal(true);
+    }
+  };
 
   const handleDownloadJobZip = async () => {
     if (!job) return;
@@ -347,7 +377,7 @@ export default function JobDetailPage() {
   const activeNavItem = ALL_NAV_ITEMS.find((i: NavItem) => i.key === activeTab);
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg:pt-[104px]">
+    <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -372,18 +402,14 @@ export default function JobDetailPage() {
           <div className="flex items-center gap-2 shrink-0">
           {job && !editing && (
             <>
-              <OutlookEmailButton
-                context={{
-                  kind: 'job',
-                  jobNumber: job.jobNumber ?? `#${job.id}`,
-                  jobName: job.name,
-                  status: job.status,
-                  customerName: (job as unknown as Record<string, unknown>).customerName as string | undefined,
-                  siteAddress: (job as unknown as Record<string, unknown>).siteAddress as string | undefined,
-                  link: `${window.location.origin}/jobs/${job.id}`,
-                }}
-                size="sm"
-              />
+              <button
+                onClick={() => void handleOpenEmail()}
+                disabled={loadingEmailDefaults}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded transition-colors shrink-0 disabled:opacity-50"
+              >
+                {loadingEmailDefaults ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+                <span className="hidden sm:inline">Email</span>
+              </button>
             <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded transition-colors shrink-0">
               <Edit2 size={13} /><span className="hidden sm:inline">Edit</span>
             </button>
@@ -424,18 +450,13 @@ export default function JobDetailPage() {
           <div className="ml-auto flex items-center gap-2 shrink-0">
             {job && !editing && (
               <>
-                <OutlookEmailButton
-                  context={{
-                    kind: 'job',
-                    jobNumber: job.jobNumber ?? `#${job.id}`,
-                    jobName: job.name,
-                    status: job.status,
-                    customerName: (job as unknown as Record<string, unknown>).customerName as string | undefined,
-                    siteAddress: (job as unknown as Record<string, unknown>).siteAddress as string | undefined,
-                    link: `${window.location.origin}/jobs/${job.id}`,
-                  }}
-                  size="sm"
-                />
+                <button
+                  onClick={() => void handleOpenEmail()}
+                  disabled={loadingEmailDefaults}
+                  className="op-btn op-btn-ghost disabled:opacity-50"
+                >
+                  {loadingEmailDefaults ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}Email
+                </button>
                 <button onClick={() => setEditing(true)} className="op-btn op-btn-ghost">
                   <Edit2 size={12} />Edit
                 </button>
@@ -793,6 +814,27 @@ export default function JobDetailPage() {
           )}
         </div>
       </div>
+
+      {/* ── Email compose modal ── */}
+      {showEmailModal && emailDefaults && job && (
+        <SendDocumentEmailModal
+          endpoint={`/api/jobs/${job.id}/send-email`}
+          documentLabel="Job correspondence"
+          documentType="job"
+          documentId={job.id}
+          documentName={job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name}
+          defaultTo={emailDefaults.to}
+          defaultSubject={emailDefaults.subject}
+          defaultMessage={emailDefaults.message}
+          job={emailDefaults.job}
+          jobId={job.id}
+          onSuccess={handleEmailSuccess}
+          onClose={() => { setShowEmailModal(false); setEmailDefaults(null); }}
+        />
+      )}
+
+      {/* ── Email sent toasts ── */}
+      <EmailToastContainer toasts={emailToasts} onDismiss={dismissToast} />
     </div>
   );
 }

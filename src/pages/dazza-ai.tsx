@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Bot, Send, User, HardHat, Truck, BarChart2,
   RefreshCw, Calculator, AlertTriangle,
-  CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
+  CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X,
 } from 'lucide-react';
@@ -56,7 +56,6 @@ const QUICK_ACTIONS = [
   { icon: ClipboardList, label: 'Incomplete forms',       prompt: 'Which jobs have incomplete or draft forms? List them with the job name and form name.' },
   { icon: BarChart2,     label: 'Estimate review',        prompt: 'Review estimates on active jobs. Flag any that are missing approved values or still in draft.' },
   { icon: CheckSquare,   label: 'Open to-dos',            prompt: 'List all open to-dos across all jobs. Group by job and highlight any that are overdue.' },
-  { icon: MessageSquare, label: 'Write client SMS',       prompt: 'Help me draft a professional SMS to send to a client about their job progress. Ask me for the job name and what to say.' },
   { icon: TrendingUp,    label: 'Job progress overview',  prompt: 'Give me a progress overview of all active jobs. Which are on track and which need attention?' },
 ];
 
@@ -401,33 +400,59 @@ function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg:
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const WELCOME_MSG = `Hi, I'm Dazza AI — your IWILLBUILD helper.
-
-I'm young and still learning. The more real data you add to IWILLBUILD, the more useful I become.
-
-I can help summarise jobs, check fleet issues, review forms, look at estimates, find missing information, help with construction calculators, and draft simple wording.
-
-**Always verify important building, safety, legal and compliance decisions with a competent person.**
-
-What do you need today?`;
+const WELCOME_MSG = `G'day Daryl. I'm Dazza, IWILLBUILD's read-only system watcher and investigator. I'm here to help you maintain the platform, investigate bugs, examine authorised system evidence, prepare repair cases and work with Annette's approved memory. I can investigate and recommend, but I cannot change business data, code, deployments or publishing state.`;
 
 // ── SSE event types ───────────────────────────────────────────────────────────
 
-interface SseToken    { type: 'token';       content: string }
-interface SseToolCall { type: 'tool_call';   name: string; status: 'running' }
+interface SseToken      { type: 'token';       content: string }
+interface SseToolCall   { type: 'tool_call';   name: string; status: 'running' }
 interface SseToolResult { type: 'tool_result'; name: string; status: 'done' }
-interface SseDone     { type: 'done';        mode: string; usedOpenAI: boolean; model?: string }
-interface SseError    { type: 'error';       message: string }
+interface SseDone       {
+  type: 'done';
+  engine: 'v3' | 'v2-rollback';
+  conversationId?: string;
+  model?: string;
+  toolsUsed?: string[];
+  // V2 compat fields
+  mode?: string;
+  usedOpenAI?: boolean;
+}
+interface SseError      { type: 'error';       message: string }
 type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
 
-// ── Tool call display names ───────────────────────────────────────────────────
+// ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
 
 const TOOL_LABELS: Record<string, string> = {
-  lookup_jobs:       'Looking up jobs…',
-  lookup_job_costs:  'Fetching cost data…',
-  lookup_fleet:      'Checking fleet…',
-  lookup_estimates:  'Loading estimates…',
-  lookup_open_todos: 'Scanning to-dos…',
+  // V2 / Drayl tools
+  lookup_jobs:                  'Looking up jobs…',
+  lookup_job_costs:             'Fetching cost data…',
+  lookup_fleet:                 'Checking fleet…',
+  lookup_estimates:             'Loading estimates…',
+  lookup_open_todos:            'Scanning to-dos…',
+  // V3 tools
+  v3_list_companies:            'Listing companies…',
+  v3_get_company_health:        'Checking company health…',
+  v3_list_users:                'Loading users…',
+  v3_get_user_detail:           'Fetching user detail…',
+  v3_list_bug_reports:          'Loading bug reports…',
+  v3_get_bug_report:            'Reading bug report…',
+  v3_get_incident:              'Loading incident…',
+  v3_list_incidents:            'Listing incidents…',
+  v3_get_subscription_status:   'Checking subscription…',
+  v3_get_approved_memory:       'Loading Annette memory…',
+  v3_list_pending_memory:       'Checking pending memory…',
+  v3_get_audit_log:             'Reading audit log…',
+  v3_get_system_stats:          'Fetching system stats…',
+  v3_get_storage_usage:         'Checking storage…',
+  v3_get_recent_errors:         'Loading recent errors…',
+  // Anatomy tools
+  search_anatomy:               'Searching source code…',
+  read_anatomy_file:            'Reading file…',
+  list_anatomy_files:           'Listing files…',
+  find_route:                   'Finding route…',
+  find_database_definition:     'Finding database definition…',
+  get_anatomy_manifest:         'Loading anatomy manifest…',
+  compare_anatomy_snapshots:    'Comparing snapshots…',
 };
 
 export default function DazzaAIPage() {
@@ -448,8 +473,79 @@ export default function DazzaAIPage() {
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'chat' | 'brain'>('chat');
+  // V3 conversation continuity
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── sessionStorage key (keyed to userId so different users never share) ──
+  const storageKey = me?.id ? `dazza_conv_id_${me.id}` : null;
+
+  // Restore conversationId from sessionStorage on mount (after me is loaded)
+  // and immediately fetch + restore the message history from the server.
+  useEffect(() => {
+    if (!storageKey) return;
+    let stored: string | null = null;
+    try {
+      stored = sessionStorage.getItem(storageKey);
+    } catch { /* sessionStorage unavailable */ }
+    if (!stored) return;
+
+    setConversationId(stored);
+
+    // Fetch and restore message history for the stored conversation
+    fetch(`/api/dazza/conversation/${encodeURIComponent(stored)}/history`, {
+      credentials: 'include',
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { messages?: Array<{ role: string; content: string }> } | null) => {
+        if (!data?.messages?.length) return;
+        const restored = data.messages.map((m, i) => ({
+          id: `restored-${i}`,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          timestamp: new Date(),
+        }));
+        setMessages(restored);
+      })
+      .catch(() => { /* silent — user can still chat fresh */ });
+  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist conversationId to sessionStorage whenever it changes
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      if (conversationId) {
+        sessionStorage.setItem(storageKey, conversationId);
+      } else {
+        sessionStorage.removeItem(storageKey);
+      }
+    } catch { /* sessionStorage unavailable */ }
+  }, [conversationId, storageKey]);
+
+  // ── Fetch server-confirmed engine on mount ────────────────────────────────
+  // The engine badge must reflect what the server actually uses, not what the
+  // client infers. This runs once when the authenticated user is known.
+  const [engineDiag, setEngineDiag] = useState<{
+    secretPresent: boolean;
+    secretLength: number;
+    secretFirstChar: string;
+    secretTrimmedLower: string;
+    resolvedEnabled: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!me?.id) return;
+    fetch('/api/dazza/engine-status', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { engine?: string; _diag?: typeof engineDiag } | null) => {
+        if (data?.engine === 'v3') setActiveEngine('v3');
+        else if (data?.engine === 'v2-rollback') setActiveEngine('v2-rollback');
+        if (data?._diag) setEngineDiag(data._diag);
+      })
+      .catch(() => { /* non-fatal — badge stays null until first message */ });
+  }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
   type BugFixStep = 'idle' | 'page' | 'clicked' | 'happened' | 'expected' | 'role' | 'error' | 'done';
@@ -529,18 +625,23 @@ export default function DazzaAIPage() {
     }]);
 
     try {
-      const res = await fetch('/api/dazza/chat-v2/stream', {
+      // ── Canonical endpoint — server decides V3 vs V2 rollback ──────────────
+      const res = await fetch('/api/dazza/chat/stream', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text.trim() }),
+        body: JSON.stringify({
+          message: text.trim(),
+          // Send conversationId so V3 can continue the same conversation
+          ...(conversationId ? { conversationId } : {}),
+        }),
       });
 
       if (!res.ok) {
         let serverDetail = '';
         try {
-          const errData = await res.json() as { error?: string };
-          serverDetail = errData.error ?? '';
+          const errData = await res.json() as { error?: string; message?: string };
+          serverDetail = errData.message ?? errData.error ?? '';
         } catch { /* ignore */ }
         throw new Error(`HTTP ${res.status}${serverDetail ? `: ${serverDetail}` : ''}`);
       }
@@ -550,8 +651,6 @@ export default function DazzaAIPage() {
 
       const decoder = new TextDecoder();
       let buffer = '';
-      let finalMode = 'ai';
-      let usedOpenAI = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -579,24 +678,26 @@ export default function DazzaAIPage() {
           } else if (event.type === 'tool_result') {
             setActiveToolCall(null);
           } else if (event.type === 'done') {
-            finalMode = event.mode;
-            usedOpenAI = event.usedOpenAI;
             setActiveToolCall(null);
+            // Store conversation ID for continuity (V3 only)
+            if (event.conversationId) {
+              setConversationId(event.conversationId);
+            }
+            // Track active engine
+            if (event.engine) {
+              setActiveEngine(event.engine);
+            }
+            // If no AI was used (V2 fallback without key)
+            if (event.usedOpenAI === false && !event.engine) {
+              setNoApiKey(true);
+            } else {
+              setNoApiKey(false);
+            }
           } else if (event.type === 'error') {
             throw new Error(event.message);
           }
         }
       }
-
-      // Mark as context mode if no AI was used
-      if (finalMode === 'ai' && !usedOpenAI) setNoApiKey(true);
-      else setNoApiKey(false);
-
-      setMessages((prev) => prev.map((m) =>
-        m.id === assistantId
-          ? { ...m, isCalc: finalMode === 'context' }
-          : m
-      ));
 
     } catch (err) {
       const errMsg = String((err as Error)?.message ?? err);
@@ -626,6 +727,13 @@ export default function DazzaAIPage() {
   function clearChat() {
     setMessages([{ id: Date.now().toString(), role: 'assistant', content: WELCOME_MSG, timestamp: new Date() }]);
     setNoApiKey(false);
+    // Clear conversation — new chat starts fresh
+    setConversationId(null);
+    setActiveEngine(null);
+    // Remove from sessionStorage immediately (the useEffect will also fire, but this is instant)
+    if (storageKey) {
+      try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
+    }
   }
 
   function runSimple() {
@@ -758,7 +866,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] lg:pt-[104px] flex flex-col overflow-hidden">
+    <div className="flex-1 bg-[#f5f6f8] lg:pt-[116px] flex flex-col overflow-hidden">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -787,14 +895,42 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
               <Bot size={13} className="text-white" />
             </div>
-            <span className="font-heading font-bold text-sm leading-none text-slate-800">Dazza AI</span>
+            <span className="font-heading font-bold text-sm leading-none text-slate-800">
+              {activeEngine === 'v3' ? 'Dazza V3' : activeEngine === 'v2-rollback' ? 'Dazza V2' : 'Dazza AI'}
+            </span>
             <span className="text-[10px] text-slate-400">
               {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
             </span>
-            <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
-              Online
-            </span>
+            {activeEngine === 'v3' && (
+              <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
+                <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse inline-block" />
+                V3
+              </span>
+            )}
+            {activeEngine === 'v2-rollback' && (
+              <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                V2 rollback
+              </span>
+            )}
+            {activeEngine === 'v2-rollback' && engineDiag && (
+              <span
+                className="hidden md:flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-full border border-red-200 font-mono cursor-help"
+                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent}, len=${engineDiag.secretLength}, first='${engineDiag.secretFirstChar}', value='${engineDiag.secretTrimmedLower}' — must be 'true' to activate V3`}
+              >
+                flag={engineDiag.secretTrimmedLower || '(empty)'}
+              </span>
+            )}
+            {!activeEngine && (
+              <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
+                Online
+              </span>
+            )}
+            {conversationId && (
+              <span className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-mono" title={`Conversation: ${conversationId}`}>
+                #{conversationId.slice(0, 8)}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {isAdmin && (
@@ -1086,7 +1222,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask Dazza anything about your jobs, fleet, or data…"
+                  placeholder="Investigate, maintain, or query the IWILLBUILD system…"
                   className="flex-1 resize-none text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none bg-transparent leading-relaxed"
                   style={{ maxHeight: 120, minHeight: 24 }}
                 />

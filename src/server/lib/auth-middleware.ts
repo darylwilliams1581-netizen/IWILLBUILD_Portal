@@ -175,6 +175,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/health$/ },
   // Developer seed — internal use only, no auth required (dev environment only)
   { method: 'POST', pattern: /^\/api\/developer\/run-seed-now$/ },
+  // Developer share-security test runner — seeds and cleans up its own rows
+  { method: 'POST', pattern: /^\/api\/developer\/test-share-security$/ },
   // BetterAuth internal routes
   { method: 'GET',  pattern: /^\/api\/auth\// },
   { method: 'POST', pattern: /^\/api\/auth\// },
@@ -211,6 +213,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Secure Share Links — public token resolution (no auth required)
   { method: 'GET',  pattern: /^\/api\/secure-share\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/secure-share\/[^/]+$/ },
+  // Secure Share content delivery — public PDF view/download (token-scoped, no auth)
+  { method: 'GET',  pattern: /^\/api\/secure-share\/[^/]+\/content$/ },
   // Public SWMS sign-off — token-validated, no session required
   { method: 'GET',  pattern: /^\/api\/public\/swms\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/public\/swms\/[^/]+\/signoff$/ },

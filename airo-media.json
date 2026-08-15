@@ -628,5 +628,19 @@
     },
     "uploadContentHash": "5542530dca485ab4264a8894531e0550337894fd31ad010e953d3d63b3822fc8",
     "caption": "project sync interface four photos synced"
+  },
+  "reference/screenshot-latest-07-03": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-07-03-159e6b54.jpg",
+    "searchQuery": "iwilbuild portal new quote document interface",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-14T08:51:30.587Z",
+    "lastUpdated": "2026-08-14T08:51:30.587Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-latest-07-03-159e6b54.jpg": "f38wenbvln_1786691037548_file_KsB6fG-l9Q.jpg"
+    },
+    "uploadContentHash": "b8f1a8f241b02810fb26e87b14dcfedb4ef7a913cdca7b09f5f1a781fd649a34",
+    "caption": "iwilbuild portal new quote document interface"
   }
 }

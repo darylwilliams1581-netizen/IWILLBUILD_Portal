@@ -135,7 +135,7 @@ export default function DashboardPage() {
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="portal-main lg:pt-[104px]">
+      <div className="portal-main lg:pt-[116px]">
 
         {/* ── Desktop command-centre header ── */}
         <div

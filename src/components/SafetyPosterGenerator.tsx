@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Printer, Save, Loader2, ChevronLeft } from 'lucide-react';
+import { X, Save, Loader2, ChevronLeft, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { openPrintWindow } from '@/lib/print-html';
+import { downloadPosterAsPdf } from '@/lib/poster-pdf';
 import {
   PosterRiskMatrix, PosterEmergencyContacts, PosterEmergencyAssembly,
   PosterLifeSavingRules, PosterPPE, PosterLiftSafely, PosterSiteRules,
@@ -166,6 +166,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
   const [selected, setSelected] = useState<PosterDef | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const posterWrapRef = useRef<HTMLDivElement>(null);
   const [posterScale, setPosterScale] = useState(1);
@@ -218,16 +219,21 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
     }
   }
 
-  function handlePrint() {
-    if (!printRef.current) return;
-    // innerHTML is from a React-rendered DOM ref — all content was set via
-    // React's JSX renderer which escapes text nodes automatically.  No
-    // user-supplied raw HTML is injected into this ref.
-    const html = printRef.current.innerHTML;
-    openPrintWindow(
-      `<!DOCTYPE html><html><head><title>Safety Poster</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`,
-      true,
-    );
+  async function handleDownloadPdf() {
+    if (!printRef.current || !selected) return;
+    setDownloadingPdf(true);
+    try {
+      const title = formData.projectName
+        ? `${selected.label} — ${formData.projectName}`
+        : selected.label;
+      const safeFilename = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      await downloadPosterAsPdf(printRef.current, safeFilename);
+    } catch (err) {
+      console.error('Poster PDF download failed:', err);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   }
 
   return (
@@ -235,7 +241,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center overflow-y-auto py-6 px-4"
+      className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center overflow-y-auto pt-6 pb-6 md:pt-[124px] px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.div
@@ -336,10 +342,12 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                   <p className="text-sm text-slate-500">Review your poster. Save it to your library or print directly.</p>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={handlePrint}
-                      className="flex items-center gap-2 border border-slate-200 text-slate-600 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors"
+                      onClick={handleDownloadPdf}
+                      disabled={downloadingPdf}
+                      className="flex items-center gap-2 border border-slate-200 text-slate-600 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
                     >
-                      <Printer size={14} /> Print / PDF
+                      {downloadingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      Download PDF
                     </button>
                     <button
                       onClick={handleSave}

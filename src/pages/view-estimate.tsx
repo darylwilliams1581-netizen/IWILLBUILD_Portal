@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Printer, Download, X, Loader2, AlertTriangle, FileText } from 'lucide-react';
+import { Download, X, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import {
   fetchEstimate, estimateTotals, lineCalc, getEstimateStatusStyle,
@@ -65,13 +65,6 @@ export default function ViewEstimatePage() {
           </div>
           {estimate && (
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Printer size={13} />
-                Print
-              </button>
               <OutlookEmailButton
                 context={{
                   kind: 'estimate',

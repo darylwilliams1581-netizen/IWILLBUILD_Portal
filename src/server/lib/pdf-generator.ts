@@ -63,7 +63,6 @@ function drawHeader(pdfLib: PdfLib, page: PDFPageType, boldFont: PDFFontType, re
   const { rgb } = pdfLib;
   const ORANGE = rgb(0.976, 0.451, 0.086);
   const WHITE  = rgb(1, 1, 1);
-  const MUTED  = rgb(0.502, 0.533, 0.580);
   drawRect(page, 0, PAGE_H - 70, PAGE_W, 70, ORANGE);
   drawText(page, 'IWILLBUILD', MARGIN, PAGE_H - 30, boldFont, 14, WHITE);
   drawText(page, title.toUpperCase(), MARGIN, PAGE_H - 50, boldFont, 11, WHITE);
@@ -474,13 +473,11 @@ function fmtMoney(v: number): string {
 export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Array> {
   const pdfLib = await getPdfLib();
   const { PDFDocument, rgb, StandardFonts } = pdfLib;
-  const BLACK  = rgb(0, 0, 0);
-  const WHITE  = rgb(1, 1, 1);
-  const ORANGE = rgb(0.976, 0.451, 0.086);
-  const SLATE  = rgb(0.243, 0.267, 0.322);
-  const LIGHT  = rgb(0.949, 0.953, 0.961);
-  const MUTED  = rgb(0.502, 0.533, 0.580);
-  const GREEN  = rgb(0.133, 0.545, 0.133);
+  const BLACK   = rgb(0, 0, 0);
+  const GREY_HD = rgb(0.88, 0.88, 0.88);  // light grey — table header row
+  const GREY_LN = rgb(0.96, 0.96, 0.96);  // very light grey — alternating row tint
+  const MUTED   = rgb(0.45, 0.45, 0.45);  // mid-grey for secondary text
+  const RULE    = rgb(0.80, 0.80, 0.80);  // horizontal rule colour
 
   const doc = await PDFDocument.create();
   const boldFont    = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -490,138 +487,170 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
     ? `Job #${data.job_number} — ${data.job_name ?? ''}`
     : (data.job_name ?? '');
 
-  // ── Page 1 ──
+  const companyDisplay = data.company_name ?? 'IWILLBUILD';
+
+  // ── helpers ───────────────────────────────────────────────────────────────────
+  function hRule(pg: PDFPageType, yPos: number) {
+    pg.drawLine({ start: { x: MARGIN, y: yPos }, end: { x: PAGE_W - MARGIN, y: yPos }, thickness: 0.5, color: RULE });
+  }
+  function tblHeader(pg: PDFPageType, yPos: number) {
+    drawRect(pg, MARGIN, yPos - 3, PAGE_W - MARGIN * 2, 16, GREY_HD);
+  }
+
+  // ── Page 1 ───────────────────────────────────────────────────────────────────
   let page = addPage(doc);
-  drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate', data.company_name);
-  drawFooter(pdfLib, page, regularFont, 1);
-  let y = PAGE_H - 90;
+  let y = PAGE_H - MARGIN;
   let pageNum = 1;
 
-  // Estimate title block
-  drawRect(page, MARGIN, y - 30, PAGE_W - MARGIN * 2, 36, SLATE);
-  drawText(page, data.title, MARGIN + 8, y - 10, boldFont, 13, WHITE);
-  if (subtitle) drawText(page, subtitle, MARGIN + 8, y - 24, regularFont, 9, MUTED);
-  y -= 50;
+  // Document header — bold company name + date, no coloured background
+  drawText(page, companyDisplay, MARGIN, y, boldFont, 16, BLACK);
+  const dateStr = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+  const dw = regularFont.widthOfTextAtSize(dateStr, 9);
+  drawText(page, dateStr, PAGE_W - MARGIN - dw, y, regularFont, 9, MUTED);
+  y -= 18;
+  drawText(page, 'ESTIMATE', MARGIN, y, boldFont, 11, BLACK);
+  y -= 12;
+  hRule(page, y);
+  y -= 16;
 
-  // Status + ID
-  const statusColor = data.status === 'approved' ? GREEN : (data.status === 'sent' ? ORANGE : SLATE);
-  drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
-  drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
-  drawText(page, `Estimate #${data.id}`, MARGIN + 90, y - 10, regularFont, 8, MUTED);
+  // Estimate title + meta
+  drawText(page, data.title, MARGIN, y, boldFont, 13, BLACK);
+  y -= 14;
+  if (subtitle) { drawText(page, subtitle, MARGIN, y, regularFont, 9, MUTED); y -= 12; }
+
+  // Status + ID — plain text, no coloured pill
+  drawText(page, (data.status ?? 'Draft').toUpperCase(), MARGIN, y, boldFont, 8, MUTED);
+  const estLabel = `Estimate #${data.id}`;
+  const elw = regularFont.widthOfTextAtSize(estLabel, 8);
+  drawText(page, estLabel, PAGE_W - MARGIN - elw, y, regularFont, 8, MUTED);
+  y -= 10;
   if (data.valid_until) {
     const vd = `Valid until: ${new Date(data.valid_until).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
     const vw = regularFont.widthOfTextAtSize(vd, 8);
-    drawText(page, vd, PAGE_W - MARGIN - vw, y - 10, regularFont, 8, MUTED);
+    drawText(page, vd, PAGE_W - MARGIN - vw, y, regularFont, 8, MUTED);
+    y -= 10;
   }
-  y -= 32;
+  y -= 8;
+  hRule(page, y);
+  y -= 18;
 
-  // Company + Client two-column
-  y = sectionHeading(pdfLib, page, boldFont, 'Prepared By / For', y);
+  // Prepared By / For — two-column
+  drawText(page, 'PREPARED BY / FOR', MARGIN, y, boldFont, 7, MUTED);
+  y -= 14;
+
   const col2x = MARGIN + (PAGE_W - MARGIN * 2) / 2;
   let leftY = y, rightY = y;
-  if (data.company_name) {
-    drawText(page, data.company_name, MARGIN + 4, leftY, boldFont, 9, BLACK);
-    leftY -= 14;
-  }
-  if (data.company_abn)     { drawText(page, `ABN: ${data.company_abn}`, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
-  if (data.company_phone)   { drawText(page, data.company_phone, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
-  if (data.company_email)   { drawText(page, data.company_email, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
-  if (data.company_address) { drawText(page, data.company_address, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+
+  if (data.company_name) { drawText(page, data.company_name, MARGIN, leftY, boldFont, 9, BLACK); leftY -= 13; }
+  if (data.company_abn)     { drawText(page, `ABN: ${data.company_abn}`, MARGIN, leftY, regularFont, 8, MUTED); leftY -= 11; }
+  if (data.company_phone)   { drawText(page, data.company_phone, MARGIN, leftY, regularFont, 8, MUTED); leftY -= 11; }
+  if (data.company_email)   { drawText(page, data.company_email, MARGIN, leftY, regularFont, 8, MUTED); leftY -= 11; }
+  if (data.company_address) { drawText(page, data.company_address, MARGIN, leftY, regularFont, 8, MUTED); leftY -= 11; }
 
   if (data.client_name) {
-    drawText(page, 'Prepared for:', col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12;
-    drawText(page, data.client_name, col2x + 4, rightY, boldFont, 9, BLACK); rightY -= 14;
+    drawText(page, 'Prepared for:', col2x, rightY, regularFont, 8, MUTED); rightY -= 12;
+    drawText(page, data.client_name, col2x, rightY, boldFont, 9, BLACK); rightY -= 13;
   }
-  if (data.job_address) { drawText(page, data.job_address, col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12; }
+  if (data.job_address) { drawText(page, data.job_address, col2x, rightY, regularFont, 8, MUTED); rightY -= 11; }
 
-  y = Math.min(leftY, rightY) - 16;
+  y = Math.min(leftY, rightY) - 14;
+  hRule(page, y);
+  y -= 18;
 
-  // Header text / notes
+  // Optional header notes
   if (data.header_text) {
-    y = sectionHeading(pdfLib, page, boldFont, 'Notes', y);
-    const hl = wrapText(data.header_text, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
-    hl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+    drawText(page, 'NOTES', MARGIN, y, boldFont, 7, MUTED); y -= 12;
+    const hl = wrapText(data.header_text, regularFont, 8, PAGE_W - MARGIN * 2);
+    hl.forEach((l, i) => drawText(page, l, MARGIN, y - i * 12, regularFont, 8, BLACK));
     y -= hl.length * 12 + 12;
+    hRule(page, y);
+    y -= 18;
   }
 
-  // ── Line items table ──
-  y = sectionHeading(pdfLib, page, boldFont, 'Line Items', y);
+  // ── Line items table ──────────────────────────────────────────────────────────
+  drawText(page, 'LINE ITEMS', MARGIN, y, boldFont, 7, MUTED);
+  y -= 14;
 
   const COL = {
-    cat:  { x: MARGIN + 4,   w: 70  },
-    desc: { x: MARGIN + 78,  w: 200 },
-    qty:  { x: MARGIN + 282, w: 40  },
-    unit: { x: MARGIN + 326, w: 36  },
-    rate: { x: MARGIN + 366, w: 60  },
-    amt:  { x: MARGIN + 430, w: 70  },
+    cat:  { x: MARGIN,        w: 70  },
+    desc: { x: MARGIN + 74,   w: 200 },
+    qty:  { x: MARGIN + 278,  w: 40  },
+    unit: { x: MARGIN + 322,  w: 36  },
+    rate: { x: MARGIN + 362,  w: 60  },
+    amt:  { x: MARGIN + 426,  w: 69  },
   };
 
-  // Table header row
-  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-  drawText(page, 'Category',    COL.cat.x,  y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Description', COL.desc.x, y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Qty',         COL.qty.x,  y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Unit',        COL.unit.x, y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Rate',        COL.rate.x, y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Amount',      COL.amt.x,  y + 1, boldFont, 7, WHITE);
+  // Table header — light grey, black text
+  tblHeader(page, y);
+  drawText(page, 'Category',    COL.cat.x + 2,  y + 1, boldFont, 7, BLACK);
+  drawText(page, 'Description', COL.desc.x + 2, y + 1, boldFont, 7, BLACK);
+  drawText(page, 'Qty',         COL.qty.x + 2,  y + 1, boldFont, 7, BLACK);
+  drawText(page, 'Unit',        COL.unit.x + 2, y + 1, boldFont, 7, BLACK);
+  drawText(page, 'Rate',        COL.rate.x + 2, y + 1, boldFont, 7, BLACK);
+  const amtHW = boldFont.widthOfTextAtSize('Amount', 7);
+  drawText(page, 'Amount', COL.amt.x + COL.amt.w - amtHW, y + 1, boldFont, 7, BLACK);
   y -= 20;
 
   const markup = Number(data.markup_percent ?? 0);
-  const gstMode = data.gst_mode ?? 'inclusive';
+  const rawGstMode = String(data.gst_mode ?? 'inclusive').toLowerCase();
+  const gstMode = rawGstMode === 'add 10% gst' ? 'exclusive'
+    : rawGstMode === 'no gst' ? 'no_gst'
+    : rawGstMode;
   let subtotalEx = 0;
 
   for (let i = 0; i < data.lines.length; i++) {
-    if (y < 60) {
+    if (y < 80) {
       pageNum++;
       page = addPage(doc);
-      drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate (cont.)', data.company_name);
-      drawFooter(pdfLib, page, regularFont, pageNum);
-      y = PAGE_H - 90;
-      drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-      drawText(page, 'Category',    COL.cat.x,  y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Description', COL.desc.x, y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Qty',         COL.qty.x,  y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Unit',        COL.unit.x, y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Rate',        COL.rate.x, y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Amount',      COL.amt.x,  y + 1, boldFont, 7, WHITE);
+      y = PAGE_H - MARGIN;
+      drawText(page, companyDisplay, MARGIN, y, boldFont, 11, BLACK);
+      drawText(page, `Estimate #${data.id} — continued`, MARGIN + boldFont.widthOfTextAtSize(companyDisplay, 11) + 10, y, regularFont, 9, MUTED);
+      y -= 14; hRule(page, y); y -= 16;
+      tblHeader(page, y);
+      drawText(page, 'Category',    COL.cat.x + 2,  y + 1, boldFont, 7, BLACK);
+      drawText(page, 'Description', COL.desc.x + 2, y + 1, boldFont, 7, BLACK);
+      drawText(page, 'Qty',         COL.qty.x + 2,  y + 1, boldFont, 7, BLACK);
+      drawText(page, 'Unit',        COL.unit.x + 2, y + 1, boldFont, 7, BLACK);
+      drawText(page, 'Rate',        COL.rate.x + 2, y + 1, boldFont, 7, BLACK);
+      const amtHW2 = boldFont.widthOfTextAtSize('Amount', 7);
+      drawText(page, 'Amount', COL.amt.x + COL.amt.w - amtHW2, y + 1, boldFont, 7, BLACK);
       y -= 20;
     }
 
     const ln = data.lines[i];
     const qty  = Number(ln.quantity ?? 0);
     const rate = Number(ln.rate ?? 0);
-    const lineAmt = qty * rate;
-    const withMarkup = markup > 0 ? lineAmt * (1 + markup / 100) : lineAmt;
+    const withMarkup = markup > 0 ? qty * rate * (1 + markup / 100) : qty * rate;
     subtotalEx += withMarkup;
-
-    if (i % 2 === 0) drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
 
     const descLines = wrapText(ln.description ?? '', regularFont, 7, COL.desc.w);
     const rowH = Math.max(16, descLines.length * 11 + 4);
 
-    if (i % 2 === 0) drawRect(page, MARGIN, y - rowH + 14, PAGE_W - MARGIN * 2, rowH, LIGHT);
+    if (i % 2 === 0) drawRect(page, MARGIN, y - rowH + 14, PAGE_W - MARGIN * 2, rowH, GREY_LN);
 
-    drawText(page, String(ln.category ?? '').substring(0, 12), COL.cat.x, y + 1, regularFont, 7, MUTED);
-    descLines.forEach((dl, di) => drawText(page, dl, COL.desc.x, y + 1 - di * 11, regularFont, 7, BLACK));
-    drawText(page, String(qty),                COL.qty.x,  y + 1, regularFont, 7, BLACK);
-    drawText(page, String(ln.unit ?? ''),      COL.unit.x, y + 1, regularFont, 7, MUTED);
-    drawText(page, fmtMoney(rate),             COL.rate.x, y + 1, regularFont, 7, BLACK);
-    drawText(page, fmtMoney(withMarkup),       COL.amt.x,  y + 1, boldFont,    7, BLACK);
+    drawText(page, String(ln.category ?? '').substring(0, 12), COL.cat.x + 2, y + 1, regularFont, 7, MUTED);
+    descLines.forEach((dl, di) => drawText(page, dl, COL.desc.x + 2, y + 1 - di * 11, regularFont, 7, BLACK));
+    drawText(page, String(qty),           COL.qty.x + 2,  y + 1, regularFont, 7, BLACK);
+    drawText(page, String(ln.unit ?? ''), COL.unit.x + 2, y + 1, regularFont, 7, MUTED);
+    drawText(page, fmtMoney(rate),        COL.rate.x + 2, y + 1, regularFont, 7, BLACK);
+    const amtStr = fmtMoney(withMarkup);
+    const amtW = boldFont.widthOfTextAtSize(amtStr, 7);
+    drawText(page, amtStr, COL.amt.x + COL.amt.w - amtW, y + 1, boldFont, 7, BLACK);
     y -= rowH;
   }
 
-  // ── Totals block ──
-  y -= 8;
-  if (y < 120) {
+  // ── Totals — right-aligned, plain black, no coloured backgrounds ──────────────
+  y -= 10;
+  if (y < 130) {
     pageNum++;
     page = addPage(doc);
-    drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate — Totals', data.company_name);
-    drawFooter(pdfLib, page, regularFont, pageNum);
-    y = PAGE_H - 90;
+    y = PAGE_H - MARGIN;
+    drawText(page, companyDisplay, MARGIN, y, boldFont, 11, BLACK);
+    y -= 14; hRule(page, y); y -= 16;
   }
 
-  const totalsX = PAGE_W - MARGIN - 180;
-  const totalsW = 180;
+  hRule(page, y);
+  y -= 6;
 
   let gstAmount = 0;
   let totalInc  = 0;
@@ -632,64 +661,63 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
     gstAmount = subtotalEx * 0.1;
     totalInc  = subtotalEx + gstAmount;
   } else {
-    // no_gst
     totalInc  = subtotalEx;
-    gstAmount = 0;
   }
 
-  const totalsRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean }> = [];
+  const totalsRows: Array<{ label: string; value: string; isFinal?: boolean }> = [];
   if (markup > 0) {
     totalsRows.push({ label: `Subtotal (before ${markup}% markup)`, value: fmtMoney(subtotalEx / (1 + markup / 100)) });
     totalsRows.push({ label: `Markup (${markup}%)`, value: fmtMoney(subtotalEx - subtotalEx / (1 + markup / 100)) });
   }
   totalsRows.push({ label: gstMode === 'inclusive' ? 'Subtotal (ex. GST)' : 'Subtotal', value: fmtMoney(subtotalEx) });
   if (gstMode !== 'no_gst') totalsRows.push({ label: 'GST (10%)', value: fmtMoney(gstAmount) });
-  totalsRows.push({ label: 'TOTAL', value: fmtMoney(totalInc), bold: true, highlight: true });
+  totalsRows.push({ label: 'TOTAL', value: fmtMoney(totalInc), isFinal: true });
 
-  const rowH2 = 18;
-  const blockH = totalsRows.length * rowH2 + 8;
-  drawRect(page, totalsX - 8, y - blockH + 8, totalsW + 8, blockH, LIGHT);
+  const totalsLabelX = PAGE_W - MARGIN - 200;
+  const totalsValueX = PAGE_W - MARGIN;
 
   totalsRows.forEach((row) => {
-    if (row.highlight) drawRect(page, totalsX - 8, y - rowH2 + 4, totalsW + 8, rowH2, ORANGE);
-    const lw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.label, 8);
-    const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
-    const textColor = row.highlight ? WHITE : BLACK;
-    drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
-    drawText(page, row.value, totalsX + totalsW - vw, y, row.bold ? boldFont : regularFont, 9, textColor);
-    y -= rowH2;
+    const font = row.isFinal ? boldFont : regularFont;
+    const size = row.isFinal ? 10 : 8;
+    const color = row.isFinal ? BLACK : MUTED;
+    if (row.isFinal) hRule(page, y + size + 3);
+    const vw = font.widthOfTextAtSize(row.value, size);
+    drawText(page, row.label, totalsLabelX, y, font, size, color);
+    drawText(page, row.value, totalsValueX - vw, y, font, size, row.isFinal ? BLACK : MUTED);
+    y -= 16;
   });
 
   y -= 16;
 
-  // Footer / disclaimer / acceptance note
+  // ── Disclaimer / terms ────────────────────────────────────────────────────────
   if (data.disclaimer || data.payment_terms || data.acceptance_note) {
     if (y < 100) {
       pageNum++;
       page = addPage(doc);
-      drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate — Terms', data.company_name);
-      drawFooter(pdfLib, page, regularFont, pageNum);
-      y = PAGE_H - 90;
+      y = PAGE_H - MARGIN;
+      drawText(page, companyDisplay, MARGIN, y, boldFont, 11, BLACK);
+      y -= 14; hRule(page, y); y -= 16;
     }
     if (data.disclaimer) {
-      y = sectionHeading(pdfLib, page, boldFont, 'Disclaimer', y);
-      const dl = wrapText(data.disclaimer, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
-      dl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, MUTED));
+      drawText(page, 'DISCLAIMER', MARGIN, y, boldFont, 7, MUTED); y -= 12;
+      const dl = wrapText(data.disclaimer, regularFont, 8, PAGE_W - MARGIN * 2);
+      dl.forEach((l, i) => drawText(page, l, MARGIN, y - i * 12, regularFont, 8, MUTED));
       y -= dl.length * 12 + 12;
     }
     if (data.payment_terms) {
-      y = sectionHeading(pdfLib, page, boldFont, 'Payment Terms', y);
-      const pl = wrapText(data.payment_terms, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
-      pl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+      drawText(page, 'PAYMENT TERMS', MARGIN, y, boldFont, 7, MUTED); y -= 12;
+      const pl = wrapText(data.payment_terms, regularFont, 8, PAGE_W - MARGIN * 2);
+      pl.forEach((l, i) => drawText(page, l, MARGIN, y - i * 12, regularFont, 8, BLACK));
       y -= pl.length * 12 + 12;
     }
     if (data.acceptance_note) {
-      y = sectionHeading(pdfLib, page, boldFont, 'Acceptance', y);
-      const al = wrapText(data.acceptance_note, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
-      al.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+      drawText(page, 'ACCEPTANCE', MARGIN, y, boldFont, 7, MUTED); y -= 12;
+      const al = wrapText(data.acceptance_note, regularFont, 8, PAGE_W - MARGIN * 2);
+      al.forEach((l, i) => drawText(page, l, MARGIN, y - i * 12, regularFont, 8, BLACK));
     }
   }
 
+  void pageNum; // used for continuation headers above
   return doc.save();
 }
 
@@ -739,7 +767,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   const { PDFDocument, rgb, StandardFonts } = pdfLib;
   const BLACK  = rgb(0, 0, 0);
   const WHITE  = rgb(1, 1, 1);
-  const ORANGE = rgb(0.976, 0.451, 0.086);
+  const PURPLE = rgb(0.486, 0.227, 0.929); // #7c3aed — system primary
   const SLATE  = rgb(0.243, 0.267, 0.322);
   const LIGHT  = rgb(0.949, 0.953, 0.961);
   const MUTED  = rgb(0.502, 0.533, 0.580);
@@ -768,7 +796,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   y -= 50;
 
   // Status + dates
-  const statusColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? ORANGE : SLATE));
+  const statusColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? PURPLE : SLATE));
   drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
   drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
   if (data.issue_date) {
@@ -866,7 +894,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   const amtDue = Number(data.amount_due ?? data.total ?? 0);
   const amtPaid = Number(data.amount_paid ?? 0);
 
-  const tRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; color?: typeof ORANGE }> = [
+  const tRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; color?: typeof PURPLE }> = [
     { label: 'Subtotal (ex. GST)', value: fmtMoney(Number(data.subtotal ?? 0)) },
     { label: 'GST (10%)',          value: fmtMoney(Number(data.gst_total ?? 0)) },
     { label: 'Total (inc. GST)',   value: fmtMoney(Number(data.total ?? 0)), bold: true },
@@ -880,7 +908,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   drawRect(page, totalsX - 8, y - blockH2 + 8, totalsW + 8, blockH2, LIGHT);
 
   tRows.forEach((row) => {
-    if (row.highlight) drawRect(page, totalsX - 8, y - 14, totalsW + 8, 18, ORANGE);
+    if (row.highlight) drawRect(page, totalsX - 8, y - 14, totalsW + 8, 18, PURPLE);
     const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
     const textColor = row.highlight ? WHITE : (row.color ?? BLACK);
     drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
@@ -901,7 +929,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     }
     drawRect(page, MARGIN, y - 28, PAGE_W - MARGIN * 2, 32, rgb(0.059, 0.067, 0.090));
     drawText(page, 'Pay online:', MARGIN + 8, y - 8, boldFont, 8, MUTED);
-    drawText(page, data.stripe_payment_link, MARGIN + 8, y - 22, regularFont, 8, ORANGE);
+    drawText(page, data.stripe_payment_link, MARGIN + 8, y - 22, regularFont, 8, PURPLE);
     y -= 44;
   }
 

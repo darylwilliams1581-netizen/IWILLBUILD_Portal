@@ -25,7 +25,6 @@ interface Props {
   jobId: number;
   job: Job;
 }
-
 export default function JobInvoices({ jobId, job }: Props) {
   const navigate = useNavigate();
   const { can, isAdmin, isOwner, loading: permLoading } = usePermissions();
@@ -207,13 +206,6 @@ export default function JobInvoices({ jobId, job }: Props) {
           })}
         </div>
       )}
-
-      {/* Progress claim placeholder */}
-      <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 text-center">
-        <p className="text-xs font-semibold text-muted-foreground">
-          Progress Claim from Job Progress — <span className="text-primary">Coming Soon</span>
-        </p>
-      </div>
     </div>
   );
 }

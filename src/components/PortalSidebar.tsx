@@ -200,6 +200,16 @@ function SidebarContent({
       invalidateSubscriptionCache();
       invalidateTerminologyCache();
       invalidateSupportModeCache();
+      // Clear any stored Dazza V3 conversation IDs so they are not restored
+      // after a different user logs in on the same browser.
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k?.startsWith('dazza_conv_id_')) keysToRemove.push(k);
+        }
+        keysToRemove.forEach(k => sessionStorage.removeItem(k));
+      } catch { /* sessionStorage unavailable */ }
       await signOut();
     } catch {
       // ignore

@@ -22,7 +22,7 @@ export default async function handler(req: Request, res: Response) {
         p.role,
         p.status
       FROM profiles p
-      JOIN users u ON u.id = p.user_id
+      JOIN \`user\` u ON u.id = p.user_id
       WHERE p.company_id = ${companyId}
         AND p.status != 'archived'
       ORDER BY u.name ASC

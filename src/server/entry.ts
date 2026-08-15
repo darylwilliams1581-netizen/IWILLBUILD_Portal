@@ -113,6 +113,40 @@ import bug_reports_get_80 from "./api/bug-reports/GET";
 import bug_reports_post_81 from "./api/bug-reports/POST";
 import bug_reports_id_patch_82 from "./api/bug-reports/[id]/PATCH";
 import bug_reports_id_export_bundle_get_83 from "./api/bug-reports/[id]/export-bundle/GET";
+import bug_reports_id_analyse_post from "./api/bug-reports/[id]/analyse/POST";
+import bug_reports_id_sms_authorise_post from "./api/bug-reports/[id]/sms-authorise/POST";
+import bug_reports_id_publish_fix_post from "./api/bug-reports/[id]/publish-fix/POST";
+import bug_reports_my_reports_get from "./api/bug-reports/my-reports/GET";
+import bug_reports_id_dazza_review_ensure_post from "./api/bug-reports/[id]/dazza-review/ensure/POST";
+import bug_reports_id_dazza_review_evidence_post from "./api/bug-reports/[id]/dazza-review/evidence/POST";
+import bug_reports_id_dazza_review_comments_get from "./api/bug-reports/[id]/dazza-review/comments/GET";
+import bug_reports_id_dazza_review_retry_post from "./api/bug-reports/[id]/dazza-review/retry/POST";
+// ── Dazza V3 ──────────────────────────────────────────────────────────────────
+import dazza_v3_chat_stream_post from "./api/dazza/v3/chat/stream/POST";
+import dazza_v3_incidents_post from "./api/dazza/v3/incidents/POST";
+import dazza_v3_incidents_get from "./api/dazza/v3/incidents/GET";
+import dazza_v3_incidents_id_get from "./api/dazza/v3/incidents/[id]/GET";
+// ── Dazza Anatomy Index ───────────────────────────────────────────────────────
+import migrate_anatomy_post from "./api/migrate-anatomy/POST";
+import dazza_anatomy_github_test_post from "./api/dazza/anatomy/github/test-connection/POST";
+import dazza_anatomy_github_check_post from "./api/dazza/anatomy/github/check-changes/POST";
+import dazza_anatomy_github_fetch_post from "./api/dazza/anatomy/github/fetch/POST";
+import dazza_anatomy_upload_zip_post from "./api/dazza/anatomy/upload-zip/POST";
+import dazza_anatomy_snapshots_get from "./api/dazza/anatomy/snapshots/GET";
+import dazza_anatomy_snapshot_id_get from "./api/dazza/anatomy/snapshots/[id]/GET";
+import dazza_anatomy_snapshot_activate_post from "./api/dazza/anatomy/snapshots/[id]/activate/POST";
+import dazza_anatomy_snapshot_delete_post from "./api/dazza/anatomy/snapshots/[id]/delete/POST";
+import dazza_anatomy_search_post from "./api/dazza/anatomy/search/POST";
+import dazza_v3_incidents_id_investigate_post from "./api/dazza/v3/incidents/[id]/investigate/POST";
+import dazza_v3_client_rescue_get from "./api/dazza/v3/client-rescue/GET";
+import dazza_v3_client_rescue_id_patch from "./api/dazza/v3/client-rescue/[id]/PATCH";
+// ── Dazza V3 Communications ───────────────────────────────────────────────────
+import dazza_v3_comms_get from "./api/dazza/v3/communications/GET";
+import dazza_v3_comms_post from "./api/dazza/v3/communications/POST";
+import dazza_v3_comms_owner_get from "./api/dazza/v3/communications/owner/GET";
+import dazza_v3_comms_id_patch from "./api/dazza/v3/communications/[id]/PATCH";
+import dazza_v3_comms_id_dismiss_post from "./api/dazza/v3/communications/[id]/dismiss/POST";
+import dazza_v3_comms_id_still_trouble_post from "./api/dazza/v3/communications/[id]/still-having-trouble/POST";
 import company_get_84 from "./api/company/GET";
 import company_put_85 from "./api/company/PUT";
 import company_logo_post_86 from "./api/company/logo/POST";
@@ -138,6 +172,9 @@ import dazza_annette_post_105 from "./api/dazza/annette/POST";
 import dazza_brain_hive_approve_post_106 from "./api/dazza/brain/hive/approve/POST";
 import dazza_brain_hive_reject_post_107 from "./api/dazza/brain/hive/reject/POST";
 import dazza_brain_status_get_108 from "./api/dazza/brain/status/GET";
+import dazza_chat_stream_post from "./api/dazza/chat/stream/POST";
+import dazza_engine_status_get from "./api/dazza/engine-status/GET";
+import dazza_conversation_history_get from "./api/dazza/conversation/[id]/history/GET";
 import dazza_chat_post_109 from "./api/dazza/chat/POST";
 import dazza_chat_v2_post_110 from "./api/dazza/chat-v2/POST";
 import dazza_chat_v2_stream_post_111 from "./api/dazza/chat-v2/stream/POST";
@@ -158,6 +195,7 @@ import developer_email_settings_test_post_125 from "./api/developer/email-settin
 import developer_media_backfill_report_get_126 from "./api/developer/media-backfill-report/GET";
 import developer_run_seed_now_post_127 from "./api/developer/run-seed-now/POST";
 import developer_seed_developer_account_post_128 from "./api/developer/seed-developer-account/POST";
+import developer_test_share_security_post from "./api/developer/test-share-security/POST";
 import developer_support_notes_get_129 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_130 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_131 from "./api/developer/support-notes/[id]/DELETE";
@@ -214,6 +252,8 @@ import estimates_id_put_181 from "./api/estimates/[id]/PUT";
 import estimates_id_convert_to_invoice_post_182 from "./api/estimates/[id]/convert-to-invoice/POST";
 import estimates_id_export_csv_get_183 from "./api/estimates/[id]/export-csv/GET";
 import estimates_id_export_pdf_get_184 from "./api/estimates/[id]/export-pdf/GET";
+import estimates_id_compose_defaults_get from "./api/estimates/[id]/compose-defaults/GET";
+import estimates_id_send_email_post_email from "./api/estimates/[id]/send-email/POST";
 import estimates_id_import_csv_post_185 from "./api/estimates/[id]/import-csv/POST";
 import estimates_id_unlock_post_186 from "./api/estimates/[id]/unlock/POST";
 import external_form_token_get_187 from "./api/external/form/[token]/GET";
@@ -278,6 +318,7 @@ import forms_skip_audit_post_245 from "./api/forms/skip-audit/POST";
 import forms_start_post_246 from "./api/forms/start/POST";
 import forms_submissions_get_247 from "./api/forms/submissions/GET";
 import forms_templates_id_share_link_post_248 from "./api/forms/templates/[id]/share-link/POST";
+import forms_templates_id_share_link_delete from "./api/forms/templates/[id]/share-link/DELETE";
 import forms_id_fields_get_249 from "./api/forms/[id]/fields/GET";
 import forms_id_fields_post_250 from "./api/forms/[id]/fields/POST";
 import forms_id_fields_reorder_post_251 from "./api/forms/[id]/fields/reorder/POST";
@@ -329,6 +370,7 @@ import invoices_id_get_296 from "./api/invoices/[id]/GET";
 import invoices_id_put_297 from "./api/invoices/[id]/PUT";
 import invoices_id_duplicate_post_298 from "./api/invoices/[id]/duplicate/POST";
 import invoices_id_export_pdf_get_299 from "./api/invoices/[id]/export-pdf/GET";
+import invoices_id_compose_defaults_get from "./api/invoices/[id]/compose-defaults/GET";
 import invoices_id_mark_sent_post_300 from "./api/invoices/[id]/mark-sent/POST";
 import invoices_id_record_payment_post_301 from "./api/invoices/[id]/record-payment/POST";
 import invoices_id_send_email_post_302 from "./api/invoices/[id]/send-email/POST";
@@ -351,6 +393,7 @@ import job_forms_id_delete_318 from "./api/job-forms/[id]/DELETE";
 import job_forms_id_get_319 from "./api/job-forms/[id]/GET";
 import job_forms_id_put_320 from "./api/job-forms/[id]/PUT";
 import job_forms_id_reset_post_321 from "./api/job-forms/[id]/reset/POST";
+import job_forms_id_compose_defaults_get from "./api/job-forms/[id]/compose-defaults/GET";
 import job_forms_id_send_email_post_322 from "./api/job-forms/[id]/send-email/POST";
 import job_forms_id_share_delete_323 from "./api/job-forms/[id]/share/DELETE";
 import job_forms_id_share_get_324 from "./api/job-forms/[id]/share/GET";
@@ -376,6 +419,8 @@ import jobs_id_delays_delayId_delete_343 from "./api/jobs/[id]/delays/[delayId]/
 import jobs_id_delays_delayId_put_344 from "./api/jobs/[id]/delays/[delayId]/PUT";
 import jobs_id_documents_get_345 from "./api/jobs/[id]/documents/GET";
 import jobs_id_documents_post_346 from "./api/jobs/[id]/documents/POST";
+import jobs_id_compose_defaults_get from "./api/jobs/[id]/compose-defaults/GET";
+import jobs_id_send_email_post from "./api/jobs/[id]/send-email/POST";
 import jobs_id_export_zip_get_347 from "./api/jobs/[id]/export-zip/GET";
 import jobs_id_field_docs_get_348 from "./api/jobs/[id]/field-docs/GET";
 import jobs_id_files_get_349 from "./api/jobs/[id]/files/GET";
@@ -683,6 +728,7 @@ import secure_share_post_649 from "./api/secure-share/POST";
 import secure_share_id_delete_650 from "./api/secure-share/[id]/DELETE";
 import secure_share_token_get_651 from "./api/secure-share/[token]/GET";
 import secure_share_token_post_652 from "./api/secure-share/[token]/POST";
+import secure_share_token_content_get from "./api/secure-share/[token]/content/GET";
 import settings_backup_get_653 from "./api/settings/backup/GET";
 import settings_backup_post_654 from "./api/settings/backup/POST";
 import settings_backup_company_data_get_655 from "./api/settings/backup/company-data/GET";
@@ -1097,6 +1143,20 @@ applyWriteGate(app);
 // interpolation slot. We use DEFAULT NULL for JSON columns and handle null
 // in the application layer (GET returns {} when null; PUT writes the real JSON).
 async function runStartupMigrations() {
+  // ── Dazza engine flag diagnostic — fires early, before any migrations ────────
+  // Safe: never logs the raw secret value, only length/first-char/resolved boolean.
+  // Uses the top-level getSecret import (already available at module load time).
+  {
+    const _rawEarly = getSecret('DAZZA_V3_ENABLED') ?? '';
+    const _trimEarly = _rawEarly.trim().toLowerCase();
+    const _v3Early = _trimEarly === 'true' || _trimEarly === '1' || _trimEarly === 'yes';
+    console.log(
+      `[startup] *** DAZZA_V3_ENABLED: present=${_rawEarly.length > 0}, len=${_rawEarly.length}, ` +
+      `first='${_rawEarly.length > 0 ? _rawEarly[0] : ''}', trimmedLower='${_trimEarly}', resolved=${_v3Early} ` +
+      `→ engine=${_v3Early ? 'V3' : 'V2-rollback'} ***`
+    );
+  }
+
   // 1. Ensure company_settings table exists
   try {
     await db.execute(sql`
@@ -1558,6 +1618,18 @@ async function runStartupMigrations() {
     // ── bug_reports: export audit columns (added 2026-08-10) ────────────────
     { table: 'bug_reports', column: 'exported_at',       definition: 'DATETIME NULL' },
     { table: 'bug_reports', column: 'exported_by',       definition: "VARCHAR(255) NOT NULL DEFAULT ''" },
+    // ── bug_reports: Dazza AI analysis + SMS auth (added 2026-08-14) ────────
+    { table: 'bug_reports', column: 'ai_analysis',          definition: 'TEXT NULL' },
+    { table: 'bug_reports', column: 'ai_suggested_fix',     definition: 'TEXT NULL' },
+    { table: 'bug_reports', column: 'ai_suggested_prompt',  definition: 'TEXT NULL' },
+    { table: 'bug_reports', column: 'ai_analysed_at',       definition: 'DATETIME NULL' },
+    { table: 'bug_reports', column: 'sms_auth_token',       definition: 'VARCHAR(64) NULL' },
+    { table: 'bug_reports', column: 'sms_auth_expires_at',  definition: 'DATETIME NULL' },
+    { table: 'bug_reports',       column: 'sms_auth_used',        definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // fleet_usage_logs — columns added after initial CREATE
+    { table: 'fleet_usage_logs', column: 'meter_start',           definition: 'INT NULL' },
+    { table: 'fleet_usage_logs', column: 'meter_end',             definition: 'INT NULL' },
+    { table: 'fleet_usage_logs', column: 'actor_type',            definition: "VARCHAR(30) NOT NULL DEFAULT 'employee'" },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1717,6 +1789,15 @@ async function runStartupMigrations() {
     { name: 'dazza_brain_interactions', ddl: "CREATE TABLE IF NOT EXISTS dazza_brain_interactions (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, user_id VARCHAR(36) NOT NULL, question_summary VARCHAR(500) NOT NULL, answer_source VARCHAR(50) NOT NULL DEFAULT 'openai', modules_used VARCHAR(255) NULL, confidence_level VARCHAR(20) NULL DEFAULT 'Medium', conflict_detected TINYINT(1) NOT NULL DEFAULT 0, dollars_included TINYINT(1) NOT NULL DEFAULT 0, support_mode TINYINT(1) NOT NULL DEFAULT 0, support_company_id INT NULL, tokens_used INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_created (company_id, created_at))" },
     // Legacy audit log — kept for backward compat with auditLog() in chat/POST.ts
     { name: 'dazza_audit_log', ddl: "CREATE TABLE IF NOT EXISTS dazza_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL, question_summary VARCHAR(500) NOT NULL, modules_used VARCHAR(255) NULL, dollars_included TINYINT(1) NOT NULL DEFAULT 0, support_mode TINYINT(1) NOT NULL DEFAULT 0, support_company_id INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_user (user_id))" },
+    // ── Dazza V3 tables (added 2026-08-14) ──────────────────────────────────
+    { name: 'dazza_incidents', ddl: "CREATE TABLE IF NOT EXISTS dazza_incidents (id VARCHAR(36) NOT NULL PRIMARY KEY, incident_type VARCHAR(100) NOT NULL, severity VARCHAR(20) NOT NULL DEFAULT 'medium', status VARCHAR(30) NOT NULL DEFAULT 'open', title VARCHAR(300) NOT NULL, fingerprint VARCHAR(500) NOT NULL DEFAULT '', affected_route VARCHAR(300) NULL, affected_company_id INT NULL, affected_user_count INT NOT NULL DEFAULT 1, description TEXT NOT NULL, evidence_json MEDIUMTEXT NULL, platform VARCHAR(50) NOT NULL DEFAULT 'web', app_version VARCHAR(50) NOT NULL DEFAULT '', customer_recovered TINYINT(1) NOT NULL DEFAULT 0, data_loss_risk TINYINT(1) NOT NULL DEFAULT 0, likely_cause TEXT NULL, alternative_causes TEXT NULL, confidence VARCHAR(20) NULL, immediate_workaround TEXT NULL, recommended_fix TEXT NULL, likely_files TEXT NULL, test_checklist TEXT NULL, repair_prompt MEDIUMTEXT NULL, investigation_report MEDIUMTEXT NULL, verification_result TEXT NULL, final_outcome TEXT NULL, notification_sent TINYINT(1) NOT NULL DEFAULT 0, notification_sent_at DATETIME NULL, notification_sms_sent TINYINT(1) NOT NULL DEFAULT 0, notification_email_sent TINYINT(1) NOT NULL DEFAULT 0, first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, event_count INT NOT NULL DEFAULT 1, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_severity (severity), INDEX idx_status (status), INDEX idx_fingerprint (fingerprint(100)), INDEX idx_company (affected_company_id), INDEX idx_last_seen (last_seen_at DESC))" },
+    { name: 'dazza_client_rescue', ddl: "CREATE TABLE IF NOT EXISTS dazza_client_rescue (id VARCHAR(36) NOT NULL PRIMARY KEY, incident_id VARCHAR(36) NULL, user_id VARCHAR(36) NULL, user_name VARCHAR(255) NOT NULL DEFAULT '', user_email VARCHAR(255) NOT NULL DEFAULT '', user_phone VARCHAR(50) NOT NULL DEFAULT '', attempted_action VARCHAR(300) NOT NULL DEFAULT '', failure_description TEXT NOT NULL, recovered TINYINT(1) NOT NULL DEFAULT 0, last_successful_action VARCHAR(300) NULL, likely_cause TEXT NULL, safe_workaround TEXT NULL, suggested_call_wording TEXT NULL, rescue_status VARCHAR(30) NOT NULL DEFAULT 'needs_call', resolution_note TEXT NULL, called_at DATETIME NULL, resolved_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_incident (incident_id), INDEX idx_status (rescue_status), INDEX idx_user (user_id))" },
+    { name: 'dazza_v3_conversations', ddl: "CREATE TABLE IF NOT EXISTS dazza_v3_conversations (id VARCHAR(36) NOT NULL PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, owner_user_id VARCHAR(36) NOT NULL, role VARCHAR(20) NOT NULL, content MEDIUMTEXT NOT NULL, turn_index INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_conversation (conversation_id, turn_index), INDEX idx_owner (owner_user_id))" },
+    { name: 'dazza_review_comments', ddl: "CREATE TABLE IF NOT EXISTS dazza_review_comments (id VARCHAR(36) NOT NULL PRIMARY KEY, bug_report_id VARCHAR(36) NOT NULL, version_label VARCHAR(100) NOT NULL, review_status VARCHAR(20) NOT NULL DEFAULT 'queued', what_happened TEXT NULL, what_found TEXT NULL, likely_cause TEXT NULL, recommended_fix TEXT NULL, airo_prompt MEDIUMTEXT NULL, confidence TINYINT UNSIGNED NULL, failure_reason VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at DATETIME NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY uq_bug_version (bug_report_id, version_label), INDEX idx_bug (bug_report_id), INDEX idx_status (review_status))" },
+    { name: 'dazza_v3_audit', ddl: "CREATE TABLE IF NOT EXISTS dazza_v3_audit (id VARCHAR(36) NOT NULL PRIMARY KEY, owner_user_id VARCHAR(36) NOT NULL, event_type VARCHAR(100) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_owner (owner_user_id), INDEX idx_event (event_type), INDEX idx_created (created_at DESC))" },
+    // ── Bug Communication Centre (added 2026-08-14) ──────────────────────────
+    { name: 'incident_communications', ddl: "CREATE TABLE IF NOT EXISTS incident_communications (id VARCHAR(36) NOT NULL PRIMARY KEY, incident_id VARCHAR(36) NULL, bug_report_id INT NULL, comm_type VARCHAR(30) NOT NULL DEFAULT 'banner', channel VARCHAR(30) NOT NULL DEFAULT 'dashboard', status VARCHAR(30) NOT NULL DEFAULT 'draft', title VARCHAR(300) NOT NULL, message TEXT NOT NULL, workaround TEXT NULL, action_label VARCHAR(100) NULL, action_url VARCHAR(500) NULL, target_scope VARCHAR(30) NOT NULL DEFAULT 'affected_users', target_company_id INT NULL, target_user_id VARCHAR(36) NULL, target_build VARCHAR(50) NULL, target_route VARCHAR(300) NULL, is_dismissible TINYINT(1) NOT NULL DEFAULT 1, is_critical TINYINT(1) NOT NULL DEFAULT 0, approved_by_user_id VARCHAR(36) NULL, approved_at DATETIME NULL, display_from DATETIME NULL, display_until DATETIME NULL, removed_at DATETIME NULL, removed_by_user_id VARCHAR(36) NULL, view_count INT NOT NULL DEFAULT 0, dismiss_count INT NOT NULL DEFAULT 0, resolve_confirm_count INT NOT NULL DEFAULT 0, still_trouble_count INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_incident (incident_id), INDEX idx_status (status), INDEX idx_scope (target_scope, status), INDEX idx_company (target_company_id))" },
+    { name: 'incident_comm_dismissals', ddl: "CREATE TABLE IF NOT EXISTS incident_comm_dismissals (id INT AUTO_INCREMENT PRIMARY KEY, comm_id VARCHAR(36) NOT NULL, user_id VARCHAR(36) NOT NULL, dismissed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comm_user (comm_id, user_id), INDEX idx_user (user_id))" },
     // OneDrive / SharePoint OAuth connections
     { name: 'onedrive_connections', ddl: "CREATE TABLE IF NOT EXISTS onedrive_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, display_name VARCHAR(255) NOT NULL DEFAULT 'OneDrive User', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     // ── Customers ─────────────────────────────────────────────────────────────
@@ -1752,6 +1833,7 @@ async function runStartupMigrations() {
     // ── Secure Share Links (QR / token-based sharing) ─────────────────────────
     { name: 'secure_share_links', ddl: "CREATE TABLE IF NOT EXISTS secure_share_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, link_type VARCHAR(30) NOT NULL DEFAULT 'file_transfer', target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, title VARCHAR(500) NOT NULL DEFAULT '', permissions_json TEXT NULL, metadata_json TEXT NULL, expires_at DATETIME NULL, password_hash VARCHAR(255) NULL, max_uses INT NULL, use_count INT NOT NULL DEFAULT 0, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id), INDEX idx_revoked (company_id, revoked))" },
     { name: 'secure_share_events', ddl: "CREATE TABLE IF NOT EXISTS secure_share_events (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, file_id INT NULL, metadata_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_company (company_id, created_at))" },
+    { name: 'secure_share_access_proofs', ddl: "CREATE TABLE IF NOT EXISTS secure_share_access_proofs (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, proof_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, used TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_proof (proof_hash), INDEX idx_expires (expires_at))" },
     // ── Platform Activity Log ─────────────────────────────────────────────────
     // NOTE: columns are also listed in colsToEnsure above for self-healing on
     // older DBs where the table already exists but is missing columns.
@@ -1799,6 +1881,11 @@ async function runStartupMigrations() {
     // ── Global Library ────────────────────────────────────────────────────────
     { name: 'library_items', ddl: "CREATE TABLE IF NOT EXISTS library_items (id INT AUTO_INCREMENT PRIMARY KEY, type VARCHAR(50) NOT NULL, category VARCHAR(100) NULL, title VARCHAR(255) NOT NULL, summary TEXT NULL, tags TEXT NULL, discipline VARCHAR(100) NULL, version VARCHAR(30) NOT NULL DEFAULT '1.0', status VARCHAR(30) NOT NULL DEFAULT 'active', visibility VARCHAR(30) NOT NULL DEFAULT 'public', content LONGTEXT NULL, builder_json LONGTEXT NULL, metadata_json TEXT NULL, source_links TEXT NULL, owner_user_id VARCHAR(36) NULL, install_count INT NOT NULL DEFAULT 0, download_count INT NOT NULL DEFAULT 0, rating_count INT NOT NULL DEFAULT 0, rating_sum INT NOT NULL DEFAULT 0, file_path VARCHAR(1000) NULL, file_mime VARCHAR(100) NULL, source_file_name VARCHAR(255) NULL, submitted_by_company_id INT NULL, submitted_by_user_id VARCHAR(36) NULL, reviewer_notes TEXT NULL, reviewed_at TIMESTAMP NULL, reviewed_by VARCHAR(36) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_lib_visibility (visibility), INDEX idx_lib_type (type), INDEX idx_lib_category (category), INDEX idx_lib_updated_at (updated_at), INDEX idx_lib_owner (owner_user_id), INDEX idx_lib_install_cnt (install_count))" },
     { name: 'company_library_items', ddl: "CREATE TABLE IF NOT EXISTS company_library_items (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, source_item_id INT NOT NULL, source_version VARCHAR(30) NOT NULL DEFAULT '1.0', type VARCHAR(50) NOT NULL, category VARCHAR(100) NULL, title VARCHAR(255) NOT NULL, content LONGTEXT NULL, metadata_json TEXT NULL, customised TINYINT(1) NOT NULL DEFAULT 0, installed_by VARCHAR(36) NULL, installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, update_available TINYINT(1) NOT NULL DEFAULT 0, FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE, FOREIGN KEY (source_item_id) REFERENCES library_items(id) ON DELETE RESTRICT, INDEX idx_cli_company (company_id), INDEX idx_cli_source (source_item_id), INDEX idx_cli_type (type), INDEX idx_cli_updated_at (updated_at), UNIQUE KEY uq_cli_company_source (company_id, source_item_id))" },
+    // ── Dazza Anatomy Index (auto-migrated at startup — no manual endpoint needed) ──
+    { name: 'anatomy_snapshots', ddl: "CREATE TABLE IF NOT EXISTS anatomy_snapshots (id VARCHAR(36) PRIMARY KEY, source_type ENUM('github','zip') NOT NULL, repo_owner VARCHAR(200) NULL, repo_name VARCHAR(200) NULL, branch VARCHAR(200) NULL, commit_sha VARCHAR(40) NULL, commit_date DATETIME NULL, package_sha256 VARCHAR(64) NULL, snapshot_name VARCHAR(200) NULL, source_desc VARCHAR(500) NULL, app_version VARCHAR(100) NULL, build_number VARCHAR(100) NULL, git_ref VARCHAR(200) NULL, status ENUM('pending','indexing','ready','failed','deleted') NOT NULL DEFAULT 'pending', is_active TINYINT(1) NOT NULL DEFAULT 0, total_files INT NOT NULL DEFAULT 0, indexed_files INT NOT NULL DEFAULT 0, excluded_files INT NOT NULL DEFAULT 0, quarantine_count INT NOT NULL DEFAULT 0, error_message TEXT NULL, uploader_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_anatomy_snapshots_status (status), INDEX idx_anatomy_snapshots_active (is_active), INDEX idx_anatomy_snapshots_sha (commit_sha))" },
+    { name: 'anatomy_files', ddl: "CREATE TABLE IF NOT EXISTS anatomy_files (id BIGINT PRIMARY KEY AUTO_INCREMENT, snapshot_id VARCHAR(36) NOT NULL, rel_path VARCHAR(1000) NOT NULL, file_sha256 VARCHAR(64) NULL, language VARCHAR(50) NULL, file_type VARCHAR(50) NULL, line_count INT NOT NULL DEFAULT 0, byte_size INT NOT NULL DEFAULT 0, is_excluded TINYINT(1) NOT NULL DEFAULT 0, is_quarantined TINYINT(1) NOT NULL DEFAULT 0, quarantine_reason VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_anatomy_files_snapshot (snapshot_id), INDEX idx_anatomy_files_path (snapshot_id, rel_path(255)), INDEX idx_anatomy_files_lang (snapshot_id, language))" },
+    { name: 'anatomy_chunks', ddl: "CREATE TABLE IF NOT EXISTS anatomy_chunks (id BIGINT PRIMARY KEY AUTO_INCREMENT, snapshot_id VARCHAR(36) NOT NULL, file_id BIGINT NOT NULL, rel_path VARCHAR(1000) NOT NULL, start_line INT NOT NULL, end_line INT NOT NULL, content MEDIUMTEXT NOT NULL, chunk_type VARCHAR(50) NULL, symbol_name VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FULLTEXT INDEX ft_anatomy_chunks_content (content), INDEX idx_anatomy_chunks_snapshot (snapshot_id), INDEX idx_anatomy_chunks_file (file_id), INDEX idx_anatomy_chunks_path (snapshot_id, rel_path(255)))" },
+    { name: 'anatomy_quarantine', ddl: "CREATE TABLE IF NOT EXISTS anatomy_quarantine (id BIGINT PRIMARY KEY AUTO_INCREMENT, snapshot_id VARCHAR(36) NOT NULL, rel_path VARCHAR(1000) NOT NULL, reason VARCHAR(500) NOT NULL, pattern_matched VARCHAR(200) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_anatomy_quarantine_snapshot (snapshot_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1816,6 +1903,93 @@ async function runStartupMigrations() {
         console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
       }
     }
+  }
+
+  // ── Anatomy schema repair ─────────────────────────────────────────────────
+  // The safetyTables loop above only CREATEs missing tables — it skips existing
+  // ones. If anatomy_snapshots was created by an older migration endpoint with a
+  // different schema, the INSERT will fail. These ALTER TABLE … ADD COLUMN IF NOT
+  // EXISTS statements are idempotent and run on every startup to ensure the live
+  // schema always matches the INSERT in the fetch handler.
+  {
+    const anatomyAlters: Array<{ table: string; col: string; ddl: string }> = [
+      // anatomy_snapshots — ADD COLUMN only (no MODIFY; CREATE already has correct ENUM types)
+      { table: 'anatomy_snapshots', col: 'id',              ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_snapshots', col: 'repo_owner',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN repo_owner VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'repo_name',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN repo_name VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'branch',          ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN branch VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'commit_sha',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN commit_sha VARCHAR(40) NULL" },
+      { table: 'anatomy_snapshots', col: 'commit_date',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN commit_date DATETIME NULL" },
+      { table: 'anatomy_snapshots', col: 'package_sha256',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN package_sha256 VARCHAR(64) NULL" },
+      { table: 'anatomy_snapshots', col: 'snapshot_name',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN snapshot_name VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'source_desc',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN source_desc VARCHAR(500) NULL" },
+      { table: 'anatomy_snapshots', col: 'app_version',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN app_version VARCHAR(100) NULL" },
+      { table: 'anatomy_snapshots', col: 'build_number',    ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN build_number VARCHAR(100) NULL" },
+      { table: 'anatomy_snapshots', col: 'git_ref',         ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN git_ref VARCHAR(200) NULL" },
+      { table: 'anatomy_snapshots', col: 'is_active',       ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'total_files',     ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN total_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'indexed_files',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN indexed_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'excluded_files',  ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN excluded_files INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'quarantine_count',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN quarantine_count INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_snapshots', col: 'error_message',   ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN error_message TEXT NULL" },
+      { table: 'anatomy_snapshots', col: 'uploader_user_id',ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN uploader_user_id VARCHAR(36) NULL" },
+      { table: 'anatomy_snapshots', col: 'created_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+      { table: 'anatomy_snapshots', col: 'updated_at',      ddl: "ALTER TABLE anatomy_snapshots ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" },
+      // anatomy_files
+      { table: 'anatomy_files', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_files ADD COLUMN snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_files', col: 'rel_path',        ddl: "ALTER TABLE anatomy_files ADD COLUMN rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_files', col: 'file_sha256',     ddl: "ALTER TABLE anatomy_files ADD COLUMN file_sha256 VARCHAR(64) NULL" },
+      { table: 'anatomy_files', col: 'language',        ddl: "ALTER TABLE anatomy_files ADD COLUMN language VARCHAR(50) NULL" },
+      { table: 'anatomy_files', col: 'file_type',       ddl: "ALTER TABLE anatomy_files ADD COLUMN file_type VARCHAR(50) NULL" },
+      { table: 'anatomy_files', col: 'line_count',      ddl: "ALTER TABLE anatomy_files ADD COLUMN line_count INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'byte_size',       ddl: "ALTER TABLE anatomy_files ADD COLUMN byte_size INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'is_excluded',     ddl: "ALTER TABLE anatomy_files ADD COLUMN is_excluded TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'is_quarantined',  ddl: "ALTER TABLE anatomy_files ADD COLUMN is_quarantined TINYINT(1) NOT NULL DEFAULT 0" },
+      { table: 'anatomy_files', col: 'quarantine_reason',ddl: "ALTER TABLE anatomy_files ADD COLUMN quarantine_reason VARCHAR(500) NULL" },
+      // anatomy_chunks
+      { table: 'anatomy_chunks', col: 'snapshot_id',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'file_id',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN file_id BIGINT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'rel_path',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'start_line',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN start_line INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'end_line',     ddl: "ALTER TABLE anatomy_chunks ADD COLUMN end_line INT NOT NULL DEFAULT 0" },
+      { table: 'anatomy_chunks', col: 'content',      ddl: "ALTER TABLE anatomy_chunks ADD COLUMN content MEDIUMTEXT NOT NULL DEFAULT ''" },
+      { table: 'anatomy_chunks', col: 'chunk_type',   ddl: "ALTER TABLE anatomy_chunks ADD COLUMN chunk_type VARCHAR(50) NULL" },
+      { table: 'anatomy_chunks', col: 'symbol_name',  ddl: "ALTER TABLE anatomy_chunks ADD COLUMN symbol_name VARCHAR(500) NULL" },
+      // anatomy_quarantine
+      { table: 'anatomy_quarantine', col: 'snapshot_id',     ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN snapshot_id VARCHAR(36) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'rel_path',        ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN rel_path VARCHAR(1000) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'reason',          ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN reason VARCHAR(500) NOT NULL DEFAULT ''" },
+      { table: 'anatomy_quarantine', col: 'pattern_matched', ddl: "ALTER TABLE anatomy_quarantine ADD COLUMN pattern_matched VARCHAR(200) NULL" },
+    ];
+
+    for (const { table, col, ddl } of anatomyAlters) {
+      try {
+        // Only attempt ALTER if the table exists — avoids errors on fresh DBs
+        // where the safetyTables CREATE already built the correct schema.
+        const [tblRows] = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table}`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+        if (Number(tblRows?.[0]?.cnt ?? 0) === 0) continue; // table not yet created — skip
+
+        // Check if column already exists with correct definition
+        const [colRows] = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${col}`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+
+        // Skip if column already exists — ADD COLUMN without IF NOT EXISTS would error
+        if (Number(colRows?.[0]?.cnt ?? 0) > 0) continue;
+
+        await db.execute(sql.raw(ddl));
+        console.log(`[startup-migration] anatomy: added ${table}.${col}`);
+      } catch (e: unknown) {
+        const msg = migrationErrMsg(e);
+        // Suppress "already exists" noise — these are idempotent
+        if (!msg.includes('already exists') && !msg.includes('Duplicate column')) {
+          console.warn(`[startup-migration] anatomy alter ${table}.${col}:`, msg);
+        }
+      }
+    }
+    console.log('[startup-migration] anatomy schema repair complete');
   }
 
   // Account recovery tables (idempotent — safe to run on every startup)
@@ -2963,6 +3137,40 @@ app.get("/api/bug-reports", bug_reports_get_80);
 app.post("/api/bug-reports", bug_reports_post_81);
 app.patch("/api/bug-reports/:id", bug_reports_id_patch_82);
 app.get("/api/bug-reports/:id/export-bundle", bug_reports_id_export_bundle_get_83);
+app.post("/api/bug-reports/:id/analyse", bug_reports_id_analyse_post);
+app.post("/api/bug-reports/:id/sms-authorise", bug_reports_id_sms_authorise_post);
+app.post("/api/bug-reports/:id/publish-fix", bug_reports_id_publish_fix_post);
+app.get("/api/bug-reports/my-reports", bug_reports_my_reports_get);
+app.post("/api/bug-reports/:id/dazza-review/ensure", bug_reports_id_dazza_review_ensure_post);
+app.post("/api/bug-reports/:id/dazza-review/evidence", bug_reports_id_dazza_review_evidence_post);
+app.get("/api/bug-reports/:id/dazza-review/comments", bug_reports_id_dazza_review_comments_get);
+app.post("/api/bug-reports/:id/dazza-review/retry", bug_reports_id_dazza_review_retry_post);
+// ── Dazza V3 ──────────────────────────────────────────────────────────────────
+app.post("/api/dazza/v3/chat/stream", dazza_v3_chat_stream_post);
+app.post("/api/dazza/v3/incidents", dazza_v3_incidents_post);
+app.get("/api/dazza/v3/incidents", dazza_v3_incidents_get);
+app.get("/api/dazza/v3/incidents/:id", dazza_v3_incidents_id_get);
+app.post("/api/dazza/v3/incidents/:id/investigate", dazza_v3_incidents_id_investigate_post);
+app.get("/api/dazza/v3/client-rescue", dazza_v3_client_rescue_get);
+app.patch("/api/dazza/v3/client-rescue/:id", dazza_v3_client_rescue_id_patch);
+// ── Dazza Anatomy Index ───────────────────────────────────────────────────────
+app.post("/api/migrate-anatomy", requirePlatformOwner, migrate_anatomy_post);
+app.post("/api/dazza/anatomy/github/test-connection", requirePlatformOwner, dazza_anatomy_github_test_post);
+app.post("/api/dazza/anatomy/github/check-changes", requirePlatformOwner, dazza_anatomy_github_check_post);
+app.post("/api/dazza/anatomy/github/fetch", requirePlatformOwner, dazza_anatomy_github_fetch_post);
+app.post("/api/dazza/anatomy/upload-zip", requirePlatformOwner, dazza_anatomy_upload_zip_post);
+app.get("/api/dazza/anatomy/snapshots", requirePlatformOwner, dazza_anatomy_snapshots_get);
+app.get("/api/dazza/anatomy/snapshots/:id", requirePlatformOwner, dazza_anatomy_snapshot_id_get);
+app.post("/api/dazza/anatomy/snapshots/:id/activate", requirePlatformOwner, dazza_anatomy_snapshot_activate_post);
+app.post("/api/dazza/anatomy/snapshots/:id/delete", requirePlatformOwner, dazza_anatomy_snapshot_delete_post);
+app.post("/api/dazza/anatomy/search", requirePlatformOwner, dazza_anatomy_search_post);
+// ── Dazza V3 Communications ───────────────────────────────────────────────────
+app.get("/api/dazza/v3/communications", dazza_v3_comms_get);
+app.post("/api/dazza/v3/communications", dazza_v3_comms_post);
+app.get("/api/dazza/v3/communications/owner", dazza_v3_comms_owner_get);
+app.patch("/api/dazza/v3/communications/:id", dazza_v3_comms_id_patch);
+app.post("/api/dazza/v3/communications/:id/dismiss", dazza_v3_comms_id_dismiss_post);
+app.post("/api/dazza/v3/communications/:id/still-having-trouble", dazza_v3_comms_id_still_trouble_post);
 app.get("/api/company", company_get_84);
 app.put("/api/company", company_put_85);
 app.post("/api/company/logo", company_logo_post_86);
@@ -2988,6 +3196,9 @@ app.post("/api/dazza/annette", dazza_annette_post_105);
 app.post("/api/dazza/brain/hive/approve", dazza_brain_hive_approve_post_106);
 app.post("/api/dazza/brain/hive/reject", dazza_brain_hive_reject_post_107);
 app.get("/api/dazza/brain/status", dazza_brain_status_get_108);
+app.post("/api/dazza/chat/stream", dazza_chat_stream_post);
+app.get("/api/dazza/engine-status", dazza_engine_status_get);
+app.get("/api/dazza/conversation/:id/history", dazza_conversation_history_get);
 app.post("/api/dazza/chat", dazza_chat_post_109);
 app.post("/api/dazza/chat-v2", dazza_chat_v2_post_110);
 app.post("/api/dazza/chat-v2/stream", dazza_chat_v2_stream_post_111);
@@ -3008,6 +3219,7 @@ app.post("/api/developer/email-settings/test", developer_email_settings_test_pos
 app.get("/api/developer/media-backfill-report", developer_media_backfill_report_get_126);
 app.post("/api/developer/run-seed-now", developer_run_seed_now_post_127);
 app.post("/api/developer/seed-developer-account", developer_seed_developer_account_post_128);
+app.post("/api/developer/test-share-security", developer_test_share_security_post);
 app.get("/api/developer/support-notes", developer_support_notes_get_129);
 app.post("/api/developer/support-notes", developer_support_notes_post_130);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_131);
@@ -3064,6 +3276,8 @@ app.put("/api/estimates/:id", estimates_id_put_181);
 app.post("/api/estimates/:id/convert-to-invoice", estimates_id_convert_to_invoice_post_182);
 app.get("/api/estimates/:id/export-csv", estimates_id_export_csv_get_183);
 app.get("/api/estimates/:id/export-pdf", estimates_id_export_pdf_get_184);
+app.get("/api/estimates/:id/compose-defaults", estimates_id_compose_defaults_get);
+app.post("/api/estimates/:id/send-email", estimates_id_send_email_post_email);
 app.post("/api/estimates/:id/import-csv", estimates_id_import_csv_post_185);
 app.post("/api/estimates/:id/unlock", estimates_id_unlock_post_186);
 app.get("/api/external/form/:token", external_form_token_get_187);
@@ -3128,6 +3342,7 @@ app.post("/api/forms/skip-audit", forms_skip_audit_post_245);
 app.post("/api/forms/start", forms_start_post_246);
 app.get("/api/forms/submissions", forms_submissions_get_247);
 app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_post_248);
+app.delete("/api/forms/templates/:id/share-link", forms_templates_id_share_link_delete);
 app.get("/api/forms/:id/fields", forms_id_fields_get_249);
 app.post("/api/forms/:id/fields", forms_id_fields_post_250);
 app.post("/api/forms/:id/fields/reorder", forms_id_fields_reorder_post_251);
@@ -3179,6 +3394,7 @@ app.get("/api/invoices/:id", invoices_id_get_296);
 app.put("/api/invoices/:id", invoices_id_put_297);
 app.post("/api/invoices/:id/duplicate", invoices_id_duplicate_post_298);
 app.get("/api/invoices/:id/export-pdf", invoices_id_export_pdf_get_299);
+app.get("/api/invoices/:id/compose-defaults", invoices_id_compose_defaults_get);
 app.post("/api/invoices/:id/mark-sent", invoices_id_mark_sent_post_300);
 app.post("/api/invoices/:id/record-payment", invoices_id_record_payment_post_301);
 app.post("/api/invoices/:id/send-email", invoices_id_send_email_post_302);
@@ -3201,6 +3417,7 @@ app.delete("/api/job-forms/:id", job_forms_id_delete_318);
 app.get("/api/job-forms/:id", job_forms_id_get_319);
 app.put("/api/job-forms/:id", job_forms_id_put_320);
 app.post("/api/job-forms/:id/reset", job_forms_id_reset_post_321);
+app.get("/api/job-forms/:id/compose-defaults", job_forms_id_compose_defaults_get);
 app.post("/api/job-forms/:id/send-email", job_forms_id_send_email_post_322);
 app.delete("/api/job-forms/:id/share", job_forms_id_share_delete_323);
 app.get("/api/job-forms/:id/share", job_forms_id_share_get_324);
@@ -3226,6 +3443,8 @@ app.delete("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_delete_343);
 app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put_344);
 app.get("/api/jobs/:id/documents", jobs_id_documents_get_345);
 app.post("/api/jobs/:id/documents", jobs_id_documents_post_346);
+app.get("/api/jobs/:id/compose-defaults", jobs_id_compose_defaults_get);
+app.post("/api/jobs/:id/send-email", jobs_id_send_email_post);
 app.get("/api/jobs/:id/export-zip", jobs_id_export_zip_get_347);
 app.get("/api/jobs/:id/field-docs", jobs_id_field_docs_get_348);
 app.get("/api/jobs/:id/files", jobs_id_files_get_349);
@@ -3306,7 +3525,7 @@ app.delete("/api/library/items/:id/install", library_items_id_install_delete_423
 app.post("/api/library/items/:id/install", library_items_id_install_post_424);
 app.get("/api/library/my-installed", library_my_installed_get_425);
 app.get("/api/library/my-submissions", library_my_submissions_get_426);
-app.get("/api/lists", lists_get_427);
+app.get("/api/lists/:listType", lists_get_427);
 app.get("/api/me", me_get_428);
 app.put("/api/me", me_put_429);
 app.post("/api/me/2fa/disable", me_2fa_disable_post_430);
@@ -3533,6 +3752,8 @@ app.post("/api/secure-share", secure_share_post_649);
 app.delete("/api/secure-share/:id", secure_share_id_delete_650);
 app.get("/api/secure-share/:token", secure_share_token_get_651);
 app.post("/api/secure-share/:token", secure_share_token_post_652);
+// Public token-scoped content delivery (view/download PDF — no login required)
+app.get("/api/secure-share/:token/content", secure_share_token_content_get);
 app.get("/api/settings/backup", settings_backup_get_653);
 app.post("/api/settings/backup", settings_backup_post_654);
 app.get("/api/settings/backup/company-data", settings_backup_company_data_get_655);
@@ -3946,6 +4167,7 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 	// ── Migration IIFE starting ───────────────────────────────────────────────
 	console.log('[startup] migration IIFE starting');
+
 	void (async () => {
 			// Hoist db/sql imports once — avoids 5 redundant dynamic module
 			// evaluations and keeps Rollup's chunk graph clean.
@@ -4018,7 +4240,7 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 				console.warn('[startup] starter_pack_runs migration skipped:', (e as Error)?.message?.slice(0, 120));
 			}
 			try {
-				// Use INFORMATION_SCHEMA check — ADD COLUMN IF NOT EXISTS not supported on all MySQL versions
+				// Use INFORMATION_SCHEMA check — ADD COLUMN not supported on all MySQL versions
 				const [spCols] = await _db.execute(
 					_sql`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME IN ('starter_pack_loaded', 'starter_pack_loaded_at')`
 				) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];
@@ -4289,6 +4511,17 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 		// ── All migrations done — now start accepting requests ─────────────────
 		console.log('[startup] all inline migrations complete — calling app.listen');
+
+		// ── Dazza engine startup log ──────────────────────────────────────────
+		// Logs which engine will be used for Dazza chat requests.
+		// Never logs the raw secret value — only the resolved boolean.
+		try {
+			const { isDazzaV3Enabled } = await import('./lib/dazza-v3-brain.js');
+			const v3 = isDazzaV3Enabled();
+			console.log(`[startup] Dazza engine: ${v3 ? 'V3 (owner watcher)' : 'V2 rollback'} | DAZZA_V3_ENABLED resolved=${v3}`);
+		} catch (e) {
+			console.warn('[startup] Dazza engine check failed:', String(e).slice(0, 200));
+		}
 		if (_serverStarted) {
 			console.log('[startup] timeout-forced listen already fired — skipping duplicate listen');
 			return;

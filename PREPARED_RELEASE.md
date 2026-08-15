@@ -1,13 +1,37 @@
-# IWILLBUILD Airo release candidate
+# IWILLBUILD release candidate - Version 12.0.1, Build 13
 
-This is a non-destructive release copy based on the new `Airo Download`.
+Prepared 2026-08-16 from the new Airo download at:
 
-- Application base: `Airo Download` (1,414 files)
-- Native/patch source: verified current clone and `OLD` (their 1,697 non-Git files were byte-identical)
-- Source Git remote: `https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal.git`
-- Source Git commit: `41f8d7a64d468f45af9a9a2b6b878a9824ab451c`
-- iOS version/build: `12 (11)`
+`C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal (1)\IWILLBUILD_Portal`
 
-The original OneDrive folders were not modified. Git metadata is excluded; copy these files into the existing clone, review with GitHub Desktop, then commit and push.
+The download was merged into the existing Git repository without replacing its `.git` history or its Capacitor/iOS delivery files.
 
-The new Airo camera workflow was retained. No feature code from OLD was allowed to overwrite the Airo camera page, job Photos toolbar, route, or enhanced upload queue.
+- Git remote: `https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal.git`
+- Base commit before this delivery: `8bf95229e533493b66ca281c2a98044d7f65832d`
+- Web/package version: `12.0.1`
+- iOS marketing version: `12`
+- iOS/TestFlight build number: `13`
+- Target branch: `main`
+
+## Included Airo work
+
+- Dazza V3, Anatomy snapshots and read-only GitHub anatomy integration.
+- Bug Loop analysis, Dazza review, owner communication and fix-prompt workflow.
+- Secure Quote/Invoice/Form sharing with view/download content routes.
+- Standard document email composition and PDF attachments.
+- Weather widget and dashboard integration.
+- Safety poster PDF generation and poster preview updates.
+- Lists and user-log server repairs from the latest Airo session.
+- Estimate Print modal removal while retaining server-generated PDF download.
+
+## Native delivery preservation
+
+The existing Capacitor project, iOS project, native icons, scripts and Git repository were retained. Capacitor sync completed successfully after the source merge, and Debug/Release Xcode build numbers are both 13.
+
+## Build preparation
+
+The production build script now creates both browser and SSR bundles, supplies the deployed `#airo/secrets` runtime shim, copies starter-pack data, and gives Vite a 4 GB heap allowance for reliable packaging.
+
+The Airo codebase has substantial inherited strict TypeScript debt outside this delivery (872 diagnostics across 359 files). Vite production packaging does not use that standalone check. See `PATCH_MANIFEST.md` for the verification record and patch instructions.
+
+No Git push, deployment, Airo publish or TestFlight upload was performed by Codex.

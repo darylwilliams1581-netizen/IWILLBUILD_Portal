@@ -11,7 +11,7 @@
 		]
 	},
 	"ios": {
-		"buildNumber": "10",
+		"buildNumber": "13",
 		"contentInset": "automatic",
 		"backgroundColor": "#111827"
 	},

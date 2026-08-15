@@ -680,6 +680,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // compile to near-zero bytes rather than being externalized, so SSR
       // rendering still works in the publish container (no node_modules).
       external: (id: string) => {
+        // #airo/secrets is a package.json `imports` subpath alias injected by
+        // the publish platform at runtime — Rollup cannot resolve it at build time.
+        if (id === '#airo/secrets') return true;
         return id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf');
       },
       treeshake: {

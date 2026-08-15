@@ -4,21 +4,20 @@ import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
-  AlertCircle, Lock, FileText, Printer, Check, ChevronDown,
-  Upload, Download, Share2, Calculator, BookOpen,
+  AlertCircle, Lock, FileText, Check, ChevronDown,
+  Upload, Download, Share2, Calculator, BookOpen, Mail,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import JobContextTab from '@/components/JobContextTab';
-import OutlookEmailButton from '@/components/OutlookEmailButton';
+import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
   estimateTotals, lineCalc, ESTIMATE_STATUSES, GST_MODES,
-  type Estimate, type EstimateLine,
+  type Estimate, type EstimateLine, type LocalLine,
 } from '@/lib/estimates-api';
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
-import EstimatePrintModal, { type LocalLine } from '@/components/estimate/EstimatePrintModal';
 import { CostGuidePicker, RecipePicker, type CostItem, type Recipe } from '@/components/estimate/EstimatePickerModals';
 
 // ── Local helpers ─────────────────────────────────────────────────────────────
@@ -47,7 +46,8 @@ export default function EstimateEditorPage() {
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [showPrint, setShowPrint] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
+  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: import('@/components/SendDocumentEmailModal').JobEmailContext } | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
@@ -130,8 +130,10 @@ export default function EstimateEditorPage() {
       setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      return true;
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -141,6 +143,27 @@ export default function EstimateEditorPage() {
   function handleSave() {
     if (!estimate || isLocked) return;
     void save(estimate, lines);
+  }
+
+  async function handleEmail() {
+    if (!estimate) return;
+    if (dirty && !isLocked) {
+      const savedOk = await save(estimate, lines);
+      if (!savedOk) return;
+    }
+    // Prefetch compose defaults from server
+    try {
+      const res = await fetch(`/api/estimates/${estimate.id}/compose-defaults`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json() as { to: string; subject: string; message: string };
+        setEmailDefaults(d);
+      } else {
+        setEmailDefaults({ to: '', subject: '', message: '' });
+      }
+    } catch {
+      setEmailDefaults({ to: '', subject: '', message: '' });
+    }
+    setShowEmail(true);
   }
 
   // Save-on-back: save if dirty, then navigate
@@ -170,10 +193,6 @@ export default function EstimateEditorPage() {
     if (isLocked) return;
     setLines((prev) => prev.map((l) => l._key === key ? { ...l, [field]: value } : l));
     setDirty(true);
-  }
-
-  function triggerSave() {
-    // No-op: kept so insertCostItem / insertRecipe can still call it for immediate saves
   }
 
   function addLine() {
@@ -264,7 +283,7 @@ export default function EstimateEditorPage() {
     setExportingCsv(true);
     try {
       const res = await fetch(`/api/estimates/${estimate.id}/export-csv`, { credentials: 'include' });
-      if (!res.ok) { alert('Export failed'); return; }
+      if (!res.ok) { window.alert('Export failed'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -286,7 +305,7 @@ export default function EstimateEditorPage() {
     setExportingPdf(true);
     try {
       const res = await fetch(`/api/estimates/${estimate.id}/export-pdf`, { credentials: 'include' });
-      if (!res.ok) { alert('PDF export failed'); return; }
+      if (!res.ok) { window.alert('PDF export failed'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -317,7 +336,7 @@ export default function EstimateEditorPage() {
     URL.revokeObjectURL(url);
   }
 
-  function handleCsvImportSuccess(result: { imported: number; lines?: Array<{ id?: number; description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }> }) {
+  function handleCsvImportSuccess(_result: { imported: number; lines?: Array<{ id?: number; description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }> }) {
     // Reload estimate lines from server after import
     if (estimate) void load(estimate.id);
   }
@@ -359,7 +378,7 @@ export default function EstimateEditorPage() {
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[104px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
       <Helmet>
         <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
         <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
@@ -482,15 +501,6 @@ export default function EstimateEditorPage() {
             {/* Divider */}
             <div className="w-px h-4 bg-gray-200 shrink-0 mx-0.5" />
 
-            {/* Print */}
-            <button
-              onClick={() => setShowPrint(true)}
-              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
-            >
-              <Printer size={13} />
-              Print
-            </button>
-
             {/* PDF */}
             <button
               onClick={handleExportPdf}
@@ -501,26 +511,17 @@ export default function EstimateEditorPage() {
               PDF
             </button>
 
-            {/* Email via Outlook */}
+            {/* Email with generated PDF attachment */}
             {estimate && (
-              <div className="shrink-0">
-                <OutlookEmailButton
-                  context={{
-                    kind: 'estimate',
-                    estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
-                    jobName: job?.name,
-                    customerName: estimate.customerName ?? undefined,
-                    totalAmount: (() => {
-                      const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST');
-                      return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
-                    })(),
-                    status: estimate.status,
-                    link: `${typeof window !== 'undefined' ? window.location.origin : 'https://iwillbuild.com'}/view/estimate/${estimate.id}`,
-                  }}
-                  size="sm"
-                  showCopy
-                />
-              </div>
+              <button
+                onClick={() => void handleEmail()}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                title="Email this quote with the PDF attached"
+              >
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+                Email
+              </button>
             )}
 
             {/* Share */}
@@ -945,10 +946,11 @@ export default function EstimateEditorPage() {
               {!dirty && saved && <p className="text-xs text-emerald-600 font-semibold">Saved</p>}
             </div>
             <button
-              onClick={() => setShowPrint(true)}
-              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              onClick={handleExportPdf}
+              disabled={exportingPdf || !estimate}
+              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
             >
-              <Printer size={16} />
+              {exportingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             </button>
             <button
               onClick={handleSave}
@@ -963,8 +965,19 @@ export default function EstimateEditorPage() {
           </div>
         )}
 
-      {showPrint && estimate && (
-        <EstimatePrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
+      {showEmail && estimate && emailDefaults && (
+        <SendDocumentEmailModal
+          endpoint={`/api/estimates/${estimate.id}/send-email`}
+          documentLabel="Quote"
+          documentType="quote"
+          documentId={estimate.id}
+          documentName={`#${estimate.id} – ${estimate.title}`}
+          defaultTo={emailDefaults.to}
+          defaultSubject={emailDefaults.subject}
+          defaultMessage={emailDefaults.message}
+          job={emailDefaults.job}
+          onClose={() => { setShowEmail(false); setEmailDefaults(null); }}
+        />
       )}
       {showCostPicker && !isLocked && (
         <CostGuidePicker onInsert={insertCostItem} onClose={() => setShowCostPicker(false)} />

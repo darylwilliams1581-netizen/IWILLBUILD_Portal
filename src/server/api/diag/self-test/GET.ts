@@ -11,6 +11,7 @@ import { uploadMedia, normaliseMime } from '../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../lib/uploadService.js';
 import { getSignedUrl } from '../../../storage/storage-service.js';
 import { randomUUID } from 'node:crypto';
+import { getSecret } from '#airo/secrets';
 
 const TINY_JPEG_B64 =
   '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U' +
@@ -34,6 +35,21 @@ function extractKeyFromSignedUrl(url: string, bucket: string): string | null {
 export default async function handler(req: Request, res: Response) {
   const runRecovery = req.query.recover === '1';
   const report: Record<string, unknown> = {};
+
+  // ── 0. V3 flag diagnostic (safe — never exposes raw value) ─────────────────
+  {
+    const raw = getSecret('DAZZA_V3_ENABLED') ?? '';
+    const trimmed = raw.trim().toLowerCase();
+    const enabled = trimmed === 'true' || trimmed === '1' || trimmed === 'yes';
+    report.dazzaV3Flag = {
+      secretPresent:    raw.length > 0,
+      secretLength:     raw.length,
+      secretFirstChar:  raw.length > 0 ? raw[0] : '',
+      secretTrimmedLower: trimmed,
+      resolvedEnabled:  enabled,
+      engine:           enabled ? 'v3' : 'v2-rollback',
+    };
+  }
 
   // ── 1. Route order ──────────────────────────────────────────────────────────
   report.routeOrder = {

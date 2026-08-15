@@ -13,11 +13,10 @@ import {
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings,
-  BarChart2, FileSpreadsheet, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
+  ShieldAlert, AlertTriangle,
   ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft,
   Zap, FileStack, Map, ShieldCheck, AlertCircle, Building2,
-  TableProperties, ScrollText, Link2, History, Bot, Terminal,
+  TableProperties, ScrollText, Link2, History,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -611,49 +610,6 @@ const GROUPS: GroupDoc[] = [
           'Tap Export CSV to download the filtered records.',
         ],
       },
-      {
-        key: 'dazza_ai',
-        label: 'Dazza AI',
-        icon: Bot,
-        bg: 'bg-violet-600',
-        purpose: 'An AI assistant built into the portal. Ask Dazza questions about your jobs, costs, safety, or anything else — it has context about your business data.',
-        howTo: [
-          'Tap Dazza AI in the top bar (Owner only).',
-          'Type your question in the chat input.',
-          'Dazza responds with answers, summaries, or suggestions.',
-          'Use it to analyse job data, draft documents, or get quick answers.',
-        ],
-        tip: 'Dazza AI is most useful for summarising job status, spotting cost overruns, and drafting safety content.',
-      },
-      {
-        key: 'dev_console',
-        label: 'Dev Console',
-        icon: Terminal,
-        bg: 'bg-green-700',
-        purpose: 'Platform owner development console. Access system diagnostics, database tools, and platform configuration.',
-        howTo: [
-          'Tap Dev Console in the top bar (Platform Owner only).',
-          'Use the available tools for system diagnostics and configuration.',
-        ],
-        tip: 'This tool is restricted to the platform owner account only.',
-      },
-    ],
-  },
-  {
-    id: 'comingSoon',
-    label: 'Coming Soon',
-    description: 'Features currently in development — these will appear when released.',
-    color: 'bg-gray-100 text-gray-500 border-gray-200',
-    icons: [
-      { key: 'report',         label: 'Report',       icon: BarChart2,           bg: 'bg-blue-500',    purpose: 'Automated job and business performance reports.', howTo: ['Coming soon.'] },
-      { key: 'timesheet',      label: 'Timesheets',   icon: FileSpreadsheet,     bg: 'bg-indigo-400',  purpose: 'Digital timesheets for tracking worker hours against jobs.', howTo: ['Coming soon.'] },
-      { key: 'site_diary',     label: 'Site Diary',   icon: ClipboardSignature,  bg: 'bg-amber-600',   purpose: 'Daily site diary entries for contract records and claims.', howTo: ['Coming soon.'] },
-      { key: 'rainfall',       label: 'Rainfall',     icon: CloudRain,           bg: 'bg-sky-600',     purpose: 'Log rainfall events for delay claims and contract records.', howTo: ['Coming soon.'] },
-      { key: 'checklist',      label: 'Checklist',    icon: Clipboard,           bg: 'bg-lime-600',    purpose: 'Simple task checklists for jobs and daily work.', howTo: ['Coming soon.'] },
-      { key: 'messages',       label: 'Messages',     icon: MessageSquare,       bg: 'bg-green-500',   purpose: 'In-app messaging between team members.', howTo: ['Coming soon.'] },
-      { key: 'invoices_field', label: 'Field Invoice',icon: Wallet,              bg: 'bg-teal-500',    purpose: 'Field-accessible invoice view for workers.', howTo: ['Coming soon.'] },
-      { key: 'daily_log',      label: 'Daily Log',    icon: ClipboardList,       bg: 'bg-violet-500',  purpose: 'Daily work log for recording activities and hours.', howTo: ['Coming soon.'] },
-      { key: 'weather',        label: 'Weather',      icon: CloudRain,           bg: 'bg-cyan-400',    purpose: 'Live weather for job sites — useful for planning and delay records.', howTo: ['Coming soon.'] },
     ],
   },
 ];
@@ -661,7 +617,7 @@ const GROUPS: GroupDoc[] = [
 export default function HelpPage() {
   const [search, setSearch] = useState('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    field: true, safety: true, tools: true, management: true, admin: false, comingSoon: false,
+    field: true, safety: true, tools: true, management: true, admin: false,
   });
   const [openIcons, setOpenIcons] = useState<Record<string, boolean>>({});
 
@@ -697,9 +653,9 @@ export default function HelpPage() {
       <DesktopTopBar />
       <DesktopDock />
 
-      <main className="min-h-screen bg-[#F4F5F7] pb-20 lg:pt-[104px]">
+      <main className="min-h-screen bg-[#F4F5F7] pb-20 lg:pt-[116px]">
         {/* Sticky page header */}
-        <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[96px] z-10">
+        <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[108px] z-10">
           <div className="max-w-3xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-3">

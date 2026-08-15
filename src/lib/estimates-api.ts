@@ -38,6 +38,22 @@ export interface EstimateLine {
   updatedAt: string;
 }
 
+/**
+ * Local (unsaved) line used in the estimate editor.
+ * Mirrors EstimateLine but with string fields for controlled inputs
+ * and an optional id (absent on newly-added lines).
+ */
+export interface LocalLine {
+  _key: string;
+  id?: number;
+  category?: string;
+  description: string;
+  quantity: string;
+  unit: string;
+  rate: string;
+  lineOrder: number;
+}
+
 // ── Calc helpers ──────────────────────────────────────────────────────────────
 
 export function lineCalc(line: Pick<EstimateLine, 'quantity' | 'rate'>): number {

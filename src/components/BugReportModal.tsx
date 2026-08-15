@@ -12,12 +12,13 @@
 import { useState, useRef } from 'react';
 import {
   Bug, X, Image, ChevronDown, Send, CheckCircle2,
-  AlertCircle, Loader2, Paperclip, ChevronRight, Info,
+  AlertCircle, Loader2, Paperclip, ChevronRight, Info, List,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { snapshotDiagBuffer, pushDiagEvent, type DiagEvent } from '@/lib/diagnosticBuffer';
 import { compressScreenshot } from '@/lib/imageCompressor';
 import { getStorageDiagnostics, type StorageDiagnostics } from '@/lib/storageDiagnostics';
+import BugWidgetStatusCentre from '@/components/dazza/BugWidgetStatusCentre';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -106,15 +107,17 @@ function collectGpsDiagnostics(): Record<string, string | number | boolean> {
 
 function detectPlatform(): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cap = (window as any).Capacitor;
-    if (cap) {
+    // Use isNativePlatform() — the canonical Capacitor guard.
+    // window.Capacitor exists as a stub in web builds too, so checking
+    // merely `if (cap)` incorrectly labels web sessions as "native".
+    // isNativePlatform() returns true only inside a real iOS/Android shell.
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor;
+    if (cap?.isNativePlatform?.()) {
       const p = cap.getPlatform?.() ?? 'native';
       return p === 'ios' ? 'ios' : p === 'android' ? 'android' : 'native';
     }
     if (window.matchMedia('(display-mode: standalone)').matches ||
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (navigator as any).standalone === true) {
+        (navigator as unknown as { standalone?: boolean }).standalone === true) {
       return 'pwa';
     }
     return 'web';
@@ -124,7 +127,7 @@ function detectPlatform(): string {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Phase = 'idle' | 'open' | 'submitting' | 'success';
+type Phase = 'idle' | 'open' | 'submitting' | 'success' | 'my-reports';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -146,6 +149,7 @@ export default function BugReportModal() {
   const [diagExpanded, setDiagExpanded] = useState(false);
   const [diagPreview, setDiagPreview] = useState<DiagEvent[]>([]);
   const [storageDiag, setStorageDiag] = useState<StorageDiagnostics | null>(null);
+  const [submittedCaseId, setSubmittedCaseId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function openModal() {
@@ -158,6 +162,7 @@ export default function BugReportModal() {
     setScreenshotPreview(null);
     setErrorMsg('');
     setDiagExpanded(false);
+    setSubmittedCaseId(null);
     // Load storage diagnostics non-blocking — shown in diagnostic preview
     void getStorageDiagnostics().then(setStorageDiag).catch(() => { /* non-fatal */ });
   }
@@ -260,15 +265,16 @@ export default function BugReportModal() {
         body: formData,
       });
 
-      const data = await res.json() as { ok?: boolean; error?: string };
+      const data = await res.json() as { ok?: boolean; error?: string; id?: number };
       if (!res.ok || !data.ok) {
         setErrorMsg(data.error ?? 'Failed to submit. Please try again.');
         setPhase('open');
         return;
       }
 
+      setSubmittedCaseId(data.id ?? null);
       setPhase('success');
-      setTimeout(() => setPhase('idle'), 3500);
+      setTimeout(() => setPhase('idle'), 5000);
     } catch {
       setErrorMsg('Network error. Please try again.');
       setPhase('open');
@@ -282,31 +288,104 @@ export default function BugReportModal() {
     <>
       {/* ── FAB ── */}
       {phase === 'idle' && (
-        <button
-          onClick={openModal}
-          title="Report a bug"
-          aria-label="Report a bug"
-          className="fixed z-40 w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        <div
+          className="fixed z-40 flex flex-col items-end gap-2"
           style={{
             bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
             right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
           }}
         >
-          <Bug size={20} className="text-slate-300" />
-        </button>
+          <button
+            onClick={() => setPhase('my-reports')}
+            title="My reports"
+            aria-label="My reports"
+            className="w-9 h-9 rounded-full bg-slate-700 hover:bg-slate-600 border border-slate-500 shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+          >
+            <List size={15} className="text-slate-300" />
+          </button>
+          <button
+            onClick={openModal}
+            title="Report a bug"
+            aria-label="Report a bug"
+            className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+          >
+            <Bug size={20} className="text-slate-300" />
+          </button>
+        </div>
       )}
 
       {/* ── Success toast ── */}
       {phase === 'success' && (
         <div
-          className="fixed z-50 flex items-center gap-2.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-xl"
+          className="fixed z-50 flex flex-col gap-0.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-xl"
           style={{
             bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
             right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
           }}
         >
-          <CheckCircle2 size={16} />
-          Bug report submitted — thanks!
+          <span className="flex items-center gap-2">
+            <CheckCircle2 size={16} />
+            {submittedCaseId
+              ? `Report received as BUG-${String(submittedCaseId).padStart(4, '0')} — Dazza is investigating.`
+              : 'Bug report submitted — thanks!'}
+          </span>
+          {submittedCaseId && (
+            <button
+              onClick={() => setPhase('my-reports')}
+              className="text-xs text-emerald-200 hover:text-white underline text-left"
+            >
+              View your reports
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── My Reports panel ── */}
+      {phase === 'my-reports' && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 3.5rem)',
+            paddingLeft: 'env(safe-area-inset-left, 0px)',
+            paddingRight: 'env(safe-area-inset-right, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setPhase('idle'); }}
+        >
+          <div
+            className="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{ maxHeight: 'min(calc(100dvh - max(env(safe-area-inset-top, 0px), 3.5rem) - env(safe-area-inset-bottom, 0px)), 600px)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <List size={16} className="text-slate-500" />
+                <h2 className="text-sm font-bold text-slate-800">My Reports</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openModal}
+                  className="text-xs font-semibold text-violet-600 hover:underline flex items-center gap-1"
+                >
+                  <Bug size={11} /> New report
+                </button>
+                <button onClick={() => setPhase('idle')} className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <BugWidgetStatusCentre
+                onStillHavingTrouble={async (commId) => {
+                  try {
+                    await fetch(`/api/dazza/v3/communications/${commId}/still-having-trouble`, {
+                      method: 'POST', credentials: 'include',
+                    });
+                  } catch { /* ignore */ }
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 

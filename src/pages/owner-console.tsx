@@ -8,7 +8,7 @@ import {
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut, ArrowLeft, Bug,
+  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -35,6 +35,9 @@ import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTe
 
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
+import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
+import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
+import AnatomyTab from '@/components/owner-console/AnatomyTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -354,10 +357,12 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports'>(
-    (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | null) === 'support-setup' ? 'support-setup'
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy'>(
+    (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null) === 'support-setup' ? 'support-setup'
     : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
     : (searchParams.get('tab') as 'bug-reports' | null) === 'bug-reports' ? 'bug-reports'
+    : (searchParams.get('tab') as 'incidents' | null) === 'incidents' ? 'incidents'
+    : (searchParams.get('tab') as 'client-rescue' | null) === 'client-rescue' ? 'client-rescue'
     : 'overview'
   );
   const [bugReportCount, setBugReportCount] = useState(0);
@@ -600,7 +605,7 @@ export default function OwnerConsolePage() {
   // Access guard
   if (!permsLoading && !isPlatformOwner) {
     return (
-      <div className="flex-1 bg-[#F4F5F7] flex flex-col lg:pt-[104px]">
+      <div className="flex-1 bg-[#F4F5F7] flex flex-col lg:pt-[116px]">
         <DesktopTopBar />
         <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
@@ -631,7 +636,7 @@ export default function OwnerConsolePage() {
     : null;
 
   return (
-    <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg:pt-[104px]">
+    <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg:pt-[116px]">
       <DesktopTopBar />
       <DesktopDock />
 
@@ -764,6 +769,24 @@ export default function OwnerConsolePage() {
               )}
             </span>
           </Tab>
+          <Tab active={tab === 'incidents'} onClick={() => { setTab('incidents'); setSearchParams({ tab: 'incidents' }); }}>
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle size={12} />
+              Incidents
+            </span>
+          </Tab>
+          <Tab active={tab === 'client-rescue'} onClick={() => { setTab('client-rescue'); setSearchParams({ tab: 'client-rescue' }); }}>
+            <span className="flex items-center gap-1.5">
+              <Phone size={12} />
+              Client Rescue
+            </span>
+          </Tab>
+          <Tab active={tab === 'anatomy'} onClick={() => { setTab('anatomy'); setSearchParams({ tab: 'anatomy' }); }}>
+            <span className="flex items-center gap-1.5">
+              <FileCode size={12} />
+              Anatomy
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -773,10 +796,22 @@ export default function OwnerConsolePage() {
               </span>
             </Tab>
           )}
+          {/* Open GoDaddy — platform owner ONLY */}
+          {isPlatformOwner && (
+            <a
+              href="https://sso.godaddy.com/?realm=idp"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Code2 size={12} />
+              Open GoDaddy
+            </a>
+          )}
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 ${tab === 'bug-reports' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+        <div className={`flex-1 min-h-0 ${(tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue' || tab === 'builder') ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
@@ -941,7 +976,13 @@ export default function OwnerConsolePage() {
               {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
 
               {/* ── Bug Reports ── */}
-              {tab === 'bug-reports' && <BugReportsTab />}
+              {tab === 'bug-reports' && <BugReportsTab onCountChange={setBugReportCount} />}
+              {/* ── Incidents ── */}
+              {tab === 'incidents' && <IncidentQueueTab />}
+              {/* ── Client Rescue ── */}
+              {tab === 'client-rescue' && <ClientRescueTab />}
+              {tab === 'anatomy' && <AnatomyTab />}
+
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (

@@ -75,12 +75,11 @@ export default async function handler(req: Request, res: Response) {
       return res.status(410).json({ error: 'This link has reached its maximum number of uses.', code: 'MAX_USES' });
     }
 
-    // Increment use_count and log opened event
-    await db.execute(sql`
-      UPDATE secure_share_links
-      SET use_count = use_count + 1, updated_at = NOW()
-      WHERE id = ${link.id}
-    `);
+    // Log opened event — do NOT increment use_count here.
+    // use_count is incremented only when content is actually delivered
+    // (view or download via GET /api/secure-share/:token/content).
+    // Incrementing on every metadata probe causes double-counting when
+    // the share page probes first and the viewer fetches again.
     await logEvent(link.id, link.company_id, 'opened', req);
 
     let permissions: string[] = ['view'];
@@ -103,7 +102,7 @@ export default async function handler(req: Request, res: Response) {
       metadata,
       expiresAt: link.expires_at ?? null,
       maxUses: link.max_uses ?? null,
-      useCount: link.use_count + 1, // reflect the increment
+      useCount: link.use_count, // actual count — incremented only on content delivery
       requiresPassword: !!link.password_hash,
       createdAt: link.created_at,
     });

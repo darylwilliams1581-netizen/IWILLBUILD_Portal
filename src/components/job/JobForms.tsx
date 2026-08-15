@@ -7,15 +7,14 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
-  Eye,
   Trash2,
-  Printer,
-  RotateCcw,
   X,
-  ExternalLink,
   ChevronDown,
-  PlayCircle,
+  ChevronRight,
+  Mail,
+  Eye,
 } from 'lucide-react';
+import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Job } from '@/lib/jobs-api';
 
@@ -146,6 +145,34 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
 }) {
   const isCompleted = submission.status === 'completed' || submission.status === 'submitted';
   const isSubmitted = submission.status === 'submitted';
+  const [shareOpen, setShareOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  async function sendEmail() {
+    if (!emailTo.trim()) return;
+    setEmailSending(true);
+    setEmailError('');
+    try {
+      const res = await fetch(`/api/job-forms/${submission.id}/send-email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailTo.trim() }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send');
+      setEmailSent(true);
+      setTimeout(() => { setEmailOpen(false); setEmailSent(false); setEmailTo(''); }, 2000);
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : 'Failed to send');
+    } finally {
+      setEmailSending(false);
+    }
+  }
 
   return (
     <motion.div
@@ -156,73 +183,100 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, 
       transition={{ duration: 0.15 }}
       className="rounded-xl border border-slate-200 bg-white overflow-hidden"
     >
-      {/* Main row — click to open in new tab */}
+      {/* Single-line pill — click anywhere to open */}
       <div
         onClick={onOpen}
-        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
       >
-        <div className={`p-2 rounded-lg shrink-0 ${isCompleted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+        {/* Status icon */}
+        <div className={`p-1.5 rounded-lg shrink-0 ${isCompleted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
           {isCompleted
-            ? <CheckCircle2 size={14} className="text-emerald-600" />
-            : <Clock size={14} className="text-amber-600" />
+            ? <CheckCircle2 size={13} className="text-emerald-600" />
+            : <Clock size={13} className="text-amber-500" />
           }
         </div>
+
+        {/* Name + meta */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 truncate">{templateName}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {isCompleted ? 'Completed' : 'Started'} by {submission.completedByName ?? 'Unknown'}
-            {' · '}{fmtDate(submission.createdAt)} {fmtTime(submission.createdAt)}
+          <p className="text-sm font-semibold text-slate-900 truncate leading-tight">{templateName}</p>
+          <p className="text-[11px] text-slate-400 leading-tight mt-0.5 truncate">
+            {fmtDate(isCompleted ? submission.updatedAt : submission.createdAt)}
+            {submission.completedByName ? ` · ${submission.completedByName}` : ''}
           </p>
         </div>
+
+        {/* Status badge */}
         <StatusBadge status={submission.status} />
-        <ExternalLink size={12} className="text-slate-300 shrink-0" />
+
+        {/* Chevron hint */}
+        <ChevronRight size={13} className="text-slate-300 shrink-0" />
       </div>
 
-      {/* Action bar */}
-      <div className="flex items-center gap-1.5 px-3 pb-3 pt-0 border-t border-slate-100 bg-slate-50/60 flex-wrap">
-        {isCompleted ? (
-          <>
-            <button
-              onClick={onOpen}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 transition-colors"
-            >
-              <Eye size={12} /> View
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpen(); }}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
-            >
-              <Printer size={12} /> Print / PDF
-            </button>
-            {!isSubmitted && (
-              <button
-                onClick={onOpen}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
-              >
-                <RotateCcw size={12} /> Reopen
+      {/* Email modal */}
+      {emailOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setEmailOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Mail size={15} className="text-blue-600" />
+                </div>
+                <h3 className="font-bold text-slate-800 text-sm">Email form with PDF</h3>
+              </div>
+              <button onClick={() => setEmailOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <X size={15} />
               </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              A PDF of <span className="font-semibold text-slate-700">{templateName}</span> will be attached and sent to the address below.
+            </p>
+            {emailSent ? (
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                <CheckCircle2 size={15} /> Sent successfully!
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Recipient email</label>
+                  <input
+                    type="email"
+                    value={emailTo}
+                    onChange={(e) => setEmailTo(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                    onKeyDown={(e) => { if (e.key === 'Enter') void sendEmail(); }}
+                    autoFocus
+                  />
+                </div>
+                {emailError && (
+                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                    <AlertCircle size={12} /> {emailError}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setEmailOpen(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void sendEmail()}
+                    disabled={emailSending || !emailTo.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold disabled:opacity-50 transition-colors"
+                  >
+                    {emailSending ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                    {emailSending ? 'Sending…' : 'Send'}
+                  </button>
+                </div>
+              </>
             )}
-          </>
-        ) : (
-          <button
-            onClick={onOpen}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-violet-700 text-white transition-colors"
-          >
-            <PlayCircle size={12} /> Continue
-          </button>
-        )}
-
-        <div className="flex-1" />
-
-        {canDelete && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-red-300 hover:text-red-500 text-slate-400 transition-colors"
-          >
-            <Trash2 size={12} /> Delete
-          </button>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
