@@ -38,52 +38,76 @@ execSync("npx vite build --ssr", {
 
 // ── Shim: mirrors /app/airo-secrets/src/secrets-utils.ts exactly ─────────────
 //
+// Reference: /app/airo-secrets/src/secrets-utils.ts
+//
 // The platform writes secrets to $NOMAD_TASK_DIR/config.json (default /local/config.json)
 // in the format: { "SECRET_NAME": { "VALUE": "...", "SYSTEM_MANAGED": false } }
 //
-// Only secrets with SYSTEM_MANAGED=false are accessible.
-// Falls back to process.env for local dev and CI where config.json is absent.
+// Key behaviours that must match the reference:
+//   1. readConfig() THROWS on failure — no caching of failure state.
+//      If config.json is temporarily absent, the next call retries the disk read.
+//   2. getSecret() catches the throw and returns null (not '').
+//   3. SYSTEM_MANAGED=true → null (not '').
+//   4. Missing key → null (not '').
+//   5. listSecretNames() returns sorted array of non-system-managed key names.
+//   6. Falls back to process.env ONLY when config.json is absent (dev/CI).
+//      In production the file is always present; process.env fallback is dev-only.
+//
+// Return type: string | object | null  (matches reference exactly)
 const shimSrc = `
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Cache parsed config to avoid repeated disk reads per request
+// Successful parse is cached to avoid repeated disk reads.
+// Failure is NOT cached — readConfig() throws, so the next call retries.
 let _configCache = null;
-let _configReadAttempted = false;
+let _configLoaded = false;
 
 function readConfig() {
-  if (_configReadAttempted) return _configCache;
-  _configReadAttempted = true;
+  if (_configLoaded) return _configCache;
   const configPath = join(process.env.NOMAD_TASK_DIR || '/local', 'config.json');
-  try {
-    const content = readFileSync(configPath, 'utf8');
-    _configCache = JSON.parse(content);
-  } catch {
-    // config.json absent (dev/CI) — fall back to process.env
-    _configCache = null;
-  }
+  // Throws if file is absent or unparseable — caller catches.
+  const content = readFileSync(configPath, 'utf8');
+  _configCache = JSON.parse(content);
+  _configLoaded = true;
   return _configCache;
 }
 
+function isNonSystemManagedSecret(value) {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'VALUE' in value &&
+    'SYSTEM_MANAGED' in value &&
+    value.SYSTEM_MANAGED === false
+  );
+}
+
 export function getSecret(name) {
-  const config = readConfig();
-  if (config !== null) {
+  try {
+    const config = readConfig();
+    if (!(name in config)) return null;
     const entry = config[name];
-    if (
-      entry !== null &&
-      typeof entry === 'object' &&
-      'VALUE' in entry &&
-      'SYSTEM_MANAGED' in entry &&
-      entry.SYSTEM_MANAGED === false
-    ) {
-      return typeof entry.VALUE === 'string' ? entry.VALUE : JSON.stringify(entry.VALUE);
-    }
-    // Key absent or SYSTEM_MANAGED=true — do NOT fall through to process.env
-    // (system-managed secrets must remain inaccessible)
-    return '';
+    if (!isNonSystemManagedSecret(entry)) return null;
+    return entry.VALUE;
+  } catch {
+    // config.json absent — dev/CI fallback to process.env.
+    // Returns null (not '') if the env var is also absent, matching reference behaviour.
+    const v = process.env[name];
+    return v !== undefined ? v : null;
   }
-  // config.json not available — dev/CI fallback
-  return process.env[name] ?? '';
+}
+
+export function listSecretNames() {
+  try {
+    const config = readConfig();
+    return Object.entries(config)
+      .filter(([, v]) => isNonSystemManagedSecret(v))
+      .map(([k]) => k)
+      .sort();
+  } catch {
+    return [];
+  }
 }
 `.trimStart();
 

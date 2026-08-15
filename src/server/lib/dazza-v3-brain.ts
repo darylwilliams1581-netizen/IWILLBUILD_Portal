@@ -47,29 +47,33 @@ import { sendEmail } from '../email.js';
 const DAZZA_V3_FEATURE_FLAG = 'DAZZA_V3_ENABLED';
 const OWNER_SUPPORT_EMAIL = 'support@iwillbuild.com';
 
-// Model — server-configured, never exposed to the browser.
-// o4-mini: OpenAI's current reasoning model with tool use support.
-// Falls back to gpt-4o for investigation mode where extended reasoning is less critical.
-const MODEL_REASONING = 'o4-mini';
-const MODEL_INVESTIGATION = 'gpt-4o';
-
+// Model — server-configured via DAZZA_OPENAI_MODEL secret, never exposed to the browser.
+// Default: o4-mini (OpenAI reasoning model with tool use support).
+// Both chat and investigation modes use the Responses API.
+// The model is resolved once per request from the secret store.
+function getDazzaModel(): string {
+  const configured = getSecret('DAZZA_OPENAI_MODEL');
+  if (configured && typeof configured === 'string' && configured.trim()) {
+    return configured.trim();
+  }
+  return 'o4-mini';
+}
 // Conversation history sent to OpenAI — bounded to control cost
 const CONTEXT_RECENT_TURNS = 20;       // most recent turns included verbatim
 const SUMMARY_THRESHOLD_TURNS = 30;    // deterministic compaction kicks in above this
-const MAX_TOKENS_INVESTIGATION = 8000;
+const MAX_TOKENS_INVESTIGATION = 16000;
 const MAX_TOKENS_CHAT = 4000;
 const TOOL_ROUNDS_MAX = 8;
 
 // ── Feature flag ──────────────────────────────────────────────────────────────
 
 export function isDazzaV3Enabled(): boolean {
-  // Must use getSecret() — reads from $NOMAD_TASK_DIR/config.json in production,
-  // falls back to process.env in dev/CI.
+  // getSecret() returns string | object | null (reference return type).
+  // Coerce to string safely before comparing.
   const raw = getSecret(DAZZA_V3_FEATURE_FLAG);
-  const flag = (raw ?? '').trim().toLowerCase();
+  const flag = (typeof raw === 'string' ? raw : '').trim().toLowerCase();
   const enabled = flag === 'true' || flag === '1' || flag === 'yes';
-  // Safe diagnostic — presence and resolved boolean only, never the value.
-  const present = (raw ?? '').length > 0;
+  const present = raw !== null && raw !== '';
   console.log(`[dazza] engine flag: secret present=${present}, resolved=${enabled}`);
   return enabled;
 }
@@ -349,7 +353,8 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     return;
   }
 
-  const apiKey = getSecret('OPENAI_API_KEY');
+  const apiKeyRaw = getSecret('OPENAI_API_KEY');
+  const apiKey = typeof apiKeyRaw === 'string' ? apiKeyRaw : null;
   if (!apiKey) {
     onError('OpenAI API key not configured. Set OPENAI_API_KEY to enable Dazza V3.');
     return;
@@ -436,9 +441,8 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   const userTurnIndex = totalTurns;
   void saveConversationTurn(conversationId, ownerContext.userId, 'user', userMessage, userTurnIndex);
 
-  // Model selection — server-configured, never exposed to browser
-  // o4-mini: reasoning model with tool use; investigation uses gpt-4o for extended output
-  const model = mode === 'investigation' ? MODEL_INVESTIGATION : MODEL_REASONING;
+  // Model — resolved from DAZZA_OPENAI_MODEL secret, never exposed to browser
+  const model = getDazzaModel();
   const maxTokens = mode === 'investigation' ? MAX_TOKENS_INVESTIGATION : MAX_TOKENS_CHAT;
 
   const toolsUsed: string[] = [];
@@ -446,57 +450,56 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // Agentic loop — Responses API for reasoning model, Chat Completions for gpt-4o
-  const useResponsesApi = model === MODEL_REASONING;
+  // ── Agentic loop — OpenAI Responses API ──────────────────────────────────
+  // Both chat and investigation modes use the Responses API.
+  // The Responses API uses `input` (not `messages`) and `max_output_tokens` (not `max_tokens`).
+  // Reasoning models do not support `temperature` — omit it entirely.
+  //
+  // Tool result format for Responses API:
+  //   { type: 'function_call_output', call_id: '...', output: '...' }
+  // NOT the Chat Completions format: { role: 'tool', tool_call_id: '...', content: '...' }
+
+  // Build the Responses API input array from the messages array.
+  // System messages → role: 'system', user/assistant → role: 'user'/'assistant',
+  // tool results → type: 'function_call_output'.
+  type ResponsesApiInput =
+    | { role: 'system' | 'user' | 'assistant'; content: string }
+    | { type: 'function_call'; id: string; call_id: string; name: string; arguments: string }
+    | { type: 'function_call_output'; call_id: string; output: string };
+
+  // We maintain two parallel arrays:
+  //   messages[]         — OAI message objects (for conversation save / history)
+  //   responsesInput[]   — Responses API input items (sent to OpenAI each round)
+  const responsesInput: ResponsesApiInput[] = messages.map(m => {
+    if (m.role === 'tool') {
+      return {
+        type: 'function_call_output' as const,
+        call_id: (m as { tool_call_id: string }).tool_call_id,
+        output: m.content ?? '',
+      };
+    }
+    return { role: m.role as 'system' | 'user' | 'assistant', content: m.content ?? '' };
+  });
 
   for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
     let streamRes: globalThis.Response;
     try {
-      if (useResponsesApi) {
-        // ── OpenAI Responses API (o4-mini) ──────────────────────────────────
-        // The Responses API uses `input` instead of `messages`, and `max_output_tokens`
-        // instead of `max_tokens`. Reasoning models do not support `temperature`.
-        streamRes = await fetch('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            max_output_tokens: maxTokens,
-            stream: true,
-            tools: V3_TOOL_DEFINITIONS.map(t => ({ type: 'function', ...t })),
-            tool_choice: 'auto',
-            input: messages.map(m => ({
-              role: m.role === 'tool' ? 'tool' : m.role,
-              content: m.content ?? '',
-              ...(m.role === 'tool' ? { tool_call_id: (m as { tool_call_id: string }).tool_call_id } : {}),
-            })),
-          }),
-          signal: AbortSignal.timeout(120_000),
-        });
-      } else {
-        // ── Chat Completions API (gpt-4o investigation) ──────────────────────
-        streamRes = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: maxTokens,
-            temperature: 0.2,
-            stream: true,
-            stream_options: { include_usage: true },
-            tools: V3_TOOL_DEFINITIONS,
-            tool_choice: 'auto',
-            messages,
-          }),
-          signal: AbortSignal.timeout(120_000),
-        });
-      }
+      streamRes = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          max_output_tokens: maxTokens,
+          stream: true,
+          tools: V3_TOOL_DEFINITIONS.map(t => ({ type: 'function', ...t })),
+          tool_choice: 'auto',
+          input: responsesInput,
+        }),
+        signal: AbortSignal.timeout(120_000),
+      });
     } catch (fetchErr) {
       onError(`OpenAI request failed: ${String(fetchErr)}`);
       return;
@@ -514,6 +517,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     const decoder = new TextDecoder();
     let buffer = '';
     let assistantContent = '';
+    // Map from output_index → tool call accumulator
     const toolCallsMap: Record<string, ToolCallChunk> = {};
     let finishReason: string | null = null;
 
@@ -531,21 +535,6 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         if (raw === '[DONE]') { finishReason = finishReason ?? 'stop'; continue; }
 
         let chunk: {
-          // Chat Completions fields
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
-          choices?: Array<{
-            delta?: {
-              content?: string | null;
-              tool_calls?: Array<{
-                index: number;
-                id?: string;
-                type?: string;
-                function?: { name?: string; arguments?: string };
-              }>;
-            };
-            finish_reason?: string | null;
-          }>;
-          // Responses API fields
           type?: string;
           delta?: { content?: string; type?: string };
           output_index?: number;
@@ -555,86 +544,74 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
             call_id?: string;
             name?: string;
             arguments?: string;
-            output?: string;
           };
           usage?: { input_tokens?: number; output_tokens?: number };
         };
         try { chunk = JSON.parse(raw); } catch { continue; }
 
-        if (useResponsesApi) {
-          // ── Parse Responses API SSE events ──────────────────────────────
-          const evType = chunk.type;
+        const evType = chunk.type;
 
-          if (evType === 'response.output_text.delta' && chunk.delta?.content) {
-            assistantContent += chunk.delta.content;
-            fullAssistantResponse += chunk.delta.content;
-            onToken(chunk.delta.content);
+        // Text token
+        if (evType === 'response.output_text.delta' && chunk.delta?.content) {
+          assistantContent += chunk.delta.content;
+          fullAssistantResponse += chunk.delta.content;
+          onToken(chunk.delta.content);
+        }
+
+        // Function call item added — capture name and call_id
+        if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
+          const idx = String(chunk.output_index ?? 0);
+          toolCallsMap[idx] = {
+            id: chunk.item.call_id ?? chunk.item.id ?? '',
+            type: 'function',
+            function: { name: chunk.item.name ?? '', arguments: '' },
+          };
+        }
+
+        // Function call arguments streaming
+        if (evType === 'response.function_call_arguments.delta' && chunk.delta?.content) {
+          const idx = String(chunk.output_index ?? 0);
+          if (!toolCallsMap[idx]) {
+            toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
           }
+          toolCallsMap[idx].function.arguments += chunk.delta.content;
+        }
 
-          if (evType === 'response.function_call_arguments.delta' && chunk.delta?.content) {
-            const idx = String(chunk.output_index ?? 0);
-            if (!toolCallsMap[idx]) {
-              toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-            }
-            toolCallsMap[idx].function.arguments += chunk.delta.content;
-          }
-
-          if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
-            const idx = String(chunk.output_index ?? 0);
-            toolCallsMap[idx] = {
-              id: chunk.item.call_id ?? chunk.item.id ?? '',
-              type: 'function',
-              function: { name: chunk.item.name ?? '', arguments: '' },
-            };
-          }
-
-          if (evType === 'response.completed') {
-            finishReason = 'stop';
-            // Extract usage if present
-            if (chunk.usage) {
-              totalInputTokens += (chunk.usage as { input_tokens?: number }).input_tokens ?? 0;
-              totalOutputTokens += (chunk.usage as { output_tokens?: number }).output_tokens ?? 0;
-            }
-          }
-
-          if (evType === 'response.failed' || evType === 'error') {
-            onError(`Responses API error: ${JSON.stringify(chunk).slice(0, 200)}`);
-            return;
-          }
-
-        } else {
-          // ── Parse Chat Completions SSE events ───────────────────────────
+        // Response completed — capture usage
+        if (evType === 'response.completed') {
+          finishReason = 'stop';
           if (chunk.usage) {
-            totalInputTokens += chunk.usage.prompt_tokens ?? 0;
-            totalOutputTokens += chunk.usage.completion_tokens ?? 0;
+            totalInputTokens += chunk.usage.input_tokens ?? 0;
+            totalOutputTokens += chunk.usage.output_tokens ?? 0;
           }
+        }
 
-          const delta = chunk.choices?.[0]?.delta;
-          const fr = chunk.choices?.[0]?.finish_reason;
-          if (fr) finishReason = fr;
-
-          if (delta?.content) {
-            assistantContent += delta.content;
-            fullAssistantResponse += delta.content;
-            onToken(delta.content);
-          }
-
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              const idx = String(tc.index);
-              if (!toolCallsMap[idx]) {
-                toolCallsMap[idx] = { id: tc.id ?? '', type: 'function', function: { name: '', arguments: '' } };
-              }
-              if (tc.id) toolCallsMap[idx].id = tc.id;
-              if (tc.function?.name) toolCallsMap[idx].function.name += tc.function.name;
-              if (tc.function?.arguments) toolCallsMap[idx].function.arguments += tc.function.arguments;
-            }
-          }
+        // Error events
+        if (evType === 'response.failed' || evType === 'error') {
+          onError(`Responses API error: ${JSON.stringify(chunk).slice(0, 200)}`);
+          return;
         }
       }
     }
 
     const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
+
+    // Append assistant turn to responsesInput
+    if (assistantContent) {
+      responsesInput.push({ role: 'assistant', content: assistantContent });
+    }
+    // Append function_call items for each tool call
+    for (const tc of toolCallsList) {
+      responsesInput.push({
+        type: 'function_call',
+        id: tc.id,
+        call_id: tc.id,
+        name: tc.function.name,
+        arguments: tc.function.arguments,
+      });
+    }
+
+    // Also keep messages[] in sync for conversation save
     messages.push({
       role: 'assistant',
       content: assistantContent || null,
@@ -645,7 +622,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       break;
     }
 
-    // Execute tool calls
+    // Execute tool calls and append results
     for (const tc of toolCallsList) {
       const toolName = tc.function.name;
       onToolCall(toolName, 'running');
@@ -663,6 +640,14 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       const result = await executeV3Tool(toolName, args);
       onToolCall(toolName, 'done');
 
+      // Responses API tool result format
+      responsesInput.push({
+        type: 'function_call_output',
+        call_id: tc.id,
+        output: result,
+      });
+
+      // Keep messages[] in sync
       messages.push({
         role: 'tool',
         tool_call_id: tc.id,
