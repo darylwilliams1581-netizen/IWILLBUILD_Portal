@@ -542,7 +542,6 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     let assistantContent = '';
     // Map from output_index → tool call accumulator
     const toolCallsMap: Record<string, ToolCallChunk> = {};
-    let finishReason: string | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -555,18 +554,31 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const raw = line.slice(6).trim();
-        if (raw === '[DONE]') { finishReason = finishReason ?? 'stop'; continue; }
+        if (raw === '[DONE]') { continue; }
 
         // ── Responses API event shapes (verified against openai SDK types) ──
-        // response.output_text.delta          → { delta: string }   (NOT delta.content)
-        // response.function_call_arguments.delta → { delta: string } (NOT delta.content)
-        // response.output_item.added          → { item: ResponseOutputItem, output_index: number }
-        // response.completed                  → { response: { usage: { input_tokens, output_tokens } } }
-        // response.failed / error             → error event
+        // response.output_text.delta               → { delta: string, output_index: number }
+        // response.output_text.done                → { text: string, output_index: number }
+        // response.function_call_arguments.delta   → { delta: string, output_index: number }
+        // response.function_call_arguments.done    → { arguments: string, name: string, output_index: number }
+        // response.output_item.added               → { item: { type, id, call_id, name }, output_index: number }
+        // response.output_item.done                → { item: { type, id, call_id, name, arguments }, output_index: number }
+        // response.completed                       → { response: { usage: { input_tokens, output_tokens } } }
+        // response.failed / error                  → error event
+        //
+        // CRITICAL: delta is always a plain string — NOT { content: string }
+        // CRITICAL: response.completed fires for BOTH tool-call and final-text rounds.
+        //           Do NOT use it to set finishReason='stop' — that breaks the tool loop.
+        //           Only break the agentic loop when toolCallsList.length === 0.
         let chunk: {
           type?: string;
           // delta is a plain string for text and function-call-arguments events
           delta?: string;
+          // response.output_text.done
+          text?: string;
+          // response.function_call_arguments.done
+          arguments?: string;
+          name?: string;
           output_index?: number;
           item?: {
             type?: string;
@@ -584,12 +596,22 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
 
         const evType = chunk.type;
 
-        // ── Text token ────────────────────────────────────────────────────────
+        // ── Text token (streaming delta) ──────────────────────────────────────
         // delta is a plain string — NOT { content: string }
         if (evType === 'response.output_text.delta' && typeof chunk.delta === 'string' && chunk.delta) {
           assistantContent += chunk.delta;
           fullAssistantResponse += chunk.delta;
           onToken(chunk.delta);
+        }
+
+        // ── Text done (finalized text — use as authoritative if delta was missed) ─
+        if (evType === 'response.output_text.done' && typeof chunk.text === 'string' && chunk.text) {
+          // Only use if we got less text than the done event reports (delta gap guard)
+          if (!assistantContent) {
+            assistantContent = chunk.text;
+            fullAssistantResponse += chunk.text;
+            onToken(chunk.text);
+          }
         }
 
         // ── Function call item added — capture name and call_id ───────────────
@@ -600,9 +622,27 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
             type: 'function',
             function: { name: chunk.item.name ?? '', arguments: '' },
           };
+          console.log(`[dazza-v3] round=${round} fn_call_detected idx=${idx} name_present=${!!chunk.item.name} call_id_present=${!!(chunk.item.call_id ?? chunk.item.id)}`);
         }
 
-        // ── Function call arguments streaming ─────────────────────────────────
+        // ── Function call item done — authoritative complete item ─────────────
+        // Prefer this over delta accumulation: gives finalized call_id + arguments
+        if (evType === 'response.output_item.done' && chunk.item?.type === 'function_call') {
+          const idx = String(chunk.output_index ?? 0);
+          const existing = toolCallsMap[idx];
+          toolCallsMap[idx] = {
+            id: chunk.item.call_id ?? chunk.item.id ?? existing?.id ?? '',
+            type: 'function',
+            function: {
+              name: chunk.item.name ?? existing?.function.name ?? '',
+              // Use done-event arguments if present; fall back to accumulated delta
+              arguments: chunk.item.arguments ?? existing?.function.arguments ?? '',
+            },
+          };
+          console.log(`[dazza-v3] round=${round} fn_call_done idx=${idx} name=${chunk.item.name ?? '?'} call_id_present=${!!(chunk.item.call_id ?? chunk.item.id)} args_len=${(chunk.item.arguments ?? '').length}`);
+        }
+
+        // ── Function call arguments streaming (delta) ─────────────────────────
         // delta is a plain string — NOT { content: string }
         if (evType === 'response.function_call_arguments.delta' && typeof chunk.delta === 'string') {
           const idx = String(chunk.output_index ?? 0);
@@ -612,15 +652,29 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           toolCallsMap[idx].function.arguments += chunk.delta;
         }
 
-        // ── Response completed — capture usage ────────────────────────────────
-        // usage is nested under chunk.response.usage (not chunk.usage)
+        // ── Function call arguments done (finalized) ──────────────────────────
+        // Authoritative final arguments string — overwrite accumulated delta
+        if (evType === 'response.function_call_arguments.done' && typeof chunk.arguments === 'string') {
+          const idx = String(chunk.output_index ?? 0);
+          if (toolCallsMap[idx]) {
+            toolCallsMap[idx].function.arguments = chunk.arguments;
+            if (chunk.name) toolCallsMap[idx].function.name = chunk.name;
+          }
+          console.log(`[dazza-v3] round=${round} fn_args_done idx=${idx} args_len=${chunk.arguments.length}`);
+        }
+
+        // ── Response completed — capture usage only ───────────────────────────
+        // IMPORTANT: response.completed fires for BOTH tool-call rounds AND final
+        // text rounds. Do NOT set finishReason='stop' here — that would break the
+        // tool loop by causing an early exit before tools execute.
+        // The loop continues until toolCallsList.length === 0 (no more tool calls).
         if (evType === 'response.completed') {
-          finishReason = 'stop';
           const usage = chunk.response?.usage ?? chunk.usage;
           if (usage) {
             totalInputTokens  += usage.input_tokens  ?? 0;
             totalOutputTokens += usage.output_tokens ?? 0;
           }
+          console.log(`[dazza-v3] round=${round} response.completed usage_captured=${!!usage}`);
         }
 
         // ── Error events ──────────────────────────────────────────────────────
@@ -638,6 +692,8 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     }
 
     const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
+
+    console.log(`[dazza-v3] round=${round} stream_done assistantContent_len=${assistantContent.length} tool_calls=${toolCallsList.length}`);
 
     // Append assistant turn to responsesInput
     if (assistantContent) {
@@ -661,7 +717,12 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       ...(toolCallsList.length > 0 ? { tool_calls: toolCallsList } : {}),
     });
 
-    if (finishReason === 'stop' || toolCallsList.length === 0) {
+    // ── Loop continuation decision ────────────────────────────────────────────
+    // CRITICAL: Do NOT use finishReason to break here.
+    // response.completed fires for BOTH tool-call rounds AND final-text rounds.
+    // The only correct signal to stop is: no tool calls were requested this round.
+    if (toolCallsList.length === 0) {
+      console.log(`[dazza-v3] round=${round} no_tool_calls — breaking loop`);
       break;
     }
 
@@ -680,8 +741,12 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
 
+      console.log(`[dazza-v3] round=${round} executing tool=${toolName} call_id_present=${!!tc.id} args_keys=${Object.keys(args).join(',')}`);
+
       const result = await executeV3Tool(toolName, args);
       onToolCall(toolName, 'done');
+
+      console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length}`);
 
       // Responses API tool result format
       responsesInput.push({
@@ -697,7 +762,9 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         content: result,
       });
     }
-  }
+
+    console.log(`[dazza-v3] round=${round} tool_results_appended=${toolCallsList.length} — starting round ${round + 1}`);
+  } // end agentic loop
 
   // ── Guard: empty response ─────────────────────────────────────────────────
   // If the agentic loop completed but produced no text, something went wrong
