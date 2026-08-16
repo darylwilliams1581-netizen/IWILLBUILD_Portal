@@ -465,8 +465,8 @@ export default function JobCardsPage() {
             </span>
           </div>
 
-        {/* ── Table ── */}
-        <div className="flex-1 overflow-auto">
+        {/* ── List / Table ── */}
+        <div className="flex-1 overflow-y-auto">
           {loading && cards.length === 0 ? (
             <div className="flex items-center justify-center py-24">
               <RefreshCw size={20} className="animate-spin text-gray-300" />
@@ -491,81 +491,116 @@ export default function JobCardsPage() {
               )}
             </div>
           ) : (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide whitespace-nowrap">Card #</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Customer</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Site</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden md:table-cell">Service date</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden xl:table-cell">Worker</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Status</th>
-                  <th className="text-right px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden md:table-cell">Total</th>
-                  <th className="text-center px-3 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden lg:table-cell w-12">Photos</th>
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {cards.map((card, i) => {
+            <>
+              {/* ── Mobile card list (< md) ── */}
+              <div className="md:hidden flex flex-col divide-y divide-gray-100 bg-white border border-gray-200 rounded-md mx-3 mt-3 overflow-hidden">
+                {cards.map((card) => {
                   const customerLabel = card.customer_name ?? card.customer_name_override ?? '—';
                   const labour = Number(card.labour_amount ?? 0);
                   const mats = Number(card.materials_total ?? 0);
                   const total = labour + mats;
-
                   return (
-                    <tr
+                    <button
                       key={card.id}
                       onClick={() => navigate(`/job-cards/${card.id}`)}
-                      className={`border-b border-gray-50 hover:bg-yellow-50/40 cursor-pointer transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-yellow-50/40 transition-colors"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="font-mono text-[12px] font-bold text-gray-700">{card.card_number}</span>
-                      </td>
-                      <td className="px-4 py-3 max-w-[180px]">
-                        <p className="text-[13px] font-semibold text-gray-800 truncate">{customerLabel}</p>
-                        <p className="text-[11px] text-gray-400 truncate mt-0.5">{card.work_description}</p>
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="text-[12px] text-gray-500 truncate max-w-[160px] block">{card.site_address ?? '—'}</span>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap">
-                        <span className="text-[12px] text-gray-500">{fmtDate(card.service_date)}</span>
-                      </td>
-                      <td className="px-4 py-3 hidden xl:table-cell">
-                        <span className="text-[12px] text-gray-500">{card.assigned_name ?? '—'}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-mono text-[11px] font-bold text-gray-400">{card.card_number}</span>
                           <StatusBadge status={card.status} />
                           {card.invoice_id && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-600">
-                              <Receipt size={9} />
-                              Invoiced
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-600">
+                              <Receipt size={8} />Invoiced
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-right hidden md:table-cell whitespace-nowrap">
-                        <span className="text-[13px] font-semibold text-gray-700">
-                          {total > 0 ? fmtCurrency(total) : '—'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-center hidden lg:table-cell">
-                        {card.photo_count > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
-                            <Camera size={11} />
-                            {card.photo_count}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-2 py-3">
-                        <ChevronRight size={14} className="text-gray-300" />
-                      </td>
-                    </tr>
+                        <p className="text-[13px] font-semibold text-gray-800 truncate">{customerLabel}</p>
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">{card.work_description}</p>
+                        {total > 0 && (
+                          <p className="text-[11px] font-semibold text-gray-600 mt-0.5">{fmtCurrency(total)}</p>
+                        )}
+                      </div>
+                      <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                    </button>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              {/* ── Desktop table (md+) ── */}
+              <table className="hidden md:table w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide whitespace-nowrap">Card #</th>
+                    <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Customer</th>
+                    <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Site</th>
+                    <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Service date</th>
+                    <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden xl:table-cell">Worker</th>
+                    <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Status</th>
+                    <th className="text-right px-4 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Total</th>
+                    <th className="text-center px-3 py-2.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden lg:table-cell w-12">Photos</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {cards.map((card, i) => {
+                    const customerLabel = card.customer_name ?? card.customer_name_override ?? '—';
+                    const labour = Number(card.labour_amount ?? 0);
+                    const mats = Number(card.materials_total ?? 0);
+                    const total = labour + mats;
+                    return (
+                      <tr
+                        key={card.id}
+                        onClick={() => navigate(`/job-cards/${card.id}`)}
+                        className={`border-b border-gray-50 hover:bg-yellow-50/40 cursor-pointer transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-mono text-[12px] font-bold text-gray-700">{card.card_number}</span>
+                        </td>
+                        <td className="px-4 py-3 max-w-[180px]">
+                          <p className="text-[13px] font-semibold text-gray-800 truncate">{customerLabel}</p>
+                          <p className="text-[11px] text-gray-400 truncate mt-0.5">{card.work_description}</p>
+                        </td>
+                        <td className="px-4 py-3 hidden lg:table-cell">
+                          <span className="text-[12px] text-gray-500 truncate max-w-[160px] block">{card.site_address ?? '—'}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-[12px] text-gray-500">{fmtDate(card.service_date)}</span>
+                        </td>
+                        <td className="px-4 py-3 hidden xl:table-cell">
+                          <span className="text-[12px] text-gray-500">{card.assigned_name ?? '—'}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <StatusBadge status={card.status} />
+                            {card.invoice_id && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-600">
+                                <Receipt size={9} />Invoiced
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <span className="text-[13px] font-semibold text-gray-700">
+                            {total > 0 ? fmtCurrency(total) : '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-center hidden lg:table-cell">
+                          {card.photo_count > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                              <Camera size={11} />{card.photo_count}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-2 py-3">
+                          <ChevronRight size={14} className="text-gray-300" />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
 
