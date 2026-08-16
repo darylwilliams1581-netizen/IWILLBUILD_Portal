@@ -143,7 +143,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
                 </div>
 
                 {/* Job number + Status row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-1.5">
                       Job Number
