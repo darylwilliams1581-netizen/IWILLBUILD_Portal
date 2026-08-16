@@ -7,11 +7,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import PortalSidebar from '@/components/PortalSidebar';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   Zap, Plus, Search, X, ChevronRight, RefreshCw,
   CheckCircle2, Clock, AlertCircle, Receipt,
-  ArrowRightLeft, Camera, ChevronLeft,
+  ArrowRightLeft, Camera, ChevronLeft, ArrowLeft,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -355,7 +356,9 @@ export default function JobCardsPage() {
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
-    <div className="flex h-screen bg-[#f5f6f8] overflow-hidden">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Job Cards — IWILLBUILD</title>
         <meta name="description" content="Job Card register — reactive and call-out work records." />
@@ -363,59 +366,52 @@ export default function JobCardsPage() {
         <link rel="canonical" href="https://iwillbuild.com/job-cards" />
       </Helmet>
 
-      <PortalSidebar />
-
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* ── Mobile back bar ── */}
-        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100 shrink-0 safe-top">
-          <button
-            onClick={() => navigate('/home')}
-            className="flex items-center gap-1 text-sm font-semibold text-violet-600 hover:text-violet-700 transition-colors"
-          >
-            <ChevronLeft size={18} />
-            Home
-          </button>
-        </div>
-
-        {/* ── Page header ── */}
-        <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-4 shrink-0">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Desktop back */}
-              <button
-                onClick={() => navigate('/home')}
-                className="hidden lg:flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-gray-700 transition-colors mr-1"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center shrink-0">
-                <Zap size={16} className="text-yellow-600" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-[17px] font-bold text-gray-900 leading-tight">Job Cards</h1>
-                <p className="text-[11px] text-gray-400">Reactive &amp; call-out work records</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => void fetchCards()}
-                className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-              </button>
-              <button
-                onClick={() => navigate('/job-cards/new')}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors"
-              >
-                <Plus size={15} />
-                New Job Card
-              </button>
-            </div>
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* ── Mobile header ── */}
+        <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30 safe-top">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/home')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Back">
+              <ArrowLeft size={18} />
+            </button>
+            <Zap size={16} className="text-yellow-500 shrink-0" />
+            <h1 className="font-heading font-bold text-base text-gray-900">Job Cards</h1>
+            {!loading && <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded-full">{total}</span>}
           </div>
+          <button
+            onClick={() => navigate('/job-cards/new')}
+            className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Plus size={13} />New Job Card
+          </button>
+        </header>
 
-          {/* ── Filters row ── */}
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
+        {/* ── Desktop page header ── */}
+        <header className="op-page-header hidden md:flex sticky top-0 z-30">
+          <button onClick={() => navigate('/home')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+            <ArrowLeft size={15} />
+          </button>
+          <Zap size={14} className="text-yellow-500 shrink-0" />
+          <span className="op-page-title flex-1 min-w-0">Job Cards</span>
+          {!loading && <span className="text-[11px] bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded">{total}</span>}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => void fetchCards()}
+              className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={() => navigate('/job-cards/new')}
+              className="op-btn op-btn-primary"
+            >
+              <Plus size={12} />New Job Card
+            </button>
+          </div>
+        </header>
+
+        {/* ── Filters / toolbar row ── */}
+        <div className="op-toolbar flex items-center gap-2 flex-wrap">
             {/* Search */}
             <div className="relative flex-1 min-w-[180px] max-w-xs">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -468,7 +464,6 @@ export default function JobCardsPage() {
               {total} card{total !== 1 ? 's' : ''}
             </span>
           </div>
-        </div>
 
         {/* ── Table ── */}
         <div className="flex-1 overflow-auto">
@@ -598,7 +593,7 @@ export default function JobCardsPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
