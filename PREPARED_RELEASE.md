@@ -26,11 +26,13 @@ The download was merged into the existing Git repository without replacing its `
 
 ## Native delivery preservation
 
-The existing Capacitor project, iOS project, native icons, scripts and Git repository were retained. Debug and Release Xcode build numbers are both 14. Capacitor sync and the final production build must be rerun before release.
+The existing Capacitor project, iOS project, native icons, scripts and Git repository were retained. Debug and Release Xcode build numbers are both 14. Capacitor sync must be rerun before the next native archive.
 
 ## Build preparation
 
 The production build script now creates both browser and SSR bundles, supplies the deployed `#airo/secrets` runtime shim, copies starter-pack data, and gives Vite a 4 GB heap allowance for reliable packaging.
+
+The local production build passed after two packaging defects in the raw Airo download were corrected: `vite.config.ts` now defines its ESM-safe directory path, and `busboy` is declared as the direct dependency used by the upload service. The browser bundle transformed 3,152 modules and the SSR bundle transformed 3,902 modules; the complete build exited successfully.
 
 The Airo codebase has substantial inherited strict TypeScript debt outside this delivery (872 diagnostics across 359 files). Vite production packaging does not use that standalone check. See `PATCH_MANIFEST.md` for the verification record and patch instructions.
 
