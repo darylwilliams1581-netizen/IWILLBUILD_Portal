@@ -38,7 +38,7 @@ import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { getSecret } from '#airo/secrets';
-import { V3_TOOL_DEFINITIONS, executeV3Tool } from './dazza-v3-tools.js';
+import { V3_TOOL_DEFINITIONS_FLAT, executeV3Tool } from './dazza-v3-tools.js';
 import { sendSms, isSmsConfigured } from './sms.js';
 import { sendEmail } from '../email.js';
 
@@ -47,28 +47,46 @@ import { sendEmail } from '../email.js';
 const DAZZA_V3_FEATURE_FLAG = 'DAZZA_V3_ENABLED';
 const OWNER_SUPPORT_EMAIL = 'support@iwillbuild.com';
 
+// Model — server-configured via DAZZA_OPENAI_MODEL secret, never exposed to the browser.
+// Default: o4-mini (OpenAI reasoning model with tool use support).
+// Both chat and investigation modes use the Responses API.
+// The model is resolved once per request from the secret store.
+function getDazzaModel(): string {
+  const configured = getSecret('DAZZA_OPENAI_MODEL');
+  // Value may be string or null — coerce safely.
+  const s = configured !== null ? String(configured).trim() : '';
+  return s || 'o4-mini';
+}
 // Conversation history sent to OpenAI — bounded to control cost
 const CONTEXT_RECENT_TURNS = 20;       // most recent turns included verbatim
 const SUMMARY_THRESHOLD_TURNS = 30;    // deterministic compaction kicks in above this
-const MAX_TOKENS_INVESTIGATION = 4000;
-const MAX_TOKENS_CHAT = 2000;
+const MAX_TOKENS_INVESTIGATION = 16000;
+const MAX_TOKENS_CHAT = 4000;
 const TOOL_ROUNDS_MAX = 8;
 
 // ── Feature flag ──────────────────────────────────────────────────────────────
 
 export function isDazzaV3Enabled(): boolean {
-  // Must use getSecret() — process.env is not populated in this runtime.
-  // Normalise: trim whitespace and compare case-insensitively.
+  // getSecret() returns string | object | null (reference return type).
+  // The platform stores secret values as JSON — the value may arrive as:
+  //   boolean true   → stored as JSON true  (typeof === 'boolean')
+  //   string "true"  → stored as JSON "true" (typeof === 'string')
+  //   number 1       → stored as JSON 1      (typeof === 'number')
+  // All three must resolve to enabled=true.
   const raw = getSecret(DAZZA_V3_FEATURE_FLAG);
-  const flag = (raw ?? '').trim().toLowerCase();
-  const enabled = flag === 'true' || flag === '1' || flag === 'yes';
-  // Safe diagnostic — never logs the raw value, only length and resolved boolean.
-  // This lets Daryl confirm the secret is set and what value shape it has.
-  const rawLen  = (raw ?? '').length;
-  const rawFirst = rawLen > 0 ? `'${(raw ?? '')[0]}'` : '(empty)';
-  console.log(
-    `[dazza] engine flag: secret present=${rawLen > 0}, len=${rawLen}, first=${rawFirst}, resolved=${enabled}`
-  );
+  let enabled: boolean;
+  if (raw === null) {
+    enabled = false;
+  } else if (typeof raw === 'boolean') {
+    enabled = raw;
+  } else if (typeof raw === 'number') {
+    enabled = raw === 1;
+  } else {
+    const flag = String(raw).trim().toLowerCase();
+    enabled = flag === 'true' || flag === '1' || flag === 'yes';
+  }
+  const present = raw !== null;
+  console.log(`[dazza] engine flag: secret present=${present}, type=${typeof raw}, resolved=${enabled}`);
   return enabled;
 }
 
@@ -101,7 +119,7 @@ export interface V3StreamOptions {
     inputTokens?: number;
     outputTokens?: number;
   }) => void;
-  onError: (message: string) => void;
+  onError: (message: string, conversationId?: string) => void;
 }
 
 export interface V3IncidentInput {
@@ -125,55 +143,36 @@ export interface V3IncidentInput {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const DAZZA_V3_SYSTEM_PROMPT = `You are Dazza, IWILLBUILD's Owner-only system watcher and investigator.
+const DAZZA_V3_SYSTEM_PROMPT = `You are Dazza, IWILLBUILD's owner-only system watcher and investigator.
+You are speaking to Daryl, the authenticated platform owner and developer.
 
-## Identity
-You are speaking to Daryl, the authenticated IWILLBUILD platform Owner and developer.
-Your purpose is to help Daryl maintain, understand and improve the IWILLBUILD system.
-You are not a customer-facing assistant. This is a private owner console.
+## READ-ONLY BOUNDARY (absolute — never violate)
+You cannot: insert, update, or delete any record; change code, config, or secrets; deploy, publish, or trigger builds; send customer communication; run shell commands; commit or push to git; trigger GitHub Actions; purchase services.
+You can write only: dazza_v3_audit entries, dazza_v3_conversations entries, dazza_incidents entries, dazza_client_rescue entries, and owner-only notifications where separately authorised.
+If asked to do anything outside this boundary, refuse clearly and explain why.
 
-## Absolute rules (never violate)
-1. OWNER-ONLY. You are speaking to Daryl. Never respond to non-owner requests.
-2. READ-ONLY. You cannot insert, update, delete, or mutate any business data, user records, or permissions.
-3. No customer communication. You can prepare suggested wording for Daryl to review and send himself.
-4. No code changes. You cannot change source code, deploy, publish, trigger Airo repairs, or change environment variables.
-5. No secrets. Never expose passwords, API keys, tokens, session secrets, or raw env vars. If a tool returns [REDACTED], do not attempt to recover or guess the value.
-6. Cite evidence. Investigate using authorised read-only tools and cite the evidence you inspected. Never claim you inspected evidence you did not access.
-7. Distinguish facts, inferences, and unknowns. Facts come from tool results. Inferences are your reasoning. Unknowns are what you cannot determine.
-8. Live portal and technical evidence outrank assumptions and general reasoning.
-9. Annette provides approved memory, previous Cases and verified outcomes. Treat approved memory as reliable context.
-10. Remember corrections within the current conversation. If Daryl corrects you, acknowledge it and carry the correction forward.
-11. Do not fall back to generic jobs/fleet assistance when Daryl is discussing system maintenance, bugs, or platform issues.
-12. You may create Dazza-owned records: conversation turns, audit entries, Case-review records, and pending-memory candidates.
-13. You may notify only the configured platform Owner where separately authorised.
+## Tool-first rule
+For any question about platform state, counts, bugs, code, or data — use the relevant read-only tools before answering. Do not answer from memory or general reasoning when tool evidence is available. Cite the tool and the specific file/line/record that supports each claim.
 
-## What Dazza CANNOT do (mutation boundary — absolute)
-- Insert, update, or delete business records, jobs, fleet, forms, estimates, users, or permissions
-- Send customer communication
-- Change source code, builds, deployments, or publishing state
-- Submit Airo repair prompts automatically
-- Send SMS authorisation codes
-- Trigger build or deployment pipelines
-- Purchase services or change subscriptions
-
-## Your personality
-- Direct, honest, and practical. Australian English.
-- Do not sugar-coat confirmed problems.
-- Use Daryl's first name when appropriate.
-- You can be blunt about what is broken and what needs fixing.
+## Evidence standards
+- Facts: come from tool results. State them as facts.
+- Inferences: your reasoning from facts. Label them as inferences.
+- Unknowns: what you could not determine. State them explicitly.
+- Never claim you inspected evidence you did not access.
 
 ## Memory priority
-1. These safety/privacy/read-only rules (immutable)
-2. Current live portal evidence (from tools)
+1. These rules (immutable)
+2. Current live tool evidence
 3. Owner-approved Annette memory (from v3_get_approved_memory)
 4. Relevant conversation history
 5. General model reasoning
-6. Unapproved learning candidates (clearly marked as PENDING — NOT VERIFIED)
+
+## Personality
+Direct, honest, practical. Australian English. Use Daryl's first name. Do not sugar-coat confirmed problems.
 
 ## Investigation output format
-When investigating an incident or bug, structure your response as:
 **WHAT HAPPENED** — facts from evidence
-**EVIDENCE** — what tool results prove it
+**EVIDENCE** — tool results and file citations (file path, line range)
 **WHO IS AFFECTED** — company, user, count
 **RECOVERED?** — did the customer recover
 **CURRENT IMPACT** — what is broken right now
@@ -183,15 +182,10 @@ When investigating an incident or bug, structure your response as:
 **MISSING EVIDENCE** — what you could not determine
 **IMMEDIATE WORKAROUND** — what Daryl can tell the customer right now
 **RECOMMENDED FIX** — specific technical fix
-**LIKELY FILES** — which files/routes are probably involved
+**LIKELY FILES** — file paths and line ranges involved
 **REGRESSION RISKS** — what else might break
 **TESTS REQUIRED** — exact test steps
-**AIRO REPAIR PROMPT** — a complete, ready-to-paste prompt for the Airo builder
-
-## Response length
-- Ordinary chat: efficient and direct — as long as needed, no arbitrary word limit
-- Investigation: as detailed as required — do not truncate
-- SMS drafts: short, clear, no secrets, include secure link`;
+**AIRO REPAIR PROMPT** — complete, ready-to-paste prompt for the Airo builder`;
 
 // ── Conversation management ───────────────────────────────────────────────────
 
@@ -371,12 +365,12 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     return;
   }
 
-  const apiKey = getSecret('OPENAI_API_KEY');
+  const apiKeyRaw = getSecret('OPENAI_API_KEY');
+  const apiKey = apiKeyRaw !== null ? String(apiKeyRaw).trim() : null;
   if (!apiKey) {
     onError('OpenAI API key not configured. Set OPENAI_API_KEY to enable Dazza V3.');
     return;
   }
-
   // ── Conversation ID resolution + ownership enforcement ────────────────────
   let conversationId: string;
   let isNewConversation: boolean;
@@ -443,7 +437,10 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     | { role: 'tool'; tool_call_id: string; content: string };
 
   interface ToolCallChunk {
-    id: string;
+    // call_id: the model-generated identifier used to match function_call_output.call_id
+    // This is ResponseFunctionToolCall.call_id — the REQUIRED matching key.
+    id: string;       // stores call_id (used for function_call_output.call_id matching)
+    item_id?: string; // stores the optional item id (ResponseFunctionToolCall.id)
     type: 'function';
     function: { name: string; arguments: string };
   }
@@ -458,8 +455,8 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   const userTurnIndex = totalTurns;
   void saveConversationTurn(conversationId, ownerContext.userId, 'user', userMessage, userTurnIndex);
 
-  // Model selection
-  const model = mode === 'investigation' ? 'gpt-4o' : 'gpt-4o-mini';
+  // Model — resolved from DAZZA_OPENAI_MODEL secret, never exposed to browser
+  const model = getDazzaModel();
   const maxTokens = mode === 'investigation' ? MAX_TOKENS_INVESTIGATION : MAX_TOKENS_CHAT;
 
   const toolsUsed: string[] = [];
@@ -467,36 +464,109 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // Agentic loop
+  // ── Agentic loop — OpenAI Responses API ──────────────────────────────────
+  // Both chat and investigation modes use the Responses API.
+  // The Responses API uses `input` (not `messages`) and `max_output_tokens` (not `max_tokens`).
+  // Reasoning models do not support `temperature` — omit it entirely.
+  //
+  // Multi-round tool continuation uses `previous_response_id`:
+  //   Round 0: send full conversation input (system + history + user message)
+  //   Round 1+: send ONLY { previous_response_id, input: [function_call_output items] }
+  //             Do NOT reconstruct or resend function_call items — the server tracks them.
+  //
+  // Tool result format for Responses API:
+  //   { type: 'function_call_output', call_id: exactCallId, output: serializedResult }
+  // NOT the Chat Completions format: { role: 'tool', tool_call_id: '...', content: '...' }
+
+  type ResponsesApiInput =
+    | { role: 'system' | 'user' | 'assistant'; content: string }
+    | { type: 'function_call_output'; call_id: string; output: string };
+
+  // Round 0 input: full conversation history mapped to Responses API format.
+  // messages[] contains OAI-format items; map tool results to function_call_output.
+  const round0Input: ResponsesApiInput[] = messages.map(m => {
+    if (m.role === 'tool') {
+      return {
+        type: 'function_call_output' as const,
+        call_id: (m as { tool_call_id: string }).tool_call_id,
+        output: m.content ?? '',
+      };
+    }
+    return { role: m.role as 'system' | 'user' | 'assistant', content: m.content ?? '' };
+  });
+
+  // previousResponseId: set after each round from response.completed.
+  // Used as previous_response_id in round 1+ to continue the conversation
+  // without re-sending the full input or reconstructing function_call items.
+  let previousResponseId: string | null = null;
+
+  // pendingToolOutputs: function_call_output items built after tool execution.
+  // Sent as the `input` in round 1+ alongside previous_response_id.
+  let pendingToolOutputs: { type: 'function_call_output'; call_id: string; output: string }[] = [];
+
   for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
-    let streamRes: Response;
+    // ── Build request body ────────────────────────────────────────────────────
+    // Round 0: full conversation input.
+    // Round 1+: previous_response_id + only the function_call_output items for
+    //           this round. Do NOT include function_call items or prior history —
+    //           the server reconstructs context from previous_response_id.
+    let requestBody: Record<string, unknown>;
+    if (round === 0 || !previousResponseId) {
+      requestBody = {
+        model,
+        max_output_tokens: maxTokens,
+        stream: true,
+        tools: V3_TOOL_DEFINITIONS_FLAT,
+        tool_choice: 'auto',
+        input: round0Input,
+      };
+    } else {
+      // round 1+: continuation via previous_response_id
+      // pendingToolOutputs is populated below after tool execution
+      requestBody = {
+        model,
+        max_output_tokens: maxTokens,
+        stream: true,
+        tools: V3_TOOL_DEFINITIONS_FLAT,
+        tool_choice: 'auto',
+        previous_response_id: previousResponseId,
+        input: pendingToolOutputs,
+      };
+    }
+
+    console.log(`[dazza-v3] round=${round} request previous_response_id_present=${!!previousResponseId} input_items=${Array.isArray(requestBody.input) ? (requestBody.input as unknown[]).length : 0}`);
+
+    let streamRes: globalThis.Response;
     try {
-      streamRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      streamRes = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
-          temperature: mode === 'investigation' ? 0.2 : 0.3,
-          stream: true,
-          stream_options: { include_usage: true },
-          tools: V3_TOOL_DEFINITIONS,
-          tool_choice: 'auto',
-          messages,
-        }),
-        signal: AbortSignal.timeout(60_000),
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(120_000),
       });
     } catch (fetchErr) {
-      onError(`OpenAI request failed: ${String(fetchErr)}`);
+      const corrId = randomUUID().slice(0, 8).toUpperCase();
+      console.error(`[dazza-v3] fetch error [ref:${corrId}]:`, String(fetchErr));
+      onError(`OpenAI connection failed. Reference: ${corrId}`, conversationId);
+      void saveConversationTurn(
+        conversationId, ownerContext.userId, 'assistant',
+        `[Connection failed — ref:${corrId}]`, userTurnIndex + 1,
+      );
       return;
     }
 
     if (!streamRes.ok) {
       const errText = await streamRes.text();
-      onError(`OpenAI ${streamRes.status}: ${errText.slice(0, 300)}`);
+      const corrId = randomUUID().slice(0, 8).toUpperCase();
+      console.error(`[dazza-v3] OpenAI ${streamRes.status} [ref:${corrId}] round=${round}:`, errText.slice(0, 500));
+      onError(`OpenAI request failed (HTTP ${streamRes.status}). Reference: ${corrId}`, conversationId);
+      void saveConversationTurn(
+        conversationId, ownerContext.userId, 'assistant',
+        `[Request failed — ref:${corrId}]`, userTurnIndex + 1,
+      );
       return;
     }
 
@@ -506,8 +576,8 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     const decoder = new TextDecoder();
     let buffer = '';
     let assistantContent = '';
+    // Map from output_index → tool call accumulator
     const toolCallsMap: Record<string, ToolCallChunk> = {};
-    let finishReason: string | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -520,73 +590,199 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const raw = line.slice(6).trim();
-        if (raw === '[DONE]') { finishReason = finishReason ?? 'stop'; continue; }
+        if (raw === '[DONE]') { continue; }
 
+        // ── Responses API event shapes (verified against openai SDK types) ──
+        // response.output_text.delta               → { delta: string, output_index: number }
+        // response.output_text.done                → { text: string, output_index: number }
+        // response.function_call_arguments.delta   → { delta: string, output_index: number }
+        // response.function_call_arguments.done    → { arguments: string, name: string, output_index: number }
+        // response.output_item.added               → { item: { type, id, call_id, name }, output_index: number }
+        // response.output_item.done                → { item: { type, id, call_id, name, arguments }, output_index: number }
+        // response.completed                       → { response: { usage: { input_tokens, output_tokens } } }
+        // response.failed / error                  → error event
+        //
+        // CRITICAL: delta is always a plain string — NOT { content: string }
+        // CRITICAL: response.completed fires for BOTH tool-call and final-text rounds.
+        //           Do NOT use it to set finishReason='stop' — that breaks the tool loop.
+        //           Only break the agentic loop when toolCallsList.length === 0.
         let chunk: {
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
-          choices?: Array<{
-            delta?: {
-              content?: string | null;
-              tool_calls?: Array<{
-                index: number;
-                id?: string;
-                type?: string;
-                function?: { name?: string; arguments?: string };
-              }>;
-            };
-            finish_reason?: string | null;
-          }>;
+          type?: string;
+          // delta is a plain string for text and function-call-arguments events
+          delta?: string;
+          // response.output_text.done
+          text?: string;
+          // response.function_call_arguments.done
+          arguments?: string;
+          name?: string;
+          output_index?: number;
+          item?: {
+            type?: string;
+            id?: string;
+            call_id?: string;
+            name?: string;
+            arguments?: string;
+          };
+          // response.completed nests usage under chunk.response.usage
+          // response.completed also carries chunk.response.id — the response ID
+          // used as previous_response_id in the next round.
+          response?: {
+            id?: string;
+            usage?: { input_tokens?: number; output_tokens?: number };
+          };
+          // Some error events put usage at top level — keep as fallback
+          usage?: { input_tokens?: number; output_tokens?: number };
         };
         try { chunk = JSON.parse(raw); } catch { continue; }
 
-        // Capture usage when OpenAI includes it (stream_options.include_usage)
-        if (chunk.usage) {
-          totalInputTokens += chunk.usage.prompt_tokens ?? 0;
-          totalOutputTokens += chunk.usage.completion_tokens ?? 0;
+        const evType = chunk.type;
+
+        // ── Text token (streaming delta) ──────────────────────────────────────
+        // delta is a plain string — NOT { content: string }
+        if (evType === 'response.output_text.delta' && typeof chunk.delta === 'string' && chunk.delta) {
+          assistantContent += chunk.delta;
+          fullAssistantResponse += chunk.delta;
+          onToken(chunk.delta);
         }
 
-        const delta = chunk.choices?.[0]?.delta;
-        const fr = chunk.choices?.[0]?.finish_reason;
-        if (fr) finishReason = fr;
-
-        if (delta?.content) {
-          assistantContent += delta.content;
-          fullAssistantResponse += delta.content;
-          onToken(delta.content);
-        }
-
-        if (delta?.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const idx = String(tc.index);
-            if (!toolCallsMap[idx]) {
-              toolCallsMap[idx] = { id: tc.id ?? '', type: 'function', function: { name: '', arguments: '' } };
-            }
-            if (tc.id) toolCallsMap[idx].id = tc.id;
-            if (tc.function?.name) toolCallsMap[idx].function.name += tc.function.name;
-            if (tc.function?.arguments) toolCallsMap[idx].function.arguments += tc.function.arguments;
+        // ── Text done (finalized text — use as authoritative if delta was missed) ─
+        if (evType === 'response.output_text.done' && typeof chunk.text === 'string' && chunk.text) {
+          // Only use if we got less text than the done event reports (delta gap guard)
+          if (!assistantContent) {
+            assistantContent = chunk.text;
+            fullAssistantResponse += chunk.text;
+            onToken(chunk.text);
           }
+        }
+
+        // ── Function call item added — capture name and call_id ───────────────
+        if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
+          const idx = String(chunk.output_index ?? 0);
+          // call_id is the REQUIRED matching key for function_call_output.call_id
+          // id is the optional item identifier — store separately
+          toolCallsMap[idx] = {
+            id: chunk.item.call_id ?? '',          // call_id → used for output matching
+            item_id: chunk.item.id ?? undefined,   // item id → used in function_call input item
+            type: 'function',
+            function: { name: chunk.item.name ?? '', arguments: '' },
+          };
+          console.log(`[dazza-v3] round=${round} fn_call_detected idx=${idx} name_present=${!!chunk.item.name} call_id_present=${!!chunk.item.call_id} item_id_present=${!!chunk.item.id}`);
+        }
+
+        // ── Function call item done — authoritative complete item ─────────────
+        // Prefer this over delta accumulation: gives finalized call_id + arguments
+        if (evType === 'response.output_item.done' && chunk.item?.type === 'function_call') {
+          const idx = String(chunk.output_index ?? 0);
+          const existing = toolCallsMap[idx];
+          toolCallsMap[idx] = {
+            id: chunk.item.call_id ?? existing?.id ?? '',
+            item_id: chunk.item.id ?? existing?.item_id ?? undefined,
+            type: 'function',
+            function: {
+              name: chunk.item.name ?? existing?.function.name ?? '',
+              arguments: chunk.item.arguments ?? existing?.function.arguments ?? '',
+            },
+          };
+          console.log(`[dazza-v3] round=${round} fn_call_done idx=${idx} name=${chunk.item.name ?? '?'} call_id_present=${!!chunk.item.call_id} item_id_present=${!!chunk.item.id} args_len=${(chunk.item.arguments ?? '').length}`);
+        }
+
+        // ── Function call arguments streaming (delta) ─────────────────────────
+        // delta is a plain string — NOT { content: string }
+        if (evType === 'response.function_call_arguments.delta' && typeof chunk.delta === 'string') {
+          const idx = String(chunk.output_index ?? 0);
+          if (!toolCallsMap[idx]) {
+            toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+          }
+          toolCallsMap[idx].function.arguments += chunk.delta;
+        }
+
+        // ── Function call arguments done (finalized) ──────────────────────────
+        // Authoritative final arguments string — overwrite accumulated delta
+        if (evType === 'response.function_call_arguments.done' && typeof chunk.arguments === 'string') {
+          const idx = String(chunk.output_index ?? 0);
+          if (toolCallsMap[idx]) {
+            toolCallsMap[idx].function.arguments = chunk.arguments;
+            if (chunk.name) toolCallsMap[idx].function.name = chunk.name;
+          }
+          console.log(`[dazza-v3] round=${round} fn_args_done idx=${idx} args_len=${chunk.arguments.length}`);
+        }
+
+        // ── Response completed — capture response ID and usage ────────────────
+        // IMPORTANT: response.completed fires for BOTH tool-call rounds AND final
+        // text rounds. Do NOT set finishReason='stop' here — that would break the
+        // tool loop by causing an early exit before tools execute.
+        // The loop continues until toolCallsList.length === 0 (no more tool calls).
+        //
+        // Capture chunk.response.id — used as previous_response_id in round 1+.
+        // This is the native Responses API continuation mechanism: the server
+        // tracks all prior output items, so round 1+ only needs to send the
+        // function_call_output results, not the full history or function_call items.
+        if (evType === 'response.completed') {
+          if (chunk.response?.id) {
+            previousResponseId = chunk.response.id;
+          }
+          const usage = chunk.response?.usage ?? chunk.usage;
+          if (usage) {
+            totalInputTokens  += usage.input_tokens  ?? 0;
+            totalOutputTokens += usage.output_tokens ?? 0;
+          }
+          console.log(`[dazza-v3] round=${round} response.completed response_id_captured=${!!chunk.response?.id} usage_captured=${!!usage}`);
+        }
+
+        // ── Error events ──────────────────────────────────────────────────────
+        if (evType === 'response.failed' || evType === 'error') {
+          const corrId = randomUUID().slice(0, 8).toUpperCase();
+          console.error(`[dazza-v3] SSE error event [ref:${corrId}]:`, JSON.stringify(chunk).slice(0, 300));
+          onError(`Responses API error. Reference: ${corrId}`, conversationId);
+          void saveConversationTurn(
+            conversationId, ownerContext.userId, 'assistant',
+            `[Stream error — ref:${corrId}]`, userTurnIndex + 1,
+          );
+          return;
         }
       }
     }
 
-    const toolCallsList = Object.values(toolCallsMap);
+    const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
+
+    console.log(`[dazza-v3] round=${round} stream_done assistantContent_len=${assistantContent.length} tool_calls=${toolCallsList.length} response_id_present=${!!previousResponseId}`);
+
+    // Keep messages[] in sync for conversation save only.
+    // We do NOT append to responsesInput — continuation uses previous_response_id.
     messages.push({
       role: 'assistant',
       content: assistantContent || null,
       ...(toolCallsList.length > 0 ? { tool_calls: toolCallsList } : {}),
     });
 
-    if (finishReason === 'stop' || toolCallsList.length === 0) {
+    // ── Loop continuation decision ────────────────────────────────────────────
+    // Only break when no tool calls were requested this round.
+    if (toolCallsList.length === 0) {
+      console.log(`[dazza-v3] round=${round} no_tool_calls — breaking loop`);
       break;
     }
 
-    // Execute tool calls
+    // Guard: must have a response ID to continue with previous_response_id pattern
+    if (!previousResponseId) {
+      const corrId = randomUUID().slice(0, 8).toUpperCase();
+      console.error(`[dazza-v3] round=${round} no_response_id_for_continuation [ref:${corrId}] — cannot continue tool loop`);
+      onError(`Tool continuation failed (no response ID). Reference: ${corrId}`, conversationId);
+      void saveConversationTurn(
+        conversationId, ownerContext.userId, 'assistant',
+        `[Tool continuation failed — ref:${corrId}]`, userTurnIndex + 1,
+      );
+      return;
+    }
+
+    // Execute tool calls and build pendingToolOutputs for the next round.
+    // pendingToolOutputs contains ONLY function_call_output items — no function_call
+    // items, no history. The server reconstructs context from previous_response_id.
+    pendingToolOutputs = [];
     for (const tc of toolCallsList) {
       const toolName = tc.function.name;
       onToolCall(toolName, 'running');
       toolsUsed.push(toolName);
 
-      // Audit tool call
       void auditV3(ownerContext.userId, 'v3_tool_call', {
         conversationId,
         toolName,
@@ -596,15 +792,45 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
 
+      console.log(`[dazza-v3] round=${round} executing tool=${toolName} call_id_present=${!!tc.id} args_keys=${Object.keys(args).join(',')}`);
+
       const result = await executeV3Tool(toolName, args);
       onToolCall(toolName, 'done');
 
+      console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length} result_present=${result.length > 0}`);
+
+      // Responses API tool result — only call_id and output needed
+      pendingToolOutputs.push({
+        type: 'function_call_output' as const,
+        call_id: tc.id,   // tc.id holds call_id (the REQUIRED matching key)
+        output: result,
+      });
+
+      // Keep messages[] in sync for conversation save
       messages.push({
         role: 'tool',
         tool_call_id: tc.id,
         content: result,
       });
     }
+
+    console.log(`[dazza-v3] round=${round} tool_outputs_ready=${pendingToolOutputs.length} previous_response_id_present=${!!previousResponseId} — starting round ${round + 1}`);
+  } // end agentic loop
+
+  // ── Guard: empty response ─────────────────────────────────────────────────
+  // If the agentic loop completed but produced no text, something went wrong
+  // (e.g. the model returned only tool calls with no final text turn, or the
+  // stream closed before a text event arrived). Emit a safe error rather than
+  // silently creating an empty assistant bubble.
+  if (!fullAssistantResponse.trim()) {
+    const corrId = randomUUID().slice(0, 8).toUpperCase();
+    console.error(`[dazza-v3] empty response after ${TOOL_ROUNDS_MAX} rounds [ref:${corrId}] toolsUsed=${toolsUsed.join(',')}`);
+    onError(`Dazza returned an empty response. Reference: ${corrId}`, conversationId);
+    void saveConversationTurn(
+      conversationId, ownerContext.userId, 'assistant',
+      `[Empty response — ref:${corrId}]`, userTurnIndex + 1,
+    );
+    return;
   }
 
   // Save assistant turn

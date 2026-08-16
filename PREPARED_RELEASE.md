@@ -1,16 +1,16 @@
-# IWILLBUILD release candidate - Version 12.0.1, Build 13
+# IWILLBUILD release candidate - Version 12.0.2, Build 14
 
 Prepared 2026-08-16 from the new Airo download at:
 
-`C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal (1)\IWILLBUILD_Portal`
+`C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal2\IWILLBUILD_Portal`
 
 The download was merged into the existing Git repository without replacing its `.git` history or its Capacitor/iOS delivery files.
 
 - Git remote: `https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal.git`
-- Base commit before this delivery: `8bf95229e533493b66ca281c2a98044d7f65832d`
-- Web/package version: `12.0.1`
+- Base commit before this delivery: `18938cb5cbcb9fa4b21529e337c480d807b4cfbc`
+- Web/package version: `12.0.2`
 - iOS marketing version: `12`
-- iOS/TestFlight build number: `13`
+- iOS/TestFlight build number: `14`
 - Target branch: `main`
 
 ## Included Airo work
@@ -26,7 +26,7 @@ The download was merged into the existing Git repository without replacing its `
 
 ## Native delivery preservation
 
-The existing Capacitor project, iOS project, native icons, scripts and Git repository were retained. Capacitor sync completed successfully after the source merge, and Debug/Release Xcode build numbers are both 13.
+The existing Capacitor project, iOS project, native icons, scripts and Git repository were retained. Debug and Release Xcode build numbers are both 14. Capacitor sync and the final production build must be rerun before release.
 
 ## Build preparation
 

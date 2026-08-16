@@ -6,7 +6,7 @@ import {
   RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
-  Brain, Bug, Copy, Check, X,
+  Brain, Bug, Copy, Check, X, GitBranch,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -16,6 +16,7 @@ import {
   calcFall, calcFallFromGrade, calcSimple,
 } from '@/lib/dazza-calcs';
 import DazzaBrainStatus from '@/components/DazzaBrainStatus';
+import DazzaAnatomyPanel from '@/components/DazzaAnatomyPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -413,11 +414,8 @@ interface SseDone       {
   conversationId?: string;
   model?: string;
   toolsUsed?: string[];
-  // V2 compat fields
-  mode?: string;
-  usedOpenAI?: boolean;
 }
-interface SseError      { type: 'error';       message: string }
+interface SseError      { type: 'error'; message: string; configFault?: boolean; conversationId?: string }
 type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
 
 // ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
@@ -456,7 +454,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export default function DazzaAIPage() {
-  const { me, isAdmin, platformRole } = usePermissions();
+  const { me, isAdmin, platformRole, isPlatformOwner } = usePermissions();
   const isDeveloper = platformRole === 'developer';
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: WELCOME_MSG, timestamp: new Date() },
@@ -472,15 +470,24 @@ export default function DazzaAIPage() {
   const [activeCalc, setActiveCalc] = useState<string | null>(null);
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'brain'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'brain' | 'anatomy'>('chat');
   // V3 conversation continuity
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
+  const [activeModel, setActiveModel] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Returns the model label for the V3 badge — uses server-confirmed model from
+  // the done event, falls back to 'o4-mini' (the configured default).
+  function getDazzaModelLabel(): string {
+    return activeModel ?? 'o4-mini';
+  }
+
   // ── sessionStorage key (keyed to userId so different users never share) ──
-  const storageKey = me?.id ? `dazza_conv_id_${me.id}` : null;
+  // me is MeData: { user: { id: string }, profile, ... } — the user ID is at
+  // me.user.id, NOT me.id (which is undefined and always falsy).
+  const storageKey = me?.user?.id ? `dazza_conv_id_${me.user.id}` : null;
 
   // Restore conversationId from sessionStorage on mount (after me is loaded)
   // and immediately fetch + restore the message history from the server.
@@ -527,25 +534,40 @@ export default function DazzaAIPage() {
   // ── Fetch server-confirmed engine on mount ────────────────────────────────
   // The engine badge must reflect what the server actually uses, not what the
   // client infers. This runs once when the authenticated user is known.
+  // A 10-second timeout converts "Checking…" to "Status unknown" so the badge
+  // never hangs indefinitely if the request fails silently.
   const [engineDiag, setEngineDiag] = useState<{
     secretPresent: boolean;
-    secretLength: number;
-    secretFirstChar: string;
-    secretTrimmedLower: string;
     resolvedEnabled: boolean;
   } | null>(null);
+  const [engineCheckTimedOut, setEngineCheckTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!me?.id) return;
+    if (!me?.user?.id) return;
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) setEngineCheckTimedOut(true);
+    }, 10_000);
+
     fetch('/api/dazza/engine-status', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then((data: { engine?: string; _diag?: typeof engineDiag } | null) => {
+      .then((data: { engine?: string; _diag?: { secretPresent: boolean; resolvedEnabled: boolean } } | null) => {
+        if (cancelled) return;
+        clearTimeout(timeout);
         if (data?.engine === 'v3') setActiveEngine('v3');
         else if (data?.engine === 'v2-rollback') setActiveEngine('v2-rollback');
+        else setActiveEngine('v2-rollback'); // fallback if engine field missing
         if (data?._diag) setEngineDiag(data._diag);
       })
-      .catch(() => { /* non-fatal — badge stays null until first message */ });
-  }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => {
+        if (!cancelled) {
+          clearTimeout(timeout);
+          setEngineCheckTimedOut(true);
+        }
+      });
+
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [me?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
   type BugFixStep = 'idle' | 'page' | 'clicked' | 'happened' | 'expected' | 'role' | 'error' | 'done';
@@ -683,21 +705,51 @@ export default function DazzaAIPage() {
             if (event.conversationId) {
               setConversationId(event.conversationId);
             }
-            // Track active engine
+            // Track active engine and model from done event
             if (event.engine) {
               setActiveEngine(event.engine);
             }
-            // If no AI was used (V2 fallback without key)
-            if (event.usedOpenAI === false && !event.engine) {
-              setNoApiKey(true);
-            } else {
-              setNoApiKey(false);
+            if (event.model) {
+              setActiveModel(event.model);
             }
           } else if (event.type === 'error') {
-            throw new Error(event.message);
+            const errEvt = event as SseError & { configFault?: boolean };
+            // Persist conversationId from error events so the conversation is
+            // restorable after a hard refresh even when the request failed.
+            if (errEvt.conversationId && !conversationId) {
+              setConversationId(errEvt.conversationId);
+            }
+            if (errEvt.configFault) {
+              // Configuration fault — show inline in the message bubble
+              setMessages((prev) => prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, content: `⚠️ ${event.message}` }
+                  : m
+              ));
+              setActiveEngine('v2-rollback');
+            } else {
+              throw new Error(event.message);
+            }
           }
         }
       }
+
+      // ── Client-side empty-response guard ─────────────────────────────────
+      // If the stream closed but the assistant bubble is still empty, the
+      // server either sent no token events or the stream was cut short.
+      // Replace the empty bubble with a visible error rather than leaving
+      // a silent blank turn.
+      setMessages((prev) => {
+        const bubble = prev.find((m) => m.id === assistantId);
+        if (bubble && !bubble.content.trim()) {
+          return prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: 'Something went wrong — no response was received. Please try again.' }
+              : m
+          );
+        }
+        return prev;
+      });
 
     } catch (err) {
       const errMsg = String((err as Error)?.message ?? err);
@@ -904,7 +956,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             {activeEngine === 'v3' && (
               <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
                 <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse inline-block" />
-                V3
+                V3 · {getDazzaModelLabel()}
               </span>
             )}
             {activeEngine === 'v2-rollback' && (
@@ -915,15 +967,20 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             {activeEngine === 'v2-rollback' && engineDiag && (
               <span
                 className="hidden md:flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-full border border-red-200 font-mono cursor-help"
-                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent}, len=${engineDiag.secretLength}, first='${engineDiag.secretFirstChar}', value='${engineDiag.secretTrimmedLower}' — must be 'true' to activate V3`}
+                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent} — must be 'true' to activate V3`}
               >
-                flag={engineDiag.secretTrimmedLower || '(empty)'}
+                secret {engineDiag.secretPresent ? 'present' : 'missing'}
               </span>
             )}
-            {!activeEngine && (
-              <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
-                Online
+            {!activeEngine && !engineCheckTimedOut && (
+              <span className="flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse inline-block" />
+                Checking…
+              </span>
+            )}
+            {!activeEngine && engineCheckTimedOut && (
+              <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">
+                Status unknown
               </span>
             )}
             {conversationId && (
@@ -951,6 +1008,16 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                 >
                   <Brain size={11} /> Brain
                 </button>
+                {isPlatformOwner && (
+                  <button
+                    onClick={() => setActiveTab('anatomy')}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                      activeTab === 'anatomy' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <GitBranch size={11} /> Anatomy
+                  </button>
+                )}
               </div>
             )}
             <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
@@ -988,6 +1055,13 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
           {activeTab === 'brain' && isAdmin && (
             <div className="flex-1 overflow-y-auto bg-slate-50">
               <DazzaBrainStatus supportCompanyId={dazzaCtx?.supportCompanyId} />
+            </div>
+          )}
+
+          {/* ── Anatomy tab (platform owner only) ── */}
+          {activeTab === 'anatomy' && isPlatformOwner && (
+            <div className="flex-1 overflow-y-auto bg-slate-50">
+              <DazzaAnatomyPanel />
             </div>
           )}
 

@@ -25,6 +25,7 @@ interface Props {
   jobId: number;
   job: Job;
 }
+
 export default function JobInvoices({ jobId, job }: Props) {
   const navigate = useNavigate();
   const { can, isAdmin, isOwner, loading: permLoading } = usePermissions();
@@ -209,3 +210,4 @@ export default function JobInvoices({ jobId, job }: Props) {
     </div>
   );
 }
+

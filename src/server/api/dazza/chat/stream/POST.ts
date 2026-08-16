@@ -27,9 +27,6 @@
 import type { Request, Response } from 'express';
 import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
 import { isDazzaV3Enabled, streamDazzaV3 } from '../../../../lib/dazza-v3-brain.js';
-import { loadDazzaContext } from '../../../../lib/drayl/context.js';
-import { streamDazzaResponse } from '../../../../lib/drayl/stream.js';
-import { getSecret } from '#airo/secrets';
 
 function sseWrite(res: Response, data: Record<string, unknown>) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -70,6 +67,11 @@ export default async function handler(req: Request, res: Response) {
 
     if (v3Enabled) {
       // ── V3 path ─────────────────────────────────────────────────────────
+      // conversationId is resolved inside streamDazzaV3 — capture it so we
+      // can include it in error events (enables conversation restoration after
+      // a failed request).
+      let resolvedConversationId: string | null = conversationId ?? null;
+
       await streamDazzaV3({
         ownerContext: {
           userId:          ownerInfo.userId,
@@ -81,58 +83,33 @@ export default async function handler(req: Request, res: Response) {
         mode:           'chat',
         onToken:      (token)        => sseWrite(res, { type: 'token', content: token }),
         onToolCall:   (name, status) => sseWrite(res, { type: status === 'running' ? 'tool_call' : 'tool_result', name, status }),
-        onDone:       (meta)         => sseWrite(res, { type: 'done', engine: 'v3', ...meta }),
-        onError:      (msg)          => {
-          // Ownership rejection — surface as a visible error (not a silent new conversation)
+        onDone:       (meta)         => {
+          resolvedConversationId = meta.conversationId;
+          sseWrite(res, { type: 'done', engine: 'v3', ...meta });
+        },
+        onError:      (msg, errConvId)  => {
           const isForbidden = msg.startsWith('FORBIDDEN:');
-          sseWrite(res, { type: 'error', message: msg, forbidden: isForbidden });
+          // Include conversationId in error events so the client can persist
+          // the conversation ID and restore history after a hard refresh.
+          const convId = errConvId ?? resolvedConversationId;
+          sseWrite(res, {
+            type: 'error',
+            message: msg,
+            forbidden: isForbidden,
+            ...(convId ? { conversationId: convId } : {}),
+          });
         },
       });
 
     } else {
-      // ── V2 rollback (platform owner only) — V3 flag is off ──────────────
-      const openAiKey = getSecret('OPENAI_API_KEY') ?? undefined;
-      if (!openAiKey) {
-        sseWrite(res, { type: 'error', message: 'OpenAI API key not configured. Set OPENAI_API_KEY.' });
-        res.end();
-        return;
-      }
-
-      // Build a minimal user object for the V2 context loader
-      const v2User = {
-        id:          ownerInfo.userId,
-        companyId:   0,          // platform owner has no single company
-        name:        'Daryl',
-        email:       ownerInfo.email,
-        role:        'owner' as const,
-        permissions: {
-          canViewJobs:       true,
-          canViewFleet:      true,
-          canViewForms:      true,
-          canViewEstimating: true,
-          canViewFiles:      true,
-          canViewSafety:     true,
-          seeDollars:        true,
-          isAdmin:           true,
-          isOwner:           true,
-        },
-      };
-
-      const context = await loadDazzaContext(v2User);
-
-      await streamDazzaResponse({
-        apiKey:     openAiKey,
-        model:      'gpt-4o',
-        userMessage: message.trim(),
-        context,
-        companyId:  0,
-        seeDollars: true,
-        res,
+      // ── V3 is disabled — surface a visible configuration fault ───────────
+      // Do NOT silently fall back to V2 for the owner route.
+      // The owner must know V3 is unavailable so the secret can be fixed.
+      sseWrite(res, {
+        type: 'error',
+        message: 'Dazza V3 unavailable — secret/configuration fault. Set DAZZA_V3_ENABLED=true in Airo Secrets to activate V3.',
+        configFault: true,
       });
-
-      // Append engine tag to the done event — V2 stream writes its own done event,
-      // so we just note the rollback in a trailing system-info event.
-      sseWrite(res, { type: 'system-info', engine: 'v2-rollback' });
     }
 
     res.end();

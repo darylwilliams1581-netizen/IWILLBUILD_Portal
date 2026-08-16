@@ -112,12 +112,12 @@ export const V3_TOOL_DEFINITIONS = [
     type: 'function' as const,
     function: {
       name: 'v3_list_jobs',
-      description: 'List jobs for a company with status, client, progress, and risk level.',
+      description: 'List jobs for a company. Returns job number, name, status, client, address, and dates.',
       parameters: {
         type: 'object',
         properties: {
           company_id: { type: 'number', description: 'Company ID. Required.' },
-          status_filter: { type: 'string', description: 'Filter by status (active, completed, on_hold, all). Default: active.' },
+          status_filter: { type: 'string', description: 'Filter by status: active (Works in Progress), quoting, on_hold, completed, new, all. Default: active.' },
           limit: { type: 'number', description: 'Max results (1-50). Default 20.' },
         },
         required: ['company_id'],
@@ -457,6 +457,36 @@ export const V3_TOOL_DEFINITIONS = [
 
 export type V3ToolName = typeof V3_TOOL_DEFINITIONS[number]['function']['name'];
 
+/**
+ * Responses API flat tool format.
+ *
+ * Chat Completions shape (what V3_TOOL_DEFINITIONS stores):
+ *   { type: 'function', function: { name, description, parameters } }
+ *
+ * Responses API shape (what /v1/responses requires):
+ *   { type: 'function', name, description, parameters, strict }
+ *
+ * The two are NOT interchangeable. Spreading a Chat Completions tool into a
+ * Responses API call produces { type: 'function', function: {...} } which
+ * fails with "Missing required parameter: 'tools[0].name'" (HTTP 400).
+ *
+ * This export converts every definition to the flat Responses API shape.
+ * Use this — and only this — when calling /v1/responses.
+ */
+export const V3_TOOL_DEFINITIONS_FLAT: Array<{
+  type: 'function';
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  strict: false;
+}> = V3_TOOL_DEFINITIONS.map((t) => ({
+  type: 'function' as const,
+  name: t.function.name,
+  description: t.function.description,
+  parameters: t.function.parameters as Record<string, unknown>,
+  strict: false as const,
+}));
+
 // ── Tool executor ─────────────────────────────────────────────────────────────
 
 export async function executeV3Tool(
@@ -577,21 +607,70 @@ async function toolListJobs(args: Record<string, unknown>): Promise<string> {
   if (!companyId) return err('company_id required');
   const limit = safeInt(args.limit, 20, 50);
   const statusFilter = safeStr(args.status_filter, 'active');
-  const whereStatus = statusFilter !== 'all'
-    ? `AND LOWER(j.status) = '${statusFilter.replace(/'/g, "''")}'`
-    : '';
 
-  const [rows] = await db.execute(sql.raw(`
-    SELECT j.id, j.title, j.status, j.client_name, j.address,
-           j.start_date, j.end_date, j.progress_percent, j.risk_level,
-           j.high_risk, j.created_at, j.updated_at
-    FROM jobs j
-    WHERE j.company_id = ${companyId} ${whereStatus}
-    ORDER BY j.updated_at DESC
-    LIMIT ${limit}
-  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+  // Map Dazza-friendly status aliases to the actual stored values in the jobs table.
+  // Schema default is 'New'; the app uses mixed-case status strings.
+  // NEVER use LOWER() comparison — status values are mixed-case and must match exactly.
+  let whereStatus = '';
+  switch (statusFilter.toLowerCase()) {
+    case 'active':
+    case 'in_progress':
+    case 'in progress':
+      whereStatus = `AND j.status = 'Works in Progress'`;
+      break;
+    case 'quoting':
+      whereStatus = `AND j.status IN ('Quoting', 'Submitted', 'Awaiting Approval')`;
+      break;
+    case 'on_hold':
+    case 'on hold':
+      whereStatus = `AND j.status = 'On Hold'`;
+      break;
+    case 'completed':
+    case 'closed':
+      whereStatus = `AND j.status IN ('Completed', 'Closed')`;
+      break;
+    case 'new':
+      whereStatus = `AND j.status = 'New'`;
+      break;
+    case 'all':
+    default:
+      whereStatus = '';
+      break;
+  }
 
-  return ok({ jobs: rows ?? [], count: rows?.length ?? 0 });
+  // Column names from Drizzle schema (src/server/db/schema.ts, line 152):
+  //   name (not title), client (not client_name), status, address
+  //   scheduled_start_date, expected_completion_date (not start_date/end_date)
+  //   job_number (added via colsToEnsure)
+  //   created_at, updated_at
+  // Columns that do NOT exist: title, client_name, end_date, progress_percent,
+  //   risk_level, high_risk — selecting these causes ER_BAD_FIELD_ERROR.
+  try {
+    const [rows] = await db.execute(sql.raw(`
+      SELECT j.id,
+             j.job_number,
+             j.name,
+             j.status,
+             j.client,
+             j.address,
+             j.scheduled_start_date,
+             j.expected_completion_date,
+             j.created_at,
+             j.updated_at
+      FROM jobs j
+      WHERE j.company_id = ${companyId} ${whereStatus}
+      ORDER BY j.updated_at DESC
+      LIMIT ${limit}
+    `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+    return ok({ jobs: rows ?? [], count: rows?.length ?? 0, status_filter_applied: statusFilter });
+  } catch (e: unknown) {
+    // Never expose raw SQL errors, column names, or query details to Dazza.
+    // Log the full cause server-side with a correlation reference.
+    const ref = Math.random().toString(36).slice(2, 10).toUpperCase();
+    console.error(`[dazza-v3] toolListJobs DB error [ref:${ref}] company=${companyId} filter=${statusFilter}:`, e);
+    return JSON.stringify({ ok: false, error: 'Job lookup failed', reference: ref });
+  }
 }
 
 async function toolListEstimates(args: Record<string, unknown>): Promise<string> {

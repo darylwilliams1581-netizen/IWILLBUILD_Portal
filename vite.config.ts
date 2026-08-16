@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { fileURLToPath, URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
 import { createRequire } from "module";
 
 // ---------------------------------------------------------------------------
@@ -12,9 +12,8 @@ import { createRequire } from "module";
 // starts. tryLoad() catches the missing-module error and returns null so the
 // rest of the config can guard each usage with a simple truthiness check.
 // ---------------------------------------------------------------------------
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
-const configDir = path.dirname(fileURLToPath(import.meta.url));
-const __dirname = configDir;
 
 function tryLoad(id: string, named?: string): ((...args: unknown[]) => unknown) | null {
   try {
@@ -148,7 +147,6 @@ if (corsOrigins.length === 0) {
 
 // ---------------------------------------------------------------------------
 export default defineConfig(({ mode, isSsrBuild }) => ({
-  root: configDir,
   envPrefix: ["VITE_", "SITE_"],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),

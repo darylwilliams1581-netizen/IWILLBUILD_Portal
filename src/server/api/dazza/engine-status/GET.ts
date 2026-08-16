@@ -2,7 +2,7 @@
  * GET /api/dazza/engine-status
  * Platform-owner only.
  * Returns which Dazza engine is currently active plus safe diagnostics.
- * Never exposes the raw secret value — only length, first char, and resolved boolean.
+ * Never exposes the raw secret value, derived characters, or trimmed forms.
  */
 import type { Request, Response } from 'express';
 import { getPlatformOwnerInfo } from '../../../lib/platform-owner-guard.js';
@@ -16,21 +16,17 @@ export default async function handler(req: Request, res: Response) {
 
   const v3 = isDazzaV3Enabled();
 
-  // Safe diagnostics — never expose the raw value
-  const raw     = getSecret('DAZZA_V3_ENABLED') ?? '';
-  const rawLen  = raw.length;
-  const rawFirst = rawLen > 0 ? raw[0] : '';
-  const trimmed  = raw.trim().toLowerCase();
+  // Safe diagnostics — presence only, never the value or any derivative.
+  // getSecret() returns string | boolean | number | object | null.
+  // Use !== null (not .length) to test presence — boolean true has no .length.
+  const raw     = getSecret('DAZZA_V3_ENABLED');
+  const present = raw !== null;
 
   return res.json({
-    engine:       v3 ? 'v3' : 'v2-rollback',
-    v3Enabled:    v3,
-    // Safe diagnostics for Daryl to confirm the secret value shape
+    engine:    v3 ? 'v3' : 'v2-rollback',
+    v3Enabled: v3,
     _diag: {
-      secretPresent: rawLen > 0,
-      secretLength:  rawLen,
-      secretFirstChar: rawFirst,   // e.g. 't' for 'true', '1' for '1'
-      secretTrimmedLower: trimmed, // e.g. 'true', 'false', '1', ''
+      secretPresent:   present,
       resolvedEnabled: v3,
     },
   });
