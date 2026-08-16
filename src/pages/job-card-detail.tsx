@@ -1295,13 +1295,13 @@ export default function JobCardDetailPage() {
             <div className="flex items-center gap-2 shrink-0">
               {!editing && (
                 <>
-                  <button
-                    onClick={() => navigate('/job-cards/new')}
+                  <Link
+                    to="/job-cards/new"
                     className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-yellow-400 text-yellow-700 text-sm font-semibold hover:bg-yellow-50 transition-colors"
                   >
                     <Plus size={14} />
-                    New Job Card
-                  </button>
+                    Add New Job Card
+                  </Link>
                   {canConvert && (
                     <button
                       onClick={() => setConvertOpen(true)}
