@@ -469,23 +469,22 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   // The Responses API uses `input` (not `messages`) and `max_output_tokens` (not `max_tokens`).
   // Reasoning models do not support `temperature` — omit it entirely.
   //
+  // Multi-round tool continuation uses `previous_response_id`:
+  //   Round 0: send full conversation input (system + history + user message)
+  //   Round 1+: send ONLY { previous_response_id, input: [function_call_output items] }
+  //             Do NOT reconstruct or resend function_call items — the server tracks them.
+  //
   // Tool result format for Responses API:
-  //   { type: 'function_call_output', call_id: '...', output: '...' }
+  //   { type: 'function_call_output', call_id: exactCallId, output: serializedResult }
   // NOT the Chat Completions format: { role: 'tool', tool_call_id: '...', content: '...' }
 
-  // Build the Responses API input array from the messages array.
-  // System messages → role: 'system', user/assistant → role: 'user'/'assistant',
-  // tool results → type: 'function_call_output'.
   type ResponsesApiInput =
     | { role: 'system' | 'user' | 'assistant'; content: string }
-    | { type: 'function_call'; call_id: string; name: string; arguments: string; id?: string }
-    | { type: 'function_call_output'; call_id: string; output: string }
-    | Record<string, unknown>; // allow dynamic construction for function_call items
+    | { type: 'function_call_output'; call_id: string; output: string };
 
-  // We maintain two parallel arrays:
-  //   messages[]         — OAI message objects (for conversation save / history)
-  //   responsesInput[]   — Responses API input items (sent to OpenAI each round)
-  const responsesInput: ResponsesApiInput[] = messages.map(m => {
+  // Round 0 input: full conversation history mapped to Responses API format.
+  // messages[] contains OAI-format items; map tool results to function_call_output.
+  const round0Input: ResponsesApiInput[] = messages.map(m => {
     if (m.role === 'tool') {
       return {
         type: 'function_call_output' as const,
@@ -496,7 +495,47 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     return { role: m.role as 'system' | 'user' | 'assistant', content: m.content ?? '' };
   });
 
+  // previousResponseId: set after each round from response.completed.
+  // Used as previous_response_id in round 1+ to continue the conversation
+  // without re-sending the full input or reconstructing function_call items.
+  let previousResponseId: string | null = null;
+
+  // pendingToolOutputs: function_call_output items built after tool execution.
+  // Sent as the `input` in round 1+ alongside previous_response_id.
+  let pendingToolOutputs: { type: 'function_call_output'; call_id: string; output: string }[] = [];
+
   for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
+    // ── Build request body ────────────────────────────────────────────────────
+    // Round 0: full conversation input.
+    // Round 1+: previous_response_id + only the function_call_output items for
+    //           this round. Do NOT include function_call items or prior history —
+    //           the server reconstructs context from previous_response_id.
+    let requestBody: Record<string, unknown>;
+    if (round === 0 || !previousResponseId) {
+      requestBody = {
+        model,
+        max_output_tokens: maxTokens,
+        stream: true,
+        tools: V3_TOOL_DEFINITIONS_FLAT,
+        tool_choice: 'auto',
+        input: round0Input,
+      };
+    } else {
+      // round 1+: continuation via previous_response_id
+      // pendingToolOutputs is populated below after tool execution
+      requestBody = {
+        model,
+        max_output_tokens: maxTokens,
+        stream: true,
+        tools: V3_TOOL_DEFINITIONS_FLAT,
+        tool_choice: 'auto',
+        previous_response_id: previousResponseId,
+        input: pendingToolOutputs,
+      };
+    }
+
+    console.log(`[dazza-v3] round=${round} request previous_response_id_present=${!!previousResponseId} input_items=${Array.isArray(requestBody.input) ? (requestBody.input as unknown[]).length : 0}`);
+
     let streamRes: globalThis.Response;
     try {
       streamRes = await fetch('https://api.openai.com/v1/responses', {
@@ -505,14 +544,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model,
-          max_output_tokens: maxTokens,
-          stream: true,
-          tools: V3_TOOL_DEFINITIONS_FLAT,
-          tool_choice: 'auto',
-          input: responsesInput,
-        }),
+        body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(120_000),
       });
     } catch (fetchErr) {
@@ -592,7 +624,12 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
             arguments?: string;
           };
           // response.completed nests usage under chunk.response.usage
-          response?: { usage?: { input_tokens?: number; output_tokens?: number } };
+          // response.completed also carries chunk.response.id — the response ID
+          // used as previous_response_id in the next round.
+          response?: {
+            id?: string;
+            usage?: { input_tokens?: number; output_tokens?: number };
+          };
           // Some error events put usage at top level — keep as fallback
           usage?: { input_tokens?: number; output_tokens?: number };
         };
@@ -670,18 +707,26 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           console.log(`[dazza-v3] round=${round} fn_args_done idx=${idx} args_len=${chunk.arguments.length}`);
         }
 
-        // ── Response completed — capture usage only ───────────────────────────
+        // ── Response completed — capture response ID and usage ────────────────
         // IMPORTANT: response.completed fires for BOTH tool-call rounds AND final
         // text rounds. Do NOT set finishReason='stop' here — that would break the
         // tool loop by causing an early exit before tools execute.
         // The loop continues until toolCallsList.length === 0 (no more tool calls).
+        //
+        // Capture chunk.response.id — used as previous_response_id in round 1+.
+        // This is the native Responses API continuation mechanism: the server
+        // tracks all prior output items, so round 1+ only needs to send the
+        // function_call_output results, not the full history or function_call items.
         if (evType === 'response.completed') {
+          if (chunk.response?.id) {
+            previousResponseId = chunk.response.id;
+          }
           const usage = chunk.response?.usage ?? chunk.usage;
           if (usage) {
             totalInputTokens  += usage.input_tokens  ?? 0;
             totalOutputTokens += usage.output_tokens ?? 0;
           }
-          console.log(`[dazza-v3] round=${round} response.completed usage_captured=${!!usage}`);
+          console.log(`[dazza-v3] round=${round} response.completed response_id_captured=${!!chunk.response?.id} usage_captured=${!!usage}`);
         }
 
         // ── Error events ──────────────────────────────────────────────────────
@@ -700,34 +745,10 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
 
     const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
 
-    console.log(`[dazza-v3] round=${round} stream_done assistantContent_len=${assistantContent.length} tool_calls=${toolCallsList.length}`);
+    console.log(`[dazza-v3] round=${round} stream_done assistantContent_len=${assistantContent.length} tool_calls=${toolCallsList.length} response_id_present=${!!previousResponseId}`);
 
-    // Append assistant turn to responsesInput
-    if (assistantContent) {
-      responsesInput.push({ role: 'assistant', content: assistantContent });
-    }
-    // Append function_call items for each tool call.
-    // The Responses API stateless multi-turn pattern requires the model's
-    // function_call output items to appear in the next request's input,
-    // followed by the matching function_call_output results.
-    //
-    // function_call input item shape (ResponseFunctionToolCall):
-    //   { type: 'function_call', call_id: string, name: string, arguments: string, id?: string }
-    //
-    // call_id is the REQUIRED matching key — stored in tc.id.
-    // id is the optional item identifier — stored in tc.item_id.
-    for (const tc of toolCallsList) {
-      const fcItem: Record<string, unknown> = {
-        type: 'function_call',
-        call_id: tc.id,          // REQUIRED: matches function_call_output.call_id
-        name: tc.function.name,
-        arguments: tc.function.arguments,
-      };
-      if (tc.item_id) fcItem['id'] = tc.item_id; // optional item id if present
-      responsesInput.push(fcItem as ResponsesApiInput);
-    }
-
-    // Also keep messages[] in sync for conversation save
+    // Keep messages[] in sync for conversation save only.
+    // We do NOT append to responsesInput — continuation uses previous_response_id.
     messages.push({
       role: 'assistant',
       content: assistantContent || null,
@@ -735,15 +756,28 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     });
 
     // ── Loop continuation decision ────────────────────────────────────────────
-    // CRITICAL: Do NOT use finishReason to break here.
-    // response.completed fires for BOTH tool-call rounds AND final-text rounds.
-    // The only correct signal to stop is: no tool calls were requested this round.
+    // Only break when no tool calls were requested this round.
     if (toolCallsList.length === 0) {
       console.log(`[dazza-v3] round=${round} no_tool_calls — breaking loop`);
       break;
     }
 
-    // Execute tool calls and append results
+    // Guard: must have a response ID to continue with previous_response_id pattern
+    if (!previousResponseId) {
+      const corrId = randomUUID().slice(0, 8).toUpperCase();
+      console.error(`[dazza-v3] round=${round} no_response_id_for_continuation [ref:${corrId}] — cannot continue tool loop`);
+      onError(`Tool continuation failed (no response ID). Reference: ${corrId}`, conversationId);
+      void saveConversationTurn(
+        conversationId, ownerContext.userId, 'assistant',
+        `[Tool continuation failed — ref:${corrId}]`, userTurnIndex + 1,
+      );
+      return;
+    }
+
+    // Execute tool calls and build pendingToolOutputs for the next round.
+    // pendingToolOutputs contains ONLY function_call_output items — no function_call
+    // items, no history. The server reconstructs context from previous_response_id.
+    pendingToolOutputs = [];
     for (const tc of toolCallsList) {
       const toolName = tc.function.name;
       onToolCall(toolName, 'running');
@@ -763,16 +797,16 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       const result = await executeV3Tool(toolName, args);
       onToolCall(toolName, 'done');
 
-      console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length}`);
+      console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length} result_present=${result.length > 0}`);
 
-      // Responses API tool result format
-      responsesInput.push({
-        type: 'function_call_output',
-        call_id: tc.id,
+      // Responses API tool result — only call_id and output needed
+      pendingToolOutputs.push({
+        type: 'function_call_output' as const,
+        call_id: tc.id,   // tc.id holds call_id (the REQUIRED matching key)
         output: result,
       });
 
-      // Keep messages[] in sync
+      // Keep messages[] in sync for conversation save
       messages.push({
         role: 'tool',
         tool_call_id: tc.id,
@@ -780,7 +814,7 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       });
     }
 
-    console.log(`[dazza-v3] round=${round} tool_results_appended=${toolCallsList.length} — starting round ${round + 1}`);
+    console.log(`[dazza-v3] round=${round} tool_outputs_ready=${pendingToolOutputs.length} previous_response_id_present=${!!previousResponseId} — starting round ${round + 1}`);
   } // end agentic loop
 
   // ── Guard: empty response ─────────────────────────────────────────────────
