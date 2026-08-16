@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
 import { openPrintWindow } from '@/lib/print-html';
+import { parsePhotoUrls, isImageDataUrl } from '@/lib/photo-url-utils';
 import {
   ChevronLeft,
   ChevronRight,
@@ -246,11 +247,17 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
     try {
       const r = await fetch(url, { credentials: 'include' });
       if (!r.ok) return null;
+      // Reject non-image responses (e.g. HTML login redirects)
+      const ct = r.headers.get('content-type') ?? '';
+      if (!ct.startsWith('image/')) return null;
       const blob = await r.blob();
-      return await new Promise<string>((resolve, reject) => {
+      return await new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(isImageDataUrl(result) ? result : null);
+        };
+        reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
     } catch {
@@ -287,9 +294,9 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
         .map(async (f) => {
           const val = printAnswers[f.id];
           if (!val) return;
-          const urls: string[] = Array.isArray(val)
-            ? val.filter((v): v is string => typeof v === 'string')
-            : typeof val === 'string' ? [val] : [];
+          // parsePhotoUrls handles JSON strings, arrays, and deduplicates by URL
+          const urls = parsePhotoUrls(val);
+          if (!urls.length) return;
           const dataUrls = await Promise.all(urls.map((u) => fetchAsDataUrl(u)));
           photoDataUrls[f.id] = dataUrls.filter((d): d is string => d !== null);
         })

@@ -64,16 +64,30 @@ function escapeHtml(value: string): string {
   }[char] ?? char));
 }
 
+/** Pattern matching the app's authenticated file endpoint */
+const FILE_URL_RE = /^\/api\/files\/\d+\/[a-z]+(\?.*)?$/;
+
 function answerUrls(value: unknown): string[] {
   if (!value) return [];
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
-  if (typeof value !== 'string') return [];
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [value];
-  } catch {
-    return [value];
+  let urls: string[] = [];
+  if (Array.isArray(value)) {
+    urls = value.filter((item): item is string => typeof item === 'string');
+  } else if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      urls = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [value];
+    } catch {
+      urls = [value];
+    }
   }
+  // Deduplicate by URL and only keep valid file API paths — reject raw JSON strings
+  const seen = new Set<string>();
+  return urls.filter((u) => {
+    if (!u || !FILE_URL_RE.test(u)) return false;
+    if (seen.has(u)) return false;
+    seen.add(u);
+    return true;
+  });
 }
 
 function fileIdFromUrl(value: string): number | null {

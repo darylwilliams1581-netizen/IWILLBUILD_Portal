@@ -333,54 +333,65 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
     drawLines([data.disclaimer], { size: 8.5, color: MUTED, lineHeight: 12 });
   }
 
-  // ── Photo appendix: full-size images grouped by field ──────────────────────
+  // ── Photo appendix: full-size images, one per page, clean header ─────────────
   const photoFields = data.fields.filter((f) => f.fieldType === 'photo');
-  const appendixImages: Array<{ label: string; image: PDFImage }> = [];
+
+  // Collect unique images — deduplicate by bytes reference (same object = same fetch)
+  const appendixEntries: Array<{ label: string; image: PDFImage }> = [];
+  const embeddedSet = new Set<Uint8Array>();
   for (const field of photoFields) {
     const images = data.fieldImages?.[String(field.id)] ?? [];
     for (const img of images) {
+      // Use fullBytes for appendix if available, else fall back to thumb bytes
       const srcBytes = img.fullBytes ?? img.bytes;
       const srcMime = img.fullMimeType ?? img.mimeType;
+      // Skip if we've already embedded this exact buffer (deduplication)
+      if (embeddedSet.has(srcBytes)) continue;
+      embeddedSet.add(srcBytes);
       const embedded = await embedImage(doc, { bytes: srcBytes, mimeType: srcMime });
-      if (embedded) appendixImages.push({ label: field.label, image: embedded });
+      if (embedded) appendixEntries.push({ label: field.label, image: embedded });
     }
   }
 
-  if (appendixImages.length > 0) {
-    // Force a new page for the appendix
-    page = doc.addPage([PAGE_W, PAGE_H]);
-    pages.push(page);
-    y = PAGE_H - HEADER_H - 10;
-
-    page.drawText('PHOTO APPENDIX', {
-      x: MARGIN, y, font: bold, size: 10, color: SLATE,
-    });
-    y -= 6;
-    page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: BORDER });
-    y -= 18;
+  if (appendixEntries.length > 0) {
+    // Appendix pages use a lighter header (no purple band — just a title bar)
+    function addAppendixPage(pageTitle: string) {
+      page = doc.addPage([PAGE_W, PAGE_H]);
+      pages.push(page);
+      page.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: LIGHT });
+      page.drawText(printable(pageTitle).slice(0, 72), {
+        x: MARGIN, y: PAGE_H - 35, font: bold, size: 14, color: SLATE,
+      });
+      page.drawText('PHOTO APPENDIX', {
+        x: MARGIN, y: PAGE_H - 55, font: regular, size: 8.5, color: MUTED,
+      });
+      y = PAGE_H - HEADER_H - 24;
+    }
 
     const FULL_W = CONTENT_W;
-    const FULL_MAX_H = PAGE_H - HEADER_H - FOOTER_H - 60;
+    // Max height for a single image: full content area minus label row
+    const MAX_IMG_H = PAGE_H - HEADER_H - FOOTER_H - 50;
 
-    for (const { label, image } of appendixImages) {
+    for (const { label, image } of appendixEntries) {
+      // Each photo gets its own fresh page — no overflow, no blank pages
+      addAppendixPage(printable(data.title));
+
+      // Label
+      page.drawText(printable(label).toUpperCase(), {
+        x: MARGIN, y, font: bold, size: 8.5, color: MUTED,
+      });
+      y -= 16;
+
+      // Scale image to fit within the available area
       const dims = image.scale(1);
-      const ratio = Math.min(FULL_W / dims.width, FULL_MAX_H / dims.height, 1);
+      const ratio = Math.min(FULL_W / dims.width, MAX_IMG_H / dims.height, 1);
       const drawW = dims.width * ratio;
       const drawH = dims.height * ratio;
 
-      // Label above image
-      ensureSpace(drawH + 30);
-      page.drawText(printable(label).toUpperCase(), {
-        x: MARGIN, y, font: bold, size: 8, color: MUTED,
-      });
-      y -= 14;
-
-      // Image centred
-      ensureSpace(drawH + 16);
       const imgX = MARGIN + (FULL_W - drawW) / 2;
       page.drawRectangle({ x: imgX - 2, y: y - drawH - 2, width: drawW + 4, height: drawH + 4, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
       page.drawImage(image, { x: imgX, y: y - drawH, width: drawW, height: drawH });
-      y -= drawH + 20;
+      y -= drawH + 12;
     }
   }
 
