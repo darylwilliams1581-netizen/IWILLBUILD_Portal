@@ -6,7 +6,7 @@ import {
   RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
-  Brain, Bug, Copy, Check, X,
+  Brain, Bug, Copy, Check, X, GitBranch,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -16,6 +16,7 @@ import {
   calcFall, calcFallFromGrade, calcSimple,
 } from '@/lib/dazza-calcs';
 import DazzaBrainStatus from '@/components/DazzaBrainStatus';
+import DazzaAnatomyPanel from '@/components/DazzaAnatomyPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -453,7 +454,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export default function DazzaAIPage() {
-  const { me, isAdmin, platformRole } = usePermissions();
+  const { me, isAdmin, platformRole, isPlatformOwner } = usePermissions();
   const isDeveloper = platformRole === 'developer';
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: WELCOME_MSG, timestamp: new Date() },
@@ -469,7 +470,7 @@ export default function DazzaAIPage() {
   const [activeCalc, setActiveCalc] = useState<string | null>(null);
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'brain'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'brain' | 'anatomy'>('chat');
   // V3 conversation continuity
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
@@ -1007,6 +1008,16 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                 >
                   <Brain size={11} /> Brain
                 </button>
+                {isPlatformOwner && (
+                  <button
+                    onClick={() => setActiveTab('anatomy')}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                      activeTab === 'anatomy' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <GitBranch size={11} /> Anatomy
+                  </button>
+                )}
               </div>
             )}
             <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
@@ -1044,6 +1055,13 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
           {activeTab === 'brain' && isAdmin && (
             <div className="flex-1 overflow-y-auto bg-slate-50">
               <DazzaBrainStatus supportCompanyId={dazzaCtx?.supportCompanyId} />
+            </div>
+          )}
+
+          {/* ── Anatomy tab (platform owner only) ── */}
+          {activeTab === 'anatomy' && isPlatformOwner && (
+            <div className="flex-1 overflow-y-auto bg-slate-50">
+              <DazzaAnatomyPanel />
             </div>
           )}
 
