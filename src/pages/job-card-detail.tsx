@@ -13,7 +13,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import PortalSidebar from '@/components/PortalSidebar';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   ChevronLeft, Edit2, Save, X, Plus, Trash2,
   RefreshCw, AlertCircle, CheckCircle2, Receipt, ArrowRightLeft,
@@ -1200,8 +1201,9 @@ export default function JobCardDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[#f5f6f8]">
-        <PortalSidebar />
+      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+        <DesktopTopBar />
+        <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
           <RefreshCw size={20} className="animate-spin text-gray-300" />
         </div>
@@ -1211,8 +1213,9 @@ export default function JobCardDetailPage() {
 
   if (error || !card) {
     return (
-      <div className="flex h-screen bg-[#f5f6f8]">
-        <PortalSidebar />
+      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+        <DesktopTopBar />
+        <DesktopDock />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <AlertCircle size={28} className="text-red-400" />
           <p className="text-gray-600 font-medium">{error || 'Job card not found'}</p>
@@ -1233,17 +1236,15 @@ export default function JobCardDetailPage() {
   const canConvert = card.status !== 'converted';
 
   return (
-    <div className="flex h-screen bg-[#f5f6f8] overflow-hidden">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>{card.card_number} — Job Card — IWILLBUILD</title>
         <meta name="description" content={`Job Card ${card.card_number} — ${card.work_description.slice(0, 120)}`} />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/job-cards/${card.id}`} />
       </Helmet>
-
-      <PortalSidebar />
-
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* ── Header — single unified bar for mobile + desktop ── */}
         <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-3 shrink-0 safe-top">
@@ -1464,7 +1465,6 @@ export default function JobCardDetailPage() {
             </div>
           )}
         </div>
-      </main>
 
       {/* Toast */}
       {toast && (
