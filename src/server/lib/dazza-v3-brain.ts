@@ -38,7 +38,7 @@ import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { getSecret } from '#airo/secrets';
-import { V3_TOOL_DEFINITIONS, executeV3Tool } from './dazza-v3-tools.js';
+import { V3_TOOL_DEFINITIONS_FLAT, executeV3Tool } from './dazza-v3-tools.js';
 import { sendSms, isSmsConfigured } from './sms.js';
 import { sendEmail } from '../email.js';
 
@@ -119,7 +119,7 @@ export interface V3StreamOptions {
     inputTokens?: number;
     outputTokens?: number;
   }) => void;
-  onError: (message: string) => void;
+  onError: (message: string, conversationId?: string) => void;
 }
 
 export interface V3IncidentInput {
@@ -371,7 +371,6 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     onError('OpenAI API key not configured. Set OPENAI_API_KEY to enable Dazza V3.');
     return;
   }
-
   // ── Conversation ID resolution + ownership enforcement ────────────────────
   let conversationId: string;
   let isNewConversation: boolean;
@@ -506,20 +505,32 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           model,
           max_output_tokens: maxTokens,
           stream: true,
-          tools: V3_TOOL_DEFINITIONS.map(t => ({ type: 'function', ...t })),
+          tools: V3_TOOL_DEFINITIONS_FLAT,
           tool_choice: 'auto',
           input: responsesInput,
         }),
         signal: AbortSignal.timeout(120_000),
       });
     } catch (fetchErr) {
-      onError(`OpenAI request failed: ${String(fetchErr)}`);
+      const corrId = randomUUID().slice(0, 8).toUpperCase();
+      console.error(`[dazza-v3] fetch error [ref:${corrId}]:`, String(fetchErr));
+      onError(`OpenAI connection failed. Reference: ${corrId}`, conversationId);
+      void saveConversationTurn(
+        conversationId, ownerContext.userId, 'assistant',
+        `[Connection failed — ref:${corrId}]`, userTurnIndex + 1,
+      );
       return;
     }
 
     if (!streamRes.ok) {
       const errText = await streamRes.text();
-      onError(`OpenAI ${streamRes.status}: ${errText.slice(0, 300)}`);
+      const corrId = randomUUID().slice(0, 8).toUpperCase();
+      console.error(`[dazza-v3] OpenAI ${streamRes.status} [ref:${corrId}] round=${round}:`, errText.slice(0, 500));
+      onError(`OpenAI request failed (HTTP ${streamRes.status}). Reference: ${corrId}`, conversationId);
+      void saveConversationTurn(
+        conversationId, ownerContext.userId, 'assistant',
+        `[Request failed — ref:${corrId}]`, userTurnIndex + 1,
+      );
       return;
     }
 
@@ -600,7 +611,13 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
 
         // Error events
         if (evType === 'response.failed' || evType === 'error') {
-          onError(`Responses API error: ${JSON.stringify(chunk).slice(0, 200)}`);
+          const corrId = randomUUID().slice(0, 8).toUpperCase();
+          console.error(`[dazza-v3] SSE error event [ref:${corrId}]:`, JSON.stringify(chunk).slice(0, 300));
+          onError(`Responses API error. Reference: ${corrId}`, conversationId);
+          void saveConversationTurn(
+            conversationId, ownerContext.userId, 'assistant',
+            `[Stream error — ref:${corrId}]`, userTurnIndex + 1,
+          );
           return;
         }
       }

@@ -457,6 +457,36 @@ export const V3_TOOL_DEFINITIONS = [
 
 export type V3ToolName = typeof V3_TOOL_DEFINITIONS[number]['function']['name'];
 
+/**
+ * Responses API flat tool format.
+ *
+ * Chat Completions shape (what V3_TOOL_DEFINITIONS stores):
+ *   { type: 'function', function: { name, description, parameters } }
+ *
+ * Responses API shape (what /v1/responses requires):
+ *   { type: 'function', name, description, parameters, strict }
+ *
+ * The two are NOT interchangeable. Spreading a Chat Completions tool into a
+ * Responses API call produces { type: 'function', function: {...} } which
+ * fails with "Missing required parameter: 'tools[0].name'" (HTTP 400).
+ *
+ * This export converts every definition to the flat Responses API shape.
+ * Use this — and only this — when calling /v1/responses.
+ */
+export const V3_TOOL_DEFINITIONS_FLAT: Array<{
+  type: 'function';
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  strict: false;
+}> = V3_TOOL_DEFINITIONS.map((t) => ({
+  type: 'function' as const,
+  name: t.function.name,
+  description: t.function.description,
+  parameters: t.function.parameters as Record<string, unknown>,
+  strict: false as const,
+}));
+
 // ── Tool executor ─────────────────────────────────────────────────────────────
 
 export async function executeV3Tool(

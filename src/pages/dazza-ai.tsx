@@ -414,7 +414,7 @@ interface SseDone       {
   model?: string;
   toolsUsed?: string[];
 }
-interface SseError      { type: 'error'; message: string; configFault?: boolean }
+interface SseError      { type: 'error'; message: string; configFault?: boolean; conversationId?: string }
 type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
 
 // ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
@@ -473,8 +473,15 @@ export default function DazzaAIPage() {
   // V3 conversation continuity
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
+  const [activeModel, setActiveModel] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Returns the model label for the V3 badge — uses server-confirmed model from
+  // the done event, falls back to 'o4-mini' (the configured default).
+  function getDazzaModelLabel(): string {
+    return activeModel ?? 'o4-mini';
+  }
 
   // ── sessionStorage key (keyed to userId so different users never share) ──
   const storageKey = me?.id ? `dazza_conv_id_${me.id}` : null;
@@ -524,21 +531,39 @@ export default function DazzaAIPage() {
   // ── Fetch server-confirmed engine on mount ────────────────────────────────
   // The engine badge must reflect what the server actually uses, not what the
   // client infers. This runs once when the authenticated user is known.
+  // A 10-second timeout converts "Checking…" to "Status unknown" so the badge
+  // never hangs indefinitely if the request fails silently.
   const [engineDiag, setEngineDiag] = useState<{
     secretPresent: boolean;
     resolvedEnabled: boolean;
   } | null>(null);
+  const [engineCheckTimedOut, setEngineCheckTimedOut] = useState(false);
 
   useEffect(() => {
     if (!me?.id) return;
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) setEngineCheckTimedOut(true);
+    }, 10_000);
+
     fetch('/api/dazza/engine-status', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((data: { engine?: string; _diag?: { secretPresent: boolean; resolvedEnabled: boolean } } | null) => {
+        if (cancelled) return;
+        clearTimeout(timeout);
         if (data?.engine === 'v3') setActiveEngine('v3');
         else if (data?.engine === 'v2-rollback') setActiveEngine('v2-rollback');
+        else setActiveEngine('v2-rollback'); // fallback if engine field missing
         if (data?._diag) setEngineDiag(data._diag);
       })
-      .catch(() => { /* non-fatal — badge stays null until first message */ });
+      .catch(() => {
+        if (!cancelled) {
+          clearTimeout(timeout);
+          setEngineCheckTimedOut(true);
+        }
+      });
+
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
@@ -677,12 +702,20 @@ export default function DazzaAIPage() {
             if (event.conversationId) {
               setConversationId(event.conversationId);
             }
-            // Track active engine from done event
+            // Track active engine and model from done event
             if (event.engine) {
               setActiveEngine(event.engine);
             }
+            if (event.model) {
+              setActiveModel(event.model);
+            }
           } else if (event.type === 'error') {
             const errEvt = event as SseError & { configFault?: boolean };
+            // Persist conversationId from error events so the conversation is
+            // restorable after a hard refresh even when the request failed.
+            if (errEvt.conversationId && !conversationId) {
+              setConversationId(errEvt.conversationId);
+            }
             if (errEvt.configFault) {
               // Configuration fault — show inline in the message bubble
               setMessages((prev) => prev.map((m) =>
@@ -903,7 +936,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             {activeEngine === 'v3' && (
               <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
                 <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse inline-block" />
-                V3 · o4-mini
+                V3 · {getDazzaModelLabel()}
               </span>
             )}
             {activeEngine === 'v2-rollback' && (
@@ -919,10 +952,15 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                 secret {engineDiag.secretPresent ? 'present' : 'missing'}
               </span>
             )}
-            {!activeEngine && (
+            {!activeEngine && !engineCheckTimedOut && (
               <span className="flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full border border-slate-200">
                 <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse inline-block" />
                 Checking…
+              </span>
+            )}
+            {!activeEngine && engineCheckTimedOut && (
+              <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">
+                Status unknown
               </span>
             )}
             {conversationId && (

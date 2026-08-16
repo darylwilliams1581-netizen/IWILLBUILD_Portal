@@ -16,9 +16,11 @@ export default async function handler(req: Request, res: Response) {
 
   const v3 = isDazzaV3Enabled();
 
-  // Safe diagnostics — presence and length only, never the value or any derivative
-  const raw     = getSecret('DAZZA_V3_ENABLED') ?? '';
-  const present = raw.length > 0;
+  // Safe diagnostics — presence only, never the value or any derivative.
+  // getSecret() returns string | boolean | number | object | null.
+  // Use !== null (not .length) to test presence — boolean true has no .length.
+  const raw     = getSecret('DAZZA_V3_ENABLED');
+  const present = raw !== null;
 
   return res.json({
     engine:    v3 ? 'v3' : 'v2-rollback',

@@ -67,6 +67,11 @@ export default async function handler(req: Request, res: Response) {
 
     if (v3Enabled) {
       // ── V3 path ─────────────────────────────────────────────────────────
+      // conversationId is resolved inside streamDazzaV3 — capture it so we
+      // can include it in error events (enables conversation restoration after
+      // a failed request).
+      let resolvedConversationId: string | null = conversationId ?? null;
+
       await streamDazzaV3({
         ownerContext: {
           userId:          ownerInfo.userId,
@@ -78,11 +83,21 @@ export default async function handler(req: Request, res: Response) {
         mode:           'chat',
         onToken:      (token)        => sseWrite(res, { type: 'token', content: token }),
         onToolCall:   (name, status) => sseWrite(res, { type: status === 'running' ? 'tool_call' : 'tool_result', name, status }),
-        onDone:       (meta)         => sseWrite(res, { type: 'done', engine: 'v3', ...meta }),
-        onError:      (msg)          => {
-          // Ownership rejection — surface as a visible error (not a silent new conversation)
+        onDone:       (meta)         => {
+          resolvedConversationId = meta.conversationId;
+          sseWrite(res, { type: 'done', engine: 'v3', ...meta });
+        },
+        onError:      (msg, errConvId)  => {
           const isForbidden = msg.startsWith('FORBIDDEN:');
-          sseWrite(res, { type: 'error', message: msg, forbidden: isForbidden });
+          // Include conversationId in error events so the client can persist
+          // the conversation ID and restore history after a hard refresh.
+          const convId = errConvId ?? resolvedConversationId;
+          sseWrite(res, {
+            type: 'error',
+            message: msg,
+            forbidden: isForbidden,
+            ...(convId ? { conversationId: convId } : {}),
+          });
         },
       });
 
