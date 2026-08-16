@@ -262,11 +262,18 @@ export default async function handler(req: Request, res: Response) {
           if (!record) return null;
           try {
             const downloaded = await getDownloadBuffer(record.storedName, BUCKET_COMPANY_FILES);
-            const thumbnail = await generateThumbnail(downloaded.buffer, record.mimeType, 640, 60);
-            if (thumbnail) return { bytes: Uint8Array.from(thumbnail.buffer), mimeType: thumbnail.mimeType };
-            if (/image\/(?:png|jpe?g)/i.test(record.mimeType)) {
-              return { bytes: Uint8Array.from(downloaded.buffer), mimeType: record.mimeType };
+            // Thumbnail bytes for inline section
+            const thumbnail = await generateThumbnail(downloaded.buffer, record.mimeType, 300, 70);
+            const thumbBytes = thumbnail ? Uint8Array.from(thumbnail.buffer) : null;
+            const thumbMime = thumbnail ? thumbnail.mimeType : null;
+            // Full-size bytes for appendix
+            const isImage = /image\/(?:png|jpe?g)/i.test(record.mimeType);
+            if (!isImage) return null;
+            const fullBytes = Uint8Array.from(downloaded.buffer);
+            if (thumbBytes && thumbMime) {
+              return { bytes: thumbBytes, mimeType: thumbMime, fullBytes, fullMimeType: record.mimeType, label: field.label };
             }
+            return { bytes: fullBytes, mimeType: record.mimeType, fullBytes, fullMimeType: record.mimeType, label: field.label };
           } catch (error) {
             console.warn(`[form-email] Failed to load photo file ${record.id}:`, error);
           }
