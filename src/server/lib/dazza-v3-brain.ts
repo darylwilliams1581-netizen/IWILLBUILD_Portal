@@ -437,7 +437,10 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     | { role: 'tool'; tool_call_id: string; content: string };
 
   interface ToolCallChunk {
-    id: string;
+    // call_id: the model-generated identifier used to match function_call_output.call_id
+    // This is ResponseFunctionToolCall.call_id — the REQUIRED matching key.
+    id: string;       // stores call_id (used for function_call_output.call_id matching)
+    item_id?: string; // stores the optional item id (ResponseFunctionToolCall.id)
     type: 'function';
     function: { name: string; arguments: string };
   }
@@ -475,8 +478,9 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   // tool results → type: 'function_call_output'.
   type ResponsesApiInput =
     | { role: 'system' | 'user' | 'assistant'; content: string }
-    | { type: 'function_call'; id: string; call_id: string; name: string; arguments: string }
-    | { type: 'function_call_output'; call_id: string; output: string };
+    | { type: 'function_call'; call_id: string; name: string; arguments: string; id?: string }
+    | { type: 'function_call_output'; call_id: string; output: string }
+    | Record<string, unknown>; // allow dynamic construction for function_call items
 
   // We maintain two parallel arrays:
   //   messages[]         — OAI message objects (for conversation save / history)
@@ -617,12 +621,15 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         // ── Function call item added — capture name and call_id ───────────────
         if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
           const idx = String(chunk.output_index ?? 0);
+          // call_id is the REQUIRED matching key for function_call_output.call_id
+          // id is the optional item identifier — store separately
           toolCallsMap[idx] = {
-            id: chunk.item.call_id ?? chunk.item.id ?? '',
+            id: chunk.item.call_id ?? '',          // call_id → used for output matching
+            item_id: chunk.item.id ?? undefined,   // item id → used in function_call input item
             type: 'function',
             function: { name: chunk.item.name ?? '', arguments: '' },
           };
-          console.log(`[dazza-v3] round=${round} fn_call_detected idx=${idx} name_present=${!!chunk.item.name} call_id_present=${!!(chunk.item.call_id ?? chunk.item.id)}`);
+          console.log(`[dazza-v3] round=${round} fn_call_detected idx=${idx} name_present=${!!chunk.item.name} call_id_present=${!!chunk.item.call_id} item_id_present=${!!chunk.item.id}`);
         }
 
         // ── Function call item done — authoritative complete item ─────────────
@@ -631,15 +638,15 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           const idx = String(chunk.output_index ?? 0);
           const existing = toolCallsMap[idx];
           toolCallsMap[idx] = {
-            id: chunk.item.call_id ?? chunk.item.id ?? existing?.id ?? '',
+            id: chunk.item.call_id ?? existing?.id ?? '',
+            item_id: chunk.item.id ?? existing?.item_id ?? undefined,
             type: 'function',
             function: {
               name: chunk.item.name ?? existing?.function.name ?? '',
-              // Use done-event arguments if present; fall back to accumulated delta
               arguments: chunk.item.arguments ?? existing?.function.arguments ?? '',
             },
           };
-          console.log(`[dazza-v3] round=${round} fn_call_done idx=${idx} name=${chunk.item.name ?? '?'} call_id_present=${!!(chunk.item.call_id ?? chunk.item.id)} args_len=${(chunk.item.arguments ?? '').length}`);
+          console.log(`[dazza-v3] round=${round} fn_call_done idx=${idx} name=${chunk.item.name ?? '?'} call_id_present=${!!chunk.item.call_id} item_id_present=${!!chunk.item.id} args_len=${(chunk.item.arguments ?? '').length}`);
         }
 
         // ── Function call arguments streaming (delta) ─────────────────────────
@@ -699,15 +706,25 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     if (assistantContent) {
       responsesInput.push({ role: 'assistant', content: assistantContent });
     }
-    // Append function_call items for each tool call
+    // Append function_call items for each tool call.
+    // The Responses API stateless multi-turn pattern requires the model's
+    // function_call output items to appear in the next request's input,
+    // followed by the matching function_call_output results.
+    //
+    // function_call input item shape (ResponseFunctionToolCall):
+    //   { type: 'function_call', call_id: string, name: string, arguments: string, id?: string }
+    //
+    // call_id is the REQUIRED matching key — stored in tc.id.
+    // id is the optional item identifier — stored in tc.item_id.
     for (const tc of toolCallsList) {
-      responsesInput.push({
+      const fcItem: Record<string, unknown> = {
         type: 'function_call',
-        id: tc.id,
-        call_id: tc.id,
+        call_id: tc.id,          // REQUIRED: matches function_call_output.call_id
         name: tc.function.name,
         arguments: tc.function.arguments,
-      });
+      };
+      if (tc.item_id) fcItem['id'] = tc.item_id; // optional item id if present
+      responsesInput.push(fcItem as ResponsesApiInput);
     }
 
     // Also keep messages[] in sync for conversation save
