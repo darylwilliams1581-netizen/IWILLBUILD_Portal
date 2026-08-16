@@ -229,7 +229,7 @@ export default function JobsPage() {
                 </select>
               </div>
             )}
-            <div className="overflow-x-auto pb-0.5 flex gap-1.5">
+            <div className="scroll-x-hide flex gap-1.5 pb-0.5">
               {['All', 'Works in Progress', 'Quoting', 'On Hold', 'Completed'].map((f) => (
                 <button key={f} onClick={() => setActiveFilter(f)}
                   className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap shrink-0 ${activeFilter === f ? 'bg-primary text-white border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary hover:text-primary'}`}>
