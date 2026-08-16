@@ -1347,7 +1347,7 @@ export default function JobCardDetailPage() {
           ) : (
             <div className="max-w-3xl mx-auto flex flex-col gap-4">
               {/* ── Financial summary strip ── */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: 'Labour', value: fmtCurrency(labour), icon: DollarSign, cls: 'text-emerald-600' },
                   { label: 'Materials', value: fmtCurrency(mats), icon: Wrench, cls: 'text-violet-600' },
@@ -1366,7 +1366,7 @@ export default function JobCardDetailPage() {
 
               {/* ── Details ── */}
               <Section title="Details" icon={FileText}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
                   <Field label="Card number" value={card.card_number} mono />
                   <Field label="Service date" value={fmtDate(card.service_date)} />
                   <Field label="Created" value={fmtDate(card.created_at)} />
@@ -1386,7 +1386,7 @@ export default function JobCardDetailPage() {
 
               {/* ── Labour ── */}
               <Section title="Labour" icon={DollarSign}>
-                <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-3">
                   <Field label="Hours" value={card.labour_hours != null ? `${card.labour_hours} hrs` : null} />
                   <Field label="Rate" value={card.labour_rate != null ? fmtCurrency(card.labour_rate) + '/hr' : null} />
                   <Field label="Labour total" value={fmtCurrency(card.labour_amount)} />
