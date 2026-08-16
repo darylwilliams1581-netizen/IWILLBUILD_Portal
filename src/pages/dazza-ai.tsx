@@ -484,7 +484,9 @@ export default function DazzaAIPage() {
   }
 
   // ── sessionStorage key (keyed to userId so different users never share) ──
-  const storageKey = me?.id ? `dazza_conv_id_${me.id}` : null;
+  // me is MeData: { user: { id: string }, profile, ... } — the user ID is at
+  // me.user.id, NOT me.id (which is undefined and always falsy).
+  const storageKey = me?.user?.id ? `dazza_conv_id_${me.user.id}` : null;
 
   // Restore conversationId from sessionStorage on mount (after me is loaded)
   // and immediately fetch + restore the message history from the server.
@@ -540,7 +542,7 @@ export default function DazzaAIPage() {
   const [engineCheckTimedOut, setEngineCheckTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!me?.id) return;
+    if (!me?.user?.id) return;
     let cancelled = false;
     const timeout = setTimeout(() => {
       if (!cancelled) setEngineCheckTimedOut(true);
@@ -564,7 +566,7 @@ export default function DazzaAIPage() {
       });
 
     return () => { cancelled = true; clearTimeout(timeout); };
-  }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [me?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
   type BugFixStep = 'idle' | 'page' | 'clicked' | 'happened' | 'expected' | 'role' | 'error' | 'done';
