@@ -557,9 +557,16 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         const raw = line.slice(6).trim();
         if (raw === '[DONE]') { finishReason = finishReason ?? 'stop'; continue; }
 
+        // ── Responses API event shapes (verified against openai SDK types) ──
+        // response.output_text.delta          → { delta: string }   (NOT delta.content)
+        // response.function_call_arguments.delta → { delta: string } (NOT delta.content)
+        // response.output_item.added          → { item: ResponseOutputItem, output_index: number }
+        // response.completed                  → { response: { usage: { input_tokens, output_tokens } } }
+        // response.failed / error             → error event
         let chunk: {
           type?: string;
-          delta?: { content?: string; type?: string };
+          // delta is a plain string for text and function-call-arguments events
+          delta?: string;
           output_index?: number;
           item?: {
             type?: string;
@@ -568,20 +575,24 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
             name?: string;
             arguments?: string;
           };
+          // response.completed nests usage under chunk.response.usage
+          response?: { usage?: { input_tokens?: number; output_tokens?: number } };
+          // Some error events put usage at top level — keep as fallback
           usage?: { input_tokens?: number; output_tokens?: number };
         };
         try { chunk = JSON.parse(raw); } catch { continue; }
 
         const evType = chunk.type;
 
-        // Text token
-        if (evType === 'response.output_text.delta' && chunk.delta?.content) {
-          assistantContent += chunk.delta.content;
-          fullAssistantResponse += chunk.delta.content;
-          onToken(chunk.delta.content);
+        // ── Text token ────────────────────────────────────────────────────────
+        // delta is a plain string — NOT { content: string }
+        if (evType === 'response.output_text.delta' && typeof chunk.delta === 'string' && chunk.delta) {
+          assistantContent += chunk.delta;
+          fullAssistantResponse += chunk.delta;
+          onToken(chunk.delta);
         }
 
-        // Function call item added — capture name and call_id
+        // ── Function call item added — capture name and call_id ───────────────
         if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
           const idx = String(chunk.output_index ?? 0);
           toolCallsMap[idx] = {
@@ -591,25 +602,28 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
           };
         }
 
-        // Function call arguments streaming
-        if (evType === 'response.function_call_arguments.delta' && chunk.delta?.content) {
+        // ── Function call arguments streaming ─────────────────────────────────
+        // delta is a plain string — NOT { content: string }
+        if (evType === 'response.function_call_arguments.delta' && typeof chunk.delta === 'string') {
           const idx = String(chunk.output_index ?? 0);
           if (!toolCallsMap[idx]) {
             toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
           }
-          toolCallsMap[idx].function.arguments += chunk.delta.content;
+          toolCallsMap[idx].function.arguments += chunk.delta;
         }
 
-        // Response completed — capture usage
+        // ── Response completed — capture usage ────────────────────────────────
+        // usage is nested under chunk.response.usage (not chunk.usage)
         if (evType === 'response.completed') {
           finishReason = 'stop';
-          if (chunk.usage) {
-            totalInputTokens += chunk.usage.input_tokens ?? 0;
-            totalOutputTokens += chunk.usage.output_tokens ?? 0;
+          const usage = chunk.response?.usage ?? chunk.usage;
+          if (usage) {
+            totalInputTokens  += usage.input_tokens  ?? 0;
+            totalOutputTokens += usage.output_tokens ?? 0;
           }
         }
 
-        // Error events
+        // ── Error events ──────────────────────────────────────────────────────
         if (evType === 'response.failed' || evType === 'error') {
           const corrId = randomUUID().slice(0, 8).toUpperCase();
           console.error(`[dazza-v3] SSE error event [ref:${corrId}]:`, JSON.stringify(chunk).slice(0, 300));
@@ -683,6 +697,22 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         content: result,
       });
     }
+  }
+
+  // ── Guard: empty response ─────────────────────────────────────────────────
+  // If the agentic loop completed but produced no text, something went wrong
+  // (e.g. the model returned only tool calls with no final text turn, or the
+  // stream closed before a text event arrived). Emit a safe error rather than
+  // silently creating an empty assistant bubble.
+  if (!fullAssistantResponse.trim()) {
+    const corrId = randomUUID().slice(0, 8).toUpperCase();
+    console.error(`[dazza-v3] empty response after ${TOOL_ROUNDS_MAX} rounds [ref:${corrId}] toolsUsed=${toolsUsed.join(',')}`);
+    onError(`Dazza returned an empty response. Reference: ${corrId}`, conversationId);
+    void saveConversationTurn(
+      conversationId, ownerContext.userId, 'assistant',
+      `[Empty response — ref:${corrId}]`, userTurnIndex + 1,
+    );
+    return;
   }
 
   // Save assistant turn

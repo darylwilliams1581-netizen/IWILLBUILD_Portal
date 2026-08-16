@@ -733,6 +733,23 @@ export default function DazzaAIPage() {
         }
       }
 
+      // ── Client-side empty-response guard ─────────────────────────────────
+      // If the stream closed but the assistant bubble is still empty, the
+      // server either sent no token events or the stream was cut short.
+      // Replace the empty bubble with a visible error rather than leaving
+      // a silent blank turn.
+      setMessages((prev) => {
+        const bubble = prev.find((m) => m.id === assistantId);
+        if (bubble && !bubble.content.trim()) {
+          return prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: 'Something went wrong — no response was received. Please try again.' }
+              : m
+          );
+        }
+        return prev;
+      });
+
     } catch (err) {
       const errMsg = String((err as Error)?.message ?? err);
       const isNetworkError = err instanceof TypeError;
