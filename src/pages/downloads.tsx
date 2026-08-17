@@ -62,7 +62,7 @@ export default function DownloadsPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden lg:pt-[116px]">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6 shrink-0">
           <Download size={20} className="text-primary mr-3" />
           <h1 className="font-heading font-bold text-lg">Downloads</h1>

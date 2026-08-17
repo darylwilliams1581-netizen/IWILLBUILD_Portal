@@ -627,7 +627,7 @@ export default function InvoiceBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[116px]">
       <Helmet>
         <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWILLBUILD Portal</title>
         <meta name="description" content={isNew ? 'Create a new invoice.' : `Edit invoice ${invoiceNumber}.`} />

@@ -909,7 +909,7 @@ export default function LensPage() {
       )}
 
       <div
-        className="min-h-screen bg-slate-50"
+        className="min-h-screen bg-slate-50 lg:pt-[116px]"
         style={{
           paddingTop:    'env(safe-area-inset-top)',
           paddingLeft:   'env(safe-area-inset-left)',

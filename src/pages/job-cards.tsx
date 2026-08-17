@@ -7,8 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import DesktopTopBar from '@/components/DesktopTopBar';
-import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import {
   Zap, Plus, Search, X, ChevronRight, RefreshCw,
   CheckCircle2, Clock, AlertCircle, Receipt,
@@ -357,8 +356,6 @@ export default function JobCardsPage() {
 
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
-      <DesktopTopBar />
-      <DesktopDock />
       <Helmet>
         <title>Job Cards — IWILLBUILD</title>
         <meta name="description" content="Job Card register — reactive and call-out work records." />
