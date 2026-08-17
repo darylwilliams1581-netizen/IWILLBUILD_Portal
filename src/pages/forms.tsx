@@ -925,7 +925,7 @@ export function FormsPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+                  className="grid grid-cols-1 gap-4"
                 >
                   {templates.map((t) => (
                     <TemplateCard
