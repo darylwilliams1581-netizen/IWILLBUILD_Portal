@@ -109,6 +109,7 @@ export default async function handler(req: Request, res: Response) {
         jp.job_id                                                AS jobId,
         j.job_number                                             AS jobNumber,
         j.name                                                   AS jobName,
+        j.address                                                AS jobAddress,
         jp.label,
         jp.caption,
         jp.original_name                                         AS originalName,
