@@ -19,7 +19,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Search, X, ChevronLeft, ChevronRight,
   Lock, Calendar, Briefcase, ImageOff, Loader2,
-  ExternalLink, Filter, Upload, CheckSquare, Square,
+  ExternalLink, Filter, Upload, CheckSquare, Square, Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -565,6 +565,15 @@ export default function LensPage() {
         <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
           <div className="max-w-screen-2xl mx-auto px-4 py-3">
             <div className="flex items-center gap-3">
+              {/* Home button */}
+              <button
+                onClick={() => navigate('/')}
+                className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                aria-label="Go to home"
+              >
+                <Home size={20} />
+              </button>
+
               {/* Title */}
               <div className="flex items-center gap-2 shrink-0">
                 <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
