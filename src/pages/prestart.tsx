@@ -317,7 +317,7 @@ function DoneState({ vehicle, onAnother }: { vehicle: Vehicle; onAnother: () => 
 
       {/* Start drive session CTA */}
       <button
-        onClick={() => navigate('/fleet')}
+        onClick={() => navigate('/fleet', { state: { openDriveModal: true } })}
         className="w-full flex items-center justify-center gap-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-blue-200"
       >
         <Play size={18} /> Start Drive Session
@@ -398,7 +398,7 @@ export default function PrestartPage() {
         <button
           onClick={() => {
             if (step === 'form') { setStep('pick'); setSelectedVehicle(null); }
-            else navigate(-1);
+            else navigate('/fleet');
           }}
           className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
           aria-label="Back"

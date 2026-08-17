@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -290,6 +290,17 @@ export default function FleetPage() {
   const { isViewOnly } = useViewOnly();
   const { isAdmin } = usePermissions();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auto-open drive modal when navigated here from prestart completion
+  useEffect(() => {
+    const state = location.state as { openDriveModal?: boolean } | null;
+    if (state?.openDriveModal) {
+      setShowDriveModal(true);
+      // Clear the state so a refresh doesn't re-open it
+      navigate('/fleet', { replace: true, state: {} });
+    }
+  }, [location.state, navigate]);
 
   const load = useCallback(async () => {
     try {
