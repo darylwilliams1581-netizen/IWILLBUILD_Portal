@@ -2017,7 +2017,7 @@ export default function HomeScreen() {
   const [costsPickerOpen, setCostsPickerOpen] = useState(false);
   const [logCostOpen, setLogCostOpen] = useState(false);
   const [signInOutOpen, setSignInOutOpen] = useState(false);
-  const [formsPickerOpen, setFormsPickerOpen] = useState(false);
+  const [formsPickerOpen, setFormsPickerOpen] = useState(false); // kept for any residual references
   const [quotesPickerOpen, setQuotesPickerOpen] = useState(false);
   const [progressPickerOpen, setProgressPickerOpen] = useState(false);
   const [drawingsPickerOpen, setDrawingsPickerOpen] = useState(false);
@@ -2047,7 +2047,6 @@ export default function HomeScreen() {
     if (href === '?panel=costs-picker') { setCostsPickerOpen(true); return; }
     if (href === '?panel=log-cost') { setLogCostOpen(true); return; }
     if (href === '?panel=signin') { setSignInOutOpen(true); return; }
-    if (href === '?panel=forms-picker') { setFormsPickerOpen(true); return; }
     if (href === '?panel=quotes-picker') { setQuotesPickerOpen(true); return; }
     if (href === '?panel=progress-picker') { setProgressPickerOpen(true); return; }
     if (href === '?panel=drawings-picker') { setDrawingsPickerOpen(true); return; }
@@ -2218,7 +2217,6 @@ export default function HomeScreen() {
       <CostsJobPickerSheet open={costsPickerOpen} onClose={() => setCostsPickerOpen(false)} />
       <LogCostSheet open={logCostOpen} onClose={() => setLogCostOpen(false)} />
       <SignInOutSheet open={signInOutOpen} onClose={() => { setSignInOutOpen(false); setActiveStatusKey(k => k + 1); }} />
-      <FormsJobPickerSheet open={formsPickerOpen} onClose={() => setFormsPickerOpen(false)} />
       <JobPickerSheet
         open={quotesPickerOpen}
         onClose={() => setQuotesPickerOpen(false)}
