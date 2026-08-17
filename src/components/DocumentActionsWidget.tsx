@@ -13,12 +13,18 @@
  *
  * The widget dispatches to the correct Document Actions implementation based
  * on documentType.  Stage 2 supports: completed_form.
+ *
+ * Output variants:
+ *   When the registered descriptor declares outputVariantOptions, the widget
+ *   will (in a future stage) show a picker before executing an action.
+ *   For Stage 2 / completed_form the variant is always 'default' and no
+ *   picker is shown.  The selectedVariant is passed to every modal so the
+ *   interface is ready for Estimates without any further plumbing changes.
  */
 
 import { FileText } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
 import { useDocumentActions } from '@/lib/document-actions-context';
-import { isNative } from '@/lib/capacitor-plugins';
 
 // Lazy-load the modal so it is not in the initial bundle
 const FormDocumentActionsModal = lazy(
@@ -30,7 +36,8 @@ const FormDocumentActionsModal = lazy(
 const SUPPORTED_TYPES = new Set(['completed_form']);
 
 export default function DocumentActionsWidget() {
-  const { descriptor, modalOpen, openModal, closeModal } = useDocumentActions();
+  const { descriptor, modalOpen, openModal, closeModal, selectedVariant } =
+    useDocumentActions();
   const [localOpen, setLocalOpen] = useState(false);
 
   // Derive open state: prefer context modal flag (set by openModal/closeModal)
@@ -59,8 +66,6 @@ export default function DocumentActionsWidget() {
     return null;
   }
 
-  const native = isNative();
-
   return (
     <>
       {/* ── Floating button ─────────────────────────────────────────────────── */}
@@ -70,7 +75,6 @@ export default function DocumentActionsWidget() {
           'fixed z-40 print:hidden',
           // Desktop: top-left with comfortable offset from nav
           'top-[calc(env(safe-area-inset-top,0px)+56px)] left-[calc(env(safe-area-inset-left,0px)+12px)]',
-          // On mobile with bottom nav, keep it top-left so it doesn't clash
         ].join(' ')}
         aria-label="Document actions"
       >
@@ -106,6 +110,7 @@ export default function DocumentActionsWidget() {
             templateName={descriptor.title}
             jobId={descriptor.jobId !== undefined ? Number(descriptor.jobId) : undefined}
             job={descriptor.job ?? null}
+            outputVariant={selectedVariant}
             onClose={handleClose}
           />
         </Suspense>

@@ -31,12 +31,20 @@ import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import type { JobEmailContext } from '@/components/SendDocumentEmailModal';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import type { Job } from '@/lib/jobs-api';
+import type { DocumentOutputVariant } from '@/lib/document-actions-context';
 
 interface Props {
   submissionId: number;
   templateName: string;
   jobId?: number;
   job?: Job | null;
+  /**
+   * Which output variant to generate.  Completed forms have only one PDF
+   * shape so this is always 'default' in practice.  The prop is accepted
+   * here so the interface is consistent with future multi-variant adapters
+   * (e.g. Estimate: with_costs / without_costs / full_breakdown).
+   */
+  outputVariant?: DocumentOutputVariant;
   onClose: () => void;
 }
 
@@ -47,6 +55,11 @@ export default function FormDocumentActionsModal({
   templateName,
   jobId,
   job,
+  // outputVariant is accepted for interface consistency with future multi-variant
+  // adapters (e.g. Estimate).  Completed forms have a single PDF shape so the
+  // value is not used here — it will be forwarded to the PDF endpoint when
+  // multi-variant support is wired in Stage 3+.
+  outputVariant: _outputVariant = 'default',
   onClose,
 }: Props) {
   const [activePanel, setActivePanel] = useState<ActivePanel>('menu');

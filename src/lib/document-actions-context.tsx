@@ -14,16 +14,54 @@
  *  - The hook auto-unregisters on unmount.
  *  - Duplicate registrations from the same component (e.g. hot-reload) are
  *    idempotent — the descriptor is replaced, not stacked.
+ *
+ * Output variants:
+ *  - A descriptor may declare `outputVariantOptions` to signal that the user
+ *    must choose a variant before an action is executed (e.g. Estimate:
+ *    with_costs / without_costs / full_breakdown).
+ *  - When `outputVariantOptions` is absent or empty the widget skips the
+ *    selection step and uses 'default' silently.
+ *  - The selected variant is stored in context and passed to every action
+ *    (PDF view, PDF download, email attachment, Secure Share create/rotate).
+ *  - Changing the variant for an existing Secure Share link requires explicit
+ *    rotation — the widget must never silently change what a recipient link
+ *    displays.
  */
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
+
+// ── Output variant ────────────────────────────────────────────────────────────
+
+/**
+ * Which version of the document to generate / share.
+ *
+ * 'default'          — single-variant documents (completed_form, invoice, …)
+ * 'with_costs'       — Estimate with line-item costs visible
+ * 'without_costs'    — Estimate with costs hidden
+ * 'full_breakdown'   — Estimate with full cost breakdown
+ *
+ * Add new values here as new document types are onboarded.
+ */
+export type DocumentOutputVariant =
+  | 'default'
+  | 'with_costs'
+  | 'without_costs'
+  | 'full_breakdown';
+
+/** One selectable option shown in the variant picker UI */
+export interface DocumentOutputVariantOption {
+  value: DocumentOutputVariant;
+  label: string;
+  description?: string;
+}
 
 // ── Descriptor ────────────────────────────────────────────────────────────────
 
@@ -43,6 +81,14 @@ export interface DocumentActionDescriptor {
   job?: any;
   /** Which action buttons to offer */
   availableActions: DocumentActionType[];
+  /**
+   * When present and non-empty, the widget shows a variant picker before
+   * executing any action.  The first option in the array is the default.
+   *
+   * Omit (or pass an empty array) for single-variant documents such as
+   * completed_form — the widget will use 'default' silently.
+   */
+  outputVariantOptions?: DocumentOutputVariantOption[];
 }
 
 // ── Context value ─────────────────────────────────────────────────────────────
@@ -60,6 +106,13 @@ interface DocumentActionsContextValue {
   openModal: () => void;
   /** Close the modal */
   closeModal: () => void;
+  /**
+   * The output variant currently selected by the user.
+   * Always 'default' for documents with no outputVariantOptions.
+   */
+  selectedVariant: DocumentOutputVariant;
+  /** Update the selected variant (called by the variant picker UI) */
+  setSelectedVariant: (v: DocumentOutputVariant) => void;
 }
 
 const DocumentActionsContext = createContext<DocumentActionsContextValue | null>(null);
@@ -69,23 +122,38 @@ const DocumentActionsContext = createContext<DocumentActionsContextValue | null>
 export function DocumentActionsProvider({ children }: { children: ReactNode }) {
   const [descriptor, setDescriptor] = useState<DocumentActionDescriptor | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<DocumentOutputVariant>('default');
 
-  function register(d: DocumentActionDescriptor) {
+  const register = useCallback((d: DocumentActionDescriptor) => {
     setDescriptor(d);
-    // Don't auto-open the modal on registration — only on explicit click
-  }
+    // Reset to the first declared variant (or 'default') whenever a new
+    // document is registered so stale selections don't carry over.
+    const firstVariant = d.outputVariantOptions?.[0]?.value ?? 'default';
+    setSelectedVariant(firstVariant);
+    // Don't auto-open the modal on registration — only on explicit click.
+  }, []);
 
-  function unregister() {
+  const unregister = useCallback(() => {
     setDescriptor(null);
     setModalOpen(false);
-  }
+    setSelectedVariant('default');
+  }, []);
 
-  function openModal() { setModalOpen(true); }
-  function closeModal() { setModalOpen(false); }
+  const openModal = useCallback(() => setModalOpen(true), []);
+  const closeModal = useCallback(() => setModalOpen(false), []);
 
   return (
     <DocumentActionsContext.Provider
-      value={{ descriptor, register, unregister, modalOpen, openModal, closeModal }}
+      value={{
+        descriptor,
+        register,
+        unregister,
+        modalOpen,
+        openModal,
+        closeModal,
+        selectedVariant,
+        setSelectedVariant,
+      }}
     >
       {children}
     </DocumentActionsContext.Provider>
@@ -111,7 +179,7 @@ export function useDocumentActions(): DocumentActionsContextValue {
  *
  * The hook auto-unregisters when the component unmounts.
  *
- * @example
+ * @example — single-variant document (no picker shown)
  *   useDocumentActionsRegistration({
  *     documentType: 'completed_form',
  *     recordId: submission.id,
@@ -120,12 +188,25 @@ export function useDocumentActions(): DocumentActionsContextValue {
  *     job,
  *     availableActions: ['pdf', 'email', 'secure_share'],
  *   });
+ *
+ * @example — multi-variant document (picker shown before each action)
+ *   useDocumentActionsRegistration({
+ *     documentType: 'estimate',
+ *     recordId: estimate.id,
+ *     title: estimate.title,
+ *     availableActions: ['pdf', 'email', 'secure_share'],
+ *     outputVariantOptions: [
+ *       { value: 'with_costs',    label: 'With costs' },
+ *       { value: 'without_costs', label: 'Without costs' },
+ *       { value: 'full_breakdown', label: 'Full breakdown' },
+ *     ],
+ *   });
  */
 export function useDocumentActionsRegistration(
   descriptor: DocumentActionDescriptor | null | undefined,
 ): void {
   const ctx = useContext(DocumentActionsContext);
-  // Stable ref so the cleanup closure always sees the latest ctx
+  // Stable ref so the cleanup closure always sees the latest ctx.
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
 
