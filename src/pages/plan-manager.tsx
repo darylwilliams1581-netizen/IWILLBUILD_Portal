@@ -5,7 +5,8 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Map, Archive, Layers, Menu, AlertTriangle, RefreshCw, Upload } from 'lucide-react';
+import { Map, Archive, Layers, Menu, AlertTriangle, RefreshCw, Upload, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobContextTab from '@/components/JobContextTab';
 import PlanManagerList from '@/components/PlanManager/PlanManagerList';
@@ -30,6 +31,7 @@ export default function PlanManagerPage() {
   const [jobs, setJobs] = useState<JobGroup[]>([]);
   const [unassigned, setUnassigned] = useState<Drawing[]>([]);
   const [listLoading, setListLoading] = useState(true);
+  const navigate = useNavigate();
   const [listError, setListError] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [highlightJobId, setHighlightJobId] = useState<number | null>(null);
@@ -119,8 +121,15 @@ export default function PlanManagerPage() {
           {/* Page header */}
           <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
             <button
+              onClick={() => navigate('/')}
+              className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Go to home"
+            >
+              <Home size={20} />
+            </button>
+            <button
               onClick={() => window.dispatchEvent(new Event('portal:open-menu'))}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               aria-label="Open menu"
             >
               <Menu size={20} />
