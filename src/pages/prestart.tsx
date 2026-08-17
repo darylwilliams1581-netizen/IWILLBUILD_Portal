@@ -317,7 +317,7 @@ function DoneState({ vehicle, onAnother }: { vehicle: Vehicle; onAnother: () => 
 
       {/* Start drive session CTA */}
       <button
-        onClick={() => navigate('/driver')}
+        onClick={() => navigate('/fleet')}
         className="w-full flex items-center justify-center gap-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-blue-200"
       >
         <Play size={18} /> Start Drive Session

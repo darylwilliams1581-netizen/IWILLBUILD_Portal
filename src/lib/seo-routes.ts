@@ -44,7 +44,6 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/login-help", changefreq: "monthly", priority: 0.8 },
   { path: "/download-app", changefreq: "monthly", priority: 0.8 },
   { path: "/subscribe", changefreq: "monthly", priority: 0.9 },
-  { path: "/driver", changefreq: "monthly", priority: 0.8 },
   { path: "/prestart", changefreq: "monthly", priority: 0.8 },
   { path: "/site-escape", changefreq: "monthly", priority: 0.8 },
   { path: "/portal/login", changefreq: "monthly", priority: 0.5 },

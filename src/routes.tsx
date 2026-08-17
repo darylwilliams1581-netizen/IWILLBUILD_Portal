@@ -101,7 +101,6 @@ const FleetDrivePage         = lazy(() => import('./pages/fleet-drive-page'));
 const JobCostsPage           = lazy(() => import('./pages/job-costs-page'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
-const DriverPage              = lazy(() => import('./pages/driver'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HelpPage                = lazy(() => import('./pages/help'));
 // HomeScreenPage is loaded inside ShellRouter (lazy, only when app shell is active)
@@ -204,7 +203,6 @@ export const routes: RouteObject[] = [
   { path: '/login-help',      element: <LoginHelpPage /> },
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
   { path: '/subscribe',      element: <Suspense fallback={<PageLoader />}><SubscribePage /></Suspense> },
-  { path: '/driver',   element: <ProtectedRoute><DriverSessionProvider><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></DriverSessionProvider></ProtectedRoute>,   errorElement: routeError },
   { path: '/prestart', element: <ProtectedRoute><DriverSessionProvider><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></DriverSessionProvider></ProtectedRoute>, errorElement: routeError },
   { path: '/site-escape', element: <Navigate to="/home" replace />, errorElement: routeError },
   // Public share pages — no login required
