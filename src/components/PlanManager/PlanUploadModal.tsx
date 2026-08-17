@@ -226,10 +226,11 @@ export default function PlanUploadModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed left-1/2 top-1/2 z-50 bg-background rounded-2xl shadow-2xl flex flex-col w-[calc(100vw-2rem)] sm:w-[520px] sm:max-w-[92vw]"
+            className="fixed left-1/2 z-50 bg-background rounded-2xl shadow-2xl flex flex-col w-[calc(100vw-2rem)] sm:w-[520px] sm:max-w-[92vw]"
             style={{
               translateX: '-50%',
               translateY: '-50%',
+              top: 'calc(50% + 40px)',
               maxHeight: 'min(92dvh, 700px)',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
