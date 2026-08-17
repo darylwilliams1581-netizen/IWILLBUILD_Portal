@@ -52,9 +52,10 @@ export default async function handler(req: Request, res: Response) {
 
     const jobIdParam = req.query.jobId ? parseInt(String(req.query.jobId), 10) : null;
     const jobId      = jobIdParam && !isNaN(jobIdParam) ? jobIdParam : null;
-    const search     = req.query.search   ? String(req.query.search).trim()   : null;
-    const dateFrom   = req.query.dateFrom ? String(req.query.dateFrom).trim() : null;
-    const dateTo     = req.query.dateTo   ? String(req.query.dateTo).trim()   : null;
+    const search     = req.query.search     ? String(req.query.search).trim()     : null;
+    const uploadedBy = req.query.uploadedBy ? String(req.query.uploadedBy).trim() : null;
+    const dateFrom   = req.query.dateFrom   ? String(req.query.dateFrom).trim()   : null;
+    const dateTo     = req.query.dateTo     ? String(req.query.dateTo).trim()     : null;
 
     // ── Build WHERE fragments ─────────────────────────────────────────────────
     // All conditions are parameterised via sql template literals — no string
@@ -76,6 +77,11 @@ export default async function handler(req: Request, res: Response) {
         OR j.name         LIKE ${like}
         OR j.job_number   LIKE ${like}
       )`);
+    }
+
+    if (uploadedBy) {
+      const like = `%${uploadedBy.replace(/[%_\\]/g, '\\$&')}%`;
+      conditions.push(sql`jp.uploaded_by_name LIKE ${like}`);
     }
 
     if (dateFrom) {

@@ -17,7 +17,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Camera, Search, X, ChevronLeft, ChevronRight,
+  Camera, X, ChevronLeft, ChevronRight,
   Lock, ImageOff, Loader2, Upload, CheckSquare, Home, Share2,
   LayoutGrid, Briefcase, Calendar, MapPin, ArrowUpDown,
   User, Clock, Download, Pencil, Trash2, MoreVertical, AlertCircle,
@@ -559,7 +559,7 @@ export default function LensPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filter state
-  const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [uploadedBy, setUploadedBy] = useState(searchParams.get('uploadedBy') ?? '');
 
   // Data state
   const [photos,  setPhotos]  = useState<LensPhoto[]>([]);
@@ -607,7 +607,7 @@ export default function LensPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(pg), limit: String(LIMIT) });
-      if (search) params.set('search', search);
+      if (uploadedBy) params.set('uploadedBy', uploadedBy);
 
       const r = await fetch(`/api/lens/photos?${params}`, { credentials: 'include' });
       if (!r.ok) {
@@ -624,16 +624,16 @@ export default function LensPage() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [uploadedBy]);
 
-  // Initial load + search changes
+  // Initial load + uploadedBy changes
   useEffect(() => {
     fetchPhotos(1, true);
     const p: Record<string, string> = {};
-    if (search) p.search = search;
+    if (uploadedBy) p.uploadedBy = uploadedBy;
     setSearchParams(p, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [uploadedBy]);
 
   // Refresh on return from camera
   useEffect(() => {
@@ -649,9 +649,9 @@ export default function LensPage() {
   }, [location.search]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  function handleSearchChange(value: string) {
+  function handleUploadedByChange(value: string) {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => setSearch(value), 350);
+    searchTimer.current = setTimeout(() => setUploadedBy(value), 350);
   }
 
   function handleLoadMore() {
@@ -945,14 +945,14 @@ export default function LensPage() {
                 </div>
               </div>
 
-              {/* Search */}
+              {/* Uploaded by filter */}
               <div className="flex-1 relative min-w-0">
-                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <User size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <Input
                   type="search"
-                  placeholder="Search photos, jobs…"
-                  defaultValue={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Uploaded by…"
+                  defaultValue={uploadedBy}
+                  onChange={(e) => handleUploadedByChange(e.target.value)}
                   className="pl-8 h-8 text-sm"
                 />
               </div>
@@ -1081,11 +1081,11 @@ export default function LensPage() {
             <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
               <Camera size={40} className="text-slate-300" />
               <p className="text-base font-medium text-slate-500">
-                {search ? 'No photos match your search' : 'No photos yet'}
+                {uploadedBy ? 'No photos match that uploader' : 'No photos yet'}
               </p>
-              {search && (
-                <Button variant="outline" size="sm" onClick={() => setSearch('')}>
-                  Clear search
+              {uploadedBy && (
+                <Button variant="outline" size="sm" onClick={() => setUploadedBy('')}>
+                  Clear filter
                 </Button>
               )}
             </div>
