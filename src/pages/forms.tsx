@@ -341,7 +341,7 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
           <button
             onClick={onComplete}
             disabled={isCompleting}
-            className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-lg transition-all hover:brightness-110 bg-primary disabled:opacity-60"
+            className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg transition-all hover:brightness-110 bg-primary disabled:opacity-60"
             aria-label={`Complete ${t.name}`}
           >
             {isCompleting
@@ -355,7 +355,7 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(v => !v)}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             aria-label={`More actions for ${t.name}`}
             aria-expanded={menuOpen}
             aria-haspopup="menu"
