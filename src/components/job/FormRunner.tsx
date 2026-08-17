@@ -12,9 +12,7 @@ import {
   Send,
   Printer,
   Pencil,
-  Mail,
   SplitSquareHorizontal,
-  FileDown,
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
@@ -26,8 +24,6 @@ import {
   parseMultiSignatureAnswer,
 } from './SignaturePad';
 import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
-import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
-import FormDocumentActionsModal from '@/components/job/FormDocumentActionsModal';
 import { useDocumentActionsRegistration } from '@/lib/document-actions-context';
 
 
@@ -79,8 +75,6 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
   const [isDone, setIsDone] = useState(submission.status === 'completed');
   // readOnly can be toggled to "reopen" a completed form
   const [readOnly, setReadOnly] = useState(initialReadOnly && submission.status === 'completed');
-  // Document Actions modal (PDF / Email / Share)
-  const [actionsModalOpen, setActionsModalOpen] = useState(false);
 
   // ── Global Document Actions widget registration ───────────────────────────
   // Register a descriptor when viewing a completed form so the global floating
@@ -243,23 +237,6 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
     } catch (e) {
       setApiError(e instanceof Error ? e.message : 'Reopen failed');
     }
-  }
-
-  // ── Email modal state ────────────────────────────────────────────────────────
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [emailDefaults, setEmailDefaults] = useState<{ to: string; subject: string; message: string; job?: import('@/components/SendDocumentEmailModal').JobEmailContext } | null>(null);
-
-  async function openEmailModal() {
-    try {
-      const res = await fetch(`/api/job-forms/${submission.id}/compose-defaults`, { credentials: 'include' });
-      const d = res.ok
-        ? await res.json() as { to: string; subject: string; message: string }
-        : { to: '', subject: '', message: '' };
-      setEmailDefaults(d);
-    } catch {
-      setEmailDefaults({ to: '', subject: '', message: '' });
-    }
-    setEmailModalOpen(true);
   }
 
   // ── Print / PDF ─────────────────────────────────────────────────────────────
@@ -612,24 +589,6 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setActionsModalOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 transition-colors"
-            >
-              <FileDown size={12} /> PDF / Email / Share
-            </button>
-            <button
-              onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
-            >
-              <Printer size={12} /> Print / PDF
-            </button>
-            <button
-              onClick={() => void openEmailModal()}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:text-blue-600 text-slate-600 transition-colors"
-            >
-              <Mail size={12} /> Send Email
-            </button>
-            <button
               onClick={reopenForm}
               className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
             >
@@ -691,41 +650,9 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
           <button onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
             Back to Forms
           </button>
-          <button
-            onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors"
-          >
-            <Printer size={14} /> Print / PDF
-          </button>
         </div>
       </div>
 
-      {/* ── Send Email Modal ─────────────────────────────────────────────────── */}
-      {emailModalOpen && emailDefaults && (
-        <SendDocumentEmailModal
-          endpoint={`/api/job-forms/${submission.id}/send-email`}
-          documentLabel="Form"
-          documentType="form"
-          documentId={submission.id}
-          documentName={templateName}
-          defaultTo={emailDefaults.to}
-          defaultSubject={emailDefaults.subject}
-          defaultMessage={emailDefaults.message}
-          job={emailDefaults.job}
-          onClose={() => { setEmailModalOpen(false); setEmailDefaults(null); }}
-        />
-      )}
-
-      {/* ── Document Actions Modal (PDF / Email / Share) ─────────────────────── */}
-      {actionsModalOpen && (
-        <FormDocumentActionsModal
-          submissionId={submission.id}
-          templateName={templateName}
-          jobId={job?.id}
-          job={job}
-          onClose={() => setActionsModalOpen(false)}
-        />
-      )}
       </>
     );
   }
