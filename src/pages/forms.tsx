@@ -5,7 +5,7 @@ import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
-  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
+  Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
   MoreHorizontal,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -589,7 +589,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
   const [total,          setTotal]          = useState(0);
   const [loading,        setLoading]        = useState(true);
   const [templateFilter, setTemplateFilter] = useState('');
-  const [expanded,       setExpanded]       = useState<Set<number|string>>(new Set());
+  const [expandedPublic, setExpandedPublic] = useState<Set<number|string>>(new Set());
 
   useEffect(() => {
     setLoading(true);
@@ -606,8 +606,8 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
       .finally(() => setLoading(false));
   }, [templateFilter]);
 
-  function toggleExpand(key: number | string) {
-    setExpanded(prev => {
+  function togglePublicExpand(key: number | string) {
+    setExpandedPublic(prev => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
@@ -615,11 +615,35 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
   }
 
   function fmtDate(d: string) {
-    return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const dt = new Date(d);
+    const date = dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = dt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+    return `${date} · ${time}`;
+  }
+
+  function openForm(s: Submission, e?: React.MouseEvent) {
+    e?.stopPropagation();
+    if (s.source === 'internal' && s.form_route) {
+      navigate(s.form_route, { state: { returnTo: '/studio/forms?tab=submissions' } });
+    }
+  }
+
+  function jobLine(s: Submission): string {
+    if (!s.job_name) return 'Standalone submission';
+    const prefix = s.job_number ? `${s.job_number} — ` : '';
+    return `${prefix}${s.job_name}`;
+  }
+
+  function submitterLine(s: Submission): string {
+    if (s.source === 'public') {
+      return s.submitter_name ? s.submitter_name : 'Public submission';
+    }
+    return s.submitter_name ? `Submitted by ${s.submitter_name}` : 'Submitted by unknown';
   }
 
   return (
     <div className="space-y-4">
+      {/* ── Filter bar ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <select
           value={templateFilter}
@@ -632,6 +656,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
         <span className="text-xs text-slate-400">{total} completed form{total !== 1 ? 's' : ''}</span>
       </div>
 
+      {/* ── States ── */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 size={22} className="animate-spin text-primary" />
@@ -645,99 +670,200 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
           <p className="text-sm text-slate-400 max-w-xs">Completed Job Forms and public Form responses will appear here.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {submissions.map(s => {
-            const rowKey = `${s.source}-${s.id}`;
-            const isOpen = expanded.has(rowKey);
-            let answers: Record<string, unknown> = {};
-            try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
-            const answerCount = Object.keys(answers).length;
-            const isInternal = s.source === 'internal';
+        <>
+          {/* ══════════════════════════════════════════════════════════════
+              MOBILE CARDS  — visible below md breakpoint
+          ══════════════════════════════════════════════════════════════ */}
+          <div className="md:hidden space-y-2">
+            {submissions.map(s => {
+              const rowKey = `${s.source}-${s.id}`;
+              const isInternal = s.source === 'internal';
+              const isPublicExpanded = expandedPublic.has(rowKey);
+              let answers: Record<string, unknown> = {};
+              try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
+              const answerCount = Object.keys(answers).length;
+              const canOpen = isInternal && !!s.form_route;
 
-            return (
-              <div key={rowKey} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
+              return (
                 <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-                  onClick={() => toggleExpand(rowKey)}
+                  key={rowKey}
+                  className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+                  onClick={canOpen ? (e) => openForm(s, e) : undefined}
+                  role={canOpen ? 'button' : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                  onKeyDown={canOpen ? (e) => { if (e.key === 'Enter' || e.key === ' ') openForm(s); } : undefined}
+                  aria-label={canOpen ? `Open form: ${s.template_name}` : undefined}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isInternal ? 'bg-blue-100' : 'bg-violet-100'}`}>
-                    <User size={14} className={isInternal ? 'text-blue-700' : 'text-violet-700'} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-slate-800 truncate">
-                        {s.submitter_name ?? 'Anonymous'}
-                        {s.submitter_email && <span className="text-slate-400 font-normal ml-2 text-xs">{s.submitter_email}</span>}
+                  {/* Card body */}
+                  <div className="px-4 pt-3 pb-3 space-y-1.5">
+
+                    {/* Row 1: Form name + status pill */}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-bold text-slate-800 leading-snug flex-1 min-w-0">
+                        {s.template_name}
                       </p>
-                      {/* Source badge */}
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                        isInternal
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'bg-violet-50 text-violet-700'
-                      }`}>
-                        {isInternal ? 'Internal Form' : 'Public Response'}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0 whitespace-nowrap mt-0.5">
+                        {s.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400 mt-0.5">
-                      <span className="font-medium text-slate-600">{s.template_name}</span>
-                      {s.job_name
-                        ? <span>· {s.job_number ? `#${s.job_number} ` : ''}{s.job_name}</span>
-                        : <span className="italic">· No job</span>
-                      }
-                      <span className="flex items-center gap-1"><Calendar size={9} />{fmtDate(s.completed_at)}</span>
-                      {!isInternal && <span>{answerCount} answer{answerCount !== 1 ? 's' : ''}</span>}
+
+                    {/* Row 2: Job — single unbreakable line */}
+                    <p className="text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {jobLine(s)}
+                    </p>
+
+                    {/* Row 3: Submitter + source badge */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs text-slate-500">{submitterLine(s)}</p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                        isInternal ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'
+                      }`}>
+                        {isInternal ? 'Internal' : 'Public'}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.status}</span>
-                    {/* Open Form button for internal submissions */}
-                    {isInternal && s.form_route && (
+
+                    {/* Row 4: Date — single line */}
+                    <p className="text-xs text-slate-400 whitespace-nowrap">
+                      {fmtDate(s.completed_at)}
+                    </p>
+
+                    {/* Row 5: Open Form CTA (internal) or expand toggle (public) */}
+                    {canOpen ? (
                       <button
-                        onClick={e => { e.stopPropagation(); navigate(s.form_route!, { state: { returnTo: '/studio/forms?tab=submissions' } }); }}
-                        className="flex items-center gap-1 text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors"
+                        onClick={e => openForm(s, e)}
+                        className="mt-1 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-primary bg-violet-50 hover:bg-violet-100 active:bg-violet-200 rounded-lg py-2.5 transition-colors min-h-[44px]"
+                        aria-label={`Open form: ${s.template_name}`}
                       >
-                        <ExternalLink size={10} /> Open Form
+                        <ExternalLink size={13} />
+                        Open Form
+                      </button>
+                    ) : (
+                      <button
+                        onClick={e => { e.stopPropagation(); togglePublicExpand(rowKey); }}
+                        className="mt-1 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg py-2.5 transition-colors min-h-[44px]"
+                        aria-expanded={isPublicExpanded}
+                        aria-label={isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
+                      >
+                        {isPublicExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        {isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
                       </button>
                     )}
-                    {isOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
                   </div>
-                </div>
 
-                {/* Expanded answers — public responses only */}
-                {!isInternal && (
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
-                          {answerCount === 0 ? (
-                            <p className="text-xs text-slate-400 italic">No answers recorded</p>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {Object.entries(answers).map(([fieldId, answer]) => (
-                                <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
-                                  <p className="text-xs text-slate-700 break-words">
-                                    {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  {/* Expanded answers — public responses only */}
+                  {!isInternal && (
+                    <AnimatePresence>
+                      {isPublicExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
+                            {answerCount === 0 ? (
+                              <p className="text-xs text-slate-400 italic">No answers recorded</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {Object.entries(answers).map(([fieldId, answer]) => (
+                                  <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
+                                    <p className="text-xs text-slate-700 break-words">
+                                      {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════
+              DESKTOP TABLE  — visible from md breakpoint up
+          ══════════════════════════════════════════════════════════════ */}
+          <div className="hidden md:block rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Form</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Job</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Submitted by</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Source</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Completed</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {submissions.map(s => {
+                  const rowKey = `${s.source}-${s.id}`;
+                  const isInternal = s.source === 'internal';
+                  const canOpen = isInternal && !!s.form_route;
+
+                  return (
+                    <tr
+                      key={rowKey}
+                      className={`bg-white hover:bg-slate-50 transition-colors ${canOpen ? 'cursor-pointer' : ''}`}
+                      onClick={canOpen ? (e) => openForm(s, e) : undefined}
+                    >
+                      {/* Form name */}
+                      <td className="px-4 py-3 font-semibold text-slate-800 max-w-[200px]">
+                        <span className="block truncate">{s.template_name}</span>
+                      </td>
+                      {/* Job */}
+                      <td className="px-4 py-3 text-slate-600 max-w-[180px]">
+                        <span className="block truncate">{jobLine(s)}</span>
+                      </td>
+                      {/* Submitted by */}
+                      <td className="px-4 py-3 text-slate-600 max-w-[160px]">
+                        <span className="block truncate">{s.submitter_name ?? (isInternal ? 'Unknown' : 'Public submission')}</span>
+                      </td>
+                      {/* Source badge */}
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                          isInternal ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'
+                        }`}>
+                          {isInternal ? 'Internal Form' : 'Public Response'}
+                        </span>
+                      </td>
+                      {/* Date */}
+                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">
+                        {fmtDate(s.completed_at)}
+                      </td>
+                      {/* Status */}
+                      <td className="px-4 py-3">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                          {s.status}
+                        </span>
+                      </td>
+                      {/* Action */}
+                      <td className="px-4 py-3 text-right">
+                        {canOpen && (
+                          <button
+                            onClick={e => openForm(s, e)}
+                            className="flex items-center gap-1 text-xs font-bold text-primary px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors whitespace-nowrap min-h-[32px]"
+                            aria-label={`Open form: ${s.template_name}`}
+                          >
+                            <ExternalLink size={11} />
+                            Open Form
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
