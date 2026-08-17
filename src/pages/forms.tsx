@@ -334,23 +334,8 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
         </div>
       </div>
 
-      {/* Actions: Complete + ⋯ */}
+      {/* Actions: ⋯ only — Complete is handled by Fill Form in the header */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Complete — primary */}
-        {onComplete && (
-          <button
-            onClick={onComplete}
-            disabled={isCompleting}
-            className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg transition-all hover:brightness-110 bg-primary disabled:opacity-60"
-            aria-label={`Complete ${t.name}`}
-          >
-            {isCompleting
-              ? <><Loader2 size={11} className="animate-spin" /> Opening…</>
-              : <><ExternalLink size={11} /> Complete</>
-            }
-          </button>
-        )}
-
         {/* ⋯ More actions */}
         <div ref={menuRef} className="relative">
           <button
