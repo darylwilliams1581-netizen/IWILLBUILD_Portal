@@ -415,7 +415,7 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
       if (data.submission) {
         setSubmissions((prev) => [data.submission!, ...prev]);
         // Navigate within the same tab — preserves auth session
-        navigate(`/jobs/${jobId}/forms/${data.submission.id}`);
+        navigate(`/jobs/${jobId}/forms/${data.submission.id}`, { state: { returnTo: `/jobs/${jobId}?tab=forms` } });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start form');
@@ -425,7 +425,7 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
   }
 
   function openSubmission(s: FormSubmission) {
-    navigate(`/jobs/${jobId}/forms/${s.id}`);
+    navigate(`/jobs/${jobId}/forms/${s.id}`, { state: { returnTo: `/jobs/${jobId}?tab=forms` } });
   }
 
   async function confirmDelete() {

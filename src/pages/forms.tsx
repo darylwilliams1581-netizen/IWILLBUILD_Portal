@@ -584,6 +584,7 @@ interface Submission {
 }
 
 function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
+  const navigate = useNavigate();
   const [submissions,    setSubmissions]    = useState<Submission[]>([]);
   const [total,          setTotal]          = useState(0);
   const [loading,        setLoading]        = useState(true);
@@ -691,13 +692,12 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.status}</span>
                     {/* Open Form button for internal submissions */}
                     {isInternal && s.form_route && (
-                      <a
-                        href={s.form_route}
-                        onClick={e => e.stopPropagation()}
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(s.form_route!, { state: { returnTo: '/forms?tab=submissions' } }); }}
                         className="flex items-center gap-1 text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors"
                       >
                         <ExternalLink size={10} /> Open Form
-                      </a>
+                      </button>
                     )}
                     {isOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
                   </div>
@@ -811,7 +811,7 @@ export function FormsPage() {
       if (!res.ok || !data.submission) throw new Error(data.error ?? 'Failed to start form');
       const jobId = data.submission.jobId ?? selectedJobId;
       setJobPickerTemplate(null);
-      navigate(`/jobs/${jobId}/forms/${data.submission.id}`);
+      navigate(`/jobs/${jobId}/forms/${data.submission.id}`, { state: { returnTo: '/forms' } });
     } catch (e) {
       setJobPickerError(e instanceof Error ? e.message : 'Could not start form. Please try again.');
     } finally {
