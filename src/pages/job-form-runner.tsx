@@ -24,16 +24,13 @@ import {
   AlertTriangle,
   ChevronLeft,
   CheckCircle2,
-  Clock,
   Pencil,
   Save,
-  FileDown,
   XCircle,
 } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
-import { useDocumentActions } from '@/lib/document-actions-context';
 
 interface LocationState {
   returnTo?: string;
@@ -49,6 +46,8 @@ export default function JobFormRunnerPage() {
 
   const locationState = (location.state ?? {}) as LocationState;
   const returnTo = locationState.returnTo ?? (jobId > 0 ? `/jobs/${jobId}?tab=forms` : '/forms');
+  // Ensure a missing or zero jobId always falls back to /forms, never /jobs/0
+  const resolvedReturnTo = (!jobId || jobId === 0) && returnTo.startsWith('/jobs/0') ? '/forms' : returnTo;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -67,8 +66,6 @@ export default function JobFormRunnerPage() {
 
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const completeRef = useRef<(() => Promise<void>) | null>(null);
-
-  const { openModal } = useDocumentActions();
 
   useEffect(() => {
     if (!submissionId) { setError('Invalid URL'); setLoading(false); return; }
@@ -113,7 +110,7 @@ export default function JobFormRunnerPage() {
   }, [jobId, submissionId]);
 
   function handleBack() {
-    navigate(returnTo, { replace: false });
+    navigate(resolvedReturnTo, { replace: false });
   }
 
   const handleReopen = useCallback(async () => {
@@ -244,23 +241,7 @@ export default function JobFormRunnerPage() {
               </span>
             )}
 
-            {/* ── FileDown widget button — completed forms only, top-right ── */}
-            {isReadOnly && (
-              <button
-                onClick={() => openModal()}
-                aria-label="Document actions — PDF, Email, Share"
-                title="PDF / Email / Share"
-                className={[
-                  'flex items-center justify-center h-9 w-9 rounded-xl shrink-0 ml-1',
-                  'bg-violet-600 hover:bg-violet-700 active:bg-violet-800',
-                  'text-white shadow-sm shadow-violet-900/20',
-                  'transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2',
-                ].join(' ')}
-              >
-                <FileDown size={16} />
-              </button>
-            )}
+
           </div>
 
           {/* Error banner */}
