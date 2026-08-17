@@ -19,13 +19,14 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Search, X, ChevronLeft, ChevronRight,
   Lock, Calendar, Briefcase, ImageOff, Loader2,
-  ExternalLink, Filter, Upload,
+  ExternalLink, Filter, Upload, CheckSquare, Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import LensUploadSheet from '@/components/lens/LensUploadSheet';
 import LensJobPickerSheet, { type LensJobOption } from '@/components/lens/LensJobPickerSheet';
+import LensSelectionBar from '@/components/lens/LensSelectionBar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -208,24 +209,42 @@ interface PhotoCardProps {
   photo: LensPhoto;
   onOpen: () => void;
   onOpenJob: (jobId: number) => void;
+  /** Selection mode props — undefined when selection mode is off */
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
 }
 
-function PhotoCard({ photo, onOpen, onOpenJob }: PhotoCardProps) {
+function PhotoCard({ photo, onOpen, onOpenJob, selectionMode, selected, onToggleSelect }: PhotoCardProps) {
   const [imgError, setImgError] = useState(false);
   const isLocked = photo.status === 'locked';
 
-  // Aspect ratio hint to prevent layout shift when dimensions are known
   const aspectStyle = photo.imageWidth && photo.imageHeight
     ? { aspectRatio: `${photo.imageWidth} / ${photo.imageHeight}` }
     : { aspectRatio: '4 / 3' };
 
+  // In selection mode: clicking the card toggles selection; preview via separate button
+  function handleCardClick() {
+    if (selectionMode) {
+      onToggleSelect?.(photo.id);
+    } else {
+      onOpen();
+    }
+  }
+
   return (
-    <div className="group relative bg-slate-100 rounded-lg overflow-hidden border border-slate-200 hover:border-violet-300 transition-colors cursor-pointer">
+    <div
+      className={`group relative bg-slate-100 rounded-lg overflow-hidden border transition-colors cursor-pointer ${
+        selectionMode && selected
+          ? 'border-violet-500 ring-2 ring-violet-400'
+          : 'border-slate-200 hover:border-violet-300'
+      }`}
+      onClick={handleCardClick}
+    >
       {/* Thumbnail */}
       <div
         className="relative overflow-hidden bg-slate-200"
         style={aspectStyle}
-        onClick={onOpen}
       >
         {imgError ? (
           <div className="absolute inset-0 flex items-center justify-center text-slate-400">
@@ -236,12 +255,31 @@ function PhotoCard({ photo, onOpen, onOpenJob }: PhotoCardProps) {
             src={photo.thumbnailUrl}
             alt={photoLabel(photo)}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className={`w-full h-full object-cover transition-transform duration-300 ${
+              selectionMode ? '' : 'group-hover:scale-105'
+            }`}
             onError={() => setImgError(true)}
             {...(photo.imageWidth && photo.imageHeight
               ? { width: photo.imageWidth, height: photo.imageHeight }
               : {})}
           />
+        )}
+
+        {/* Selection checkbox overlay */}
+        {selectionMode && (
+          <div className="absolute inset-0 pointer-events-none">
+            {/* Dim overlay when selected */}
+            {selected && <div className="absolute inset-0 bg-violet-600/20" />}
+            {/* Checkbox top-left */}
+            <div className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-md flex items-center justify-center ${
+              selected ? 'bg-violet-600 text-white' : 'bg-white/80 text-slate-400 border border-slate-300'
+            }`}>
+              {selected
+                ? <CheckSquare size={14} />
+                : <Square size={14} />
+              }
+            </div>
+          </div>
         )}
 
         {/* Lock badge */}
@@ -251,8 +289,23 @@ function PhotoCard({ photo, onOpen, onOpenJob }: PhotoCardProps) {
           </div>
         )}
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
+        {/* Preview button in selection mode */}
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            className="absolute bottom-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors pointer-events-auto"
+            aria-label="Preview photo"
+            title="Preview"
+          >
+            <ExternalLink size={11} />
+          </button>
+        )}
+
+        {/* Hover overlay (non-selection mode only) */}
+        {!selectionMode && (
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
+        )}
       </div>
 
       {/* Meta */}
@@ -314,6 +367,10 @@ export default function LensPage() {
   // ── Phase 2: Upload + Camera state ────────────────────────────────────────
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
   const [cameraJobPickerOpen, setCameraJobPickerOpen] = useState(false);
+
+  // ── Phase 3: Selection state ───────────────────────────────────────────────
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds,   setSelectedIds]   = useState<Set<number>>(new Set());
 
   // Debounce search
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -427,6 +484,30 @@ export default function LensPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
+  // ── Phase 3: Selection handlers ───────────────────────────────────────────
+  function handleToggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function handleEnterSelectionMode() {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+  }
+
+  function handleCancelSelection() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function handleExportSuccess() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
   // ── Lightbox helpers ──────────────────────────────────────────────────────
   const openLightbox  = (idx: number) => setLightboxIndex(idx);
   const closeLightbox = () => setLightboxIndex(null);
@@ -533,6 +614,30 @@ export default function LensPage() {
                   <Camera size={14} />
                   <span className="hidden sm:inline">Camera</span>
                 </Button>
+                {/* ── Phase 3: Select button ── */}
+                {!selectionMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 min-h-[44px] sm:min-h-0"
+                    onClick={handleEnterSelectionMode}
+                    title="Select photos"
+                  >
+                    <CheckSquare size={14} />
+                    <span className="hidden sm:inline">Select</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1.5 min-h-[44px] sm:min-h-0 font-semibold"
+                    onClick={handleCancelSelection}
+                    title="Cancel selection"
+                  >
+                    <X size={14} />
+                    <span className="hidden sm:inline">Cancel</span>
+                  </Button>
+                )}
               </div>
 
               {/* Filter toggle */}
@@ -606,7 +711,10 @@ export default function LensPage() {
         </div>
 
         {/* ── Gallery ─────────────────────────────────────────────────────── */}
-        <div className="max-w-screen-2xl mx-auto px-4 py-4">
+        <div
+          className="max-w-screen-2xl mx-auto px-4 py-4"
+          style={{ paddingBottom: selectionMode ? 'calc(env(safe-area-inset-bottom) + 80px)' : undefined }}
+        >
 
           {/* Error */}
           {error && (
@@ -651,6 +759,9 @@ export default function LensPage() {
                   photo={photo}
                   onOpen={() => openLightbox(idx)}
                   onOpenJob={handleOpenJob}
+                  selectionMode={selectionMode}
+                  selected={selectedIds.has(photo.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </div>
@@ -685,6 +796,17 @@ export default function LensPage() {
             </p>
           )}
         </div>
+
+        {/* ── Phase 3: Selection bar ───────────────────────────────────────── */}
+        {selectionMode && (
+          <LensSelectionBar
+            selectedIds={selectedIds}
+            visiblePhotoIds={photos.map(p => p.id)}
+            onSetSelection={setSelectedIds}
+            onCancel={handleCancelSelection}
+            onExportSuccess={handleExportSuccess}
+          />
+        )}
       </div>
     </>
   );
