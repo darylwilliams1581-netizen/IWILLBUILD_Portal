@@ -654,6 +654,7 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
   const [options, setOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
   const [settings, setSettings] = useState<Record<string, unknown>>(() => parseSettings(field.settingsJson));
   const [optionSaving, setOptionSaving] = useState(false);
+  const [newOption, setNewOption] = useState('');
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => { setLabel(field.label); }, [field.label]);
