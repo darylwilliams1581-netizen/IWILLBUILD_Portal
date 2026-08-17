@@ -18,7 +18,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, X, ChevronLeft, ChevronRight,
-  Lock, ImageOff, Loader2, Upload, CheckSquare, Home, Share2,
+  Lock, ImageOff, Loader2, Upload, CheckSquare, Home,
   LayoutGrid, Briefcase, Calendar, MapPin, ArrowUpDown,
   User, Clock, Download, Pencil, Trash2, MoreVertical, AlertCircle,
 } from 'lucide-react';
@@ -1238,14 +1238,7 @@ export default function LensPage() {
               <span className="text-[9px] font-semibold leading-none">Select</span>
             </button>
 
-            <button
-              onClick={handleEnterSelectionMode}
-              disabled={total === 0}
-              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
-            >
-              <Share2 size={20} />
-              <span className="text-[9px] font-semibold leading-none">Share</span>
-            </button>
+
           </div>
         </div>
       )}
