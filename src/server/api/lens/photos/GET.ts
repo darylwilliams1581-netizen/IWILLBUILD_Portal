@@ -131,9 +131,9 @@ export default async function handler(req: Request, res: Response) {
         END                                                      AS thumbnailUrl,
         -- Full-size download always via the authenticated proxy
         CONCAT('/api/jobs/', jp.job_id, '/photos/', jp.id, '/download') AS downloadUrl,
-        -- Dimensions from media_assets when available (may be more accurate)
-        COALESCE(jp.image_width,  ma.image_width)                AS width,
-        COALESCE(jp.image_height, ma.image_height)               AS height
+        -- Dimensions from job_photos directly (media_assets does not carry image dimensions)
+        jp.image_width                                           AS width,
+        jp.image_height                                          AS height
       FROM   job_photos jp
       LEFT JOIN jobs         j  ON j.id  = jp.job_id
       LEFT JOIN media_assets ma ON ma.id = jp.media_asset_id
