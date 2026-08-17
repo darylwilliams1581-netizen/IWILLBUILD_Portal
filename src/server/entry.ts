@@ -1154,7 +1154,7 @@ async function runStartupMigrations() {
   // Safe: never logs the raw secret value, only length/first-char/resolved boolean.
   // Uses the top-level getSecret import (already available at module load time).
   {
-    const _rawEarly = getSecret('DAZZA_V3_ENABLED') ?? '';
+    const _rawEarly = String(getSecret('DAZZA_V3_ENABLED') ?? '');
     const _trimEarly = _rawEarly.trim().toLowerCase();
     const _v3Early = _trimEarly === 'true' || _trimEarly === '1' || _trimEarly === 'yes';
     console.log(
@@ -2418,8 +2418,8 @@ async function runStartupMigrations() {
   // Primary source: PLATFORM_OWNER_EMAIL secret (comma-separated). Falls back to
   // the hardcoded address so the owner account is always promoted even before the
   // secret is configured.
-  const { getSecret } = await import('#airo/secrets');
-  const ownerEmailSecret = (() => { try { return getSecret('PLATFORM_OWNER_EMAIL'); } catch { return ''; } })();
+  // getSecret is already imported at the top of this file — no dynamic import needed.
+  const ownerEmailSecret = (() => { try { return String(getSecret('PLATFORM_OWNER_EMAIL') ?? ''); } catch { return ''; } })();
   const devPlanEmails = Array.from(new Set([
     'darylwilliams1581@gmail.com',
     ...(ownerEmailSecret ? ownerEmailSecret.split(',').map((e: string) => e.trim()).filter(Boolean) : []),
@@ -3050,7 +3050,7 @@ if (!process.env.VITEST) {
 }
 
 // ── Startup checks ────────────────────────────────────────────────────────────
-const openAiKey = getSecret('OPENAI_API_KEY');
+const openAiKey = String(getSecret('OPENAI_API_KEY') ?? '');
 if (!openAiKey || openAiKey.trim().length === 0) {
   console.warn('[dazza] ⚠️  OPENAI_API_KEY is not configured. Dazza AI will answer portal lookups and calculators only. Add the key in Airo Secrets to enable full AI responses.');
 } else {
