@@ -10,7 +10,7 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 import {
-  Images,
+  Camera,
   LayoutDashboard,
   HardHat,
   Zap,
@@ -59,7 +59,7 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#06b6d4' },
   // ── Assets / Files ────────────────────────────────────────────────────────
   { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#f97316' },
-  { label: 'Lens',            icon: Images,          href: '/lens',                 color: 'hsl(var(--primary))' },
+  { label: 'Lens',            icon: Camera,          href: '/lens',                 color: 'hsl(var(--primary))' },
   { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#475569' },
   { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
   // ── Finance ───────────────────────────────────────────────────────────────

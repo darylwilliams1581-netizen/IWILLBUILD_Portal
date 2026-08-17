@@ -21,6 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { LayoutDashboard, Zap, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, Search, X as XIcon, Loader2, ChevronRight, User, LogOut } from 'lucide-react';
+// CameraIcon re-used for Lens tile below
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
@@ -309,13 +310,11 @@ function DashboardPage({
   role,
   onNavigate,
   onNewJob,
-  onOpenCamera,
 }: {
   userId: string;
   role: string;
   onNavigate: (href: string) => void;
   onNewJob: () => void;
-  onOpenCamera: () => void;
 }) {
 
   return (
@@ -324,16 +323,16 @@ function DashboardPage({
       {/* ── Banner — sits at the very top so it's immediately visible ── */}
       <DashboardBanner userId={userId} />
 
-      {/* Full-width Job Photo + Add Job row */}
+      {/* Full-width Lens + Add Job row */}
       <div className="flex items-center gap-3">
         <button
-          onClick={onOpenCamera}
+          onClick={() => onNavigate('/lens')}
           className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform"
         >
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <CameraIcon size={20} strokeWidth={2} />
           </div>
-          Job Photo
+          Lens
         </button>
         <button
           onClick={onNewJob}
@@ -617,7 +616,6 @@ export default function PagedHomeScreen({
               role={role}
               onNavigate={onNavigate}
               onNewJob={() => setNewJobOpen(true)}
-              onOpenCamera={() => setCameraSheetOpen(true)}
             />
           </div>
 
