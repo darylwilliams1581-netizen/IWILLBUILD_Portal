@@ -425,7 +425,7 @@ function PhotoCard({ photo, onOpen, onEdit, onDelete, selectionMode, selected, o
 
   return (
     <div
-      className={`relative aspect-square overflow-hidden rounded-sm cursor-pointer bg-slate-200 ${
+      className={`group relative aspect-square overflow-hidden rounded-sm cursor-pointer bg-slate-200 ${
         selectionMode && selected ? 'ring-2 ring-violet-500 ring-offset-1' : ''
       }`}
       onClick={handleClick}
@@ -918,7 +918,9 @@ export default function LensPage() {
       >
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="max-w-screen-2xl mx-auto px-3 py-2">
+          <div className="max-w-screen-2xl mx-auto px-3 py-2 flex flex-col gap-1.5">
+
+            {/* ── Row 1: home + title + desktop actions ── */}
             <div className="flex items-center gap-2">
 
               {/* Home */}
@@ -935,7 +937,7 @@ export default function LensPage() {
                 <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center">
                   <Camera size={14} className="text-white" />
                 </div>
-                <div className="hidden sm:block">
+                <div>
                   <h1 className="text-sm font-bold text-slate-900 leading-tight">Lens</h1>
                   {total > 0 && (
                     <p className="text-[10px] text-slate-400 leading-tight">
@@ -945,49 +947,8 @@ export default function LensPage() {
                 </div>
               </div>
 
-              {/* Uploaded by filter */}
-              <div className="flex-1 relative min-w-0">
-                <User size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <Input
-                  type="search"
-                  placeholder="Uploaded by…"
-                  defaultValue={uploadedBy}
-                  onChange={(e) => handleUploadedByChange(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
-              </div>
-
-              {/* ── View controls ── */}
-              <div className="flex items-center gap-0.5 shrink-0 bg-slate-100 rounded-xl p-1">
-                <ViewBtn
-                  active={viewMode === 'all'}
-                  onClick={() => setViewMode('all')}
-                  icon={<LayoutGrid size={15} />}
-                  label="All"
-                  title="All photos"
-                />
-                <ViewBtn
-                  active={viewMode === 'byJob'}
-                  onClick={() => setViewMode('byJob')}
-                  icon={<Briefcase size={15} />}
-                  label="Job"
-                  title="Group by job"
-                />
-                <ViewBtn
-                  active={viewMode === 'byDate'}
-                  onClick={() => setViewMode('byDate')}
-                  icon={<Calendar size={15} />}
-                  label="Date"
-                  title="Sort by date"
-                />
-                <ViewBtn
-                  active={viewMode === 'byLocation'}
-                  onClick={() => setViewMode('byLocation')}
-                  icon={<User size={15} />}
-                  label="Uploader"
-                  title="Group by uploader"
-                />
-              </div>
+              {/* Spacer — pushes desktop actions to the right */}
+              <div className="flex-1" />
 
               {/* ── Desktop action buttons ── */}
               <div className="hidden md:flex items-center gap-1.5 shrink-0">
@@ -1032,9 +993,57 @@ export default function LensPage() {
               </div>
             </div>
 
+            {/* ── Row 2: uploaded-by filter + view controls ── */}
+            <div className="flex items-center gap-2">
+
+              {/* Uploaded by filter */}
+              <div className="flex-1 relative min-w-0">
+                <User size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Input
+                  type="search"
+                  placeholder="Uploaded by…"
+                  defaultValue={uploadedBy}
+                  onChange={(e) => handleUploadedByChange(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
+
+              {/* View controls */}
+              <div className="flex items-center gap-0.5 shrink-0 bg-slate-100 rounded-xl p-1">
+                <ViewBtn
+                  active={viewMode === 'all'}
+                  onClick={() => setViewMode('all')}
+                  icon={<LayoutGrid size={15} />}
+                  label="All"
+                  title="All photos"
+                />
+                <ViewBtn
+                  active={viewMode === 'byJob'}
+                  onClick={() => setViewMode('byJob')}
+                  icon={<Briefcase size={15} />}
+                  label="Job"
+                  title="Group by job"
+                />
+                <ViewBtn
+                  active={viewMode === 'byDate'}
+                  onClick={() => setViewMode('byDate')}
+                  icon={<Calendar size={15} />}
+                  label="Date"
+                  title="Sort by date"
+                />
+                <ViewBtn
+                  active={viewMode === 'byLocation'}
+                  onClick={() => setViewMode('byLocation')}
+                  icon={<User size={15} />}
+                  label="Uploader"
+                  title="Group by uploader"
+                />
+              </div>
+            </div>
+
             {/* Date order toggle — only shown in byDate view */}
             {viewMode === 'byDate' && (
-              <div className="flex items-center gap-2 pt-2 pb-0.5">
+              <div className="flex items-center gap-2 pb-0.5">
                 <button
                   type="button"
                   onClick={() => setDateOrder((o) => o === 'newest' ? 'oldest' : 'newest')}
@@ -1050,12 +1059,12 @@ export default function LensPage() {
 
         {/* ── Gallery ─────────────────────────────────────────────────────── */}
         <div
-          className="max-w-screen-2xl mx-auto px-3 py-3"
-          style={{
-            paddingBottom: selectionMode
-              ? 'calc(env(safe-area-inset-bottom) + 80px)'
-              : 'calc(max(env(safe-area-inset-bottom), 8px) + 72px)',
-          }}
+          className={`max-w-screen-2xl mx-auto px-3 py-3 ${
+            selectionMode ? '' : 'pb-24 md:pb-8'
+          }`}
+          style={selectionMode ? {
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+          } : undefined}
         >
           {/* Error */}
           {error && (
