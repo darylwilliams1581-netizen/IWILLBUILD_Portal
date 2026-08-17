@@ -197,9 +197,9 @@ import developer_media_backfill_report_get_126 from "./api/developer/media-backf
 import developer_run_seed_now_post_127 from "./api/developer/run-seed-now/POST";
 import developer_seed_developer_account_post_128 from "./api/developer/seed-developer-account/POST";
 import developer_test_share_security_post from "./api/developer/test-share-security/POST";
-import admin_test_share_concurrency_post from "./api/admin/test-share-concurrency/POST";
-import admin_test_share_runtime_post from "./api/admin/test-share-runtime/POST";
-import admin_test_share_deletion_post from "./api/admin/test-share-deletion/POST";
+// NOTE: test-share-concurrency, test-share-runtime, test-share-deletion
+// are NOT registered here — they are offline scripts in scripts/secure-share/
+// and must never be exposed as production HTTP endpoints.
 import developer_support_notes_get_129 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_130 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_131 from "./api/developer/support-notes/[id]/DELETE";
@@ -3230,9 +3230,9 @@ app.get("/api/developer/media-backfill-report", developer_media_backfill_report_
 app.post("/api/developer/run-seed-now", developer_run_seed_now_post_127);
 app.post("/api/developer/seed-developer-account", developer_seed_developer_account_post_128);
 app.post("/api/developer/test-share-security", developer_test_share_security_post);
-app.post("/api/admin/test-share-concurrency", admin_test_share_concurrency_post);
-app.post("/api/admin/test-share-runtime", admin_test_share_runtime_post);
-app.post("/api/admin/test-share-deletion", admin_test_share_deletion_post);
+// NOTE: test-share-concurrency, test-share-runtime, test-share-deletion
+// are NOT registered here — they are offline scripts in scripts/secure-share/
+// and must never be exposed as production HTTP endpoints.
 app.get("/api/developer/support-notes", developer_support_notes_get_129);
 app.post("/api/developer/support-notes", developer_support_notes_post_130);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_131);
