@@ -22,7 +22,7 @@
  *   interface is ready for Estimates without any further plumbing changes.
  */
 
-import { FileText } from 'lucide-react';
+import { LockKeyhole } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
 import { useDocumentActions } from '@/lib/document-actions-context';
 
@@ -83,22 +83,18 @@ export default function DocumentActionsWidget() {
           aria-label="Document actions"
           title="Document actions"
           className={[
-            // Base: purple pill, visible focus ring, keyboard accessible
-            'group flex items-center gap-2',
+            // Base: purple circle, visible focus ring, keyboard accessible
+            'group flex items-center justify-center',
             'bg-violet-600 hover:bg-violet-700 active:bg-violet-800',
-            'text-white font-semibold',
+            'text-white',
             'rounded-full shadow-lg shadow-violet-900/30',
             'transition-all duration-150',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2',
-            // Mobile: icon-only, 44×44 minimum touch target
-            'h-11 w-11 justify-center',
-            // Desktop: pill with label
-            'md:h-9 md:w-auto md:px-3.5 md:rounded-xl',
+            // 44×44 minimum touch target on all screen sizes
+            'h-11 w-11',
           ].join(' ')}
         >
-          <FileText size={18} className="shrink-0" />
-          {/* Label — hidden on mobile, shown on desktop */}
-          <span className="hidden md:inline text-sm leading-none">Document</span>
+          <LockKeyhole size={18} className="shrink-0" />
         </button>
       </div>
 

@@ -6,7 +6,8 @@
     "slots": [
       "logo/horizontal",
       "logo/primary",
-      "logo/favicon"
+      "logo/favicon",
+      "logo/vertical"
     ]
   }
 ]
