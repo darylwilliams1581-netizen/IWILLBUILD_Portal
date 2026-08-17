@@ -107,24 +107,19 @@ export default function JobPickerSheet({
             onClick={onClose}
           />
 
-          {/* Sheet — slides up from bottom on mobile, centred on desktop */}
+          {/* Sheet — always centred */}
           <motion.div
             key="sheet"
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-2xl shadow-2xl flex flex-col md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] md:max-w-[90vw] md:rounded-2xl md:shadow-2xl"
+            className="fixed inset-x-4 top-[5vh] z-50 bg-background rounded-2xl shadow-2xl flex flex-col sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-w-[90vw]"
             style={{
-              maxHeight: 'min(85vh, 640px)',
+              maxHeight: 'min(90dvh, 640px)',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            {/* Handle (mobile only) */}
-            <div className="flex justify-center pt-3 pb-1 md:hidden">
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </div>
-
             {/* Header */}
             <div className="flex items-start justify-between px-4 pt-3 pb-2 shrink-0">
               <div>
