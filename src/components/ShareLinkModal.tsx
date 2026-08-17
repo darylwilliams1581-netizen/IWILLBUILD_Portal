@@ -136,7 +136,7 @@ export default function ShareLinkModal({
     setShowQr(false);
     try {
       const r = await fetch(
-        `/api/secure-share/active?targetType=${encodeURIComponent(resolvedType)}&targetId=${encodeURIComponent(resolvedId)}`,
+        `/api/secure-share/active?targetType=${encodeURIComponent(resolvedType)}&targetId=${encodeURIComponent(resolvedId)}&linkType=${encodeURIComponent(resolvedLinkType)}`,
         { credentials: 'include' }
       );
       const data = await r.json() as { links?: ActiveLink[]; duplicates?: boolean; error?: string };

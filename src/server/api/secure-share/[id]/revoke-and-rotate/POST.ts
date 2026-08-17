@@ -4,8 +4,11 @@
  * Atomically revokes the specified link and creates a new one for the same
  * target with the same (or caller-supplied) settings.
  *
- * Also revokes any other active duplicate links for the same target so the
- * result is always exactly one active link.
+ * Also revokes any other active duplicate links for the same
+ * (company_id, target_type, target_id, link_type) identity — so the result
+ * is always exactly one active link for that purpose.
+ *
+ * Links with a DIFFERENT link_type for the same target are NOT touched.
  *
  * Body (all optional — defaults to the revoked link's settings):
  *   permissions?  string[]
@@ -47,33 +50,40 @@ export default async function handler(req: Request, res: Response) {
       maxUses?: number;
     };
 
-    const result = await db.transaction(async (tx) => {
-      // Lock and fetch the target link
-      const [rows] = await tx.execute(sql`
-        SELECT id, target_type AS targetType, target_id AS targetId,
-               title, link_type AS linkType, permissions_json AS permissionsJson,
-               expires_at AS expiresAt, max_uses AS maxUses
-        FROM secure_share_links
-        WHERE id = ${id} AND company_id = ${companyId}
-        LIMIT 1
-        FOR UPDATE
-      `) as unknown as [Array<Record<string, unknown>>, unknown];
+    // ── Fetch and lock the target link ────────────────────────────────────────
+    const [rows] = await db.execute(sql`
+      SELECT id, target_type AS targetType, target_id AS targetId,
+             title, link_type AS linkType, permissions_json AS permissionsJson,
+             expires_at AS expiresAt, max_uses AS maxUses
+      FROM secure_share_links
+      WHERE id = ${id} AND company_id = ${companyId}
+      LIMIT 1
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
 
-      if (!rows?.[0]) return null;
-      const old = rows[0];
+    if (!rows?.[0]) return res.status(404).json({ error: 'Link not found' });
+    const old = rows[0];
 
-      const targetType = old.targetType as string;
-      const targetId   = old.targetId as string;
+    const targetType = old.targetType as string;
+    const targetId   = old.targetId as string;
+    const linkType   = old.linkType as string;
 
+    // ── Advisory lock: same identity key as POST ──────────────────────────────
+    const lockName = `ssl:${companyId}:${targetType}:${targetId}:${linkType}`.slice(0, 64);
+    const lockResult = await db.execute(sql`SELECT GET_LOCK(${lockName}, 5) AS acquired`) as unknown as [Array<{ acquired: number | null }>, unknown];
+    if (lockResult[0]?.[0]?.acquired !== 1) {
+      return res.status(429).json({ error: 'Concurrent request in progress, please retry' });
+    }
+
+    try {
       // Revoke the specified link
-      await tx.execute(sql`
+      await db.execute(sql`
         UPDATE secure_share_links
         SET revoked = 1, updated_at = NOW()
         WHERE id = ${id} AND company_id = ${companyId}
       `);
 
       // Log revocation
-      await tx.execute(sql`
+      await db.execute(sql`
         INSERT INTO secure_share_events
           (share_link_id, company_id, event_type, ip_address, user_agent, created_at)
         VALUES
@@ -81,13 +91,14 @@ export default async function handler(req: Request, res: Response) {
            ${req.ip ?? null}, ${(req.headers['user-agent'] ?? '').slice(0, 500)}, NOW())
       `);
 
-      // Also revoke any other active duplicates for the same target
-      await tx.execute(sql`
+      // Revoke other active duplicates for the SAME identity (same link_type)
+      await db.execute(sql`
         UPDATE secure_share_links
         SET revoked = 1, updated_at = NOW()
         WHERE company_id = ${companyId}
           AND target_type = ${targetType}
           AND target_id   = ${targetId}
+          AND link_type   = ${linkType}
           AND revoked     = 0
           AND id != ${id}
       `);
@@ -113,7 +124,6 @@ export default async function handler(req: Request, res: Response) {
         }
         // expiryDays === 0 → no expiry (null)
       } else if (old.expiresAt) {
-        // Preserve original expiry if caller didn't specify
         expiresAt = String(old.expiresAt);
       }
 
@@ -132,7 +142,7 @@ export default async function handler(req: Request, res: Response) {
         security: { expires: !!expiresAt, password_required: !!passwordHash, audit_logged: true },
       });
 
-      const [insertResult] = await tx.execute(sql`
+      const [insertResult] = await db.execute(sql`
         INSERT INTO secure_share_links
           (company_id, created_by_user_id, token_hash, token_encrypted,
            link_type, target_type, target_id,
@@ -140,7 +150,7 @@ export default async function handler(req: Request, res: Response) {
            use_count, revoked, created_at, updated_at)
         VALUES
           (${companyId}, ${session.user.id}, ${tokenHash}, ${tokenEncrypted},
-           ${old.linkType as string}, ${targetType}, ${targetId},
+           ${linkType}, ${targetType}, ${targetId},
            ${old.title as string}, ${permissionsJson}, ${metadataJson},
            ${expiresAt}, ${passwordHash}, ${maxUses ?? null},
            0, 0, NOW(), NOW())
@@ -149,18 +159,16 @@ export default async function handler(req: Request, res: Response) {
       const newId = (insertResult as { insertId: number }).insertId;
       const shareUrl = `${APP_URL}/share/${rawToken}`;
 
-      return { newId, shareUrl, expiresAt, permissions: resolvedPermissions };
-    });
-
-    if (!result) return res.status(404).json({ error: 'Link not found' });
-
-    return res.json({
-      ok: true,
-      id: result.newId,
-      shareUrl: result.shareUrl,
-      expiresAt: result.expiresAt,
-      permissions: result.permissions,
-    });
+      return res.json({
+        ok: true,
+        id: newId,
+        shareUrl,
+        expiresAt,
+        permissions: resolvedPermissions,
+      });
+    } finally {
+      await db.execute(sql`SELECT RELEASE_LOCK(${lockName})`).catch(() => {/* ignore */});
+    }
   } catch (e) {
     console.error('POST /api/secure-share/:id/revoke-and-rotate error:', e);
     return res.status(500).json({ error: 'Failed to rotate link' });

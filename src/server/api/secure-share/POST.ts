@@ -2,11 +2,18 @@
  * POST /api/secure-share
  * ─────────────────────────────────────────────────────────────────────────────
  * Idempotent: returns the existing active link if one already exists for
- * (company_id, target_type, target_id).  Only creates a new row when no
- * active, non-expired, non-revoked link exists.
+ * (company_id, target_type, target_id, link_type).  Only creates a new row
+ * when no active, non-expired, non-revoked link exists for that exact identity.
  *
- * Race safety: uses SELECT … FOR UPDATE inside a transaction so two
- * simultaneous requests for the same target still produce exactly one row.
+ * Different link_types for the same target coexist independently:
+ *   document_view + live_form + job_sign_in for the same target_id are each
+ *   their own idempotent link — they do NOT collide with each other.
+ *
+ * Concurrency safety: uses MySQL GET_LOCK() advisory lock scoped to the
+ * exact identity key (company:target_type:target_id:link_type).
+ * SELECT FOR UPDATE cannot prevent the insert-race on a missing row in MySQL
+ * InnoDB (it only locks existing rows, not gaps in non-unique indexes).
+ * GET_LOCK serialises the check-and-insert at the application level.
  *
  * Returns the raw token ONCE — only the hash is stored in the DB.
  * The token is also stored AES-256-GCM encrypted so the authenticated owner
@@ -14,7 +21,7 @@
  *
  * Body:
  *   title         string
- *   linkType      string  (file_transfer | document_view | swms_signon | form_complete)
+ *   linkType      string  (file_transfer | document_view | swms_signon | form_complete | live_form | job_sign_in)
  *   targetType    string  (file | job_form | completed_form | swms | safety_plan | estimate | invoice | document)
  *   targetId      string  (record ID as string — never exposed in public URLs)
  *   permissions   string[]  (view | download | upload | sign | print)
@@ -27,9 +34,8 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
-import { profiles } from '../../db/schema.js';
+import { resolveEffectiveCompany } from '../../lib/dazza-context.js';
 import { generateShareToken, hashToken, encryptToken } from '../../lib/share-tokens.js';
 import { APP_URL } from '../../lib/app-url.js';
 
@@ -43,8 +49,7 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    const companyId = profile?.companyId;
+    const { companyId } = await resolveEffectiveCompany(req, session.user.id);
     if (!companyId) return res.status(400).json({ error: 'No company' });
 
     const {
@@ -78,12 +83,29 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'At least one permission is required' });
     }
 
-    // ── Transaction: check-then-insert with FOR UPDATE to prevent races ────────
-    const result = await db.transaction(async (tx) => {
+    const resolvedLinkType = (linkType ?? 'file_transfer').trim();
+
+    // ── Advisory lock: serialise check-and-insert per identity ───────────────
+    // Lock name is scoped to company + target + link_type so different link
+    // purposes for the same target do NOT block each other.
+    // MySQL GET_LOCK() is connection-scoped and released on connection close.
+    const lockName = `ssl:${companyId}:${targetType}:${String(targetId)}:${resolvedLinkType}`;
+    // Truncate to MySQL's 64-char limit for GET_LOCK names
+    const safeLockName = lockName.slice(0, 64);
+
+    // Acquire lock (timeout 5 s — returns 1 on success, 0 on timeout, null on error)
+    const lockResult = await db.execute(sql`SELECT GET_LOCK(${safeLockName}, 5) AS acquired`) as unknown as [Array<{ acquired: number | null }>, unknown];
+    const lockAcquired = lockResult[0]?.[0]?.acquired === 1;
+
+    if (!lockAcquired) {
+      // Another request is holding the lock — return 429 so the client retries
+      return res.status(429).json({ error: 'Concurrent request in progress, please retry' });
+    }
+
+    try {
+      // ── Check for existing active link (same identity including link_type) ──
       if (!forceNew) {
-        // Lock any existing active rows for this target so concurrent requests
-        // wait rather than racing to insert a duplicate.
-        const [existing] = await tx.execute(sql`
+        const [existing] = await db.execute(sql`
           SELECT id, token_encrypted, expires_at AS expiresAt, use_count AS useCount,
                  max_uses AS maxUses, permissions_json AS permissionsJson,
                  created_at AS createdAt
@@ -91,21 +113,21 @@ export default async function handler(req: Request, res: Response) {
           WHERE company_id = ${companyId}
             AND target_type = ${targetType}
             AND target_id   = ${String(targetId)}
+            AND link_type   = ${resolvedLinkType}
             AND revoked     = 0
             AND (expires_at IS NULL OR expires_at > NOW())
             AND (max_uses IS NULL OR use_count < max_uses)
           ORDER BY created_at DESC
           LIMIT 1
-          FOR UPDATE
         `) as unknown as [Array<Record<string, unknown>>, unknown];
 
         if (existing?.[0]) {
           const row = existing[0];
-          // Decrypt the stored token to reconstruct the share URL
           const enc = row.token_encrypted as string | null;
-          const rawToken = enc ? (await import('../../lib/share-tokens.js')).decryptToken(enc) : null;
+          const rawToken = enc ? decryptToken(enc) : null;
           const shareUrl = rawToken ? `${APP_URL}/share/${rawToken}` : null;
-          return {
+          return res.status(200).json({
+            ok: true,
             existing: true,
             id: row.id as number,
             shareUrl,
@@ -116,23 +138,21 @@ export default async function handler(req: Request, res: Response) {
               catch { return permissions; }
             })(),
             createdAt: row.createdAt ? String(row.createdAt) : null,
-          };
+          });
         }
       }
 
-      // No active link — create one
+      // ── No active link — create one ────────────────────────────────────────
       const rawToken = generateShareToken();
       const tokenHash = hashToken(rawToken);
       const tokenEncrypted = encryptToken(rawToken);
 
-      // Hash password if provided
       let passwordHash: string | null = null;
       if (password && password.trim()) {
         const { default: bcrypt } = await import('bcryptjs');
         passwordHash = await bcrypt.hash(password.trim(), 10);
       }
 
-      // Calculate expiry
       let expiresAt: string | null = null;
       if (expiryDays && expiryDays > 0) {
         const d = new Date();
@@ -155,9 +175,8 @@ export default async function handler(req: Request, res: Response) {
 
       const permissionsJson = JSON.stringify(permissions);
       const linkTitle = (title ?? '').trim() || `${targetType} share`;
-      const resolvedLinkType = linkType ?? 'file_transfer';
 
-      const [insertResult] = await tx.execute(sql`
+      const [insertResult] = await db.execute(sql`
         INSERT INTO secure_share_links
           (company_id, created_by_user_id, token_hash, token_encrypted,
            link_type, target_type, target_id,
@@ -174,7 +193,8 @@ export default async function handler(req: Request, res: Response) {
       const insertId = (insertResult as { insertId: number }).insertId;
       const shareUrl = `${APP_URL}/share/${rawToken}`;
 
-      return {
+      return res.status(201).json({
+        ok: true,
         existing: false,
         id: insertId,
         shareUrl,
@@ -182,21 +202,16 @@ export default async function handler(req: Request, res: Response) {
         useCount: 0,
         permissions,
         createdAt: new Date().toISOString(),
-      };
-    });
-
-    return res.status(result.existing ? 200 : 201).json({
-      ok: true,
-      existing: result.existing,
-      id: result.id,
-      shareUrl: result.shareUrl,
-      expiresAt: result.expiresAt,
-      useCount: result.useCount,
-      permissions: result.permissions,
-      createdAt: result.createdAt,
-    });
+      });
+    } finally {
+      // Always release the advisory lock — even on error
+      await db.execute(sql`SELECT RELEASE_LOCK(${safeLockName})`).catch(() => {/* ignore */});
+    }
   } catch (e) {
     console.error('POST /api/secure-share error:', e);
     return res.status(500).json({ error: 'Failed to create share link' });
   }
 }
+
+// Local import to avoid circular — same module, just avoids re-importing inside transaction
+import { decryptToken } from '../../lib/share-tokens.js';

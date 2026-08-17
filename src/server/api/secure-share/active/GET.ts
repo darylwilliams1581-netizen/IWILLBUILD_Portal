@@ -1,13 +1,16 @@
 /**
- * GET /api/secure-share/active?targetType=&targetId=
+ * GET /api/secure-share/active?targetType=&targetId=&linkType=
  * ─────────────────────────────────────────────────────────────────────────────
- * Returns ALL active (non-revoked, non-expired) share links for a given target,
- * including the decrypted share URL for each so the modal can display them
- * without creating a new link.
+ * Returns ALL active (non-revoked, non-expired) share links for a given
+ * (company_id, target_type, target_id, link_type) identity.
  *
- * If exactly one active link exists → normal display.
- * If more than one active link exists → returns all with a `duplicates: true`
- * flag so the UI can show the "Multiple active links" warning and let the owner
+ * link_type is REQUIRED — different link purposes for the same target
+ * (document_view, live_form, job_sign_in) are independent and must not
+ * be mixed in a single response.
+ *
+ * If exactly one active link exists → normal display (duplicates: false).
+ * If more than one active link exists → returns all with duplicates: true
+ * so the UI can show the "Multiple active links" warning and let the owner
  * choose which to keep.
  *
  * Never returns: token_hash, token_encrypted, password_hash, or any
@@ -36,9 +39,17 @@ export default async function handler(req: Request, res: Response) {
     const { companyId } = await resolveEffectiveCompany(req, session.user.id);
     if (!companyId) return res.status(400).json({ error: 'No company' });
 
-    const { targetType, targetId } = req.query as { targetType?: string; targetId?: string };
+    const { targetType, targetId, linkType } = req.query as {
+      targetType?: string;
+      targetId?: string;
+      linkType?: string;
+    };
+
     if (!targetType || !targetId) {
       return res.status(400).json({ error: 'targetType and targetId are required' });
+    }
+    if (!linkType) {
+      return res.status(400).json({ error: 'linkType is required' });
     }
 
     const [rows] = await db.execute(sql`
@@ -52,6 +63,7 @@ export default async function handler(req: Request, res: Response) {
       WHERE company_id = ${companyId}
         AND target_type = ${targetType}
         AND target_id   = ${String(targetId)}
+        AND link_type   = ${linkType}
         AND revoked     = 0
         AND (expires_at IS NULL OR expires_at > NOW())
         AND (max_uses IS NULL OR use_count < max_uses)
