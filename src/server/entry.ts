@@ -1606,6 +1606,12 @@ async function runStartupMigrations() {
     { table: 'job_photos', column: 'preview_size_bytes',    definition: 'INT NULL' },
     { table: 'job_photos', column: 'image_width',           definition: 'INT NULL' },
     { table: 'job_photos', column: 'image_height',          definition: 'INT NULL' },
+    // ── job_photos: Lens Phase 1 columns ─────────────────────────────────────
+    { table: 'job_photos', column: 'status',         definition: "VARCHAR(30) NOT NULL DEFAULT 'draft'" },
+    { table: 'job_photos', column: 'locked_at',      definition: 'DATETIME NULL' },
+    { table: 'job_photos', column: 'locked_by_name', definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'media_asset_id', definition: 'INT NULL' },
+
     // ── profiles: home screen icon permissions (JSON array of allowed icon keys) ─
     { table: 'profiles', column: 'home_icon_permissions',   definition: 'TEXT NULL' },
     // ── job_todos: extended task fields (Step 3 upgrade) ─────────────────────
