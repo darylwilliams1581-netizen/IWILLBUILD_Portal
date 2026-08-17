@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
   User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
+  MoreHorizontal,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
@@ -260,6 +261,30 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
   isCompleting?: boolean;
 }) {
   const meta = TYPE_META[t.formType];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  function menuAction(fn: () => void) {
+    setMenuOpen(false);
+    fn();
+  }
 
   return (
     <motion.div
@@ -309,15 +334,15 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-0.5 shrink-0">
-        {/* Complete — primary action */}
+      {/* Actions: Complete + ⋯ */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* Complete — primary */}
         {onComplete && (
           <button
             onClick={onComplete}
             disabled={isCompleting}
-            className="flex items-center gap-1 text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-all hover:brightness-110 bg-primary disabled:opacity-60 mr-0.5"
-            title="Complete this form"
+            className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-lg transition-all hover:brightness-110 bg-primary disabled:opacity-60"
+            aria-label={`Complete ${t.name}`}
           >
             {isCompleting
               ? <><Loader2 size={11} className="animate-spin" /> Opening…</>
@@ -325,28 +350,89 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
             }
           </button>
         )}
-        {/* Build — secondary action */}
-        <button
-          onClick={onBuild}
-          className="flex items-center gap-1 text-xs font-bold text-primary px-3 py-1.5 rounded-lg border border-primary/40 hover:bg-primary/5 transition-colors"
-          title="Build form fields"
-        >
-          <Zap size={11} /> Build
-        </button>
-        <button onClick={onShare} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-700 hover:bg-violet-50 transition-colors" title="Share public link">
-          <Link2 size={13} />
-        </button>
-        {onShareToLibrary && (
-          <button onClick={onShareToLibrary} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Share to Global Library">
-            <Library size={13} />
+
+        {/* ⋯ More actions */}
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setMenuOpen(v => !v)}
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            aria-label={`More actions for ${t.name}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+          >
+            <MoreHorizontal size={15} />
           </button>
-        )}
-        <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Edit template">
-          <Pencil size={13} />
-        </button>
-        <button onClick={onDelete} className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete template">
-          <Trash2 size={13} />
-        </button>
+
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                transition={{ duration: 0.12 }}
+                role="menu"
+                className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[180px]"
+              >
+                {/* Build */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onBuild)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Zap size={14} className="text-primary shrink-0" />
+                  <span className="font-medium">Build fields</span>
+                  <span className="ml-auto text-[10px] text-slate-400 hidden sm:inline">Desktop</span>
+                </button>
+
+                <div className="h-px bg-slate-100 mx-2 my-1" />
+
+                {/* Share public link */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onShare)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Link2 size={14} className="text-violet-500 shrink-0" />
+                  <span className="font-medium">Public link</span>
+                </button>
+
+                {/* Share to Library */}
+                {onShareToLibrary && (
+                  <button
+                    role="menuitem"
+                    onClick={() => menuAction(onShareToLibrary)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <Library size={14} className="text-violet-500 shrink-0" />
+                    <span className="font-medium">Share to Library</span>
+                  </button>
+                )}
+
+                <div className="h-px bg-slate-100 mx-2 my-1" />
+
+                {/* Edit */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onEdit)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Pencil size={14} className="text-slate-400 shrink-0" />
+                  <span className="font-medium">Edit template</span>
+                </button>
+
+                {/* Delete */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onDelete)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                >
+                  <Trash2 size={14} className="shrink-0" />
+                  <span className="font-medium">Delete</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );
@@ -660,6 +746,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function FormsPage() {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -724,7 +811,7 @@ export function FormsPage() {
       if (!res.ok || !data.submission) throw new Error(data.error ?? 'Failed to start form');
       const jobId = data.submission.jobId ?? selectedJobId;
       setJobPickerTemplate(null);
-      window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener');
+      navigate(`/jobs/${jobId}/forms/${data.submission.id}`);
     } catch (e) {
       setJobPickerError(e instanceof Error ? e.message : 'Could not start form. Please try again.');
     } finally {
