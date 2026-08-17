@@ -32,6 +32,7 @@ import LensSortByDate from '@/components/lens/LensSortByDate';
 import LensGroupByUploader from '@/components/lens/LensGroupByUploader';
 import { type LensPhoto, type LensResponse } from '@/components/lens/lensTypes';
 import PhotoEditor, { type EditorConfig } from '@/components/PhotoEditor';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 
@@ -834,6 +835,7 @@ export default function LensPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
+      <PortalSidebar />
       <Helmet>
         <title>Lens — IWILLBUILD</title>
         <meta name="description" content="Company-wide photo gallery. Browse, search and filter all job photos." />
