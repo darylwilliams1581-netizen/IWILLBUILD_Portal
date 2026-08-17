@@ -222,21 +222,16 @@ export default function PlanUploadModal({
           {/* Sheet */}
           <motion.div
             key="sheet"
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-2xl shadow-2xl flex flex-col md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[520px] md:max-w-[92vw] md:rounded-2xl"
+            className="fixed inset-x-4 top-4 bottom-4 z-50 bg-background rounded-2xl shadow-2xl flex flex-col sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[520px] sm:max-w-[92vw]"
             style={{
-              maxHeight: 'min(92vh, 700px)',
+              maxHeight: 'min(92dvh, 700px)',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
           >
-            {/* Handle (mobile only) */}
-            <div className="flex justify-center pt-3 pb-1 md:hidden">
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </div>
-
             {/* ── Uploading state ─────────────────────────────────────────── */}
             {step === 'uploading' && (
               <div className="flex flex-col items-center justify-center flex-1 gap-4 px-6 py-12">
