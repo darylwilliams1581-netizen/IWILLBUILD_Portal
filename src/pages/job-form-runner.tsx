@@ -1,16 +1,20 @@
 /**
  * /jobs/:id/forms/:formInstanceId
  *
- * Shared Form Runner Shell — wraps FormRunner for every entry path:
- *   • Standalone Forms → /jobs/0/forms/:id  (navigate with state { returnTo: '/forms' })
- *   • Job Forms tab    → /jobs/:id/forms/:id (navigate with state { returnTo: '/jobs/:id?tab=forms' })
- *   • Submissions      → navigate with state { returnTo: '/forms?tab=submissions' }
+ * Form Runner Shell
  *
- * The shell owns:
- *   - Sticky top header: back button, form title, state badge, progress counter, three-dot menu
- *   - Sticky bottom action bar: Save Draft + Complete (active) | PDF/Email/Share + Edit/Reopen (completed)
+ * Header (top):
+ *   ← Back | Title + job subtitle | progress counter | [FileDown widget — completed only]
  *
- * FormRunner is a pure document renderer — no navigation, no action buttons.
+ * Bottom bar — completed view:
+ *   [ ✓ Completed pill ]  ·····  [ Edit ]
+ *
+ * Bottom bar — active/edit view:
+ *   [ Save Draft ]  [ Incomplete (red) ]
+ *
+ * The floating Document Actions widget (purple circle) is suppressed on this
+ * page via DocumentActionsWidget's pathname guard. The FileDown header button
+ * is the sole entry point to PDF/Email/Share on completed forms.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -22,26 +26,18 @@ import {
   CheckCircle2,
   Clock,
   Pencil,
-  MoreVertical,
   Save,
-  Send,
   FileDown,
-  Mail,
-  Share2,
-  RotateCcw,
+  XCircle,
 } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
 import { useDocumentActions } from '@/lib/document-actions-context';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 interface LocationState {
   returnTo?: string;
 }
-
-// ── Shell ─────────────────────────────────────────────────────────────────────
 
 export default function JobFormRunnerPage() {
   const { id, formInstanceId } = useParams<{ id: string; formInstanceId: string }>();
@@ -51,7 +47,6 @@ export default function JobFormRunnerPage() {
   const jobId = Number(id);
   const submissionId = Number(formInstanceId);
 
-  // Determine where Back should go
   const locationState = (location.state ?? {}) as LocationState;
   const returnTo = locationState.returnTo ?? (jobId > 0 ? `/jobs/${jobId}?tab=forms` : '/forms');
 
@@ -61,22 +56,18 @@ export default function JobFormRunnerPage() {
   const [templateName, setTemplateName] = useState('Form');
   const [job, setJob] = useState<Job | null>(null);
 
-  // Shell-owned state
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [progress, setProgress] = useState({ answered: 0, total: 0 });
-  const [menuOpen, setMenuOpen] = useState(false);
   const [shellSaving, setShellSaving] = useState(false);
   const [shellCompleting, setShellCompleting] = useState(false);
   const [shellReopening, setShellReopening] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  // Refs to call FormRunner's save/complete from the shell footer
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const completeRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Document actions (PDF / Email / Secure Share)
   const { openModal } = useDocumentActions();
 
   useEffect(() => {
@@ -99,7 +90,8 @@ export default function JobFormRunnerPage() {
         setSubmission(subData.submission);
         setTemplateName(subData.templateName ?? 'Form');
 
-        const completed = subData.submission.status === 'completed' || subData.submission.status === 'submitted';
+        const completed =
+          subData.submission.status === 'completed' || subData.submission.status === 'submitted';
         setIsReadOnly(completed);
         setIsDone(completed);
 
@@ -124,7 +116,6 @@ export default function JobFormRunnerPage() {
     navigate(returnTo, { replace: false });
   }
 
-  // Shell-level reopen — calls API then flips readOnly off
   const handleReopen = useCallback(async () => {
     if (!submission) return;
     setShellReopening(true);
@@ -149,59 +140,24 @@ export default function JobFormRunnerPage() {
     }
   }, [submission]);
 
-  // Shell Save Draft — delegates to FormRunner via ref
   async function handleSaveDraft() {
     if (!saveRef.current) return;
     setShellSaving(true);
-    try {
-      await saveRef.current();
-    } finally {
-      setShellSaving(false);
-    }
+    try { await saveRef.current(); } finally { setShellSaving(false); }
   }
 
-  // Shell Complete Form — delegates to FormRunner via ref
   async function handleComplete() {
     if (!completeRef.current) return;
     setShellCompleting(true);
-    try {
-      await completeRef.current();
-    } finally {
-      setShellCompleting(false);
-    }
+    try { await completeRef.current(); } finally { setShellCompleting(false); }
   }
 
-  // Called by FormRunner when completion succeeds
   function onFormComplete() {
     setIsReadOnly(true);
     setIsDone(true);
   }
 
-  // ── State badge ───────────────────────────────────────────────────────────────
-  function StateBadge() {
-    if (isDone) {
-      return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <CheckCircle2 size={9} /> Completed
-        </span>
-      );
-    }
-    const hasDraft = submission?.status === 'in_progress' && savedAt;
-    if (hasDraft) {
-      return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-          <Clock size={9} /> Draft
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-        Filling out
-      </span>
-    );
-  }
-
-  // ── Loading / error states ────────────────────────────────────────────────────
+  // ── Loading / error ───────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -218,10 +174,7 @@ export default function JobFormRunnerPage() {
           <AlertTriangle size={24} className="text-red-500" />
         </div>
         <p className="text-sm font-semibold text-slate-700">{error || 'Form not found'}</p>
-        <button
-          onClick={handleBack}
-          className="text-xs text-slate-600 hover:text-slate-800 underline"
-        >
+        <button onClick={handleBack} className="text-xs text-slate-600 hover:text-slate-800 underline">
           Go back
         </button>
       </div>
@@ -233,21 +186,27 @@ export default function JobFormRunnerPage() {
   return (
     <>
       <Helmet>
-        <title>{templateName}{job ? ` — ${job.name ?? `Job #${jobId}`}` : ''} | IWillBuild</title>
-        <meta name="description" content={`${isDone ? 'View completed' : 'Complete the'} ${templateName} form${job ? ` for ${job.name ?? `Job #${jobId}`}` : ''}.`} />
+        <title>
+          {templateName}{job ? ` — ${job.name ?? `Job #${jobId}`}` : ''} | IWillBuild
+        </title>
+        <meta
+          name="description"
+          content={`${isDone ? 'View completed' : 'Complete the'} ${templateName} form${job ? ` for ${job.name ?? `Job #${jobId}`}` : ''}.`}
+        />
         <link rel="canonical" href={typeof window !== 'undefined' ? window.location.href : ''} />
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      {/* ── Full-height shell ─────────────────────────────────────────────────── */}
       <div className="min-h-screen bg-slate-50 flex flex-col">
 
         {/* ── Sticky top header ─────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm"
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-          <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+        <header
+          className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
+          <div className="max-w-2xl mx-auto px-3 h-14 flex items-center gap-2">
 
-            {/* Back — exactly one */}
+            {/* Back */}
             <button
               onClick={handleBack}
               className="p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors shrink-0"
@@ -256,101 +215,61 @@ export default function JobFormRunnerPage() {
               <ChevronLeft size={20} />
             </button>
 
-            {/* Title + state */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-heading font-bold text-base text-slate-900 truncate leading-tight">
-                  {templateName}
-                </h1>
-                <StateBadge />
-              </div>
+            {/* Title block */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <h1 className="font-heading font-bold text-[15px] text-slate-900 truncate leading-snug">
+                {templateName}
+              </h1>
               {job && (
-                <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">
+                <p className="text-[11px] text-slate-400 truncate leading-tight">
                   {job.jobNumber ? `${job.jobNumber} · ` : ''}{job.name}
                 </p>
               )}
             </div>
 
-            {/* Progress counter — only when filling out */}
+            {/* Progress counter — active forms only */}
             {!isReadOnly && progress.total > 0 && (
-              <div className="text-right shrink-0">
-                <p className="text-xs font-bold text-slate-700 leading-tight">{progress.answered}/{progress.total}</p>
+              <div className="text-right shrink-0 ml-1">
+                <p className="text-xs font-bold text-slate-700 leading-tight tabular-nums">
+                  {progress.answered}/{progress.total}
+                </p>
                 <p className="text-[10px] text-slate-400 leading-tight">answered</p>
               </div>
             )}
 
-            {/* Saved-at indicator */}
+            {/* Saved-at indicator — active forms, desktop only */}
             {!isReadOnly && savedAt && (
-              <span className="text-[11px] text-emerald-600 font-medium shrink-0 hidden sm:block">
+              <span className="text-[11px] text-emerald-600 font-medium shrink-0 hidden sm:block ml-1">
                 Saved {savedAt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
 
-            {/* Three-dot menu */}
-            <div className="relative shrink-0">
+            {/* ── FileDown widget button — completed forms only, top-right ── */}
+            {isReadOnly && (
               <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
-                aria-label="More options"
+                onClick={() => openModal()}
+                aria-label="Document actions — PDF, Email, Share"
+                title="PDF / Email / Share"
+                className={[
+                  'flex items-center justify-center h-9 w-9 rounded-xl shrink-0 ml-1',
+                  'bg-violet-600 hover:bg-violet-700 active:bg-violet-800',
+                  'text-white shadow-sm shadow-violet-900/20',
+                  'transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2',
+                ].join(' ')}
               >
-                <MoreVertical size={18} />
+                <FileDown size={16} />
               </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 min-w-[180px]">
-                    {isReadOnly ? (
-                      <>
-                        <button
-                          onClick={() => { setMenuOpen(false); openModal(); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          <FileDown size={15} className="text-slate-400" /> PDF / Export
-                        </button>
-                        <button
-                          onClick={() => { setMenuOpen(false); openModal(); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          <Mail size={15} className="text-slate-400" /> Send by Email
-                        </button>
-                        <button
-                          onClick={() => { setMenuOpen(false); openModal(); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          <Share2 size={15} className="text-slate-400" /> Secure Share
-                        </button>
-                        <div className="h-px bg-slate-100 my-1" />
-                        <button
-                          onClick={() => { setMenuOpen(false); void handleReopen(); }}
-                          disabled={shellReopening}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50"
-                        >
-                          {shellReopening ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
-                          Edit / Reopen
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => { setMenuOpen(false); void handleSaveDraft(); }}
-                        disabled={shellSaving}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                      >
-                        {shellSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} className="text-slate-400" />}
-                        Save Draft
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Action error banner */}
+          {/* Error banner */}
           {actionError && (
             <div className="max-w-2xl mx-auto px-4 pb-2">
               <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-                <AlertTriangle size={12} /> {actionError}
-                <button onClick={() => setActionError('')} className="ml-auto text-red-400 hover:text-red-600">✕</button>
+                <AlertTriangle size={12} className="shrink-0" />
+                <span className="flex-1">{actionError}</span>
+                <button onClick={() => setActionError('')} className="text-red-400 hover:text-red-600 ml-auto">✕</button>
               </div>
             </div>
           )}
@@ -380,31 +299,20 @@ export default function JobFormRunnerPage() {
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="max-w-2xl mx-auto px-4 pt-3 pb-1">
+
             {isReadOnly ? (
-              /* ── Completed form actions ── */
-              <div className="flex items-center gap-2.5">
-                <button
-                  onClick={() => openModal()}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-colors"
-                >
-                  <FileDown size={15} className="text-slate-400" /> PDF
-                </button>
-                <button
-                  onClick={() => openModal()}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-colors"
-                >
-                  <Mail size={15} className="text-slate-400" /> Email
-                </button>
-                <button
-                  onClick={() => openModal()}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-colors"
-                >
-                  <Share2 size={15} className="text-slate-400" /> Share
-                </button>
+              /* ── Completed view: status pill (left) + Edit button (right) ── */
+              <div className="flex items-center justify-between gap-3 h-11">
+                {/* Completed pill */}
+                <span className="inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  <CheckCircle2 size={14} /> Completed
+                </span>
+
+                {/* Edit / Reopen */}
                 <button
                   onClick={() => void handleReopen()}
                   disabled={shellReopening}
-                  className="flex items-center justify-center gap-2 h-11 px-4 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-sm font-bold text-amber-700 disabled:opacity-50 transition-colors"
+                  className="flex items-center justify-center gap-2 h-11 px-5 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-sm font-bold text-amber-700 disabled:opacity-50 transition-colors"
                 >
                   {shellReopening
                     ? <Loader2 size={14} className="animate-spin" />
@@ -413,12 +321,13 @@ export default function JobFormRunnerPage() {
                 </button>
               </div>
             ) : (
-              /* ── Active / draft form actions ── */
-              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
+              /* ── Active / edit view: Save Draft + Incomplete (red) ── */
+              <div className="flex items-center gap-2.5">
+                {/* Save Draft */}
                 <button
                   onClick={() => void handleSaveDraft()}
                   disabled={shellSaving || shellCompleting}
-                  className="flex items-center justify-center gap-2 h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors sm:w-auto"
+                  className="flex items-center justify-center gap-2 h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors shrink-0"
                 >
                   {shellSaving
                     ? <Loader2 size={14} className="animate-spin" />
@@ -427,16 +336,21 @@ export default function JobFormRunnerPage() {
                     : <Save size={14} />}
                   Save Draft
                 </button>
+
+                {/* Incomplete — red, marks form as complete */}
                 <button
                   onClick={() => void handleComplete()}
                   disabled={shellSaving || shellCompleting}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
+                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
                 >
-                  {shellCompleting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  Complete Form
+                  {shellCompleting
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <XCircle size={14} />}
+                  Incomplete
                 </button>
               </div>
             )}
+
           </div>
         </footer>
       </div>
