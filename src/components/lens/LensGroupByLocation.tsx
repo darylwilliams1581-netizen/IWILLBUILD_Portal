@@ -1,24 +1,21 @@
 /**
- * LensGroupByJob
+ * LensGroupByLocation
  * ─────────────────────────────────────────────────────────────────────────────
- * Renders the "Group by Job" view for the Lens gallery.
- *
- * - Collapsible job headers (Plan Manager style)
- * - 4-column square thumbnail grid inside each job section
- * - Upload / Camera launched from an expanded job pre-seeds that job ID
- * - Selection mode works across all expanded sections
- * - No duplicate records; uses the same LensPhoto[] passed from the parent
+ * Groups photos by jobAddress (falls back to job name when address is null).
+ * Collapsible sections, same square-thumbnail grid as Group by Job.
  */
 
 import { useState, useMemo } from 'react';
 import {
-  ChevronDown, ChevronRight, Briefcase, Camera, Upload,
-  ImageOff, CheckSquare, Square, ExternalLink,
+  ChevronDown, ChevronRight, MapPin, ImageOff, CheckSquare, Square, ExternalLink,
 } from 'lucide-react';
 import { type LensPhoto } from './lensTypes';
-import { type LensJobOption } from './LensJobPickerSheet';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function locationKey(p: LensPhoto): string {
+  return p.jobAddress ?? p.jobName ?? `Job ${p.jobId}`;
+}
 
 function formatDate(iso: string): string {
   try {
@@ -30,33 +27,20 @@ function formatDate(iso: string): string {
   }
 }
 
-function photoAlt(p: LensPhoto): string {
-  return p.label ?? p.caption ?? p.originalName ?? `Photo ${p.id}`;
-}
-
-// ── Job group ─────────────────────────────────────────────────────────────────
-
-interface JobGroup {
-  jobId: number;
-  jobNumber: string | null;
-  jobName: string | null;
+interface LocationGroup {
+  key: string;
   latestDate: string;
   photos: LensPhoto[];
 }
 
-function buildGroups(photos: LensPhoto[]): JobGroup[] {
-  const map = new Map<number, JobGroup>();
+function buildGroups(photos: LensPhoto[]): LocationGroup[] {
+  const map = new Map<string, LocationGroup>();
   for (const p of photos) {
-    let g = map.get(p.jobId);
+    const k = locationKey(p);
+    let g = map.get(k);
     if (!g) {
-      g = {
-        jobId: p.jobId,
-        jobNumber: p.jobNumber,
-        jobName: p.jobName,
-        latestDate: p.createdAt,
-        photos: [],
-      };
-      map.set(p.jobId, g);
+      g = { key: k, latestDate: p.createdAt, photos: [] };
+      map.set(k, g);
     }
     g.photos.push(p);
     if (p.createdAt > g.latestDate) g.latestDate = p.createdAt;
@@ -64,16 +48,6 @@ function buildGroups(photos: LensPhoto[]): JobGroup[] {
   return Array.from(map.values()).sort((a, b) =>
     b.latestDate.localeCompare(a.latestDate)
   );
-}
-
-/** Build a LensJobOption from a JobGroup so we can pre-seed Upload/Camera */
-function groupToJobOption(g: JobGroup): LensJobOption {
-  return {
-    id: g.jobId,
-    jobNumber: g.jobNumber,
-    name: g.jobName ?? 'Unnamed job',
-    status: 'active',
-  };
 }
 
 // ── Square thumbnail ──────────────────────────────────────────────────────────
@@ -88,6 +62,7 @@ interface ThumbProps {
 
 function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: ThumbProps) {
   const [imgError, setImgError] = useState(false);
+  const alt = photo.label ?? photo.caption ?? photo.originalName ?? `Photo ${photo.id}`;
 
   function handleClick() {
     if (selectionMode) onToggleSelect(photo.id);
@@ -108,7 +83,7 @@ function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: Thumb
       ) : (
         <img
           src={photo.thumbnailUrl}
-          alt={photoAlt(photo)}
+          alt={alt}
           loading="lazy"
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
@@ -140,96 +115,48 @@ function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: Thumb
   );
 }
 
-// ── Job section ───────────────────────────────────────────────────────────────
+// ── Location section ──────────────────────────────────────────────────────────
 
-interface JobSectionProps {
-  group: JobGroup;
+interface LocationSectionProps {
+  group: LocationGroup;
   expanded: boolean;
   onToggle: () => void;
   onOpenPhoto: (photo: LensPhoto, allPhotos: LensPhoto[]) => void;
-  onUpload: (job: LensJobOption) => void;
-  onCamera: (job: LensJobOption) => void;
   selectionMode: boolean;
   selectedIds: Set<number>;
   onToggleSelect: (id: number) => void;
 }
 
-function JobSection({
-  group, expanded, onToggle, onOpenPhoto, onUpload, onCamera,
+function LocationSection({
+  group, expanded, onToggle, onOpenPhoto,
   selectionMode, selectedIds, onToggleSelect,
-}: JobSectionProps) {
-  const label = group.jobNumber
-    ? `${group.jobNumber} — ${group.jobName ?? 'Unnamed job'}`
-    : (group.jobName ?? 'Unnamed job');
-
-  const jobOption = groupToJobOption(group);
-
+}: LocationSectionProps) {
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-      {/* Header row */}
       <button
         type="button"
         onClick={onToggle}
         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left"
         aria-expanded={expanded}
       >
-        <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-          <Briefcase size={13} className="text-violet-600" />
+        <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+          <MapPin size={13} className="text-emerald-600" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 truncate">{label}</p>
+          <p className="text-sm font-semibold text-slate-800 truncate">{group.key}</p>
           <p className="text-xs text-slate-400">
             {group.photos.length} photo{group.photos.length !== 1 ? 's' : ''} · {formatDate(group.latestDate)}
           </p>
         </div>
-
-        {/* Upload / Camera quick-actions (desktop, only when expanded) */}
-        {expanded && (
-          <div className="hidden md:flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => onUpload(jobOption)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-100 transition-colors min-h-[32px]"
-            >
-              <Upload size={12} /> Upload
-            </button>
-            <button
-              type="button"
-              onClick={() => onCamera(jobOption)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs transition-colors min-h-[32px]"
-            >
-              <Camera size={12} /> Camera
-            </button>
-          </div>
-        )}
 
         <div className="shrink-0 text-slate-400 ml-1">
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </div>
       </button>
 
-      {/* Expanded grid */}
       {expanded && (
         <div className="px-2 pb-2 pt-1 border-t border-slate-100">
-          {/* Mobile upload/camera row */}
-          <div className="flex gap-2 mb-2 md:hidden">
-            <button
-              type="button"
-              onClick={() => onUpload(jobOption)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors min-h-[40px]"
-            >
-              <Upload size={13} /> Upload
-            </button>
-            <button
-              type="button"
-              onClick={() => onCamera(jobOption)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs transition-colors min-h-[40px]"
-            >
-              <Camera size={13} /> Camera
-            </button>
-          </div>
-
           <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1">
             {group.photos.map((photo) => (
               <Thumb
@@ -250,30 +177,27 @@ function JobSection({
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export interface LensGroupByJobProps {
+export interface LensGroupByLocationProps {
   photos: LensPhoto[];
   onOpenPhoto: (photo: LensPhoto, contextPhotos: LensPhoto[]) => void;
-  onUpload: (job: LensJobOption) => void;
-  onCamera: (job: LensJobOption) => void;
   selectionMode: boolean;
   selectedIds: Set<number>;
   onToggleSelect: (id: number) => void;
 }
 
-export default function LensGroupByJob({
-  photos, onOpenPhoto, onUpload, onCamera,
-  selectionMode, selectedIds, onToggleSelect,
-}: LensGroupByJobProps) {
+export default function LensGroupByLocation({
+  photos, onOpenPhoto, selectionMode, selectedIds, onToggleSelect,
+}: LensGroupByLocationProps) {
   const groups = useMemo(() => buildGroups(photos), [photos]);
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(() =>
-    groups.length === 1 ? new Set([groups[0].jobId]) : new Set()
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
+    groups.length === 1 ? new Set([groups[0].key]) : new Set()
   );
 
-  function toggleGroup(jobId: number) {
-    setExpandedIds((prev) => {
+  function toggleGroup(key: string) {
+    setExpandedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(jobId)) next.delete(jobId);
-      else next.add(jobId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -283,14 +207,12 @@ export default function LensGroupByJob({
   return (
     <div className="flex flex-col gap-2">
       {groups.map((group) => (
-        <JobSection
-          key={group.jobId}
+        <LocationSection
+          key={group.key}
           group={group}
-          expanded={expandedIds.has(group.jobId)}
-          onToggle={() => toggleGroup(group.jobId)}
+          expanded={expandedKeys.has(group.key)}
+          onToggle={() => toggleGroup(group.key)}
           onOpenPhoto={onOpenPhoto}
-          onUpload={onUpload}
-          onCamera={onCamera}
           selectionMode={selectionMode}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
