@@ -32,6 +32,7 @@ import { sql } from 'drizzle-orm';
 import { hashToken } from '../../../../lib/share-tokens.js';
 import { buildEstimatePdfDocument } from '../../../../lib/estimate-pdf-document.js';
 import { buildInvoicePdfDocument } from '../../../../lib/invoice-pdf-document.js';
+import { buildFormPdfDocument } from '../../../../lib/form-pdf-document.js';
 
 type ShareRow = {
   id: number;
@@ -171,6 +172,12 @@ export default async function handler(req: Request, res: Response) {
       filename = doc.filename;
     } else if (link.target_type === 'invoice') {
       const doc = await buildInvoicePdfDocument(companyId, targetId);
+      if (!doc) return res.status(404).json({ error: 'Document not found or no longer available.' });
+      pdfBytes = doc.pdfBytes;
+      filename = doc.filename;
+    } else if (link.target_type === 'completed_form' || link.target_type === 'job_form') {
+      // completed_form is the canonical type; job_form is the legacy alias
+      const doc = await buildFormPdfDocument(companyId, targetId);
       if (!doc) return res.status(404).json({ error: 'Document not found or no longer available.' });
       pdfBytes = doc.pdfBytes;
       filename = doc.filename;

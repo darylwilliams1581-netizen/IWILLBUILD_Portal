@@ -14,6 +14,7 @@ import {
   Pencil,
   Mail,
   SplitSquareHorizontal,
+  FileDown,
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
@@ -26,6 +27,7 @@ import {
 } from './SignaturePad';
 import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
+import FormDocumentActionsModal from '@/components/job/FormDocumentActionsModal';
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -76,6 +78,8 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
   const [isDone, setIsDone] = useState(submission.status === 'completed');
   // readOnly can be toggled to "reopen" a completed form
   const [readOnly, setReadOnly] = useState(initialReadOnly && submission.status === 'completed');
+  // Document Actions modal (PDF / Email / Share)
+  const [actionsModalOpen, setActionsModalOpen] = useState(false);
 
   // ── Pagination state ─────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(0);
@@ -590,6 +594,12 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={() => setActionsModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 transition-colors"
+            >
+              <FileDown size={12} /> PDF / Email / Share
+            </button>
+            <button
               onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
             >
@@ -685,6 +695,17 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
           defaultMessage={emailDefaults.message}
           job={emailDefaults.job}
           onClose={() => { setEmailModalOpen(false); setEmailDefaults(null); }}
+        />
+      )}
+
+      {/* ── Document Actions Modal (PDF / Email / Share) ─────────────────────── */}
+      {actionsModalOpen && (
+        <FormDocumentActionsModal
+          submissionId={submission.id}
+          templateName={templateName}
+          jobId={job?.id}
+          job={job}
+          onClose={() => setActionsModalOpen(false)}
         />
       )}
       </>

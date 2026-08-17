@@ -113,6 +113,29 @@ interface AppPlugin {
   getInfo: () => Promise<{ name: string; id: string; build: string; version: string }>;
 }
 
+interface FilesystemPlugin {
+  writeFile: (opts: {
+    path: string;
+    data: string;
+    directory: string;
+    encoding?: string;
+    recursive?: boolean;
+  }) => Promise<{ uri: string }>;
+  deleteFile: (opts: { path: string; directory: string }) => Promise<void>;
+  mkdir: (opts: { path: string; directory: string; recursive?: boolean }) => Promise<void>;
+}
+
+interface SharePlugin {
+  share: (opts: {
+    title?: string;
+    text?: string;
+    url?: string;
+    files?: string[];
+    dialogTitle?: string;
+  }) => Promise<{ activityType?: string }>;
+  canShare: () => Promise<{ value: boolean }>;
+}
+
 interface CameraPlugin {
   getPhoto: (opts: Record<string, unknown>) => Promise<{ base64String?: string; dataUrl?: string; format?: string; path?: string; webPath?: string }>;
   checkPermissions: () => Promise<Record<string, string>>;
@@ -167,6 +190,26 @@ export function getAppPlugin(): AppPlugin | null {
 export function getCameraPlugin(): CameraPlugin | null {
   return getPlugin<CameraPlugin>('Camera');
 }
+
+export function getFilesystemPlugin(): FilesystemPlugin | null {
+  return getPlugin<FilesystemPlugin>('Filesystem');
+}
+
+export function getSharePlugin(): SharePlugin | null {
+  return getPlugin<SharePlugin>('Share');
+}
+
+/** Directory constants matching Capacitor Filesystem Directory enum values */
+export const FilesystemDirectory = {
+  Cache: 'CACHE',
+  Data: 'DATA',
+  Documents: 'DOCUMENTS',
+  External: 'EXTERNAL',
+  ExternalStorage: 'EXTERNAL_STORAGE',
+  Library: 'LIBRARY',
+  LibraryNoCloud: 'LIBRARY_NO_CLOUD',
+  Temp: 'TEMP',
+} as const;
 
 // ── Async wrappers (backwards-compatible) ────────────────────────────────────
 // These preserve the async API that existing callers expect (await getNativeGeo()).
