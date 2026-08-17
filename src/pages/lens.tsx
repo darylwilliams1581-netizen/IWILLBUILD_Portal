@@ -1,25 +1,31 @@
 /**
- * /lens — Lens Phase 1: read-only company-wide photo gallery.
+ * /lens — Lens Phase 2: company-wide photo gallery with Upload and Camera.
  *
- * Displays all job photos for the authenticated company.
- * Phase 1 is strictly read-only: no upload, camera, delete, edit, share, or
- * folder creation. Non-functional buttons are not rendered.
+ * Phase 2 adds:
+ *   - Upload photos: job picker → multi-file picker → usePhotoUploadQueue
+ *   - Camera: job picker → navigate to /jobs/:id/camera with backPath=/lens
  *
- * Clicking a photo opens a lightbox using the existing authenticated proxy URL.
- * "Open Job" navigates to /jobs/:id using same-tab navigation.
+ * All upload logic reuses the existing job photo pipeline:
+ *   usePhotoUploadQueue → POST /api/jobs/:jobId/photos → job_photos + media_assets
+ *
+ * Camera return: ?from=lens on the camera URL causes it to pass
+ *   location.state.backPath = '/lens' so the back button returns here.
+ *   On return, the gallery refreshes automatically.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Search, X, ChevronLeft, ChevronRight,
   Lock, Calendar, Briefcase, ImageOff, Loader2,
-  ExternalLink, Filter,
+  ExternalLink, Filter, Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import LensUploadSheet from '@/components/lens/LensUploadSheet';
+import LensJobPickerSheet, { type LensJobOption } from '@/components/lens/LensJobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -279,6 +285,7 @@ function PhotoCard({ photo, onOpen, onOpenJob }: PhotoCardProps) {
 
 export default function LensPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filter state — initialised from URL params for deep-linking
@@ -303,6 +310,10 @@ export default function LensPage() {
 
   // Filter panel visibility (mobile)
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // ── Phase 2: Upload + Camera state ────────────────────────────────────────
+  const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
+  const [cameraJobPickerOpen, setCameraJobPickerOpen] = useState(false);
 
   // Debounce search
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -388,6 +399,34 @@ export default function LensPage() {
 
   const hasActiveFilters = !!(search || jobId || dateFrom || dateTo);
 
+  // ── Phase 2: Upload photo synced → refresh gallery ────────────────────────
+  const handlePhotoSynced = useCallback((_serverPhotoId: number) => {
+    // Refresh from page 1 to pick up the new photo at the top
+    fetchPhotos(1, true);
+  }, [fetchPhotos]);
+
+  // ── Phase 2: Camera — navigate to /jobs/:id/camera with backPath ──────────
+  function handleCameraJobSelect(job: LensJobOption) {
+    setCameraJobPickerOpen(false);
+    navigate(`/jobs/${job.id}/camera`, {
+      state: { backPath: '/lens?refreshed=1' },
+    });
+  }
+
+  // ── Phase 2: Refresh gallery when returning from camera ───────────────────
+  useEffect(() => {
+    if (searchParams.get('refreshed') === '1') {
+      // Remove the param so it doesn't persist on subsequent navigations
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('refreshed');
+        return next;
+      }, { replace: true });
+      fetchPhotos(1, true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
   // ── Lightbox helpers ──────────────────────────────────────────────────────
   const openLightbox  = (idx: number) => setLightboxIndex(idx);
   const closeLightbox = () => setLightboxIndex(null);
@@ -403,6 +442,22 @@ export default function LensPage() {
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/lens" />
       </Helmet>
+
+      {/* ── Phase 2: Upload sheet ──────────────────────────────────────────── */}
+      <LensUploadSheet
+        open={uploadSheetOpen}
+        onClose={() => setUploadSheetOpen(false)}
+        onPhotoSynced={handlePhotoSynced}
+      />
+
+      {/* ── Phase 2: Camera job picker ─────────────────────────────────────── */}
+      <LensJobPickerSheet
+        open={cameraJobPickerOpen}
+        title="Select a job"
+        subtitle="Camera photos will be saved to this job"
+        onSelect={handleCameraJobSelect}
+        onClose={() => setCameraJobPickerOpen(false)}
+      />
 
       {/* Lightbox */}
       {lightboxIndex !== null && (
@@ -445,7 +500,7 @@ export default function LensPage() {
               </div>
 
               {/* Search */}
-              <div className="flex-1 relative">
+              <div className="flex-1 relative min-w-0">
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <Input
                   type="search"
@@ -456,11 +511,35 @@ export default function LensPage() {
                 />
               </div>
 
-              {/* Filter toggle (mobile) */}
+              {/* ── Phase 2: Upload + Camera action buttons ── */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 min-h-[44px] sm:min-h-0"
+                  onClick={() => setUploadSheetOpen(true)}
+                  title="Upload photos"
+                >
+                  <Upload size={14} />
+                  <span className="hidden sm:inline">Upload</span>
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1.5 min-h-[44px] sm:min-h-0 bg-violet-600 hover:bg-violet-700"
+                  onClick={() => setCameraJobPickerOpen(true)}
+                  title="Open camera"
+                >
+                  <Camera size={14} />
+                  <span className="hidden sm:inline">Camera</span>
+                </Button>
+              </div>
+
+              {/* Filter toggle */}
               <Button
                 variant={filtersOpen || hasActiveFilters ? 'default' : 'outline'}
                 size="sm"
-                className="shrink-0 gap-1.5"
+                className="shrink-0 gap-1.5 min-h-[44px] sm:min-h-0"
                 onClick={() => setFiltersOpen((v) => !v)}
               >
                 <Filter size={14} />
