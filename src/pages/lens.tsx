@@ -29,7 +29,7 @@ import LensJobPickerSheet, { type LensJobOption } from '@/components/lens/LensJo
 import LensSelectionBar from '@/components/lens/LensSelectionBar';
 import LensGroupByJob from '@/components/lens/LensGroupByJob';
 import LensSortByDate from '@/components/lens/LensSortByDate';
-import LensGroupByLocation from '@/components/lens/LensGroupByLocation';
+import LensGroupByUploader from '@/components/lens/LensGroupByUploader';
 import { type LensPhoto, type LensResponse } from '@/components/lens/lensTypes';
 import PhotoEditor, { type EditorConfig } from '@/components/PhotoEditor';
 
@@ -983,9 +983,9 @@ export default function LensPage() {
                 <ViewBtn
                   active={viewMode === 'byLocation'}
                   onClick={() => setViewMode('byLocation')}
-                  icon={<MapPin size={15} />}
-                  label="Place"
-                  title="Group by location"
+                  icon={<User size={15} />}
+                  label="Uploader"
+                  title="Group by uploader"
                 />
               </div>
 
@@ -1135,9 +1135,9 @@ export default function LensPage() {
             />
           )}
 
-          {/* ── Group by Location view ── */}
+          {/* ── Group by Uploader view ── */}
           {photos.length > 0 && viewMode === 'byLocation' && (
-            <LensGroupByLocation
+            <LensGroupByUploader
               photos={photos}
               onOpenPhoto={(photo, ctx) => openLightbox(photo, ctx)}
               selectionMode={selectionMode}
