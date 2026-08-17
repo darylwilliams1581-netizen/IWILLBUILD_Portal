@@ -311,25 +311,28 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
 
       {/* Actions */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <button
-          onClick={onBuild}
-          className="flex items-center gap-1 text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-all hover:brightness-110 bg-primary"
-        >
-          <Zap size={11} /> Build
-        </button>
+        {/* Complete — primary action */}
         {onComplete && (
           <button
             onClick={onComplete}
             disabled={isCompleting}
-            className="flex items-center gap-1 text-xs font-bold text-emerald-700 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-60 ml-0.5"
+            className="flex items-center gap-1 text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-all hover:brightness-110 bg-primary disabled:opacity-60 mr-0.5"
             title="Complete this form"
           >
             {isCompleting
-              ? <Loader2 size={11} className="animate-spin" />
-              : <ExternalLink size={11} />
+              ? <><Loader2 size={11} className="animate-spin" /> Opening…</>
+              : <><ExternalLink size={11} /> Complete</>
             }
           </button>
         )}
+        {/* Build — secondary action */}
+        <button
+          onClick={onBuild}
+          className="flex items-center gap-1 text-xs font-bold text-primary px-3 py-1.5 rounded-lg border border-primary/40 hover:bg-primary/5 transition-colors"
+          title="Build form fields"
+        >
+          <Zap size={11} /> Build
+        </button>
         <button onClick={onShare} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-700 hover:bg-violet-50 transition-colors" title="Share public link">
           <Link2 size={13} />
         </button>
