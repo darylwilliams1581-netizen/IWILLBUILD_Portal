@@ -28,6 +28,7 @@ import {
 import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import FormDocumentActionsModal from '@/components/job/FormDocumentActionsModal';
+import { useDocumentActionsRegistration } from '@/lib/document-actions-context';
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -80,6 +81,23 @@ export default function FormRunner({ job, submission, templateName, readOnly: in
   const [readOnly, setReadOnly] = useState(initialReadOnly && submission.status === 'completed');
   // Document Actions modal (PDF / Email / Share)
   const [actionsModalOpen, setActionsModalOpen] = useState(false);
+
+  // ── Global Document Actions widget registration ───────────────────────────
+  // Register a descriptor when viewing a completed form so the global floating
+  // widget appears.  Unregisters automatically on unmount or when the form is
+  // no longer in completed read-only mode.
+  useDocumentActionsRegistration(
+    readOnly && submission.status === 'completed'
+      ? {
+          documentType: 'completed_form',
+          recordId: submission.id,
+          title: templateName,
+          jobId: job?.id,
+          job,
+          availableActions: ['pdf', 'email', 'secure_share'],
+        }
+      : null,
+  );
 
   // ── Pagination state ─────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(0);
