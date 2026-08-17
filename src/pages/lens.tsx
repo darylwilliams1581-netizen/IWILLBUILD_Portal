@@ -20,7 +20,7 @@ import {
   Camera, Search, X, ChevronLeft, ChevronRight,
   Lock, ImageOff, Loader2, Upload, CheckSquare, Home, Share2,
   LayoutGrid, Briefcase, Calendar, MapPin, ArrowUpDown,
-  User, Clock, Download,
+  User, Clock, Download, Pencil, Trash2, MoreVertical, AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ import LensGroupByJob from '@/components/lens/LensGroupByJob';
 import LensSortByDate from '@/components/lens/LensSortByDate';
 import LensGroupByLocation from '@/components/lens/LensGroupByLocation';
 import { type LensPhoto, type LensResponse } from '@/components/lens/lensTypes';
+import PhotoEditor, { type EditorConfig } from '@/components/PhotoEditor';
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 
@@ -64,18 +65,77 @@ function photoLabel(p: LensPhoto): string {
   return p.label ?? p.caption ?? p.originalName ?? `Photo ${p.id}`;
 }
 
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+
+interface DeleteConfirmProps {
+  photo: LensPhoto;
+  onConfirm: () => void;
+  onCancel: () => void;
+  deleting: boolean;
+}
+
+function DeleteConfirm({ photo, onConfirm, onCancel, deleting }: DeleteConfirmProps) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <Trash2 size={18} className="text-red-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Delete photo?</p>
+            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+              {photo.label ?? photo.originalName ?? `Photo ${photo.id}`}
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          This photo will be permanently deleted and cannot be recovered.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="flex-1 min-h-[44px] rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="flex-1 min-h-[44px] rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+          >
+            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
   photos: LensPhoto[];
   index: number;
+  /** Cache-bust counter per photo id — increment after edit to force img reload */
+  cacheBust: Record<number, number>;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
   onOpenJob: (jobId: number) => void;
+  onEdit: (photo: LensPhoto) => void;
+  onDelete: (photo: LensPhoto) => void;
+  onPhotoUpdated: (photo: LensPhoto) => void;
 }
 
-function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: LightboxProps) {
+function Lightbox({
+  photos, index, cacheBust, onClose, onPrev, onNext,
+  onOpenJob, onEdit, onDelete,
+}: LightboxProps) {
   const photo = photos[index];
   if (!photo) return null;
 
@@ -89,9 +149,14 @@ function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: Lightbo
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, onPrev, onNext]);
 
+  const isLocked = photo.status === 'locked';
   const jobLabel = photo.jobNumber
     ? `#${photo.jobNumber} — ${photo.jobName}`
     : photo.jobName;
+
+  // Cache-bust the image URL after an edit
+  const bust = cacheBust[photo.id];
+  const imgSrc = bust ? `${photo.downloadUrl}${photo.downloadUrl.includes('?') ? '&' : '?'}_cb=${bust}` : photo.downloadUrl;
 
   return (
     <div
@@ -101,22 +166,61 @@ function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: Lightbo
       {/* ── Left: image area ── */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-black/60 shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2 bg-black/60 shrink-0">
+          {/* Close */}
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white transition-colors p-1 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="text-white/80 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg"
             aria-label="Close lightbox"
           >
             <X size={20} />
           </button>
-          <span className="text-white/60 text-sm">
+
+          {/* Counter */}
+          <span className="text-white/50 text-sm flex-1 text-center">
             {index + 1} / {photos.length}
           </span>
-          {photo.status === 'locked' && (
-            <div className="flex items-center gap-1 text-amber-400 text-xs font-medium">
-              <Lock size={12} /> Locked
-            </div>
+
+          {/* Locked badge */}
+          {isLocked && (
+            <span className="flex items-center gap-1 text-amber-400 text-xs font-medium px-2 py-1 bg-amber-400/10 rounded-lg">
+              <Lock size={11} /> Locked
+            </span>
           )}
+
+          {/* Edit — only for unlocked photos */}
+          {!isLocked && (
+            <button
+              onClick={() => onEdit(photo)}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="Edit photo"
+              title="Edit photo"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
+
+          {/* Download */}
+          <a
+            href={`/api/lens/photos/${photo.id}/download`}
+            download
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Download photo"
+            title="Download original"
+          >
+            <Download size={16} />
+          </a>
+
+          {/* Delete — disabled for locked */}
+          <button
+            onClick={() => onDelete(photo)}
+            disabled={isLocked}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-40"
+            aria-label={isLocked ? 'Locked photos cannot be deleted' : 'Delete photo'}
+            title={isLocked ? 'Locked — cannot delete' : 'Delete'}
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
 
         {/* Image + prev/next */}
@@ -132,8 +236,8 @@ function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: Lightbo
           )}
 
           <img
-            key={photo.downloadUrl}
-            src={photo.downloadUrl}
+            key={`${photo.id}-${bust ?? 0}`}
+            src={imgSrc}
             alt={photoLabel(photo)}
             className="max-w-full max-h-full object-contain"
             style={{ maxHeight: 'calc(100vh - 120px)' }}
@@ -221,8 +325,17 @@ function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: Lightbo
 
           {/* Actions */}
           <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+            {!isLocked && (
+              <button
+                type="button"
+                onClick={() => onEdit(photo)}
+                className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
+              >
+                <Pencil size={14} /> Edit photo
+              </button>
+            )}
             <a
-              href={photo.downloadUrl}
+              href={`/api/lens/photos/${photo.id}/download`}
               download
               className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors"
             >
@@ -235,6 +348,15 @@ function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: Lightbo
                 className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg border border-white/20 hover:bg-white/10 text-white/80 text-sm font-medium transition-colors"
               >
                 <Briefcase size={14} /> Open Job
+              </button>
+            )}
+            {!isLocked && (
+              <button
+                type="button"
+                onClick={() => onDelete(photo)}
+                className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg border border-red-500/30 hover:bg-red-500/20 text-red-400 text-sm font-medium transition-colors"
+              >
+                <Trash2 size={14} /> Delete
               </button>
             )}
           </div>
@@ -277,15 +399,26 @@ function Lightbox({ photos, index, onClose, onPrev, onNext, onOpenJob }: Lightbo
 interface PhotoCardProps {
   photo: LensPhoto;
   onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
   selectionMode: boolean;
   selected: boolean;
   onToggleSelect: (id: number) => void;
+  /** Cache-bust counter — increment after edit to force thumbnail reload */
+  cacheBust: number;
 }
 
-function PhotoCard({ photo, onOpen, selectionMode, selected, onToggleSelect }: PhotoCardProps) {
+function PhotoCard({ photo, onOpen, onEdit, onDelete, selectionMode, selected, onToggleSelect, cacheBust }: PhotoCardProps) {
   const [imgError, setImgError] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isLocked = photo.status === 'locked';
+
+  const thumbSrc = cacheBust
+    ? `${photo.thumbnailUrl}${photo.thumbnailUrl.includes('?') ? '&' : '?'}_cb=${cacheBust}`
+    : photo.thumbnailUrl;
 
   function handleClick() {
+    if (menuOpen) return;
     if (selectionMode) onToggleSelect(photo.id);
     else onOpen();
   }
@@ -303,7 +436,8 @@ function PhotoCard({ photo, onOpen, selectionMode, selected, onToggleSelect }: P
         </div>
       ) : (
         <img
-          src={photo.thumbnailUrl}
+          key={`${photo.id}-${cacheBust}`}
+          src={thumbSrc}
           alt={photoLabel(photo)}
           loading="lazy"
           className={`w-full h-full object-cover transition-transform duration-200 ${
@@ -314,7 +448,7 @@ function PhotoCard({ photo, onOpen, selectionMode, selected, onToggleSelect }: P
       )}
 
       {/* Lock badge */}
-      {photo.status === 'locked' && (
+      {isLocked && (
         <div className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 pointer-events-none">
           <Lock size={9} />
         </div>
@@ -327,8 +461,62 @@ function PhotoCard({ photo, onOpen, selectionMode, selected, onToggleSelect }: P
           <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded flex items-center justify-center ${
             selected ? 'bg-violet-600 text-white' : 'bg-white/80 text-slate-400 border border-slate-300'
           }`}>
-            {selected ? <CheckSquare size={12} /> : <CheckSquare size={12} className="opacity-0" />}
+            <CheckSquare size={12} className={selected ? '' : 'opacity-0'} />
           </div>
+        </div>
+      )}
+
+      {/* Three-dot menu — shown on hover (desktop) or always visible (touch) */}
+      {!selectionMode && (
+        <div className="absolute top-1 right-1">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity touch:opacity-100"
+            aria-label="Photo actions"
+          >
+            <MoreVertical size={13} />
+          </button>
+
+          {menuOpen && (
+            <>
+              {/* Backdrop to close */}
+              <div
+                className="fixed inset-0 z-10"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}
+              />
+              <div
+                className="absolute top-8 right-0 z-20 bg-white rounded-xl shadow-xl border border-slate-200 py-1 min-w-[130px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setMenuOpen(false); onOpen(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors min-h-[44px]"
+                >
+                  <Download size={14} className="text-slate-400" /> View
+                </button>
+                {!isLocked && (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); onEdit(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors min-h-[44px]"
+                  >
+                    <Pencil size={14} className="text-slate-400" /> Edit
+                  </button>
+                )}
+                {!isLocked && (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); onDelete(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors min-h-[44px]"
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -388,6 +576,16 @@ export default function LensPage() {
   // Lightbox — tracks photo + context array (for grouped views)
   const [lightboxPhotos, setLightboxPhotos] = useState<LensPhoto[]>([]);
   const [lightboxIndex,  setLightboxIndex]  = useState<number | null>(null);
+
+  // Editor
+  const [editorPhoto, setEditorPhoto] = useState<LensPhoto | null>(null);
+  /** Per-photo cache-bust counter — incremented after a successful edit */
+  const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
+
+  // Delete confirmation
+  const [deleteTarget,  setDeleteTarget]  = useState<LensPhoto | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
+  const [deleteError,   setDeleteError]   = useState<string | null>(null);
 
   // Upload sheet — optional pre-seeded job
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
@@ -507,6 +705,108 @@ export default function LensPage() {
     (i !== null && i < lightboxPhotos.length - 1 ? i + 1 : i)
   );
 
+  // ── Edit handlers ──────────────────────────────────────────────────────────
+  function handleEditPhoto(photo: LensPhoto) {
+    // Close lightbox first so the editor renders on top cleanly
+    setLightboxIndex(null);
+    setLightboxPhotos([]);
+    setEditorPhoto(photo);
+  }
+
+  function buildEditorConfig(photo: LensPhoto): EditorConfig {
+    return {
+      imageUrl:  photo.downloadUrl,
+      photoId:   photo.id,
+      label:     photo.label,
+      createdAt: photo.createdAt,
+      isLocked:  photo.status === 'locked',
+      canEdit:   photo.status !== 'locked',
+      jobName:   photo.jobName ?? undefined,
+      jobNumber: photo.jobNumber ?? undefined,
+
+      onClose: () => setEditorPhoto(null),
+
+      onSaveLabel: async (label) => {
+        const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label }),
+        });
+        if (!res.ok) throw new Error('Failed to save label');
+        // Refresh gallery so label change is reflected
+        fetchPhotos(1, true);
+      },
+
+      onSaveAndLock: async (blob) => {
+        const fd = new FormData();
+        fd.append('photo', blob, 'edited.jpg');
+        const replaceRes = await fetch(
+          `/api/jobs/${photo.jobId}/photos/${photo.id}/replace`,
+          { method: 'POST', credentials: 'include', body: fd },
+        );
+        if (!replaceRes.ok) {
+          const body = await replaceRes.json().catch(() => ({})) as { error?: string };
+          throw new Error(body.error ?? 'Replace failed');
+        }
+        const lockRes = await fetch(
+          `/api/jobs/${photo.jobId}/photos/${photo.id}/lock`,
+          { method: 'POST', credentials: 'include' },
+        );
+        if (!lockRes.ok) {
+          const body = await lockRes.json().catch(() => ({})) as { error?: string };
+          throw new Error(body.error ?? 'Lock failed');
+        }
+      },
+
+      onSaved: () => {
+        // Bust thumbnail cache for this photo
+        setCacheBust((prev) => ({ ...prev, [photo.id]: Date.now() }));
+        // Refresh gallery to pick up new status/label
+        fetchPhotos(1, true);
+        setEditorPhoto(null);
+      },
+    };
+  }
+
+  // ── Delete handlers ────────────────────────────────────────────────────────
+  function handleRequestDelete(photo: LensPhoto) {
+    if (photo.status === 'locked') return; // guard — UI should prevent this
+    setDeleteError(null);
+    setDeleteTarget(photo);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(
+        `/api/jobs/${deleteTarget.jobId}/photos/${deleteTarget.id}`,
+        { method: 'DELETE', credentials: 'include' },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      // Remove from local state immediately
+      setPhotos((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setTotal((t) => Math.max(0, t - 1));
+      // Close lightbox if the deleted photo was open
+      setLightboxPhotos((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setLightboxIndex((i) => {
+        if (i === null) return null;
+        // If we deleted the last photo in context, close; otherwise clamp
+        return i >= (lightboxPhotos.length - 1) ? Math.max(0, i - 1) : i;
+      });
+      setDeleteTarget(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   // ── Selection ─────────────────────────────────────────────────────────────
   function handleToggleSelect(id: number) {
     setSelectedIds((prev) => {
@@ -559,15 +859,53 @@ export default function LensPage() {
       />
 
       {/* Lightbox */}
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && lightboxPhotos.length > 0 && (
         <Lightbox
           photos={lightboxPhotos}
           index={lightboxIndex}
+          cacheBust={cacheBust}
           onClose={closeLightbox}
           onPrev={prevPhoto}
           onNext={nextPhoto}
           onOpenJob={handleOpenJob}
+          onEdit={handleEditPhoto}
+          onDelete={handleRequestDelete}
+          onPhotoUpdated={() => fetchPhotos(1, true)}
         />
+      )}
+
+      {/* Photo editor — full-screen, z-[80] (above lightbox z-50) */}
+      {editorPhoto && (
+        <PhotoEditor
+          config={buildEditorConfig(editorPhoto)}
+          onClose={() => setEditorPhoto(null)}
+          onSaved={() => {
+            setCacheBust((prev) => ({ ...prev, [editorPhoto.id]: Date.now() }));
+            fetchPhotos(1, true);
+            setEditorPhoto(null);
+          }}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <DeleteConfirm
+          photo={deleteTarget}
+          onConfirm={() => void handleConfirmDelete()}
+          onCancel={() => { setDeleteTarget(null); setDeleteError(null); }}
+          deleting={deleting}
+        />
+      )}
+
+      {/* Delete error toast */}
+      {deleteError && (
+        <div className="fixed bottom-24 inset-x-4 z-50 flex items-center gap-2 bg-red-600 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl max-w-sm mx-auto">
+          <AlertCircle size={15} className="shrink-0" />
+          <span className="flex-1">{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="shrink-0 text-white/70 hover:text-white">
+            <X size={14} />
+          </button>
+        </div>
       )}
 
       <div
@@ -761,9 +1099,12 @@ export default function LensPage() {
                   key={photo.id}
                   photo={photo}
                   onOpen={() => openLightbox(photo, photos)}
+                  onEdit={() => handleEditPhoto(photo)}
+                  onDelete={() => handleRequestDelete(photo)}
                   selectionMode={selectionMode}
                   selected={selectedIds.has(photo.id)}
                   onToggleSelect={handleToggleSelect}
+                  cacheBust={cacheBust[photo.id] ?? 0}
                 />
               ))}
             </div>
