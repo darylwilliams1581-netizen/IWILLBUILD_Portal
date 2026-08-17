@@ -23,6 +23,7 @@ import {
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import DriveFleetPickerSheet from '@/components/fleet/DriveFleetPickerSheet';
 import {
   fetchFleet,
   createAsset,
@@ -283,6 +284,7 @@ export default function FleetPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
+  const [showDrivePicker, setShowDrivePicker] = useState(false);
   const [successName, setSuccessName] = useState('');
   const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
@@ -503,7 +505,7 @@ export default function FleetPage() {
               {/* ── Quick-launch: Drive + Vehicle Prestart ── */}
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => navigate('/driver')}
+                  onClick={() => setShowDrivePicker(true)}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors active:scale-95"
                 >
                   <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
@@ -669,6 +671,12 @@ export default function FleetPage() {
             />
           )}
         </AnimatePresence>
+
+        {/* Drive Fleet Picker */}
+        <DriveFleetPickerSheet
+          open={showDrivePicker}
+          onClose={() => setShowDrivePicker(false)}
+        />
       </div>
 
         {/* ── No more floating bottom bar — controls moved to header ── */}
