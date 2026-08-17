@@ -500,6 +500,31 @@ export default function FleetPage() {
                 ))}
               </div>
 
+              {/* ── Quick-launch: Drive + Vehicle Prestart ── */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate('/driver')}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors active:scale-95"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <Navigation size={22} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight">Drive</span>
+                  <span className="text-xs font-normal text-white/80 leading-tight text-center">Start a driving session</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/prestart')}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors active:scale-95"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <Truck size={22} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight">Vehicle Prestart</span>
+                  <span className="text-xs font-normal text-white/80 leading-tight text-center">Vehicle inspection check</span>
+                </button>
+              </div>
+
               {/* Search */}
               <div className="relative">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
