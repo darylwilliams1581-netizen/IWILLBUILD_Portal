@@ -16,6 +16,7 @@ const MODULES = [
   { href: '/studio/fleet',     label: 'Fleet',      desc: 'Prestarts, service logs and flags' },
   { href: '/studio/accounts',  label: 'Accounts',   desc: 'Xero and QuickBooks sync' },
   { href: '/studio',           label: 'Studio',     desc: 'Documents and safety packs' },
+  { href: '/lens',             label: 'Lens',       desc: 'Browse all job photos in one place' },
 ];
 
 export default function Header() {

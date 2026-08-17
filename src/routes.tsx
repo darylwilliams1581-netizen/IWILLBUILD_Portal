@@ -88,6 +88,7 @@ const AssetManagerPage       = lazy(() => import('./pages/asset-manager'));
 const AssetManagerDetailPage = lazy(() => import('./pages/asset-manager-detail'));
 const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
 const PhotoSharePage         = lazy(() => import('./pages/photo-share'));
+const LensPage               = lazy(() => import('./pages/lens'));
 const JobNotesPage           = lazy(() => import('./pages/job-notes-page'));
 const JobDelaysPage          = lazy(() => import('./pages/job-delays-page'));
 const JobFormsPage           = lazy(() => import('./pages/job-forms-page'));
@@ -277,6 +278,8 @@ export const routes: RouteObject[] = [
   { path: '/share/asset-report/:token',      element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
   // Public job photo gallery — token-validated, no login required
   { path: '/photos/share/:token',            element: <Suspense fallback={<PageLoader />}><PhotoSharePage /></Suspense>, errorElement: routeError },
+  // Lens — company-wide photo gallery (Phase 1: read-only)
+  { path: '/lens', element: protect(<LensPage />), errorElement: routeError },
   // Sign-in history
   { path: '/signin-history',             element: protect(<SignInHistoryPage />),       errorElement: routeError },
   // Standalone form instance
