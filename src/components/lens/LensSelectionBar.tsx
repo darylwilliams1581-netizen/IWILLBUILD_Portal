@@ -26,8 +26,8 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  Download, X, CheckSquare, Briefcase, Square,
-  Loader2, CheckCircle2, AlertCircle, ChevronRight,
+  Download, X, CheckSquare, Square,
+  Loader2, CheckCircle2, AlertCircle,
   HardHat, Layers,
 } from 'lucide-react';
 import LensJobPickerSheet, { type LensJobOption } from './LensJobPickerSheet';
@@ -341,12 +341,12 @@ export default function LensSelectionBar({
           )}
         </AnimatePresence>
 
-        {/* Main bar */}
-        <div className="max-w-screen-2xl mx-auto px-3 py-2 flex items-center gap-2 overflow-x-auto">
+        {/* Main bar — icons only, no text labels */}
+        <div className="max-w-screen-2xl mx-auto px-3 py-2 flex items-center gap-1.5">
           {/* Count badge */}
-          <div className="flex items-center gap-1.5 shrink-0 bg-violet-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg min-h-[36px]">
+          <div className="flex items-center gap-1 shrink-0 bg-violet-600 text-white text-xs font-bold px-2 py-1.5 rounded-lg min-h-[36px] min-w-[44px] justify-center">
             <CheckSquare size={13} />
-            {count.toLocaleString()} selected
+            <span>{count}</span>
           </div>
 
           {/* Download / Export */}
@@ -354,38 +354,37 @@ export default function LensSelectionBar({
             type="button"
             onClick={() => void handleExport()}
             disabled={count === 0 || exportState === 'exporting'}
-            className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors shrink-0"
+            className="flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white transition-colors shrink-0"
             title={count === 1 ? 'Download photo' : 'Export as ZIP'}
+            aria-label={count === 1 ? 'Download photo' : 'Export as ZIP'}
           >
             {exportState === 'exporting' ? (
-              <Loader2 size={14} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin" />
             ) : (
-              <Download size={14} />
+              <Download size={16} />
             )}
-            {count <= 1 ? 'Download' : 'Export ZIP'}
           </button>
 
           {/* Select visible */}
           <button
             type="button"
             onClick={handleSelectVisible}
-            className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors shrink-0"
+            className="flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-xl border border-border text-foreground hover:bg-muted transition-colors shrink-0"
             title="Select all visible photos"
+            aria-label="Select all visible photos"
           >
-            <Square size={13} />
-            Select visible
+            <Square size={16} />
           </button>
 
           {/* Select whole job */}
           <button
             type="button"
             onClick={() => setJobPickerOpen(true)}
-            className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors shrink-0"
+            className="flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-xl border border-border text-foreground hover:bg-muted transition-colors shrink-0"
             title="Export all photos for a job"
+            aria-label="Export all photos for a job"
           >
-            <HardHat size={13} />
-            Whole job
-            <ChevronRight size={11} className="text-muted-foreground" />
+            <HardHat size={16} />
           </button>
 
           {/* Clear */}
@@ -393,11 +392,11 @@ export default function LensSelectionBar({
             <button
               type="button"
               onClick={() => onSetSelection(new Set())}
-              className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+              className="flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
               title="Clear selection"
+              aria-label="Clear selection"
             >
-              <X size={13} />
-              Clear
+              <X size={16} />
             </button>
           )}
 
@@ -405,10 +404,11 @@ export default function LensSelectionBar({
           <button
             type="button"
             onClick={onCancel}
-            className="ml-auto flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+            className="ml-auto flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
             title="Exit selection mode"
+            aria-label="Exit selection mode"
           >
-            Cancel
+            <X size={18} className="text-foreground" />
           </button>
         </div>
       </div>
