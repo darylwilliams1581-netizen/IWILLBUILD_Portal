@@ -727,7 +727,9 @@ import scheduler_jobs_id_reschedule_patch_646 from "./api/scheduler/jobs/[id]/re
 import scheduler_tasks_get_647 from "./api/scheduler/tasks/GET";
 import secure_share_get_648 from "./api/secure-share/GET";
 import secure_share_post_649 from "./api/secure-share/POST";
+import secure_share_active_get from "./api/secure-share/active/GET";
 import secure_share_id_delete_650 from "./api/secure-share/[id]/DELETE";
+import secure_share_id_revoke_rotate_post from "./api/secure-share/[id]/revoke-and-rotate/POST";
 import secure_share_token_get_651 from "./api/secure-share/[token]/GET";
 import secure_share_token_post_652 from "./api/secure-share/[token]/POST";
 import secure_share_token_content_get from "./api/secure-share/[token]/content/GET";
@@ -1632,6 +1634,8 @@ async function runStartupMigrations() {
     { table: 'fleet_usage_logs', column: 'meter_start',           definition: 'INT NULL' },
     { table: 'fleet_usage_logs', column: 'meter_end',             definition: 'INT NULL' },
     { table: 'fleet_usage_logs', column: 'actor_type',            definition: "VARCHAR(30) NOT NULL DEFAULT 'employee'" },
+    // secure_share_links — token_encrypted added for at-rest URL recovery
+    { table: 'secure_share_links', column: 'token_encrypted',     definition: 'TEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -3753,7 +3757,9 @@ app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_pat
 app.get("/api/scheduler/tasks", scheduler_tasks_get_647);
 app.get("/api/secure-share", secure_share_get_648);
 app.post("/api/secure-share", secure_share_post_649);
+app.get("/api/secure-share/active", secure_share_active_get);
 app.delete("/api/secure-share/:id", secure_share_id_delete_650);
+app.post("/api/secure-share/:id/revoke-and-rotate", secure_share_id_revoke_rotate_post);
 app.get("/api/secure-share/:token", secure_share_token_get_651);
 app.post("/api/secure-share/:token", secure_share_token_post_652);
 // Public token-scoped content delivery (view/download PDF — no login required)
