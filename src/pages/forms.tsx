@@ -479,6 +479,7 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
 
 interface Submission {
   id: number;
+  source: 'internal' | 'public';
   template_id: number;
   template_name: string;
   form_type: string;
@@ -488,31 +489,37 @@ interface Submission {
   job_name: string | null;
   job_number: string | null;
   status: string;
-  submitted_at: string;
+  completed_at: string;
   answers_json: string | null;
+  form_route: string | null;
 }
 
 function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
-  const [submissions,  setSubmissions]  = useState<Submission[]>([]);
-  const [loading,      setLoading]      = useState(true);
+  const [submissions,    setSubmissions]    = useState<Submission[]>([]);
+  const [total,          setTotal]          = useState(0);
+  const [loading,        setLoading]        = useState(true);
   const [templateFilter, setTemplateFilter] = useState('');
-  const [expanded,     setExpanded]     = useState<Set<number>>(new Set());
+  const [expanded,       setExpanded]       = useState<Set<number|string>>(new Set());
 
   useEffect(() => {
+    setLoading(true);
     const url = templateFilter
       ? `/api/forms/submissions?templateId=${templateFilter}`
       : '/api/forms/submissions';
     fetch(url, { credentials: 'include' })
       .then(r => r.json())
-      .then((d: { submissions?: Submission[] }) => setSubmissions(d.submissions ?? []))
+      .then((d: { submissions?: Submission[]; total?: number }) => {
+        setSubmissions(d.submissions ?? []);
+        setTotal(d.total ?? 0);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [templateFilter]);
 
-  function toggleExpand(id: number) {
+  function toggleExpand(key: number | string) {
     setExpanded(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   }
@@ -526,13 +533,13 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
       <div className="flex items-center gap-3 flex-wrap">
         <select
           value={templateFilter}
-          onChange={e => { setTemplateFilter(e.target.value); setLoading(true); }}
+          onChange={e => setTemplateFilter(e.target.value)}
           className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">All templates</option>
           {templates.map(t => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
         </select>
-        <span className="text-xs text-slate-400">{submissions.length} response{submissions.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-slate-400">{total} completed form{total !== 1 ? 's' : ''}</span>
       </div>
 
       {loading ? (
@@ -544,72 +551,100 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
           <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4">
             <Inbox size={24} className="text-primary" />
           </div>
-          <p className="font-heading font-bold text-slate-700 mb-1">No submissions yet</p>
-          <p className="text-sm text-slate-400 max-w-xs">Share a form link with workers or clients to start collecting responses.</p>
+          <p className="font-heading font-bold text-slate-700 mb-1">No completed Forms yet</p>
+          <p className="text-sm text-slate-400 max-w-xs">Completed Job Forms and public Form responses will appear here.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {submissions.map(s => {
-            const isOpen = expanded.has(s.id);
+            const rowKey = `${s.source}-${s.id}`;
+            const isOpen = expanded.has(rowKey);
             let answers: Record<string, unknown> = {};
             try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
             const answerCount = Object.keys(answers).length;
+            const isInternal = s.source === 'internal';
 
             return (
-              <div key={s.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
+              <div key={rowKey} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
                 <div
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-                  onClick={() => toggleExpand(s.id)}
+                  onClick={() => toggleExpand(rowKey)}
                 >
-                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                    <User size={14} className="text-violet-700" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isInternal ? 'bg-blue-100' : 'bg-violet-100'}`}>
+                    <User size={14} className={isInternal ? 'text-blue-700' : 'text-violet-700'} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">
-                      {s.submitter_name ?? 'Anonymous'}
-                      {s.submitter_email && <span className="text-slate-400 font-normal ml-2 text-xs">{s.submitter_email}</span>}
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-slate-800 truncate">
+                        {s.submitter_name ?? 'Anonymous'}
+                        {s.submitter_email && <span className="text-slate-400 font-normal ml-2 text-xs">{s.submitter_email}</span>}
+                      </p>
+                      {/* Source badge */}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        isInternal
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'bg-violet-50 text-violet-700'
+                      }`}>
+                        {isInternal ? 'Internal Form' : 'Public Response'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400 mt-0.5">
                       <span className="font-medium text-slate-600">{s.template_name}</span>
-                      {s.job_name && <span>· {s.job_name}{s.job_number ? ` #${s.job_number}` : ''}</span>}
-                      <span className="flex items-center gap-1"><Calendar size={9} />{fmtDate(s.submitted_at)}</span>
-                      <span>{answerCount} answer{answerCount !== 1 ? 's' : ''}</span>
+                      {s.job_name
+                        ? <span>· {s.job_number ? `#${s.job_number} ` : ''}{s.job_name}</span>
+                        : <span className="italic">· No job</span>
+                      }
+                      <span className="flex items-center gap-1"><Calendar size={9} />{fmtDate(s.completed_at)}</span>
+                      {!isInternal && <span>{answerCount} answer{answerCount !== 1 ? 's' : ''}</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.status}</span>
+                    {/* Open Form button for internal submissions */}
+                    {isInternal && s.form_route && (
+                      <a
+                        href={s.form_route}
+                        onClick={e => e.stopPropagation()}
+                        className="flex items-center gap-1 text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors"
+                      >
+                        <ExternalLink size={10} /> Open Form
+                      </a>
+                    )}
                     {isOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
                   </div>
                 </div>
 
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
-                        {answerCount === 0 ? (
-                          <p className="text-xs text-slate-400 italic">No answers recorded</p>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {Object.entries(answers).map(([fieldId, answer]) => (
-                              <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
-                                <p className="text-xs text-slate-700 break-words">
-                                  {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Expanded answers — public responses only */}
+                {!isInternal && (
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
+                          {answerCount === 0 ? (
+                            <p className="text-xs text-slate-400 italic">No answers recorded</p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Object.entries(answers).map(([fieldId, answer]) => (
+                                <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
+                                  <p className="text-xs text-slate-700 break-words">
+                                    {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
               </div>
             );
           })}
