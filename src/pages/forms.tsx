@@ -672,7 +672,9 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
               return (
                 <div
                   key={rowKey}
-                  className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+                  className={`bg-white border border-slate-200 rounded-xl overflow-hidden transition-colors ${
+                    canOpen ? 'cursor-pointer hover:border-primary/40 hover:bg-violet-50/30 active:bg-violet-50' : ''
+                  }`}
                   onClick={canOpen ? (e) => openForm(s, e) : undefined}
                   role={canOpen ? 'button' : undefined}
                   tabIndex={canOpen ? 0 : undefined}
@@ -712,17 +714,8 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
                       {fmtDate(s.completed_at)}
                     </p>
 
-                    {/* Row 5: Open Form CTA (internal) or expand toggle (public) */}
-                    {canOpen ? (
-                      <button
-                        onClick={e => openForm(s, e)}
-                        className="mt-1 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-primary bg-violet-50 hover:bg-violet-100 active:bg-violet-200 rounded-lg py-2.5 transition-colors min-h-[44px]"
-                        aria-label={`Open form: ${s.template_name}`}
-                      >
-                        <ExternalLink size={13} />
-                        Open Form
-                      </button>
-                    ) : (
+                    {/* Row 5: public expand toggle only — internal cards are fully tappable */}
+                    {!canOpen && (
                       <button
                         onClick={e => { e.stopPropagation(); togglePublicExpand(rowKey); }}
                         className="mt-1 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg py-2.5 transition-colors min-h-[44px]"
@@ -784,7 +777,6 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Source</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Completed</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -828,19 +820,6 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 whitespace-nowrap">
                           {s.status}
                         </span>
-                      </td>
-                      {/* Action */}
-                      <td className="px-4 py-3 text-right">
-                        {canOpen && (
-                          <button
-                            onClick={e => openForm(s, e)}
-                            className="flex items-center gap-1 text-xs font-bold text-primary px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors whitespace-nowrap min-h-[32px]"
-                            aria-label={`Open form: ${s.template_name}`}
-                          >
-                            <ExternalLink size={11} />
-                            Open Form
-                          </button>
-                        )}
                       </td>
                     </tr>
                   );
@@ -937,9 +916,9 @@ export function FormsPage() {
   // Initialise from ?tab= query param so returnTo links land on the right tab.
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const validTabs = ['forms', 'submissions', 'library'] as const;
+  const validTabs = ['submissions', 'forms', 'library'] as const;
   type TabId = typeof validTabs[number];
-  const initialTab: TabId = validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : 'forms';
+  const initialTab: TabId = validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : 'submissions';
   const [pageTab, setPageTab] = useState<TabId>(initialTab);
 
   const fetchTemplates = useCallback(async () => {
@@ -1067,8 +1046,8 @@ export function FormsPage() {
         {/* Tab switcher */}
         <div className="flex border-b border-slate-200 bg-white px-6 gap-1">
           {([
-            { key: 'forms', label: 'Forms', icon: FileText },
             { key: 'submissions', label: 'Submissions', icon: Inbox },
+            { key: 'forms', label: 'Templates', icon: FileText },
             { key: 'library', label: 'Library', icon: Library },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
