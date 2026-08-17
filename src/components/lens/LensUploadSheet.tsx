@@ -36,6 +36,11 @@ interface LensUploadSheetProps {
   onClose: () => void;
   /** Called after each individual photo is confirmed on the server */
   onPhotoSynced: (serverPhotoId: number) => void;
+  /**
+   * When set, skip the job picker and go straight to the upload panel
+   * for this job. Used by the Group-by-Job view where the job is already known.
+   */
+  initialJob?: LensJobOption | null;
 }
 
 // ── Inner upload panel (shown after job is selected) ─────────────────────────
@@ -210,14 +215,19 @@ function UploadPanel({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function LensUploadSheet({ open, onClose, onPhotoSynced }: LensUploadSheetProps) {
+export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJob }: LensUploadSheetProps) {
   const [selectedJob, setSelectedJob] = useState<LensJobOption | null>(null);
   const [showJobPicker, setShowJobPicker] = useState(false);
 
-  // When the sheet opens, always start at job picker
+  // When the sheet opens, decide whether to show job picker or go straight to upload
   function handleOpen() {
-    setSelectedJob(null);
-    setShowJobPicker(true);
+    if (initialJob) {
+      setSelectedJob(initialJob);
+      setShowJobPicker(false);
+    } else {
+      setSelectedJob(null);
+      setShowJobPicker(true);
+    }
   }
 
   function handleJobSelect(job: LensJobOption) {
@@ -236,9 +246,15 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced }: LensUp
     onClose();
   }
 
-  // Trigger job picker on open
+  // Trigger job picker (or direct upload) on open
   const prevOpen = useRef(false);
   if (open && !prevOpen.current) {
+    handleOpen();
+  }
+  // If initialJob changes while open, re-run handleOpen so the correct job is pre-seeded
+  const prevInitialJobId = useRef<number | null | undefined>(null);
+  if (open && initialJob?.id !== prevInitialJobId.current) {
+    prevInitialJobId.current = initialJob?.id ?? null;
     handleOpen();
   }
   prevOpen.current = open;
