@@ -4,8 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Truck,
-  Plus,
+  Truck,  Plus,
   Search,
   AlertTriangle,
   Loader2,
@@ -19,6 +18,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Navigation,
+  ClipboardCheck,
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -500,6 +500,31 @@ export default function FleetPage() {
                     <div className="text-xs font-semibold text-slate-500 mt-0.5">{s.label}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* ── Quick-launch: Drive + Vehicle Prestart ── */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowDriveModal(true)}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors active:scale-95"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <Navigation size={22} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight">Drive</span>
+                  <span className="text-xs font-normal text-white/80 leading-tight text-center">Start a driving session</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/prestart')}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors active:scale-95"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <ClipboardCheck size={22} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight">Vehicle Prestart</span>
+                  <span className="text-xs font-normal text-white/80 leading-tight text-center">Vehicle inspection check</span>
+                </button>
               </div>
 
               {/* Search */}
