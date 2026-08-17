@@ -567,9 +567,9 @@ export default function LensPage() {
             <div className="flex items-center gap-3">
               {/* Home button */}
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/home')}
                 className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-                aria-label="Go to home"
+                aria-label="Go to dashboard"
               >
                 <Home size={20} />
               </button>
