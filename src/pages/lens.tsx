@@ -19,7 +19,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Search, X, ChevronLeft, ChevronRight,
   Lock, Calendar, Briefcase, ImageOff, Loader2,
-  ExternalLink, Filter, Upload, CheckSquare, Square, Home,
+  ExternalLink, Filter, Upload, CheckSquare, Square, Home, Share2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -601,8 +601,8 @@ export default function LensPage() {
                 />
               </div>
 
-              {/* ── Phase 2: Upload + Camera action buttons ── */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* ── Phase 2: Upload + Camera action buttons — desktop only, bottom bar handles mobile ── */}
+              <div className="hidden md:flex items-center gap-2 shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
@@ -722,7 +722,7 @@ export default function LensPage() {
         {/* ── Gallery ─────────────────────────────────────────────────────── */}
         <div
           className="max-w-screen-2xl mx-auto px-4 py-4"
-          style={{ paddingBottom: selectionMode ? 'calc(env(safe-area-inset-bottom) + 80px)' : undefined }}
+          style={{ paddingBottom: selectionMode ? 'calc(env(safe-area-inset-bottom) + 80px)' : 'calc(max(env(safe-area-inset-bottom), 8px) + 72px)' }}
         >
 
           {/* Error */}
@@ -817,6 +817,60 @@ export default function LensPage() {
           />
         )}
       </div>
+
+      {/* ── Mobile bottom action bar — matches job-photos-page exactly ── */}
+      {!selectionMode && (
+        <div
+          className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200"
+          style={{ overflowX: 'clip' }}
+        >
+          <div
+            className="flex items-center justify-around px-4 pt-2"
+            style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}
+          >
+            {/* Upload */}
+            <button
+              onClick={() => setUploadSheetOpen(true)}
+              title="Upload photos from library"
+              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors touch-manipulation"
+            >
+              <Upload size={20} />
+              <span className="text-[9px] font-semibold leading-none">Upload</span>
+            </button>
+
+            {/* Camera — purple, bigger */}
+            <button
+              onClick={() => setCameraJobPickerOpen(true)}
+              title="Take a photo"
+              className="flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-2xl bg-primary hover:bg-violet-700 text-white shadow-lg shadow-primary/30 transition-colors touch-manipulation"
+              aria-label="Take a photo"
+            >
+              <Camera size={24} />
+              <span className="text-[9px] font-semibold leading-none">Camera</span>
+            </button>
+
+            {/* Select */}
+            <button
+              onClick={handleEnterSelectionMode}
+              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors touch-manipulation"
+            >
+              <CheckSquare size={20} />
+              <span className="text-[9px] font-semibold leading-none">Select</span>
+            </button>
+
+            {/* Share — enters selection mode focused on export */}
+            <button
+              onClick={handleEnterSelectionMode}
+              disabled={total === 0}
+              className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation"
+              title="Select photos to share"
+            >
+              <Share2 size={20} />
+              <span className="text-[9px] font-semibold leading-none">Share</span>
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
