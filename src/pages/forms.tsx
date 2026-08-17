@@ -1059,15 +1059,6 @@ export function FormsPage() {
           </div>
           <div className="flex items-center gap-2">
             <>
-              <button
-                onClick={handleSeed}
-                disabled={seeding}
-                title="Load 7 industry-standard form templates"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
-                <span className="hidden sm:inline">Load Templates</span>
-              </button>
               {/* Fill Form — primary action: pick template then job */}
               <button
                 onClick={() => setFillFormPickerOpen(true)}
