@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
   Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
-  MoreHorizontal,
+  MoreHorizontal, ClipboardCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
@@ -890,6 +890,8 @@ export function FormsPage() {
   const [jobPickerTemplate, setJobPickerTemplate] = useState<FormTemplate | null>(null);
   const [jobPickerError, setJobPickerError] = useState('');
   const [jobPickerLoading, setJobPickerLoading] = useState(false);
+  // Fill Form — template picker (shown before the job picker when triggered from header)
+  const [fillFormPickerOpen, setFillFormPickerOpen] = useState(false);
   // Job selector state
   type JobOption = { id: number; job_number: string | null; title: string; client: string | null };
   const [jobOptions, setJobOptions] = useState<JobOption[]>([]);
@@ -1066,11 +1068,21 @@ export function FormsPage() {
                 {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
                 <span className="hidden sm:inline">Load Templates</span>
               </button>
+              {/* Fill Form — primary action: pick template then job */}
+              <button
+                onClick={() => setFillFormPickerOpen(true)}
+                disabled={templates.length === 0}
+                title={templates.length === 0 ? 'Create a template first' : 'Fill out a form'}
+                className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+              >
+                <ClipboardCheck size={15} /> Fill Form
+              </button>
+              {/* New Template — secondary action */}
               <button
                 onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary"
+                className="inline-flex items-center gap-2 text-sm font-bold text-primary px-4 py-2 rounded-xl transition-all hover:bg-violet-50 border border-primary min-h-[44px]"
               >
-                <Plus size={15} /> New Form
+                <Plus size={15} /><span className="hidden sm:inline">+ New Template</span><span className="sm:hidden">Template</span>
               </button>
             </>
           </div>
@@ -1221,6 +1233,58 @@ export function FormsPage() {
             sourceType="form"
             onClose={() => setLibraryShareTarget(null)}
           />
+        )}
+
+        {/* ── Fill Form — template picker (step 1 of 2) ── */}
+        {fillFormPickerOpen && (
+          <motion.div
+            key="fill-form-picker-backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setFillFormPickerOpen(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-heading font-bold text-base text-slate-900">Fill Form</h2>
+                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">Select a template to complete.</p>
+                </div>
+                <button
+                  onClick={() => setFillFormPickerOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors shrink-0"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto -mx-1 px-1">
+                {templates.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setFillFormPickerOpen(false);
+                      void handleComplete(t.id);
+                    }}
+                    className="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl border border-slate-200 hover:border-primary hover:bg-violet-50 transition-colors group min-h-[44px]"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-violet-50 group-hover:bg-violet-100 flex items-center justify-center shrink-0 transition-colors">
+                      <FileText size={14} className="text-primary" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-800 truncate flex-1">{t.name}</span>
+                    <ChevronDown size={13} className="text-slate-400 -rotate-90 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* ── Job number picker for standalone form completion ── */}
