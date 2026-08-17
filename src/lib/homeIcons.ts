@@ -23,7 +23,7 @@ import {
   CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
-  BookMarked, Zap,
+  BookMarked, Zap, Images,
 } from 'lucide-react';
 
 // Camera, LogIn, Car, ClipboardCheck, LayoutDashboard, HardHat kept in imports
@@ -90,6 +90,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'stakeholders',  label: 'Contacts',         icon: Users,            href: '/customers',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'jobs',          label: 'Jobs',             icon: HardHat,          href: '/jobs',                       bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'fleet',         label: 'Fleet',            icon: Truck,            href: '/fleet',                      bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
+  { key: 'lens',          label: 'Lens',             icon: Images,           href: '/lens',                       bg: 'bg-violet-600',  fg: 'text-white', group: 'management' },
   { key: 'ledger',        label: 'Ledger',           icon: BookOpen,         href: '?panel=costs-picker',         bg: 'bg-emerald-600', fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',         icon: Settings,         href: '/settings',                   bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',             icon: UserCircle,       href: '/team',                       bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
