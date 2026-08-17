@@ -1542,7 +1542,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', damping: 30, stiffness: 340 }}
-              className="w-full sm:max-w-sm bg-white sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden shadow-2xl"
+              className="w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl"
               style={{ maxHeight: 'min(680px, calc(100dvh - 60px))' }}
               onClick={e => e.stopPropagation()}
             >
