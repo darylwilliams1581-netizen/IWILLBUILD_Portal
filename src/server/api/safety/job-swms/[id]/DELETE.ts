@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { revokeSharesForSource } from '../../../../lib/share-lifecycle.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -29,6 +30,14 @@ export default async function handler(req: Request, res: Response) {
       sql`SELECT id FROM job_swms WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
     ) as unknown as [Array<{ id: number }>, unknown];
     if (!rows?.length) return res.status(404).json({ error: 'Not found' });
+
+    // Revoke all share links before deleting the source record
+    await revokeSharesForSource({
+      companyId: profile.companyId,
+      targetType: 'swms',
+      targetId: String(id),
+      req,
+    });
 
     await db.execute(sql`DELETE FROM job_swms WHERE id = ${id} AND company_id = ${profile.companyId}`);
     res.json({ ok: true });

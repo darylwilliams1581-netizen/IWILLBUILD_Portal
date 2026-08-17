@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { revokeSharesForSource } from '../../../../lib/share-lifecycle.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -23,6 +24,21 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'Invalid ID' });
+
+    // Verify ownership before revoking shares and deleting
+    const [rows] = await db.execute(
+      sql`SELECT id FROM safety_plans WHERE id = ${id} AND company_id = ${profile.companyId} AND job_id IS NOT NULL LIMIT 1`
+    ) as unknown as [Array<{ id: number }>, unknown];
+    if (!rows?.length) return res.status(404).json({ error: 'Plan not found' });
+
+    // Revoke all share links before deleting the source record
+    await revokeSharesForSource({
+      companyId: profile.companyId,
+      targetType: 'safety_plan',
+      targetId: String(id),
+      req,
+    });
 
     // Only delete job-specific plans (job_id IS NOT NULL)
     await db.execute(sql`
