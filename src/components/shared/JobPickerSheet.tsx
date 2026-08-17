@@ -114,8 +114,10 @@ export default function JobPickerSheet({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed inset-x-4 top-[5vh] z-50 bg-background rounded-2xl shadow-2xl flex flex-col sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-w-[90vw]"
+            className="fixed left-1/2 top-1/2 z-50 bg-background rounded-2xl shadow-2xl flex flex-col w-[calc(100vw-2rem)] sm:w-[480px] sm:max-w-[90vw]"
             style={{
+              translateX: '-50%',
+              translateY: '-50%',
               maxHeight: 'min(90dvh, 640px)',
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
             }}
