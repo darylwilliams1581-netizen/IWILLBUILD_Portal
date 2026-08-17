@@ -5,11 +5,12 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Map, Archive, Layers, Menu, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Map, Archive, Layers, Menu, AlertTriangle, RefreshCw, Upload } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobContextTab from '@/components/JobContextTab';
 import PlanManagerList from '@/components/PlanManager/PlanManagerList';
 import DrawingViewer from '@/components/PlanManager/DrawingViewer';
+import PlanUploadModal from '@/components/PlanManager/PlanUploadModal';
 import { usePlanManager } from '@/components/PlanManager/usePlanManager';
 import type { Drawing } from '@/components/PlanManager/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,6 +31,8 @@ export default function PlanManagerPage() {
   const [unassigned, setUnassigned] = useState<Drawing[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [highlightJobId, setHighlightJobId] = useState<number | null>(null);
   const hook = usePlanManager();
   const { state, loadDrawing, closeDrawing, createShareToken } = hook;
 
@@ -90,6 +93,16 @@ export default function PlanManagerPage() {
     await loadAll(tab);
   }, [closeDrawing, tab, loadAll]);
 
+  // ── Upload success: refresh list, switch to active tab, highlight job ──────
+  const handleUploadSaved = useCallback(async (_drawingId: number, jobId: number) => {
+    setUploadOpen(false);
+    setTab('active');
+    setHighlightJobId(jobId);
+    await loadAll('active');
+    // Clear highlight after 4 s
+    setTimeout(() => setHighlightJobId(null), 4000);
+  }, [loadAll]);
+
   return (
     <>
       <Helmet>
@@ -121,6 +134,16 @@ export default function PlanManagerPage() {
             </div>
 
             <div className="flex-1" />
+
+            {/* Upload Plan — primary action */}
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="flex items-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold transition-colors shrink-0"
+            >
+              <Upload size={15} />
+              <span className="hidden sm:inline">Upload Plan</span>
+              <span className="sm:hidden">Upload</span>
+            </button>
 
             {/* Tabs */}
             <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
@@ -184,10 +207,18 @@ export default function PlanManagerPage() {
             onDelete={handleDelete}
             onReorder={handleReorder}
             onCreateShareToken={createShareToken}
+            highlightJobId={highlightJobId}
           />
           )}
         </div>
       </div>
+
+      {/* Upload Plan modal */}
+      <PlanUploadModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onSaved={(drawingId, jobId) => void handleUploadSaved(drawingId, jobId)}
+      />
 
       {/* Full-screen viewer overlay */}
       {state.selected && (

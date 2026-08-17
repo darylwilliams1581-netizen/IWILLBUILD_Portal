@@ -3,7 +3,7 @@
  * Compact dense rows optimised for 50+ drawings.
  * Inline Share and Email actions open the ShareModal directly.
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -34,6 +34,8 @@ interface Props {
   onDelete: (id: number) => Promise<void>;
   onReorder: (drawingId: number, direction: 'up' | 'down', jobId?: number) => Promise<void>;
   onCreateShareToken: (drawingId: number, revisionId?: number, expiryDays?: number) => Promise<{ token: string; url: string; expiresAt: string } | null>;
+  /** When set, the matching job group is forced open and highlighted */
+  highlightJobId?: number | null;
 }
 
 function formatDate(iso?: string) {
@@ -174,12 +176,14 @@ function DrawingRow({
 
 // ── Job accordion group ───────────────────────────────────────────────────────
 function JobGroupSection({
-  group, tab, defaultOpen,
+  group, tab, defaultOpen, forceOpen, highlight,
   onOpen, onArchive, onRestore, onDelete, onReorder, onShareClick,
 }: {
   group: JobGroup;
   tab: 'active' | 'archived';
   defaultOpen: boolean;
+  forceOpen?: boolean;
+  highlight?: boolean;
   onOpen: (id: number) => void;
   onArchive: (id: number) => Promise<void>;
   onRestore: (id: number) => Promise<void>;
@@ -187,8 +191,16 @@ function JobGroupSection({
   onReorder: (drawingId: number, direction: 'up' | 'down', jobId?: number) => Promise<void>;
   onShareClick: (target: ShareTarget) => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || !!forceOpen);
   const [downloading, setDownloading] = useState(false);
+
+  // Force open when parent signals a new upload to this group
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const prevForceOpen = useRef(forceOpen);
+  useEffect(() => {
+    if (forceOpen && !prevForceOpen.current) setOpen(true);
+    prevForceOpen.current = forceOpen;
+  }, [forceOpen]);
 
   const hasPdfs = group.drawings.some(d => d.source_file_path);
 
@@ -219,7 +231,9 @@ function JobGroupSection({
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+    <div className={`bg-white border rounded-xl overflow-hidden shadow-sm transition-all ${
+      highlight ? 'border-violet-400 ring-2 ring-violet-300' : 'border-slate-200'
+    }`}>
       {/* Job header — compact */}
       <div className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors">
         <button
@@ -299,6 +313,7 @@ function JobGroupSection({
 export default function PlanManagerList({
   jobs, unassigned, loading, tab,
   onOpen, onArchive, onRestore, onDelete, onReorder, onCreateShareToken,
+  highlightJobId,
 }: Props) {
   const [search, setSearch] = useState('');
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
@@ -343,7 +358,7 @@ export default function PlanManagerList({
         <div className="mx-4 mt-3 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
           <AlertCircle size={12} className="text-blue-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-slate-600">
-            Add drawings via the <span className="font-semibold text-slate-800">Drawings tab</span> inside each job. Hover a row to share, email, or archive.
+            Use <span className="font-semibold text-slate-800">Upload Plan</span> to add drawings here, or add them via the Drawings tab inside each job. Hover a row to share, email, or archive.
           </p>
         </div>
       )}
@@ -363,7 +378,7 @@ export default function PlanManagerList({
             </p>
             {!search && tab === 'active' && (
               <p className="text-xs text-slate-400 text-center max-w-xs">
-                Open a job and go to the Drawings tab to add drawings.
+                Use the Upload Plan button above, or open a job and go to the Drawings tab.
               </p>
             )}
             {!search && tab === 'active' && (
@@ -381,6 +396,8 @@ export default function PlanManagerList({
                 group={group}
                 tab={tab}
                 defaultOpen={defaultOpen}
+                forceOpen={highlightJobId === group.jobId}
+                highlight={highlightJobId === group.jobId}
                 onOpen={onOpen}
                 onArchive={onArchive}
                 onRestore={onRestore}
