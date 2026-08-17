@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
-  LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
+  LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
   User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
 } from 'lucide-react';
@@ -264,106 +264,85 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group relative rounded-2xl overflow-hidden flex flex-col bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
+      className="group relative flex items-center gap-3 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all rounded-xl px-3 py-2.5"
     >
-      {/* Top accent bar */}
-      <div className={`h-0.5 w-full ${meta.dot}`} />
+      {/* Left accent stripe */}
+      <div className={`shrink-0 w-1 h-8 rounded-full ${meta.dot}`} />
 
-      {/* Card body */}
-      <div className="flex flex-col gap-3 p-5 flex-1">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="font-heading font-bold text-sm text-slate-900 truncate">{t.name}</p>
-            {t.category && <p className="text-xs text-slate-400 mt-0.5 truncate">{t.category}</p>}
-          </div>
-          <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg ${meta.bg} ${meta.color}`}>
+      {/* Name + meta */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-heading font-bold text-sm text-slate-900 truncate">{t.name}</p>
+          <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md ${meta.bg} ${meta.color}`}>
             {t.formType}
           </span>
         </div>
-
-        {/* Description */}
-        {t.description && (
-          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{t.description}</p>
-        )}
-
-        {/* Status + availability pills */}
-        <div className="flex flex-wrap gap-1.5 mt-auto">
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+        {/* Pills row */}
+        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+          <span className={`text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 ${
             t.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
           }`}>
             {t.isActive ? '● Active' : '○ Inactive'}
           </span>
+          {t.category && (
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 truncate max-w-[120px]">
+              {t.category}
+            </span>
+          )}
           {t.onDashboard && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500 flex items-center gap-1">
-              <LayoutDashboard size={9} /> Dashboard
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 flex items-center gap-0.5">
+              <LayoutDashboard size={8} /> Dash
             </span>
           )}
           {t.onJobs && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500 flex items-center gap-1">
-              <Briefcase size={9} /> Jobs
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 flex items-center gap-0.5">
+              <Briefcase size={8} /> Jobs
             </span>
           )}
           {t.onFleet && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500 flex items-center gap-1">
-              <Truck size={9} /> Fleet
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 flex items-center gap-0.5">
+              <Truck size={8} /> Fleet
             </span>
           )}
         </div>
       </div>
 
-      {/* Action footer */}
-      <div className="flex items-center gap-1 px-4 py-3 border-t border-slate-100 bg-slate-50/60">
+      {/* Actions */}
+      <div className="flex items-center gap-0.5 shrink-0">
         <button
           onClick={onBuild}
-          className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-xl transition-all hover:brightness-110 flex-1 justify-center bg-primary"
+          className="flex items-center gap-1 text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-all hover:brightness-110 bg-primary"
         >
-          <Zap size={12} /> Build fields <ChevronRight size={11} />
+          <Zap size={11} /> Build
         </button>
         {onComplete && (
           <button
             onClick={onComplete}
             disabled={isCompleting}
-            className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-60"
+            className="flex items-center gap-1 text-xs font-bold text-emerald-700 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-60 ml-0.5"
             title="Complete this form"
           >
             {isCompleting
-              ? <><Loader2 size={12} className="animate-spin" /> Opening…</>
-              : <><ExternalLink size={12} /> Complete</>
+              ? <Loader2 size={11} className="animate-spin" />
+              : <ExternalLink size={11} />
             }
           </button>
         )}
-        <button
-          onClick={onShare}
-          className="p-2 rounded-xl text-slate-400 hover:text-violet-700 hover:bg-violet-50 transition-colors"
-          title="Share public link"
-        >
-          <Link2 size={14} />
+        <button onClick={onShare} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-700 hover:bg-violet-50 transition-colors" title="Share public link">
+          <Link2 size={13} />
         </button>
         {onShareToLibrary && (
-          <button
-            onClick={onShareToLibrary}
-            className="p-2 rounded-xl text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-            title="Share to Global Library"
-          >
-            <Library size={14} />
+          <button onClick={onShareToLibrary} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Share to Global Library">
+            <Library size={13} />
           </button>
         )}
-        <button
-          onClick={onEdit}
-          className="p-2 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-200 transition-colors"
-          title="Edit template"
-        >
-          <Pencil size={14} />
+        <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Edit template">
+          <Pencil size={13} />
         </button>
-        <button
-          onClick={onDelete}
-          className="p-2 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-          title="Delete template"
-        >
-          <Trash2 size={14} />
+        <button onClick={onDelete} className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete template">
+          <Trash2 size={13} />
         </button>
       </div>
     </motion.div>
