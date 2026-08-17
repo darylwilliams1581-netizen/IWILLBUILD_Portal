@@ -1155,9 +1155,7 @@ export function FormsPage() {
 
           {/* ── Library tab ── */}
           {pageTab === 'library' && (
-            <div className="-m-6">
-              <LibraryPage initialTypeFilter="form" />
-            </div>
+            <LibraryPage initialTypeFilter="form" />
           )}
         </div>
       </div>
