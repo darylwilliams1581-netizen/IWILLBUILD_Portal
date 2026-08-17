@@ -913,13 +913,12 @@ export default function LensPage() {
       <div
         className="min-h-screen bg-slate-50 lg:pt-[116px]"
         style={{
-          paddingTop:    'env(safe-area-inset-top)',
-          paddingLeft:   'env(safe-area-inset-left)',
-          paddingRight:  'env(safe-area-inset-right)',
+          paddingLeft:  'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
         }}
       >
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
+        <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[116px] z-20">
           <div className="max-w-screen-2xl mx-auto px-3 py-2 flex flex-col gap-1.5">
 
             {/* ── Row 1: home + title + desktop actions ── */}
