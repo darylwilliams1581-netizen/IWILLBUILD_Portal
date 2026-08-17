@@ -558,12 +558,10 @@ function SecureShareViewer({ token }: { token: string }) {
                     </div>
                   </div>
 
-                  {/* View — opens PDF inline in browser (estimate, invoice, completed_form, job_form) */}
+                  {/* View — opens PDF inline in same tab (mobile-safe; no window.open / popup) */}
                   {link.permissions.includes('view') && PDF_SUPPORTED_TYPES.has(link.targetType) && (
                     <a
                       href={contentUrl('view')}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 w-full bg-primary text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
                     >
                       <ExternalLink size={14} />

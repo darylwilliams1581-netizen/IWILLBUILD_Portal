@@ -165,11 +165,33 @@ export default function ShareLinkModal({
     if (open) void fetchActive();
   }, [open, fetchActive]);
 
+  // ── Preview URL rewrite ────────────────────────────────────────────────────
+  // In the Airo preview the server always builds shareUrls with the production
+  // origin (https://iwillbuild.com).  When the current window origin differs
+  // (i.e. we are in the builder preview), rewrite the URL to use the current
+  // origin so the test link and QR open the preview recipient page, not the
+  // published production site.
+  function localiseShareUrl(url: string | null): string | null {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+      if (currentOrigin && parsed.origin !== currentOrigin) {
+        return currentOrigin + parsed.pathname + parsed.search + parsed.hash;
+      }
+    } catch { /* malformed URL — return as-is */ }
+    return url;
+  }
+
+  const isPreview = typeof window !== 'undefined' &&
+    window.location.origin !== 'https://iwillbuild.com';
+
   // Draw QR when URL + panel are ready
   useEffect(() => {
-    const url = displayLink?.shareUrl;
+    const url = localiseShareUrl(displayLink?.shareUrl ?? null);
     if (!url || !showQr || !qrRef.current) return;
     void drawQr(url, qrRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayLink?.shareUrl, showQr]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -324,7 +346,7 @@ export default function ShareLinkModal({
   }
 
   async function handleCopy() {
-    const url = displayLink?.shareUrl;
+    const url = localiseShareUrl(displayLink?.shareUrl ?? null);
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
@@ -482,6 +504,8 @@ export default function ShareLinkModal({
               {(phase === 'existing') && displayLink && (
                 <ExistingLinkView
                   link={displayLink}
+                  displayUrl={localiseShareUrl(displayLink.shareUrl)}
+                  isPreview={isPreview}
                   copied={copied}
                   showQr={showQr}
                   qrRef={qrRef}
@@ -522,6 +546,8 @@ export default function ShareLinkModal({
 
 interface ExistingLinkViewProps {
   link: ActiveLink;
+  displayUrl: string | null;
+  isPreview: boolean;
   copied: boolean;
   showQr: boolean;
   qrRef: React.RefObject<HTMLCanvasElement | null>;
@@ -539,7 +565,7 @@ interface ExistingLinkViewProps {
 }
 
 function ExistingLinkView({
-  link, copied, showQr, qrRef, revoking, rotating, revokeError,
+  link, displayUrl, isPreview, copied, showQr, qrRef, revoking, rotating, revokeError,
   expiryDays, onCopy, onToggleQr, onDownloadQr, onRevoke, onRevokeAndRotate,
   onExpiryChange, formatExpiry,
 }: ExistingLinkViewProps) {
@@ -583,22 +609,29 @@ function ExistingLinkView({
       </div>
 
       {/* URL row */}
-      {link.shareUrl ? (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-600 font-mono truncate">{link.shareUrl}</p>
+      {displayUrl ? (
+        <div className="flex flex-col gap-1.5">
+          {isPreview && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              Preview test link — opens this preview environment. Production uses iwillbuild.com.
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-slate-600 font-mono truncate">{displayUrl}</p>
+            </div>
+            <button
+              onClick={onCopy}
+              className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2.5 rounded-xl border transition-colors ${
+                copied
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              {copied ? <Check size={13} /> : <Copy size={13} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
           </div>
-          <button
-            onClick={onCopy}
-            className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2.5 rounded-xl border transition-colors ${
-              copied
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            {copied ? <Check size={13} /> : <Copy size={13} />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
         </div>
       ) : (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
@@ -611,7 +644,7 @@ function ExistingLinkView({
       )}
 
       {/* QR toggle */}
-      {link.shareUrl && (
+      {displayUrl && (
         <>
           <button
             onClick={onToggleQr}
