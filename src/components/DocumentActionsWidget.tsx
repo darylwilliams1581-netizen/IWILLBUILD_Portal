@@ -22,7 +22,7 @@
  *   interface is ready for Estimates without any further plumbing changes.
  */
 
-import { LockKeyhole } from 'lucide-react';
+import { FileDown } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
 import { useDocumentActions } from '@/lib/document-actions-context';
 
@@ -94,7 +94,7 @@ export default function DocumentActionsWidget() {
             'h-11 w-11',
           ].join(' ')}
         >
-          <LockKeyhole size={18} className="shrink-0" />
+          <FileDown size={18} className="shrink-0" />
         </button>
       </div>
 
