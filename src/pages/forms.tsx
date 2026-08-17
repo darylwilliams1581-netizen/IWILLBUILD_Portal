@@ -568,7 +568,7 @@ interface Submission {
   form_route: string | null;
 }
 
-function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
+function SubmissionsInbox({ templates, onFillForm }: { templates: FormTemplate[]; onFillForm: () => void }) {
   const navigate = useNavigate();
   const [submissions,    setSubmissions]    = useState<Submission[]>([]);
   const [total,          setTotal]          = useState(0);
@@ -628,6 +628,16 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
 
   return (
     <div className="space-y-4">
+      {/* ── Fill Form CTA ── */}
+      <button
+        onClick={onFillForm}
+        disabled={templates.length === 0}
+        title={templates.length === 0 ? 'Create a template first' : 'Fill out a form'}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+      >
+        <ClipboardCheck size={15} /> Fill Form
+      </button>
+
       {/* ── Filter bar ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <select
@@ -1022,24 +1032,7 @@ export function FormsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <>
-              {/* Fill Form — primary action: pick template then job */}
-              <button
-                onClick={() => setFillFormPickerOpen(true)}
-                disabled={templates.length === 0}
-                title={templates.length === 0 ? 'Create a template first' : 'Fill out a form'}
-                className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
-              >
-                <ClipboardCheck size={15} /> Fill Form
-              </button>
-              {/* New Template — secondary action */}
-              <button
-                onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-primary px-4 py-2 rounded-xl transition-all hover:bg-violet-50 border border-primary min-h-[44px]"
-              >
-                <Plus size={15} /><span className="hidden sm:inline">+ New Template</span><span className="sm:hidden">Template</span>
-              </button>
-            </>
+            <></>
           </div>
         </header>
 
@@ -1120,7 +1113,7 @@ export function FormsPage() {
                       onClick={() => setShowCreate(true)}
                       className="inline-flex items-center gap-2 text-sm font-bold text-white px-6 py-3 rounded-xl transition-all hover:brightness-110 bg-primary"
                     >
-                      <Plus size={15} /> Create Template
+                      <Plus size={15} /> New Form Template
                     </button>
                   </div>
                 </motion.div>
@@ -1130,6 +1123,13 @@ export function FormsPage() {
                   animate={{ opacity: 1 }}
                   className="grid grid-cols-1 gap-4"
                 >
+                  {/* New Form Template button — full width on mobile */}
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="w-full sm:w-auto self-start flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary min-h-[44px]"
+                  >
+                    <Plus size={15} /> New Form Template
+                  </button>
                   {templates.map((t) => (
                     <TemplateCard
                       key={t.id}
@@ -1150,7 +1150,7 @@ export function FormsPage() {
 
           {/* ── Submissions tab ── */}
           {pageTab === 'submissions' && (
-            <SubmissionsInbox templates={templates} />
+            <SubmissionsInbox templates={templates} onFillForm={() => setFillFormPickerOpen(true)} />
           )}
 
           {/* ── Library tab ── */}
