@@ -45,9 +45,9 @@ export default function JobFormRunnerPage() {
   const submissionId = Number(formInstanceId);
 
   const locationState = (location.state ?? {}) as LocationState;
-  const returnTo = locationState.returnTo ?? (jobId > 0 ? `/jobs/${jobId}?tab=forms` : '/forms');
-  // Ensure a missing or zero jobId always falls back to /forms, never /jobs/0
-  const resolvedReturnTo = (!jobId || jobId === 0) && returnTo.startsWith('/jobs/0') ? '/forms' : returnTo;
+  // Always use the explicit returnTo from navigation state when present.
+  // Fall back to /forms — never construct a /jobs/:id URL that may not exist.
+  const resolvedReturnTo = locationState.returnTo ?? '/forms';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
