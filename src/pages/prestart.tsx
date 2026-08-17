@@ -330,8 +330,8 @@ function DoneState({ vehicle, onAnother }: { vehicle: Vehicle; onAnother: () => 
         <ClipboardCheck size={15} className="text-violet-600" /> Do another prestart
       </button>
 
-      <Link to="/home" className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
-        Back to Home
+      <Link to="/fleet" className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
+        Back to Fleet
       </Link>
     </motion.div>
   );
