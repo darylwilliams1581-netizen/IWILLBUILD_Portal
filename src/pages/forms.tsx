@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
@@ -693,7 +693,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
                     {/* Open Form button for internal submissions */}
                     {isInternal && s.form_route && (
                       <button
-                        onClick={e => { e.stopPropagation(); navigate(s.form_route!, { state: { returnTo: '/forms?tab=submissions' } }); }}
+                        onClick={e => { e.stopPropagation(); navigate(s.form_route!, { state: { returnTo: '/studio/forms?tab=submissions' } }); }}
                         className="flex items-center gap-1 text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors"
                       >
                         <ExternalLink size={10} /> Open Form
@@ -811,7 +811,7 @@ export function FormsPage() {
       if (!res.ok || !data.submission) throw new Error(data.error ?? 'Failed to start form');
       const jobId = data.submission.jobId ?? selectedJobId;
       setJobPickerTemplate(null);
-      navigate(`/jobs/${jobId}/forms/${data.submission.id}`, { state: { returnTo: '/forms' } });
+      navigate(`/jobs/${jobId}/forms/${data.submission.id}`, { state: { returnTo: '/studio/forms?tab=forms' } });
     } catch (e) {
       setJobPickerError(e instanceof Error ? e.message : 'Could not start form. Please try again.');
     } finally {
@@ -821,7 +821,13 @@ export function FormsPage() {
   }
 
   // ── Document Builder state removed — Documents tab moved to Studio ───────────
-  const [pageTab, setPageTab] = useState<'forms' | 'submissions' | 'library'>('forms');
+  // Initialise from ?tab= query param so returnTo links land on the right tab.
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const validTabs = ['forms', 'submissions', 'library'] as const;
+  type TabId = typeof validTabs[number];
+  const initialTab: TabId = validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : 'forms';
+  const [pageTab, setPageTab] = useState<TabId>(initialTab);
 
   const fetchTemplates = useCallback(async () => {
     try {

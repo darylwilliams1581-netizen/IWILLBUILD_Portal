@@ -17,7 +17,7 @@
  * is the sole entry point to PDF/Email/Share on completed forms.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Loader2,
@@ -38,16 +38,20 @@ interface LocationState {
 
 export default function JobFormRunnerPage() {
   const { id, formInstanceId } = useParams<{ id: string; formInstanceId: string }>();
-  const navigate = useNavigate();
   const location = useLocation();
 
   const jobId = Number(id);
   const submissionId = Number(formInstanceId);
 
   const locationState = (location.state ?? {}) as LocationState;
-  // Always use the explicit returnTo from navigation state when present.
-  // Fall back to /forms — never construct a /jobs/:id URL that may not exist.
-  const resolvedReturnTo = locationState.returnTo ?? '/forms';
+
+  // Resolve the back destination:
+  //  - Explicit returnTo from navigation state takes priority (e.g. from a Job Forms tab).
+  //  - Completed forms default back to Submissions tab.
+  //  - Active/draft forms default back to Forms tab.
+  // We compute this lazily at click time (after isDone is known) so we capture
+  // the correct tab. Store the raw state value now; resolve at click time.
+  const explicitReturnTo = locationState.returnTo ?? null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -110,7 +114,20 @@ export default function JobFormRunnerPage() {
   }, [jobId, submissionId]);
 
   function handleBack() {
-    navigate(resolvedReturnTo, { replace: false });
+    // Resolve destination at click time so isDone is current.
+    // Explicit returnTo from navigation state (e.g. Job Forms tab) takes priority.
+    // Otherwise: completed forms → Submissions tab; active forms → Forms tab.
+    let dest: string;
+    if (explicitReturnTo) {
+      dest = explicitReturnTo;
+    } else if (isDone) {
+      dest = '/studio/forms?tab=submissions';
+    } else {
+      dest = '/studio/forms?tab=forms';
+    }
+    // Hard navigation guarantees the Form Runner unmounts and the destination
+    // page renders correctly, regardless of how the router shell is structured.
+    window.location.assign(dest);
   }
 
   const handleReopen = useCallback(async () => {
