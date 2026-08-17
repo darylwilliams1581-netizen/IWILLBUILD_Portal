@@ -356,6 +356,7 @@ export default function JobCardsPage() {
 
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+      <PortalSidebar />
       <Helmet>
         <title>Job Cards — IWILLBUILD</title>
         <meta name="description" content="Job Card register — reactive and call-out work records." />
