@@ -16,7 +16,7 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock,
-  Download, ExternalLink, MapPin, Upload, Key, Link2,
+  Download, ExternalLink, MapPin, Key, Link2,
 } from 'lucide-react';
 import ExternalFormPage from './external-form';
 import { Button } from '@/components/ui/button';
@@ -109,7 +109,6 @@ function FormViewer({ content }: { content: Record<string, unknown> }) {
             if (ft === 'yes_no') return value ? 'Yes' : 'No';
             if (ft === 'checkbox') return value ? '✓ Checked' : '✗ Unchecked';
             if (ft === 'signature') {
-              // Signature may be a JSON object with signatureDataUrl
               if (typeof value === 'object' && value !== null && 'signatureDataUrl' in value) {
                 const sig = value as { signatureDataUrl?: string; name?: string; signedAt?: string };
                 return (
@@ -125,7 +124,6 @@ function FormViewer({ content }: { content: Record<string, unknown> }) {
               return `✓ Signed: ${String(value)}`;
             }
             if (ft === 'photo') {
-              // Photo may be a data URL or a storage URL
               if (typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http') || value.startsWith('/'))) {
                 return <img src={value} alt="Photo" className="max-h-48 rounded-xl border border-slate-200 object-contain bg-slate-50" />;
               }
@@ -380,6 +378,11 @@ interface SecureShareLink {
   createdAt: string;
 }
 
+// ── Types that support PDF delivery via /api/secure-share/:token/content ──────
+// completed_form and job_form (legacy alias) are routed to buildFormPdfDocument()
+// estimate and invoice are routed to their respective builders
+const PDF_SUPPORTED_TYPES = new Set(['estimate', 'invoice', 'completed_form', 'job_form']);
+
 // ── SecureShareViewer — public viewer for /api/secure-share/:token ────────────
 
 function SecureShareViewer({ token }: { token: string }) {
@@ -421,7 +424,6 @@ function SecureShareViewer({ token }: { token: string }) {
       });
       const body = await r.json() as { ok?: boolean; proof?: string; error?: string };
       if (!r.ok || !body.ok) { setPasswordError(body.error ?? 'Incorrect password.'); return; }
-      // Store the server-issued proof token — required for content access
       if (body.proof) setProofToken(body.proof);
       setUnlocked(true);
     } catch { setPasswordError('Failed to validate password.'); }
@@ -556,8 +558,8 @@ function SecureShareViewer({ token }: { token: string }) {
                     </div>
                   </div>
 
-                  {/* View — opens PDF inline in browser */}
-                  {link.permissions.includes('view') && (link.targetType === 'estimate' || link.targetType === 'invoice') && (
+                  {/* View — opens PDF inline in browser (estimate, invoice, completed_form, job_form) */}
+                  {link.permissions.includes('view') && PDF_SUPPORTED_TYPES.has(link.targetType) && (
                     <a
                       href={contentUrl('view')}
                       target="_blank"
@@ -569,8 +571,8 @@ function SecureShareViewer({ token }: { token: string }) {
                     </a>
                   )}
 
-                  {/* Download — forces save dialog */}
-                  {link.permissions.includes('download') && (link.targetType === 'estimate' || link.targetType === 'invoice') && (
+                  {/* Download — forces save dialog (estimate, invoice, completed_form, job_form) */}
+                  {link.permissions.includes('download') && PDF_SUPPORTED_TYPES.has(link.targetType) && (
                     <a
                       href={contentUrl('download')}
                       download
@@ -582,7 +584,7 @@ function SecureShareViewer({ token }: { token: string }) {
                   )}
 
                   {/* Unsupported type — clear message */}
-                  {link.targetType !== 'estimate' && link.targetType !== 'invoice' && (
+                  {!PDF_SUPPORTED_TYPES.has(link.targetType) && (
                     <p className="text-sm text-slate-500 text-center py-2">
                       This document type cannot be previewed here.
                     </p>
