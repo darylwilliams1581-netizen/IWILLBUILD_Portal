@@ -41,6 +41,7 @@ import { getSecret } from '#airo/secrets';
 import { V3_TOOL_DEFINITIONS_FLAT, executeV3Tool } from './dazza-v3-tools.js';
 import { sendSms, isSmsConfigured } from './sms.js';
 import { sendEmail } from '../email.js';
+import { buildUntrustedEvidenceBlock, type UntrustedEvidence } from './dazza-attachment-service.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,8 @@ export interface V3StreamOptions {
   mode: 'chat' | 'investigation' | 'bug_analysis';
   incidentId?: string;
   bugReportId?: string;
+  /** Bounded untrusted evidence from uploaded attachments — injected as quoted data, never as instructions */
+  untrustedEvidence?: UntrustedEvidence;
   onToken: (token: string) => void;
   onToolCall: (name: string, status: 'running' | 'done') => void;
   onDone: (meta: {
@@ -422,11 +425,16 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   });
 
   // Build system prompt with memory
+  const evidenceBlock = opts.untrustedEvidence && opts.untrustedEvidence.excerpts.length > 0
+    ? buildUntrustedEvidenceBlock(opts.untrustedEvidence)
+    : '';
+
   const systemContent = [
     DAZZA_V3_SYSTEM_PROMPT,
     approvedMemory ? `\n## Owner-approved memory\n${approvedMemory}` : '',
     mode === 'investigation' ? '\n## Mode: Deep Investigation\nProvide maximum detail. Do not truncate. Use all available tools.' : '',
     mode === 'bug_analysis' ? '\n## Mode: Bug Analysis\nAnalyse the bug report thoroughly. Produce a complete Airo repair prompt.' : '',
+    evidenceBlock ? `\n${evidenceBlock}` : '',
   ].filter(Boolean).join('\n');
 
   // Build messages array

@@ -6,7 +6,7 @@ import {
   RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
-  Brain, Bug, Copy, Check, X, GitBranch,
+  Brain, Bug, Copy, Check, X, GitBranch, Paperclip,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -18,6 +18,8 @@ import {
 } from '@/lib/dazza-calcs';
 import DazzaBrainStatus from '@/components/DazzaBrainStatus';
 import DazzaAnatomyPanel from '@/components/DazzaAnatomyPanel';
+import AttachmentChip from '@/components/dazza/AttachmentChip';
+import { useDazzaAttachments } from '@/hooks/useDazzaAttachments';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -409,6 +411,7 @@ const WELCOME_MSG = `G'day Daryl. I'm Dazza, IWILLBUILD's read-only system watch
 interface SseToken      { type: 'token';       content: string }
 interface SseToolCall   { type: 'tool_call';   name: string; status: 'running' }
 interface SseToolResult { type: 'tool_result'; name: string; status: 'done' }
+interface SseAttachmentStatus { type: 'attachment_status'; status: 'reading' | 'ready' | 'failed'; count?: number }
 interface SseDone       {
   type: 'done';
   engine: 'v3' | 'v2-rollback';
@@ -417,7 +420,7 @@ interface SseDone       {
   toolsUsed?: string[];
 }
 interface SseError      { type: 'error'; message: string; configFault?: boolean; conversationId?: string }
-type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
+type SseEvent = SseToken | SseToolCall | SseToolResult | SseAttachmentStatus | SseDone | SseError;
 
 // ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
 
@@ -478,6 +481,10 @@ export default function DazzaAIPage() {
   const [activeModel, setActiveModel] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Attachment queue (platform owner only) ────────────────────────────────
+  const attachmentQueue = useDazzaAttachments({ conversationId });
 
   // Returns the model label for the V3 badge — uses server-confirmed model from
   // the done event, falls back to 'o4-mini' (the configured default).
@@ -625,6 +632,9 @@ export default function DazzaAIPage() {
   async function sendMessage(text: string) {
     if (!text.trim() || isTyping) return;
 
+    // Capture attachment IDs before clearing
+    const pendingAttachmentIds = [...attachmentQueue.readyIds];
+
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -636,6 +646,9 @@ export default function DazzaAIPage() {
     setInput('');
     setIsTyping(true);
     setActiveToolCall(null);
+
+    // Clear attachment chips immediately after send
+    attachmentQueue.clearAfterSend();
 
     // Create a placeholder assistant message that we'll fill in as tokens arrive
     const assistantId = (Date.now() + 1).toString();
@@ -657,6 +670,8 @@ export default function DazzaAIPage() {
           message: text.trim(),
           // Send conversationId so V3 can continue the same conversation
           ...(conversationId ? { conversationId } : {}),
+          // Send attachment IDs (opaque — server re-authorises every ID)
+          ...(pendingAttachmentIds.length > 0 ? { attachmentIds: pendingAttachmentIds } : {}),
         }),
       });
 
@@ -696,6 +711,14 @@ export default function DazzaAIPage() {
                 ? { ...m, content: m.content + event.content }
                 : m
             ));
+          } else if (event.type === 'attachment_status') {
+            if (event.status === 'reading') {
+              setActiveToolCall(`Reading ${event.count ?? ''} attached file${(event.count ?? 1) !== 1 ? 's' : ''}…`);
+            } else if (event.status === 'ready') {
+              setActiveToolCall(null);
+            } else if (event.status === 'failed') {
+              setActiveToolCall(null);
+            }
           } else if (event.type === 'tool_call') {
             setActiveToolCall(TOOL_LABELS[event.name] ?? `Running ${event.name}…`);
           } else if (event.type === 'tool_result') {
@@ -1291,7 +1314,62 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   </button>
                 </div>
               )}
+
+              {/* Attachment chips (platform owner only) */}
+              {isPlatformOwner && attachmentQueue.hasAttachments && (
+                <div className="mb-2 flex flex-wrap gap-1.5 items-center">
+                  {attachmentQueue.attachments.map(att => (
+                    <AttachmentChip
+                      key={att.clientId}
+                      attachment={att}
+                      onRemove={attachmentQueue.removeAttachment}
+                    />
+                  ))}
+                  {attachmentQueue.attachments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={attachmentQueue.clearAll}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 font-semibold px-2 py-1 rounded-lg hover:bg-slate-200 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              {isPlatformOwner && (
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.md,.json,text/plain,text/markdown,application/json"
+                  multiple
+                  className="hidden"
+                  aria-label="Attach text source"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      attachmentQueue.enqueueFiles(e.target.files);
+                    }
+                    // Reset so the same file can be re-selected after removal
+                    e.target.value = '';
+                  }}
+                />
+              )}
+
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex items-end gap-2 px-3 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                {/* Paperclip button (platform owner only) */}
+                {isPlatformOwner && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isTyping || !attachmentQueue.canAddMore}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    aria-label="Attach text source"
+                    title={attachmentQueue.canAddMore ? 'Attach text source (.txt, .md, .json)' : 'Maximum 4 attachments per question'}
+                  >
+                    <Paperclip size={14} />
+                  </button>
+                )}
                 <textarea
                   ref={textareaRef}
                   rows={1}
@@ -1304,7 +1382,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                 />
                 <button
                   onClick={() => void sendMessage(input)}
-                  disabled={!input.trim() || isTyping}
+                  disabled={!input.trim() || isTyping || attachmentQueue.isUploading}
                   className="w-8 h-8 bg-primary hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0"
                 >
                   {isTyping ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
