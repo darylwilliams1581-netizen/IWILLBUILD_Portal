@@ -6,7 +6,7 @@ import {
   RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
-  Brain, Bug, Copy, Check, X, GitBranch, Paperclip,
+  Brain, Bug, Copy, Check, X, GitBranch, Paperclip, Wrench,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -20,6 +20,7 @@ import DazzaBrainStatus from '@/components/DazzaBrainStatus';
 import DazzaAnatomyPanel from '@/components/DazzaAnatomyPanel';
 import AttachmentChip from '@/components/dazza/AttachmentChip';
 import { useDazzaAttachments } from '@/hooks/useDazzaAttachments';
+import BuildRepairPanel from '@/components/dazza/BuildRepairPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -474,7 +475,7 @@ export default function DazzaAIPage() {
   const [activeCalc, setActiveCalc] = useState<string | null>(null);
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'brain' | 'anatomy'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'brain' | 'anatomy' | 'build_repair'>('chat');
   // V3 conversation continuity
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
@@ -629,7 +630,7 @@ export default function DazzaAIPage() {
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
   }, [input]);
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, mode: 'chat' | 'build_repair' = 'chat', builderCaseId?: string) {
     if (!text.trim() || isTyping) return;
 
     // Capture attachment IDs before clearing
@@ -672,6 +673,9 @@ export default function DazzaAIPage() {
           ...(conversationId ? { conversationId } : {}),
           // Send attachment IDs (opaque — server re-authorises every ID)
           ...(pendingAttachmentIds.length > 0 ? { attachmentIds: pendingAttachmentIds } : {}),
+          // Send mode and builderCaseId for Build & Repair
+          ...(mode !== 'chat' ? { mode } : {}),
+          ...(builderCaseId ? { builderCaseId } : {}),
         }),
       });
 
@@ -1043,6 +1047,16 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                     <GitBranch size={11} /> Anatomy
                   </button>
                 )}
+                {isPlatformOwner && (
+                  <button
+                    onClick={() => setActiveTab('build_repair')}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                      activeTab === 'build_repair' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-amber-600'
+                    }`}
+                  >
+                    <Wrench size={11} /> Build & Repair
+                  </button>
+                )}
               </div>
             )}
             <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
@@ -1087,6 +1101,21 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
           {activeTab === 'anatomy' && isPlatformOwner && (
             <div className="flex-1 overflow-y-auto bg-slate-50">
               <DazzaAnatomyPanel />
+            </div>
+          )}
+
+          {/* ── Build & Repair tab (platform owner only) ── */}
+          {activeTab === 'build_repair' && isPlatformOwner && (
+            <div className="flex-1 overflow-y-auto bg-slate-50 p-4">
+              <BuildRepairPanel
+                conversationId={conversationId}
+                onSendMessage={(text, mode, builderCaseId) => {
+                  // Switch to chat tab so the response is visible
+                  setActiveTab('chat');
+                  void sendMessage(text, mode, builderCaseId);
+                }}
+                isTyping={isTyping}
+              />
             </div>
           )}
 

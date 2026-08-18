@@ -52,14 +52,23 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Parse body ───────────────────────────────────────────────────────────
-    const { message, conversationId, attachmentIds } = req.body as {
+    const { message, conversationId, attachmentIds, mode: rawMode, builderCaseId } = req.body as {
       message?: string;
       conversationId?: string;
       attachmentIds?: string[];
+      mode?: string;
+      builderCaseId?: string;
     };
     if (!message?.trim()) {
       return res.status(400).json({ error: 'message is required' });
     }
+
+    // Validate mode — only accepted values are forwarded
+    const VALID_MODES = ['chat', 'investigation', 'bug_analysis', 'build_repair'] as const;
+    type DazzaMode = typeof VALID_MODES[number];
+    const mode: DazzaMode = (VALID_MODES as readonly string[]).includes(rawMode ?? '')
+      ? (rawMode as DazzaMode)
+      : 'chat';
 
     // ── Validate attachmentIds ────────────────────────────────────────────────
     const safeAttachmentIds: string[] = [];
@@ -119,7 +128,8 @@ export default async function handler(req: Request, res: Response) {
         },
         conversationId: conversationId ?? null,
         userMessage:    message.trim(),
-        mode:           'chat',
+        mode:           mode === 'build_repair' ? 'build_repair' : mode === 'investigation' ? 'investigation' : mode === 'bug_analysis' ? 'bug_analysis' : 'chat',
+        builderCaseId:  builderCaseId?.trim() ?? undefined,
         untrustedEvidence: untrustedEvidence ?? undefined,
         onToken:      (token)        => sseWrite(res, { type: 'token', content: token }),
         onToolCall:   (name, status) => sseWrite(res, { type: status === 'running' ? 'tool_call' : 'tool_result', name, status }),

@@ -12,7 +12,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Bot, Loader2, RefreshCw, Copy, CheckCircle2, AlertTriangle,
   ChevronDown, ChevronUp, Zap, Search, Wrench, Send, Shield,
-  Clock, RotateCcw, FileText,
+  Clock, RotateCcw, FileText, Plus, ArrowRight, GitBranch,
+  ShieldCheck, Lock, X,
 } from 'lucide-react';
 import type { BugReportRow } from '@/lib/bugReportBundleClient';
 
@@ -483,7 +484,253 @@ export default function DazzaReviewPanel({ report, evidenceSnapshot }: Props) {
         {evidenceError && (
           <p className="text-xs text-red-500 font-semibold">{evidenceError}</p>
         )}
+
+        {/* ── Build & Repair section ── */}
+        <BuildRepairSection bugId={report.id} />
       </div>
+    </div>
+  );
+}
+
+// ── Build & Repair section (inline, linked to this bug) ───────────────────────
+
+interface BuilderCaseSummary {
+  id: string;
+  title: string;
+  status: string;
+  anatomy_snapshot_name: string | null;
+  anatomy_commit_sha: string | null;
+  proposed_patch: string | null;
+  airo_prompt: string | null;
+  sent_to_airo_at: string | null;
+  verified_at: string | null;
+  resolution_note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const BR_STATUS_COLORS: Record<string, string> = {
+  draft:                  'bg-slate-100 text-slate-500',
+  analysing:              'bg-blue-50 text-blue-600',
+  diagnosis_ready:        'bg-violet-50 text-violet-600',
+  patch_ready:            'bg-amber-50 text-amber-600',
+  awaiting_daryl_review:  'bg-orange-50 text-orange-600',
+  sent_to_airo:           'bg-indigo-50 text-indigo-600',
+  awaiting_verification:  'bg-cyan-50 text-cyan-600',
+  verified:               'bg-emerald-50 text-emerald-600',
+  failed:                 'bg-red-50 text-red-600',
+  closed:                 'bg-slate-50 text-slate-400',
+};
+
+function BuildRepairSection({ bugId }: { bugId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [builderCase, setBuilderCase] = useState<BuilderCaseSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/dazza/builder-cases/by-bug/${encodeURIComponent(bugId)}`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) { setBuilderCase(null); return; }
+      if (!res.ok) return;
+      const data = await res.json() as { case?: BuilderCaseSummary };
+      setBuilderCase(data.case ?? null);
+    } finally {
+      setLoading(false);
+    }
+  }, [bugId]);
+
+  useEffect(() => {
+    if (expanded) void load();
+  }, [expanded, load]);
+
+  async function createCase() {
+    if (!newTitle.trim()) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch('/api/dazza/builder-cases', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          linkedBugId: bugId,
+        }),
+      });
+      const data = await res.json() as { ok?: boolean; case?: BuilderCaseSummary; error?: string };
+      if (!res.ok || !data.case) throw new Error(data.error ?? 'Failed');
+      setBuilderCase(data.case);
+      setShowCreate(false);
+      setNewTitle('');
+    } catch (err) {
+      setCreateError(String((err as Error)?.message ?? err));
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="border border-amber-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 hover:bg-amber-100 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Wrench size={13} className="text-amber-600" />
+          <span className="text-xs font-bold text-amber-800">Build & Repair</span>
+          {builderCase && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${BR_STATUS_COLORS[builderCase.status] ?? 'bg-slate-100 text-slate-500'}`}>
+              {builderCase.status.replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
+        {expanded ? <ChevronUp size={13} className="text-amber-500" /> : <ChevronDown size={13} className="text-amber-500" />}
+      </button>
+
+      {expanded && (
+        <div className="p-4 flex flex-col gap-3">
+          {loading && (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Loader2 size={12} className="animate-spin" /> Loading…
+            </div>
+          )}
+
+          {!loading && !builderCase && !showCreate && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-slate-500">No Builder Case linked to this bug yet.</p>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg px-3 py-1.5 transition-all w-fit"
+              >
+                <Plus size={12} /> Create Builder Case
+              </button>
+            </div>
+          )}
+
+          {showCreate && (
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                placeholder="Case title (e.g. Fix fleet save 500 error)"
+                className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
+              />
+              {createError && <p className="text-xs text-red-600">{createError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void createCase()}
+                  disabled={!newTitle.trim() || creating}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 rounded-lg px-3 py-1.5 transition-all"
+                >
+                  {creating ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
+                  {creating ? 'Creating…' : 'Create'}
+                </button>
+                <button
+                  onClick={() => setShowCreate(false)}
+                  className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!loading && builderCase && (
+            <div className="flex flex-col gap-3">
+              {/* Case summary */}
+              <div className="bg-white border border-slate-200 rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-bold text-slate-800">{builderCase.title}</div>
+                    <div className="text-[10px] font-mono text-slate-400 mt-0.5">{builderCase.id}</div>
+                  </div>
+                  <button onClick={() => void load()} className="p-1 rounded hover:bg-slate-100 text-slate-400">
+                    <RefreshCw size={11} />
+                  </button>
+                </div>
+
+                {/* Snapshot */}
+                {builderCase.anatomy_snapshot_name && (
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400">
+                    <GitBranch size={9} />
+                    {builderCase.anatomy_snapshot_name}
+                    {builderCase.anatomy_commit_sha && ` · SHA: ${builderCase.anatomy_commit_sha.slice(0, 8)}`}
+                  </div>
+                )}
+              </div>
+
+              {/* Patch */}
+              {builderCase.proposed_patch && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Proposed patch</span>
+                    <CopyButton text={builderCase.proposed_patch} label="Copy patch" />
+                  </div>
+                  <pre className="text-[10px] font-mono bg-slate-900 text-slate-100 rounded-xl p-3 overflow-x-auto max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+                    {builderCase.proposed_patch}
+                  </pre>
+                </div>
+              )}
+
+              {/* Airo prompt */}
+              {builderCase.airo_prompt && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Airo prompt</span>
+                    <CopyButton text={builderCase.airo_prompt} label="Copy Airo prompt" />
+                  </div>
+                  <pre className="text-[10px] font-mono bg-slate-900 text-slate-100 rounded-xl p-3 overflow-x-auto max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+                    {builderCase.airo_prompt}
+                  </pre>
+                </div>
+              )}
+
+              {/* Sent to Airo */}
+              {builderCase.sent_to_airo_at && (
+                <div className="flex items-center gap-1.5 text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                  <Send size={10} />
+                  Sent to Airo: {fmtDate(builderCase.sent_to_airo_at)}
+                </div>
+              )}
+
+              {/* Verified */}
+              {builderCase.verified_at && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 mb-1">
+                    <ShieldCheck size={10} />
+                    Verified: {fmtDate(builderCase.verified_at)}
+                  </div>
+                  {builderCase.resolution_note && (
+                    <p className="text-xs text-emerald-800">{builderCase.resolution_note}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Note: marking sent does not resolve bug */}
+              <div className="text-[10px] text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                Marking a case sent to Airo does not resolve this bug. Resolve only after verification passes.
+              </div>
+
+              {/* Link to full Build & Repair panel */}
+              <a
+                href="/dazza-ai"
+                className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors"
+              >
+                <ArrowRight size={12} />
+                Open full Build & Repair panel in Dazza
+              </a>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
