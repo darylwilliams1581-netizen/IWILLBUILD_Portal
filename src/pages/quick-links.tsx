@@ -35,6 +35,7 @@ import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -594,7 +595,8 @@ export default function QuickLinksPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

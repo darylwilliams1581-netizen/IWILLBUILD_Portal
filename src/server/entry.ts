@@ -197,6 +197,9 @@ import developer_media_backfill_report_get_126 from "./api/developer/media-backf
 import developer_run_seed_now_post_127 from "./api/developer/run-seed-now/POST";
 import developer_seed_developer_account_post_128 from "./api/developer/seed-developer-account/POST";
 import developer_test_share_security_post from "./api/developer/test-share-security/POST";
+// NOTE: test-share-concurrency, test-share-runtime, test-share-deletion
+// are NOT registered here — they are offline scripts in scripts/secure-share/
+// and must never be exposed as production HTTP endpoints.
 import developer_support_notes_get_129 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_130 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_131 from "./api/developer/support-notes/[id]/DELETE";
@@ -318,6 +321,9 @@ import forms_skip_audit_get_244 from "./api/forms/skip-audit/GET";
 import forms_skip_audit_post_245 from "./api/forms/skip-audit/POST";
 import forms_start_post_246 from "./api/forms/start/POST";
 import forms_submissions_get_247 from "./api/forms/submissions/GET";
+import lens_photos_get from "./api/lens/photos/GET.js";
+import lens_photos_export_zip_post from "./api/lens/photos/export-zip/POST.js";
+import lens_photos_photoId_download_get from "./api/lens/photos/[photoId]/download/GET.js";
 import forms_templates_id_share_link_post_248 from "./api/forms/templates/[id]/share-link/POST";
 import forms_templates_id_share_link_delete from "./api/forms/templates/[id]/share-link/DELETE";
 import forms_id_fields_get_249 from "./api/forms/[id]/fields/GET";
@@ -396,6 +402,7 @@ import job_forms_id_put_320 from "./api/job-forms/[id]/PUT";
 import job_forms_id_reset_post_321 from "./api/job-forms/[id]/reset/POST";
 import job_forms_id_compose_defaults_get from "./api/job-forms/[id]/compose-defaults/GET";
 import job_forms_id_send_email_post_322 from "./api/job-forms/[id]/send-email/POST";
+import job_forms_id_export_pdf_get from "./api/job-forms/[id]/export-pdf/GET";
 import job_forms_id_share_delete_323 from "./api/job-forms/[id]/share/DELETE";
 import job_forms_id_share_get_324 from "./api/job-forms/[id]/share/GET";
 import job_forms_id_share_post_325 from "./api/job-forms/[id]/share/POST";
@@ -649,6 +656,7 @@ import plan_manager_drawings_id_revisions_revisionId_finalize_post_569 from "./a
 import plan_manager_drawings_id_upload_post_570 from "./api/plan-manager/drawings/[id]/upload/POST";
 import plan_manager_jobs_jobId_drawings_zip_get_571 from "./api/plan-manager/jobs/[jobId]/drawings-zip/GET";
 import plan_manager_jobs_with_drawings_get_572 from "./api/plan-manager/jobs-with-drawings/GET";
+import plan_manager_upload_post from "./api/plan-manager/upload/POST";
 import plan_manager_share_post_573 from "./api/plan-manager/share/POST";
 import plan_manager_share_validate_get_574 from "./api/plan-manager/share/validate/GET";
 import portal_estimates_id_approve_post_575 from "./api/portal/estimates/[id]/approve/POST";
@@ -726,7 +734,9 @@ import scheduler_jobs_id_reschedule_patch_646 from "./api/scheduler/jobs/[id]/re
 import scheduler_tasks_get_647 from "./api/scheduler/tasks/GET";
 import secure_share_get_648 from "./api/secure-share/GET";
 import secure_share_post_649 from "./api/secure-share/POST";
+import secure_share_active_get from "./api/secure-share/active/GET";
 import secure_share_id_delete_650 from "./api/secure-share/[id]/DELETE";
+import secure_share_id_revoke_rotate_post from "./api/secure-share/[id]/revoke-and-rotate/POST";
 import secure_share_token_get_651 from "./api/secure-share/[token]/GET";
 import secure_share_token_post_652 from "./api/secure-share/[token]/POST";
 import secure_share_token_content_get from "./api/secure-share/[token]/content/GET";
@@ -1148,7 +1158,7 @@ async function runStartupMigrations() {
   // Safe: never logs the raw secret value, only length/first-char/resolved boolean.
   // Uses the top-level getSecret import (already available at module load time).
   {
-    const _rawEarly = getSecret('DAZZA_V3_ENABLED') ?? '';
+    const _rawEarly = String(getSecret('DAZZA_V3_ENABLED') ?? '');
     const _trimEarly = _rawEarly.trim().toLowerCase();
     const _v3Early = _trimEarly === 'true' || _trimEarly === '1' || _trimEarly === 'yes';
     console.log(
@@ -1530,6 +1540,9 @@ async function runStartupMigrations() {
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'description',           definition: 'TEXT NULL' },
     { table: 'project_drawings', column: 'project_id',            definition: 'INT NULL' },
+    { table: 'project_drawings', column: 'drawing_number',        definition: 'VARCHAR(100) NULL' },
+    { table: 'project_drawings', column: 'discipline',            definition: 'VARCHAR(100) NULL' },
+    { table: 'project_drawings', column: 'doc_status_label',      definition: 'VARCHAR(100) NULL' },
     { table: 'project_drawings', column: 'source_file_path',      definition: 'VARCHAR(1000) NULL' },
     { table: 'project_drawings', column: 'source_file_name',      definition: 'VARCHAR(500) NULL' },
     { table: 'project_drawings', column: 'page_count',            definition: 'INT NOT NULL DEFAULT 1' },
@@ -1593,6 +1606,12 @@ async function runStartupMigrations() {
     { table: 'job_photos', column: 'preview_size_bytes',    definition: 'INT NULL' },
     { table: 'job_photos', column: 'image_width',           definition: 'INT NULL' },
     { table: 'job_photos', column: 'image_height',          definition: 'INT NULL' },
+    // ── job_photos: Lens Phase 1 columns ─────────────────────────────────────
+    { table: 'job_photos', column: 'status',         definition: "VARCHAR(30) NOT NULL DEFAULT 'draft'" },
+    { table: 'job_photos', column: 'locked_at',      definition: 'DATETIME NULL' },
+    { table: 'job_photos', column: 'locked_by_name', definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'media_asset_id', definition: 'INT NULL' },
+
     // ── profiles: home screen icon permissions (JSON array of allowed icon keys) ─
     { table: 'profiles', column: 'home_icon_permissions',   definition: 'TEXT NULL' },
     // ── job_todos: extended task fields (Step 3 upgrade) ─────────────────────
@@ -1631,6 +1650,8 @@ async function runStartupMigrations() {
     { table: 'fleet_usage_logs', column: 'meter_start',           definition: 'INT NULL' },
     { table: 'fleet_usage_logs', column: 'meter_end',             definition: 'INT NULL' },
     { table: 'fleet_usage_logs', column: 'actor_type',            definition: "VARCHAR(30) NOT NULL DEFAULT 'employee'" },
+    // secure_share_links — token_encrypted added for at-rest URL recovery
+    { table: 'secure_share_links', column: 'token_encrypted',     definition: 'TEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -2410,8 +2431,8 @@ async function runStartupMigrations() {
   // Primary source: PLATFORM_OWNER_EMAIL secret (comma-separated). Falls back to
   // the hardcoded address so the owner account is always promoted even before the
   // secret is configured.
-  const { getSecret } = await import('#airo/secrets');
-  const ownerEmailSecret = (() => { try { return getSecret('PLATFORM_OWNER_EMAIL'); } catch { return ''; } })();
+  // getSecret is already imported at the top of this file — no dynamic import needed.
+  const ownerEmailSecret = (() => { try { return String(getSecret('PLATFORM_OWNER_EMAIL') ?? ''); } catch { return ''; } })();
   const devPlanEmails = Array.from(new Set([
     'darylwilliams1581@gmail.com',
     ...(ownerEmailSecret ? ownerEmailSecret.split(',').map((e: string) => e.trim()).filter(Boolean) : []),
@@ -3042,7 +3063,7 @@ if (!process.env.VITEST) {
 }
 
 // ── Startup checks ────────────────────────────────────────────────────────────
-const openAiKey = getSecret('OPENAI_API_KEY');
+const openAiKey = String(getSecret('OPENAI_API_KEY') ?? '');
 if (!openAiKey || openAiKey.trim().length === 0) {
   console.warn('[dazza] ⚠️  OPENAI_API_KEY is not configured. Dazza AI will answer portal lookups and calculators only. Add the key in Airo Secrets to enable full AI responses.');
 } else {
@@ -3222,6 +3243,9 @@ app.get("/api/developer/media-backfill-report", developer_media_backfill_report_
 app.post("/api/developer/run-seed-now", developer_run_seed_now_post_127);
 app.post("/api/developer/seed-developer-account", developer_seed_developer_account_post_128);
 app.post("/api/developer/test-share-security", developer_test_share_security_post);
+// NOTE: test-share-concurrency, test-share-runtime, test-share-deletion
+// are NOT registered here — they are offline scripts in scripts/secure-share/
+// and must never be exposed as production HTTP endpoints.
 app.get("/api/developer/support-notes", developer_support_notes_get_129);
 app.post("/api/developer/support-notes", developer_support_notes_post_130);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_131);
@@ -3343,6 +3367,9 @@ app.get("/api/forms/skip-audit", forms_skip_audit_get_244);
 app.post("/api/forms/skip-audit", forms_skip_audit_post_245);
 app.post("/api/forms/start", forms_start_post_246);
 app.get("/api/forms/submissions", forms_submissions_get_247);
+app.get("/api/lens/photos", lens_photos_get);
+app.post("/api/lens/photos/export-zip", lens_photos_export_zip_post);
+app.get("/api/lens/photos/:photoId/download", lens_photos_photoId_download_get);
 app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_post_248);
 app.delete("/api/forms/templates/:id/share-link", forms_templates_id_share_link_delete);
 app.get("/api/forms/:id/fields", forms_id_fields_get_249);
@@ -3421,6 +3448,7 @@ app.put("/api/job-forms/:id", job_forms_id_put_320);
 app.post("/api/job-forms/:id/reset", job_forms_id_reset_post_321);
 app.get("/api/job-forms/:id/compose-defaults", job_forms_id_compose_defaults_get);
 app.post("/api/job-forms/:id/send-email", job_forms_id_send_email_post_322);
+app.get("/api/job-forms/:id/export-pdf", job_forms_id_export_pdf_get);
 app.delete("/api/job-forms/:id/share", job_forms_id_share_delete_323);
 app.get("/api/job-forms/:id/share", job_forms_id_share_get_324);
 app.post("/api/job-forms/:id/share", job_forms_id_share_post_325);
@@ -3674,6 +3702,7 @@ app.post("/api/plan-manager/drawings/:id/revisions/:revisionId/finalize", plan_m
 app.post("/api/plan-manager/drawings/:id/upload", plan_manager_drawings_id_upload_post_570);
 app.get("/api/plan-manager/jobs/:jobId/drawings-zip", plan_manager_jobs_jobId_drawings_zip_get_571);
 app.get("/api/plan-manager/jobs-with-drawings", plan_manager_jobs_with_drawings_get_572);
+app.post("/api/plan-manager/upload", plan_manager_upload_post);
 app.post("/api/plan-manager/share", plan_manager_share_post_573);
 app.get("/api/plan-manager/share/validate", plan_manager_share_validate_get_574);
 app.post("/api/portal/estimates/:id/approve", portal_estimates_id_approve_post_575);
@@ -3751,7 +3780,9 @@ app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_pat
 app.get("/api/scheduler/tasks", scheduler_tasks_get_647);
 app.get("/api/secure-share", secure_share_get_648);
 app.post("/api/secure-share", secure_share_post_649);
+app.get("/api/secure-share/active", secure_share_active_get);
 app.delete("/api/secure-share/:id", secure_share_id_delete_650);
+app.post("/api/secure-share/:id/revoke-and-rotate", secure_share_id_revoke_rotate_post);
 app.get("/api/secure-share/:token", secure_share_token_get_651);
 app.post("/api/secure-share/:token", secure_share_token_post_652);
 // Public token-scoped content delivery (view/download PDF — no login required)

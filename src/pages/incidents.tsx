@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
 import {
   AlertTriangle, Plus, Filter, X, ChevronRight,
@@ -182,7 +183,8 @@ export default function IncidentsPage() {
   }
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

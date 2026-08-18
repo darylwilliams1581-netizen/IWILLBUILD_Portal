@@ -18,6 +18,7 @@ import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import NewJobModal from '@/components/NewJobModal';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
@@ -101,7 +102,8 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -229,7 +231,7 @@ export default function JobsPage() {
                 </select>
               </div>
             )}
-            <div className="scroll-x-hide flex gap-1.5 pb-0.5">
+            <div className="flex flex-wrap gap-1.5">
               {['All', 'Works in Progress', 'Quoting', 'On Hold', 'Completed'].map((f) => (
                 <button key={f} onClick={() => setActiveFilter(f)}
                   className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${activeFilter === f ? 'bg-primary text-white border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary hover:text-primary'}`}>

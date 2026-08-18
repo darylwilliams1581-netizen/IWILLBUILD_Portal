@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
-  LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
+  LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
-  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
+  Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle,
+  MoreHorizontal, ClipboardCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
@@ -260,111 +261,163 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
   isCompleting?: boolean;
 }) {
   const meta = TYPE_META[t.formType];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  function menuAction(fn: () => void) {
+    setMenuOpen(false);
+    fn();
+  }
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group relative rounded-2xl overflow-hidden flex flex-col bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
+      className="group relative flex items-center gap-3 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all rounded-xl px-3 py-2.5"
     >
-      {/* Top accent bar */}
-      <div className={`h-0.5 w-full ${meta.dot}`} />
+      {/* Left accent stripe */}
+      <div className={`shrink-0 w-1 h-8 rounded-full ${meta.dot}`} />
 
-      {/* Card body */}
-      <div className="flex flex-col gap-3 p-5 flex-1">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="font-heading font-bold text-sm text-slate-900 truncate">{t.name}</p>
-            {t.category && <p className="text-xs text-slate-400 mt-0.5 truncate">{t.category}</p>}
-          </div>
-          <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg ${meta.bg} ${meta.color}`}>
+      {/* Name + meta */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-heading font-bold text-sm text-slate-900 truncate">{t.name}</p>
+          <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md ${meta.bg} ${meta.color}`}>
             {t.formType}
           </span>
         </div>
-
-        {/* Description */}
-        {t.description && (
-          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{t.description}</p>
-        )}
-
-        {/* Status + availability pills */}
-        <div className="flex flex-wrap gap-1.5 mt-auto">
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+        {/* Pills row */}
+        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+          <span className={`text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 ${
             t.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
           }`}>
             {t.isActive ? '● Active' : '○ Inactive'}
           </span>
+          {t.category && (
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 truncate max-w-[120px]">
+              {t.category}
+            </span>
+          )}
           {t.onDashboard && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500 flex items-center gap-1">
-              <LayoutDashboard size={9} /> Dashboard
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 flex items-center gap-0.5">
+              <LayoutDashboard size={8} /> Dash
             </span>
           )}
           {t.onJobs && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500 flex items-center gap-1">
-              <Briefcase size={9} /> Jobs
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 flex items-center gap-0.5">
+              <Briefcase size={8} /> Jobs
             </span>
           )}
           {t.onFleet && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500 flex items-center gap-1">
-              <Truck size={9} /> Fleet
+            <span className="text-[10px] px-1.5 py-0 rounded-full font-semibold leading-5 bg-slate-100 text-slate-500 flex items-center gap-0.5">
+              <Truck size={8} /> Fleet
             </span>
           )}
         </div>
       </div>
 
-      {/* Action footer */}
-      <div className="flex items-center gap-1 px-4 py-3 border-t border-slate-100 bg-slate-50/60">
-        <button
-          onClick={onBuild}
-          className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-xl transition-all hover:brightness-110 flex-1 justify-center bg-primary"
-        >
-          <Zap size={12} /> Build fields <ChevronRight size={11} />
-        </button>
-        {onComplete && (
+      {/* Actions: ⋯ only — Complete is handled by Fill Form in the header */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* ⋯ More actions */}
+        <div ref={menuRef} className="relative">
           <button
-            onClick={onComplete}
-            disabled={isCompleting}
-            className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-60"
-            title="Complete this form"
+            onClick={() => setMenuOpen(v => !v)}
+            className="flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            aria-label={`More actions for ${t.name}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
           >
-            {isCompleting
-              ? <><Loader2 size={12} className="animate-spin" /> Opening…</>
-              : <><ExternalLink size={12} /> Complete</>
-            }
+            <MoreHorizontal size={15} />
           </button>
-        )}
-        <button
-          onClick={onShare}
-          className="p-2 rounded-xl text-slate-400 hover:text-violet-700 hover:bg-violet-50 transition-colors"
-          title="Share public link"
-        >
-          <Link2 size={14} />
-        </button>
-        {onShareToLibrary && (
-          <button
-            onClick={onShareToLibrary}
-            className="p-2 rounded-xl text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-            title="Share to Global Library"
-          >
-            <Library size={14} />
-          </button>
-        )}
-        <button
-          onClick={onEdit}
-          className="p-2 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-200 transition-colors"
-          title="Edit template"
-        >
-          <Pencil size={14} />
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-          title="Delete template"
-        >
-          <Trash2 size={14} />
-        </button>
+
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                transition={{ duration: 0.12 }}
+                role="menu"
+                className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[180px]"
+              >
+                {/* Build */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onBuild)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Zap size={14} className="text-primary shrink-0" />
+                  <span className="font-medium">Build fields</span>
+                  <span className="ml-auto text-[10px] text-slate-400 hidden sm:inline">Desktop</span>
+                </button>
+
+                <div className="h-px bg-slate-100 mx-2 my-1" />
+
+                {/* Share public link */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onShare)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Link2 size={14} className="text-violet-500 shrink-0" />
+                  <span className="font-medium">Public link</span>
+                </button>
+
+                {/* Share to Library */}
+                {onShareToLibrary && (
+                  <button
+                    role="menuitem"
+                    onClick={() => menuAction(onShareToLibrary)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <Library size={14} className="text-violet-500 shrink-0" />
+                    <span className="font-medium">Share to Library</span>
+                  </button>
+                )}
+
+                <div className="h-px bg-slate-100 mx-2 my-1" />
+
+                {/* Edit */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onEdit)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Pencil size={14} className="text-slate-400 shrink-0" />
+                  <span className="font-medium">Edit template</span>
+                </button>
+
+                {/* Delete */}
+                <button
+                  role="menuitem"
+                  onClick={() => menuAction(onDelete)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                >
+                  <Trash2 size={14} className="shrink-0" />
+                  <span className="font-medium">Delete</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );
@@ -500,6 +553,7 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
 
 interface Submission {
   id: number;
+  source: 'internal' | 'public';
   template_id: number;
   template_name: string;
   form_type: string;
@@ -509,53 +563,95 @@ interface Submission {
   job_name: string | null;
   job_number: string | null;
   status: string;
-  submitted_at: string;
+  completed_at: string;
   answers_json: string | null;
+  form_route: string | null;
 }
 
-function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
-  const [submissions,  setSubmissions]  = useState<Submission[]>([]);
-  const [loading,      setLoading]      = useState(true);
+function SubmissionsInbox({ templates, onFillForm }: { templates: FormTemplate[]; onFillForm: () => void }) {
+  const navigate = useNavigate();
+  const [submissions,    setSubmissions]    = useState<Submission[]>([]);
+  const [total,          setTotal]          = useState(0);
+  const [loading,        setLoading]        = useState(true);
   const [templateFilter, setTemplateFilter] = useState('');
-  const [expanded,     setExpanded]     = useState<Set<number>>(new Set());
+  const [expandedPublic, setExpandedPublic] = useState<Set<number|string>>(new Set());
 
   useEffect(() => {
+    setLoading(true);
     const url = templateFilter
       ? `/api/forms/submissions?templateId=${templateFilter}`
       : '/api/forms/submissions';
     fetch(url, { credentials: 'include' })
       .then(r => r.json())
-      .then((d: { submissions?: Submission[] }) => setSubmissions(d.submissions ?? []))
+      .then((d: { submissions?: Submission[]; total?: number }) => {
+        setSubmissions(d.submissions ?? []);
+        setTotal(d.total ?? 0);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [templateFilter]);
 
-  function toggleExpand(id: number) {
-    setExpanded(prev => {
+  function togglePublicExpand(key: number | string) {
+    setExpandedPublic(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   }
 
   function fmtDate(d: string) {
-    return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const dt = new Date(d);
+    const date = dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = dt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+    return `${date} · ${time}`;
+  }
+
+  function openForm(s: Submission, e?: React.MouseEvent) {
+    e?.stopPropagation();
+    if (s.source === 'internal' && s.form_route) {
+      navigate(s.form_route, { state: { returnTo: '/studio/forms?tab=submissions' } });
+    }
+  }
+
+  function jobLine(s: Submission): string {
+    if (!s.job_name) return 'Standalone submission';
+    const prefix = s.job_number ? `${s.job_number} — ` : '';
+    return `${prefix}${s.job_name}`;
+  }
+
+  function submitterLine(s: Submission): string {
+    if (s.source === 'public') {
+      return s.submitter_name ? s.submitter_name : 'Public submission';
+    }
+    return s.submitter_name ? `Submitted by ${s.submitter_name}` : 'Submitted by unknown';
   }
 
   return (
     <div className="space-y-4">
+      {/* ── Fill Form CTA ── */}
+      <button
+        onClick={onFillForm}
+        disabled={templates.length === 0}
+        title={templates.length === 0 ? 'Create a template first' : 'Fill out a form'}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+      >
+        <ClipboardCheck size={15} /> Fill Form
+      </button>
+
+      {/* ── Filter bar ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <select
           value={templateFilter}
-          onChange={e => { setTemplateFilter(e.target.value); setLoading(true); }}
+          onChange={e => setTemplateFilter(e.target.value)}
           className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">All templates</option>
           {templates.map(t => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
         </select>
-        <span className="text-xs text-slate-400">{submissions.length} response{submissions.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-slate-400">{total} completed form{total !== 1 ? 's' : ''}</span>
       </div>
 
+      {/* ── States ── */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 size={22} className="animate-spin text-primary" />
@@ -565,76 +661,183 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
           <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4">
             <Inbox size={24} className="text-primary" />
           </div>
-          <p className="font-heading font-bold text-slate-700 mb-1">No submissions yet</p>
-          <p className="text-sm text-slate-400 max-w-xs">Share a form link with workers or clients to start collecting responses.</p>
+          <p className="font-heading font-bold text-slate-700 mb-1">No completed Forms yet</p>
+          <p className="text-sm text-slate-400 max-w-xs">Completed Job Forms and public Form responses will appear here.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {submissions.map(s => {
-            const isOpen = expanded.has(s.id);
-            let answers: Record<string, unknown> = {};
-            try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
-            const answerCount = Object.keys(answers).length;
+        <>
+          {/* ══════════════════════════════════════════════════════════════
+              MOBILE CARDS  — visible below md breakpoint
+          ══════════════════════════════════════════════════════════════ */}
+          <div className="md:hidden space-y-2">
+            {submissions.map(s => {
+              const rowKey = `${s.source}-${s.id}`;
+              const isInternal = s.source === 'internal';
+              const isPublicExpanded = expandedPublic.has(rowKey);
+              let answers: Record<string, unknown> = {};
+              try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
+              const answerCount = Object.keys(answers).length;
+              const canOpen = isInternal && !!s.form_route;
 
-            return (
-              <div key={s.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
+              return (
                 <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-                  onClick={() => toggleExpand(s.id)}
+                  key={rowKey}
+                  className={`bg-white border border-slate-200 rounded-xl overflow-hidden transition-colors ${
+                    canOpen ? 'cursor-pointer hover:border-primary/40 hover:bg-violet-50/30 active:bg-violet-50' : ''
+                  }`}
+                  onClick={canOpen ? (e) => openForm(s, e) : undefined}
+                  role={canOpen ? 'button' : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                  onKeyDown={canOpen ? (e) => { if (e.key === 'Enter' || e.key === ' ') openForm(s); } : undefined}
+                  aria-label={canOpen ? `Open form: ${s.template_name}` : undefined}
                 >
-                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                    <User size={14} className="text-violet-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">
-                      {s.submitter_name ?? 'Anonymous'}
-                      {s.submitter_email && <span className="text-slate-400 font-normal ml-2 text-xs">{s.submitter_email}</span>}
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400">
-                      <span className="font-medium text-slate-600">{s.template_name}</span>
-                      {s.job_name && <span>· {s.job_name}{s.job_number ? ` #${s.job_number}` : ''}</span>}
-                      <span className="flex items-center gap-1"><Calendar size={9} />{fmtDate(s.submitted_at)}</span>
-                      <span>{answerCount} answer{answerCount !== 1 ? 's' : ''}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.status}</span>
-                    {isOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
-                  </div>
-                </div>
+                  {/* Card body */}
+                  <div className="px-4 pt-3 pb-3 space-y-1.5">
 
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
-                        {answerCount === 0 ? (
-                          <p className="text-xs text-slate-400 italic">No answers recorded</p>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {Object.entries(answers).map(([fieldId, answer]) => (
-                              <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
-                                <p className="text-xs text-slate-700 break-words">
-                                  {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
-                                </p>
+                    {/* Row 1: Form name + status pill */}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-bold text-slate-800 leading-snug flex-1 min-w-0">
+                        {s.template_name}
+                      </p>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0 whitespace-nowrap mt-0.5">
+                        {s.status}
+                      </span>
+                    </div>
+
+                    {/* Row 2: Job — single unbreakable line */}
+                    <p className="text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {jobLine(s)}
+                    </p>
+
+                    {/* Row 3: Submitter + source badge */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs text-slate-500">{submitterLine(s)}</p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                        isInternal ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'
+                      }`}>
+                        {isInternal ? 'Internal' : 'Public'}
+                      </span>
+                    </div>
+
+                    {/* Row 4: Date — single line */}
+                    <p className="text-xs text-slate-400 whitespace-nowrap">
+                      {fmtDate(s.completed_at)}
+                    </p>
+
+                    {/* Row 5: public expand toggle only — internal cards are fully tappable */}
+                    {!canOpen && (
+                      <button
+                        onClick={e => { e.stopPropagation(); togglePublicExpand(rowKey); }}
+                        className="mt-1 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg py-2.5 transition-colors min-h-[44px]"
+                        aria-expanded={isPublicExpanded}
+                        aria-label={isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
+                      >
+                        {isPublicExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        {isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Expanded answers — public responses only */}
+                  {!isInternal && (
+                    <AnimatePresence>
+                      {isPublicExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
+                            {answerCount === 0 ? (
+                              <p className="text-xs text-slate-400 italic">No answers recorded</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {Object.entries(answers).map(([fieldId, answer]) => (
+                                  <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
+                                    <p className="text-xs text-slate-700 break-words">
+                                      {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
+                                    </p>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════
+              DESKTOP TABLE  — visible from md breakpoint up
+          ══════════════════════════════════════════════════════════════ */}
+          <div className="hidden md:block rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Form</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Job</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Submitted by</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Source</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Completed</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {submissions.map(s => {
+                  const rowKey = `${s.source}-${s.id}`;
+                  const isInternal = s.source === 'internal';
+                  const canOpen = isInternal && !!s.form_route;
+
+                  return (
+                    <tr
+                      key={rowKey}
+                      className={`bg-white hover:bg-slate-50 transition-colors ${canOpen ? 'cursor-pointer' : ''}`}
+                      onClick={canOpen ? (e) => openForm(s, e) : undefined}
+                    >
+                      {/* Form name */}
+                      <td className="px-4 py-3 font-semibold text-slate-800 max-w-[200px]">
+                        <span className="block truncate">{s.template_name}</span>
+                      </td>
+                      {/* Job */}
+                      <td className="px-4 py-3 text-slate-600 max-w-[180px]">
+                        <span className="block truncate">{jobLine(s)}</span>
+                      </td>
+                      {/* Submitted by */}
+                      <td className="px-4 py-3 text-slate-600 max-w-[160px]">
+                        <span className="block truncate">{s.submitter_name ?? (isInternal ? 'Unknown' : 'Public submission')}</span>
+                      </td>
+                      {/* Source badge */}
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                          isInternal ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'
+                        }`}>
+                          {isInternal ? 'Internal Form' : 'Public Response'}
+                        </span>
+                      </td>
+                      {/* Date */}
+                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">
+                        {fmtDate(s.completed_at)}
+                      </td>
+                      {/* Status */}
+                      <td className="px-4 py-3">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                          {s.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -643,6 +846,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function FormsPage() {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -660,6 +864,8 @@ export function FormsPage() {
   const [jobPickerTemplate, setJobPickerTemplate] = useState<FormTemplate | null>(null);
   const [jobPickerError, setJobPickerError] = useState('');
   const [jobPickerLoading, setJobPickerLoading] = useState(false);
+  // Fill Form — template picker (shown before the job picker when triggered from header)
+  const [fillFormPickerOpen, setFillFormPickerOpen] = useState(false);
   // Job selector state
   type JobOption = { id: number; job_number: string | null; title: string; client: string | null };
   const [jobOptions, setJobOptions] = useState<JobOption[]>([]);
@@ -707,7 +913,7 @@ export function FormsPage() {
       if (!res.ok || !data.submission) throw new Error(data.error ?? 'Failed to start form');
       const jobId = data.submission.jobId ?? selectedJobId;
       setJobPickerTemplate(null);
-      window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener');
+      navigate(`/jobs/${jobId}/forms/${data.submission.id}`, { state: { returnTo: '/studio/forms?tab=forms' } });
     } catch (e) {
       setJobPickerError(e instanceof Error ? e.message : 'Could not start form. Please try again.');
     } finally {
@@ -717,7 +923,13 @@ export function FormsPage() {
   }
 
   // ── Document Builder state removed — Documents tab moved to Studio ───────────
-  const [pageTab, setPageTab] = useState<'forms' | 'submissions' | 'library'>('forms');
+  // Initialise from ?tab= query param so returnTo links land on the right tab.
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const validTabs = ['submissions', 'forms', 'library'] as const;
+  type TabId = typeof validTabs[number];
+  const initialTab: TabId = validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : 'submissions';
+  const [pageTab, setPageTab] = useState<TabId>(initialTab);
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -820,31 +1032,15 @@ export function FormsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <>
-              <button
-                onClick={handleSeed}
-                disabled={seeding}
-                title="Load 7 industry-standard form templates"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
-                <span className="hidden sm:inline">Load Templates</span>
-              </button>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary"
-              >
-                <Plus size={15} /> New Form
-              </button>
-            </>
+            <></>
           </div>
         </header>
 
         {/* Tab switcher */}
         <div className="flex border-b border-slate-200 bg-white px-6 gap-1">
           {([
-            { key: 'forms', label: 'Forms', icon: FileText },
             { key: 'submissions', label: 'Submissions', icon: Inbox },
+            { key: 'forms', label: 'Templates', icon: FileText },
             { key: 'library', label: 'Library', icon: Library },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
@@ -917,7 +1113,7 @@ export function FormsPage() {
                       onClick={() => setShowCreate(true)}
                       className="inline-flex items-center gap-2 text-sm font-bold text-white px-6 py-3 rounded-xl transition-all hover:brightness-110 bg-primary"
                     >
-                      <Plus size={15} /> Create Template
+                      <Plus size={15} /> New Form Template
                     </button>
                   </div>
                 </motion.div>
@@ -925,8 +1121,15 @@ export function FormsPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+                  className="grid grid-cols-1 gap-4"
                 >
+                  {/* New Form Template button — full width on mobile */}
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="w-full sm:w-auto self-start flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary min-h-[44px]"
+                  >
+                    <Plus size={15} /> New Form Template
+                  </button>
                   {templates.map((t) => (
                     <TemplateCard
                       key={t.id}
@@ -947,14 +1150,12 @@ export function FormsPage() {
 
           {/* ── Submissions tab ── */}
           {pageTab === 'submissions' && (
-            <SubmissionsInbox templates={templates} />
+            <SubmissionsInbox templates={templates} onFillForm={() => setFillFormPickerOpen(true)} />
           )}
 
           {/* ── Library tab ── */}
           {pageTab === 'library' && (
-            <div className="-m-6">
-              <LibraryPage initialTypeFilter="form" />
-            </div>
+            <LibraryPage initialTypeFilter="form" />
           )}
         </div>
       </div>
@@ -985,6 +1186,58 @@ export function FormsPage() {
             sourceType="form"
             onClose={() => setLibraryShareTarget(null)}
           />
+        )}
+
+        {/* ── Fill Form — template picker (step 1 of 2) ── */}
+        {fillFormPickerOpen && (
+          <motion.div
+            key="fill-form-picker-backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setFillFormPickerOpen(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-heading font-bold text-base text-slate-900">Fill Form</h2>
+                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">Select a template to complete.</p>
+                </div>
+                <button
+                  onClick={() => setFillFormPickerOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors shrink-0"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto -mx-1 px-1">
+                {templates.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setFillFormPickerOpen(false);
+                      void handleComplete(t.id);
+                    }}
+                    className="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl border border-slate-200 hover:border-primary hover:bg-violet-50 transition-colors group min-h-[44px]"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-violet-50 group-hover:bg-violet-100 flex items-center justify-center shrink-0 transition-colors">
+                      <FileText size={14} className="text-primary" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-800 truncate flex-1">{t.name}</span>
+                    <ChevronDown size={13} className="text-slate-400 -rotate-90 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* ── Job number picker for standalone form completion ── */}

@@ -22,6 +22,7 @@ import { useUploadQueue } from '@/hooks/useUploadQueue';
 import FormSection from '@/components/FormSection';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -658,7 +659,8 @@ export default function IncidentDetailPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="flex flex-col min-h-dvh bg-slate-50">
+      <div className="flex flex-col min-h-dvh bg-slate-50 lg-portal">
+        <PortalSidebar />
         {/* Header */}
         <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
           {/* Breadcrumb */}

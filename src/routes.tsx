@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/lib/auth/auth-client';
 import RouteErrorFallback from '@/components/RouteErrorFallback';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopOnly from '@/components/DesktopOnly';
+import { DriverSessionProvider } from '@/lib/DriverSessionContext';
 
 // ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
 import NativeStartupGate from '@/components/NativeStartupGate';
@@ -88,6 +89,7 @@ const AssetManagerPage       = lazy(() => import('./pages/asset-manager'));
 const AssetManagerDetailPage = lazy(() => import('./pages/asset-manager-detail'));
 const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
 const PhotoSharePage         = lazy(() => import('./pages/photo-share'));
+const LensPage               = lazy(() => import('./pages/lens'));
 const JobNotesPage           = lazy(() => import('./pages/job-notes-page'));
 const JobDelaysPage          = lazy(() => import('./pages/job-delays-page'));
 const JobFormsPage           = lazy(() => import('./pages/job-forms-page'));
@@ -99,7 +101,6 @@ const FleetDrivePage         = lazy(() => import('./pages/fleet-drive-page'));
 const JobCostsPage           = lazy(() => import('./pages/job-costs-page'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
-const DriverPage              = lazy(() => import('./pages/driver'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HelpPage                = lazy(() => import('./pages/help'));
 // HomeScreenPage is loaded inside ShellRouter (lazy, only when app shell is active)
@@ -202,8 +203,7 @@ export const routes: RouteObject[] = [
   { path: '/login-help',      element: <LoginHelpPage /> },
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
   { path: '/subscribe',      element: <Suspense fallback={<PageLoader />}><SubscribePage /></Suspense> },
-  { path: '/driver',       element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>,      errorElement: routeError },
-  { path: '/prestart',     element: <ProtectedRoute><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></ProtectedRoute>,    errorElement: routeError },
+  { path: '/prestart', element: <ProtectedRoute><DriverSessionProvider><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></DriverSessionProvider></ProtectedRoute>, errorElement: routeError },
   { path: '/site-escape', element: <Navigate to="/home" replace />, errorElement: routeError },
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
@@ -262,7 +262,7 @@ export const routes: RouteObject[] = [
   { path: '/studio',               element: protectDesktop(<StudioPage />, 'Studio'),                                                                                                                    errorElement: routeError },
   { path: '/studio/builder/:id',   element: protectDesktop(<StudioBuilderPage />, 'Studio Builder'),                                                                                                     errorElement: routeError },
   { path: '/studio/documents',     element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>, 'Studio Documents'),                                                  errorElement: routeError },
-  { path: '/studio/forms',         element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>, 'Studio Forms'),                                                          errorElement: routeError },
+  { path: '/studio/forms',         element: protect(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>),                                                                                    errorElement: routeError },
   { path: '/studio/global-lists',  element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>, 'Studio Global Lists'),                                             errorElement: routeError },
   { path: '/studio/library',       element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>, 'Studio Library'),                                                      errorElement: routeError },
   { path: '/safety/posters',       element: protect(<Suspense fallback={<PageLoader />}><SafetyPostersPage /></Suspense>),   errorElement: routeError },
@@ -277,6 +277,8 @@ export const routes: RouteObject[] = [
   { path: '/share/asset-report/:token',      element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
   // Public job photo gallery — token-validated, no login required
   { path: '/photos/share/:token',            element: <Suspense fallback={<PageLoader />}><PhotoSharePage /></Suspense>, errorElement: routeError },
+  // Lens — company-wide photo gallery (Phase 1: read-only)
+  { path: '/lens', element: protect(<LensPage />), errorElement: routeError },
   // Sign-in history
   { path: '/signin-history',             element: protect(<SignInHistoryPage />),       errorElement: routeError },
   // Standalone form instance

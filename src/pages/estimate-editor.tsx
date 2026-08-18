@@ -10,6 +10,7 @@ import {
 import ShareLinkModal from '@/components/ShareLinkModal';
 import JobContextTab from '@/components/JobContextTab';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
+import PortalSidebar from '@/components/PortalSidebar';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
   estimateTotals, lineCalc, ESTIMATE_STATUSES, GST_MODES,
@@ -378,7 +379,8 @@ export default function EstimateEditorPage() {
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <Helmet>
         <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
         <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />

@@ -711,6 +711,9 @@ export default function FleetDetailPage() {
 
   useEffect(() => { void loadAsset(); }, [loadAsset]);
 
+  // Load driver sessions on mount so the active-session badge is always visible
+  useEffect(() => { void loadDriverSessions(); }, [loadDriverSessions]);
+
   useEffect(() => {
     if (activeTab === 'prestarts')   void loadPrestarts();
     if (activeTab === 'history')     void loadDriverSessions();
@@ -733,6 +736,7 @@ export default function FleetDetailPage() {
   if (!loading && !asset && !error) return null;
 
   const statusStyle = asset ? getAssetStatusStyle(asset.status) : null;
+  const activeSession = driverSessions.find(s => s.status === 'active') ?? null;
 
   return (
     <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
@@ -808,6 +812,16 @@ export default function FleetDetailPage() {
                   {asset.archived && (
                     <span className="flex items-center gap-1 text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">
                       <Archive size={10} /> Archived
+                    </span>
+                  )}
+                  {/* Active driving session pill */}
+                  {activeSession && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border bg-green-50 border-green-200 text-green-700">
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-60" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                      </span>
+                      Currently driving — {activeSession.driver_name}
                     </span>
                   )}
                 </div>

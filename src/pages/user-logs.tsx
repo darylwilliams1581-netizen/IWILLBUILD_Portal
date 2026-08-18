@@ -15,6 +15,7 @@ import {
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -742,7 +743,8 @@ export default function UserLogsPage() {
     : 0;
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

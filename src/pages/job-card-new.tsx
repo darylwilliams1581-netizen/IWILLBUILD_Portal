@@ -87,12 +87,14 @@ export default function JobCardNewPage() {
     <div className="flex h-screen bg-[#f5f6f8] overflow-hidden">
       <Helmet>
         <title>New Job Card — IWILLBUILD</title>
+        <meta name="description" content="Create a new job card for reactive or call-out work." />
+        <link rel="canonical" href="https://iwillbuild.com/job-cards/new" />
         <meta name="robots" content="noindex" />
       </Helmet>
 
       <PortalSidebar />
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg-portal">
 
         {/* ── Header ── */}
         <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-4 shrink-0 safe-top">

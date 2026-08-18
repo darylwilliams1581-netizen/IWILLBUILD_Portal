@@ -7,6 +7,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, List, Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Pencil, Check, X, Loader2 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 interface GlobalList {
   id: number;
@@ -244,7 +245,8 @@ export default function StudioGlobalListsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 lg:pt-[116px]">
+    <div className="flex flex-col flex-1 min-h-0 lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

@@ -483,7 +483,7 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
         );
       })()}
       {field.fieldType === 'photo' && (() => {
-        const allowMultiple = !!settings.multiple;
+        const allowMultiple = settings.multiple !== false; // default true — multiple photos always allowed
         // value is stored as a JSON array of URLs, or a single URL string, or null
         const urls: string[] = (() => {
           if (!value) return [];
@@ -567,7 +567,7 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
                 >
                   {uploading
                     ? <><Loader2 size={18} className="animate-spin text-primary" /><span className="text-xs text-slate-500">Uploading…</span></>
-                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? (allowMultiple ? 'Add another photo' : 'Replace photo') : 'Take or upload a photo'}</span></>
+                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? 'Add another photo' : 'Take or upload a photo'}</span></>
                   }
                 </button>
                 <input

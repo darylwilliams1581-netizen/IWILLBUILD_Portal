@@ -7,6 +7,7 @@ import { Wrench, ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AMAssetsTab from '@/components/AssetManager/AMAssetsTab';
 import EquipmentDetailPanel from '@/components/AssetManager/EquipmentDetailPanel';
+import PortalSidebar from '@/components/PortalSidebar';
 
 function TabFallback() {
   return (
@@ -42,6 +43,7 @@ export default function AssetManagerPage() {
         <link rel="canonical" href="https://iwillbuild.com/studio/asset-manager" />
         <meta name="robots" content="noindex" />
       </Helmet>
+      <PortalSidebar />
       <div className="portal-main">
 
         {selectedAssetId !== null ? (

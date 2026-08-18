@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PageError from '@/components/ui/PageError';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 export default function FilesPage() {
   const navigate = useNavigate();
@@ -35,7 +36,8 @@ export default function FilesPage() {
   const totalSize = files.reduce((s, f) => s + f.sizeBytes, 0);
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

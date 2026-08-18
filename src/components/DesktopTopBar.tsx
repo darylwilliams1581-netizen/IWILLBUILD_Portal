@@ -16,6 +16,8 @@ import NotificationBell from '@/components/NotificationBell';
 import WeatherWidget from '@/components/WeatherWidget';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
+import { useDriverSessionSafe } from '@/lib/useDriverSession';
+import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
 
 export const DESKTOP_TOPBAR_HEIGHT = 56;
 
@@ -40,6 +42,9 @@ function getGreeting(name: string): { eyebrow: string; headline: string } {
 export default function DesktopTopBar() {
   const { me, isPlatformOwner } = usePermissions();
   const navigate = useNavigate();
+  const driverCtx = useDriverSessionSafe();
+  const session = driverCtx?.session ?? null;
+  const refresh = driverCtx?.refresh ?? (() => Promise.resolve());
 
   const firstName =
     me?.user?.name?.trim().split(' ')[0] ||
@@ -177,6 +182,14 @@ export default function DesktopTopBar() {
 
         {/* Notification bell */}
         <NotificationBell collapsed={false} onTopBar={false} />
+
+        {/* Active driving session pill */}
+        {session && (
+          <>
+            {divider}
+            <DrivingSessionBadge session={session} onStopped={() => void refresh()} />
+          </>
+        )}
 
         {/* Avatar → settings */}
         <Link

@@ -13,6 +13,7 @@ import {
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import { useSupportMode } from '@/lib/useSupportMode';
 import OverviewTab from '@/components/owner-console/OverviewTab';
 import CompaniesTab from '@/components/owner-console/CompaniesTab';
@@ -605,7 +606,8 @@ export default function OwnerConsolePage() {
   // Access guard
   if (!permsLoading && !isPlatformOwner) {
     return (
-      <div className="flex-1 bg-[#F4F5F7] flex flex-col lg:pt-[116px]">
+      <div className="flex-1 bg-[#F4F5F7] flex flex-col lg-portal">
+        <PortalSidebar />
         <DesktopTopBar />
         <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
@@ -636,7 +638,8 @@ export default function OwnerConsolePage() {
     : null;
 
   return (
-    <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
 

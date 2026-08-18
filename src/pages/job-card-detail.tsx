@@ -13,7 +13,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import PortalSidebar from '@/components/PortalSidebar';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   ChevronLeft, Edit2, Save, X, Plus, Trash2,
   RefreshCw, AlertCircle, CheckCircle2, Receipt, ArrowRightLeft,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { useUploadQueue } from '@/hooks/useUploadQueue';
+import PortalSidebar from '@/components/PortalSidebar';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { EditorConfig } from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
@@ -1024,7 +1026,7 @@ function EditPanel({ card, customers, team, onSave, onCancel }: {
 
       {/* Labour */}
       <Section title="Labour" icon={DollarSign}>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={labelCls}>Hours</label>
             <input type="number" min="0" step="0.25" value={form.labourHours} onChange={e => set('labourHours', e.target.value)}
@@ -1053,7 +1055,7 @@ function EditPanel({ card, customers, team, onSave, onCancel }: {
       <Section title="Materials" icon={Wrench}>
         <div className="flex flex-col gap-2">
           {materials.map((m, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="text"
                 value={m.description}
@@ -1061,7 +1063,7 @@ function EditPanel({ card, customers, team, onSave, onCancel }: {
                 placeholder="Description"
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
-              <div className="relative w-28 shrink-0">
+              <div className="relative sm:w-28 shrink-0">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 <input
                   type="number" min="0" step="0.01"
@@ -1071,7 +1073,7 @@ function EditPanel({ card, customers, team, onSave, onCancel }: {
                 />
               </div>
               <button onClick={() => setMaterials(ms => ms.filter((_, idx) => idx !== i))}
-                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors">
+                className="self-end sm:self-auto p-1.5 text-gray-400 hover:text-red-500 transition-colors">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -1200,8 +1202,10 @@ export default function JobCardDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[#f5f6f8]">
+      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
         <PortalSidebar />
+        <DesktopTopBar />
+        <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
           <RefreshCw size={20} className="animate-spin text-gray-300" />
         </div>
@@ -1211,8 +1215,9 @@ export default function JobCardDetailPage() {
 
   if (error || !card) {
     return (
-      <div className="flex h-screen bg-[#f5f6f8]">
-        <PortalSidebar />
+      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+        <DesktopTopBar />
+        <DesktopDock />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <AlertCircle size={28} className="text-red-400" />
           <p className="text-gray-600 font-medium">{error || 'Job card not found'}</p>
@@ -1233,17 +1238,15 @@ export default function JobCardDetailPage() {
   const canConvert = card.status !== 'converted';
 
   return (
-    <div className="flex h-screen bg-[#f5f6f8] overflow-hidden">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>{card.card_number} — Job Card — IWILLBUILD</title>
         <meta name="description" content={`Job Card ${card.card_number} — ${card.work_description.slice(0, 120)}`} />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/job-cards/${card.id}`} />
       </Helmet>
-
-      <PortalSidebar />
-
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* ── Header — single unified bar for mobile + desktop ── */}
         <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-3 shrink-0 safe-top">
@@ -1295,6 +1298,13 @@ export default function JobCardDetailPage() {
             <div className="flex items-center gap-2 shrink-0">
               {!editing && (
                 <>
+                  <Link
+                    to="/job-cards/new"
+                    className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-yellow-400 text-yellow-700 text-sm font-semibold hover:bg-yellow-50 transition-colors"
+                  >
+                    <Plus size={14} />
+                    Add New Job Card
+                  </Link>
                   {canConvert && (
                     <button
                       onClick={() => setConvertOpen(true)}
@@ -1339,7 +1349,7 @@ export default function JobCardDetailPage() {
           ) : (
             <div className="max-w-3xl mx-auto flex flex-col gap-4">
               {/* ── Financial summary strip ── */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: 'Labour', value: fmtCurrency(labour), icon: DollarSign, cls: 'text-emerald-600' },
                   { label: 'Materials', value: fmtCurrency(mats), icon: Wrench, cls: 'text-violet-600' },
@@ -1358,7 +1368,7 @@ export default function JobCardDetailPage() {
 
               {/* ── Details ── */}
               <Section title="Details" icon={FileText}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
                   <Field label="Card number" value={card.card_number} mono />
                   <Field label="Service date" value={fmtDate(card.service_date)} />
                   <Field label="Created" value={fmtDate(card.created_at)} />
@@ -1378,7 +1388,7 @@ export default function JobCardDetailPage() {
 
               {/* ── Labour ── */}
               <Section title="Labour" icon={DollarSign}>
-                <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-3">
                   <Field label="Hours" value={card.labour_hours != null ? `${card.labour_hours} hrs` : null} />
                   <Field label="Rate" value={card.labour_rate != null ? fmtCurrency(card.labour_rate) + '/hr' : null} />
                   <Field label="Labour total" value={fmtCurrency(card.labour_amount)} />
@@ -1457,7 +1467,6 @@ export default function JobCardDetailPage() {
             </div>
           )}
         </div>
-      </main>
 
       {/* Toast */}
       {toast && (

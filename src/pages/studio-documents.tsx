@@ -21,6 +21,7 @@ import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import { studio } from 'virtual:content';
 import { LibraryPage } from '@/pages/library';
 
@@ -528,7 +529,8 @@ export default function StudioDocumentsPage() {
   const activeCount = templates.filter(t => Boolean(t.is_active)).length;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 lg:pt-[116px]">
+    <div className="flex flex-col flex-1 min-h-0 lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

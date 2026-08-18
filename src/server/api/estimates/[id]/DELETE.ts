@@ -3,6 +3,7 @@ import { db } from '../../../db/client.js';
 import { estimates, profiles } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { revokeSharesForSource } from '../../../lib/share-lifecycle.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -26,6 +27,14 @@ export default async function handler(req: Request, res: Response) {
       where: and(eq(estimates.id, estimateId), eq(estimates.companyId, profile.companyId)),
     });
     if (!existing) return res.status(404).json({ error: 'Estimate not found' });
+
+    // Revoke all share links before deleting the source record
+    await revokeSharesForSource({
+      companyId: profile.companyId,
+      targetType: 'estimate',
+      targetId: String(estimateId),
+      req,
+    });
 
     await db.delete(estimates).where(eq(estimates.id, estimateId));
 

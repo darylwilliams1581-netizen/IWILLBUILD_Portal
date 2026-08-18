@@ -10,6 +10,7 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 import {
+  Camera,
   LayoutDashboard,
   HardHat,
   Zap,
@@ -58,6 +59,7 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#06b6d4' },
   // ── Assets / Files ────────────────────────────────────────────────────────
   { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#f97316' },
+  { label: 'Lens',            icon: Camera,          href: '/lens',                 color: 'hsl(var(--primary))' },
   { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#475569' },
   { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
   // ── Finance ───────────────────────────────────────────────────────────────
@@ -190,11 +192,19 @@ export default function DesktopDock() {
         }
         .dock-row::-webkit-scrollbar { display: none; }
         .dock-row { scrollbar-width: none; overflow: visible; }
+        .dock-divider {
+          width: 1px;
+          height: 22px;
+          background: rgba(255,255,255,0.15);
+          flex-shrink: 0;
+          margin-left: 4px;
+          margin-right: 4px;
+        }
       `}</style>
 
       <nav
         aria-label="Desktop navigation dock"
-        className="hidden lg:flex"
+        className="hidden md:flex lg:hidden"
         style={{
           position: 'fixed',
           top: 56,
@@ -225,14 +235,7 @@ export default function DesktopDock() {
           {items.map((item) => (
             <React.Fragment key={item.href + item.label}>
               {item.dividerBefore && (
-                <div style={{
-                  width: 1,
-                  height: 22,
-                  background: 'rgba(255,255,255,0.15)',
-                  flexShrink: 0,
-                  marginLeft: 4,
-                  marginRight: 4,
-                }} aria-hidden="true" />
+                <div className="dock-divider" aria-hidden="true" />
               )}
               <DockIcon item={item} active={isActive(item.href)} />
             </React.Fragment>

@@ -61,18 +61,17 @@ export default function JobPickerSheet({
             onClick={onClose}
           />
 
-          {/* Floating centred modal — not a bottom sheet */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          {/* Bottom sheet on mobile, centred modal on sm+ */}
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
-              className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl flex flex-col overflow-hidden"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+              className="pointer-events-auto w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
               style={{
                 boxShadow: '0 8px 48px rgba(0,0,0,0.18)',
-                /* Tall enough to show ~5 jobs; short enough to never overflow the screen */
-                maxHeight: 'min(520px, calc(100dvh - 120px))',
+                maxHeight: 'min(560px, calc(100dvh - 60px))',
               }}
               onClick={e => e.stopPropagation()}
             >

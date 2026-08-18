@@ -47,6 +47,7 @@
 		"HapticsPlugin",
 		"CAPNetworkPlugin",
 		"PushNotificationsPlugin",
+		"SharePlugin",
 		"SplashScreenPlugin",
 		"StatusBarPlugin"
 	]

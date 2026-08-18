@@ -15,6 +15,7 @@ import {
 import { Link } from 'react-router-dom';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 interface HistoryRow {
   id: string;
@@ -137,7 +138,8 @@ export default function SignInHistoryPage() {
   }
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

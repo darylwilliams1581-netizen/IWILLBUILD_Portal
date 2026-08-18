@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import type { ComponentType } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -650,10 +651,11 @@ export default function HelpPage() {
         <link rel="canonical" href="https://iwillbuild.com/help" />
       </Helmet>
 
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
 
-      <main className="min-h-screen bg-[#F4F5F7] pb-20 lg:pt-[116px]">
+      <main className="min-h-screen bg-[#F4F5F7] pb-20 lg-portal">
         {/* Sticky page header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[108px] z-10">
           <div className="max-w-3xl mx-auto px-4 py-4">

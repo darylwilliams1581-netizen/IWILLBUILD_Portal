@@ -18,6 +18,9 @@ export interface FormPdfField {
 export interface FormPdfImage {
   bytes: Uint8Array;
   mimeType: string;
+  fullBytes?: Uint8Array;   // full-resolution bytes for the appendix
+  fullMimeType?: string;
+  label?: string;           // field label for appendix heading
 }
 
 export interface FormSubmissionPdfData {
@@ -255,30 +258,58 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
     if (isImageField && imageInputs.length > 0) {
       const embedded = (await Promise.all(imageInputs.map((image) => embedImage(doc, image)))).filter((image): image is PDFImage => image !== null);
       if (embedded.length > 0) {
-        const columns = field.fieldType === 'signature' ? 1 : 2;
-        const gap = 12;
-        const boxWidth = columns === 1 ? Math.min(300, CONTENT_W) : (CONTENT_W - gap) / 2;
-        const boxHeight = field.fieldType === 'signature' ? 100 : 145;
-        for (let index = 0; index < embedded.length; index += columns) {
-          ensureSpace(boxHeight + 14);
-          for (let column = 0; column < columns; column++) {
-            const image = embedded[index + column];
-            if (!image) continue;
-            const x = MARGIN + column * (boxWidth + gap);
-            page.drawRectangle({ x, y: y - boxHeight, width: boxWidth, height: boxHeight, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
-            const fitted = fitImage(image, boxWidth - 8, boxHeight - 8);
-            page.drawImage(image, {
-              x: x + (boxWidth - fitted.width) / 2,
-              y: y - boxHeight + (boxHeight - fitted.height) / 2,
-              width: fitted.width,
-              height: fitted.height,
-            });
+        if (field.fieldType === 'photo') {
+          // ── Inline thumbnails: 3 per row, small ──
+          const THUMB_COLS = 3;
+          const THUMB_GAP = 8;
+          const THUMB_W = (CONTENT_W - THUMB_GAP * (THUMB_COLS - 1)) / THUMB_COLS;
+          const THUMB_H = THUMB_W * 0.75;
+          for (let index = 0; index < embedded.length; index += THUMB_COLS) {
+            ensureSpace(THUMB_H + 10);
+            for (let col = 0; col < THUMB_COLS; col++) {
+              const image = embedded[index + col];
+              if (!image) continue;
+              const x = MARGIN + col * (THUMB_W + THUMB_GAP);
+              page.drawRectangle({ x, y: y - THUMB_H, width: THUMB_W, height: THUMB_H, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
+              const fitted = fitImage(image, THUMB_W - 4, THUMB_H - 4);
+              page.drawImage(image, {
+                x: x + (THUMB_W - fitted.width) / 2,
+                y: y - THUMB_H + (THUMB_H - fitted.height) / 2,
+                width: fitted.width,
+                height: fitted.height,
+              });
+            }
+            y -= THUMB_H + 8;
           }
-          y -= boxHeight + 12;
-        }
-        const caption = formatAnswer(field, value);
-        if (field.fieldType === 'signature' && caption !== 'Signature captured') {
-          drawLines([caption], { size: 9, color: SLATE, lineHeight: 13 });
+          const photoCount = embedded.length;
+          drawLines([`${photoCount} photo${photoCount === 1 ? '' : 's'} — full size at end of document`], { size: 8, color: MUTED, font: italic, lineHeight: 12 });
+        } else {
+          // signatures: single column
+          const columns = 1;
+          const gap = 12;
+          const boxWidth = Math.min(300, CONTENT_W);
+          const boxHeight = 100;
+          for (let index = 0; index < embedded.length; index += columns) {
+            ensureSpace(boxHeight + 14);
+            for (let column = 0; column < columns; column++) {
+              const image = embedded[index + column];
+              if (!image) continue;
+              const x = MARGIN + column * (boxWidth + gap);
+              page.drawRectangle({ x, y: y - boxHeight, width: boxWidth, height: boxHeight, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
+              const fitted = fitImage(image, boxWidth - 8, boxHeight - 8);
+              page.drawImage(image, {
+                x: x + (boxWidth - fitted.width) / 2,
+                y: y - boxHeight + (boxHeight - fitted.height) / 2,
+                width: fitted.width,
+                height: fitted.height,
+              });
+            }
+            y -= boxHeight + 12;
+          }
+          const caption = formatAnswer(field, value);
+          if (caption !== 'Signature captured') {
+            drawLines([caption], { size: 9, color: SLATE, lineHeight: 13 });
+          }
         }
       } else {
         drawLines(['Image could not be embedded'], { size: 9, color: MUTED, font: italic, lineHeight: 14 });
@@ -300,6 +331,68 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
     ensureSpace(50);
     drawLines(['Disclaimer'], { font: bold, size: 8.5, color: MUTED, lineHeight: 14 });
     drawLines([data.disclaimer], { size: 8.5, color: MUTED, lineHeight: 12 });
+  }
+
+  // ── Photo appendix: full-size images, one per page, clean header ─────────────
+  const photoFields = data.fields.filter((f) => f.fieldType === 'photo');
+
+  // Collect unique images — deduplicate by bytes reference (same object = same fetch)
+  const appendixEntries: Array<{ label: string; image: PDFImage }> = [];
+  const embeddedSet = new Set<Uint8Array>();
+  for (const field of photoFields) {
+    const images = data.fieldImages?.[String(field.id)] ?? [];
+    for (const img of images) {
+      // Use fullBytes for appendix if available, else fall back to thumb bytes
+      const srcBytes = img.fullBytes ?? img.bytes;
+      const srcMime = img.fullMimeType ?? img.mimeType;
+      // Skip if we've already embedded this exact buffer (deduplication)
+      if (embeddedSet.has(srcBytes)) continue;
+      embeddedSet.add(srcBytes);
+      const embedded = await embedImage(doc, { bytes: srcBytes, mimeType: srcMime });
+      if (embedded) appendixEntries.push({ label: field.label, image: embedded });
+    }
+  }
+
+  if (appendixEntries.length > 0) {
+    // Appendix pages use a lighter header (no purple band — just a title bar)
+    function addAppendixPage(pageTitle: string) {
+      page = doc.addPage([PAGE_W, PAGE_H]);
+      pages.push(page);
+      page.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: LIGHT });
+      page.drawText(printable(pageTitle).slice(0, 72), {
+        x: MARGIN, y: PAGE_H - 35, font: bold, size: 14, color: SLATE,
+      });
+      page.drawText('PHOTO APPENDIX', {
+        x: MARGIN, y: PAGE_H - 55, font: regular, size: 8.5, color: MUTED,
+      });
+      y = PAGE_H - HEADER_H - 24;
+    }
+
+    const FULL_W = CONTENT_W;
+    // Max height for a single image: full content area minus label row
+    const MAX_IMG_H = PAGE_H - HEADER_H - FOOTER_H - 50;
+
+    for (const { label, image } of appendixEntries) {
+      // Each photo gets its own fresh page — no overflow, no blank pages
+      addAppendixPage(printable(data.title));
+
+      // Label
+      page.drawText(printable(label).toUpperCase(), {
+        x: MARGIN, y, font: bold, size: 8.5, color: MUTED,
+      });
+      y -= 16;
+
+      // Scale image to fit within the available area
+      const dims = image.scale(1);
+      const ratio = Math.min(FULL_W / dims.width, MAX_IMG_H / dims.height, 1);
+      const drawW = dims.width * ratio;
+      const drawH = dims.height * ratio;
+
+      const imgX = MARGIN + (FULL_W - drawW) / 2;
+      page.drawRectangle({ x: imgX - 2, y: y - drawH - 2, width: drawW + 4, height: drawH + 4, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
+      page.drawImage(image, { x: imgX, y: y - drawH, width: drawW, height: drawH });
+      y -= drawH + 12;
+    }
   }
 
   pages.forEach((target, index) => {

@@ -1,62 +1,39 @@
-# IWILLBUILD delivery patch - Version 12.0.2, Build 14
+# IWILLBUILD delivery patch - Version 12.0.3, Build 15
 
-Prepared 2026-08-16 from the raw Airo download at `C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal2\IWILLBUILD_Portal` and the current GitHub `main` commit `e8ef8fec0129d939d23797ffb17da211b0fbf2bc` (previous release commit `18938cb5cbcb9fa4b21529e337c480d807b4cfbc`).
+Prepared 2026-08-18 from the raw Airo download at `C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal (3)\IWILLBUILD_Portal` and the existing GitHub-ready repository on branch `main`, base commit `a71ed9d0790fcb38415f2cb4ca0f28030cc43029`.
 
-The raw Airo download contains the current application code. This Patch is the smaller delivery overlay Airo does not export: the retained Git/Capacitor/iOS delivery layer, native assets, release scripts, and the Version 12.0.2 / Build 14 bump.
+The Airo download contains the current application code. This Patch is the smaller delivery overlay Airo does not export: retained Git/Capacitor/iOS delivery files, native assets, release scripts and the Version 12.0.3 / Build 15 bump.
 
-## Delivery layout
+## Delivery locations
 
-- The GitHub-ready working tree is `C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\IWILLBUILD_Portal`.
-- The reconstructed overlay is `C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\Patch`.
-- Copy the Patch contents over a matching repository root while preserving relative paths.
-- `DELETE_FILES.txt` records whether the raw download contains any obsolete paths. This release has no required deletions.
-
-## Patch contents
-
-- 40 payload files: 37 retained delivery/build files, 2 version files and `vite.config.ts`, with `DELETE_FILES.txt` as the control record.
-- `package.json` and `package-lock.json` carry the Version 12.0.2 bump.
-- `capacitor.config.json`
-- `ios/App/App.xcodeproj/project.pbxproj`
-- Capacitor-generated iOS configuration and Swift package files
-- Native app icons, splash assets and logos omitted by the Airo export
-- `scripts/publish-build.mjs`
-- `pnpm-workspace.yaml`, which permits only the required `esbuild` install scripts
-- `PREPARED_RELEASE.md` and `PATCH_MANIFEST.md`
-- `vite.config.ts` ESM path fix and direct `busboy` dependency declaration required by the SSR build
+- GitHub-ready working tree: `C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\IWILLBUILD_Portal`
+- Reconstructed overlay: `C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\Patch`
+- Safety backup: `C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\IWILLBUILD_Portal_backup_20260818_164628`
 
 ## Version values
 
-- npm/web version: `12.0.2`
+- npm/web version: `12.0.3`
 - iOS `MARKETING_VERSION`: `12`
-- iOS `CURRENT_PROJECT_VERSION`: `14` for Debug and Release
-- Capacitor iOS build number: `14`
+- iOS `CURRENT_PROJECT_VERSION`: `15` for Debug and Release
+- Capacitor/TestFlight build number: `15`
 
-## Apply and verify
+## Important dependency merge
 
-1. Back up the destination repository, including `.git` and `ios`.
-2. Copy the Patch overlay into the repository root.
-3. Review `DELETE_FILES.txt` and apply any listed deletions (none for this release).
-4. Install from `package-lock.json`.
-5. Run the production build.
-6. Run Capacitor iOS sync.
-7. Confirm Version 12 / Build 14 in Xcode before archiving.
-8. Review Git changes, commit to `main`, then push through GitHub Desktop.
+- Retained `@capacitor/share` from the new Airo download for native share support.
+- Retained direct `busboy` dependency from the delivery patch for the server upload service.
+- Retained the ESM-safe `vite.config.ts` path handling required by the SSR build.
 
-## Verification record
+## Verification
 
-- Git repository metadata was recovered and verified at the required working-tree location.
-- Raw Airo download comparison: 1,482 files.
-- Retained overlay comparison: exactly 37 delivery/build files absent from the raw download.
-- New Patch payload: 40 files including the two version files and `vite.config.ts`, plus `DELETE_FILES.txt`.
-- Package, Capacitor and both Xcode build configurations agree on Build 14.
-- Production browser bundle: passed, 3,152 modules transformed.
-- Production SSR bundle: passed, 3,902 modules transformed.
-- Full production build exit code: 0.
-- Capacitor sync must still be rerun before the next native archive.
+- Production browser bundle: passed, 3,164 modules transformed.
+- Production SSR bundle: passed, 3,924 modules transformed.
+- Full production build: passed, exit code 0.
+- Standalone strict TypeScript check: does not pass because the downloaded Airo codebase contains a large inherited diagnostics backlog across unrelated modules. This is recorded and was not hidden or bulk-rewritten as part of the release merge.
+- Capacitor iOS sync: passed; 11 native plugins were registered, including `@capacitor/share`.
 
-## Scope and safety
+## Safety and scope
 
-- The original repository and native project were preserved.
-- The Patch excludes `.git`, secrets, `node_modules` and `dist`.
-- Secrets are not included in this Patch.
-- No Git push, publish, deployment or TestFlight upload is part of this preparation.
+- Existing Git history and native project are preserved.
+- Patch excludes `.git`, secrets, `node_modules` and `dist`.
+- No secrets are included.
+- The working tree is reviewed before commit and push.

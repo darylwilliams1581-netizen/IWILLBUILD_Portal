@@ -1,15 +1,22 @@
 /**
  * POST /api/jobs/:id/photos/export-zip
- * Stream a ZIP archive of all (or selected) job photos.
- * Body: { photoIds?: number[] }  — omit for all photos
+ * Stream a ZIP archive of all (or selected) photos for a single job.
+ * Body: { photoIds?: number[] }  — omit for all photos in the job
+ *
+ * Uses the shared zip-photo-export helper so ZIP logic is not duplicated.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
-import { getDownloadStream, BUCKET_JOB_PHOTOS } from '../../../../../storage/storage-service.js';
-import JSZip from 'jszip';
+import {
+  buildPhotoZip,
+  wholeJobZipFilename,
+  todayDateString,
+  type PhotoRow,
+  type JobMeta,
+} from '../../../../../lib/zip-photo-export.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -36,11 +43,13 @@ export default async function handler(req: Request, res: Response) {
 
     let rows;
     if (photoIds && photoIds.length > 0) {
+      // Deduplicate IDs before querying
+      const uniqueIds = [...new Set(photoIds.filter(id => Number.isInteger(id) && id > 0))];
       rows = await db.select().from(jobPhotos).where(
         and(
           eq(jobPhotos.jobId, jobId),
           eq(jobPhotos.companyId, profile.companyId),
-          inArray(jobPhotos.id, photoIds)
+          inArray(jobPhotos.id, uniqueIds),
         )
       );
     } else {
@@ -51,33 +60,25 @@ export default async function handler(req: Request, res: Response) {
 
     if (rows.length === 0) return res.status(404).json({ error: 'No photos found' });
 
-    const zip = new JSZip();
-    const safeName = (job.name ?? `job-${jobId}`).replace(/[^a-z0-9_-]/gi, '_').slice(0, 40);
+    const photoRowsTyped: PhotoRow[] = rows.map(r => ({
+      id:           r.id,
+      jobId:        r.jobId,
+      filename:     r.filename,
+      originalName: r.originalName ?? null,
+      mimeType:     r.mimeType ?? null,
+    }));
 
-    for (const photo of rows) {
-      try {
-        const { stream } = await getDownloadStream(photo.filename, BUCKET_JOB_PHOTOS);
-        const ext = photo.mimeType === 'image/png' ? 'png'
-          : photo.mimeType === 'image/webp' ? 'webp'
-          : 'jpg';
-        const name = photo.originalName ?? `photo-${photo.id}.${ext}`;
-        // Collect stream into buffer
-        const chunks: Buffer[] = [];
-        await new Promise<void>((resolve, reject) => {
-          (stream as NodeJS.ReadableStream).on('data', (chunk: Buffer) => chunks.push(chunk));
-          (stream as NodeJS.ReadableStream).on('end', resolve);
-          (stream as NodeJS.ReadableStream).on('error', reject);
-        });
-        zip.file(name, Buffer.concat(chunks));
-      } catch (e) {
-        console.warn(`ZIP: skipping photo ${photo.id}:`, e);
-      }
-    }
+    const jobMeta: JobMeta = {
+      id:        job.id,
+      name:      job.name ?? null,
+      jobNumber: job.jobNumber ?? null,
+    };
 
-    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 5 } });
+    const zipBuffer  = await buildPhotoZip(photoRowsTyped, new Map([[job.id, jobMeta]]), false);
+    const zipFilename = wholeJobZipFilename(jobMeta, todayDateString());
 
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${safeName}-photos.zip"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
     res.setHeader('Content-Length', zipBuffer.length);
     res.end(zipBuffer);
   } catch (error) {

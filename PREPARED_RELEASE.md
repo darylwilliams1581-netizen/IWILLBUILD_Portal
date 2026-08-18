@@ -1,39 +1,33 @@
-# IWILLBUILD release candidate - Version 12.0.2, Build 14
+# IWILLBUILD release candidate - Version 12.0.3, Build 15
 
-Prepared 2026-08-16 from the new Airo download at:
+Prepared 2026-08-18 from:
 
-`C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal2\IWILLBUILD_Portal`
+`C:\Users\daryl_ey\Downloads\IWILLBUILD_Portal (3)\IWILLBUILD_Portal`
 
-The download was merged into the existing Git repository without replacing its `.git` history or its Capacitor/iOS delivery files.
+Target repository:
+
+`C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\IWILLBUILD_Portal`
 
 - Git remote: `https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal.git`
-- Base commit before this delivery: `18938cb5cbcb9fa4b21529e337c480d807b4cfbc`
-- Web/package version: `12.0.2`
-- iOS marketing version: `12`
-- iOS/TestFlight build number: `14`
+- Base commit: `a71ed9d0790fcb38415f2cb4ca0f28030cc43029`
 - Target branch: `main`
+- Web/package version: `12.0.3`
+- iOS marketing version: `12`
+- iOS/TestFlight build number: `15`
+- Safety backup: `C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\IWILLBUILD_Portal_backup_20260818_164628`
 
-## Included Airo work
+## Preparation result
 
-- Dazza V3, Anatomy snapshots and read-only GitHub anatomy integration.
-- Bug Loop analysis, Dazza review, owner communication and fix-prompt workflow.
-- Secure Quote/Invoice/Form sharing with view/download content routes.
-- Standard document email composition and PDF attachments.
-- Weather widget and dashboard integration.
-- Safety poster PDF generation and poster preview updates.
-- Lists and user-log server repairs from the latest Airo session.
-- Estimate Print modal removal while retaining server-generated PDF download.
+The complete Airo application download was merged with the retained Capacitor/iOS delivery overlay. Git history, native app assets, release scripts and the SSR packaging correction were preserved.
 
-## Native delivery preservation
+The dependency merge retains both the Airo-native Share plugin and the direct Busboy upload dependency. Debug and Release Xcode configurations both use Build 15.
 
-The existing Capacitor project, iOS project, native icons, scripts and Git repository were retained. Debug and Release Xcode build numbers are both 14. Capacitor sync must be rerun before the next native archive.
+## Verification result
 
-## Build preparation
+- Browser production build: passed (3,164 modules).
+- SSR production build: passed (3,924 modules).
+- Complete production build: passed with exit code 0.
+- Capacitor iOS sync: passed; 11 native plugins registered, including Share.
+- Strict standalone TypeScript audit: failed on the downloaded project's inherited diagnostics backlog. These unrelated diagnostics were not mass-edited during release preparation.
 
-The production build script now creates both browser and SSR bundles, supplies the deployed `#airo/secrets` runtime shim, copies starter-pack data, and gives Vite a 4 GB heap allowance for reliable packaging.
-
-The local production build passed after two packaging defects in the raw Airo download were corrected: `vite.config.ts` now defines its ESM-safe directory path, and `busboy` is declared as the direct dependency used by the upload service. The browser bundle transformed 3,152 modules and the SSR bundle transformed 3,902 modules; the complete build exited successfully.
-
-The Airo codebase has substantial inherited strict TypeScript debt outside this delivery (872 diagnostics across 359 files). Vite production packaging does not use that standalone check. See `PATCH_MANIFEST.md` for the verification record and patch instructions.
-
-No Git push, deployment, Airo publish or TestFlight upload was performed by Codex.
+The prepared iOS project has already been synchronised. The downstream TestFlight workflow may repeat the sync as its normal archive step.

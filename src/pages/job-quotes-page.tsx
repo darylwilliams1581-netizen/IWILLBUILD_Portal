@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchJob, type Job } from '@/lib/jobs-api';
+import PortalSidebar from '@/components/PortalSidebar';
 import {
   getEstimateStatusStyle, ESTIMATE_STATUSES,
   type Estimate, type EstimateStatus,
@@ -224,7 +225,8 @@ export default function JobQuotesPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <Helmet>
         <title>{job ? `Quotes — ${job.name}` : 'Quotes'} — IWILLBUILD</title>
         <meta name="description" content="View and manage quotes for this job." />

@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Truck,
-  Plus,
+  Truck,  Plus,
   Search,
   AlertTriangle,
   Loader2,
@@ -19,10 +18,13 @@ import {
   CheckCircle2,
   ArrowLeft,
   Navigation,
+  ClipboardCheck,
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
+import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import {
   fetchFleet,
   createAsset,
@@ -283,11 +285,23 @@ export default function FleetPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
+  const [showDriveModal, setShowDriveModal] = useState(false);
   const [successName, setSuccessName] = useState('');
   const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
   const { isAdmin } = usePermissions();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auto-open drive modal when navigated here from prestart completion
+  useEffect(() => {
+    const state = location.state as { openDriveModal?: boolean } | null;
+    if (state?.openDriveModal) {
+      setShowDriveModal(true);
+      // Clear the state so a refresh doesn't re-open it
+      navigate('/fleet', { replace: true, state: {} });
+    }
+  }, [location.state, navigate]);
 
   const load = useCallback(async () => {
     try {
@@ -323,7 +337,8 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
@@ -500,6 +515,31 @@ export default function FleetPage() {
                 ))}
               </div>
 
+              {/* ── Quick-launch: Drive + Vehicle Prestart ── */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowDriveModal(true)}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors active:scale-95"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <Navigation size={22} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight">Drive</span>
+                  <span className="text-xs font-normal text-white/80 leading-tight text-center">Start a driving session</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/prestart')}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors active:scale-95"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <ClipboardCheck size={22} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight">Vehicle Prestart</span>
+                  <span className="text-xs font-normal text-white/80 leading-tight text-center">Vehicle inspection check</span>
+                </button>
+              </div>
+
               {/* Search */}
               <div className="relative">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -640,6 +680,20 @@ export default function FleetPage() {
                 setShowModal(false);
                 setSuccessName(asset.name);
                 setTimeout(() => setSuccessName(''), 5000);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Drive Fleet Modal */}
+        <AnimatePresence>
+          {showDriveModal && (
+            <StartDrivingModal
+              onClose={() => setShowDriveModal(false)}
+              onStarted={() => {
+                setShowDriveModal(false);
+                // Refresh fleet list so current_driver badges update
+                void load();
               }}
             />
           )}

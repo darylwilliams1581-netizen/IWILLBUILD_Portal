@@ -55,6 +55,9 @@ export interface Drawing {
   id: number;
   title: string;
   description?: string;
+  drawing_number?: string;
+  discipline?: string;
+  doc_status_label?: string;
   source_file_path?: string;
   source_file_name?: string;
   page_count: number;

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 import {
   calcPier, calcSlab, calcPit, calcTrench, calcGstAdd, calcGstRemove,
@@ -918,7 +919,8 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] lg:pt-[116px] flex flex-col overflow-hidden">
+    <div className="flex-1 bg-[#f5f6f8] lg-portal flex flex-col overflow-hidden">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

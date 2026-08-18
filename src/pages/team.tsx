@@ -36,6 +36,7 @@ import { useViewOnly } from '@/components/ViewOnlyGuard';
 import HomeIconPermissions from '@/components/team/HomeIconPermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── Role definitions ──────────────────────────────────────────────────────────
 type Role = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonly';
@@ -585,7 +586,8 @@ export default function TeamPage() {
   ];
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-slate-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

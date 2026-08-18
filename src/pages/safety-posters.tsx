@@ -8,6 +8,7 @@ import { ArrowLeft, Image } from 'lucide-react';
 import { PostersTab } from '@/pages/safety';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 export default function SafetyPostersPage() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function SafetyPostersPage() {
       </Helmet>
 
       {/* Desktop nav */}
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
 
@@ -41,7 +43,7 @@ export default function SafetyPostersPage() {
       </header>
 
       {/* Posters content */}
-      <div className="flex-1 min-h-0 overflow-y-auto pt-0 lg:pt-[116px]">
+      <div className="flex-1 min-h-0 overflow-y-auto pt-0 lg-portal">
         <PostersTab />
       </div>
     </div>

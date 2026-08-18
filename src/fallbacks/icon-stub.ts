@@ -411,6 +411,7 @@ export const Milestone = NullIcon;
 export const ArrowRightLeft = NullIcon;
 
 export const Gamepad2 = NullIcon;
+export const Images = NullIcon;
 
 // lucide-react utility exports
 export const createLucideIcon = () => NullIcon;

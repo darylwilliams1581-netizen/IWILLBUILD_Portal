@@ -14,6 +14,8 @@ import SupportModeBanner from '@/components/SupportModeBanner';
 import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 import OfflineBanner from '@/components/OfflineBanner';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
+import { DocumentActionsProvider } from '@/lib/document-actions-context';
+import DocumentActionsWidget from '@/components/DocumentActionsWidget';
 //
 //
 //
@@ -440,9 +442,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <OfflineBanner />
           <PwaInstallPrompt />
         </DeferredMount>
-        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col" style={{ overflowX: 'clip' }}>
-          {children}
-        </div>
+        <DocumentActionsProvider>
+          <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col" style={{ overflowX: 'clip' }}>
+            {children}
+          </div>
+          {/* Global Document Actions floating widget — hidden on public/share pages */}
+          <DocumentActionsWidget />
+        </DocumentActionsProvider>
       </div>
     </SosInnerBoundary>
   );

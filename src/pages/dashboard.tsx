@@ -17,8 +17,6 @@ import {
 import { Link } from 'react-router-dom';
 import NewJobModal from '@/components/NewJobModal';
 import PortalSidebar from '@/components/PortalSidebar';
-import DesktopTopBar from '@/components/DesktopTopBar';
-import DesktopDock from '@/components/DesktopDock';
 import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
@@ -127,15 +125,11 @@ export default function DashboardPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      {/* Desktop nav bars */}
-      <DesktopTopBar />
-      <DesktopDock />
-
       {/* Mobile sidebar */}
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="portal-main lg:pt-[116px]">
+      <div className="portal-main lg-portal">
 
         {/* ── Desktop command-centre header ── */}
         <div

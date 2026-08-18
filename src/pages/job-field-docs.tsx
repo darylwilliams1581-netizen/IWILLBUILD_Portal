@@ -16,6 +16,7 @@ import {
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1061,13 +1062,14 @@ export default function JobFieldDocsPage() {
 
   // ── Always render the docs shell; picker overlays when no job selected ──
   return (
-    <div className="flex flex-col h-full lg:pt-[116px]">
+    <div className="flex flex-col h-full lg-portal">
       <Helmet>
         <title>Field Docs | IWILLBUILD</title>
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
 

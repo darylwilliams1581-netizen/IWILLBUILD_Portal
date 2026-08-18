@@ -654,6 +654,7 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
   const [options, setOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
   const [settings, setSettings] = useState<Record<string, unknown>>(() => parseSettings(field.settingsJson));
   const [optionSaving, setOptionSaving] = useState(false);
+  const [newOption, setNewOption] = useState('');
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => { setLabel(field.label); }, [field.label]);
@@ -867,9 +868,34 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
                     />
                   )}
                   {fieldType === 'photo' && (
-                    <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
-                      Photo capture will be available when filling out this form.
-                    </p>
+                    <div className="flex flex-col gap-3">
+                      <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
+                        Photo capture will be available when filling out this form.
+                      </p>
+                      {/* Allow multiple photos toggle */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-600">Allow multiple photos</span>
+                        <button
+                          onClick={() => saveSettings({ ...settings, multiple: !settings.multiple })}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.multiple ? 'bg-primary' : 'bg-slate-200'}`}>
+                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${settings.multiple ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      {Boolean(settings.multiple) && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Max photos</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={typeof settings.maxPhotos === 'number' ? settings.maxPhotos : 10}
+                            onChange={(e) => setSettings({ ...settings, maxPhotos: Number(e.target.value) })}
+                            onBlur={() => saveSettings(settings)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 text-xs focus:outline-none focus:border-primary/60"
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
                   {fieldType === 'signature' && (
                     <div className="flex flex-col gap-3">
@@ -1112,8 +1138,11 @@ function FieldPreview({ field, pageBreakNumber }: { field: FormField; pageBreakN
         </div>
       )}
       {field.fieldType === 'photo' && (
-        <div className="h-14 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
+        <div className="h-14 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center gap-2">
           <Camera size={16} className="text-slate-300" />
+          {Boolean(parseSettings(field.settingsJson).multiple) && (
+            <span className="text-[10px] text-slate-500 font-semibold">Multiple photos</span>
+          )}
         </div>
       )}
       {field.fieldType === 'signature' && (

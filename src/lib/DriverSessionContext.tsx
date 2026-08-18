@@ -126,6 +126,14 @@ export function useDriverSessionContext(): DriverSessionContextValue {
   return ctx;
 }
 
+/**
+ * Safe variant — returns null when called outside DriverSessionProvider.
+ * Use this in components that may render outside the provider (e.g. DesktopTopBar).
+ */
+export function useDriverSessionSafe(): DriverSessionContextValue | null {
+  return useContext(DriverSessionContext);
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 interface Props { children: ReactNode }

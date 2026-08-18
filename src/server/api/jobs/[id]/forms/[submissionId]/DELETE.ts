@@ -3,6 +3,7 @@ import { db } from '../../../../../db/client.js';
 import { jobFormSubmissions, profiles } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
+import { revokeSharesForSource } from '../../../../../lib/share-lifecycle.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -27,6 +28,13 @@ export default async function handler(req: Request, res: Response) {
       ),
     });
     if (!submission) return res.status(404).json({ error: 'Submission not found' });
+
+    // Revoke all share links across all share tables before deleting the source record.
+    // A completed form may have been shared as either 'completed_form' or 'job_form'.
+    await Promise.all([
+      revokeSharesForSource({ companyId: profile.companyId, targetType: 'completed_form', targetId: String(submissionId), req }),
+      revokeSharesForSource({ companyId: profile.companyId, targetType: 'job_form',       targetId: String(submissionId), req }),
+    ]);
 
     await db.delete(jobFormSubmissions).where(
       and(

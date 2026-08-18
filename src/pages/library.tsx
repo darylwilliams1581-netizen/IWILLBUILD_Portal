@@ -281,7 +281,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div className="space-y-6">
 
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="flex items-start justify-between gap-4 flex-wrap">

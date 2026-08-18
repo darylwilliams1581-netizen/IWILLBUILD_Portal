@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { profiles } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { revokeSharesForSource } from '../../../lib/share-lifecycle.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -32,6 +33,14 @@ export default async function handler(req: Request, res: Response) {
     if (!['draft', 'void'].includes(rows[0].status)) {
       return res.status(400).json({ error: 'Only draft or void invoices can be deleted' });
     }
+
+    // Revoke all share links before deleting the source record
+    await revokeSharesForSource({
+      companyId: profile.companyId,
+      targetType: 'invoice',
+      targetId: String(id),
+      req,
+    });
 
     await db.execute(sql`DELETE FROM invoice_lines WHERE invoice_id = ${id}`);
     await db.execute(sql`DELETE FROM invoice_payments WHERE invoice_id = ${id}`);

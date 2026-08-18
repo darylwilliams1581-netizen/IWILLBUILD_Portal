@@ -17,3 +17,4 @@
 export type { DriverSession, GpsStatusValue } from './DriverSessionContext';
 
 export { useDriverSessionContext as useDriverSession } from './DriverSessionContext';
+export { useDriverSessionSafe } from './DriverSessionContext';
