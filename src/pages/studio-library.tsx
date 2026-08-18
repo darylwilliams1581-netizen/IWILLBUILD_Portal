@@ -9,6 +9,7 @@ import { ArrowLeft, BookOpen, Layers, ClipboardList } from 'lucide-react';
 import { LibraryPage as LibraryContent } from '@/pages/library';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 type LibTab = 'documents' | 'forms';
 
@@ -18,6 +19,7 @@ export default function StudioLibraryPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

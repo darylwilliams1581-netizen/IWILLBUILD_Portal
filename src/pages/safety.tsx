@@ -978,11 +978,13 @@ import { ArrowLeft } from 'lucide-react';
 import SafetyContent from '@/components/safety/SafetyContent';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return (
     <div className="flex flex-col flex-1 min-h-0 lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

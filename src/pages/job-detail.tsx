@@ -57,6 +57,7 @@ import JobDetailsDashboard, { type JobSummary, type Customer } from '@/component
 import JobPhotosTab from '@/components/job/JobPhotosTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
@@ -378,6 +379,7 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

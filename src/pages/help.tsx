@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import type { ComponentType } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -650,6 +651,7 @@ export default function HelpPage() {
         <link rel="canonical" href="https://iwillbuild.com/help" />
       </Helmet>
 
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
 

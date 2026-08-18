@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import SendInvoiceEmailModal from '@/components/SendInvoiceEmailModal';
+import PortalSidebar from '@/components/PortalSidebar';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import JobContextTab from '@/components/JobContextTab';
@@ -628,6 +629,7 @@ export default function InvoiceBuilderPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <Helmet>
         <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWILLBUILD Portal</title>
         <meta name="description" content={isNew ? 'Create a new invoice.' : `Edit invoice ${invoiceNumber}.`} />

@@ -18,6 +18,7 @@ import { AnimatePresence } from 'motion/react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
@@ -174,6 +175,7 @@ export default function StudioPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

@@ -16,6 +16,7 @@ import {
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -325,6 +326,7 @@ export default function JobSchedulePage() {
 
   return (
     <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

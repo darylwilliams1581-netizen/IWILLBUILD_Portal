@@ -16,6 +16,7 @@ import {
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1068,6 +1069,7 @@ export default function JobFieldDocsPage() {
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
 

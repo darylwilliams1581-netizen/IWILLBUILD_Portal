@@ -33,6 +33,7 @@ import CostingTab from '@/components/settings/CostingTab';
 import { Skeleton } from '@/components/ui/skeleton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
@@ -80,6 +81,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

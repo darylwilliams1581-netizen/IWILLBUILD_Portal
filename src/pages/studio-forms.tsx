@@ -8,12 +8,14 @@ import { ArrowLeft, ClipboardList } from 'lucide-react';
 import { FormsPage } from '@/pages/forms';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 export default function StudioFormsPage() {
   const navigate = useNavigate();
 
   return (
     <div className="flex flex-col flex-1 min-h-0 lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
