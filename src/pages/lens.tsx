@@ -911,7 +911,7 @@ export default function LensPage() {
       )}
 
       <div
-        className="min-h-screen bg-slate-50 lg:pt-[116px]"
+        className="min-h-screen bg-slate-50 lg-portal"
         style={{
           paddingLeft:  'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',

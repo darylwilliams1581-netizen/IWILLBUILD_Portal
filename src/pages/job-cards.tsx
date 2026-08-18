@@ -355,7 +355,7 @@ export default function JobCardsPage() {
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
         <title>Job Cards — IWILLBUILD</title>

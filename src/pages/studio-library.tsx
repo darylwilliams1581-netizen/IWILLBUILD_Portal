@@ -17,7 +17,7 @@ export default function StudioLibraryPage() {
   const [libTab, setLibTab] = useState<LibTab>('documents');
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 lg:pt-[116px]">
+    <div className="flex flex-col flex-1 min-h-0 lg-portal">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

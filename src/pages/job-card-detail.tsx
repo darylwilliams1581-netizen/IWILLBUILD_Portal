@@ -1201,7 +1201,7 @@ export default function JobCardDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
         <DesktopTopBar />
         <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
@@ -1213,7 +1213,7 @@ export default function JobCardDetailPage() {
 
   if (error || !card) {
     return (
-      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+      <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
         <DesktopTopBar />
         <DesktopDock />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -1236,7 +1236,7 @@ export default function JobCardDetailPage() {
   const canConvert = card.status !== 'converted';
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

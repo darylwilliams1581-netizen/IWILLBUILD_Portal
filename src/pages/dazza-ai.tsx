@@ -918,7 +918,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] lg:pt-[116px] flex flex-col overflow-hidden">
+    <div className="flex-1 bg-[#f5f6f8] lg-portal flex flex-col overflow-hidden">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

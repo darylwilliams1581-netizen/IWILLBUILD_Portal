@@ -94,7 +94,7 @@ export default function JobCardNewPage() {
 
       <PortalSidebar />
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pt-[116px]">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg-portal">
 
         {/* ── Header ── */}
         <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-4 shrink-0 safe-top">

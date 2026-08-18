@@ -1250,3 +1250,26 @@ textarea {
   box-shadow: inset 0 0 0 12px black;
 }
 
+/* Sidebar company name fade-out mask — uses white as the sidebar bg is always white */
+.sidebar-name-fade {
+  background: linear-gradient(to right, transparent, white);
+}
+   .lg-portal — applied to the outermost content div of every authenticated
+   desktop page. Offsets content below the fixed topbar (56px) and to the
+   right of the fixed sidebar (width stored in --iwb-sidebar-w, set by
+   PortalSidebar via a style attribute on <body>).
+
+   Mobile/tablet: no offset — sidebar is a drawer, not a fixed rail.
+   Desktop (lg+): top 56px + left = sidebar width.
+
+   TEMPORARY: index numbers are visible in the sidebar labels.
+   Remove the numbers after Daryl approves the final arrangement.
+*/
+@media (min-width: 1024px) {
+  .lg-portal {
+    padding-top: 56px !important;
+    padding-left: var(--iwb-sidebar-w, 240px) !important;
+    transition: padding-left 0.2s ease;
+  }
+}
+

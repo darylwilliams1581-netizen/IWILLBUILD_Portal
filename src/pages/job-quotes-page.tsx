@@ -224,7 +224,7 @@ export default function JobQuotesPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg:pt-[116px]">
+    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
       <Helmet>
         <title>{job ? `Quotes — ${job.name}` : 'Quotes'} — IWILLBUILD</title>
         <meta name="description" content="View and manage quotes for this job." />
