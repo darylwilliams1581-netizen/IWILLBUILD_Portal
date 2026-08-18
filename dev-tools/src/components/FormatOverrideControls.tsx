@@ -3,16 +3,19 @@ import { Bold, Italic, X } from "lucide-react";
 
 import ColorPicker from "./ColorPicker";
 import { HoverBarButton } from "./HoverBar";
+import TextSizeStepperButton from "./TextSizeStepperButton";
 import { applyOptimisticFormatPreview } from "../utils/formatOverridePreview";
 import { t } from "../utils/translations";
 import { send } from "../utils/eventBus";
 import { extractThemeColors } from "../utils/text-editing-helpers";
+import { remForSizeClass, type SizeClass } from "../utils/text-size";
 import {
   FormatOverrideMessageEventType,
   addFormatOverrideEditListener,
   readCurrentFormatOverrideMarks,
   readFormatOverrideTarget,
   type FormatOverrideMarks,
+  type ResolvedFormatOverrideMarks,
 } from "../utils/formatOverrideMessages";
 import type { PopoverController } from "../utils/popover-coordinator";
 import type { VerticalPlacement } from "../utils/hover-bar-placement";
@@ -26,23 +29,25 @@ interface FormatOverrideControlsProps {
 
 const DEFAULT_COLOR = "#000000";
 
-function normalizeMarks(marks: FormatOverrideMarks): Required<FormatOverrideMarks> {
+function normalizeMarks(marks: FormatOverrideMarks): ResolvedFormatOverrideMarks {
   return {
     bold: !!marks.bold,
     italic: !!marks.italic,
     color: marks.color || null,
+    ...(marks.fontSize ? { fontSize: marks.fontSize } : {}),
   };
 }
 
-function readInitialMarks(selectedElement: HTMLElement | null): Required<FormatOverrideMarks> {
+function readInitialMarks(selectedElement: HTMLElement | null): ResolvedFormatOverrideMarks {
   return normalizeMarks(selectedElement ? readCurrentFormatOverrideMarks(selectedElement) : {});
 }
 
 export default function FormatOverrideControls({ selectedElement, colorMenu, popoverPlacement = "below" }: FormatOverrideControlsProps) {
-  const [marks, setMarks] = useState<Required<FormatOverrideMarks>>(() => readInitialMarks(selectedElement));
+  const [marks, setMarks] = useState<ResolvedFormatOverrideMarks>(() => readInitialMarks(selectedElement));
   const marksRef = useRef(marks);
   const latestEditRef = useRef(0);
   const [themeColors, setThemeColors] = useState<string[]>([]);
+  const [sizeMenuOpen, setSizeMenuOpen] = useState(false);
 
   useEffect(() => {
     const initialMarks = readInitialMarks(selectedElement);
@@ -50,7 +55,7 @@ export default function FormatOverrideControls({ selectedElement, colorMenu, pop
     setMarks(initialMarks);
   }, [selectedElement]);
 
-  const postMarks = useCallback((nextMarks: Required<FormatOverrideMarks>) => {
+  const postMarks = useCallback((nextMarks: ResolvedFormatOverrideMarks) => {
     if (!selectedElement) return;
 
     const formatTarget = readFormatOverrideTarget(selectedElement);
@@ -104,6 +109,13 @@ export default function FormatOverrideControls({ selectedElement, colorMenu, pop
   const clearColor = useCallback(() => {
     postMarks({ ...marks, color: null });
   }, [marks, postMarks]);
+
+  const applySize = useCallback((next: SizeClass) => {
+    postMarks({ ...marks, fontSize: remForSizeClass(next) });
+  }, [marks, postMarks]);
+
+  const sizeTarget: HTMLElement | null =
+    (selectedElement?.querySelector("[data-airo-formatted-bound-text]") as HTMLElement | null) ?? selectedElement;
 
   const toggleColorMenu = useCallback(() => {
     if (colorMenu.isOpen) {
@@ -193,6 +205,13 @@ export default function FormatOverrideControls({ selectedElement, colorMenu, pop
           </div>
         )}
       </div>
+      <TextSizeStepperButton
+        selectedElement={sizeTarget}
+        capTagName={selectedElement?.tagName}
+        isOpen={sizeMenuOpen}
+        onOpenChange={setSizeMenuOpen}
+        onApply={applySize}
+      />
     </>
   );
 }

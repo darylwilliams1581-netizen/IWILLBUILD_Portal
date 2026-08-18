@@ -127,6 +127,7 @@ export interface BusFormatOverrideMarks {
   bold?: boolean;
   italic?: boolean;
   color?: string | null;
+  fontSize?: string;
 }
 
 export interface BusFormatOverrideUpdatePayload {

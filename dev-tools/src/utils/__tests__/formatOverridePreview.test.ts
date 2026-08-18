@@ -56,6 +56,28 @@ describe('applyOptimisticFormatPreview', () => {
     expect(formatted.style.color).toBe('');
   });
 
+  it('applies and rolls back an optimistic fontSize + lineHeight', () => {
+    const element = document.createElement('h1');
+    element.innerHTML = '<span data-airo-formatted-bound-text="true">Title</span>';
+    document.body.appendChild(element);
+    const formatted = element.querySelector('[data-airo-formatted-bound-text]') as HTMLElement;
+
+    const preview = applyOptimisticFormatPreview(element, {
+      bold: false,
+      italic: false,
+      color: null,
+      fontSize: '1.875rem',
+    });
+
+    expect(formatted.style.fontSize).toBe('1.875rem');
+    expect(formatted.style.lineHeight).toBe('2.25rem');
+
+    preview.rollback();
+
+    expect(formatted.style.fontSize).toBe('');
+    expect(formatted.style.lineHeight).toBe('');
+  });
+
   it('restores the previous active preview before applying the next one', () => {
     const first = document.createElement('h1');
     const second = document.createElement('p');

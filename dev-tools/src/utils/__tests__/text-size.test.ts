@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   SIZE_SCALE,
+  lineHeightForFontSize,
+  remForSizeClass,
   nextSize,
   nearestSizeClass,
 } from "../text-size.ts";
@@ -121,5 +123,15 @@ describe("SIZE_SCALE", () => {
     assert.equal(SIZE_SCALE[SIZE_SCALE.length - 1], "text-9xl");
     assert.ok(SIZE_SCALE.includes("text-base"));
     assert.ok(SIZE_SCALE.includes("text-5xl"));
+  });
+});
+
+describe("lineHeightForFontSize", () => {
+  it("returns a paired line-height for every size on the scale", () => {
+    for (const cls of SIZE_SCALE) assert.ok(lineHeightForFontSize(remForSizeClass(cls)));
+  });
+
+  it("returns undefined for an off-scale rem", () => {
+    assert.equal(lineHeightForFontSize("2rem"), undefined);
   });
 });

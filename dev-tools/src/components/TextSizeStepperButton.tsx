@@ -17,15 +17,16 @@ interface TextSizeStepperButtonProps {
    *  Color Picker / Size Stepper / Text Align never stack on top of each other. */
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onApply?: (next: SizeClass) => void;
+  capTagName?: string;
 }
 
 /**
  * Hover-bar text-size control. Trigger button shows a Type icon; clicking it
  * opens a small popover with − / + steppers that walk Tailwind's size scale.
  * Mutex within the size group; preserves text-{color} and text-{align}.
- * Backend handler: `fontSize` case in ast-style-editor.ts.
  */
-export default function TextSizeStepperButton({ selectedElement, isOpen, onOpenChange }: TextSizeStepperButtonProps) {
+export default function TextSizeStepperButton({ selectedElement, isOpen, onOpenChange, onApply, capTagName }: TextSizeStepperButtonProps) {
   const [, forceRender] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -45,8 +46,9 @@ export default function TextSizeStepperButton({ selectedElement, isOpen, onOpenC
   const effective: SizeClass = selectedElement
     ? nearestSizeClass(parseFloat(window.getComputedStyle(selectedElement).fontSize) || 16)
     : "text-base";
-  const stepUpTarget = nextSize(effective, "up", { tagName: selectedElement?.tagName });
-  const stepDownTarget = nextSize(effective, "down", { tagName: selectedElement?.tagName });
+  const capTag: string | undefined = capTagName ?? selectedElement?.tagName;
+  const stepUpTarget = nextSize(effective, "up", { tagName: capTag });
+  const stepDownTarget = nextSize(effective, "down", { tagName: capTag });
   const atMax = stepUpTarget === null;
   const atMin = stepDownTarget === null;
 
@@ -66,6 +68,11 @@ export default function TextSizeStepperButton({ selectedElement, isOpen, onOpenC
   const applySize = useCallback(
     (next: SizeClass) => {
       if (!selectedElement) return;
+
+      if (onApply) {
+        onApply(next);
+        return;
+      }
 
       const originalClassName = selectedElement.className;
 
@@ -142,7 +149,7 @@ export default function TextSizeStepperButton({ selectedElement, isOpen, onOpenC
         },
       });
     },
-    [selectedElement],
+    [selectedElement, onApply],
   );
 
   const handleDecrement = useCallback(() => {

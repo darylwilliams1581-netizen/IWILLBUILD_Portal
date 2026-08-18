@@ -84,7 +84,12 @@ vi.mock('../ListTypeButton', () => ({ default: () => <button title="mock-listtyp
 vi.mock('../FormatOverrideControls', () => ({
   default: (props: unknown) => {
     formatOverrideControlsMock.render(props);
-    return <button title="Bound format controls" />;
+    return (
+      <>
+        <button title="Bound format controls" />
+        <button title="mock-textsize" />
+      </>
+    );
   },
 }));
 
@@ -328,6 +333,7 @@ describe('ElementHoverBar - bound text formatting gating', () => {
     openToolbar(h1);
 
     expect(await screen.findByTitle('Bound format controls')).not.toBeNull();
+    expect(screen.getByTitle('mock-textsize')).not.toBeNull();
   });
 
   it('uses ancestor bound format controls for children inside bound text', async () => {

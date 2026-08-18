@@ -243,6 +243,61 @@ describe('FormatOverrideControls', () => {
     }));
   });
 
+  function lastPostedMarks(): Record<string, unknown> | undefined {
+    const calls = vi.mocked(safePostMessage).mock.calls.filter(
+      ([, msg]) => (msg as { type?: string })?.type === 'FORMAT_OVERRIDE_UPDATED',
+    );
+    const last = calls.at(-1);
+    return (last?.[1] as { data?: { marks?: Record<string, unknown> } })?.data?.marks;
+  }
+
+  it('exposes a text-size control for bound text', () => {
+    const element = makeBoundElement();
+    render(<FormatOverrideControls selectedElement={element} colorMenu={{ isOpen: false, onOpenChange: vi.fn() }} />);
+
+    expect(screen.getByRole('button', { name: 'Text size' })).not.toBeNull();
+  });
+
+  it('preserves a persisted fontSize mark when an unrelated mark is toggled', () => {
+    const element = makeBoundElement();
+    element.innerHTML =
+      '<span data-airo-formatted-bound-text="true" data-airo-format-size="1.875rem">Title</span>';
+    render(<FormatOverrideControls selectedElement={element} colorMenu={{ isOpen: false, onOpenChange: vi.fn() }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle bold' }));
+
+    expect(lastPostedMarks()).toEqual(expect.objectContaining({ bold: true, fontSize: '1.875rem' }));
+  });
+
+  it('steps size from the computed base size on a first-ever edit (no override yet)', () => {
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(
+      () => ({ fontSize: '30px', getPropertyValue: () => '' }) as unknown as CSSStyleDeclaration,
+    );
+    const element = makeBoundElement();
+    render(<FormatOverrideControls selectedElement={element} colorMenu={{ isOpen: false, onOpenChange: vi.fn() }} />);
+
+    const trigger = screen.queryByRole('button', { name: 'Text size' });
+    if (trigger) fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('button', { name: 'Increase text size' }));
+
+    expect(lastPostedMarks()).toEqual(expect.objectContaining({ fontSize: '2.25rem' }));
+  });
+
+  it('caps a bound heading by its semantic h1, not the wrapper span, so + passes text-6xl', () => {
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(
+      () => ({ fontSize: '60px', getPropertyValue: () => '' }) as unknown as CSSStyleDeclaration,
+    );
+    const element = makeBoundElement();
+    element.innerHTML = '<span data-airo-formatted-bound-text="true">Title</span>';
+    render(<FormatOverrideControls selectedElement={element} colorMenu={{ isOpen: false, onOpenChange: vi.fn() }} />);
+
+    const trigger = screen.queryByRole('button', { name: 'Text size' });
+    if (trigger) fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('button', { name: 'Increase text size' }));
+
+    expect(lastPostedMarks()).toEqual(expect.objectContaining({ fontSize: '4.5rem' }));
+  });
+
   it('clears optimistic styles before the runtime sidecar update renders', () => {
     const element = makeBoundElement();
     render(<FormatOverrideControls selectedElement={element} colorMenu={{ isOpen: false, onOpenChange: vi.fn() }} />);

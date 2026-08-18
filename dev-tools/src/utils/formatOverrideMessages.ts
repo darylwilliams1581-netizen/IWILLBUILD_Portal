@@ -27,7 +27,11 @@ export interface FormatOverrideMarks {
   bold?: boolean;
   italic?: boolean;
   color?: string | null;
+  fontSize?: string;
 }
+
+export type ResolvedFormatOverrideMarks = Required<Omit<FormatOverrideMarks, "fontSize">> &
+  Pick<FormatOverrideMarks, "fontSize">;
 
 function normalizeFileName(raw: string): string {
   const normalized = raw.replace(/\\/g, "/");
@@ -96,13 +100,15 @@ export function readFormatOverrideTarget(element: HTMLElement): FormatOverrideMe
   };
 }
 
-export function readCurrentFormatOverrideMarks(element: HTMLElement): Required<FormatOverrideMarks> {
+export function readCurrentFormatOverrideMarks(element: HTMLElement): ResolvedFormatOverrideMarks {
   const targetElement = findFormatOverrideElement(element) ?? element;
   const formatted = targetElement.querySelector("[data-airo-formatted-bound-text]") as HTMLElement | null;
+  const fontSize: string | undefined = formatted?.getAttribute("data-airo-format-size") || undefined;
   return {
     bold: formatted?.getAttribute("data-airo-format-bold") === "true",
     italic: formatted?.getAttribute("data-airo-format-italic") === "true",
     color: formatted?.getAttribute("data-airo-format-color") || null,
+    ...(fontSize ? { fontSize } : {}),
   };
 }
 

@@ -162,6 +162,15 @@ describe('formatOverrideMessages', () => {
     });
   });
 
+  it('reads the persisted fontSize mark from data-airo-format-size', () => {
+    const element = document.createElement('h1');
+    element.innerHTML = '<span data-airo-formatted-bound-text="true" data-airo-format-bold="true" data-airo-format-size="1.875rem">Title</span>';
+
+    expect(readCurrentFormatOverrideMarks(element)).toEqual(
+      expect.objectContaining({ fontSize: '1.875rem' }),
+    );
+  });
+
   it('returns default marks when no runtime formatted child exists yet', () => {
     const element = document.createElement('h1');
     element.textContent = 'Title';
