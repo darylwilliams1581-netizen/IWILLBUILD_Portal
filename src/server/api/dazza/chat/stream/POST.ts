@@ -17,6 +17,8 @@
  *
  * SSE event format:
  *   data: {"type":"token","content":"..."}
+ *   data: {"type":"status","phase":"thinking","label":"Dazza is thinking…"}
+ *   data: {"type":"heartbeat","elapsedMs":10000}
  *   data: {"type":"tool_call","name":"...","status":"running"}
  *   data: {"type":"tool_result","name":"...","status":"done"}
  *   data: {"type":"done","engine":"v3","conversationId":"...","model":"...","toolsUsed":[]}
@@ -94,6 +96,10 @@ export default async function handler(req: Request, res: Response) {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
+    // ── Initial status event — sent immediately so the client knows the
+    //    connection is open before any attachment resolution or AI work begins.
+    sseWrite(res, { type: 'status', phase: 'connecting', label: 'Connecting to Dazza…' });
+
     // ── Resolve attachments server-side (re-authorise every ID) ─────────────
     let untrustedEvidence = null;
     if (safeAttachmentIds.length > 0) {
@@ -163,6 +169,10 @@ export default async function handler(req: Request, res: Response) {
             ...(convId ? { conversationId: convId } : {}),
           });
         },
+        // ── Safe operational status — never includes prompts, reasoning or secrets
+        onStatus: (phase, label) => sseWrite(res, { type: 'status', phase, label }),
+        // ── Heartbeat every 10 s so the client can detect stalled requests
+        onHeartbeat: (elapsedMs) => sseWrite(res, { type: 'heartbeat', elapsedMs }),
       });
 
     } else {

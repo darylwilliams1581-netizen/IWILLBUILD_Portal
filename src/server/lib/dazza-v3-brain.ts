@@ -65,6 +65,33 @@ const MAX_TOKENS_INVESTIGATION = 16000;
 const MAX_TOKENS_CHAT = 4000;
 const TOOL_ROUNDS_MAX = 8;
 
+// ── Safe server-side tool labels (never include args or result contents) ──────
+const TOOL_LABELS_SERVER: Record<string, string> = {
+  v3_get_job:                   'Looking up job…',
+  v3_list_jobs:                 'Searching jobs…',
+  v3_get_incident:              'Loading incident…',
+  v3_list_incidents:            'Searching incidents…',
+  v3_get_risk:                  'Loading risk…',
+  v3_list_risks:                'Searching risks…',
+  v3_get_permit:                'Loading permit…',
+  v3_list_permits:              'Searching permits…',
+  v3_list_users:                'Loading users…',
+  v3_get_user:                  'Looking up user…',
+  v3_list_bug_reports:          'Loading bug reports…',
+  v3_get_bug_report:            'Loading bug report…',
+  v3_get_approved_memory:       'Loading memory…',
+  v3_list_pending_memory:       'Checking pending memory…',
+  v3_get_recent_errors:         'Loading recent errors…',
+  v3_search_source_code:        'Searching source code…',
+  v3_read_source_file:          'Reading file…',
+  v3_list_source_files:         'Listing files…',
+  v3_get_builder_case:          'Loading builder case…',
+  v3_list_builder_cases:        'Loading builder cases…',
+  v3_update_builder_case:       'Updating builder case…',
+  get_anatomy_manifest:         'Loading anatomy manifest…',
+  lookup_estimates:             'Loading estimates…',
+};
+
 // ── Diagnostic metadata recorded at end of each streaming session ─────────────
 interface SessionDiagnostics {
   roundsCompleted: number;
@@ -138,6 +165,10 @@ export interface V3StreamOptions {
     outputTokens?: number;
   }) => void;
   onError: (message: string, conversationId?: string) => void;
+  /** Safe operational status — never includes prompts, reasoning, secrets or tool contents */
+  onStatus?: (phase: string, label: string) => void;
+  /** Heartbeat — called every 10 s while the request is active */
+  onHeartbeat?: (elapsedMs: number) => void;
 }
 
 export interface V3IncidentInput {
@@ -556,6 +587,35 @@ async function loadApprovedMemory(): Promise<string> {
 // ── Main streaming function ───────────────────────────────────────────────────
 
 export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
+  const { ownerContext, userMessage, mode, onToken, onToolCall, onDone, onError, onStatus, onHeartbeat } = opts;
+
+  // ── Heartbeat timer ────────────────────────────────────────────────────────
+  const startMs = Date.now();
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  if (onHeartbeat) {
+    heartbeatTimer = setInterval(() => {
+      onHeartbeat(Date.now() - startMs);
+    }, 10_000);
+  }
+  const clearHeartbeat = () => {
+    if (heartbeatTimer !== null) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  };
+
+  try {
+    await _streamDazzaV3Core(opts, onStatus, clearHeartbeat);
+  } finally {
+    clearHeartbeat();
+  }
+}
+
+async function _streamDazzaV3Core(
+  opts: V3StreamOptions,
+  onStatus: V3StreamOptions['onStatus'],
+  clearHeartbeat: () => void,
+): Promise<void> {
   const { ownerContext, userMessage, mode, onToken, onToolCall, onDone, onError } = opts;
 
   // Owner-only guard
@@ -670,6 +730,9 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   const model = getDazzaModel();
   const maxTokens = mode === 'investigation' ? MAX_TOKENS_INVESTIGATION : MAX_TOKENS_CHAT;
 
+  // ── Signal: thinking ────────────────────────────────────────────────────────
+  onStatus?.('thinking', 'Dazza is thinking…');
+
   const toolsUsed: string[] = [];
   let fullAssistantResponse = '';
   let totalInputTokens = 0;
@@ -733,6 +796,9 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     pendingToolResultsRemained: false,
   };
 
+  // ── First-token flag — used to emit the 'writing' status exactly once ─────
+  let firstTokenEmitted = false;
+
   // ── SSE stream processor ──────────────────────────────────────────────────
   // Extracted so it can be called for both the main loop and the forced
   // synthesis round without duplication.
@@ -787,6 +853,10 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         assistantContent += chunk.delta;
         if (emitTokens) {
           fullAssistantResponse += chunk.delta;
+          if (!firstTokenEmitted) {
+            firstTokenEmitted = true;
+            onStatus?.('writing', 'Dazza is preparing the answer…');
+          }
           onToken(chunk.delta);
         }
       }
@@ -1091,8 +1161,15 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
 
       console.log(`[dazza-v3] round=${round} executing tool=${toolName} call_id_present=${!!tc.id} args_keys=${Object.keys(args).join(',')}`);
 
+      // Signal: using_tool (safe label only — no args or result contents)
+      const toolLabel = TOOL_LABELS_SERVER[toolName] ?? `Running ${toolName}…`;
+      onStatus?.('using_tool', toolLabel);
+
       const result = await executeV3Tool(toolName, args);
       onToolCall(toolName, 'done');
+
+      // Signal: back to thinking after tool result
+      onStatus?.('thinking', 'Dazza is thinking…');
 
       console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length}`);
 
