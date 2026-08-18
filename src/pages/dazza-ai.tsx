@@ -504,7 +504,6 @@ export default function DazzaAIPage() {
     clearActivityTimers();
     activityStartRef.current = Date.now();
     setActivityElapsed(0);
-    setLastEventAt(Date.now());
 
     elapsedTimerRef.current = setInterval(() => {
       setActivityElapsed(Math.floor((Date.now() - activityStartRef.current) / 1000));
