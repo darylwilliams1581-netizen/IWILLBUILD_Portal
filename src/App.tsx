@@ -13,6 +13,7 @@ import RootLayout from './layouts/RootLayout';
 import { routes } from './routes';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import CapacitorInit from '@/components/CapacitorInit';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 import { recordRouteChange } from '@/lib/diagnosticCapture';
 
 // ── Route change tracker ──────────────────────────────────────────────────────
@@ -131,7 +132,7 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <AppErrorBoundary>
       <CapacitorInit />
       <ImpersonationBanner />
       <StaleShimBoundary>
@@ -142,6 +143,6 @@ export default function App() {
           <CookieBanner />
         </Suspense>
       </CookieBannerErrorBoundary>
-    </>
+    </AppErrorBoundary>
   );
 }

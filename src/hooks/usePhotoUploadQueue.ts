@@ -28,6 +28,7 @@ import {
   checkQueueCapacity,
 } from '@/lib/offlinePhotoStore';
 import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -241,6 +242,33 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── App lifecycle: pause on background, resume on foreground ──────────────
+  // On iOS, the Capacitor App plugin fires appStateChange when the user
+  // switches apps or locks the screen. We pause uploads on background so we
+  // don't hold an open XHR connection while the app is suspended, and resume
+  // when the app returns to the foreground and the network is available.
+  const pausedRef = useRef(false);
+
+  useAppLifecycle({
+    onBackground: () => {
+      pausedRef.current = true;
+    },
+    onForeground: () => {
+      pausedRef.current = false;
+      // Resume after a short delay to let the network re-establish
+      if (navigator.onLine) {
+        setTimeout(() => processNext(), 800);
+      }
+    },
+    onOnline: () => {
+      setIsOnline(true);
+      if (!pausedRef.current) setTimeout(() => processNext(), 500);
+    },
+    onOffline: () => {
+      setIsOnline(false);
+    },
+  });
+
   // ── Restore from IDB on mount ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -294,6 +322,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
   const processNext = useCallback(() => {
     if (!navigator.onLine) return; // Don't attempt when offline
+    if (pausedRef.current) return; // Don't attempt when app is backgrounded
 
     const current = queueRef.current;
     const pending = current.filter((i) => i.status === 'saved' || i.status === 'preparing');

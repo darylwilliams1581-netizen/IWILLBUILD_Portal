@@ -19,11 +19,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Camera, Search, X, CheckCircle2, ExternalLink, Loader2, ChevronRight } from 'lucide-react';
+import { Camera, Search, X, CheckCircle2, ExternalLink, Loader2, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
+import { IosPermissionBanner } from '@/components/IosMediaInputs';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -315,6 +316,24 @@ export default function CameraFab() {
                     <X size={16} />
                   </button>
                 </div>
+
+                {/* Camera error banner */}
+                {picker.cameraError && (
+                  <div className="mx-4 mt-3 flex items-start gap-2.5 px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-xl">
+                    <AlertTriangle size={14} className="text-destructive shrink-0 mt-0.5" />
+                    <p className="text-xs font-semibold text-destructive leading-snug">{picker.cameraError}</p>
+                  </div>
+                )}
+
+                {/* Permission denied banner */}
+                {picker.permissionDenied && (
+                  <div className="mx-4 mt-3">
+                    <IosPermissionBanner
+                      type={picker.permissionDenied}
+                      onDismiss={() => picker.clear()}
+                    />
+                  </div>
+                )}
 
                 <JobSearchList onSelect={handleJobSelect} uploadError={uploadError} />
               </>
