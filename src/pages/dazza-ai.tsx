@@ -1203,7 +1203,54 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                           <div className="flex flex-col gap-0.5 text-[13px]">
                             {msg.role === 'assistant'
                               ? <>
-                                  {formatMessage(msg.content)}
+                                  {/* Thinking indicator — shown while waiting for first token */}
+                                  {streamingId === msg.id && !msg.content && (
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <motion.div
+                                          className="flex items-center gap-1"
+                                          animate={{ opacity: [0.5, 1, 0.5] }}
+                                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                                        >
+                                          <Brain size={12} className="text-violet-500 shrink-0" />
+                                          <span className="text-[12px] text-slate-500 font-medium">Thinking</span>
+                                        </motion.div>
+                                        <div className="flex items-center gap-0.5">
+                                          {[0, 1, 2].map((i) => (
+                                            <motion.span
+                                              key={i}
+                                              className="w-1 h-1 bg-violet-400 rounded-full inline-block"
+                                              animate={{ y: [0, -3, 0], opacity: [0.4, 1, 0.4] }}
+                                              transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                      {activeToolCall && (
+                                        <motion.div
+                                          initial={{ opacity: 0, y: 3 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5"
+                                        >
+                                          <Loader2 size={10} className="text-violet-500 animate-spin shrink-0" />
+                                          <span className="text-[11px] text-violet-700 font-medium">{activeToolCall}</span>
+                                        </motion.div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Actual content once tokens arrive */}
+                                  {msg.content && formatMessage(msg.content)}
+                                  {/* Mid-stream tool call badge (fires after some tokens) */}
+                                  {streamingId === msg.id && msg.content && activeToolCall && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: 3 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5 mt-1.5"
+                                    >
+                                      <Loader2 size={10} className="text-violet-500 animate-spin shrink-0" />
+                                      <span className="text-[11px] text-violet-700 font-medium">{activeToolCall}</span>
+                                    </motion.div>
+                                  )}
                                   {/* Streaming cursor */}
                                   {streamingId === msg.id && msg.content && (
                                     <motion.span
@@ -1225,49 +1272,6 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   </motion.div>
                 ))}
 
-                {/* Typing / tool-call indicator — only show when no content yet */}
-                {isTyping && !streamingId && (
-                  <motion.div
-                    key="typing"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex gap-2.5"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
-                      <Bot size={13} className="text-white" />
-                    </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 shadow-sm">
-                      {[0, 1, 2].map((i) => (
-                        <motion.span
-                          key={i}
-                          className="w-1.5 h-1.5 bg-slate-400 rounded-full inline-block"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Active tool call badge */}
-                {isTyping && activeToolCall && (
-                  <motion.div
-                    key="tool-call"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex gap-2.5 items-center"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
-                      <Bot size={13} className="text-white" />
-                    </div>
-                    <div className="bg-violet-50 border border-violet-200 rounded-2xl rounded-tl-sm px-3 py-2 flex items-center gap-2 shadow-sm">
-                      <Loader2 size={11} className="text-violet-600 animate-spin shrink-0" />
-                      <span className="text-xs text-violet-800 font-medium">{activeToolCall}</span>
-                    </div>
-                  </motion.div>
-                )}
               </AnimatePresence>
               <div ref={bottomRef} />
             </div>
