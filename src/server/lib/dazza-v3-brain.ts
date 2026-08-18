@@ -65,6 +65,18 @@ const MAX_TOKENS_INVESTIGATION = 16000;
 const MAX_TOKENS_CHAT = 4000;
 const TOOL_ROUNDS_MAX = 8;
 
+// ── Diagnostic metadata recorded at end of each streaming session ─────────────
+interface SessionDiagnostics {
+  roundsCompleted: number;
+  model: string;
+  toolsUsed: string[];
+  finalResponseStatus: 'text' | 'empty_no_tools' | 'empty_pending_tools' | 'forced_synthesis' | 'error';
+  outputItemTypes: string[];
+  inputTokens: number;
+  outputTokens: number;
+  pendingToolResultsRemained: boolean;
+}
+
 // ── Feature flag ──────────────────────────────────────────────────────────────
 
 export function isDazzaV3Enabled(): boolean {
@@ -703,6 +715,249 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
   // Sent as the `input` in round 1+ alongside previous_response_id.
   let pendingToolOutputs: { type: 'function_call_output'; call_id: string; output: string }[] = [];
 
+  // ── Repeated-call dedup tracker ───────────────────────────────────────────
+  // Tracks "toolName|argsJson" signatures seen so far.
+  // If the same signature appears twice, the model is stuck in a retry loop —
+  // force the synthesis step immediately rather than burning more rounds.
+  const seenToolSignatures = new Set<string>();
+
+  // ── Session diagnostics ───────────────────────────────────────────────────
+  const diag: SessionDiagnostics = {
+    roundsCompleted: 0,
+    model,
+    toolsUsed: [],
+    finalResponseStatus: 'error',
+    outputItemTypes: [],
+    inputTokens: 0,
+    outputTokens: 0,
+    pendingToolResultsRemained: false,
+  };
+
+  // ── SSE stream processor ──────────────────────────────────────────────────
+  // Extracted so it can be called for both the main loop and the forced
+  // synthesis round without duplication.
+  type SseChunk = {
+    type?: string;
+    delta?: string;
+    text?: string;
+    arguments?: string;
+    name?: string;
+    output_index?: number;
+    item?: {
+      type?: string;
+      id?: string;
+      call_id?: string;
+      name?: string;
+      arguments?: string;
+    };
+    response?: {
+      id?: string;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
+
+  async function processSseStream(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    round: number,
+    emitTokens: boolean,
+  ): Promise<{
+    assistantContent: string;
+    toolCallsList: ToolCallChunk[];
+    responseId: string | null;
+  }> {
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let assistantContent = '';
+    const toolCallsMap: Record<string, ToolCallChunk> = {};
+    let capturedResponseId: string | null = null;
+
+    const processLine = (line: string) => {
+      if (!line.startsWith('data: ')) return;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') return;
+
+      let chunk: SseChunk;
+      try { chunk = JSON.parse(raw) as SseChunk; } catch { return; }
+
+      const evType = chunk.type;
+
+      // ── Text token (streaming delta) ────────────────────────────────────
+      if (evType === 'response.output_text.delta' && typeof chunk.delta === 'string' && chunk.delta) {
+        assistantContent += chunk.delta;
+        if (emitTokens) {
+          fullAssistantResponse += chunk.delta;
+          onToken(chunk.delta);
+        }
+      }
+
+      // ── Text done (delta-gap guard) ─────────────────────────────────────
+      if (evType === 'response.output_text.done' && typeof chunk.text === 'string' && chunk.text) {
+        if (!assistantContent) {
+          assistantContent = chunk.text;
+          if (emitTokens) {
+            fullAssistantResponse += chunk.text;
+            onToken(chunk.text);
+          }
+        }
+      }
+
+      // ── Function call item added ────────────────────────────────────────
+      if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
+        const idx = String(chunk.output_index ?? 0);
+        toolCallsMap[idx] = {
+          id: chunk.item.call_id ?? '',
+          item_id: chunk.item.id ?? undefined,
+          type: 'function',
+          function: { name: chunk.item.name ?? '', arguments: '' },
+        };
+        diag.outputItemTypes.push('function_call');
+        console.log(`[dazza-v3] round=${round} fn_call_detected idx=${idx} name_present=${!!chunk.item.name} call_id_present=${!!chunk.item.call_id}`);
+      }
+
+      // ── Function call item done ─────────────────────────────────────────
+      if (evType === 'response.output_item.done' && chunk.item?.type === 'function_call') {
+        const idx = String(chunk.output_index ?? 0);
+        const existing = toolCallsMap[idx];
+        toolCallsMap[idx] = {
+          id: chunk.item.call_id ?? existing?.id ?? '',
+          item_id: chunk.item.id ?? existing?.item_id ?? undefined,
+          type: 'function',
+          function: {
+            name: chunk.item.name ?? existing?.function.name ?? '',
+            arguments: chunk.item.arguments ?? existing?.function.arguments ?? '',
+          },
+        };
+        console.log(`[dazza-v3] round=${round} fn_call_done idx=${idx} name=${chunk.item.name ?? '?'} args_len=${(chunk.item.arguments ?? '').length}`);
+      }
+
+      // ── Function call arguments delta ───────────────────────────────────
+      if (evType === 'response.function_call_arguments.delta' && typeof chunk.delta === 'string') {
+        const idx = String(chunk.output_index ?? 0);
+        if (!toolCallsMap[idx]) {
+          toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+        }
+        toolCallsMap[idx].function.arguments += chunk.delta;
+      }
+
+      // ── Function call arguments done ────────────────────────────────────
+      if (evType === 'response.function_call_arguments.done' && typeof chunk.arguments === 'string') {
+        const idx = String(chunk.output_index ?? 0);
+        if (toolCallsMap[idx]) {
+          toolCallsMap[idx].function.arguments = chunk.arguments;
+          if (chunk.name) toolCallsMap[idx].function.name = chunk.name;
+        }
+        console.log(`[dazza-v3] round=${round} fn_args_done idx=${idx} args_len=${chunk.arguments.length}`);
+      }
+
+      // ── Response completed ──────────────────────────────────────────────
+      if (evType === 'response.completed') {
+        if (chunk.response?.id) {
+          capturedResponseId = chunk.response.id;
+        }
+        const usage = chunk.response?.usage ?? chunk.usage;
+        if (usage) {
+          totalInputTokens  += usage.input_tokens  ?? 0;
+          totalOutputTokens += usage.output_tokens ?? 0;
+          diag.inputTokens  += usage.input_tokens  ?? 0;
+          diag.outputTokens += usage.output_tokens ?? 0;
+        }
+        console.log(`[dazza-v3] round=${round} response.completed response_id_captured=${!!chunk.response?.id} usage_captured=${!!usage}`);
+      }
+
+      // ── Error events ────────────────────────────────────────────────────
+      // These are logged here; the caller is responsible for propagating
+      // the error via onError after processSseStream returns.
+      if (evType === 'response.failed' || evType === 'error') {
+        const corrId = randomUUID().slice(0, 8).toUpperCase();
+        console.error(`[dazza-v3] SSE error event round=${round} [ref:${corrId}]:`, JSON.stringify(chunk).slice(0, 300));
+        // Mark in diag so the caller can surface a traceable error
+        diag.finalResponseStatus = 'error';
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        // ── Final buffer flush ──────────────────────────────────────────────
+        // Process any remaining bytes that arrived without a trailing newline.
+        if (buffer.trim()) {
+          for (const line of buffer.split('\n')) {
+            processLine(line);
+          }
+          buffer = '';
+        }
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        processLine(line);
+      }
+    }
+
+    if (capturedResponseId) {
+      previousResponseId = capturedResponseId;
+    }
+
+    const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
+    return { assistantContent, toolCallsList, responseId: capturedResponseId };
+  }
+
+  // ── Forced synthesis helper ───────────────────────────────────────────────
+  // Called when the tool-round limit is reached with pending tool outputs.
+  // Sends one final request with tool_choice:"none" so the model must write
+  // a text response explaining what it found (or why it hit the limit).
+  async function forcedSynthesis(): Promise<boolean> {
+    if (!previousResponseId || pendingToolOutputs.length === 0) return false;
+
+    console.log(`[dazza-v3] forced_synthesis previous_response_id_present=${!!previousResponseId} pending_outputs=${pendingToolOutputs.length}`);
+
+    const synthBody: Record<string, unknown> = {
+      model,
+      max_output_tokens: maxTokens,
+      stream: true,
+      tools: V3_TOOL_DEFINITIONS_FLAT,
+      tool_choice: 'none',
+      previous_response_id: previousResponseId,
+      input: pendingToolOutputs,
+    };
+
+    let synthRes: globalThis.Response;
+    try {
+      synthRes = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(synthBody),
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch (fetchErr) {
+      console.error('[dazza-v3] forced_synthesis fetch error:', String(fetchErr));
+      return false;
+    }
+
+    if (!synthRes.ok) {
+      const errText = await synthRes.text();
+      console.error(`[dazza-v3] forced_synthesis HTTP ${synthRes.status}:`, errText.slice(0, 300));
+      return false;
+    }
+
+    const synthReader = synthRes.body?.getReader();
+    if (!synthReader) return false;
+
+    const { assistantContent } = await processSseStream(synthReader, TOOL_ROUNDS_MAX, true);
+    diag.finalResponseStatus = 'forced_synthesis';
+    console.log(`[dazza-v3] forced_synthesis complete content_len=${assistantContent.length}`);
+    return assistantContent.length > 0;
+  }
+
   for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
     // ── Build request body ────────────────────────────────────────────────────
     // Round 0: full conversation input.
@@ -720,8 +975,6 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
         input: round0Input,
       };
     } else {
-      // round 1+: continuation via previous_response_id
-      // pendingToolOutputs is populated below after tool execution
       requestBody = {
         model,
         max_output_tokens: maxTokens,
@@ -772,199 +1025,29 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     const reader = streamRes.body?.getReader();
     if (!reader) { onError('No response body'); return; }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let assistantContent = '';
-    // Map from output_index → tool call accumulator
-    const toolCallsMap: Record<string, ToolCallChunk> = {};
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const raw = line.slice(6).trim();
-        if (raw === '[DONE]') { continue; }
-
-        // ── Responses API event shapes (verified against openai SDK types) ──
-        // response.output_text.delta               → { delta: string, output_index: number }
-        // response.output_text.done                → { text: string, output_index: number }
-        // response.function_call_arguments.delta   → { delta: string, output_index: number }
-        // response.function_call_arguments.done    → { arguments: string, name: string, output_index: number }
-        // response.output_item.added               → { item: { type, id, call_id, name }, output_index: number }
-        // response.output_item.done                → { item: { type, id, call_id, name, arguments }, output_index: number }
-        // response.completed                       → { response: { usage: { input_tokens, output_tokens } } }
-        // response.failed / error                  → error event
-        //
-        // CRITICAL: delta is always a plain string — NOT { content: string }
-        // CRITICAL: response.completed fires for BOTH tool-call and final-text rounds.
-        //           Do NOT use it to set finishReason='stop' — that breaks the tool loop.
-        //           Only break the agentic loop when toolCallsList.length === 0.
-        let chunk: {
-          type?: string;
-          // delta is a plain string for text and function-call-arguments events
-          delta?: string;
-          // response.output_text.done
-          text?: string;
-          // response.function_call_arguments.done
-          arguments?: string;
-          name?: string;
-          output_index?: number;
-          item?: {
-            type?: string;
-            id?: string;
-            call_id?: string;
-            name?: string;
-            arguments?: string;
-          };
-          // response.completed nests usage under chunk.response.usage
-          // response.completed also carries chunk.response.id — the response ID
-          // used as previous_response_id in the next round.
-          response?: {
-            id?: string;
-            usage?: { input_tokens?: number; output_tokens?: number };
-          };
-          // Some error events put usage at top level — keep as fallback
-          usage?: { input_tokens?: number; output_tokens?: number };
-        };
-        try { chunk = JSON.parse(raw); } catch { continue; }
-
-        const evType = chunk.type;
-
-        // ── Text token (streaming delta) ──────────────────────────────────────
-        // delta is a plain string — NOT { content: string }
-        if (evType === 'response.output_text.delta' && typeof chunk.delta === 'string' && chunk.delta) {
-          assistantContent += chunk.delta;
-          fullAssistantResponse += chunk.delta;
-          onToken(chunk.delta);
-        }
-
-        // ── Text done (finalized text — use as authoritative if delta was missed) ─
-        if (evType === 'response.output_text.done' && typeof chunk.text === 'string' && chunk.text) {
-          // Only use if we got less text than the done event reports (delta gap guard)
-          if (!assistantContent) {
-            assistantContent = chunk.text;
-            fullAssistantResponse += chunk.text;
-            onToken(chunk.text);
-          }
-        }
-
-        // ── Function call item added — capture name and call_id ───────────────
-        if (evType === 'response.output_item.added' && chunk.item?.type === 'function_call') {
-          const idx = String(chunk.output_index ?? 0);
-          // call_id is the REQUIRED matching key for function_call_output.call_id
-          // id is the optional item identifier — store separately
-          toolCallsMap[idx] = {
-            id: chunk.item.call_id ?? '',          // call_id → used for output matching
-            item_id: chunk.item.id ?? undefined,   // item id → used in function_call input item
-            type: 'function',
-            function: { name: chunk.item.name ?? '', arguments: '' },
-          };
-          console.log(`[dazza-v3] round=${round} fn_call_detected idx=${idx} name_present=${!!chunk.item.name} call_id_present=${!!chunk.item.call_id} item_id_present=${!!chunk.item.id}`);
-        }
-
-        // ── Function call item done — authoritative complete item ─────────────
-        // Prefer this over delta accumulation: gives finalized call_id + arguments
-        if (evType === 'response.output_item.done' && chunk.item?.type === 'function_call') {
-          const idx = String(chunk.output_index ?? 0);
-          const existing = toolCallsMap[idx];
-          toolCallsMap[idx] = {
-            id: chunk.item.call_id ?? existing?.id ?? '',
-            item_id: chunk.item.id ?? existing?.item_id ?? undefined,
-            type: 'function',
-            function: {
-              name: chunk.item.name ?? existing?.function.name ?? '',
-              arguments: chunk.item.arguments ?? existing?.function.arguments ?? '',
-            },
-          };
-          console.log(`[dazza-v3] round=${round} fn_call_done idx=${idx} name=${chunk.item.name ?? '?'} call_id_present=${!!chunk.item.call_id} item_id_present=${!!chunk.item.id} args_len=${(chunk.item.arguments ?? '').length}`);
-        }
-
-        // ── Function call arguments streaming (delta) ─────────────────────────
-        // delta is a plain string — NOT { content: string }
-        if (evType === 'response.function_call_arguments.delta' && typeof chunk.delta === 'string') {
-          const idx = String(chunk.output_index ?? 0);
-          if (!toolCallsMap[idx]) {
-            toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-          }
-          toolCallsMap[idx].function.arguments += chunk.delta;
-        }
-
-        // ── Function call arguments done (finalized) ──────────────────────────
-        // Authoritative final arguments string — overwrite accumulated delta
-        if (evType === 'response.function_call_arguments.done' && typeof chunk.arguments === 'string') {
-          const idx = String(chunk.output_index ?? 0);
-          if (toolCallsMap[idx]) {
-            toolCallsMap[idx].function.arguments = chunk.arguments;
-            if (chunk.name) toolCallsMap[idx].function.name = chunk.name;
-          }
-          console.log(`[dazza-v3] round=${round} fn_args_done idx=${idx} args_len=${chunk.arguments.length}`);
-        }
-
-        // ── Response completed — capture response ID and usage ────────────────
-        // IMPORTANT: response.completed fires for BOTH tool-call rounds AND final
-        // text rounds. Do NOT set finishReason='stop' here — that would break the
-        // tool loop by causing an early exit before tools execute.
-        // The loop continues until toolCallsList.length === 0 (no more tool calls).
-        //
-        // Capture chunk.response.id — used as previous_response_id in round 1+.
-        // This is the native Responses API continuation mechanism: the server
-        // tracks all prior output items, so round 1+ only needs to send the
-        // function_call_output results, not the full history or function_call items.
-        if (evType === 'response.completed') {
-          if (chunk.response?.id) {
-            previousResponseId = chunk.response.id;
-          }
-          const usage = chunk.response?.usage ?? chunk.usage;
-          if (usage) {
-            totalInputTokens  += usage.input_tokens  ?? 0;
-            totalOutputTokens += usage.output_tokens ?? 0;
-          }
-          console.log(`[dazza-v3] round=${round} response.completed response_id_captured=${!!chunk.response?.id} usage_captured=${!!usage}`);
-        }
-
-        // ── Error events ──────────────────────────────────────────────────────
-        if (evType === 'response.failed' || evType === 'error') {
-          const corrId = randomUUID().slice(0, 8).toUpperCase();
-          console.error(`[dazza-v3] SSE error event [ref:${corrId}]:`, JSON.stringify(chunk).slice(0, 300));
-          onError(`Responses API error. Reference: ${corrId}`, conversationId);
-          void saveConversationTurn(
-            conversationId, ownerContext.userId, 'assistant',
-            `[Stream error — ref:${corrId}]`, userTurnIndex + 1,
-          );
-          return;
-        }
-      }
-    }
-
-    const toolCallsList = Object.values(toolCallsMap).filter(tc => tc.function.name);
-
-    console.log(`[dazza-v3] round=${round} stream_done assistantContent_len=${assistantContent.length} tool_calls=${toolCallsList.length} response_id_present=${!!previousResponseId}`);
+    const { assistantContent, toolCallsList } = await processSseStream(reader, round, true);
+    diag.roundsCompleted = round + 1;
 
     // Keep messages[] in sync for conversation save only.
-    // We do NOT append to responsesInput — continuation uses previous_response_id.
     messages.push({
       role: 'assistant',
       content: assistantContent || null,
       ...(toolCallsList.length > 0 ? { tool_calls: toolCallsList } : {}),
     });
 
+    console.log(`[dazza-v3] round=${round} stream_done assistantContent_len=${assistantContent.length} tool_calls=${toolCallsList.length} response_id_present=${!!previousResponseId}`);
+
     // ── Loop continuation decision ────────────────────────────────────────────
-    // Only break when no tool calls were requested this round.
     if (toolCallsList.length === 0) {
       console.log(`[dazza-v3] round=${round} no_tool_calls — breaking loop`);
+      diag.finalResponseStatus = assistantContent.trim() ? 'text' : 'empty_no_tools';
       break;
     }
 
-    // Guard: must have a response ID to continue with previous_response_id pattern
+    // Guard: must have a response ID to continue
     if (!previousResponseId) {
       const corrId = randomUUID().slice(0, 8).toUpperCase();
-      console.error(`[dazza-v3] round=${round} no_response_id_for_continuation [ref:${corrId}] — cannot continue tool loop`);
+      console.error(`[dazza-v3] round=${round} no_response_id_for_continuation [ref:${corrId}]`);
       onError(`Tool continuation failed (no response ID). Reference: ${corrId}`, conversationId);
       void saveConversationTurn(
         conversationId, ownerContext.userId, 'assistant',
@@ -974,13 +1057,28 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
     }
 
     // Execute tool calls and build pendingToolOutputs for the next round.
-    // pendingToolOutputs contains ONLY function_call_output items — no function_call
-    // items, no history. The server reconstructs context from previous_response_id.
     pendingToolOutputs = [];
+    let forceEarlyExit = false;
+
     for (const tc of toolCallsList) {
       const toolName = tc.function.name;
+
+      // ── Repeated identical call detection ─────────────────────────────────
+      // Normalise args to detect retries of the same failed call.
+      let normArgs = '';
+      try { normArgs = JSON.stringify(JSON.parse(tc.function.arguments || '{}')); } catch { normArgs = tc.function.arguments; }
+      const sig = `${toolName}|${normArgs}`;
+
+      if (seenToolSignatures.has(sig)) {
+        console.warn(`[dazza-v3] round=${round} repeated_tool_call detected tool=${toolName} — forcing synthesis`);
+        forceEarlyExit = true;
+        // Still execute this call so the output is available for synthesis
+      }
+      seenToolSignatures.add(sig);
+
       onToolCall(toolName, 'running');
       toolsUsed.push(toolName);
+      diag.toolsUsed.push(toolName);
 
       void auditV3(ownerContext.userId, 'v3_tool_call', {
         conversationId,
@@ -996,16 +1094,14 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       const result = await executeV3Tool(toolName, args);
       onToolCall(toolName, 'done');
 
-      console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length} result_present=${result.length > 0}`);
+      console.log(`[dazza-v3] round=${round} tool_result tool=${toolName} result_len=${result.length}`);
 
-      // Responses API tool result — only call_id and output needed
       pendingToolOutputs.push({
         type: 'function_call_output' as const,
-        call_id: tc.id,   // tc.id holds call_id (the REQUIRED matching key)
+        call_id: tc.id,
         output: result,
       });
 
-      // Keep messages[] in sync for conversation save
       messages.push({
         role: 'tool',
         tool_call_id: tc.id,
@@ -1013,22 +1109,53 @@ export async function streamDazzaV3(opts: V3StreamOptions): Promise<void> {
       });
     }
 
+    // ── Tool-round limit reached with pending outputs ─────────────────────────
+    // This is the primary bug fix: if this was the last permitted round and we
+    // still have tool outputs to send, make one final synthesis request with
+    // tool_choice:"none" so the model writes a text response.
+    const isLastRound = round === TOOL_ROUNDS_MAX - 1;
+    if (isLastRound || forceEarlyExit) {
+      diag.pendingToolResultsRemained = true;
+      console.log(`[dazza-v3] round=${round} ${isLastRound ? 'tool_limit_reached' : 'forced_early_exit'} pending_outputs=${pendingToolOutputs.length} — attempting forced synthesis`);
+      const synthesised = await forcedSynthesis();
+      if (!synthesised) {
+        // Synthesis failed — fall through to the empty-response guard below
+        diag.finalResponseStatus = 'empty_pending_tools';
+      }
+      break;
+    }
+
     console.log(`[dazza-v3] round=${round} tool_outputs_ready=${pendingToolOutputs.length} previous_response_id_present=${!!previousResponseId} — starting round ${round + 1}`);
   } // end agentic loop
 
   // ── Guard: empty response ─────────────────────────────────────────────────
-  // If the agentic loop completed but produced no text, something went wrong
-  // (e.g. the model returned only tool calls with no final text turn, or the
-  // stream closed before a text event arrived). Emit a safe error rather than
-  // silently creating an empty assistant bubble.
+  // Retain the guard but now log precise terminal state for diagnosis.
+  // Forced synthesis above means this path should only be reached when OpenAI
+  // genuinely returned no text and no tool calls, or synthesis itself failed.
   if (!fullAssistantResponse.trim()) {
     const corrId = randomUUID().slice(0, 8).toUpperCase();
-    console.error(`[dazza-v3] empty response after ${TOOL_ROUNDS_MAX} rounds [ref:${corrId}] toolsUsed=${toolsUsed.join(',')}`);
+    // Safe diagnostic metadata — no prompts, tool contents, secrets or API keys
+    const safeDiag = {
+      roundsCompleted: diag.roundsCompleted,
+      model: diag.model,
+      toolsUsed: diag.toolsUsed,
+      finalResponseStatus: diag.finalResponseStatus,
+      outputItemTypes: diag.outputItemTypes,
+      inputTokens: diag.inputTokens,
+      outputTokens: diag.outputTokens,
+      pendingToolResultsRemained: diag.pendingToolResultsRemained,
+    };
+    console.error(`[dazza-v3] empty_response [ref:${corrId}]`, JSON.stringify(safeDiag));
     onError(`Dazza returned an empty response. Reference: ${corrId}`, conversationId);
     void saveConversationTurn(
       conversationId, ownerContext.userId, 'assistant',
       `[Empty response — ref:${corrId}]`, userTurnIndex + 1,
     );
+    void auditV3(ownerContext.userId, 'v3_empty_response', {
+      conversationId,
+      corrId,
+      ...safeDiag,
+    });
     return;
   }
 

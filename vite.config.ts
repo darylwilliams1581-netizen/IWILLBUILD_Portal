@@ -270,21 +270,15 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
 
   resolve: {
     // Prefer the ESM export condition over the CJS `node` condition.
-    // react-router-dom exports:
-    //   "node"   → dist/index.js  (CJS — causes "module is not defined" in ssrLoadModule)
-    //   "import" → dist/index.mjs (ESM — correct for Vite SSR)
-    // Listing "import" before "node" ensures ssrLoadModule gets the ESM build.
+    // react-router v8 exports via package.json exports map — listing "import"
+    // before "node" ensures ssrLoadModule gets the ESM build.
     conditions: ['import', 'module', 'browser', 'default'],
     dedupe: ["react", "react-dom", "react-router"],
     alias: [
-      // Hard-alias react-router-dom to its ESM build so Vite's ssrLoadModule
-      // never falls through to the CJS dist/index.js (which uses `module.exports`
-      // and throws "module is not defined" in an ESM evaluator context).
-      // This alias applies in both dev SSR and SSR build modes.
-      {
-        find: 'react-router',
-        replacement: path.resolve(__dirname, 'node_modules/react-router-dom/dist/index.mjs'),
-      },
+      // react-router v8 is the unified package (react-router-dom no longer exists
+      // as a separate package). No alias needed — Vite resolves react-router via
+      // its package.json exports map. The old hard-alias to react-router-dom/dist/
+      // index.mjs has been removed because that file does not exist in v8.
       // During SSR build, redirect browser-only packages to an empty stub so
       // they are not bundled into server.bundle.mjs. This saves ~400 kB of
       // uncompressed JS and reduces peak Rollup memory by ~200 MB.
@@ -544,7 +538,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // The old leaflet.js?v=05d76b4a hash was cached in browsers; changing
     // this include list changes the metadata hash so Vite generates a new
     // version query string, making the old cached URL unreachable.
-    include: ["react", "react-dom", "react-router", "motion/react", "react/jsx-runtime", "react-router-dom > react-router"],
+    include: ["react", "react-dom", "react-router", "motion/react", "react/jsx-runtime"],
     // Explicitly exclude leaflet so it is never pre-bundled. Combined with the
     // resolveId stub in the evict-stale-leaflet-prebundle plugin, any import of
     // leaflet resolves to an empty stub. Adding it here also changes the dep
@@ -565,7 +559,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // During dev (`vite` / ssrLoadModule): leave noExternal as [] so Vite's
     // CJS-interop layer can handle packages like express normally. Setting
     // noExternal:true in dev causes "module is not defined" for CJS packages.
-    // react-router-dom must be in noExternal in dev so ssrLoadModule gets the
+    // react-router must be in noExternal in dev so ssrLoadModule gets the
     // ESM build and named exports like createStaticRouter resolve correctly.
     noExternal: isSsrBuild ? true : ['react-router'],
     external: [
