@@ -235,7 +235,7 @@ export function buildLinkPrompt(url: string, loopRendered: boolean, targetAlt: s
 }
 
 export function buildPagePrompt(path: string, loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
-  const base = `When the C2 clicks the image with alt=${q(targetAlt)}, navigate to the route ${q(path)}. Wrap that image in the React Router Link component (import from src/router or react-router-dom as the project already uses). Keep all existing styling and alt text.`;
+  const base = `When the C2 clicks the image with alt=${q(targetAlt)}, navigate to the route ${q(path)}. Wrap that image in the React Router Link component (import from src/router or react-router as the project already uses). Keep all existing styling and alt text.`;
   return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
 }
 
