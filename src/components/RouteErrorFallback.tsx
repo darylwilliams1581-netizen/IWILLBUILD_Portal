@@ -1,19 +1,10 @@
-/**
- * RouteErrorFallback
- * ─────────────────────────────────────────────────────────────────────────────
- * Used as the `errorElement` on every protected route.
- * Renders inside the layout so the sidebar/header stay mounted.
- * Shows a friendly recovery screen with Refresh, Go to Login, and
- * "Clear session & go to login" buttons.
- */
-import { useRouteError, isRouteErrorResponse } from 'react-router-dom';
+import { useRouteError, isRouteErrorResponse } from "react-router";
 import { RefreshCw, LogIn, AlertTriangle, ShieldOff } from 'lucide-react';
 import { invalidateMeCache } from '@/lib/usePermissions';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import { signOut } from '@/lib/auth/auth-client';
-
 function clearAllCachesAndGoToLogin() {
   try {
     invalidateMeCache();
@@ -34,13 +25,12 @@ async function signOutAndGoToLogin() {
     invalidateSubscriptionCache();
     invalidateTerminologyCache();
     invalidateSupportModeCache();
-  } catch { /* best-effort */ }
+  } catch {/* best-effort */}
   try {
     await signOut();
-  } catch { /* best-effort — even if signOut fails, navigate away */ }
+  } catch {/* best-effort — even if signOut fails, navigate away */}
   window.location.replace('/login');
 }
-
 export default function RouteErrorFallback() {
   const error = useRouteError();
 
@@ -54,9 +44,8 @@ export default function RouteErrorFallback() {
     if (!(e instanceof Error)) return false;
     const text = (e.message ?? '') + (e.stack ?? '');
     if (e.name === 'NotFoundError' && text.includes('removeChild')) return true;
-    return STALE_TS.some((ts) => text.includes(ts));
+    return STALE_TS.some(ts => text.includes(ts));
   }
-
   if (isStaleShimError(error)) {
     try {
       const RELOAD_KEY = 'route_stale_reload_ts';
@@ -65,7 +54,7 @@ export default function RouteErrorFallback() {
         sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
         window.location.reload();
       }
-    } catch { /* ignore */ }
+    } catch {/* ignore */}
     // Render nothing while reload is in flight
     return null;
   }
@@ -74,9 +63,7 @@ export default function RouteErrorFallback() {
   let message = 'An unexpected error occurred on this page.';
   let stack = '';
   if (isRouteErrorResponse(error)) {
-    if (error.status === 404) message = 'This page could not be found.';
-    else if (error.status === 403) message = "You don't have permission to view this page.";
-    else message = `Server error ${error.status}: ${error.statusText}`;
+    if (error.status === 404) message = 'This page could not be found.';else if (error.status === 403) message = "You don't have permission to view this page.";else message = `Server error ${error.status}: ${error.statusText}`;
   } else if (error instanceof Error) {
     message = error.message;
     stack = error.stack ?? '';
@@ -88,11 +75,8 @@ export default function RouteErrorFallback() {
   console.error('[RouteErrorFallback]', message, stack || error);
 
   // Detect if this looks like a session/auth error
-  const isAuthError =
-    isRouteErrorResponse(error) && (error.status === 401 || error.status === 403);
-
-  return (
-    <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
+  const isAuthError = isRouteErrorResponse(error) && (error.status === 401 || error.status === 403);
+  return <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
       <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mb-5">
         <AlertTriangle size={22} className="text-red-400" />
       </div>
@@ -105,40 +89,24 @@ export default function RouteErrorFallback() {
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-violet-700 transition-colors shadow-sm"
-        >
+        <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-violet-700 transition-colors shadow-sm">
           <RefreshCw size={14} />
           Refresh
         </button>
-        <button
-          onClick={() => void signOutAndGoToLogin()}
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors"
-        >
+        <button onClick={() => void signOutAndGoToLogin()} className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">
           <LogIn size={14} />
           Go to Login
         </button>
-        {isAuthError && (
-          <button
-            onClick={clearAllCachesAndGoToLogin}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-colors"
-          >
+        {isAuthError && <button onClick={clearAllCachesAndGoToLogin} className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-colors">
             <ShieldOff size={14} />
             Clear session &amp; go to login
-          </button>
-        )}
+          </button>}
       </div>
 
       {/* Always show the clear-session option as a subtle link */}
-      {!isAuthError && (
-        <button
-          onClick={clearAllCachesAndGoToLogin}
-          className="mt-5 text-xs text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors"
-        >
+      {!isAuthError && <button onClick={clearAllCachesAndGoToLogin} className="mt-5 text-xs text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors">
           Clear session &amp; go to login
-        </button>
-      )}
+        </button>}
 
       {/* Error detail — always visible so the error can be diagnosed */}
       <details className="mt-8 max-w-lg w-full text-left" open>
@@ -150,6 +118,5 @@ export default function RouteErrorFallback() {
           {stack ? `\n\n${stack}` : ''}
         </pre>
       </details>
-    </div>
-  );
+    </div>;
 }

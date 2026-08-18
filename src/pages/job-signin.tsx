@@ -11,17 +11,11 @@
  * Guests: full check-in form required.
  */
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import {
-  LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  HardHat, User, Phone, Mail, CreditCard, Calendar,
-  MessageSquare, Shield,
-} from 'lucide-react';
-
+import { LogIn, LogOut, Loader2, CheckCircle2, AlertCircle, HardHat, User, Phone, Mail, CreditCard, Calendar, MessageSquare, Shield } from 'lucide-react';
 type Mode = 'signin' | 'signout';
 type Stage = 'loading' | 'form' | 'success' | 'error';
-
 interface GuestForm {
   full_name: string;
   phone_number: string;
@@ -32,7 +26,6 @@ interface GuestForm {
   contact_phone: string;
   reason_for_visit: string;
 }
-
 const EMPTY_FORM: GuestForm = {
   full_name: '',
   phone_number: '',
@@ -41,24 +34,25 @@ const EMPTY_FORM: GuestForm = {
   white_card_expiry: '',
   contact_name: '',
   contact_phone: '',
-  reason_for_visit: '',
+  reason_for_visit: ''
 };
-
 export default function JobSignInPage() {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const [searchParams] = useSearchParams();
-
-  const mode  = (searchParams.get('mode') ?? 'signin') as Mode;
+  const mode = (searchParams.get('mode') ?? 'signin') as Mode;
   const token = searchParams.get('token') ?? '';
   const jobId = parseInt(id ?? '0');
-
-  const [stage, setStage]       = useState<Stage>('loading');
-  const [message, setMessage]   = useState('');
-  const [isGuest, setIsGuest]   = useState(false);
-  const [form, setForm]         = useState<GuestForm>(EMPTY_FORM);
+  const [stage, setStage] = useState<Stage>('loading');
+  const [message, setMessage] = useState('');
+  const [isGuest, setIsGuest] = useState(false);
+  const [form, setForm] = useState<GuestForm>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<GuestForm>>({});
-  const [jobName, setJobName]   = useState<string>('');
+  const [jobName, setJobName] = useState<string>('');
 
   // ── On mount: try authenticated action first ──────────────────────────────
   useEffect(() => {
@@ -67,11 +61,9 @@ export default function JobSignInPage() {
       setMessage('Invalid or missing QR code. Please scan a valid QR code.');
       return;
     }
-
     void tryAuthenticatedAction();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   async function tryAuthenticatedAction() {
     setStage('loading');
     try {
@@ -79,10 +71,14 @@ export default function JobSignInPage() {
       const res = await fetch(`/api/jobs/${jobId}/${endpoint}`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token
+        })
       });
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         ok?: boolean;
         isGuest?: boolean;
         message?: string;
@@ -91,14 +87,12 @@ export default function JobSignInPage() {
         alreadySignedIn?: boolean;
         notSignedIn?: boolean;
       };
-
       if (res.status === 400 && data.missing && data.missing.length > 0) {
         // Server says guest fields required — show form
         setIsGuest(true);
         setStage('form');
         return;
       }
-
       if (!res.ok) {
         setStage('error');
         setMessage(data.error ?? 'Something went wrong. Please try again.');
@@ -114,20 +108,18 @@ export default function JobSignInPage() {
       setStage('form');
     }
   }
-
   function validate(): boolean {
     const errs: Partial<GuestForm> = {};
-    if (!form.full_name.trim())         errs.full_name         = 'Required';
-    if (!form.phone_number.trim())      errs.phone_number      = 'Required';
+    if (!form.full_name.trim()) errs.full_name = 'Required';
+    if (!form.phone_number.trim()) errs.phone_number = 'Required';
     if (!form.white_card_number.trim()) errs.white_card_number = 'Required';
     if (!form.white_card_expiry.trim()) errs.white_card_expiry = 'Required';
-    if (!form.contact_name.trim())      errs.contact_name      = 'Required';
-    if (!form.contact_phone.trim())     errs.contact_phone     = 'Required';
-    if (!form.reason_for_visit.trim())  errs.reason_for_visit  = 'Required';
+    if (!form.contact_name.trim()) errs.contact_name = 'Required';
+    if (!form.contact_phone.trim()) errs.contact_phone = 'Required';
+    if (!form.reason_for_visit.trim()) errs.reason_for_visit = 'Required';
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }
-
   async function submitGuestForm() {
     if (!validate()) return;
     setSubmitting(true);
@@ -136,10 +128,19 @@ export default function JobSignInPage() {
       const res = await fetch(`/api/jobs/${jobId}/${endpoint}`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, ...form }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token,
+          ...form
+        })
       });
-      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
       if (!res.ok) {
         setStage('error');
         setMessage(data.error ?? 'Submission failed. Please try again.');
@@ -154,9 +155,12 @@ export default function JobSignInPage() {
       setSubmitting(false);
     }
   }
-
   function Field({
-    label, name, type = 'text', placeholder, required = true,
+    label,
+    name,
+    type = 'text',
+    placeholder,
+    required = true
   }: {
     label: string;
     name: keyof GuestForm;
@@ -164,36 +168,25 @@ export default function JobSignInPage() {
     placeholder?: string;
     required?: boolean;
   }) {
-    return (
-      <div>
+    return <div>
         <label className="block text-sm font-semibold text-slate-700 mb-1">
           {label}{required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
-        <input
-          type={type}
-          value={form[name]}
-          onChange={(e) => {
-            setForm((f) => ({ ...f, [name]: e.target.value }));
-            if (fieldErrors[name]) setFieldErrors((fe) => ({ ...fe, [name]: undefined }));
-          }}
-          placeholder={placeholder}
-          className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-colors ${
-            fieldErrors[name]
-              ? 'border-red-400 bg-red-50'
-              : 'border-slate-200 bg-white'
-          }`}
-        />
-        {fieldErrors[name] && (
-          <p className="text-xs text-red-500 mt-1">{fieldErrors[name]}</p>
-        )}
-      </div>
-    );
+        <input type={type} value={form[name]} onChange={e => {
+        setForm(f => ({
+          ...f,
+          [name]: e.target.value
+        }));
+        if (fieldErrors[name]) setFieldErrors(fe => ({
+          ...fe,
+          [name]: undefined
+        }));
+      }} placeholder={placeholder} className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-colors ${fieldErrors[name] ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'}`} />
+        {fieldErrors[name] && <p className="text-xs text-red-500 mt-1">{fieldErrors[name]}</p>}
+      </div>;
   }
-
   const isSignIn = mode === 'signin';
-
-  return (
-    <>
+  return <>
       <Helmet>
         <title>{isSignIn ? 'Job Sign In' : 'Job Sign Out'} — IWILLBUILD</title>
         <meta name="description" content="Scan to sign in or sign out of a job site. Guests complete a check-in form." />
@@ -221,16 +214,13 @@ export default function JobSignInPage() {
           <div className="w-full max-w-md space-y-4">
 
             {/* ── Loading ─────────────────────────────────────────────── */}
-            {stage === 'loading' && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center gap-3 text-center">
+            {stage === 'loading' && <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center gap-3 text-center">
                 <Loader2 size={32} className="animate-spin text-violet-600" />
                 <p className="text-slate-600 font-medium">Verifying QR code…</p>
-              </div>
-            )}
+              </div>}
 
             {/* ── Success ─────────────────────────────────────────────── */}
-            {stage === 'success' && (
-              <div className="bg-white rounded-2xl border border-green-200 p-8 flex flex-col items-center gap-3 text-center">
+            {stage === 'success' && <div className="bg-white rounded-2xl border border-green-200 p-8 flex flex-col items-center gap-3 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
                   <CheckCircle2 size={32} className="text-green-600" />
                 </div>
@@ -242,18 +232,13 @@ export default function JobSignInPage() {
                   {new Date().toLocaleString('en-AU')}
                 </p>
                 {/* Give authenticated users a way back — QR pages have no nav bar */}
-                <a
-                  href="/home"
-                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-violet-700 hover:text-violet-800 underline underline-offset-2"
-                >
+                <a href="/home" className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-violet-700 hover:text-violet-800 underline underline-offset-2">
                   Go to portal home
                 </a>
-              </div>
-            )}
+              </div>}
 
             {/* ── Error ───────────────────────────────────────────────── */}
-            {stage === 'error' && (
-              <div className="bg-white rounded-2xl border border-red-200 p-8 flex flex-col items-center gap-3 text-center">
+            {stage === 'error' && <div className="bg-white rounded-2xl border border-red-200 p-8 flex flex-col items-center gap-3 text-center">
                 <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
                   <AlertCircle size={32} className="text-red-500" />
                 </div>
@@ -262,18 +247,13 @@ export default function JobSignInPage() {
                 <p className="text-xs text-slate-400 mt-1">
                   If this QR code has expired, please ask for a new one to be generated.
                 </p>
-                <a
-                  href="/home"
-                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-800 underline underline-offset-2"
-                >
+                <a href="/home" className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-800 underline underline-offset-2">
                   Go to portal home
                 </a>
-              </div>
-            )}
+              </div>}
 
             {/* ── Guest form ───────────────────────────────────────────── */}
-            {stage === 'form' && (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            {stage === 'form' && <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
                   <div className="flex items-center gap-2">
                     <HardHat size={18} className="text-violet-600" />
@@ -329,50 +309,28 @@ export default function JobSignInPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-1">
                       Reason for visit<span className="text-red-500 ml-0.5">*</span>
                     </label>
-                    <textarea
-                      value={form.reason_for_visit}
-                      onChange={(e) => {
-                        setForm((f) => ({ ...f, reason_for_visit: e.target.value }));
-                        if (fieldErrors.reason_for_visit) setFieldErrors((fe) => ({ ...fe, reason_for_visit: undefined }));
-                      }}
-                      rows={3}
-                      placeholder="Briefly describe why you are visiting this site…"
-                      className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none transition-colors ${
-                        fieldErrors.reason_for_visit ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'
-                      }`}
-                    />
-                    {fieldErrors.reason_for_visit && (
-                      <p className="text-xs text-red-500 mt-1">{fieldErrors.reason_for_visit}</p>
-                    )}
+                    <textarea value={form.reason_for_visit} onChange={e => {
+                  setForm(f => ({
+                    ...f,
+                    reason_for_visit: e.target.value
+                  }));
+                  if (fieldErrors.reason_for_visit) setFieldErrors(fe => ({
+                    ...fe,
+                    reason_for_visit: undefined
+                  }));
+                }} rows={3} placeholder="Briefly describe why you are visiting this site…" className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none transition-colors ${fieldErrors.reason_for_visit ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'}`} />
+                    {fieldErrors.reason_for_visit && <p className="text-xs text-red-500 mt-1">{fieldErrors.reason_for_visit}</p>}
                   </div>
 
-                  <button
-                    onClick={submitGuestForm}
-                    disabled={submitting}
-                    className={`w-full flex items-center justify-center gap-2 py-3.5 text-white font-bold rounded-xl transition-colors ${
-                      isSignIn
-                        ? 'bg-green-600 hover:bg-green-700 disabled:opacity-50'
-                        : 'bg-slate-700 hover:bg-slate-800 disabled:opacity-50'
-                    }`}
-                  >
-                    {submitting ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : isSignIn ? (
-                      <LogIn size={18} />
-                    ) : (
-                      <LogOut size={18} />
-                    )}
-                    {submitting
-                      ? 'Submitting…'
-                      : isSignIn ? 'Sign In to Job' : 'Sign Out of Job'}
+                  <button onClick={submitGuestForm} disabled={submitting} className={`w-full flex items-center justify-center gap-2 py-3.5 text-white font-bold rounded-xl transition-colors ${isSignIn ? 'bg-green-600 hover:bg-green-700 disabled:opacity-50' : 'bg-slate-700 hover:bg-slate-800 disabled:opacity-50'}`}>
+                    {submitting ? <Loader2 size={18} className="animate-spin" /> : isSignIn ? <LogIn size={18} /> : <LogOut size={18} />}
+                    {submitting ? 'Submitting…' : isSignIn ? 'Sign In to Job' : 'Sign Out of Job'}
                   </button>
                 </div>
-              </div>
-            )}
+              </div>}
 
           </div>
         </div>
       </div>
-    </>
-  );
+    </>;
 }

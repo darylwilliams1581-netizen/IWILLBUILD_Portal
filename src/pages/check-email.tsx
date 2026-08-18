@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Mail, RefreshCw, CheckCircle, ArrowLeft } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-
+import { Link, useLocation } from "react-router";
 export default function CheckEmailPage() {
   const location = useLocation();
-  const email = (location.state as { email?: string } | null)?.email ?? '';
-
+  const email = (location.state as {
+    email?: string;
+  } | null)?.email ?? '';
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [error, setError] = useState('');
-
   async function handleResend() {
     if (resending || resent) return;
     setResending(true);
@@ -18,9 +17,13 @@ export default function CheckEmailPage() {
     try {
       const res = await fetch('/api/auth/resend-verification', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email
+        })
       });
       if (res.status === 429) {
         setError('Too many requests. Please wait a few minutes before trying again.');
@@ -33,9 +36,7 @@ export default function CheckEmailPage() {
       setResending(false);
     }
   }
-
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Check Your Email — IWILLBUILD Portal</title>
         <meta name="description" content="Verify your email address to activate your IWILLBUILD Portal account." />
@@ -58,22 +59,21 @@ export default function CheckEmailPage() {
           name: 'Check Your Email — IWILLBUILD Portal',
           url: 'https://iwillbuild.com/check-email',
           description: 'Verify your email address to activate your IWILLBUILD Portal account.',
-          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+          isPartOf: {
+            '@id': 'https://iwillbuild.com/#website'
+          }
         })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0F1117] flex items-center justify-center px-4">
         {/* Blueprint grid background */}
-        <div
-          className="fixed inset-0 pointer-events-none opacity-[0.04]"
-          style={{
-            backgroundImage: `
+        <div className="fixed inset-0 pointer-events-none opacity-[0.04]" style={{
+        backgroundImage: `
               linear-gradient(rgba(249,115,22,0.6) 1px, transparent 1px),
               linear-gradient(90deg, rgba(249,115,22,0.6) 1px, transparent 1px)
             `,
-            backgroundSize: '40px 40px',
-          }}
-        />
+        backgroundSize: '40px 40px'
+      }} />
 
         <div className="relative w-full max-w-md">
           {/* Logo */}
@@ -97,36 +97,24 @@ export default function CheckEmailPage() {
             <p className="text-white/60 text-sm leading-relaxed mb-2">
               We've sent a verification link to
             </p>
-            {email && (
-              <p className="text-white font-semibold text-sm mb-4 break-all">{email}</p>
-            )}
+            {email && <p className="text-white font-semibold text-sm mb-4 break-all">{email}</p>}
             <p className="text-white/50 text-sm leading-relaxed mb-8">
               Click the link in the email to activate your account. The link expires in 24 hours.
             </p>
 
             {/* Resend */}
-            {resent ? (
-              <div className="flex items-center justify-center gap-2 text-green-400 text-sm font-medium mb-6">
+            {resent ? <div className="flex items-center justify-center gap-2 text-green-400 text-sm font-medium mb-6">
                 <CheckCircle size={16} />
                 Verification email resent!
-              </div>
-            ) : (
-              <div className="mb-6">
+              </div> : <div className="mb-6">
                 <p className="text-white/40 text-xs mb-3">Didn't receive it? Check your spam folder, or</p>
-                <button
-                  onClick={handleResend}
-                  disabled={resending}
-                  className="flex items-center gap-2 mx-auto text-sm font-semibold text-primary hover:text-violet-400 disabled:opacity-50 transition-colors"
-                >
+                <button onClick={handleResend} disabled={resending} className="flex items-center gap-2 mx-auto text-sm font-semibold text-primary hover:text-violet-400 disabled:opacity-50 transition-colors">
                   <RefreshCw size={14} className={resending ? 'animate-spin' : ''} />
                   {resending ? 'Sending...' : 'Resend verification email'}
                 </button>
-              </div>
-            )}
+              </div>}
 
-            {error && (
-              <p className="text-red-400 text-xs mb-4">{error}</p>
-            )}
+            {error && <p className="text-red-400 text-xs mb-4">{error}</p>}
 
             {/* Tips */}
             <div className="bg-white/5 rounded-xl p-4 text-left mb-6">
@@ -138,16 +126,12 @@ export default function CheckEmailPage() {
               </ul>
             </div>
 
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors"
-            >
+            <Link to="/login" className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors">
               <ArrowLeft size={14} />
               Back to login
             </Link>
           </div>
         </div>
       </div>
-    </>
-  );
+    </>;
 }

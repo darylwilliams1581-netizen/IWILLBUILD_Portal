@@ -275,14 +275,14 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     //   "import" → dist/index.mjs (ESM — correct for Vite SSR)
     // Listing "import" before "node" ensures ssrLoadModule gets the ESM build.
     conditions: ['import', 'module', 'browser', 'default'],
-    dedupe: ["react", "react-dom", "react-router-dom"],
+    dedupe: ["react", "react-dom", "react-router"],
     alias: [
       // Hard-alias react-router-dom to its ESM build so Vite's ssrLoadModule
       // never falls through to the CJS dist/index.js (which uses `module.exports`
       // and throws "module is not defined" in an ESM evaluator context).
       // This alias applies in both dev SSR and SSR build modes.
       {
-        find: 'react-router-dom',
+        find: 'react-router',
         replacement: path.resolve(__dirname, 'node_modules/react-router-dom/dist/index.mjs'),
       },
       // During SSR build, redirect browser-only packages to an empty stub so
@@ -544,7 +544,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // The old leaflet.js?v=05d76b4a hash was cached in browsers; changing
     // this include list changes the metadata hash so Vite generates a new
     // version query string, making the old cached URL unreachable.
-    include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime", "react-router-dom > react-router"],
+    include: ["react", "react-dom", "react-router", "motion/react", "react/jsx-runtime", "react-router-dom > react-router"],
     // Explicitly exclude leaflet so it is never pre-bundled. Combined with the
     // resolveId stub in the evict-stale-leaflet-prebundle plugin, any import of
     // leaflet resolves to an empty stub. Adding it here also changes the dep
@@ -567,7 +567,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // noExternal:true in dev causes "module is not defined" for CJS packages.
     // react-router-dom must be in noExternal in dev so ssrLoadModule gets the
     // ESM build and named exports like createStaticRouter resolve correctly.
-    noExternal: isSsrBuild ? true : ['react-router-dom'],
+    noExternal: isSsrBuild ? true : ['react-router'],
     external: [
       // These packages are browser-only and must never be bundled into the
       // SSR bundle. With noExternal:true, Vite's ssr.external check uses
@@ -753,7 +753,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // react-dom is 7 MB — split it so it doesn't inflate the entry bundle.
           if (id.includes('node_modules/react-dom')) return 'react-dom';
           // react-router pulls in a large history/routing tree — split it.
-          if (id.includes('node_modules/react-router') && !id.includes('react-router-dom')) return 'react-router';
+          if (id.includes('node_modules/react-router') && !id.includes('react-router')) return 'react-router';
           // @radix-ui is 6.8 MB of UI primitives — split into its own chunk.
           if (id.includes('node_modules/@radix-ui')) return 'radix-ui';
           // @opentelemetry is pulled in by better-auth/mysql2 tracing hooks.

@@ -4,31 +4,36 @@
  * matching the pattern of /jobs/:id/photos, /jobs/:id/forms etc.
  */
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Layers, Home } from 'lucide-react';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
-
-interface Job { id: number; name: string; job_number?: string }
-
+interface Job {
+  id: number;
+  name: string;
+  job_number?: string;
+}
 export default function JobDrawingsPage() {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
   const jobId = Number(id);
   const [job, setJob] = useState<Job | null>(null);
-
   useEffect(() => {
     if (!jobId) return;
-    fetch(`/api/jobs/${jobId}`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() as Promise<{ job?: Job }> : null)
-      .then(d => { if (d?.job) setJob(d.job); })
-      .catch(() => null);
+    fetch(`/api/jobs/${jobId}`, {
+      credentials: 'include'
+    }).then(r => r.ok ? r.json() as Promise<{
+      job?: Job;
+    }> : null).then(d => {
+      if (d?.job) setJob(d.job);
+    }).catch(() => null);
   }, [jobId]);
-
   const title = job ? `${job.name} — Drawings` : 'Drawings';
-
-  return (
-    <>
+  return <>
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage drawings for this job." />
@@ -38,16 +43,11 @@ export default function JobDrawingsPage() {
 
       <div className="flex-1 bg-[#F4F5F7] flex flex-col overflow-hidden">
         {/* Header — desktop: back+home left, title center; mobile: title only, safe-area padded */}
-        <div
-          className="bg-white border-b border-slate-200 shrink-0"
-          style={{ paddingTop: 'max(env(safe-area-inset-top), 0px)' }}
-        >
+        <div className="bg-white border-b border-slate-200 shrink-0" style={{
+        paddingTop: 'max(env(safe-area-inset-top), 0px)'
+      }}>
           <div className="flex items-center gap-3 px-4 py-3">
-            <button
-              onClick={() => navigate(`/jobs/${id}`)}
-              className="hidden md:flex p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-              aria-label="Back"
-            >
+            <button onClick={() => navigate(`/jobs/${id}`)} className="hidden md:flex p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Back">
               <ArrowLeft size={20} />
             </button>
             <div className="hidden md:flex items-center gap-1.5 shrink-0">
@@ -72,10 +72,10 @@ export default function JobDrawingsPage() {
         </div>
 
         {/* Mobile bottom bar with back + home */}
-        <div
-          className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-slate-200"
-          style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
+        <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-slate-200" style={{
+        boxShadow: '0 -1px 0 rgba(0,0,0,0.05)',
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}>
           <div className="flex items-center gap-2 px-3 py-2">
             <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
               <Home size={16} />
@@ -86,6 +86,5 @@ export default function JobDrawingsPage() {
           </div>
         </div>
       </div>
-    </>
-  );
+    </>;
 }

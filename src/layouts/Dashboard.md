@@ -389,7 +389,7 @@ The Dashboard layout is fully responsive:
 // Determine active state from the current route.
 // SSR-safe: use React Router's useLocation() inside the component.
 // NEVER use window.location.pathname — window is undefined during server render and crashes it.
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 const { pathname } = useLocation();
 
 navigation: {

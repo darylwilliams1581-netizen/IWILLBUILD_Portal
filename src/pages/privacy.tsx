@@ -1,12 +1,9 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from 'react-router-dom';
+import { Link } from "react-router";
 import { ArrowLeft, Shield } from 'lucide-react';
-
 const LAST_UPDATED = '13 July 2026';
-
 export default function PrivacyPage() {
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Privacy Policy — IWILLBUILD</title>
         <meta name="description" content="How IWILLBUILD collects, uses, discloses and protects your personal information. Read our Privacy Policy for the fleet and construction management portal." />
@@ -25,31 +22,67 @@ export default function PrivacyPage() {
           name: 'Privacy Policy — IWILLBUILD',
           url: 'https://iwillbuild.com/privacy',
           description: 'How IWILLBUILD collects, uses, discloses and protects your personal information.',
-          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
-          about: { '@id': 'https://iwillbuild.com/#organization' },
-          dateModified: '2026-07-13',
+          isPartOf: {
+            '@id': 'https://iwillbuild.com/#website'
+          },
+          about: {
+            '@id': 'https://iwillbuild.com/#organization'
+          },
+          dateModified: '2026-07-13'
         })}</script>
       </Helmet>
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#0f172a',
+      color: '#e2e8f0',
+      fontFamily: 'Inter, system-ui, sans-serif'
+    }}>
 
         {/* ── Nav bar ── */}
-        <header style={{ borderBottom: '1px solid #1e293b', padding: '0 24px' }}>
-          <div style={{ maxWidth: 860, margin: '0 auto', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <header style={{
+        borderBottom: '1px solid #1e293b',
+        padding: '0 24px'
+      }}>
+          <div style={{
+          maxWidth: 860,
+          margin: '0 auto',
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+            <Link to="/" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            textDecoration: 'none'
+          }}>
               <span style={{
-                width: 32, height: 32, borderRadius: 7,
-                background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
-                display: 'grid', placeItems: 'center',
-                color: '#fff', fontWeight: 900, fontSize: 13, flexShrink: 0,
-              }}>IW</span>
-              <strong style={{ color: '#f1f5f9', fontSize: 15 }}>IWILLBUILD</strong>
+              width: 32,
+              height: 32,
+              borderRadius: 7,
+              background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
+              display: 'grid',
+              placeItems: 'center',
+              color: '#fff',
+              fontWeight: 900,
+              fontSize: 13,
+              flexShrink: 0
+            }}>IW</span>
+              <strong style={{
+              color: '#f1f5f9',
+              fontSize: 15
+            }}>IWILLBUILD</strong>
             </Link>
-            <Link
-              to="/"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', textDecoration: 'none', fontSize: 14 }}
-              className="hover:text-white transition-colors"
-            >
+            <Link to="/" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            color: '#94a3b8',
+            textDecoration: 'none',
+            fontSize: 14
+          }} className="hover:text-white transition-colors">
               <ArrowLeft size={15} />
               Back to home
             </Link>
@@ -57,33 +90,83 @@ export default function PrivacyPage() {
         </header>
 
         {/* ── Hero ── */}
-        <div style={{ borderBottom: '1px solid #1e293b', padding: '48px 24px 40px' }}>
-          <div style={{ maxWidth: 860, margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#1e3a5f', display: 'grid', placeItems: 'center' }}>
+        <div style={{
+        borderBottom: '1px solid #1e293b',
+        padding: '48px 24px 40px'
+      }}>
+          <div style={{
+          maxWidth: 860,
+          margin: '0 auto'
+        }}>
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 14
+          }}>
+              <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              backgroundColor: '#1e3a5f',
+              display: 'grid',
+              placeItems: 'center'
+            }}>
                 <Shield size={20} color="#60a5fa" />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Privacy Policy</span>
+              <span style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#60a5fa',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em'
+            }}>Privacy Policy</span>
             </div>
-            <h1 style={{ fontSize: 'clamp(26px,4vw,38px)', fontWeight: 800, color: '#f1f5f9', margin: '0 0 12px', lineHeight: 1.2 }}>
+            <h1 style={{
+            fontSize: 'clamp(26px,4vw,38px)',
+            fontWeight: 800,
+            color: '#f1f5f9',
+            margin: '0 0 12px',
+            lineHeight: 1.2
+          }}>
               Your data, handled with care
             </h1>
-            <p style={{ color: '#94a3b8', fontSize: 15, margin: 0 }}>
+            <p style={{
+            color: '#94a3b8',
+            fontSize: 15,
+            margin: 0
+          }}>
               Last updated: {LAST_UPDATED}&nbsp;·&nbsp;IWILLBUILD, Queensland, Australia
             </p>
           </div>
         </div>
 
         {/* ── Content ── */}
-        <main style={{ maxWidth: 860, margin: '0 auto', padding: '48px 24px 80px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+        <main style={{
+        maxWidth: 860,
+        margin: '0 auto',
+        padding: '48px 24px 80px'
+      }}>
+          <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 40
+        }}>
 
             <Section title="1. About this policy">
               <p>
-                IWILLBUILD (ABN 89 791 350 823) is a construction and job management software platform operated from Queensland, Australia (<strong style={{ color: '#f1f5f9' }}>"we"</strong>, <strong style={{ color: '#f1f5f9' }}>"us"</strong>, <strong style={{ color: '#f1f5f9' }}>"our"</strong>).
+                IWILLBUILD (ABN 89 791 350 823) is a construction and job management software platform operated from Queensland, Australia (<strong style={{
+                color: '#f1f5f9'
+              }}>"we"</strong>, <strong style={{
+                color: '#f1f5f9'
+              }}>"us"</strong>, <strong style={{
+                color: '#f1f5f9'
+              }}>"our"</strong>).
               </p>
               <p>
-                This Privacy Policy explains how we collect, hold, use and disclose personal information in accordance with the <em>Privacy Act 1988</em> (Cth) and the Australian Privacy Principles (APPs). It applies to all users of the IWILLBUILD portal, website, and related services (collectively, the <strong style={{ color: '#f1f5f9' }}>"Service"</strong>).
+                This Privacy Policy explains how we collect, hold, use and disclose personal information in accordance with the <em>Privacy Act 1988</em> (Cth) and the Australian Privacy Principles (APPs). It applies to all users of the IWILLBUILD portal, website, and related services (collectively, the <strong style={{
+                color: '#f1f5f9'
+              }}>"Service"</strong>).
               </p>
               <p>
                 By using the Service you consent to the collection, use and disclosure of your personal information as described in this policy. If you do not agree, please do not use the Service.
@@ -131,7 +214,9 @@ export default function PrivacyPage() {
               <p>We may disclose your personal information to:</p>
               <ul>
                 <li><strong>Service providers</strong> — third-party vendors who assist us in operating the Service, including cloud hosting providers, database infrastructure, email delivery services, and payment processors. These providers are contractually required to handle your information securely and only for the purposes we specify.</li>
-                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWILLBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed' }}>stripe.com/au/privacy</a>.</li>
+                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWILLBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{
+                  color: '#7c3aed'
+                }}>stripe.com/au/privacy</a>.</li>
                 <li><strong>Accounting integrations (e.g. Xero)</strong> — if you choose to connect a third-party accounting platform, data such as approved invoices and customer contacts may be synced to that platform at your direction. You can disconnect integrations at any time from <strong>Settings → Integrations</strong>. Data already transmitted to a third-party platform is governed by that platform's privacy policy.</li>
                 <li><strong>Your company administrator</strong> — account owners and administrators within your company workspace can access data created by team members in accordance with their role permissions.</li>
                 <li><strong>Legal and regulatory authorities</strong> — where required by law, court order, or to protect the rights, property, or safety of IWILLBUILD, our users, or the public.</li>
@@ -173,7 +258,9 @@ export default function PrivacyPage() {
                 <li>Regular review of security practices as the platform evolves.</li>
               </ul>
               <p>
-                No system is completely secure. We encourage you to use a strong, unique password and to keep your login credentials private. If you suspect unauthorised access to your account, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>.
+                No system is completely secure. We encourage you to use a strong, unique password and to keep your login credentials private. If you suspect unauthorised access to your account, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{
+                color: '#7c3aed'
+              }}>support@iwillbuild.com</a>.
               </p>
             </Section>
 
@@ -206,13 +293,19 @@ export default function PrivacyPage() {
                 <li><strong>Complain</strong> about how we have handled your personal information.</li>
               </ul>
               <p>
-                To exercise any of these rights, contact us at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>. We will respond to access and correction requests within 30 days. In some circumstances we may be unable to provide access (for example, where doing so would unreasonably impact the privacy of another individual), and we will explain why.
+                To exercise any of these rights, contact us at <a href="mailto:support@iwillbuild.com" style={{
+                color: '#7c3aed'
+              }}>support@iwillbuild.com</a>. We will respond to access and correction requests within 30 days. In some circumstances we may be unable to provide access (for example, where doing so would unreasonably impact the privacy of another individual), and we will explain why.
               </p>
               <p>
-                If you are not satisfied with our response to a privacy complaint, you may lodge a complaint with the <strong style={{ color: '#f1f5f9' }}>Office of the Australian Information Commissioner (OAIC)</strong>:
+                If you are not satisfied with our response to a privacy complaint, you may lodge a complaint with the <strong style={{
+                color: '#f1f5f9'
+              }}>Office of the Australian Information Commissioner (OAIC)</strong>:
               </p>
               <ul>
-                <li>Website: <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed' }}>www.oaic.gov.au</a></li>
+                <li>Website: <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" style={{
+                  color: '#7c3aed'
+                }}>www.oaic.gov.au</a></li>
                 <li>Phone: 1300 363 992</li>
                 <li>Post: GPO Box 5218, Sydney NSW 2001</li>
               </ul>
@@ -230,10 +323,14 @@ export default function PrivacyPage() {
             <Section title="13. Contact us">
               <p>For any privacy questions, access or correction requests, or complaints, please contact us:</p>
               <p>
-                <strong style={{ color: '#f1f5f9' }}>IWILLBUILD</strong><br />
+                <strong style={{
+                color: '#f1f5f9'
+              }}>IWILLBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
-                <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>
+                <a href="mailto:support@iwillbuild.com" style={{
+                color: '#7c3aed'
+              }}>support@iwillbuild.com</a>
               </p>
               <p>We aim to respond to all privacy enquiries within 5 business days.</p>
             </Section>
@@ -242,31 +339,78 @@ export default function PrivacyPage() {
         </main>
 
         {/* ── Footer ── */}
-        <footer style={{ borderTop: '1px solid #1e293b', padding: '24px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
-            <Link to="/" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Home</Link>
-            <Link to="/privacy" style={{ color: '#7c3aed', textDecoration: 'none', fontSize: 13 }}>Privacy Policy</Link>
-            <Link to="/terms" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Terms of Use</Link>
-            <Link to="/login" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Sign In</Link>
+        <footer style={{
+        borderTop: '1px solid #1e293b',
+        padding: '24px',
+        textAlign: 'center'
+      }}>
+          <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 24,
+          flexWrap: 'wrap',
+          marginBottom: 12
+        }}>
+            <Link to="/" style={{
+            color: '#64748b',
+            textDecoration: 'none',
+            fontSize: 13
+          }} className="hover:text-white transition-colors">Home</Link>
+            <Link to="/privacy" style={{
+            color: '#7c3aed',
+            textDecoration: 'none',
+            fontSize: 13
+          }}>Privacy Policy</Link>
+            <Link to="/terms" style={{
+            color: '#64748b',
+            textDecoration: 'none',
+            fontSize: 13
+          }} className="hover:text-white transition-colors">Terms of Use</Link>
+            <Link to="/login" style={{
+            color: '#64748b',
+            textDecoration: 'none',
+            fontSize: 13
+          }} className="hover:text-white transition-colors">Sign In</Link>
           </div>
-          <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>© {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
+          <p style={{
+          color: '#475569',
+          fontSize: 12,
+          margin: 0
+        }}>© {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
         </footer>
 
       </div>
-    </>
-  );
+    </>;
 }
 
 // ── Reusable section wrapper ──────────────────────────────────────────────────
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: '0 0 14px', paddingBottom: 10, borderBottom: '1px solid #1e293b' }}>
+function Section({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return <section>
+      <h2 style={{
+      fontSize: 18,
+      fontWeight: 700,
+      color: '#f1f5f9',
+      margin: '0 0 14px',
+      paddingBottom: 10,
+      borderBottom: '1px solid #1e293b'
+    }}>
         {title}
       </h2>
-      <div style={{ color: '#94a3b8', fontSize: 15, lineHeight: 1.75, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{
+      color: '#94a3b8',
+      fontSize: 15,
+      lineHeight: 1.75,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }}>
         {children}
       </div>
-    </section>
-  );
+    </section>;
 }

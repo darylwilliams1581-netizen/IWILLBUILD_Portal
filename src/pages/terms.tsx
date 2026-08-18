@@ -1,12 +1,9 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from 'react-router-dom';
+import { Link } from "react-router";
 import { ArrowLeft, FileText } from 'lucide-react';
-
 const LAST_UPDATED = 'June 2026';
-
 export default function TermsPage() {
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Terms of Use — IWILLBUILD</title>
         <meta name="description" content="Terms of use for the IWILLBUILD fleet and construction management portal. Read before using the platform." />
@@ -25,27 +22,66 @@ export default function TermsPage() {
           name: 'Terms of Use — IWILLBUILD',
           url: 'https://iwillbuild.com/terms',
           description: 'Terms of use for the IWILLBUILD fleet and construction management portal.',
-          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
-          about: { '@id': 'https://iwillbuild.com/#organization' },
+          isPartOf: {
+            '@id': 'https://iwillbuild.com/#website'
+          },
+          about: {
+            '@id': 'https://iwillbuild.com/#organization'
+          }
         })}</script>
       </Helmet>
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#0f172a',
+      color: '#e2e8f0',
+      fontFamily: 'Inter, system-ui, sans-serif'
+    }}>
 
         {/* ── Nav bar ── */}
-        <header style={{ borderBottom: '1px solid #1e293b', padding: '0 24px' }}>
-          <div style={{ maxWidth: 860, margin: '0 auto', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <header style={{
+        borderBottom: '1px solid #1e293b',
+        padding: '0 24px'
+      }}>
+          <div style={{
+          maxWidth: 860,
+          margin: '0 auto',
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+            <Link to="/" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            textDecoration: 'none'
+          }}>
               <span style={{
-                width: 32, height: 32, borderRadius: 7,
-                background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
-                display: 'grid', placeItems: 'center',
-                color: '#fff', fontWeight: 900, fontSize: 13, flexShrink: 0,
-              }}>IW</span>
-              <strong style={{ color: '#f1f5f9', fontSize: 15 }}>IWILLBUILD</strong>
+              width: 32,
+              height: 32,
+              borderRadius: 7,
+              background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
+              display: 'grid',
+              placeItems: 'center',
+              color: '#fff',
+              fontWeight: 900,
+              fontSize: 13,
+              flexShrink: 0
+            }}>IW</span>
+              <strong style={{
+              color: '#f1f5f9',
+              fontSize: 15
+            }}>IWILLBUILD</strong>
             </Link>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', textDecoration: 'none', fontSize: 14 }}
-              className="hover:text-white transition-colors">
+            <Link to="/" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            color: '#94a3b8',
+            textDecoration: 'none',
+            fontSize: 14
+          }} className="hover:text-white transition-colors">
               <ArrowLeft size={15} />
               Back to home
             </Link>
@@ -53,33 +89,79 @@ export default function TermsPage() {
         </header>
 
         {/* ── Hero ── */}
-        <div style={{ borderBottom: '1px solid #1e293b', padding: '48px 24px 40px' }}>
-          <div style={{ maxWidth: 860, margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#1e2d1a', display: 'grid', placeItems: 'center' }}>
+        <div style={{
+        borderBottom: '1px solid #1e293b',
+        padding: '48px 24px 40px'
+      }}>
+          <div style={{
+          maxWidth: 860,
+          margin: '0 auto'
+        }}>
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 14
+          }}>
+              <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              backgroundColor: '#1e2d1a',
+              display: 'grid',
+              placeItems: 'center'
+            }}>
                 <FileText size={20} color="#4ade80" />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Terms of Use</span>
+              <span style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#4ade80',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em'
+            }}>Terms of Use</span>
             </div>
-            <h1 style={{ fontSize: 'clamp(26px,4vw,38px)', fontWeight: 800, color: '#f1f5f9', margin: '0 0 12px', lineHeight: 1.2 }}>
+            <h1 style={{
+            fontSize: 'clamp(26px,4vw,38px)',
+            fontWeight: 800,
+            color: '#f1f5f9',
+            margin: '0 0 12px',
+            lineHeight: 1.2
+          }}>
               Terms of Use
             </h1>
-            <p style={{ color: '#94a3b8', fontSize: 15, margin: 0 }}>Last updated: {LAST_UPDATED} &nbsp;·&nbsp; IWILLBUILD, Queensland, Australia</p>
+            <p style={{
+            color: '#94a3b8',
+            fontSize: 15,
+            margin: 0
+          }}>Last updated: {LAST_UPDATED} &nbsp;·&nbsp; IWILLBUILD, Queensland, Australia</p>
           </div>
         </div>
 
         {/* ── Content ── */}
-        <main style={{ maxWidth: 860, margin: '0 auto', padding: '48px 24px 80px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+        <main style={{
+        maxWidth: 860,
+        margin: '0 auto',
+        padding: '48px 24px 80px'
+      }}>
+          <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 40
+        }}>
 
             <Section title="1. About IWILLBUILD">
               <p>IWILLBUILD is a construction and job management software platform. It provides tools for managing jobs, estimates, forms, safety documents, fleet, files, invoices, and team coordination. By creating an account or using the platform, you agree to these terms.</p>
-              <p>For questions, contact us at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>.</p>
+              <p>For questions, contact us at <a href="mailto:support@iwillbuild.com" style={{
+                color: '#7c3aed'
+              }}>support@iwillbuild.com</a>.</p>
             </Section>
 
             <Section title="2. Account security">
               <p>You are responsible for keeping your login credentials — including your password and PIN — secure and confidential. Do not share your account with others. You are responsible for all activity that occurs under your account.</p>
-              <p>If you believe your account has been compromised, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>.</p>
+              <p>If you believe your account has been compromised, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{
+                color: '#7c3aed'
+              }}>support@iwillbuild.com</a>.</p>
             </Section>
 
             <Section title="3. Your data and content">
@@ -149,10 +231,14 @@ export default function TermsPage() {
             <Section title="13. Contact">
               <p>For questions about these terms, contact us at:</p>
               <p>
-                <strong style={{ color: '#f1f5f9' }}>IWILLBUILD</strong><br />
+                <strong style={{
+                color: '#f1f5f9'
+              }}>IWILLBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
-                <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>
+                <a href="mailto:support@iwillbuild.com" style={{
+                color: '#7c3aed'
+              }}>support@iwillbuild.com</a>
               </p>
             </Section>
 
@@ -160,31 +246,78 @@ export default function TermsPage() {
         </main>
 
         {/* ── Footer ── */}
-        <footer style={{ borderTop: '1px solid #1e293b', padding: '24px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
-            <Link to="/" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Home</Link>
-            <Link to="/privacy" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link to="/terms" style={{ color: '#7c3aed', textDecoration: 'none', fontSize: 13 }}>Terms of Use</Link>
-            <Link to="/login" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Sign In</Link>
+        <footer style={{
+        borderTop: '1px solid #1e293b',
+        padding: '24px',
+        textAlign: 'center'
+      }}>
+          <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 24,
+          flexWrap: 'wrap',
+          marginBottom: 12
+        }}>
+            <Link to="/" style={{
+            color: '#64748b',
+            textDecoration: 'none',
+            fontSize: 13
+          }} className="hover:text-white transition-colors">Home</Link>
+            <Link to="/privacy" style={{
+            color: '#64748b',
+            textDecoration: 'none',
+            fontSize: 13
+          }} className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms" style={{
+            color: '#7c3aed',
+            textDecoration: 'none',
+            fontSize: 13
+          }}>Terms of Use</Link>
+            <Link to="/login" style={{
+            color: '#64748b',
+            textDecoration: 'none',
+            fontSize: 13
+          }} className="hover:text-white transition-colors">Sign In</Link>
           </div>
-          <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>© {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
+          <p style={{
+          color: '#475569',
+          fontSize: 12,
+          margin: 0
+        }}>© {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
         </footer>
 
       </div>
-    </>
-  );
+    </>;
 }
 
 // ── Reusable section wrapper ──────────────────────────────────────────────────
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: '0 0 14px', paddingBottom: 10, borderBottom: '1px solid #1e293b' }}>
+function Section({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return <section>
+      <h2 style={{
+      fontSize: 18,
+      fontWeight: 700,
+      color: '#f1f5f9',
+      margin: '0 0 14px',
+      paddingBottom: 10,
+      borderBottom: '1px solid #1e293b'
+    }}>
         {title}
       </h2>
-      <div style={{ color: '#94a3b8', fontSize: 15, lineHeight: 1.75, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{
+      color: '#94a3b8',
+      fontSize: 15,
+      lineHeight: 1.75,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }}>
         {children}
       </div>
-    </section>
-  );
+    </section>;
 }

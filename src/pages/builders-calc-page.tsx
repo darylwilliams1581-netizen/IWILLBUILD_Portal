@@ -1,12 +1,10 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ChevronLeft } from 'lucide-react';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
-
 export default function BuildersCalcPage() {
   const navigate = useNavigate();
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+  return <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Builders Calc — IWILLBUILD</title>
         <meta name="description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform for Australian tradies." />
@@ -27,19 +25,22 @@ export default function BuildersCalcPage() {
           "name": "Builders Calc — IWILLBUILD",
           "url": "https://iwillbuild.com/builders-calc",
           "description": "Construction calculators for areas, volumes, materials and more.",
-          "isPartOf": { "@id": "https://iwillbuild.com/#website" },
-          "about": { "@id": "https://iwillbuild.com/#organization" }
+          "isPartOf": {
+            "@id": "https://iwillbuild.com/#website"
+          },
+          "about": {
+            "@id": "https://iwillbuild.com/#organization"
+          }
         })}</script>
       </Helmet>
       {/* H1 visible to crawlers — positioned inside the top bar below */}
 
       {/* Top bar */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 shrink-0" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 shrink-0" style={{
+      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
+    }}>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/home')}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
-          >
+          <button onClick={() => navigate('/home')} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0">
             <ChevronLeft size={18} />
           </button>
           <div className="min-w-0">
@@ -56,6 +57,5 @@ export default function BuildersCalcPage() {
           <BuildersCalc />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

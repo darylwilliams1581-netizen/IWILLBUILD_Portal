@@ -9,18 +9,8 @@
  */
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  DollarSign,
-  HardHat,
-  FileText,
-  Truck,
-  ChevronRight,
-  Loader2,
-} from 'lucide-react';
+import { Link } from "react-router";
+import { TrendingUp, TrendingDown, Minus, DollarSign, HardHat, FileText, Truck, ChevronRight, Loader2 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fmtMoney } from '@/lib/invoices-api';
 
@@ -43,22 +33,24 @@ interface KpiData {
 
 // ── Sparkline SVG ─────────────────────────────────────────────────────────────
 
-function Sparkline({ data, color = '#7C3AED' }: { data: number[]; color?: string }) {
+function Sparkline({
+  data,
+  color = '#7C3AED'
+}: {
+  data: number[];
+  color?: string;
+}) {
   const w = 80;
   const h = 28;
   const max = Math.max(...data, 1);
-
   const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - (v / max) * (h - 4) - 2;
+    const x = i / (data.length - 1) * w;
+    const y = h - v / max * (h - 4) - 2;
     return `${x},${y}`;
   });
-
   const pathD = `M ${points.join(' L ')}`;
   const areaD = `M 0,${h} L ${points.join(' L ')} L ${w},${h} Z`;
-
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
       <defs>
         <linearGradient id={`spark-fill-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.18" />
@@ -67,201 +59,182 @@ function Sparkline({ data, color = '#7C3AED' }: { data: number[]; color?: string
       </defs>
       <path d={areaD} fill={`url(#spark-fill-${color.replace('#', '')})`} />
       <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+    </svg>;
 }
 
 // ── Trend badge ───────────────────────────────────────────────────────────────
 
-function TrendBadge({ trend }: { trend: number | null }) {
+function TrendBadge({
+  trend
+}: {
+  trend: number | null;
+}) {
   if (trend === null) return null;
   const up = trend > 0;
   const flat = trend === 0;
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-      flat
-        ? 'bg-slate-100 text-slate-500'
-        : up
-          ? 'bg-emerald-50 text-emerald-700'
-          : 'bg-red-50 text-red-600'
-    }`}>
+  return <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${flat ? 'bg-slate-100 text-slate-500' : up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
       {flat ? <Minus size={9} /> : up ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
       {flat ? 'Flat' : `${up ? '+' : ''}${trend}%`}
-    </span>
-  );
+    </span>;
 }
 
 // ── Fleet utilisation bar ─────────────────────────────────────────────────────
 
-function UtilBar({ pct }: { pct: number }) {
+function UtilBar({
+  pct
+}: {
+  pct: number;
+}) {
   const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#7c3aed' : '#ef4444';
-  return (
-    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
-      <motion.div
-        className="h-full rounded-full"
-        style={{ backgroundColor: color }}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.8, ease: 'easeOut' as const, delay: 0.3 }}
-      />
-    </div>
-  );
+  return <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+      <motion.div className="h-full rounded-full" style={{
+      backgroundColor: color
+    }} initial={{
+      width: 0
+    }} animate={{
+      width: `${pct}%`
+    }} transition={{
+      duration: 0.8,
+      ease: 'easeOut' as const,
+      delay: 0.3
+    }} />
+    </div>;
 }
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
 function KpiSkeleton() {
-  return (
-    <div className="bg-white rounded-lg border border-border p-2.5 flex flex-col gap-1.5 animate-pulse">
+  return <div className="bg-white rounded-lg border border-border p-2.5 flex flex-col gap-1.5 animate-pulse">
       <div className="flex items-start justify-between">
         <div className="w-6 h-6 rounded-md bg-slate-100" />
         <div className="w-10 h-3 rounded bg-slate-100" />
       </div>
       <div className="w-16 h-5 rounded bg-slate-100" />
       <div className="w-24 h-2.5 rounded bg-slate-100" />
-    </div>
-  );
+    </div>;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 14 },
+  hidden: {
+    opacity: 0,
+    y: 14
+  },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: 'easeOut' as const, delay: i * 0.07 },
-  }),
+    transition: {
+      duration: 0.35,
+      ease: 'easeOut' as const,
+      delay: i * 0.07
+    }
+  })
 } as const;
-
 export default function KpiWidgets() {
-  const { isAdmin, isOwner, can, loading: permLoading } = usePermissions();
+  const {
+    isAdmin,
+    isOwner,
+    can,
+    loading: permLoading
+  } = usePermissions();
   const [kpi, setKpi] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const fetchedRef = useRef(false);
-
   const seeDollars = isAdmin || isOwner || can('seeDollars');
   const canInvoices = isAdmin || isOwner || can('invoices');
-
   useEffect(() => {
     if (permLoading || fetchedRef.current) return;
     fetchedRef.current = true;
-    fetch('/api/dashboard/kpi', { credentials: 'include' })
-      .then((r) => r.ok ? r.json() as Promise<KpiData> : Promise.reject())
-      .then((d) => { setKpi(d); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
+    fetch('/api/dashboard/kpi', {
+      credentials: 'include'
+    }).then(r => r.ok ? r.json() as Promise<KpiData> : Promise.reject()).then(d => {
+      setKpi(d);
+      setLoading(false);
+    }).catch(() => {
+      setError(true);
+      setLoading(false);
+    });
   }, [permLoading]);
-
   if (loading || permLoading) {
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mb-3">
-        {[0, 1, 2, 3].map((i) => <KpiSkeleton key={i} />)}
-      </div>
-    );
+    return <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mb-3">
+        {[0, 1, 2, 3].map(i => <KpiSkeleton key={i} />)}
+      </div>;
   }
-
   if (error || !kpi) return null;
-
   const cards = [
-    // ── Revenue MTD ──────────────────────────────────────────────────────────
-    ...(seeDollars ? [{
-      key: 'revenue',
-      icon: DollarSign,
-      iconBg: 'bg-emerald-50',
-      iconColor: 'text-emerald-600',
-      accentColor: '#10b981',
-      label: 'Revenue MTD',
-      value: fmtMoney(kpi.revenueMtd),
-      sub: kpi.revenueLastMonth > 0
-        ? `Last month: ${fmtMoney(kpi.revenueLastMonth)}`
-        : 'No revenue last month',
-      trend: kpi.revenueTrend,
-      extra: (
-        <div className="mt-2">
+  // ── Revenue MTD ──────────────────────────────────────────────────────────
+  ...(seeDollars ? [{
+    key: 'revenue',
+    icon: DollarSign,
+    iconBg: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
+    accentColor: '#10b981',
+    label: 'Revenue MTD',
+    value: fmtMoney(kpi.revenueMtd),
+    sub: kpi.revenueLastMonth > 0 ? `Last month: ${fmtMoney(kpi.revenueLastMonth)}` : 'No revenue last month',
+    trend: kpi.revenueTrend,
+    extra: <div className="mt-2">
           <Sparkline data={kpi.sparkline} color="#10b981" />
-        </div>
-      ),
-      href: '/invoices',
-      cta: 'View invoices',
-    }] : []),
-
-    // ── Open Jobs ────────────────────────────────────────────────────────────
-    {
-      key: 'jobs',
-      icon: HardHat,
-      iconBg: 'bg-violet-50',
-      iconColor: 'text-primary',
-      accentColor: '#7c3aed',
-      label: 'Open Jobs',
-      value: String(kpi.openJobs),
-      sub: kpi.newJobsLast30 > 0
-        ? `+${kpi.newJobsLast30} added last 30 days`
-        : 'No new jobs this month',
-      trend: null as number | null,
-      extra: null as React.ReactNode,
-      href: '/jobs',
-      cta: 'View jobs',
-    },
-
-    // ── Outstanding ──────────────────────────────────────────────────────────
-    ...(canInvoices && seeDollars ? [{
-      key: 'outstanding',
-      icon: FileText,
-      iconBg: kpi.overdueCount > 0 ? 'bg-red-50' : 'bg-amber-50',
-      iconColor: kpi.overdueCount > 0 ? 'text-red-600' : 'text-amber-600',
-      accentColor: kpi.overdueCount > 0 ? '#ef4444' : '#f59e0b',
-      label: 'Outstanding',
-      value: fmtMoney(kpi.outstandingBalance),
-      sub: kpi.outstandingCount > 0
-        ? `${kpi.outstandingCount} invoice${kpi.outstandingCount !== 1 ? 's' : ''} unpaid${kpi.overdueCount > 0 ? ` · ${kpi.overdueCount} overdue` : ''}`
-        : 'All invoices paid',
-      trend: null as number | null,
-      extra: kpi.overdueCount > 0 ? (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full mt-1">
+        </div>,
+    href: '/invoices',
+    cta: 'View invoices'
+  }] : []),
+  // ── Open Jobs ────────────────────────────────────────────────────────────
+  {
+    key: 'jobs',
+    icon: HardHat,
+    iconBg: 'bg-violet-50',
+    iconColor: 'text-primary',
+    accentColor: '#7c3aed',
+    label: 'Open Jobs',
+    value: String(kpi.openJobs),
+    sub: kpi.newJobsLast30 > 0 ? `+${kpi.newJobsLast30} added last 30 days` : 'No new jobs this month',
+    trend: null as number | null,
+    extra: null as React.ReactNode,
+    href: '/jobs',
+    cta: 'View jobs'
+  },
+  // ── Outstanding ──────────────────────────────────────────────────────────
+  ...(canInvoices && seeDollars ? [{
+    key: 'outstanding',
+    icon: FileText,
+    iconBg: kpi.overdueCount > 0 ? 'bg-red-50' : 'bg-amber-50',
+    iconColor: kpi.overdueCount > 0 ? 'text-red-600' : 'text-amber-600',
+    accentColor: kpi.overdueCount > 0 ? '#ef4444' : '#f59e0b',
+    label: 'Outstanding',
+    value: fmtMoney(kpi.outstandingBalance),
+    sub: kpi.outstandingCount > 0 ? `${kpi.outstandingCount} invoice${kpi.outstandingCount !== 1 ? 's' : ''} unpaid${kpi.overdueCount > 0 ? ` · ${kpi.overdueCount} overdue` : ''}` : 'All invoices paid',
+    trend: null as number | null,
+    extra: kpi.overdueCount > 0 ? <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full mt-1">
           {kpi.overdueCount} overdue
-        </span>
-      ) : null as React.ReactNode,
-      href: '/invoices',
-      cta: 'View invoices',
-    }] : []),
-
-    // ── Fleet Utilisation ────────────────────────────────────────────────────
-    {
-      key: 'fleet',
-      icon: Truck,
-      iconBg: 'bg-cyan-50',
-      iconColor: 'text-cyan-600',
-      accentColor: '#06b6d4',
-      label: 'Fleet Utilisation',
-      value: kpi.fleetTotal > 0 ? `${kpi.fleetUtilisation}%` : '—',
-      sub: kpi.fleetTotal > 0
-        ? `${kpi.fleetActive} of ${kpi.fleetTotal} asset${kpi.fleetTotal !== 1 ? 's' : ''} active`
-        : 'No fleet assets added',
-      trend: null as number | null,
-      extra: kpi.fleetTotal > 0 ? (
-        <UtilBar pct={kpi.fleetUtilisation} />
-      ) : null as React.ReactNode,
-      href: '/fleet',
-      cta: 'View fleet',
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
-      {cards.map((card, i) => (
-        <motion.div
-          key={card.key}
-          custom={i}
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          whileHover={{ y: -1, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-          className="bg-white rounded-lg border border-border p-2.5 flex flex-col overflow-hidden relative"
-          style={{
-            borderLeft: `3px solid ${card.accentColor}`,
-          }}
-        >
+        </span> : null as React.ReactNode,
+    href: '/invoices',
+    cta: 'View invoices'
+  }] : []),
+  // ── Fleet Utilisation ────────────────────────────────────────────────────
+  {
+    key: 'fleet',
+    icon: Truck,
+    iconBg: 'bg-cyan-50',
+    iconColor: 'text-cyan-600',
+    accentColor: '#06b6d4',
+    label: 'Fleet Utilisation',
+    value: kpi.fleetTotal > 0 ? `${kpi.fleetUtilisation}%` : '—',
+    sub: kpi.fleetTotal > 0 ? `${kpi.fleetActive} of ${kpi.fleetTotal} asset${kpi.fleetTotal !== 1 ? 's' : ''} active` : 'No fleet assets added',
+    trend: null as number | null,
+    extra: kpi.fleetTotal > 0 ? <UtilBar pct={kpi.fleetUtilisation} /> : null as React.ReactNode,
+    href: '/fleet',
+    cta: 'View fleet'
+  }];
+  return <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
+      {cards.map((card, i) => <motion.div key={card.key} custom={i} variants={cardVariants} initial="hidden" animate="visible" whileHover={{
+      y: -1,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+    }} className="bg-white rounded-lg border border-border p-2.5 flex flex-col overflow-hidden relative" style={{
+      borderLeft: `3px solid ${card.accentColor}`
+    }}>
           {/* Icon + trend */}
           <div className="flex items-start justify-between mb-1.5">
             <div className={`p-1 rounded-md ${card.iconBg}`}>
@@ -285,14 +258,9 @@ export default function KpiWidgets() {
           {card.extra}
 
           {/* CTA */}
-          <Link
-            to={card.href}
-            className="mt-auto pt-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary hover:underline"
-          >
+          <Link to={card.href} className="mt-auto pt-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary hover:underline">
             {card.cta} <ChevronRight size={9} />
           </Link>
-        </motion.div>
-      ))}
-    </div>
-  );
+        </motion.div>)}
+    </div>;
 }

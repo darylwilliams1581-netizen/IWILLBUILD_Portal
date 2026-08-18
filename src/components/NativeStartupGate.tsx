@@ -15,16 +15,19 @@
  */
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from "react-router";
 import { useSession } from '@/lib/auth/auth-client';
 import { isNativeApp, NATIVE_HOME, NATIVE_LOGIN } from '@/lib/native-routing';
-
 interface NativeStartupGateProps {
   children: React.ReactNode;
 }
-
-export default function NativeStartupGate({ children }: NativeStartupGateProps) {
-  const { isAuthenticated, isPending } = useSession();
+export default function NativeStartupGate({
+  children
+}: NativeStartupGateProps) {
+  const {
+    isAuthenticated,
+    isPending
+  } = useSession();
 
   // Web browser — render the public landing page as normal
   if (!isNativeApp) {
@@ -35,29 +38,23 @@ export default function NativeStartupGate({ children }: NativeStartupGateProps) 
   if (isPending) {
     // Minimal splash-style loader — splash screen is still visible at this point
     // so this is rarely seen, but prevents a blank flash if splash hides early.
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100dvh',
-          background: '#0F1117',
-        }}
-      >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            border: '3px solid rgba(249,115,22,0.2)',
-            borderTopColor: '#7C3AED',
-            borderRadius: '50%',
-            animation: 'spin 0.7s linear infinite',
-          }}
-        />
+    return <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100dvh',
+      background: '#0F1117'
+    }}>
+        <div style={{
+        width: 32,
+        height: 32,
+        border: '3px solid rgba(249,115,22,0.2)',
+        borderTopColor: '#7C3AED',
+        borderRadius: '50%',
+        animation: 'spin 0.7s linear infinite'
+      }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
+      </div>;
   }
 
   // Native + authenticated → app home

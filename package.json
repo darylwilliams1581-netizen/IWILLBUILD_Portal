@@ -116,15 +116,14 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
-    "react": "^19.2.4",
+    "react": "^19.2.7",
     "react-day-picker": "^9.9.0",
-    "react-dom": "^19.2.4",
+    "react-dom": "^19.2.7",
     "react-hook-form": "^7.62.0",
     "react-i18next": "^17.0.8",
     "react-markdown": "^9.0.1",
     "react-pdf": "^10.4.1",
     "react-resizable-panels": "^3.0.5",
-    "react-router-dom": "^7.18.2",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "rrweb-snapshot": "^2.0.0-alpha.18",
@@ -183,7 +182,7 @@
     "vitest": "^4.1.9"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.0"
   },
   "overrides": {
     "cmdk": "^1.1.1",

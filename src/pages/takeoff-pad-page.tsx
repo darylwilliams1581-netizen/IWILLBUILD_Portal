@@ -1,12 +1,10 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ChevronLeft } from 'lucide-react';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
-
 export default function TakeoffPadPage() {
   const navigate = useNavigate();
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+  return <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Take-off Pad — IWILLBUILD</title>
         <meta name="description" content="Voice and manual quantity take-off pad for construction estimating." />
@@ -16,12 +14,11 @@ export default function TakeoffPadPage() {
       <h1 className="sr-only">Take-off Pad</h1>
 
       {/* Top bar */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 shrink-0" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 shrink-0" style={{
+      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
+    }}>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/home')}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
-          >
+          <button onClick={() => navigate('/home')} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0">
             <ChevronLeft size={18} />
           </button>
           <div className="min-w-0">
@@ -37,6 +34,5 @@ export default function TakeoffPadPage() {
           <TakeoffPad />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

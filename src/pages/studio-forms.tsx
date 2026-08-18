@@ -1,20 +1,13 @@
-/**
- * /studio/forms — Standalone Forms page
- * Wraps the existing FormsPage component with its own route shell.
- */
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, ClipboardList } from 'lucide-react';
 import { FormsPage } from '@/pages/forms';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
-
 export default function StudioFormsPage() {
   const navigate = useNavigate();
-
-  return (
-    <div className="flex flex-col flex-1 min-h-0 lg-portal">
+  return <div className="flex flex-col flex-1 min-h-0 lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
@@ -27,11 +20,7 @@ export default function StudioFormsPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          aria-label="Back to Home"
-        >
+        <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>
@@ -44,6 +33,5 @@ export default function StudioFormsPage() {
       <div className="flex-1 min-h-0 overflow-y-auto">
         <FormsPage />
       </div>
-    </div>
-  );
+    </div>;
 }

@@ -3,45 +3,53 @@
  * Mirrors the job-photos-page shell pattern.
  */
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, StickyNote, Loader2, Download, Home } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import NotesPanel from '@/components/notes/NotesPanel';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
-
 interface Job {
   id: number;
   name: string;
   jobNumber?: string | null;
 }
-
 export default function JobNotesPage() {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
   const jobId = Number(id);
-
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-
   useEffect(() => {
-    if (!id) { setLoading(false); return; }
-    fetch(`/api/jobs/${id}`, { credentials: 'include' })
-      .then(async r => {
-        const ct = r.headers.get('content-type') ?? '';
-        if (!ct.includes('application/json')) { setLoading(false); return; }
-        const data = await r.json() as { job?: Job } | Job;
-        const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
-        setJob(j ?? null);
-      })
-      .catch(() => setJob(null))
-      .finally(() => setLoading(false));
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    fetch(`/api/jobs/${id}`, {
+      credentials: 'include'
+    }).then(async r => {
+      const ct = r.headers.get('content-type') ?? '';
+      if (!ct.includes('application/json')) {
+        setLoading(false);
+        return;
+      }
+      const data = (await r.json()) as {
+        job?: Job;
+      } | Job;
+      const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
+      setJob(j ?? null);
+    }).catch(() => setJob(null)).finally(() => setLoading(false));
   }, [id]);
-
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const res = await fetch(`/api/jobs/${id}/notes/export-csv`, { credentials: 'include' });
+      const res = await fetch(`/api/jobs/${id}/notes/export-csv`, {
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -50,15 +58,12 @@ export default function JobNotesPage() {
       a.download = `job-${id}-notes.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { /* silent */ } finally {
+    } catch {/* silent */} finally {
       setExporting(false);
     }
   };
-
   const title = job ? `${job.name} — Notes` : 'Job Notes';
-
-  return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+  return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage notes and tasks for this job." />
@@ -67,24 +72,17 @@ export default function JobNotesPage() {
       </Helmet>
 
       {/* ── Desktop top bar ── */}
-      <div
-        className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center gap-3 shrink-0"
-        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
-      >
-        <button
-          onClick={() => navigate(`/jobs/${id}`)}
-          className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
-        >
+      <div className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center gap-3 shrink-0" style={{
+      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
+    }}>
+        <button onClick={() => navigate(`/jobs/${id}`)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0">
           <ArrowLeft size={18} />
         </button>
           <div className="flex items-center gap-1.5 shrink-0">
             <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-            {loading ? (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-            ) : (
-              <>
+            {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
                 <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Notes'}</h1>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
                   <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
@@ -93,54 +91,40 @@ export default function JobNotesPage() {
                   <span>/</span>
                   <span className="text-gray-500 font-medium">Notes</span>
                 </div>
-              </>
-            )}
+              </>}
           </div>
-          <button
-            onClick={exportCsv}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0"
-            title="Export notes as CSV"
-          >
+          <button onClick={exportCsv} disabled={exporting} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0" title="Export notes as CSV">
             {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             <span>Export CSV</span>
           </button>
         </div>
 
       {/* ── Mobile safe-area top bar ── */}
-      <div
-        className="md:hidden bg-white border-b border-gray-100 shrink-0"
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)', boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
-      >
+      <div className="md:hidden bg-white border-b border-gray-100 shrink-0" style={{
+      paddingTop: 'max(env(safe-area-inset-top), 12px)',
+      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
+    }}>
         <div className="flex items-center justify-center px-4 pb-3">
           <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center">
-            {loading ? <span className="inline-block h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (job?.name ?? 'Job Notes')}
+            {loading ? <span className="inline-block h-4 w-32 bg-gray-200 rounded animate-pulse" /> : job?.name ?? 'Job Notes'}
           </h1>
         </div>
       </div>
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
+        {loading ? <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-yellow-400" />
-          </div>
-        ) : (
-          <div className="px-4 py-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">
-            <NotesPanel
-              entityType="job"
-              entityId={jobId}
-              entityLabel={job?.name}
-            />
-          </div>
-        )}
+          </div> : <div className="px-4 py-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">
+            <NotesPanel entityType="job" entityId={jobId} entityLabel={job?.name} />
+          </div>}
       </div>
 
       {/* ── Mobile bottom bar ── */}
-      <div
-        className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100"
-        style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100" style={{
+      boxShadow: '0 -1px 0 rgba(0,0,0,0.05)',
+      paddingBottom: 'env(safe-area-inset-bottom)'
+    }}>
         <div className="flex items-center gap-2 px-3 py-2">
           <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
@@ -149,33 +133,21 @@ export default function JobNotesPage() {
             <Home size={16} />
           </button>
           <div className="flex-1 min-w-0">
-            {loading ? (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-            ) : (
-              <>
+            {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
                 <p className="text-gray-900 font-bold text-sm leading-tight truncate">
                   {job?.name ?? 'Job Notes'}
                 </p>
-                {job?.jobNumber && (
-                  <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>
-                )}
-              </>
-            )}
+                {job?.jobNumber && <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>}
+              </>}
           </div>
           {/* Overflow menu — secondary actions */}
-          <MobileOverflowMenu
-            surface="light"
-            items={[
-              {
-                label: exporting ? 'Exporting…' : 'Export CSV',
-                icon: exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />,
-                onSelect: () => void exportCsv(),
-                disabled: exporting,
-              },
-            ]}
-          />
+          <MobileOverflowMenu surface="light" items={[{
+          label: exporting ? 'Exporting…' : 'Export CSV',
+          icon: exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />,
+          onSelect: () => void exportCsv(),
+          disabled: exporting
+        }]} />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
