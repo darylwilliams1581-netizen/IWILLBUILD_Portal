@@ -99,6 +99,7 @@ const JobSchedulePage        = lazy(() => import('./pages/job-schedule-page'));
 const JobDrawingsPage        = lazy(() => import('./pages/job-drawings-page'));
 const FleetDrivePage         = lazy(() => import('./pages/fleet-drive-page'));
 const JobCostsPage           = lazy(() => import('./pages/job-costs-page'));
+const LedgerPage             = lazy(() => import('./pages/ledger-page'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
@@ -259,6 +260,7 @@ export const routes: RouteObject[] = [
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
   { path: '/invoices/:id',  element: protect(<InvoiceBuilderPage />),  errorElement: routeError },
+  { path: '/ledger',        element: protect(<Suspense fallback={<PageLoader />}><LedgerPage /></Suspense>), errorElement: routeError },
   { path: '/studio',               element: protectDesktop(<StudioPage />, 'Studio'),                                                                                                                    errorElement: routeError },
   { path: '/studio/builder/:id',   element: protectDesktop(<StudioBuilderPage />, 'Studio Builder'),                                                                                                     errorElement: routeError },
   { path: '/studio/documents',     element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>, 'Studio Documents'),                                                  errorElement: routeError },
