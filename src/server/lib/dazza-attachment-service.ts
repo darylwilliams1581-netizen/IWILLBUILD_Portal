@@ -151,17 +151,24 @@ export function validateAttachmentFile(file: {
     };
   }
 
-  // MIME check (belt-and-suspenders — extension already checked)
+  // MIME check (belt-and-suspenders — extension already checked above)
+  // Some browsers report application/octet-stream or "" for .json files,
+  // and text/plain for .md files. Extension is the authoritative check;
+  // MIME is a secondary signal only.
   const mimeOk =
     DAZZA_ATTACHMENT_ALLOWED_MIMES.has(file.mimetype) ||
-    // Some browsers send text/plain for .md
-    (ext === 'md' && file.mimetype === 'text/plain');
+    // .md: some browsers report text/plain
+    (ext === 'md'   && file.mimetype === 'text/plain') ||
+    // .json: some browsers report application/octet-stream or empty string
+    (ext === 'json' && (file.mimetype === 'application/octet-stream' || file.mimetype === '')) ||
+    // .txt: empty string fallback
+    (ext === 'txt'  && file.mimetype === '');
 
   if (!mimeOk) {
     return {
       ok: false,
       code: 'unsupported_mime',
-      error: `"${sanitiseFilename(file.originalname)}" has an unexpected MIME type (${file.mimetype}). Expected text/plain, text/markdown, or application/json.`,
+      error: `"${sanitiseFilename(file.originalname)}" has an unexpected MIME type (${file.mimetype || 'unknown'}). Expected text/plain, text/markdown, or application/json.`,
     };
   }
 
@@ -175,9 +182,10 @@ export function validateAttachmentFile(file: {
   }
 
   // UTF-8 check + NUL byte rejection
+  let textContent: string;
   try {
-    const text = file.buffer.toString('utf8');
-    if (text.includes('\0')) {
+    textContent = file.buffer.toString('utf8');
+    if (textContent.includes('\0')) {
       return {
         ok: false,
         code: 'nul_bytes',
@@ -185,7 +193,7 @@ export function validateAttachmentFile(file: {
       };
     }
     // Verify it round-trips cleanly as UTF-8
-    const reEncoded = Buffer.from(text, 'utf8');
+    const reEncoded = Buffer.from(textContent, 'utf8');
     if (reEncoded.length !== file.buffer.length) {
       return {
         ok: false,
@@ -201,7 +209,85 @@ export function validateAttachmentFile(file: {
     };
   }
 
+  // JSON-specific structural validation
+  if (ext === 'json') {
+    const jsonResult = validateJsonContent(textContent, sanitiseFilename(file.originalname));
+    if (!jsonResult.ok) return jsonResult;
+  }
+
   return { ok: true };
+}
+
+// ── JSON structural validation ────────────────────────────────────────────────
+
+/** Maximum allowed JSON nesting depth */
+const JSON_MAX_DEPTH = 20;
+
+/** Prototype-poisoning keys that must never appear */
+const JSON_BLOCKED_KEYS = new Set([
+  '__proto__', 'constructor', 'prototype',
+]);
+
+/**
+ * Validate JSON content for safety:
+ *   - Must parse as valid JSON
+ *   - Must not exceed MAX_DEPTH nesting
+ *   - Must not contain prototype-poisoning keys
+ *   - Must not contain NUL bytes (already checked above, but belt-and-suspenders)
+ */
+function validateJsonContent(text: string, safeFilename: string): AttachmentValidationResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      code: 'malformed_json',
+      error: `"${safeFilename}" is not valid JSON. Fix the syntax and try again.`,
+    };
+  }
+
+  // Walk the parsed structure checking depth and blocked keys
+  const depthError = checkJsonDepth(parsed, 0, safeFilename);
+  if (depthError) return depthError;
+
+  return { ok: true };
+}
+
+function checkJsonDepth(
+  value: unknown,
+  depth: number,
+  safeFilename: string,
+): AttachmentValidationResult | null {
+  if (depth > JSON_MAX_DEPTH) {
+    return {
+      ok: false,
+      code: 'json_too_deep',
+      error: `"${safeFilename}" has deeply nested JSON (>${JSON_MAX_DEPTH} levels). Flatten the structure and try again.`,
+    };
+  }
+
+  if (value !== null && typeof value === 'object') {
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      if (JSON_BLOCKED_KEYS.has(key)) {
+        return {
+          ok: false,
+          code: 'json_unsafe_key',
+          error: `"${safeFilename}" contains an unsafe key ("${key}") and cannot be accepted.`,
+        };
+      }
+      const child = (value as Record<string, unknown>)[key];
+      const childError = checkJsonDepth(child, depth + 1, safeFilename);
+      if (childError) return childError;
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value as unknown[]) {
+      const itemError = checkJsonDepth(item, depth + 1, safeFilename);
+      if (itemError) return itemError;
+    }
+  }
+
+  return null;
 }
 
 // ── SHA-256 ───────────────────────────────────────────────────────────────────

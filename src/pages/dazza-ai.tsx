@@ -487,6 +487,14 @@ export default function DazzaAIPage() {
   // ── Attachment queue (platform owner only) ────────────────────────────────
   const attachmentQueue = useDazzaAttachments({ conversationId });
 
+  // ── Attachment action selector ─────────────────────────────────────────────
+  // Applies to the current message only — cleared after send.
+  // 'read_only'     → Dazza reads and summarises, cites filename + line ranges.
+  // 'analyse'       → Dazza analyses as evidence: facts / inferences / unknowns.
+  // 'repair_case'   → Dazza uses the attachment as evidence for a Builder Case.
+  type AttachmentAction = 'read_only' | 'analyse' | 'repair_case';
+  const [attachmentAction, setAttachmentAction] = useState<AttachmentAction>('read_only');
+
   // Returns the model label for the V3 badge — uses server-confirmed model from
   // the done event, falls back to 'o4-mini' (the configured default).
   function getDazzaModelLabel(): string {
@@ -633,8 +641,9 @@ export default function DazzaAIPage() {
   async function sendMessage(text: string, mode: 'chat' | 'build_repair' = 'chat', builderCaseId?: string) {
     if (!text.trim() || isTyping) return;
 
-    // Capture attachment IDs before clearing
+    // Capture attachment IDs and action before clearing
     const pendingAttachmentIds = [...attachmentQueue.readyIds];
+    const capturedAttachmentAction = pendingAttachmentIds.length > 0 ? attachmentAction : null;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -648,8 +657,9 @@ export default function DazzaAIPage() {
     setIsTyping(true);
     setActiveToolCall(null);
 
-    // Clear attachment chips immediately after send
+    // Clear attachment chips and reset action selector immediately after send
     attachmentQueue.clearAfterSend();
+    setAttachmentAction('read_only');
 
     // Create a placeholder assistant message that we'll fill in as tokens arrive
     const assistantId = (Date.now() + 1).toString();
@@ -673,6 +683,8 @@ export default function DazzaAIPage() {
           ...(conversationId ? { conversationId } : {}),
           // Send attachment IDs (opaque — server re-authorises every ID)
           ...(pendingAttachmentIds.length > 0 ? { attachmentIds: pendingAttachmentIds } : {}),
+          // Send attachment action (read_only / analyse / repair_case) — applies to this message only
+          ...(capturedAttachmentAction ? { attachmentAction: capturedAttachmentAction } : {}),
           // Send mode and builderCaseId for Build & Repair
           ...(mode !== 'chat' ? { mode } : {}),
           ...(builderCaseId ? { builderCaseId } : {}),
@@ -1363,6 +1375,34 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                       Clear all
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* Attachment action selector — shown only when files are ready to send */}
+              {isPlatformOwner && attachmentQueue.attachments.some(a => a.status === 'attached') && (
+                <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Action:</span>
+                  {(
+                    [
+                      { value: 'read_only',   label: 'Read only',         title: 'Dazza reads and summarises. Cites filename and line ranges. No instructions executed.' },
+                      { value: 'analyse',     label: 'Analyse',           title: 'Dazza analyses as evidence: separates facts, inferences, assumptions and unknowns.' },
+                      { value: 'repair_case', label: 'Create repair case', title: 'Dazza uses the attachment as evidence for a new or linked Build & Repair case.' },
+                    ] as { value: 'read_only' | 'analyse' | 'repair_case'; label: string; title: string }[]
+                  ).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      title={opt.title}
+                      onClick={() => setAttachmentAction(opt.value)}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+                        attachmentAction === opt.value
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40 hover:text-slate-800'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               )}
 

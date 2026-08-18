@@ -119,7 +119,18 @@ export function useDazzaAttachments({ conversationId }: UseDazzaAttachmentsOptio
         continue;
       }
 
-      if (!ACCEPTED_MIMES.has(file.type) && !(ext === 'md' && file.type === 'text/plain')) {
+      // MIME fallback rules:
+      //   .md  — some browsers report text/plain
+      //   .json — some browsers report application/octet-stream or "" (empty)
+      //   .txt  — always text/plain
+      // Extension is already validated above; MIME is belt-and-suspenders only.
+      const mimeOk =
+        ACCEPTED_MIMES.has(file.type) ||
+        (ext === 'md'   && (file.type === 'text/plain' || file.type === '')) ||
+        (ext === 'json' && (file.type === 'application/octet-stream' || file.type === '')) ||
+        (ext === 'txt'  && file.type === '');
+
+      if (!mimeOk) {
         setAttachments(prev => [...prev, {
           clientId,
           filename: safeFilename,
@@ -127,7 +138,7 @@ export function useDazzaAttachments({ conversationId }: UseDazzaAttachmentsOptio
           mimeType: file.type,
           status: 'failed',
           attachmentId: null,
-          error: `"${safeFilename}" has an unexpected type.`,
+          error: `"${safeFilename}" has an unexpected type (${file.type || 'unknown'}).`,
           progress: 0,
         }]);
         continue;

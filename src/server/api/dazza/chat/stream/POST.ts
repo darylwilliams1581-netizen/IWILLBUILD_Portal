@@ -52,12 +52,13 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Parse body ───────────────────────────────────────────────────────────
-    const { message, conversationId, attachmentIds, mode: rawMode, builderCaseId } = req.body as {
+    const { message, conversationId, attachmentIds, mode: rawMode, builderCaseId, attachmentAction: rawAttachmentAction } = req.body as {
       message?: string;
       conversationId?: string;
       attachmentIds?: string[];
       mode?: string;
       builderCaseId?: string;
+      attachmentAction?: string;
     };
     if (!message?.trim()) {
       return res.status(400).json({ error: 'message is required' });
@@ -69,6 +70,13 @@ export default async function handler(req: Request, res: Response) {
     const mode: DazzaMode = (VALID_MODES as readonly string[]).includes(rawMode ?? '')
       ? (rawMode as DazzaMode)
       : 'chat';
+
+    // Validate attachmentAction — only accepted values are forwarded
+    const VALID_ATTACHMENT_ACTIONS = ['read_only', 'analyse', 'repair_case'] as const;
+    type AttachmentAction = typeof VALID_ATTACHMENT_ACTIONS[number];
+    const attachmentAction: AttachmentAction = (VALID_ATTACHMENT_ACTIONS as readonly string[]).includes(rawAttachmentAction ?? '')
+      ? (rawAttachmentAction as AttachmentAction)
+      : 'read_only';
 
     // ── Validate attachmentIds ────────────────────────────────────────────────
     const safeAttachmentIds: string[] = [];
@@ -130,6 +138,7 @@ export default async function handler(req: Request, res: Response) {
         userMessage:    message.trim(),
         mode:           mode === 'build_repair' ? 'build_repair' : mode === 'investigation' ? 'investigation' : mode === 'bug_analysis' ? 'bug_analysis' : 'chat',
         builderCaseId:  builderCaseId?.trim() ?? undefined,
+        attachmentAction: safeAttachmentIds.length > 0 ? attachmentAction : undefined,
         untrustedEvidence: untrustedEvidence ?? undefined,
         onToken:      (token)        => sseWrite(res, { type: 'token', content: token }),
         onToolCall:   (name, status) => sseWrite(res, { type: status === 'running' ? 'tool_call' : 'tool_result', name, status }),
