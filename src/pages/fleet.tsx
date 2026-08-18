@@ -23,6 +23,7 @@ import {
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import {
   fetchFleet,
@@ -337,6 +338,7 @@ export default function FleetPage() {
 
   return (
     <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

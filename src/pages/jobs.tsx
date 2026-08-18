@@ -18,6 +18,7 @@ import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import NewJobModal from '@/components/NewJobModal';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
@@ -102,6 +103,7 @@ export default function JobsPage() {
 
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+      <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

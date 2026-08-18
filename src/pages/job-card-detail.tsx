@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { useUploadQueue } from '@/hooks/useUploadQueue';
+import PortalSidebar from '@/components/PortalSidebar';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { EditorConfig } from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
@@ -1202,6 +1203,7 @@ export default function JobCardDetailPage() {
   if (loading) {
     return (
       <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+        <PortalSidebar />
         <DesktopTopBar />
         <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
