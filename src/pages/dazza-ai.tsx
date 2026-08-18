@@ -488,7 +488,6 @@ export default function DazzaAIPage() {
   const [activityPhase, setActivityPhase] = useState<DazzaActivityPhase>('idle');
   const [activityLabel, setActivityLabel] = useState<string>('');
   const [activityElapsed, setActivityElapsed] = useState(0);   // seconds
-  const [lastEventAt, setLastEventAt] = useState<number>(0);   // ms timestamp
   const activityStartRef = useRef<number>(0);
   const elapsedTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const stallTimerRef    = useRef<ReturnType<typeof setTimeout>  | null>(null);
@@ -522,8 +521,6 @@ export default function DazzaAIPage() {
       }, 30_000);
     };
     armStall();
-    // Re-arm stall timer whenever a server event arrives
-    setLastEventAt(Date.now());
     return armStall;
   };
   const [dazzaCtx, setDazzaCtx] = useState<DazzaContextSummary | null>(null);
@@ -740,7 +737,6 @@ export default function DazzaAIPage() {
 
     // Helper: re-arm the stall watchdog on every server event
     const bumpStall = () => {
-      setLastEventAt(Date.now());
       armStall();
     };
 
@@ -853,6 +849,8 @@ export default function DazzaAIPage() {
             if (event.conversationId) setConversationId(event.conversationId);
             if (event.engine)         setActiveEngine(event.engine);
             if (event.model)          setActiveModel(event.model);
+            // Auto-dismiss the completed bar after 3 s
+            setTimeout(() => setActivityPhase((p) => p === 'completed' ? 'idle' : p), 3000);
             bumpStall();
           } else if (event.type === 'error') {
             const errEvt = event as SseError & { configFault?: boolean };
@@ -916,9 +914,13 @@ export default function DazzaAIPage() {
       setActiveToolCall(null);
       abortControllerRef.current = null;
       clearActivityTimers();
-      if (!wasCancelled && activityPhase !== 'completed' && activityPhase !== 'error') {
-        // Phase may already be set correctly — only override if still in an active state
-      }
+      // If the stream closed without a done/error/cancelled event (e.g. server
+      // dropped the connection mid-stream), the phase would be stuck at 'writing'
+      // or 'thinking' forever. Reset to idle so the activity bar clears.
+      setActivityPhase((p) => {
+        if (p === 'completed' || p === 'error' || p === 'cancelled') return p;
+        return 'idle';
+      });
     }
   }
 
@@ -927,16 +929,16 @@ export default function DazzaAIPage() {
   }
 
   function retryLastMessage() {
-    // Find the last user message and resend it
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-    if (!lastUser) return;
-    // Remove the failed assistant bubble (last message if it's an assistant)
-    const last = messages[messages.length - 1];
-    if (last?.role === 'assistant') {
-      setMessages((prev) => prev.slice(0, -1));
-    }
-    setActivityPhase('idle');
-    void sendMessage(lastUser.content);
+    setMessages((prev) => {
+      const lastUser = [...prev].reverse().find((m) => m.role === 'user');
+      if (!lastUser) return prev;
+      // Remove the failed assistant bubble (last message if it's an assistant)
+      const trimmed = prev[prev.length - 1]?.role === 'assistant' ? prev.slice(0, -1) : prev;
+      setActivityPhase('idle');
+      // Defer sendMessage so state has settled
+      setTimeout(() => void sendMessage(lastUser.content), 0);
+      return trimmed;
+    });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
