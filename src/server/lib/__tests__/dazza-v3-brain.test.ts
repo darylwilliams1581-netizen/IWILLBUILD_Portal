@@ -357,3 +357,245 @@ describe('dazza-v3-brain — agentic loop', () => {
   });
 
 });
+
+// ── Activity indicator — onStatus / onHeartbeat callbacks ─────────────────────
+
+describe('dazza-v3-brain — activity indicator callbacks', () => {
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /**
+   * Extended runStream that also captures onStatus and onHeartbeat events.
+   */
+  async function runStreamWithActivity(
+    fetchResponses: Array<() => Response>,
+    toolResult = 'tool result text',
+  ): Promise<{
+    tokens: string;
+    statuses: Array<{ phase: string; label: string }>;
+    heartbeats: number[];
+    done: { model: string; toolsUsed: string[]; conversationId: string } | null;
+    error: string | null;
+  }> {
+    const tokens: string[] = [];
+    const statuses: Array<{ phase: string; label: string }> = [];
+    const heartbeats: number[] = [];
+    let done: { model: string; toolsUsed: string[]; conversationId: string } | null = null;
+    let error: string | null = null;
+
+    let callIndex = 0;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => {
+      const factory = fetchResponses[callIndex++];
+      if (!factory) throw new Error(`Unexpected fetch call #${callIndex}`);
+      return Promise.resolve(factory());
+    }));
+    vi.mocked(executeV3Tool).mockResolvedValue(toolResult);
+
+    const streamPromise = streamDazzaV3({
+      ownerContext: OWNER,
+      conversationId: null,
+      userMessage: 'test message',
+      mode: 'chat',
+      onToken: (t) => tokens.push(t),
+      onToolCall: () => {},
+      onDone: (meta) => { done = meta; },
+      onError: (msg) => { error = msg; },
+      onStatus: (phase, label) => statuses.push({ phase, label }),
+      onHeartbeat: (elapsedMs) => heartbeats.push(elapsedMs),
+    });
+
+    // Advance fake timers to trigger heartbeats
+    await vi.runAllTimersAsync();
+    await streamPromise;
+
+    vi.unstubAllGlobals();
+    return { tokens: tokens.join(''), statuses, heartbeats, done, error };
+  }
+
+  // ── A1. thinking status emitted before first token ─────────────────────────
+
+  it('emits thinking status before first token arrives', async () => {
+    const { statuses, error } = await runStreamWithActivity([
+      () => sseResponse([
+        textDelta('Hello from Dazza.'),
+        completedEvent(),
+      ]),
+    ]);
+
+    expect(error).toBeNull();
+    const phases = statuses.map((s) => s.phase);
+    // thinking must appear before writing
+    const thinkingIdx = phases.indexOf('thinking');
+    const writingIdx  = phases.indexOf('writing');
+    expect(thinkingIdx).toBeGreaterThanOrEqual(0);
+    expect(writingIdx).toBeGreaterThan(thinkingIdx);
+  });
+
+  // ── A2. writing status emitted on first token ──────────────────────────────
+
+  it('emits writing status when first token arrives', async () => {
+    const { statuses, tokens, error } = await runStreamWithActivity([
+      () => sseResponse([
+        textDelta('Token one.'),
+        completedEvent(),
+      ]),
+    ]);
+
+    expect(error).toBeNull();
+    expect(tokens).toContain('Token one');
+    expect(statuses.some((s) => s.phase === 'writing')).toBe(true);
+  });
+
+  // ── A3. using_tool status emitted around tool calls ────────────────────────
+
+  it('emits using_tool then thinking around a tool call', async () => {
+    vi.mocked(executeV3Tool).mockResolvedValue('tool output');
+
+    const { statuses, error } = await runStreamWithActivity([
+      // Round 0: tool call
+      () => sseResponse([
+        fnCallAdded('v3_get_job', 'call-001'),
+        fnCallDone('v3_get_job', 'call-001', { jobId: '1' }),
+        completedEvent('resp-001'),
+      ]),
+      // Round 1: synthesis
+      () => sseResponse([
+        textDelta('Job found.'),
+        completedEvent('resp-002'),
+      ]),
+    ]);
+
+    expect(error).toBeNull();
+    const phases = statuses.map((s) => s.phase);
+    expect(phases).toContain('using_tool');
+    // After tool result, thinking must appear again before writing
+    const toolIdx    = phases.lastIndexOf('using_tool');
+    const thinkAfter = phases.slice(toolIdx + 1).indexOf('thinking');
+    expect(thinkAfter).toBeGreaterThanOrEqual(0);
+  });
+
+  // ── A4. Heartbeats fire every 10 s ────────────────────────────────────────
+
+  it('fires heartbeats every 10 seconds while active', async () => {
+    // Use a slow stream that takes time — we advance fake timers
+    let resolveStream!: () => void;
+    const slowStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const enc = new TextEncoder();
+        // Emit one token immediately
+        controller.enqueue(enc.encode(`data: ${JSON.stringify(textDelta('Hi'))}\n\n`));
+        // Hold the stream open until resolveStream() is called
+        new Promise<void>((res) => { resolveStream = res; }).then(() => {
+          controller.enqueue(enc.encode(`data: ${JSON.stringify(completedEvent())}\n\n`));
+          controller.close();
+        });
+      },
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(slowStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+    ));
+    vi.mocked(executeV3Tool).mockResolvedValue('');
+
+    const heartbeats: number[] = [];
+    const streamPromise = streamDazzaV3({
+      ownerContext: OWNER,
+      conversationId: null,
+      userMessage: 'slow test',
+      mode: 'chat',
+      onToken: () => {},
+      onToolCall: () => {},
+      onDone: () => {},
+      onError: () => {},
+      onHeartbeat: (ms) => heartbeats.push(ms),
+    });
+
+    // Advance 25 s — should produce 2 heartbeats (at 10 s and 20 s)
+    await vi.advanceTimersByTimeAsync(25_000);
+    resolveStream();
+    await streamPromise;
+    vi.unstubAllGlobals();
+
+    expect(heartbeats.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // ── A5. Heartbeat timer cleared after completion ───────────────────────────
+
+  it('heartbeat timer is cleared after done — no extra heartbeats fire', async () => {
+    const heartbeats: number[] = [];
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      sseResponse([textDelta('Done.'), completedEvent()])
+    ));
+    vi.mocked(executeV3Tool).mockResolvedValue('');
+
+    await streamDazzaV3({
+      ownerContext: OWNER,
+      conversationId: null,
+      userMessage: 'quick test',
+      mode: 'chat',
+      onToken: () => {},
+      onToolCall: () => {},
+      onDone: () => {},
+      onError: () => {},
+      onHeartbeat: (ms) => heartbeats.push(ms),
+    });
+
+    const countAfterDone = heartbeats.length;
+    // Advance another 30 s — no new heartbeats should fire
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(heartbeats.length).toBe(countAfterDone);
+
+    vi.unstubAllGlobals();
+  });
+
+  // ── A6. Status callbacks never include prompts or secrets ─────────────────
+
+  it('status labels never include the user message or tool result contents', async () => {
+    vi.mocked(executeV3Tool).mockResolvedValue('SECRET_TOOL_RESULT_CONTENT');
+
+    const { statuses } = await runStreamWithActivity([
+      () => sseResponse([
+        fnCallAdded('v3_get_job', 'call-002'),
+        fnCallDone('v3_get_job', 'call-002', { jobId: '42' }),
+        completedEvent('resp-003'),
+      ]),
+      () => sseResponse([
+        textDelta('Answer.'),
+        completedEvent('resp-004'),
+      ]),
+    ]);
+
+    for (const s of statuses) {
+      expect(s.label).not.toContain('SECRET_TOOL_RESULT_CONTENT');
+      expect(s.label).not.toContain('test message');
+      expect(s.label).not.toContain('jobId');
+    }
+  });
+
+  // ── A7. Normal non-tool chat still works (no regression) ──────────────────
+
+  it('normal non-tool chat produces thinking → writing and no using_tool', async () => {
+    const { statuses, tokens, error } = await runStreamWithActivity([
+      () => sseResponse([
+        textDelta('Simple answer.'),
+        completedEvent(),
+      ]),
+    ]);
+
+    expect(error).toBeNull();
+    expect(tokens).toBe('Simple answer.');
+    const phases = statuses.map((s) => s.phase);
+    expect(phases).toContain('thinking');
+    expect(phases).toContain('writing');
+    expect(phases).not.toContain('using_tool');
+  });
+
+});

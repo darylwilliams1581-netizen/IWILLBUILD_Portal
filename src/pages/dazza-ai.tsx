@@ -7,6 +7,7 @@ import {
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X, GitBranch, Paperclip, Wrench,
+  Square, RotateCcw, Zap, CheckCircle2, XCircle,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -421,7 +422,21 @@ interface SseDone       {
   toolsUsed?: string[];
 }
 interface SseError      { type: 'error'; message: string; configFault?: boolean; conversationId?: string }
-type SseEvent = SseToken | SseToolCall | SseToolResult | SseAttachmentStatus | SseDone | SseError;
+interface SseStatus     { type: 'status';    phase: string; label: string }
+interface SseHeartbeat  { type: 'heartbeat'; elapsedMs: number }
+type SseEvent = SseToken | SseToolCall | SseToolResult | SseAttachmentStatus | SseDone | SseError | SseStatus | SseHeartbeat;
+
+// ── Dazza activity phase state machine ───────────────────────────────────────
+type DazzaActivityPhase =
+  | 'idle'
+  | 'connecting'
+  | 'thinking'
+  | 'using_tool'
+  | 'writing'
+  | 'stalled'
+  | 'completed'
+  | 'cancelled'
+  | 'error';
 
 // ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
 
@@ -468,6 +483,49 @@ export default function DazzaAIPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
+
+  // ── Activity phase state machine ──────────────────────────────────────────
+  const [activityPhase, setActivityPhase] = useState<DazzaActivityPhase>('idle');
+  const [activityLabel, setActivityLabel] = useState<string>('');
+  const [activityElapsed, setActivityElapsed] = useState(0);   // seconds
+  const [lastEventAt, setLastEventAt] = useState<number>(0);   // ms timestamp
+  const activityStartRef = useRef<number>(0);
+  const elapsedTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stallTimerRef    = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Clear all activity timers
+  const clearActivityTimers = () => {
+    if (elapsedTimerRef.current)  { clearInterval(elapsedTimerRef.current);  elapsedTimerRef.current  = null; }
+    if (stallTimerRef.current)    { clearTimeout(stallTimerRef.current);     stallTimerRef.current    = null; }
+  };
+
+  // Start the elapsed-seconds ticker and stall watchdog
+  const startActivityTimers = () => {
+    clearActivityTimers();
+    activityStartRef.current = Date.now();
+    setActivityElapsed(0);
+    setLastEventAt(Date.now());
+
+    elapsedTimerRef.current = setInterval(() => {
+      setActivityElapsed(Math.floor((Date.now() - activityStartRef.current) / 1000));
+    }, 1000);
+
+    const armStall = () => {
+      if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = setTimeout(() => {
+        setActivityPhase((p) => {
+          if (p === 'idle' || p === 'completed' || p === 'cancelled' || p === 'error') return p;
+          return 'stalled';
+        });
+        setActivityLabel('Still working — no activity received for 30 seconds');
+      }, 30_000);
+    };
+    armStall();
+    // Re-arm stall timer whenever a server event arrives
+    setLastEventAt(Date.now());
+    return armStall;
+  };
   const [dazzaCtx, setDazzaCtx] = useState<DazzaContextSummary | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
   const [noApiKey, setNoApiKey] = useState(false);
@@ -657,6 +715,11 @@ export default function DazzaAIPage() {
     setIsTyping(true);
     setActiveToolCall(null);
 
+    // ── Phase: connecting ─────────────────────────────────────────────────────
+    setActivityPhase('connecting');
+    setActivityLabel('Connecting to Dazza…');
+    const armStall = startActivityTimers();
+
     // Clear attachment chips and reset action selector immediately after send
     attachmentQueue.clearAfterSend();
     setAttachmentAction('read_only');
@@ -671,21 +734,30 @@ export default function DazzaAIPage() {
       timestamp: new Date(),
     }]);
 
+    // ── AbortController for Stop button ──────────────────────────────────────
+    const abort = new AbortController();
+    abortControllerRef.current = abort;
+
+    // Helper: re-arm the stall watchdog on every server event
+    const bumpStall = () => {
+      setLastEventAt(Date.now());
+      armStall();
+    };
+
+    let wasCancelled = false;
+
     try {
       // ── Canonical endpoint — server decides V3 vs V2 rollback ──────────────
       const res = await fetch('/api/dazza/chat/stream', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        signal: abort.signal,
         body: JSON.stringify({
           message: text.trim(),
-          // Send conversationId so V3 can continue the same conversation
           ...(conversationId ? { conversationId } : {}),
-          // Send attachment IDs (opaque — server re-authorises every ID)
           ...(pendingAttachmentIds.length > 0 ? { attachmentIds: pendingAttachmentIds } : {}),
-          // Send attachment action (read_only / analyse / repair_case) — applies to this message only
           ...(capturedAttachmentAction ? { attachmentAction: capturedAttachmentAction } : {}),
-          // Send mode and builderCaseId for Build & Repair
           ...(mode !== 'chat' ? { mode } : {}),
           ...(builderCaseId ? { builderCaseId } : {}),
         }),
@@ -700,6 +772,11 @@ export default function DazzaAIPage() {
         throw new Error(`HTTP ${res.status}${serverDetail ? `: ${serverDetail}` : ''}`);
       }
 
+      // ── Phase: thinking (connection open) ────────────────────────────────
+      setActivityPhase('thinking');
+      setActivityLabel('Dazza is thinking…');
+      bumpStall();
+
       const reader = res.body?.getReader();
       if (!reader) throw new Error('No response body');
 
@@ -710,6 +787,7 @@ export default function DazzaAIPage() {
         const { done, value } = await reader.read();
         if (done) break;
 
+        bumpStall();
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
@@ -721,52 +799,73 @@ export default function DazzaAIPage() {
           let event: SseEvent;
           try { event = JSON.parse(raw) as SseEvent; } catch { continue; }
 
+          // ── Heartbeat — just re-arms the stall timer ──────────────────────
+          if (event.type === 'heartbeat') {
+            bumpStall();
+            continue;
+          }
+
+          // ── Status event from server ──────────────────────────────────────
+          if (event.type === 'status') {
+            const phase = event.phase as DazzaActivityPhase;
+            setActivityPhase(phase);
+            setActivityLabel(event.label);
+            bumpStall();
+            continue;
+          }
+
           if (event.type === 'token') {
             setMessages((prev) => prev.map((m) =>
               m.id === assistantId
                 ? { ...m, content: m.content + event.content }
                 : m
             ));
+            // Ensure writing phase is set (server status event may not have arrived yet)
+            setActivityPhase((p) => p === 'writing' ? p : 'writing');
+            setActivityLabel('Dazza is preparing the answer…');
+            bumpStall();
           } else if (event.type === 'attachment_status') {
             if (event.status === 'reading') {
               setActiveToolCall(`Reading ${event.count ?? ''} attached file${(event.count ?? 1) !== 1 ? 's' : ''}…`);
-            } else if (event.status === 'ready') {
+              setActivityPhase('using_tool');
+              setActivityLabel(`Reading ${event.count ?? ''} attached file${(event.count ?? 1) !== 1 ? 's' : ''}…`);
+            } else {
               setActiveToolCall(null);
-            } else if (event.status === 'failed') {
-              setActiveToolCall(null);
+              setActivityPhase('thinking');
+              setActivityLabel('Dazza is thinking…');
             }
+            bumpStall();
           } else if (event.type === 'tool_call') {
-            setActiveToolCall(TOOL_LABELS[event.name] ?? `Running ${event.name}…`);
+            const label = TOOL_LABELS[event.name] ?? `Running ${event.name}…`;
+            setActiveToolCall(label);
+            setActivityPhase('using_tool');
+            setActivityLabel(label);
+            bumpStall();
           } else if (event.type === 'tool_result') {
             setActiveToolCall(null);
+            setActivityPhase('thinking');
+            setActivityLabel('Dazza is thinking…');
+            bumpStall();
           } else if (event.type === 'done') {
             setActiveToolCall(null);
-            // Store conversation ID for continuity (V3 only)
-            if (event.conversationId) {
-              setConversationId(event.conversationId);
-            }
-            // Track active engine and model from done event
-            if (event.engine) {
-              setActiveEngine(event.engine);
-            }
-            if (event.model) {
-              setActiveModel(event.model);
-            }
+            setActivityPhase('completed');
+            setActivityLabel('Response completed');
+            if (event.conversationId) setConversationId(event.conversationId);
+            if (event.engine)         setActiveEngine(event.engine);
+            if (event.model)          setActiveModel(event.model);
+            bumpStall();
           } else if (event.type === 'error') {
             const errEvt = event as SseError & { configFault?: boolean };
-            // Persist conversationId from error events so the conversation is
-            // restorable after a hard refresh even when the request failed.
-            if (errEvt.conversationId && !conversationId) {
-              setConversationId(errEvt.conversationId);
-            }
+            if (errEvt.conversationId && !conversationId) setConversationId(errEvt.conversationId);
             if (errEvt.configFault) {
-              // Configuration fault — show inline in the message bubble
               setMessages((prev) => prev.map((m) =>
                 m.id === assistantId
                   ? { ...m, content: `⚠️ ${event.message}` }
                   : m
               ));
               setActiveEngine('v2-rollback');
+              setActivityPhase('error');
+              setActivityLabel('Configuration fault — check Dazza secrets');
             } else {
               throw new Error(event.message);
             }
@@ -775,10 +874,6 @@ export default function DazzaAIPage() {
       }
 
       // ── Client-side empty-response guard ─────────────────────────────────
-      // If the stream closed but the assistant bubble is still empty, the
-      // server either sent no token events or the stream was cut short.
-      // Replace the empty bubble with a visible error rather than leaving
-      // a silent blank turn.
       setMessages((prev) => {
         const bubble = prev.find((m) => m.id === assistantId);
         if (bubble && !bubble.content.trim()) {
@@ -792,21 +887,56 @@ export default function DazzaAIPage() {
       });
 
     } catch (err) {
-      const errMsg = String((err as Error)?.message ?? err);
-      const isNetworkError = err instanceof TypeError;
-      const displayMsg = isNetworkError
-        ? "I had trouble connecting. Please check your internet connection and try again."
-        : `Something went wrong on the server (${errMsg}). Please try again or contact support if this persists.`;
-      setMessages((prev) => prev.map((m) =>
-        m.id === assistantId
-          ? { ...m, content: displayMsg }
-          : m
-      ));
+      if ((err as Error)?.name === 'AbortError') {
+        wasCancelled = true;
+        setActivityPhase('cancelled');
+        setActivityLabel('Request cancelled');
+        setMessages((prev) => prev.map((m) =>
+          m.id === assistantId && !m.content.trim()
+            ? { ...m, content: '_(Request cancelled)_' }
+            : m
+        ));
+      } else {
+        const errMsg = String((err as Error)?.message ?? err);
+        const isNetworkError = err instanceof TypeError;
+        const displayMsg = isNetworkError
+          ? "I had trouble connecting. Please check your internet connection and try again."
+          : `Something went wrong on the server (${errMsg}). Please try again or contact support if this persists.`;
+        setMessages((prev) => prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: displayMsg }
+            : m
+        ));
+        setActivityPhase('error');
+        setActivityLabel('Request failed');
+      }
     } finally {
       setIsTyping(false);
       setStreamingId(null);
       setActiveToolCall(null);
+      abortControllerRef.current = null;
+      clearActivityTimers();
+      if (!wasCancelled && activityPhase !== 'completed' && activityPhase !== 'error') {
+        // Phase may already be set correctly — only override if still in an active state
+      }
     }
+  }
+
+  function stopRequest() {
+    abortControllerRef.current?.abort();
+  }
+
+  function retryLastMessage() {
+    // Find the last user message and resend it
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+    if (!lastUser) return;
+    // Remove the failed assistant bubble (last message if it's an assistant)
+    const last = messages[messages.length - 1];
+    if (last?.role === 'assistant') {
+      setMessages((prev) => prev.slice(0, -1));
+    }
+    setActivityPhase('idle');
+    void sendMessage(lastUser.content);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -1213,7 +1343,9 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                                           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                                         >
                                           <Brain size={12} className="text-violet-500 shrink-0" />
-                                          <span className="text-[12px] text-slate-500 font-medium">Thinking</span>
+                                          <span className="text-[12px] text-slate-500 font-medium">
+                                            {activityPhase === 'connecting' ? 'Connecting' : activityPhase === 'using_tool' ? 'Using tool' : 'Thinking'}
+                                          </span>
                                         </motion.div>
                                         <div className="flex items-center gap-0.5">
                                           {[0, 1, 2].map((i) => (
@@ -1275,6 +1407,74 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
               </AnimatePresence>
               <div ref={bottomRef} />
             </div>
+
+            {/* ── Activity bar — persistent status row beneath the message list ── */}
+            <AnimatePresence>
+              {activityPhase !== 'idle' && (
+                <motion.div
+                  key="activity-bar"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.18 }}
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className={`mx-4 mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-medium border ${
+                    activityPhase === 'stalled'
+                      ? 'bg-amber-50 border-amber-200 text-amber-800'
+                      : activityPhase === 'error'
+                      ? 'bg-red-50 border-red-200 text-red-700'
+                      : activityPhase === 'cancelled'
+                      ? 'bg-slate-100 border-slate-200 text-slate-500'
+                      : activityPhase === 'completed'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-violet-50 border-violet-200 text-violet-800'
+                  }`}
+                >
+                  {/* Phase icon */}
+                  {activityPhase === 'connecting' && <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}><Loader2 size={11} className="animate-spin text-violet-500" /></motion.span>}
+                  {activityPhase === 'thinking'   && <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}><Brain size={11} className="text-violet-500" /></motion.span>}
+                  {activityPhase === 'using_tool' && <Loader2 size={11} className="animate-spin text-violet-500 shrink-0" />}
+                  {activityPhase === 'writing'    && <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.8, repeat: Infinity }}><Zap size={11} className="text-violet-500" /></motion.span>}
+                  {activityPhase === 'stalled'    && <AlertTriangle size={11} className="text-amber-500 shrink-0" />}
+                  {activityPhase === 'completed'  && <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />}
+                  {activityPhase === 'cancelled'  && <XCircle size={11} className="text-slate-400 shrink-0" />}
+                  {activityPhase === 'error'      && <AlertTriangle size={11} className="text-red-500 shrink-0" />}
+
+                  {/* Label */}
+                  <span className="flex-1 truncate">{activityLabel}</span>
+
+                  {/* Elapsed time */}
+                  {activityPhase !== 'idle' && activityPhase !== 'completed' && activityPhase !== 'cancelled' && (
+                    <span className="tabular-nums text-[10px] opacity-60 shrink-0">{activityElapsed}s</span>
+                  )}
+
+                  {/* Stop button — active phases only */}
+                  {(activityPhase === 'connecting' || activityPhase === 'thinking' || activityPhase === 'using_tool' || activityPhase === 'writing' || activityPhase === 'stalled') && (
+                    <button
+                      onClick={stopRequest}
+                      className="ml-1 flex items-center gap-1 bg-white border border-current/20 rounded-md px-1.5 py-0.5 text-[10px] font-semibold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors shrink-0"
+                      aria-label="Stop request"
+                    >
+                      <Square size={8} className="fill-current" />
+                      Stop
+                    </button>
+                  )}
+
+                  {/* Retry button — after failure or cancellation */}
+                  {(activityPhase === 'error' || activityPhase === 'cancelled') && (
+                    <button
+                      onClick={retryLastMessage}
+                      className="ml-1 flex items-center gap-1 bg-white border border-current/20 rounded-md px-1.5 py-0.5 text-[10px] font-semibold hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 transition-colors shrink-0"
+                      aria-label="Retry last message"
+                    >
+                      <RotateCcw size={8} />
+                      Retry
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ── Bug Fix Intake Panel (Developer only) ── */}
             <AnimatePresence>
@@ -1454,11 +1654,15 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   style={{ maxHeight: 120, minHeight: 24 }}
                 />
                 <button
-                  onClick={() => void sendMessage(input)}
-                  disabled={!input.trim() || isTyping || attachmentQueue.isUploading}
-                  className="w-8 h-8 bg-primary hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0"
+                  onClick={isTyping ? stopRequest : () => void sendMessage(input)}
+                  disabled={isTyping ? false : (!input.trim() || attachmentQueue.isUploading)}
+                  className={`w-8 h-8 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                    isTyping ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-violet-700'
+                  }`}
+                  aria-label={isTyping ? 'Stop request' : 'Send message'}
+                  title={isTyping ? 'Stop' : 'Send'}
                 >
-                  {isTyping ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  {isTyping ? <Square size={11} className="fill-white" /> : <Send size={13} />}
                 </button>
               </div>
               <p className="text-[10px] text-slate-500 mt-1.5 text-center">
