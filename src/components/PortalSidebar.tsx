@@ -96,6 +96,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Dashboard',
     icon: LayoutDashboard,
     href: '/home'
+  }, {
+    id: 'nav-12',
+    idx: '12',
+    label: 'Contacts',
+    icon: Users,
+    href: '/customers'
   }]
 }, {
   heading: 'Work',
@@ -186,12 +192,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Settings',
     icon: Settings,
     href: '/finance?financeTab=settings'
-  }, {
-    id: 'nav-12',
-    idx: '12',
-    label: 'Contacts',
-    icon: Users,
-    href: '/customers'
   }]
 }, {
   heading: 'Safety',
