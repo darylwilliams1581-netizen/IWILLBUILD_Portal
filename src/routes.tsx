@@ -62,6 +62,7 @@ const FinancePage = lazy(() => import('./pages/finance'));
 const BuildersCalcPage = lazy(() => import('./pages/builders-calc-page'));
 const TakeoffPadPage = lazy(() => import('./pages/takeoff-pad-page'));
 const WorkJobPickerPage = lazy(() => import('./pages/work-job-picker'));
+const WorkPage = lazy(() => import('./pages/work'));
 const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
 const CustomersPage = lazy(() => import('./pages/customers'));
 const CustomerDetailPage = lazy(() => import('./pages/customer-detail'));
@@ -426,6 +427,12 @@ export const routes: RouteObject[] = [{
   element: protect(<TakeoffPadPage />),
   errorElement: routeError
 }, {
+  // Work workspace — company-wide register (/work?workTab=tasks|notes|...)
+  path: '/work',
+  element: protect(<WorkPage />),
+  errorElement: routeError
+}, {
+  // Legacy job-picker launcher — kept for backward compat, redirects to /work
   path: '/work/:workTab',
   element: protect(<WorkJobPickerPage />),
   errorElement: routeError

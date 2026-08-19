@@ -789,6 +789,12 @@ import support_mode_status_get_756 from "./api/support-mode/status/GET";
 import tag_tasks_get_757 from "./api/tag-tasks/GET";
 import tag_tasks_id_patch_758 from "./api/tag-tasks/[id]/PATCH";
 import takeoff_pad_get_759 from "./api/takeoff-pad/GET";
+// Work workspace — company-wide registers
+import work_tasks_get from "./api/work/tasks/GET";
+import work_notes_get from "./api/work/notes/GET";
+import work_delays_get from "./api/work/delays/GET";
+import work_progress_get from "./api/work/progress/GET";
+import work_attendance_get from "./api/work/attendance/GET";
 import takeoff_pad_put_760 from "./api/takeoff-pad/PUT";
 import tasks_post_761 from "./api/tasks/POST";
 import tasks_id_put_762 from "./api/tasks/[id]/PUT";
@@ -3848,6 +3854,12 @@ app.get("/api/takeoff-pad", takeoff_pad_get_759);
 app.put("/api/takeoff-pad", takeoff_pad_put_760);
 app.post("/api/tasks", tasks_post_761);
 app.put("/api/tasks/:id", tasks_id_put_762);
+// Work workspace — company-wide registers
+app.get("/api/work/tasks", work_tasks_get);
+app.get("/api/work/notes", work_notes_get);
+app.get("/api/work/delays", work_delays_get);
+app.get("/api/work/progress", work_progress_get);
+app.get("/api/work/attendance", work_attendance_get);
 app.get("/api/team", team_get_763);
 app.post("/api/team/invite", team_invite_post_764);
 app.get("/api/team/invites", team_invites_get_765);

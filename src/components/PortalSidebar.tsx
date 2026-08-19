@@ -131,31 +131,31 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     idx: 'w1',
     label: 'Tasks',
     icon: CheckSquare,
-    href: '/work/tasks'
+    href: '/work?workTab=tasks'
   }, {
     id: 'nav-w2',
     idx: 'w2',
     label: 'Notes',
     icon: StickyNote,
-    href: '/work/notes'
+    href: '/work?workTab=notes'
   }, {
     id: 'nav-w3',
     idx: 'w3',
     label: 'Delays',
     icon: Clock,
-    href: '/work/delays'
+    href: '/work?workTab=delays'
   }, {
     id: 'nav-w4',
     idx: 'w4',
     label: 'Progress',
     icon: TrendingUp,
-    href: '/work/progress'
+    href: '/work?workTab=progress'
   }, {
     id: 'nav-w5',
     idx: 'w5',
     label: 'Attendance',
     icon: Users,
-    href: '/work/attendance'
+    href: '/work?workTab=attendance'
   }, {
     id: 'nav-w6',
     idx: 'w6',
@@ -485,11 +485,18 @@ function DesktopSidebarContent({
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
   const [newJobOpen, setNewJobOpen] = useState(false);
   const isActive = (href: string) => {
-    // For hrefs with query params (e.g. /finance?financeTab=estimates),
-    // match pathname only — never compare pathname to the full href string.
-    const [hrefPath] = href.split('?');
-    if (href.includes('?')) {
-      return location.pathname === hrefPath;
+    // For hrefs with query params (e.g. /work?workTab=tasks, /finance?financeTab=estimates),
+    // match pathname AND the first query param value — never compare pathname to the full href.
+    const [hrefPath, hrefQuery] = href.split('?');
+    if (hrefQuery) {
+      if (location.pathname !== hrefPath) return false;
+      // Check that the first query param in the href matches the current URL
+      const hrefParams = new URLSearchParams(hrefQuery);
+      const currentParams = new URLSearchParams(location.search);
+      for (const [key, val] of hrefParams.entries()) {
+        if (currentParams.get(key) !== val) return false;
+      }
+      return true;
     }
     return location.pathname === hrefPath || location.pathname.startsWith(hrefPath + '/');
   };
