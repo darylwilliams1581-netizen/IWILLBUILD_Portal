@@ -355,14 +355,24 @@ function TaskModal({
   // Linked job display helpers
   const linkedJob = form.jobId ? jobs.find(j => j.id === form.jobId) : null;
   const linkedJobLabel = linkedJob ? linkedJob.jobNumber ? `#${linkedJob.jobNumber} · ${linkedJob.name}` : linkedJob.name : null;
-  return createPortal(/* Full-screen overlay — click outside to close */<div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true" role="dialog">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+  // z-[1200] sits above sidebar (1050) and top bar (1100).
+  // role="dialog" is on the inner panel only — the outer overlay must NOT have it,
+  // because the global [role="dialog"] CSS rule caps width to 32rem which would
+  // shrink the full-screen backdrop to ~512px and left-align it.
+  return createPortal(
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+      {/* Backdrop — click to close */}
+      <div aria-hidden="true" className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
 
-      {/* Modal panel — max-w-lg keeps it compact on desktop */}
-      <div className="relative z-10 w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col" style={{
-      maxHeight: 'min(90vh, 760px)'
-    }} onClick={e => e.stopPropagation()}>
+      {/* Modal panel — owns the dialog semantics */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="scheduler-task-dialog-title"
+        className="relative z-10 w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col"
+        style={{ maxHeight: 'min(90vh, 760px)' }}
+        onClick={e => e.stopPropagation()}
+      >
 
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 shrink-0">
@@ -370,7 +380,7 @@ function TaskModal({
             {isEdit ? <CheckSquare size={14} className="text-violet-600" /> : <Plus size={14} className="text-emerald-600" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 leading-tight">
+            <p id="scheduler-task-dialog-title" className="text-sm font-semibold text-slate-800 leading-tight">
               {isEdit ? 'Edit Task' : 'New Task'}
             </p>
             {isEdit && <p className="text-[11px] text-slate-400 truncate mt-0.5">
@@ -508,7 +518,9 @@ function TaskModal({
           </button>
         </div>
       </div>
-    </div>, document.body);
+    </div>,
+    document.body
+  );
 }
 
 // ─── Task row ─────────────────────────────────────────────────────────────────
