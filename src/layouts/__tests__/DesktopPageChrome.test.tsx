@@ -1,16 +1,16 @@
 /**
  * DesktopPageChrome.test.tsx
  * ─────────────────────────────────────────────────────────────────────────────
- * Tests for the DesktopPageChrome layout wrapper.
+ * Unit tests for the DesktopPageChrome layout wrapper.
  *
- * Scope:
+ * Ownership model:
+ *   DesktopTopBar — owned by PortalSidebar; NOT rendered by this wrapper.
+ *   DesktopDock   — NOT owned by PortalSidebar; rendered by this wrapper.
+ *
+ * Tests verify:
  *   1. Renders its children
- *   2. Renders exactly one DesktopTopBar
- *   3. Renders exactly one DesktopDock
- *
- * DesktopTopBar and DesktopDock are mocked — they have deep hook dependencies
- * (usePermissions, useNavigate, useLocation, useDriverSessionSafe, etc.) that
- * are irrelevant to what this wrapper is responsible for.
+ *   2. Renders exactly one DesktopDock
+ *   3. Does NOT render DesktopTopBar (PortalSidebar owns it)
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -41,17 +41,6 @@ describe('DesktopPageChrome', () => {
     expect(screen.getByText('Hello from child')).toBeInTheDocument();
   });
 
-  it('renders exactly one DesktopTopBar', () => {
-    render(
-      <DesktopPageChrome>
-        <span>content</span>
-      </DesktopPageChrome>,
-    );
-
-    const topBars = screen.getAllByTestId('desktop-top-bar');
-    expect(topBars).toHaveLength(1);
-  });
-
   it('renders exactly one DesktopDock', () => {
     render(
       <DesktopPageChrome>
@@ -63,15 +52,24 @@ describe('DesktopPageChrome', () => {
     expect(docks).toHaveLength(1);
   });
 
-  it('renders children alongside the chrome components', () => {
+  it('does NOT render DesktopTopBar — PortalSidebar owns it', () => {
+    render(
+      <DesktopPageChrome>
+        <span>content</span>
+      </DesktopPageChrome>,
+    );
+
+    // PortalSidebar renders DesktopTopBar; this wrapper must never add a second one.
+    expect(screen.queryByTestId('desktop-top-bar')).not.toBeInTheDocument();
+  });
+
+  it('renders children alongside DesktopDock', () => {
     render(
       <DesktopPageChrome>
         <section data-testid="page-section">Page content</section>
       </DesktopPageChrome>,
     );
 
-    // All three are present in the same render
-    expect(screen.getByTestId('desktop-top-bar')).toBeInTheDocument();
     expect(screen.getByTestId('desktop-dock')).toBeInTheDocument();
     expect(screen.getByTestId('page-section')).toBeInTheDocument();
   });
