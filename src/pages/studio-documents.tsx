@@ -22,7 +22,7 @@ import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface DocTemplate {
+export interface DocTemplate {
   id: number;
   name: string;
   template_type: string | null;
@@ -327,7 +327,7 @@ function DocRow({
 
 // ── Submissions tab ────────────────────────────────────────────────────────────
 
-function SubmissionsTab({
+export function SubmissionsTab({
   templates
 }: {
   templates: DocTemplate[];

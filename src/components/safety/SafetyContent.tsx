@@ -8,8 +8,9 @@
  *   2. Submissions        — SwmsSubmissionsTab (company sign-off register)
  *   3. SWMS               — SwmsLibraryTab + merged header actions
  *   4. Safety Plans       — SafetyPlansTab
- *   5. Policies & Docs    — PoliciesTab
- *   6. Document Library   — LibraryView (embedded, safety-filtered)
+ *   5. Policies & Docs    — PoliciesTab + App Doc template list
+ *   6. Doc Submissions    — SubmissionsTab (document template submissions)
+ *   7. Policy Library     — LibraryView (embedded, safety-filtered)
  *
  * Hidden (preserved, not deleted):
  *   Dashboard — SafetyDashboardTab (component intact, not rendered in tab strip)
@@ -20,11 +21,11 @@
  *
  * This component does NOT render PortalSidebar, Helmet, or the outer page header.
  */
-import { useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
-  FileText, ClipboardCheck, HardHat, ClipboardList, BookOpen, Library,
+  FileText, ClipboardCheck, HardHat, ClipboardList, BookOpen, Library, Inbox, Plus, FileUp, Layers,
 } from 'lucide-react';
 
 // Tab components from safety.tsx (unchanged behaviour)
@@ -38,16 +39,18 @@ import {
 import JobSwmsTab from './JobSwmsTab';
 import SwmsSubmissionsTab from './SwmsSubmissionsTab';
 import LibraryView from '../../features/library/LibraryView';
+import { SubmissionsTab, type DocTemplate } from '../../pages/studio-documents';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'documents',   label: 'Documents',         icon: FileText       },
-  { id: 'submissions', label: 'Submissions',        icon: ClipboardCheck },
-  { id: 'swms',        label: 'SWMS',               icon: HardHat        },
-  { id: 'plans',       label: 'Safety Plans',       icon: ClipboardList  },
-  { id: 'policies',    label: 'Policies & Docs',    icon: BookOpen       },
-  { id: 'library',     label: 'Document Library',   icon: Library        },
+  { id: 'documents',       label: 'Documents',       icon: FileText       },
+  { id: 'submissions',     label: 'Submissions',      icon: ClipboardCheck },
+  { id: 'swms',            label: 'SWMS',             icon: HardHat        },
+  { id: 'plans',           label: 'Safety Plans',     icon: ClipboardList  },
+  { id: 'policies',        label: 'Policies & Docs',  icon: BookOpen       },
+  { id: 'doc-submissions', label: 'Doc Submissions',  icon: Inbox          },
+  { id: 'library',         label: 'Policy Library',   icon: Library        },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -58,6 +61,7 @@ const DEFAULT_TAB: TabId = 'documents';
 
 export default function SafetyContent() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Read the safetyTab param; fall back to default.
   const rawTab = searchParams.get('safetyTab');
@@ -67,6 +71,23 @@ export default function SafetyContent() {
   // Optional jobId filter — passed through from /job-docs redirect or deep links
   const jobIdParam = searchParams.get('jobId');
   const initialJobId = jobIdParam ? Number(jobIdParam) : null;
+
+  // Doc templates — loaded once, shared between Policies & Docs and Doc Submissions tabs
+  const [templates, setTemplates] = useState<DocTemplate[]>([]);
+  const loadTemplates = useCallback(async () => {
+    try {
+      const r = await fetch('/api/document-templates', { credentials: 'include' });
+      if (!r.ok) return;
+      const d = await r.json() as { templates?: DocTemplate[] };
+      setTemplates(d.templates ?? []);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'policies' || activeTab === 'doc-submissions') {
+      void loadTemplates();
+    }
+  }, [activeTab, loadTemplates]);
 
   function setTab(id: TabId) {
     setSearchParams(
@@ -120,13 +141,79 @@ export default function SafetyContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'documents'   && <JobSwmsTab initialJobId={initialJobId} />}
-          {activeTab === 'submissions' && <SwmsSubmissionsTab />}
-          {activeTab === 'swms'        && <SwmsLibraryTab />}
-          {activeTab === 'plans'       && <SafetyPlansTab />}
-          {activeTab === 'policies'    && <PoliciesTab />}
-          {activeTab === 'library'     && (
-            <LibraryView initialTypeFilter="swms" />
+          {activeTab === 'documents'       && <JobSwmsTab initialJobId={initialJobId} />}
+          {activeTab === 'submissions'     && <SwmsSubmissionsTab />}
+          {activeTab === 'swms'            && <SwmsLibraryTab />}
+          {activeTab === 'plans'           && <SafetyPlansTab />}
+          {activeTab === 'policies'        && (
+            <>
+              {/* App Doc template list — the document building tool */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Layers size={15} className="text-primary" />
+                    <h2 className="text-sm font-bold text-slate-800">Document Templates</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => void fetch('/api/document-templates', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ name: 'Imported Document', templateType: 'custom', blocks: [], layout: {}, theme: {} }),
+                      }).then(r => r.json()).then((d: { id?: number }) => {
+                        if (d.id) navigate(`/studio/builder/${d.id}`);
+                      })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+                    >
+                      <FileUp size={13} />Import
+                    </button>
+                    <button
+                      onClick={() => navigate('/studio/builder/new')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-violet-700 text-white text-xs font-semibold transition-colors"
+                    >
+                      <Plus size={13} />New Document
+                    </button>
+                  </div>
+                </div>
+                {templates.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center bg-slate-50 rounded-xl border border-slate-200">
+                    <Layers size={20} className="text-slate-300 mb-2" />
+                    <p className="text-xs font-semibold text-slate-500">No document templates yet</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Click "New Document" to build your first policy or procedure</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {templates.map((t) => (
+                      <div
+                        key={t.id}
+                        onClick={() => navigate(`/studio/builder/${t.id}`)}
+                        className="flex items-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+                          <FileText size={14} className="text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{t.name}</p>
+                          {t.template_type && (
+                            <p className="text-xs text-slate-400 capitalize">{t.template_type.replace(/_/g, ' ')}</p>
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {t.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Existing policy files */}
+              <PoliciesTab />
+            </>
+          )}
+          {activeTab === 'doc-submissions' && <SubmissionsTab templates={templates} />}
+          {activeTab === 'library'         && (
+            <LibraryView initialTypeFilter="safety" />
           )}
         </motion.div>
       </div>

@@ -321,10 +321,10 @@ describe('Test 15 — Posters remains standalone', () => {
     expect(screen.queryByRole('tab', { name: /^Dashboard$/i })).toBeNull();
   });
 
-  it('renders exactly 6 visible tabs in the required order', () => {
+  it('renders exactly 7 visible tabs in the required order', () => {
     renderSafety();
     const expected = [
-      'Documents', 'Submissions', 'SWMS', 'Safety Plans', 'Policies & Docs', 'Document Library',
+      'Documents', 'Submissions', 'SWMS', 'Safety Plans', 'Policies & Docs', 'Doc Submissions', 'Policy Library',
     ];
     const buttons = screen.getAllByRole('tab');
     const labels = buttons.map((b) => b.textContent?.trim() ?? '');
