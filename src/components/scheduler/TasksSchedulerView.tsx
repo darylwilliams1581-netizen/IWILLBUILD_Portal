@@ -16,6 +16,7 @@
  *  - Saves via PUT /api/tasks/:id  (works for both job-linked and general tasks)
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from "react-router";
 import { CheckSquare, AlertTriangle, Loader2, AlertCircle, Calendar, User, Briefcase, ChevronDown, ChevronUp, Check, X, Clock, CircleDashed, CheckCircle2, Ban, Pencil, ExternalLink, Plus, Tag } from 'lucide-react';
 
@@ -354,7 +355,7 @@ function TaskModal({
   // Linked job display helpers
   const linkedJob = form.jobId ? jobs.find(j => j.id === form.jobId) : null;
   const linkedJobLabel = linkedJob ? linkedJob.jobNumber ? `#${linkedJob.jobNumber} · ${linkedJob.name}` : linkedJob.name : null;
-  return /* Full-screen overlay — click outside to close */<div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true" role="dialog">
+  return createPortal(/* Full-screen overlay — click outside to close */<div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true" role="dialog">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
 
@@ -507,7 +508,7 @@ function TaskModal({
           </button>
         </div>
       </div>
-    </div>;
+    </div>, document.body);
 }
 
 // ─── Task row ─────────────────────────────────────────────────────────────────
