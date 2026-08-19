@@ -121,6 +121,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Field & Files',
   items: [{
+    id: 'nav-08',
+    idx: '08',
+    label: 'Lens',
+    icon: Camera,
+    href: '/lens'
+  }, {
     id: 'nav-06',
     idx: '06',
     label: 'Plan Manager',
@@ -132,12 +138,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Files',
     icon: FolderOpen,
     href: '/files'
-  }, {
-    id: 'nav-08',
-    idx: '08',
-    label: 'Lens',
-    icon: Camera,
-    href: '/lens'
   }]
 }, {
   heading: 'Fleet',

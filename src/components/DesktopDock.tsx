@@ -42,22 +42,22 @@ const ALL_ITEMS: DockItem[] = [
   href: '/scheduler',
   color: '#10b981'
 }, {
-  label: 'Plan Manager',
-  icon: Map,
-  href: '/plan-manager',
-  color: '#06b6d4'
-},
-// ── Assets / Files ────────────────────────────────────────────────────────
-{
-  label: 'Files',
-  icon: FolderOpen,
-  href: '/files',
-  color: '#f97316'
-}, {
   label: 'Lens',
   icon: Camera,
   href: '/lens',
   color: 'hsl(var(--primary))'
+},
+// ── Assets / Files ────────────────────────────────────────────────────────
+{
+  label: 'Plan Manager',
+  icon: Map,
+  href: '/plan-manager',
+  color: '#06b6d4'
+}, {
+  label: 'Files',
+  icon: FolderOpen,
+  href: '/files',
+  color: '#f97316'
 }, {
   label: 'Fleet',
   icon: Truck,
