@@ -1,8 +1,10 @@
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
 import { createRequire } from "module";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------------------
 // Optional platform plugin loader
