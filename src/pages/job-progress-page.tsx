@@ -6,7 +6,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { TrendingUp, Loader2, Download, Save, CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList, Home } from 'lucide-react';
+import { TrendingUp, Loader2, Download, Save, CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList, Home, ArrowLeft } from 'lucide-react';
 interface Job {
   id: number;
   name: string;
