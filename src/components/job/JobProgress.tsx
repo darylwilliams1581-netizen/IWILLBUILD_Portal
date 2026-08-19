@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  RefreshCw, AlertCircle, TrendingUp, CheckSquare, Square,
+  AlertCircle, TrendingUp, CheckSquare, Square,
   Plus, ExternalLink, FileText,
 } from 'lucide-react';
 import {
   type ProgressLine, type Contractor, type PurchaseOrder,
-  lineTotal, fmt, fmtDate, TRADE_TYPES, PO_STATUS_CONFIG,
+  lineTotal, fmt, TRADE_TYPES,
   AssignmentBadge, POStatusBadge, CreatePOModal, PODetailModal,
 } from './JobProgressPOModals';
 
@@ -16,10 +16,8 @@ export default function JobProgress({ jobId }: Props) {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [syncMsg, setSyncMsg] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [tradeFilter, setTradeFilter] = useState('');
   const [showCreatePO, setShowCreatePO] = useState(false);
@@ -55,25 +53,11 @@ export default function JobProgress({ jobId }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function syncFromEstimate() {
-    if (!confirm('This will replace current progress lines with lines from the approved estimate. Continue?')) return;
-    setSyncing(true); setError(''); setSyncMsg('');
-    try {
-      const res = await fetch(`/api/jobs/${jobId}/progress/sync`, { method: 'POST', credentials: 'include' });
-      const data = await res.json() as { lines?: ProgressLine[]; estimateTitle?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Sync failed');
-      setLines(data.lines ?? []);
-      setSyncMsg(`Synced from "${data.estimateTitle}"`);
-      pendingRef.current = {};
-      setSelectedIds(new Set());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sync failed');
-    } finally {
-      setSyncing(false);
-    }
+  function completedValue(line: ProgressLine): number {
+    return lineTotal(line) * (line.percentComplete / 100);
   }
 
-  function scheduleSave() {
+  async function scheduleSave() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       const updates = Object.entries(pendingRef.current).map(([id, vals]) => ({ id: parseInt(id), ...vals }));
@@ -151,14 +135,6 @@ export default function JobProgress({ jobId }: Props) {
           <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Job Progress</h2>
           <div className="flex items-center gap-2 flex-wrap">
             {saving && <span className="text-xs text-muted-foreground">Saving…</span>}
-            <button
-              onClick={() => void syncFromEstimate()}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border hover:bg-muted disabled:opacity-40 transition-colors"
-            >
-              <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-              {syncing ? 'Syncing…' : 'Sync from Estimate'}
-            </button>
           </div>
         </div>
 
@@ -167,18 +143,15 @@ export default function JobProgress({ jobId }: Props) {
             <AlertCircle size={12} /> {error}
           </p>
         )}
-        {syncMsg && (
-          <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-3">{syncMsg}</p>
-        )}
 
         {lines.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
               <TrendingUp size={18} className="text-muted-foreground" />
             </div>
-            <p className="text-sm font-semibold text-foreground mb-1">No approved estimate yet</p>
+            <p className="text-sm font-semibold text-foreground mb-1">No progress activities yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
-              Approve an estimate on the Estimates tab, then click "Sync from Estimate" to set up progress tracking.
+              Open the Program of Works to add and manage progress activities for this job.
             </p>
           </div>
         ) : (

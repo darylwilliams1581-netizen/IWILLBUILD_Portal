@@ -39,10 +39,18 @@ export default async function handler(_req: Request, res: Response) {
           rate VARCHAR(30) NOT NULL DEFAULT '0',
           percent_complete INT NOT NULL DEFAULT 0,
           progress_note TEXT,
+          assignment_type VARCHAR(20) NULL,
+          assigned_to_name VARCHAR(255) NULL,
+          contractor_id INT NULL,
+          trade_type VARCHAR(100) NULL,
+          start_date DATE NULL,
+          end_date DATE NULL,
+          sort_order INT NOT NULL DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
-          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+          INDEX idx_progress_company_job_order (company_id, job_id, sort_order, id)
         )
       `);
       results.push('job_progress_lines: OK');

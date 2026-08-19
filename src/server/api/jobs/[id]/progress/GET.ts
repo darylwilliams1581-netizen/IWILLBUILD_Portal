@@ -27,7 +27,8 @@ export default async function handler(req: Request, res: Response) {
       .select()
       .from(jobProgressLines)
       .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      .orderBy(asc(jobProgressLines.id));
+      // Primary: saved sort_order; secondary: id for deterministic ordering of rows with equal sort_order (e.g. all-zero on first load)
+      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
 
     res.json({ lines });
   } catch (err) {

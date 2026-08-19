@@ -1466,6 +1466,10 @@ async function runStartupMigrations() {
     { table: 'job_progress_lines', column: 'assigned_to_name', definition: 'VARCHAR(255) NULL' },
     { table: 'job_progress_lines', column: 'contractor_id',    definition: 'INT NULL' },
     { table: 'job_progress_lines', column: 'trade_type',       definition: 'VARCHAR(100) NULL' },
+    // ── job_progress_lines: Program of Works scheduling fields ────────────────
+    { table: 'job_progress_lines', column: 'start_date',  definition: 'DATE NULL' },
+    { table: 'job_progress_lines', column: 'end_date',    definition: 'DATE NULL' },
+    { table: 'job_progress_lines', column: 'sort_order',  definition: 'INT NOT NULL DEFAULT 0' },
     // ── job_form_submissions: external share fields ───────────────────────────
     { table: 'job_form_submissions', column: 'submitted_at',              definition: 'DATETIME NULL' },
     { table: 'job_form_submissions', column: 'external_submitter_name',   definition: 'VARCHAR(255) NULL' },
@@ -1709,8 +1713,25 @@ async function runStartupMigrations() {
     }
   }
 
-  // ── 2b. Make job_todos.job_id nullable (general tasks support) ───────────────
-  // This is an ALTER COLUMN (not ADD COLUMN) so it can't go through colsToEnsure.
+  // ── 2b. Add composite index on job_progress_lines (company, job, sort_order, id) ──
+  // Idempotent: check INFORMATION_SCHEMA before creating.
+  try {
+    const idxRows = await db.execute(sql.raw(
+      "SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS " +
+      "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_progress_lines' " +
+      "AND INDEX_NAME = 'idx_progress_company_job_order'"
+    )) as unknown as [Array<Record<string, unknown>>, unknown];
+    if (!idxRows[0]?.length) {
+      await db.execute(sql.raw(
+        "CREATE INDEX idx_progress_company_job_order ON job_progress_lines (company_id, job_id, sort_order, id)"
+      ));
+      console.log('[startup-migration] Created idx_progress_company_job_order');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] Could not create idx_progress_company_job_order:', migrationErrMsg(e));
+  }
+
+  // ── 2c. Make job_todos.job_id nullable (general tasks support) ───────────────
   // We check the current IS_NULLABLE state and only run if still NOT NULL.
   try {
     const colInfo = await db.execute(sql.raw(

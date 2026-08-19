@@ -71,6 +71,7 @@ export default function JobProgressPage() {
   const [reportDirty, setReportDirty] = useState(false);
   const [reportSaving, setReportSaving] = useState(false);
   const [reportSaved, setReportSaved] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   useEffect(() => {
     if (!id) {
       setLoading(false);
@@ -112,17 +113,17 @@ export default function JobProgressPage() {
     }));
     setReportDirty(true);
     setReportSaved(false);
+    setReportError(null);
   }
   const saveReport = async () => {
     if (!reportDirty) return;
     setReportSaving(true);
+    setReportError(null);
     try {
-      await fetch(`/api/jobs/${id}/progress/report`, {
+      const res = await fetch(`/api/jobs/${id}/progress/report`, {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prepared_by: report.prepared_by,
           report_date: report.report_date || null,
@@ -130,19 +131,34 @@ export default function JobProgressPage() {
           period_to: report.period_to || null,
           achievements: report.achievements,
           planned_next: report.planned_next,
-          outstanding_issues: report.outstanding_issues
-        })
+          outstanding_issues: report.outstanding_issues,
+        }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Save failed (${res.status})`);
+      }
       setReportDirty(false);
       setReportSaved(true);
       setTimeout(() => setReportSaved(false), 2500);
-    } catch {/* silent */} finally {
+    } catch (e) {
+      // Keep dirty so the user knows the save did not succeed
+      setReportError(e instanceof Error ? e.message : 'Failed to save report');
+    } finally {
       setReportSaving(false);
     }
   };
   const exportPdf = async () => {
-    // Auto-save report first so PDF has latest data
-    if (reportDirty) await saveReport();
+    // Auto-save report first so PDF has latest data.
+    // If the save fails, abort PDF generation — do not use stale data.
+    if (reportDirty) {
+      await saveReport();
+      // saveReport sets reportError on failure and keeps reportDirty=true
+      if (reportDirty) {
+        // Still dirty means save failed — abort
+        return;
+      }
+    }
     setExportingPdf(true);
     try {
       const res = await fetch(`/api/jobs/${id}/progress/report/pdf`, {
@@ -195,21 +211,21 @@ export default function JobProgressPage() {
       const res = await fetch(`/api/jobs/${id}/progress`, {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          updates
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates })
       });
-      const data = (await res.json()) as {
-        lines?: ProgressLine[];
-      };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Save failed (${res.status})`);
+      }
+      const data = (await res.json()) as { lines?: ProgressLine[] };
       if (data.lines) setLines(data.lines);
       setDirty(new Map());
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch {/* silent */} finally {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save progress');
+    } finally {
       setSaving(false);
     }
   };
@@ -330,6 +346,12 @@ export default function JobProgressPage() {
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
         }}>
+              {reportError && (
+                <div className="flex items-center gap-2 mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  {reportError}
+                </div>
+              )}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
                 <ClipboardList size={14} className="text-cyan-500" />
                 <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Report Details</span>

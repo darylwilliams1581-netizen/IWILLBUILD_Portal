@@ -506,6 +506,10 @@ export const jobProgressLines = mysqlTable('job_progress_lines', {
   rate: varchar('rate', { length: 30 }).notNull().default('0'),
   percentComplete: int('percent_complete').notNull().default(0), // 0-100
   progressNote: text('progress_note'),
+  // Program of Works scheduling fields (additive — existing rows default to null/0)
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  sortOrder: int('sort_order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
