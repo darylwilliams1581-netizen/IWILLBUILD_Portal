@@ -21,9 +21,14 @@ export default function TakeoffPadPage() {
       {/* Content area — portal-content handles sidebar + topbar offsets */}
       <div className="portal-content">
         {/* Page header */}
-        <div className="op-page-header mb-6">
-          <ClipboardList size={14} className="text-primary shrink-0" />
-          <h1 className="op-page-title flex-1 min-w-0">Take-off Pad</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
+            <ClipboardList size={18} className="text-violet-600" />
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs font-medium leading-tight">Estimating</p>
+            <h1 className="text-foreground font-bold text-xl leading-tight">Take-off Pad</h1>
+          </div>
         </div>
 
         {/* Tool */}

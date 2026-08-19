@@ -103,11 +103,21 @@ export default function WorkPage() {
       <div className="portal-content flex flex-col h-[100dvh] overflow-hidden bg-background">
 
         {/* ── Header ── */}
-        <header className="shrink-0 bg-background">
-          {/* Title row — matches op-page-header height/padding */}
-          <div className="op-page-header">
-            <Briefcase size={14} className="text-primary shrink-0" />
-            <h1 className="op-page-title flex-1 min-w-0">Work</h1>
+        <header className="shrink-0 border-b border-border bg-background">
+          {/* Top row: title + New Job */}
+          <div className="flex items-center justify-between px-4 py-3 gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Briefcase size={16} className="text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-base font-bold text-foreground leading-tight">Work</h1>
+                <p className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
+                  Company-wide register
+                </p>
+              </div>
+            </div>
+
             {/* Sidebar owns + New Job on desktop (lg+); show here only on mobile/tablet */}
             {!isViewOnly && (
               <button
@@ -123,7 +133,7 @@ export default function WorkPage() {
 
           {/* Tab nav */}
           <nav
-            className="flex overflow-x-auto scrollbar-none border-b border-border"
+            className="flex overflow-x-auto scrollbar-none border-t border-border"
             aria-label="Work sections"
           >
             {TABS.map((tab) => {
