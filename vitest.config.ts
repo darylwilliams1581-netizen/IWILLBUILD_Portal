@@ -28,6 +28,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
+    env: {
+      // Provide a dummy secret so auth.ts does not throw during handler unit tests.
+      // The real secret is never used in tests — auth is mocked at the po-auth layer.
+      BETTER_AUTH_SECRET: 'test-secret-for-vitest-only-not-production',
+    },
     pool: 'forks',
     maxConcurrency: 5,
     coverage: {

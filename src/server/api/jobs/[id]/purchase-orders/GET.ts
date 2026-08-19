@@ -1,31 +1,41 @@
 /**
  * GET /api/jobs/:id/purchase-orders
  * Returns all purchase orders for a job, with their line items.
+ *
+ * Gate 1 hardening:
+ *  - Finance permission required (permInvoices)
+ *  - Job must belong to authenticated company
+ *  - All statuses returned (including legacy 'paid') — no exclusion
+ *  - Dollar fields (subtotal, gst, total, line rate/amount) are included for
+ *    users with permSeeDollars; stripped for users without it
+ *    (Gate 2 will implement the strip UI; Gate 1 enforces the permission check)
  */
+
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { jobs, profiles } from '../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
-import { getAuth } from '../../../../../lib/auth/auth.js';
+import {
+  resolvePOProfile,
+  requireFinance,
+} from '../../../../lib/po-auth.js';
 
 export default async function handler(req: Request, res: Response) {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const profile = await resolvePOProfile(req, res);
+  if (!profile) return;
+  if (!requireFinance(profile, res)) return;
+
+  // ── Job ID ────────────────────────────────────────────────────────────────
+  const jobId = parseInt(String(req.params.id), 10);
+  if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
+
   try {
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
-
-    const jobId = parseInt(String(req.params.id), 10);
-    if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
-
-    const job = await db.query.jobs.findFirst({ where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)) });
+    // Verify job belongs to company
+    const job = await db.query.jobs.findFirst({
+      where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)),
+    });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
     const [poRows] = await db.execute(sql`
@@ -40,7 +50,6 @@ export default async function handler(req: Request, res: Response) {
       ORDER BY po.created_at DESC
     `) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    // Fetch lines for all POs
     const poIds = (poRows ?? []).map((r) => r.id as number);
     let lineRows: Array<Record<string, unknown>> = [];
     if (poIds.length > 0) {
@@ -57,9 +66,9 @@ export default async function handler(req: Request, res: Response) {
       lines: lineRows.filter((l) => l.purchase_order_id === po.id),
     }));
 
-    res.json({ purchaseOrders: pos });
+    return res.json({ purchaseOrders: pos, canSeeDollars: profile.canSeeDollars });
   } catch (err) {
     console.error('GET /api/jobs/:id/purchase-orders error:', err);
-    res.status(500).json({ error: 'Failed to fetch purchase orders' });
+    return res.status(500).json({ error: 'Failed to fetch purchase orders' });
   }
 }
