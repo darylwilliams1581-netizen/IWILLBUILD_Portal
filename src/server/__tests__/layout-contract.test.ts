@@ -238,16 +238,59 @@ describe('+ New Job ownership — sidebar vs page header', () => {
   });
 });
 
-// ── Routes excluded from office shell ────────────────────────────────────────
+// ── Estimating tools — now inside the office shell ───────────────────────────
 
-describe('Routes intentionally outside the office shell', () => {
-  it('builders-calc-page does not render PortalSidebar (standalone tool)', async () => {
+describe('Estimating tool pages — portal shell', () => {
+  it('builders-calc-page renders PortalSidebar (consistent with system)', async () => {
     const src = await readSrc('src/pages/builders-calc-page.tsx');
-    expect(src).not.toContain('PortalSidebar');
+    expect(src).toContain('PortalSidebar');
   });
 
-  it('takeoff-pad-page does not render PortalSidebar (standalone tool)', async () => {
+  it('builders-calc-page renders DesktopDock', async () => {
+    const src = await readSrc('src/pages/builders-calc-page.tsx');
+    expect(src).toContain('DesktopDock');
+  });
+
+  it('builders-calc-page uses portal-page + portal-content layout', async () => {
+    const src = await readSrc('src/pages/builders-calc-page.tsx');
+    expect(src).toContain('portal-page');
+    expect(src).toContain('portal-content');
+  });
+
+  it('builders-calc-page does NOT render DesktopTopBar directly (PortalSidebar owns it)', async () => {
+    const src = await readSrc('src/pages/builders-calc-page.tsx');
+    expect(src).not.toContain('<DesktopTopBar');
+  });
+
+  it('builders-calc-page does NOT use standalone min-h-screen shell', async () => {
+    const src = await readSrc('src/pages/builders-calc-page.tsx');
+    // Old standalone pattern used min-h-screen as root — should be gone
+    expect(src).not.toMatch(/className="min-h-screen[^"]*flex flex-col"/);
+  });
+
+  it('takeoff-pad-page renders PortalSidebar (consistent with system)', async () => {
     const src = await readSrc('src/pages/takeoff-pad-page.tsx');
-    expect(src).not.toContain('PortalSidebar');
+    expect(src).toContain('PortalSidebar');
+  });
+
+  it('takeoff-pad-page renders DesktopDock', async () => {
+    const src = await readSrc('src/pages/takeoff-pad-page.tsx');
+    expect(src).toContain('DesktopDock');
+  });
+
+  it('takeoff-pad-page uses portal-page + portal-content layout', async () => {
+    const src = await readSrc('src/pages/takeoff-pad-page.tsx');
+    expect(src).toContain('portal-page');
+    expect(src).toContain('portal-content');
+  });
+
+  it('takeoff-pad-page does NOT render DesktopTopBar directly (PortalSidebar owns it)', async () => {
+    const src = await readSrc('src/pages/takeoff-pad-page.tsx');
+    expect(src).not.toContain('<DesktopTopBar');
+  });
+
+  it('takeoff-pad-page does NOT use standalone min-h-screen shell', async () => {
+    const src = await readSrc('src/pages/takeoff-pad-page.tsx');
+    expect(src).not.toMatch(/className="min-h-screen[^"]*flex flex-col"/);
   });
 });
