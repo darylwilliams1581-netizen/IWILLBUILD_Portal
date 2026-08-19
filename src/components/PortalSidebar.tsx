@@ -100,6 +100,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     icon: LayoutDashboard,
     href: '/home'
   }, {
+    id: 'nav-04',
+    idx: '04',
+    label: 'Scheduler',
+    icon: CalendarDays,
+    href: '/scheduler'
+  }, {
     id: 'nav-12',
     idx: '12',
     label: 'Contacts',
@@ -120,12 +126,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Job Cards',
     icon: Zap,
     href: '/job-cards'
-  }, {
-    id: 'nav-04',
-    idx: '04',
-    label: 'Scheduler',
-    icon: CalendarDays,
-    href: '/scheduler'
   }, {
     id: 'nav-w1',
     idx: 'w1',
@@ -579,14 +579,10 @@ function DesktopSidebarContent({
               {visibleItems.map(item => {
             const Icon = item.icon;
             const active = isActive(item.href);
-            // Tooltip shows "01 Dashboard" in both expanded and collapsed states
-            // TEMPORARY: index prefix — remove after Daryl approves final arrangement
-            const tooltip = `${item.idx} ${item.label}`;
+            const tooltip = item.label;
             return <Link key={item.id} to={item.href} aria-current={active ? 'page' : undefined} aria-label={collapsed ? tooltip : undefined} title={tooltip} className={linkCls(active)}>
                     <Icon size={15} className="shrink-0" aria-hidden="true" />
                     {!collapsed && <span className="truncate flex-1 text-[13px]">
-                        {/* TEMPORARY index prefix — remove after Daryl approves final arrangement */}
-                        <span className="text-[10px] font-mono text-gray-300 mr-1.5 select-none">{item.idx}</span>
                         {item.label}
                       </span>}
                   </Link>;
