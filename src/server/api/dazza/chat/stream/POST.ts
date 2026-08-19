@@ -186,17 +186,25 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    res.end();
-
   } catch (err) {
     const msg = String((err as Error)?.message ?? err);
     console.error('[dazza/chat/stream] error:', msg);
     if (!res.headersSent) {
+      // SSE headers not yet sent — respond with a plain HTTP error
       return res.status(500).json({ error: msg });
     }
-    try {
-      res.write(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`);
+    // SSE connection is already open — emit a structured error event so the
+    // client's existing 'error' handler fires instead of seeing a silent drop.
+    if (!res.writableEnded) {
+      sseWrite(res, {
+        type: 'error',
+        message: msg,
+        ...(conversationId ? { conversationId } : {}),
+      });
+    }
+  } finally {
+    if (!res.writableEnded) {
       res.end();
-    } catch { /* already closed */ }
+    }
   }
 }
