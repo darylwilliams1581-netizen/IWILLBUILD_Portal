@@ -444,44 +444,7 @@ export default function JobDetailsDashboard({
               </div>
             </div>}
 
-          {/* Quick nav links */}
-          <div className="bg-white rounded-xl border border-border p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Quick Access</h3>
-            <div className="flex flex-col gap-1">
-              {([{
-              label: 'Tasks',
-              tab: 'tasks',
-              icon: CheckSquare
-            }, {
-              label: 'Notes',
-              tab: 'notes',
-              icon: FileText
-            }, {
-              label: 'Costs',
-              tab: 'costs',
-              icon: DollarSign
-            }, {
-              label: 'Progress',
-              tab: 'progress',
-              icon: Clock
-            }, {
-              label: 'Safety',
-              tab: 'safety',
-              icon: AlertCircle
-            }, {
-              label: 'Attendance',
-              tab: 'attendance',
-              icon: UserCircle
-            }] as const).map(({
-              label,
-              tab,
-              icon: Icon
-            }) => <button key={tab} onClick={() => onTabSwitch(tab)} className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-left w-full">
-                  <Icon size={13} className="shrink-0 text-primary" />
-                  {label}
-                </button>)}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>;
