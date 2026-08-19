@@ -12,7 +12,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from "react-router";
 import { createPortal } from 'react-dom';
-import { HardHat, Zap, Calculator, Receipt, CalendarDays, FileText, ClipboardList, BookOpen, Truck, Map, ShieldCheck, Users, UserCircle, TableProperties, ScrollText, Link2, Building2, FolderOpen, LayoutDashboard, AlertCircle, FileStack, History } from 'lucide-react';
+import { HardHat, Zap, Calculator, Receipt, CalendarDays, FileText, ClipboardList, BookOpen, Truck, Map, ShieldCheck, Users, UserCircle, TableProperties, ScrollText, Link2, Building2, FolderOpen, LayoutDashboard, AlertCircle, History } from 'lucide-react';
 
 // ── Module definitions ────────────────────────────────────────────────────────
 interface LauncherModule {
@@ -156,12 +156,6 @@ const LAUNCHER_MODULES: LauncherModule[] = [
   href: '/quick-links',
   color: '#6366f1',
   bg: '#eef2ff'
-}, {
-  label: 'Job Field Docs',
-  icon: FileStack,
-  href: '/safety?safetyTab=documents',
-  color: '#0891b2',
-  bg: '#ecfeff'
 }, {
   label: 'Sign-in History',
   icon: History,

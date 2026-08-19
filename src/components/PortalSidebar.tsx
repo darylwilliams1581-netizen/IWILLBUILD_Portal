@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, Menu, X, ShieldCheck, CreditCard, AlertTriangle, CalendarDays, Users, Receipt, Bot, PanelLeftClose, PanelLeftOpen, Zap, AlertCircle,
 // Desktop sidebar icons
-Map, FileStack, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert } from 'lucide-react';
+Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -172,12 +172,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Safety',
   items: [{
-    id: 'nav-05',
-    idx: '05',
-    label: 'Field Docs',
-    icon: FileStack,
-    href: '/safety?safetyTab=documents'
-  }, {
     id: 'nav-18',
     idx: '18',
     label: 'Forms',

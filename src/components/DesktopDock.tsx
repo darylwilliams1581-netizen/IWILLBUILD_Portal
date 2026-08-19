@@ -9,7 +9,7 @@
 import React from 'react';
 import { useLocation, Link } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
-import { Camera, LayoutDashboard, HardHat, Zap, Calculator, Receipt, CalendarDays, FileText, ClipboardList, BookOpen, FolderOpen, Map, ShieldCheck, AlertCircle, Building2, Users, TableProperties, ScrollText, Link2, FileStack, History, Truck, ShieldAlert, TriangleAlert, UserCircle, CreditCard, HelpCircle } from 'lucide-react';
+import { Camera, LayoutDashboard, HardHat, Zap, Calculator, Receipt, CalendarDays, FileText, ClipboardList, BookOpen, FolderOpen, Map, ShieldCheck, AlertCircle, Building2, Users, TableProperties, ScrollText, Link2, History, Truck, ShieldAlert, TriangleAlert, UserCircle, CreditCard, HelpCircle } from 'lucide-react';
 interface DockItem {
   label: string;
   icon: React.ElementType;
@@ -36,11 +36,6 @@ const ALL_ITEMS: DockItem[] = [
   icon: Zap,
   href: '/job-cards',
   color: '#f59e0b'
-}, {
-  label: 'Field Docs',
-  icon: FileStack,
-  href: '/safety?safetyTab=documents',
-  color: '#8b5cf6'
 }, {
   label: 'Scheduler',
   icon: CalendarDays,
