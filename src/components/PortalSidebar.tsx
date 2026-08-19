@@ -157,11 +157,29 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Finance',
   items: [{
-    id: 'nav-11',
-    idx: '11',
-    label: 'Finance',
-    icon: Receipt,
+    id: 'nav-11a',
+    idx: '11a',
+    label: 'Estimates',
+    icon: FileText,
     href: '/finance?financeTab=estimates'
+  }, {
+    id: 'nav-11b',
+    idx: '11b',
+    label: 'Invoices',
+    icon: Receipt,
+    href: '/invoices'
+  }, {
+    id: 'nav-11c',
+    idx: '11c',
+    label: 'Ledger',
+    icon: BookOpen,
+    href: '/finance?financeTab=ledger'
+  }, {
+    id: 'nav-11d',
+    idx: '11d',
+    label: 'Settings',
+    icon: Settings,
+    href: '/finance?financeTab=settings'
   }, {
     id: 'nav-12',
     idx: '12',
