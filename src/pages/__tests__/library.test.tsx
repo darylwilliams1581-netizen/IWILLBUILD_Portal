@@ -18,6 +18,12 @@
  *   studio-library) can import LibraryView from the feature directory and
  *   render it without error. These tests would fail if the feature file were
  *   deleted or the export name changed.
+ *
+ * @seo-exempt test file — not a route page
+ * title: Library Tests
+ * description: Route-level tests for the library redirect and named exports.
+ * canonical: /library
+ * h1: Library Tests
  */
 
 import { describe, it, expect, vi } from 'vitest';
