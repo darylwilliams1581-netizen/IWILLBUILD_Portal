@@ -3,7 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, Menu, X, ShieldCheck, CreditCard, AlertTriangle, CalendarDays, Users, Receipt, Bot, PanelLeftClose, PanelLeftOpen, Zap, AlertCircle,
 // Desktop sidebar icons
-Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert } from 'lucide-react';
+Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert,
+// Work section icons
+Plus, CheckSquare, StickyNote, Clock, TrendingUp, Wrench } from 'lucide-react';
+import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -123,6 +126,48 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Scheduler',
     icon: CalendarDays,
     href: '/scheduler'
+  }, {
+    id: 'nav-w1',
+    idx: 'w1',
+    label: 'Tasks',
+    icon: CheckSquare,
+    href: '/work/tasks'
+  }, {
+    id: 'nav-w2',
+    idx: 'w2',
+    label: 'Notes',
+    icon: StickyNote,
+    href: '/work/notes'
+  }, {
+    id: 'nav-w3',
+    idx: 'w3',
+    label: 'Delays',
+    icon: Clock,
+    href: '/work/delays'
+  }, {
+    id: 'nav-w4',
+    idx: 'w4',
+    label: 'Progress',
+    icon: TrendingUp,
+    href: '/work/progress'
+  }, {
+    id: 'nav-w5',
+    idx: 'w5',
+    label: 'Attendance',
+    icon: Users,
+    href: '/work/attendance'
+  }, {
+    id: 'nav-w6',
+    idx: 'w6',
+    label: 'Builders Calc',
+    icon: Wrench,
+    href: '/builders-calc'
+  }, {
+    id: 'nav-w7',
+    idx: 'w7',
+    label: 'Takeoff Pad',
+    icon: TableProperties,
+    href: '/takeoff-pad'
   }]
 }, {
   heading: 'Field & Files',
@@ -426,6 +471,7 @@ function DesktopSidebarContent({
   onToggleCollapse: () => void;
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     isAdmin,
     isOwner,
@@ -437,7 +483,16 @@ function DesktopSidebarContent({
   const companyLogoUrl = useCompanyLogo();
   const companyName = me?.company?.name ?? 'Portal';
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
-  const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/');
+  const [newJobOpen, setNewJobOpen] = useState(false);
+  const isActive = (href: string) => {
+    // For hrefs with query params (e.g. /finance?financeTab=estimates),
+    // match pathname only — never compare pathname to the full href string.
+    const [hrefPath] = href.split('?');
+    if (href.includes('?')) {
+      return location.pathname === hrefPath;
+    }
+    return location.pathname === hrefPath || location.pathname.startsWith(hrefPath + '/');
+  };
   async function handleLogout() {
     try {
       invalidateMeCache();
@@ -479,6 +534,23 @@ function DesktopSidebarContent({
       <div className={`flex shrink-0 border-b border-gray-100 ${collapsed ? 'justify-center py-1.5' : 'justify-end px-2 py-1.5'}`}>
         <button onClick={onToggleCollapse} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
           {collapsed ? <PanelLeftOpen size={15} aria-hidden="true" /> : <PanelLeftClose size={15} aria-hidden="true" />}
+        </button>
+      </div>
+
+      {/* ── + New Job button ── */}
+      <div className={`shrink-0 px-2 py-2 border-b border-gray-100 ${collapsed ? 'flex justify-center px-0' : ''}`}>
+        <button
+          onClick={() => setNewJobOpen(true)}
+          title="New Job"
+          aria-label="New Job"
+          className={`flex items-center gap-2 bg-primary hover:bg-violet-700 active:bg-violet-800 text-white font-bold rounded-lg transition-colors ${
+            collapsed
+              ? 'w-10 h-10 justify-center mx-1'
+              : 'w-full px-3 py-2 text-[13px]'
+          }`}
+        >
+          <Plus size={14} className="shrink-0" aria-hidden="true" />
+          {!collapsed && <span>+ New Job</span>}
         </button>
       </div>
 
@@ -539,6 +611,16 @@ function DesktopSidebarContent({
 
         <SidebarUserStrip sessionUser={me?.user ?? null} me={me} collapsed={collapsed} />
       </div>
+
+      {/* ── New Job modal ── */}
+      <NewJobModal
+        open={newJobOpen}
+        onClose={() => setNewJobOpen(false)}
+        onCreated={(job) => {
+          setNewJobOpen(false);
+          navigate(`/jobs/${job.id}`);
+        }}
+      />
     </div>;
 }
 
