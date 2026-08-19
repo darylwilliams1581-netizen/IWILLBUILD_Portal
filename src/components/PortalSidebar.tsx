@@ -121,12 +121,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Field & Files',
   items: [{
-    id: 'nav-05',
-    idx: '05',
-    label: 'Field Docs',
-    icon: FileStack,
-    href: '/job-docs'
-  }, {
     id: 'nav-06',
     idx: '06',
     label: 'Plan Manager',
@@ -178,6 +172,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Safety',
   items: [{
+    id: 'nav-05',
+    idx: '05',
+    label: 'Field Docs',
+    icon: FileStack,
+    href: '/job-docs'
+  }, {
     id: 'nav-18',
     idx: '18',
     label: 'Forms',
