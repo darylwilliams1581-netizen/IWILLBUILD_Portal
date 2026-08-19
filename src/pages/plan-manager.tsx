@@ -127,31 +127,24 @@ export default function PlanManagerPage() {
 
         <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
           {/* Page header */}
-          <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
-            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
-              <Map size={18} className="text-violet-600" />
-            </div>
-            <div>
-              <h1 className="text-base md:text-lg font-bold text-slate-900">Plan Manager</h1>
-              <p className="text-xs text-slate-500 hidden sm:block">Browse and manage drawings across all jobs</p>
-            </div>
-
-            <div className="flex-1" />
+          <div className="op-page-header shrink-0">
+            <Map size={14} className="text-primary shrink-0" />
+            <h1 className="op-page-title flex-1 min-w-0">Plan Manager</h1>
 
             {/* Upload Plan — primary action */}
-            <button onClick={() => setUploadOpen(true)} className="flex items-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold transition-colors shrink-0">
-              <Upload size={15} />
+            <button onClick={() => setUploadOpen(true)} className="flex items-center gap-1.5 min-h-[30px] px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-colors shrink-0">
+              <Upload size={13} />
               <span className="hidden sm:inline">Upload Plan</span>
               <span className="sm:hidden">Upload</span>
             </button>
 
             {/* Tabs */}
-            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
-              <button onClick={() => setTab('active')} className={['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors', tab === 'active' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                <Layers size={12} /> Active
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+              <button onClick={() => setTab('active')} className={['flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors', tab === 'active' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                <Layers size={11} /> Active
               </button>
-              <button onClick={() => setTab('archived')} className={['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors', tab === 'archived' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                <Archive size={12} /> Archived
+              <button onClick={() => setTab('archived')} className={['flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors', tab === 'archived' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                <Archive size={11} /> Archived
               </button>
             </div>
           </div>

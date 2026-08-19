@@ -80,14 +80,9 @@ export default function FinancePage() {
 
       <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
-          <div className="w-9 h-9 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-            <DollarSign size={18} className="text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground leading-tight">Finance</h1>
-            <p className="text-xs text-muted-foreground">Company-wide estimates, invoices and costs</p>
-          </div>
+        <div className="op-page-header shrink-0">
+          <DollarSign size={14} className="text-primary shrink-0" />
+          <h1 className="op-page-title flex-1 min-w-0">Finance</h1>
         </div>
 
         {/* ── Tab strip ───────────────────────────────────────────────────── */}

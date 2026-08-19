@@ -874,21 +874,26 @@ textarea {
 }
 
 /* ── op-page-header ──────────────────────────────────────────────────────────
-   Tight one-row page header for desktop portal pages.
-   Contains: back button | icon + title | right-side actions.
-   Mobile: unchanged (uses its own h-16 header).
+   Tight one-row page header for portal pages.
+   Base: works at all breakpoints (mobile-first).
+   md+: locks to --op-header-h (44px) for desktop consistency.
 */
+.op-page-header {
+  background: var(--op-surface);
+  border-bottom: 1px solid var(--op-border);
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 1rem;   /* 10px 16px — comfortable on mobile */
+  gap: 0.5rem;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
 @media (min-width: 768px) {
   .op-page-header {
     height: var(--op-header-h);
     min-height: var(--op-header-h);
-    background: var(--op-surface);
-    border-bottom: 1px solid var(--op-border);
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    gap: 0.5rem;
-    flex-shrink: 0;
+    padding: 0 1rem;          /* tighter on desktop — height does the work */
   }
 
   .op-page-title {
@@ -908,6 +913,24 @@ textarea {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+}
+
+.op-page-title {
+  font-size: 0.9375rem;      /* 15px on mobile */
+  font-weight: 700;
+  color: var(--op-text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.op-page-subtitle {
+  font-size: 0.75rem;        /* 12px on mobile */
+  color: var(--op-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── op-toolbar ──────────────────────────────────────────────────────────────

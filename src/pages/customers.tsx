@@ -491,22 +491,20 @@ export default function CustomersPage() {
 
       <div className="portal-content">
         {/* Page header */}
-        <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
-            <Link to="/home" className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" aria-label="Back to home">
-              <ArrowLeft size={18} />
-            </Link>
-            <div>
-              <h1 className="font-heading font-bold text-base text-foreground">Contacts</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
-              </p>
-            </div>
-          </div>
+        <div className="op-page-header mb-4">
+          <Users size={14} className="text-primary shrink-0" />
+          <h1 className="op-page-title flex-1 min-w-0">
+            Contacts
+            {(activeCount > 0 || archivedCount > 0) && (
+              <span className="ml-2 text-[11px] bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded">
+                {activeCount}
+              </span>
+            )}
+          </h1>
           <button onClick={() => {
-          setEditing(null);
-          setShowModal(true);
-        }} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            setEditing(null);
+            setShowModal(true);
+          }} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             <Plus size={15} />
             <span className="hidden sm:inline">+ New Contact</span>
             <span className="sm:hidden">Add</span>
