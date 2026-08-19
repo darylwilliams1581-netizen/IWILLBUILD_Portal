@@ -142,11 +142,17 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Fleet',
   items: [{
-    id: 'nav-09',
-    idx: '09',
-    label: 'Fleet',
+    id: 'nav-09a',
+    idx: '09a',
+    label: 'Assets',
     icon: Truck,
-    href: '/fleet'
+    href: '/fleet?fleetView=assets'
+  }, {
+    id: 'nav-09b',
+    idx: '09b',
+    label: 'Live Map',
+    icon: Map,
+    href: '/fleet?fleetView=live-map'
   }, {
     id: 'nav-10',
     idx: '10',

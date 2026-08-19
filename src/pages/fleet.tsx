@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate, useLocation } from "react-router";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Truck, Plus, Search, AlertTriangle, Loader2, ChevronRight, Archive as _Archive, Wrench as _Wrench, XCircle as _XCircle, Menu as _Menu, X, AlertCircle, CheckCircle2, ArrowLeft, Navigation, ClipboardCheck } from 'lucide-react';
@@ -219,6 +219,19 @@ export default function FleetPage() {
   const [showDriveModal, setShowDriveModal] = useState(false);
   const [successName, setSuccessName] = useState('');
   const [view, setView] = useState<'assets' | 'live-map'>('assets');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sync view with ?fleetView= URL param so sidebar links can deep-link
+  useEffect(() => {
+    const param = searchParams.get('fleetView');
+    if (param === 'live-map') setView('live-map');
+    else if (param === 'assets') setView('assets');
+  }, [searchParams]);
+
+  function switchView(v: 'assets' | 'live-map') {
+    setView(v);
+    setSearchParams({ fleetView: v }, { replace: true });
+  }
   const {
     isViewOnly
   } = useViewOnly();
@@ -308,11 +321,11 @@ export default function FleetPage() {
             {/* Centre: toggle pill — flex-1 so it takes remaining space, never overlaps */}
             <div className="flex-1 flex items-center justify-center min-w-0">
               <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-1 border border-slate-200">
-                <button onClick={() => setView('assets')} title="Assets list" className={['flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap', view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                <button onClick={() => switchView('assets')} title="Assets list" className={['flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap', view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
                   <Truck size={12} />
                   <span>Assets</span>
                 </button>
-                <button onClick={() => setView('live-map')} title="Live GPS map" className={['flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap', view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                <button onClick={() => switchView('live-map')} title="Live GPS map" className={['flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap', view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
                   <Navigation size={12} />
                   <span>Live Map</span>
                 </button>
