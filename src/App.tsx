@@ -1,18 +1,13 @@
 // v19 2026-07-20 — StaleShimBoundary above RouterProvider to catch removeChild NotFoundError
 import { Component, type ReactNode, lazy, Suspense, useMemo, useEffect } from 'react';
-import {
-  Outlet,
-  RouterProvider,
-  createBrowserRouter,
-  type RouteObject,
-  useLocation,
-} from 'react-router-dom';
-
+import { Outlet, createBrowserRouter, type RouteObject, useLocation } from "react-router";
+import { RouterProvider } from "react-router/dom";
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import RootLayout from './layouts/RootLayout';
 import { routes } from './routes';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import CapacitorInit from '@/components/CapacitorInit';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 import { recordRouteChange } from '@/lib/diagnosticCapture';
 
 // ── Route change tracker ──────────────────────────────────────────────────────
@@ -23,13 +18,12 @@ function RouteChangeTracker() {
   }, [location.pathname]);
   return null;
 }
-
-const CookieBanner = lazy(() =>
-  import('@/components/CookieBanner').catch((error) => {
-    console.warn('Failed to load CookieBanner:', error);
-    return { default: () => null };
-  })
-);
+const CookieBanner = lazy(() => import('@/components/CookieBanner').catch(error => {
+  console.warn('Failed to load CookieBanner:', error);
+  return {
+    default: () => null
+  };
+}));
 
 // ── StaleShimBoundary ─────────────────────────────────────────────────────────
 // The stale sos-shim snapshot (t=1784519099416) throws NotFoundError from its
@@ -43,21 +37,32 @@ function isStaleRemoveChildError(err: unknown): boolean {
   // NotFoundError is exclusively caused by the stale shim — always treat as stale.
   if (err.name === 'NotFoundError') return true;
   const text = (err.message ?? '') + (err.stack ?? '');
-  if (STALE_TS.some((ts) => text.includes(ts))) return true;
+  if (STALE_TS.some(ts => text.includes(ts))) return true;
   if (text.includes('patchedRemoveChild')) return true;
   return false;
 }
-
 const RELOAD_KEY = 'app_stale_reload_ts';
 const RELOAD_COUNT_KEY = 'app_stale_reload_count';
-class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boolean }> {
-  state = { caught: false };
+class StaleShimBoundary extends Component<{
+  children: ReactNode;
+}, {
+  caught: boolean;
+}> {
+  state = {
+    caught: false
+  };
   static getDerivedStateFromError(err: unknown) {
     try {
-      if (err instanceof Error && err.name === 'NotFoundError') return { caught: true };
-      return { caught: isStaleRemoveChildError(err) };
+      if (err instanceof Error && err.name === 'NotFoundError') return {
+        caught: true
+      };
+      return {
+        caught: isStaleRemoveChildError(err)
+      };
     } catch {
-      return { caught: false };
+      return {
+        caught: false
+      };
     }
   }
   componentDidCatch(err: unknown) {
@@ -68,7 +73,7 @@ class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boo
       const count = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) ?? '0', 10);
       const elapsed = Date.now() - last;
       // Allow reload if: first time, or >2s since last reload and under 5 attempts
-      if (last === 0 || (elapsed > 2000 && count < 5)) {
+      if (last === 0 || elapsed > 2000 && count < 5) {
         sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
         sessionStorage.setItem(RELOAD_COUNT_KEY, String(count + 1));
         // Hard reload (bypass cache) on 2nd+ attempt to evict the stale shim module
@@ -78,14 +83,15 @@ class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boo
           window.location.reload();
         }
       }
-    } catch { /* ignore */ }
+    } catch {/* ignore */}
   }
   render() {
-    if (this.state.caught) return <div style={{ display: 'none' }} />;
+    if (this.state.caught) return <div style={{
+      display: 'none'
+    }} />;
     return this.props.children;
   }
 }
-
 export default function App() {
   // Suppress stale-cache leaflet errors globally.
   useEffect(() => {
@@ -108,30 +114,21 @@ export default function App() {
       window.removeEventListener('unhandledrejection', onUnhandled);
     };
   }, []);
-
   const router = useMemo(() => {
-    const layoutElement = (
-      <StaleShimBoundary>
+    const layoutElement = <StaleShimBoundary>
         <RouteChangeTracker />
         <RootLayout>
           <Outlet />
         </RootLayout>
-      </StaleShimBoundary>
-    );
-
-    const routeTree: RouteObject[] = [
-      {
-        element: layoutElement,
-        children: routes,
-      },
-    ];
-
+      </StaleShimBoundary>;
+    const routeTree: RouteObject[] = [{
+      element: layoutElement,
+      children: routes
+    }];
     return createBrowserRouter(routeTree);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  return (
-    <>
+  return <AppErrorBoundary>
       <CapacitorInit />
       <ImpersonationBanner />
       <StaleShimBoundary>
@@ -142,6 +139,5 @@ export default function App() {
           <CookieBanner />
         </Suspense>
       </CookieBannerErrorBoundary>
-    </>
-  );
+    </AppErrorBoundary>;
 }

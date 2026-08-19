@@ -5,17 +5,13 @@
  * public/client complaints, and safety issues.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
-import {
-  AlertTriangle, Plus, Filter, X, ChevronRight,
-  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft, Briefcase,
-  Archive, ArchiveRestore, Inbox,
-} from 'lucide-react';
+import { AlertTriangle, Plus, Filter, X, ChevronRight, Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft, Briefcase, Archive, ArchiveRestore, Inbox } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,36 +45,52 @@ export interface Incident {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-export const INCIDENT_TYPES = [
-  'Injury',
-  'Near miss',
-  'Property damage',
-  'Environmental spill',
-  'Vehicle incident',
-  'Plant/equipment incident',
-  'Public/client complaint',
-  'Unsafe condition',
-  'Other',
-];
-
-export const SEVERITY_OPTIONS: { value: string; label: string; color: string }[] = [
-  { value: 'low',      label: 'Low',      color: 'bg-emerald-100 text-emerald-700' },
-  { value: 'medium',   label: 'Medium',   color: 'bg-amber-100 text-amber-700' },
-  { value: 'high',     label: 'High',     color: 'bg-violet-100 text-violet-800' },
-  { value: 'critical', label: 'Critical', color: 'bg-red-100 text-red-700' },
-];
-
-export const STATUS_OPTIONS: { value: string; label: string; color: string }[] = [
-  { value: 'open',             label: 'Open',             color: 'bg-blue-100 text-blue-700' },
-  { value: 'investigating',    label: 'Investigating',    color: 'bg-amber-100 text-amber-700' },
-  { value: 'action required',  label: 'Action Required',  color: 'bg-violet-100 text-violet-800' },
-  { value: 'closed',           label: 'Closed',           color: 'bg-slate-100 text-slate-500' },
-];
-
+export const INCIDENT_TYPES = ['Injury', 'Near miss', 'Property damage', 'Environmental spill', 'Vehicle incident', 'Plant/equipment incident', 'Public/client complaint', 'Unsafe condition', 'Other'];
+export const SEVERITY_OPTIONS: {
+  value: string;
+  label: string;
+  color: string;
+}[] = [{
+  value: 'low',
+  label: 'Low',
+  color: 'bg-emerald-100 text-emerald-700'
+}, {
+  value: 'medium',
+  label: 'Medium',
+  color: 'bg-amber-100 text-amber-700'
+}, {
+  value: 'high',
+  label: 'High',
+  color: 'bg-violet-100 text-violet-800'
+}, {
+  value: 'critical',
+  label: 'Critical',
+  color: 'bg-red-100 text-red-700'
+}];
+export const STATUS_OPTIONS: {
+  value: string;
+  label: string;
+  color: string;
+}[] = [{
+  value: 'open',
+  label: 'Open',
+  color: 'bg-blue-100 text-blue-700'
+}, {
+  value: 'investigating',
+  label: 'Investigating',
+  color: 'bg-amber-100 text-amber-700'
+}, {
+  value: 'action required',
+  label: 'Action Required',
+  color: 'bg-violet-100 text-violet-800'
+}, {
+  value: 'closed',
+  label: 'Closed',
+  color: 'bg-slate-100 text-slate-500'
+}];
 export function severityBadge(severity: string) {
   return SEVERITY_OPTIONS.find(s => s.value === severity)?.color ?? 'bg-slate-100 text-slate-500';
 }
-
 export function statusBadge(status: string) {
   return STATUS_OPTIONS.find(s => s.value === status)?.color ?? 'bg-slate-100 text-slate-500';
 }
@@ -88,7 +100,6 @@ export function statusBadge(status: string) {
 export default function IncidentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -107,7 +118,6 @@ export default function IncidentsPage() {
   const [filterJobLinked, setFilterJobLinked] = useState(searchParams.get('jobLinked') ?? '');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
-
   const loadIncidents = useCallback(async () => {
     setLoading(true);
     try {
@@ -123,16 +133,15 @@ export default function IncidentsPage() {
         if (filterDateTo) params.set('dateTo', filterDateTo);
       }
       const r = await fetch(`/api/incidents?${params.toString()}`);
-      if (r.ok) setIncidents(await r.json() as Incident[]);
+      if (r.ok) setIncidents((await r.json()) as Incident[]);
     } finally {
       setLoading(false);
     }
   }, [activeTab, filterStatus, filterSeverity, filterType, filterJobLinked, filterDateFrom, filterDateTo]);
-
-  useEffect(() => { void loadIncidents(); }, [loadIncidents]);
-
+  useEffect(() => {
+    void loadIncidents();
+  }, [loadIncidents]);
   const activeFilterCount = [filterStatus, filterSeverity, filterType, filterJobLinked, filterDateFrom, filterDateTo].filter(Boolean).length;
-
   function clearFilters() {
     setFilterStatus('');
     setFilterSeverity('');
@@ -144,23 +153,18 @@ export default function IncidentsPage() {
   }
 
   // Client-side search filter
-  const filtered = search.trim()
-    ? incidents.filter(i =>
-        i.description.toLowerCase().includes(search.toLowerCase()) ||
-        i.reported_by.toLowerCase().includes(search.toLowerCase()) ||
-        (i.job_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
-        (i.location ?? '').toLowerCase().includes(search.toLowerCase()) ||
-        i.incident_type.toLowerCase().includes(search.toLowerCase())
-      )
-    : incidents;
-
+  const filtered = search.trim() ? incidents.filter(i => i.description.toLowerCase().includes(search.toLowerCase()) || i.reported_by.toLowerCase().includes(search.toLowerCase()) || (i.job_name ?? '').toLowerCase().includes(search.toLowerCase()) || (i.location ?? '').toLowerCase().includes(search.toLowerCase()) || i.incident_type.toLowerCase().includes(search.toLowerCase())) : incidents;
   async function handleArchive(incident: Incident) {
     setArchivingId(incident.id);
     try {
       const r = await fetch(`/api/incidents/${incident.id}/archive`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: archiveReason }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reason: archiveReason
+        })
       });
       if (r.ok) {
         setIncidents(prev => prev.filter(i => i.id !== incident.id));
@@ -171,19 +175,18 @@ export default function IncidentsPage() {
       setArchivingId(null);
     }
   }
-
   async function handleRestore(id: number) {
     setRestoringId(id);
     try {
-      const r = await fetch(`/api/incidents/${id}/unarchive`, { method: 'POST' });
+      const r = await fetch(`/api/incidents/${id}/unarchive`, {
+        method: 'POST'
+      });
       if (r.ok) setIncidents(prev => prev.filter(i => i.id !== id));
     } finally {
       setRestoringId(null);
     }
   }
-
-  return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
+  return <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
@@ -199,11 +202,7 @@ export default function IncidentsPage() {
         <div className="bg-red-700 text-white px-4 safe-top pb-3">
           {/* Breadcrumb row */}
           <div className="flex items-center gap-1.5 text-xs text-red-300 mb-2 pt-1">
-            <button
-              type="button"
-              onClick={() => navigate('/home')}
-              className="flex items-center gap-1 hover:text-white transition-colors"
-            >
+            <button type="button" onClick={() => navigate('/home')} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-red-400" />
@@ -214,11 +213,7 @@ export default function IncidentsPage() {
               <AlertTriangle size={20} className="text-red-200" />
               <h1 className="font-bold text-base">Incident Register</h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowJobPicker(true)}
-              className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold"
-            >
+            <button type="button" onClick={() => setShowJobPicker(true)} className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold">
               <Plus size={14} /> New
             </button>
           </div>
@@ -226,114 +221,62 @@ export default function IncidentsPage() {
           {/* Search */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-red-300" />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search incidents…"
-              className="w-full bg-white/15 border border-white/20 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-red-300 focus:outline-none focus:bg-white/25"
-            />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search incidents…" className="w-full bg-white/15 border border-white/20 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-red-300 focus:outline-none focus:bg-white/25" />
           </div>
         </div>
 
         {/* Active / Archive tab switcher */}
         <div className="bg-white border-b border-slate-100 px-4 flex gap-1 pt-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('active')}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${
-              activeTab === 'active'
-                ? 'border-red-500 text-red-700'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
+          <button type="button" onClick={() => setActiveTab('active')} className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${activeTab === 'active' ? 'border-red-500 text-red-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
             <AlertTriangle size={12} /> Active register
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('archive')}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${
-              activeTab === 'archive'
-                ? 'border-slate-500 text-slate-700'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
+          <button type="button" onClick={() => setActiveTab('archive')} className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-t-lg border-b-2 transition-colors ${activeTab === 'archive' ? 'border-slate-500 text-slate-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
             <Archive size={12} /> Archive
           </button>
         </div>
 
         {/* Filter bar — active tab only */}
-        {activeTab === 'active' && (
-          <>
+        {activeTab === 'active' && <>
             <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-                  activeFilterCount > 0
-                    ? 'bg-red-50 border-red-200 text-red-700'
-                    : 'border-slate-200 text-slate-600'
-                }`}
-              >
+              <button type="button" onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${activeFilterCount > 0 ? 'bg-red-50 border-red-200 text-red-700' : 'border-slate-200 text-slate-600'}`}>
                 <Filter size={12} />
                 Filters
-                {activeFilterCount > 0 && (
-                  <span className="bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                {activeFilterCount > 0 && <span className="bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
                     {activeFilterCount}
-                  </span>
-                )}
+                  </span>}
               </button>
-              {activeFilterCount > 0 && (
-                <button type="button" onClick={clearFilters} className="text-xs text-slate-400 flex items-center gap-1">
+              {activeFilterCount > 0 && <button type="button" onClick={clearFilters} className="text-xs text-slate-400 flex items-center gap-1">
                   <X size={11} /> Clear
-                </button>
-              )}
+                </button>}
               <span className="ml-auto text-xs text-slate-400">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
             {/* Filter panel */}
-            {showFilters && (
-              <div className="bg-white border-b border-slate-100 px-4 py-3 grid grid-cols-2 gap-3">
+            {showFilters && <div className="bg-white border-b border-slate-100 px-4 py-3 grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Status</label>
-                  <select
-                    value={filterStatus}
-                    onChange={e => setFilterStatus(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                  >
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
                     <option value="">All statuses</option>
                     {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Severity</label>
-                  <select
-                    value={filterSeverity}
-                    onChange={e => setFilterSeverity(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                  >
+                  <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
                     <option value="">All severities</option>
                     {SEVERITY_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Type</label>
-                  <select
-                    value={filterType}
-                    onChange={e => setFilterType(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                  >
+                  <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
                     <option value="">All types</option>
                     {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Job linked</label>
-                  <select
-                    value={filterJobLinked}
-                    onChange={e => setFilterJobLinked(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                  >
+                  <select value={filterJobLinked} onChange={e => setFilterJobLinked(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
                     <option value="">All</option>
                     <option value="yes">Linked to job</option>
                     <option value="no">No job</option>
@@ -341,65 +284,36 @@ export default function IncidentsPage() {
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Date from</label>
-                  <input
-                    type="date"
-                    value={filterDateFrom}
-                    onChange={e => setFilterDateFrom(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                  />
+                  <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Date to</label>
-                  <input
-                    type="date"
-                    value={filterDateTo}
-                    onChange={e => setFilterDateTo(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                  />
+                  <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              </div>}
+          </>}
 
         {/* List */}
         <div className="flex-1 overflow-y-auto p-4">
-          {loading ? (
-            <div className="flex justify-center py-16">
+          {loading ? <div className="flex justify-center py-16">
               <Loader2 size={28} className="animate-spin text-red-400" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16">
-              {activeTab === 'archive' ? (
-                <>
+            </div> : filtered.length === 0 ? <div className="text-center py-16">
+              {activeTab === 'archive' ? <>
                   <Inbox size={36} className="text-slate-200 mx-auto mb-3" />
                   <p className="text-slate-400 text-sm font-medium">Archive is empty</p>
                   <p className="text-slate-300 text-xs mt-1">Archived incidents appear here — they are never deleted</p>
-                </>
-              ) : (
-                <>
+                </> : <>
                   <AlertTriangle size={36} className="text-slate-200 mx-auto mb-3" />
                   <p className="text-slate-400 text-sm font-medium">
                     {activeFilterCount > 0 || search ? 'No incidents match your filters' : 'No incidents recorded'}
                   </p>
-                  {!activeFilterCount && !search && (
-                    <p className="text-slate-300 text-xs mt-1">Tap New to record an incident</p>
-                  )}
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
+                  {!activeFilterCount && !search && <p className="text-slate-300 text-xs mt-1">Tap New to record an incident</p>}
+                </>}
+            </div> : <div className="space-y-3">
               {filtered.map(incident => {
-                const caCount = Number(incident.corrective_action_count ?? 0);
-                const caComplete = Number(incident.corrective_actions_complete ?? 0);
-                return (
-                  <button
-                    key={incident.id}
-                    type="button"
-                    onClick={() => navigate(`/incidents/${incident.id}`)}
-                    className="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:border-red-200 transition-colors"
-                  >
+            const caCount = Number(incident.corrective_action_count ?? 0);
+            const caComplete = Number(incident.corrective_actions_complete ?? 0);
+            return <button key={incident.id} type="button" onClick={() => navigate(`/incidents/${incident.id}`)} className="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:border-red-200 transition-colors">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-800 leading-snug truncate">
@@ -419,82 +333,58 @@ export default function IncidentsPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(incident.status)}`}>
                         {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
                       </span>
-                      {incident.job_name && (
-                        <span className="text-xs text-slate-400 truncate max-w-[120px]">{incident.job_name}</span>
-                      )}
-                      {caCount > 0 && (
-                        <span className={`text-xs flex items-center gap-1 ${caComplete === caCount ? 'text-emerald-600' : 'text-amber-600'}`}>
-                          {caComplete === caCount
-                            ? <CheckCircle2 size={11} />
-                            : <Clock size={11} />
-                          }
+                      {incident.job_name && <span className="text-xs text-slate-400 truncate max-w-[120px]">{incident.job_name}</span>}
+                      {caCount > 0 && <span className={`text-xs flex items-center gap-1 ${caComplete === caCount ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {caComplete === caCount ? <CheckCircle2 size={11} /> : <Clock size={11} />}
                           {caComplete}/{caCount} actions
-                        </span>
-                      )}
+                        </span>}
                     </div>
 
                     <div className="flex items-center gap-3 text-xs text-slate-400 mt-2">
-                      <span>{new Date(incident.incident_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      <span>{new Date(incident.incident_date).toLocaleDateString('en-AU', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  })}</span>
                       <span>· {incident.reported_by}</span>
                       {incident.location && <span className="truncate max-w-[100px]">· {incident.location}</span>}
                     </div>
 
                     {/* Flags */}
-                    {(Boolean(incident.injury_occurred) || Boolean(incident.property_damage) || Boolean(incident.environmental_impact)) && (
-                      <div className="flex gap-1.5 mt-2">
-                        {Boolean(incident.injury_occurred) && (
-                          <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">Injury</span>
-                        )}
-                        {Boolean(incident.property_damage) && (
-                          <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">Property damage</span>
-                        )}
-                        {Boolean(incident.environmental_impact) && (
-                          <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">Environmental</span>
-                        )}
-                      </div>
-                    )}
+                    {(Boolean(incident.injury_occurred) || Boolean(incident.property_damage) || Boolean(incident.environmental_impact)) && <div className="flex gap-1.5 mt-2">
+                        {Boolean(incident.injury_occurred) && <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">Injury</span>}
+                        {Boolean(incident.property_damage) && <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">Property damage</span>}
+                        {Boolean(incident.environmental_impact) && <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">Environmental</span>}
+                      </div>}
 
                     {/* Archive / Restore row */}
                     <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-50">
-                      {activeTab === 'archive' ? (
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {incident.archive_reason && (
-                            <span className="text-xs text-slate-400 italic">{incident.archive_reason}</span>
-                          )}
-                          <button
-                            type="button"
-                            disabled={restoringId === incident.id}
-                            onClick={e => { e.stopPropagation(); void handleRestore(incident.id); }}
-                            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
-                          >
+                      {activeTab === 'archive' ? <div className="flex items-center gap-3 flex-wrap">
+                          {incident.archive_reason && <span className="text-xs text-slate-400 italic">{incident.archive_reason}</span>}
+                          <button type="button" disabled={restoringId === incident.id} onClick={e => {
+                    e.stopPropagation();
+                    void handleRestore(incident.id);
+                  }} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50">
                             {restoringId === incident.id ? <Loader2 size={10} className="animate-spin" /> : <ArchiveRestore size={10} />}
                             Restore
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); setArchiveTarget(incident); setArchiveReason(''); }}
-                          className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-                        >
+                        </div> : <button type="button" onClick={e => {
+                  e.stopPropagation();
+                  setArchiveTarget(incident);
+                  setArchiveReason('');
+                }} className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors">
                           <Archive size={10} /> Archive
-                        </button>
-                      )}
-                      {activeTab !== 'archive' && (
-                        <ChevronRight size={14} className="text-slate-300" />
-                      )}
+                        </button>}
+                      {activeTab !== 'archive' && <ChevronRight size={14} className="text-slate-300" />}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                  </button>;
+          })}
+            </div>}
         </div>
       </div>
 
       {/* Archive reason modal */}
-      {archiveTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {archiveTarget && <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setArchiveTarget(null)} />
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center gap-3">
@@ -508,61 +398,32 @@ export default function IncidentsPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Reason (optional)</label>
-              <textarea
-                value={archiveReason}
-                onChange={e => setArchiveReason(e.target.value)}
-                placeholder="e.g. Investigation complete, corrective actions closed…"
-                rows={3}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
-              />
+              <textarea value={archiveReason} onChange={e => setArchiveReason(e.target.value)} placeholder="e.g. Investigation complete, corrective actions closed…" rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-red-300" />
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setArchiveTarget(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-              >
+              <button type="button" onClick={() => setArchiveTarget(null)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={archivingId === archiveTarget.id}
-                onClick={() => void handleArchive(archiveTarget)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
+              <button type="button" disabled={archivingId === archiveTarget.id} onClick={() => void handleArchive(archiveTarget)} className="flex-1 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2">
                 {archivingId === archiveTarget.id ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
                 Archive
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Job picker — shown before creating a new incident */}
-      <JobPickerSheet
-        open={showJobPicker}
-        onClose={() => setShowJobPicker(false)}
-        title="Link to a job?"
-        subtitle="Select a job or skip to log a standalone incident"
-        iconBg="bg-red-100"
-        iconFg="text-red-600"
-        Icon={Briefcase}
-        onSelect={job => {
-          setShowJobPicker(false);
-          navigate(`/incidents/new?jobId=${job.id}&jobName=${encodeURIComponent(job.name)}`);
-        }}
-      />
-      {showJobPicker && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
-          <button
-            type="button"
-            onClick={() => { setShowJobPicker(false); navigate('/incidents/new'); }}
-            className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-          >
+      <JobPickerSheet open={showJobPicker} onClose={() => setShowJobPicker(false)} title="Link to a job?" subtitle="Select a job or skip to log a standalone incident" iconBg="bg-red-100" iconFg="text-red-600" Icon={Briefcase} onSelect={job => {
+      setShowJobPicker(false);
+      navigate(`/incidents/new?jobId=${job.id}&jobName=${encodeURIComponent(job.name)}`);
+    }} />
+      {showJobPicker && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <button type="button" onClick={() => {
+        setShowJobPicker(false);
+        navigate('/incidents/new');
+      }} className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             No job — standalone incident
           </button>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }

@@ -1,9 +1,8 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
 import { jobs, profiles } from '../../../../../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
-import { sql } from 'drizzle-orm';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -24,12 +23,13 @@ export default async function handler(req: Request, res: Response) {
     const job = await db.query.jobs.findFirst({ where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)) });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const rows = await db.execute(sql`
+    // Correct destructuring: db.execute returns [rows, fields]
+    const [rows] = await db.execute(sql`
       SELECT * FROM job_progress_reports
       WHERE company_id = ${profile.companyId} AND job_id = ${jobId}
       LIMIT 1
     `);
-    const report = (rows as unknown as { rows?: unknown[] }).rows?.[0] ?? null;
+    const report = (rows as unknown as Record<string, unknown>[])[0] ?? null;
 
     return res.json({ report });
   } catch (err) {

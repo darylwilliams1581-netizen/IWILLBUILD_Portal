@@ -24,6 +24,7 @@ export default async function handler(req: Request, res: Response) {
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
     // Bulk update: array of { id, percentComplete, progressNote }
+    // sort_order is intentionally excluded — ordering has its own dedicated endpoint.
     const { updates } = req.body as {
       updates: Array<{ id: number; percentComplete?: number; progressNote?: string }>;
     };
@@ -37,9 +38,14 @@ export default async function handler(req: Request, res: Response) {
       if (u.percentComplete !== undefined) upd.percentComplete = Math.max(0, Math.min(100, u.percentComplete));
       if (u.progressNote !== undefined) upd.progressNote = u.progressNote?.trim() || null;
       if (Object.keys(upd).length > 0) {
+        // Triple-scope: line ID + job ID + company ID — prevents cross-job mutation
         await db.update(jobProgressLines)
           .set(upd)
-          .where(and(eq(jobProgressLines.id, lineId), eq(jobProgressLines.companyId, profile.companyId)));
+          .where(and(
+            eq(jobProgressLines.id, lineId),
+            eq(jobProgressLines.jobId, jobId),
+            eq(jobProgressLines.companyId, profile.companyId),
+          ));
       }
     }
 
@@ -47,7 +53,7 @@ export default async function handler(req: Request, res: Response) {
       .select()
       .from(jobProgressLines)
       .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      .orderBy(asc(jobProgressLines.id));
+      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
 
     res.json({ lines });
   } catch (err) {

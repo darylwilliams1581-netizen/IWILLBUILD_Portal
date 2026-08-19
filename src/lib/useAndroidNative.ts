@@ -9,9 +9,8 @@
  * Safe to call on iOS and web — all Android-specific calls are no-ops.
  */
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from "react-router";
 import { getPlatform, getAppPlugin, getStatusBar, getNetworkPlugin } from './capacitor-plugins';
-
 export function useAndroidNative() {
   const platform = getPlatform();
   const navigate = useNavigate();
@@ -22,13 +21,12 @@ export function useAndroidNative() {
   // Android back button: go back in history, or show exit confirmation on root
   useEffect(() => {
     if (platform !== 'android') return;
-
     let cleanup: (() => void) | undefined;
-
-    Promise.resolve(getAppPlugin()).then((App) => {
+    Promise.resolve(getAppPlugin()).then(App => {
       if (!App) return;
-
-      const handle = App.addListener('backButton', ({ canGoBack }) => {
+      const handle = App.addListener('backButton', ({
+        canGoBack
+      }) => {
         if (canGoBack) {
           navigate(-1);
         } else {
@@ -38,10 +36,10 @@ export function useAndroidNative() {
           }
         }
       });
-
-      cleanup = () => { void handle.then(h => h.remove()); };
+      cleanup = () => {
+        void handle.then(h => h.remove());
+      };
     }).catch(() => undefined);
-
     return () => cleanup?.();
   }, [platform, navigate, location.pathname]);
 
@@ -49,11 +47,14 @@ export function useAndroidNative() {
   // Keep status bar dark to match the portal's dark sidebar theme
   useEffect(() => {
     if (platform !== 'android') return;
-
-    getStatusBar().then((sb) => {
+    getStatusBar().then(sb => {
       if (!sb) return;
-      void sb.StatusBar.setStyle({ style: sb.Style.Dark });
-      void sb.StatusBar.setBackgroundColor({ color: '#111827' });
+      void sb.StatusBar.setStyle({
+        style: sb.Style.Dark
+      });
+      void sb.StatusBar.setBackgroundColor({
+        color: '#111827'
+      });
     }).catch(() => undefined);
   }, [platform]);
 
@@ -61,10 +62,8 @@ export function useAndroidNative() {
   // Use native network plugin on Android for more reliable connectivity detection
   useEffect(() => {
     if (platform !== 'android') return;
-
     let cleanup: (() => void) | undefined;
-
-    Promise.resolve(getNetworkPlugin()).then(async (Network) => {
+    Promise.resolve(getNetworkPlugin()).then(async Network => {
       if (!Network) return;
 
       // Get initial status
@@ -72,13 +71,13 @@ export function useAndroidNative() {
       setIsOnline(status.connected);
 
       // Listen for changes
-      const handle = Network.addListener('networkStatusChange', (s) => {
+      const handle = Network.addListener('networkStatusChange', s => {
         setIsOnline(s.connected);
       });
-
-      cleanup = () => { void handle.then(h => h.remove()); };
+      cleanup = () => {
+        void handle.then(h => h.remove());
+      };
     }).catch(() => undefined);
-
     return () => cleanup?.();
   }, [platform]);
 
@@ -90,20 +89,22 @@ export function useAndroidNative() {
     if (!sb) return;
     await sb.StatusBar.hide();
   }, [platform]);
-
   const showStatusBar = useCallback(async () => {
     if (platform !== 'android') return;
     const sb = await getStatusBar();
     if (!sb) return;
     await sb.StatusBar.show();
-    await sb.StatusBar.setStyle({ style: sb.Style.Dark });
-    await sb.StatusBar.setBackgroundColor({ color: '#111827' });
+    await sb.StatusBar.setStyle({
+      style: sb.Style.Dark
+    });
+    await sb.StatusBar.setBackgroundColor({
+      color: '#111827'
+    });
   }, [platform]);
-
   return {
     isAndroid: platform === 'android',
     isOnline,
     hideStatusBar,
-    showStatusBar,
+    showStatusBar
   };
 }

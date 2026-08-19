@@ -6,7 +6,8 @@ import {
   RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
-  Brain, Bug, Copy, Check, X, GitBranch,
+  Brain, Bug, Copy, Check, X, GitBranch, Paperclip, Wrench,
+  Square, RotateCcw, Zap, CheckCircle2, XCircle,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -18,6 +19,9 @@ import {
 } from '@/lib/dazza-calcs';
 import DazzaBrainStatus from '@/components/DazzaBrainStatus';
 import DazzaAnatomyPanel from '@/components/DazzaAnatomyPanel';
+import AttachmentChip from '@/components/dazza/AttachmentChip';
+import { useDazzaAttachments } from '@/hooks/useDazzaAttachments';
+import BuildRepairPanel from '@/components/dazza/BuildRepairPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -409,6 +413,7 @@ const WELCOME_MSG = `G'day Daryl. I'm Dazza, IWILLBUILD's read-only system watch
 interface SseToken      { type: 'token';       content: string }
 interface SseToolCall   { type: 'tool_call';   name: string; status: 'running' }
 interface SseToolResult { type: 'tool_result'; name: string; status: 'done' }
+interface SseAttachmentStatus { type: 'attachment_status'; status: 'reading' | 'ready' | 'failed'; count?: number }
 interface SseDone       {
   type: 'done';
   engine: 'v3' | 'v2-rollback';
@@ -417,7 +422,21 @@ interface SseDone       {
   toolsUsed?: string[];
 }
 interface SseError      { type: 'error'; message: string; configFault?: boolean; conversationId?: string }
-type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
+interface SseStatus     { type: 'status';    phase: string; label: string }
+interface SseHeartbeat  { type: 'heartbeat'; elapsedMs: number }
+type SseEvent = SseToken | SseToolCall | SseToolResult | SseAttachmentStatus | SseDone | SseError | SseStatus | SseHeartbeat;
+
+// ── Dazza activity phase state machine ───────────────────────────────────────
+type DazzaActivityPhase =
+  | 'idle'
+  | 'connecting'
+  | 'thinking'
+  | 'using_tool'
+  | 'writing'
+  | 'stalled'
+  | 'completed'
+  | 'cancelled'
+  | 'error';
 
 // ── Tool call display names (V3 + V2 compat) ─────────────────────────────────
 
@@ -464,6 +483,45 @@ export default function DazzaAIPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
+
+  // ── Activity phase state machine ──────────────────────────────────────────
+  const [activityPhase, setActivityPhase] = useState<DazzaActivityPhase>('idle');
+  const [activityLabel, setActivityLabel] = useState<string>('');
+  const [activityElapsed, setActivityElapsed] = useState(0);   // seconds
+  const activityStartRef = useRef<number>(0);
+  const elapsedTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stallTimerRef    = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Clear all activity timers
+  const clearActivityTimers = () => {
+    if (elapsedTimerRef.current)  { clearInterval(elapsedTimerRef.current);  elapsedTimerRef.current  = null; }
+    if (stallTimerRef.current)    { clearTimeout(stallTimerRef.current);     stallTimerRef.current    = null; }
+  };
+
+  // Start the elapsed-seconds ticker and stall watchdog
+  const startActivityTimers = () => {
+    clearActivityTimers();
+    activityStartRef.current = Date.now();
+    setActivityElapsed(0);
+
+    elapsedTimerRef.current = setInterval(() => {
+      setActivityElapsed(Math.floor((Date.now() - activityStartRef.current) / 1000));
+    }, 1000);
+
+    const armStall = () => {
+      if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = setTimeout(() => {
+        setActivityPhase((p) => {
+          if (p === 'idle' || p === 'completed' || p === 'cancelled' || p === 'error') return p;
+          return 'stalled';
+        });
+        setActivityLabel('Still working — no activity received for 30 seconds');
+      }, 30_000);
+    };
+    armStall();
+    return armStall;
+  };
   const [dazzaCtx, setDazzaCtx] = useState<DazzaContextSummary | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
   const [noApiKey, setNoApiKey] = useState(false);
@@ -471,13 +529,25 @@ export default function DazzaAIPage() {
   const [activeCalc, setActiveCalc] = useState<string | null>(null);
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'brain' | 'anatomy'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'brain' | 'anatomy' | 'build_repair'>('chat');
   // V3 conversation continuity
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeEngine, setActiveEngine] = useState<'v3' | 'v2-rollback' | null>(null);
   const [activeModel, setActiveModel] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Attachment queue (platform owner only) ────────────────────────────────
+  const attachmentQueue = useDazzaAttachments({ conversationId });
+
+  // ── Attachment action selector ─────────────────────────────────────────────
+  // Applies to the current message only — cleared after send.
+  // 'read_only'     → Dazza reads and summarises, cites filename + line ranges.
+  // 'analyse'       → Dazza analyses as evidence: facts / inferences / unknowns.
+  // 'repair_case'   → Dazza uses the attachment as evidence for a Builder Case.
+  type AttachmentAction = 'read_only' | 'analyse' | 'repair_case';
+  const [attachmentAction, setAttachmentAction] = useState<AttachmentAction>('read_only');
 
   // Returns the model label for the V3 badge — uses server-confirmed model from
   // the done event, falls back to 'o4-mini' (the configured default).
@@ -622,8 +692,12 @@ export default function DazzaAIPage() {
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
   }, [input]);
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, mode: 'chat' | 'build_repair' = 'chat', builderCaseId?: string) {
     if (!text.trim() || isTyping) return;
+
+    // Capture attachment IDs and action before clearing
+    const pendingAttachmentIds = [...attachmentQueue.readyIds];
+    const capturedAttachmentAction = pendingAttachmentIds.length > 0 ? attachmentAction : null;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -637,6 +711,15 @@ export default function DazzaAIPage() {
     setIsTyping(true);
     setActiveToolCall(null);
 
+    // ── Phase: connecting ─────────────────────────────────────────────────────
+    setActivityPhase('connecting');
+    setActivityLabel('Connecting to Dazza…');
+    const armStall = startActivityTimers();
+
+    // Clear attachment chips and reset action selector immediately after send
+    attachmentQueue.clearAfterSend();
+    setAttachmentAction('read_only');
+
     // Create a placeholder assistant message that we'll fill in as tokens arrive
     const assistantId = (Date.now() + 1).toString();
     setStreamingId(assistantId);
@@ -647,16 +730,31 @@ export default function DazzaAIPage() {
       timestamp: new Date(),
     }]);
 
+    // ── AbortController for Stop button ──────────────────────────────────────
+    const abort = new AbortController();
+    abortControllerRef.current = abort;
+
+    // Helper: re-arm the stall watchdog on every server event
+    const bumpStall = () => {
+      armStall();
+    };
+
+    let wasCancelled = false;
+
     try {
       // ── Canonical endpoint — server decides V3 vs V2 rollback ──────────────
       const res = await fetch('/api/dazza/chat/stream', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        signal: abort.signal,
         body: JSON.stringify({
           message: text.trim(),
-          // Send conversationId so V3 can continue the same conversation
           ...(conversationId ? { conversationId } : {}),
+          ...(pendingAttachmentIds.length > 0 ? { attachmentIds: pendingAttachmentIds } : {}),
+          ...(capturedAttachmentAction ? { attachmentAction: capturedAttachmentAction } : {}),
+          ...(mode !== 'chat' ? { mode } : {}),
+          ...(builderCaseId ? { builderCaseId } : {}),
         }),
       });
 
@@ -669,6 +767,11 @@ export default function DazzaAIPage() {
         throw new Error(`HTTP ${res.status}${serverDetail ? `: ${serverDetail}` : ''}`);
       }
 
+      // ── Phase: thinking (connection open) ────────────────────────────────
+      setActivityPhase('thinking');
+      setActivityLabel('Dazza is thinking…');
+      bumpStall();
+
       const reader = res.body?.getReader();
       if (!reader) throw new Error('No response body');
 
@@ -679,6 +782,7 @@ export default function DazzaAIPage() {
         const { done, value } = await reader.read();
         if (done) break;
 
+        bumpStall();
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
@@ -690,44 +794,75 @@ export default function DazzaAIPage() {
           let event: SseEvent;
           try { event = JSON.parse(raw) as SseEvent; } catch { continue; }
 
+          // ── Heartbeat — just re-arms the stall timer ──────────────────────
+          if (event.type === 'heartbeat') {
+            bumpStall();
+            continue;
+          }
+
+          // ── Status event from server ──────────────────────────────────────
+          if (event.type === 'status') {
+            const phase = event.phase as DazzaActivityPhase;
+            setActivityPhase(phase);
+            setActivityLabel(event.label);
+            bumpStall();
+            continue;
+          }
+
           if (event.type === 'token') {
             setMessages((prev) => prev.map((m) =>
               m.id === assistantId
                 ? { ...m, content: m.content + event.content }
                 : m
             ));
+            // Ensure writing phase is set (server status event may not have arrived yet)
+            setActivityPhase((p) => p === 'writing' ? p : 'writing');
+            setActivityLabel('Dazza is preparing the answer…');
+            bumpStall();
+          } else if (event.type === 'attachment_status') {
+            if (event.status === 'reading') {
+              setActiveToolCall(`Reading ${event.count ?? ''} attached file${(event.count ?? 1) !== 1 ? 's' : ''}…`);
+              setActivityPhase('using_tool');
+              setActivityLabel(`Reading ${event.count ?? ''} attached file${(event.count ?? 1) !== 1 ? 's' : ''}…`);
+            } else {
+              setActiveToolCall(null);
+              setActivityPhase('thinking');
+              setActivityLabel('Dazza is thinking…');
+            }
+            bumpStall();
           } else if (event.type === 'tool_call') {
-            setActiveToolCall(TOOL_LABELS[event.name] ?? `Running ${event.name}…`);
+            const label = TOOL_LABELS[event.name] ?? `Running ${event.name}…`;
+            setActiveToolCall(label);
+            setActivityPhase('using_tool');
+            setActivityLabel(label);
+            bumpStall();
           } else if (event.type === 'tool_result') {
             setActiveToolCall(null);
+            setActivityPhase('thinking');
+            setActivityLabel('Dazza is thinking…');
+            bumpStall();
           } else if (event.type === 'done') {
             setActiveToolCall(null);
-            // Store conversation ID for continuity (V3 only)
-            if (event.conversationId) {
-              setConversationId(event.conversationId);
-            }
-            // Track active engine and model from done event
-            if (event.engine) {
-              setActiveEngine(event.engine);
-            }
-            if (event.model) {
-              setActiveModel(event.model);
-            }
+            setActivityPhase('completed');
+            setActivityLabel('Response completed');
+            if (event.conversationId) setConversationId(event.conversationId);
+            if (event.engine)         setActiveEngine(event.engine);
+            if (event.model)          setActiveModel(event.model);
+            // Auto-dismiss the completed bar after 3 s
+            setTimeout(() => setActivityPhase((p) => p === 'completed' ? 'idle' : p), 3000);
+            bumpStall();
           } else if (event.type === 'error') {
             const errEvt = event as SseError & { configFault?: boolean };
-            // Persist conversationId from error events so the conversation is
-            // restorable after a hard refresh even when the request failed.
-            if (errEvt.conversationId && !conversationId) {
-              setConversationId(errEvt.conversationId);
-            }
+            if (errEvt.conversationId && !conversationId) setConversationId(errEvt.conversationId);
             if (errEvt.configFault) {
-              // Configuration fault — show inline in the message bubble
               setMessages((prev) => prev.map((m) =>
                 m.id === assistantId
                   ? { ...m, content: `⚠️ ${event.message}` }
                   : m
               ));
               setActiveEngine('v2-rollback');
+              setActivityPhase('error');
+              setActivityLabel('Configuration fault — check Dazza secrets');
             } else {
               throw new Error(event.message);
             }
@@ -736,10 +871,6 @@ export default function DazzaAIPage() {
       }
 
       // ── Client-side empty-response guard ─────────────────────────────────
-      // If the stream closed but the assistant bubble is still empty, the
-      // server either sent no token events or the stream was cut short.
-      // Replace the empty bubble with a visible error rather than leaving
-      // a silent blank turn.
       setMessages((prev) => {
         const bubble = prev.find((m) => m.id === assistantId);
         if (bubble && !bubble.content.trim()) {
@@ -753,21 +884,60 @@ export default function DazzaAIPage() {
       });
 
     } catch (err) {
-      const errMsg = String((err as Error)?.message ?? err);
-      const isNetworkError = err instanceof TypeError;
-      const displayMsg = isNetworkError
-        ? "I had trouble connecting. Please check your internet connection and try again."
-        : `Something went wrong on the server (${errMsg}). Please try again or contact support if this persists.`;
-      setMessages((prev) => prev.map((m) =>
-        m.id === assistantId
-          ? { ...m, content: displayMsg }
-          : m
-      ));
+      if ((err as Error)?.name === 'AbortError') {
+        wasCancelled = true;
+        setActivityPhase('cancelled');
+        setActivityLabel('Request cancelled');
+        setMessages((prev) => prev.map((m) =>
+          m.id === assistantId && !m.content.trim()
+            ? { ...m, content: '_(Request cancelled)_' }
+            : m
+        ));
+      } else {
+        const errMsg = String((err as Error)?.message ?? err);
+        const isNetworkError = err instanceof TypeError;
+        const displayMsg = isNetworkError
+          ? "I had trouble connecting. Please check your internet connection and try again."
+          : `Something went wrong on the server (${errMsg}). Please try again or contact support if this persists.`;
+        setMessages((prev) => prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: displayMsg }
+            : m
+        ));
+        setActivityPhase('error');
+        setActivityLabel('Request failed');
+      }
     } finally {
       setIsTyping(false);
       setStreamingId(null);
       setActiveToolCall(null);
+      abortControllerRef.current = null;
+      clearActivityTimers();
+      // If the stream closed without a done/error/cancelled event (e.g. server
+      // dropped the connection mid-stream), the phase would be stuck at 'writing'
+      // or 'thinking' forever. Reset to idle so the activity bar clears.
+      setActivityPhase((p) => {
+        if (p === 'completed' || p === 'error' || p === 'cancelled') return p;
+        return 'idle';
+      });
     }
+  }
+
+  function stopRequest() {
+    abortControllerRef.current?.abort();
+  }
+
+  function retryLastMessage() {
+    setMessages((prev) => {
+      const lastUser = [...prev].reverse().find((m) => m.role === 'user');
+      if (!lastUser) return prev;
+      // Remove the failed assistant bubble (last message if it's an assistant)
+      const trimmed = prev[prev.length - 1]?.role === 'assistant' ? prev.slice(0, -1) : prev;
+      setActivityPhase('idle');
+      // Defer sendMessage so state has settled
+      setTimeout(() => void sendMessage(lastUser.content), 0);
+      return trimmed;
+    });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -1020,6 +1190,16 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                     <GitBranch size={11} /> Anatomy
                   </button>
                 )}
+                {isPlatformOwner && (
+                  <button
+                    onClick={() => setActiveTab('build_repair')}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                      activeTab === 'build_repair' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-amber-600'
+                    }`}
+                  >
+                    <Wrench size={11} /> Build & Repair
+                  </button>
+                )}
               </div>
             )}
             <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
@@ -1064,6 +1244,21 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
           {activeTab === 'anatomy' && isPlatformOwner && (
             <div className="flex-1 overflow-y-auto bg-slate-50">
               <DazzaAnatomyPanel />
+            </div>
+          )}
+
+          {/* ── Build & Repair tab (platform owner only) ── */}
+          {activeTab === 'build_repair' && isPlatformOwner && (
+            <div className="flex-1 overflow-y-auto bg-slate-50 p-4">
+              <BuildRepairPanel
+                conversationId={conversationId}
+                onSendMessage={(text, mode, builderCaseId) => {
+                  // Switch to chat tab so the response is visible
+                  setActiveTab('chat');
+                  void sendMessage(text, mode, builderCaseId);
+                }}
+                isTyping={isTyping}
+              />
             </div>
           )}
 
@@ -1139,7 +1334,56 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                           <div className="flex flex-col gap-0.5 text-[13px]">
                             {msg.role === 'assistant'
                               ? <>
-                                  {formatMessage(msg.content)}
+                                  {/* Thinking indicator — shown while waiting for first token */}
+                                  {streamingId === msg.id && !msg.content && (
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <motion.div
+                                          className="flex items-center gap-1"
+                                          animate={{ opacity: [0.5, 1, 0.5] }}
+                                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                                        >
+                                          <Brain size={12} className="text-violet-500 shrink-0" />
+                                          <span className="text-[12px] text-slate-500 font-medium">
+                                            {activityPhase === 'connecting' ? 'Connecting' : activityPhase === 'using_tool' ? 'Using tool' : 'Thinking'}
+                                          </span>
+                                        </motion.div>
+                                        <div className="flex items-center gap-0.5">
+                                          {[0, 1, 2].map((i) => (
+                                            <motion.span
+                                              key={i}
+                                              className="w-1 h-1 bg-violet-400 rounded-full inline-block"
+                                              animate={{ y: [0, -3, 0], opacity: [0.4, 1, 0.4] }}
+                                              transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                      {activeToolCall && (
+                                        <motion.div
+                                          initial={{ opacity: 0, y: 3 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5"
+                                        >
+                                          <Loader2 size={10} className="text-violet-500 animate-spin shrink-0" />
+                                          <span className="text-[11px] text-violet-700 font-medium">{activeToolCall}</span>
+                                        </motion.div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Actual content once tokens arrive */}
+                                  {msg.content && formatMessage(msg.content)}
+                                  {/* Mid-stream tool call badge (fires after some tokens) */}
+                                  {streamingId === msg.id && msg.content && activeToolCall && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: 3 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5 mt-1.5"
+                                    >
+                                      <Loader2 size={10} className="text-violet-500 animate-spin shrink-0" />
+                                      <span className="text-[11px] text-violet-700 font-medium">{activeToolCall}</span>
+                                    </motion.div>
+                                  )}
                                   {/* Streaming cursor */}
                                   {streamingId === msg.id && msg.content && (
                                     <motion.span
@@ -1161,52 +1405,77 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   </motion.div>
                 ))}
 
-                {/* Typing / tool-call indicator — only show when no content yet */}
-                {isTyping && !streamingId && (
-                  <motion.div
-                    key="typing"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex gap-2.5"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
-                      <Bot size={13} className="text-white" />
-                    </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 shadow-sm">
-                      {[0, 1, 2].map((i) => (
-                        <motion.span
-                          key={i}
-                          className="w-1.5 h-1.5 bg-slate-400 rounded-full inline-block"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Active tool call badge */}
-                {isTyping && activeToolCall && (
-                  <motion.div
-                    key="tool-call"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex gap-2.5 items-center"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
-                      <Bot size={13} className="text-white" />
-                    </div>
-                    <div className="bg-violet-50 border border-violet-200 rounded-2xl rounded-tl-sm px-3 py-2 flex items-center gap-2 shadow-sm">
-                      <Loader2 size={11} className="text-violet-600 animate-spin shrink-0" />
-                      <span className="text-xs text-violet-800 font-medium">{activeToolCall}</span>
-                    </div>
-                  </motion.div>
-                )}
               </AnimatePresence>
               <div ref={bottomRef} />
             </div>
+
+            {/* ── Activity bar — persistent status row beneath the message list ── */}
+            <AnimatePresence>
+              {activityPhase !== 'idle' && (
+                <motion.div
+                  key="activity-bar"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.18 }}
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className={`mx-4 mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-medium border ${
+                    activityPhase === 'stalled'
+                      ? 'bg-amber-50 border-amber-200 text-amber-800'
+                      : activityPhase === 'error'
+                      ? 'bg-red-50 border-red-200 text-red-700'
+                      : activityPhase === 'cancelled'
+                      ? 'bg-slate-100 border-slate-200 text-slate-500'
+                      : activityPhase === 'completed'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-violet-50 border-violet-200 text-violet-800'
+                  }`}
+                >
+                  {/* Phase icon */}
+                  {activityPhase === 'connecting' && <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}><Loader2 size={11} className="animate-spin text-violet-500" /></motion.span>}
+                  {activityPhase === 'thinking'   && <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}><Brain size={11} className="text-violet-500" /></motion.span>}
+                  {activityPhase === 'using_tool' && <Loader2 size={11} className="animate-spin text-violet-500 shrink-0" />}
+                  {activityPhase === 'writing'    && <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.8, repeat: Infinity }}><Zap size={11} className="text-violet-500" /></motion.span>}
+                  {activityPhase === 'stalled'    && <AlertTriangle size={11} className="text-amber-500 shrink-0" />}
+                  {activityPhase === 'completed'  && <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />}
+                  {activityPhase === 'cancelled'  && <XCircle size={11} className="text-slate-400 shrink-0" />}
+                  {activityPhase === 'error'      && <AlertTriangle size={11} className="text-red-500 shrink-0" />}
+
+                  {/* Label */}
+                  <span className="flex-1 truncate">{activityLabel}</span>
+
+                  {/* Elapsed time */}
+                  {activityPhase !== 'idle' && activityPhase !== 'completed' && activityPhase !== 'cancelled' && (
+                    <span className="tabular-nums text-[10px] opacity-60 shrink-0">{activityElapsed}s</span>
+                  )}
+
+                  {/* Stop button — active phases only */}
+                  {(activityPhase === 'connecting' || activityPhase === 'thinking' || activityPhase === 'using_tool' || activityPhase === 'writing' || activityPhase === 'stalled') && (
+                    <button
+                      onClick={stopRequest}
+                      className="ml-1 flex items-center gap-1 bg-white border border-current/20 rounded-md px-1.5 py-0.5 text-[10px] font-semibold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors shrink-0"
+                      aria-label="Stop request"
+                    >
+                      <Square size={8} className="fill-current" />
+                      Stop
+                    </button>
+                  )}
+
+                  {/* Retry button — after failure or cancellation */}
+                  {(activityPhase === 'error' || activityPhase === 'cancelled') && (
+                    <button
+                      onClick={retryLastMessage}
+                      className="ml-1 flex items-center gap-1 bg-white border border-current/20 rounded-md px-1.5 py-0.5 text-[10px] font-semibold hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 transition-colors shrink-0"
+                      aria-label="Retry last message"
+                    >
+                      <RotateCcw size={8} />
+                      Retry
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ── Bug Fix Intake Panel (Developer only) ── */}
             <AnimatePresence>
@@ -1291,7 +1560,90 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   </button>
                 </div>
               )}
+
+              {/* Attachment chips (platform owner only) */}
+              {isPlatformOwner && attachmentQueue.hasAttachments && (
+                <div className="mb-2 flex flex-wrap gap-1.5 items-center">
+                  {attachmentQueue.attachments.map(att => (
+                    <AttachmentChip
+                      key={att.clientId}
+                      attachment={att}
+                      onRemove={attachmentQueue.removeAttachment}
+                    />
+                  ))}
+                  {attachmentQueue.attachments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={attachmentQueue.clearAll}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 font-semibold px-2 py-1 rounded-lg hover:bg-slate-200 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Attachment action selector — shown only when files are ready to send */}
+              {isPlatformOwner && attachmentQueue.attachments.some(a => a.status === 'attached') && (
+                <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Action:</span>
+                  {(
+                    [
+                      { value: 'read_only',   label: 'Read only',         title: 'Dazza reads and summarises. Cites filename and line ranges. No instructions executed.' },
+                      { value: 'analyse',     label: 'Analyse',           title: 'Dazza analyses as evidence: separates facts, inferences, assumptions and unknowns.' },
+                      { value: 'repair_case', label: 'Create repair case', title: 'Dazza uses the attachment as evidence for a new or linked Build & Repair case.' },
+                    ] as { value: 'read_only' | 'analyse' | 'repair_case'; label: string; title: string }[]
+                  ).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      title={opt.title}
+                      onClick={() => setAttachmentAction(opt.value)}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+                        attachmentAction === opt.value
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40 hover:text-slate-800'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              {isPlatformOwner && (
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.md,.json,text/plain,text/markdown,application/json"
+                  multiple
+                  className="hidden"
+                  aria-label="Attach text source"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      attachmentQueue.enqueueFiles(e.target.files);
+                    }
+                    // Reset so the same file can be re-selected after removal
+                    e.target.value = '';
+                  }}
+                />
+              )}
+
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex items-end gap-2 px-3 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                {/* Paperclip button (platform owner only) */}
+                {isPlatformOwner && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isTyping || !attachmentQueue.canAddMore}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    aria-label="Attach text source"
+                    title={attachmentQueue.canAddMore ? 'Attach text source (.txt, .md, .json)' : 'Maximum 4 attachments per question'}
+                  >
+                    <Paperclip size={14} />
+                  </button>
+                )}
                 <textarea
                   ref={textareaRef}
                   rows={1}
@@ -1303,11 +1655,15 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   style={{ maxHeight: 120, minHeight: 24 }}
                 />
                 <button
-                  onClick={() => void sendMessage(input)}
-                  disabled={!input.trim() || isTyping}
-                  className="w-8 h-8 bg-primary hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0"
+                  onClick={isTyping ? stopRequest : () => void sendMessage(input)}
+                  disabled={isTyping ? false : (!input.trim() || attachmentQueue.isUploading)}
+                  className={`w-8 h-8 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                    isTyping ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-violet-700'
+                  }`}
+                  aria-label={isTyping ? 'Stop request' : 'Send message'}
+                  title={isTyping ? 'Stop' : 'Send'}
                 >
-                  {isTyping ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  {isTyping ? <Square size={11} className="fill-white" /> : <Send size={13} />}
                 </button>
               </div>
               <p className="text-[10px] text-slate-500 mt-1.5 text-center">

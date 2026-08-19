@@ -40,6 +40,7 @@ export function FormattedBoundText({ devId, guard, children }: FormattedBoundTex
       data-airo-format-bold={marks.bold ? 'true' : undefined}
       data-airo-format-italic={marks.italic ? 'true' : undefined}
       data-airo-format-color={marks.color || undefined}
+      data-airo-format-size={marks.fontSize || undefined}
       style={buildFormatOverrideStyle(marks)}
     >
       {children}

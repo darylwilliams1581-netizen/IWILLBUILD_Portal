@@ -28,6 +28,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
+    env: {
+      // Provide a dummy secret so auth.ts does not throw during handler unit tests.
+      // The real secret is never used in tests — auth is mocked at the po-auth layer.
+      BETTER_AUTH_SECRET: 'test-secret-for-vitest-only-not-production',
+    },
     pool: 'forks',
     maxConcurrency: 5,
     coverage: {
@@ -89,6 +94,22 @@ export default defineConfig({
       {
         find: '@/server/db/client',
         replacement: path.resolve(__dirname, './src/test/stubs/db-client.stub.ts'),
+      },
+
+      // ── po-auth stub ────────────────────────────────────────────────────────
+      // Replaces the real po-auth module so handler unit tests can control
+      // auth/permission outcomes via __setMockProfile() without a live DB.
+      {
+        find: /[/\\]src[/\\]server[/\\]lib[/\\]po-auth(?:\.ts|\.js)?$/,
+        replacement: path.resolve(__dirname, './src/test/stubs/po-auth.stub.ts'),
+      },
+
+      // ── auth stub ───────────────────────────────────────────────────────────
+      // Replaces the real BetterAuth instance so handler unit tests can control
+      // session outcomes via __setMockSession() without a real auth server.
+      {
+        find: /[/\\]src[/\\]lib[/\\]auth[/\\]auth(?:\.ts|\.js)?$/,
+        replacement: path.resolve(__dirname, './src/test/stubs/auth.stub.ts'),
       },
 
       // ── DB config stub ──────────────────────────────────────────────────────

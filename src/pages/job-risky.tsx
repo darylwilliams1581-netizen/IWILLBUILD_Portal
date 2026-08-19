@@ -7,13 +7,9 @@ import { job_risky } from 'virtual:content';
  * Flow: Activity → Hazards → Controls → Permit Required? → Sign-off → Finalise
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import {
-  ChevronLeft, ChevronDown, Plus, ShieldAlert, CheckCircle2, AlertTriangle,
-  Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2,
-  FileWarning,
-} from 'lucide-react';
+import { ChevronLeft, ChevronDown, Plus, ShieldAlert, CheckCircle2, AlertTriangle, Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2, FileWarning } from 'lucide-react';
 import FormSection from '@/components/FormSection';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -44,7 +40,6 @@ interface RiskyAssessment {
   created_at: string;
   signatures?: Signature[];
 }
-
 interface Signature {
   id: number;
   signer_name: string;
@@ -57,13 +52,15 @@ interface Signature {
 function parseJson(raw: string[] | string | null | undefined): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
-  try { return JSON.parse(raw); } catch { return []; }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
 }
-
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
-
 function nowTime() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -74,7 +71,7 @@ function nowTime() {
 function SignaturePad({
   onSave,
   onCancel,
-  label = 'Sign above',
+  label = 'Sign above'
 }: {
   onSave: (data: string) => void;
   onCancel: () => void;
@@ -83,7 +80,6 @@ function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasStrokes, setHasStrokes] = useState(false);
-
   function getPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -91,15 +87,14 @@ function SignaturePad({
     if ('touches' in e) {
       return {
         x: (e.touches[0].clientX - rect.left) * scaleX,
-        y: (e.touches[0].clientY - rect.top) * scaleY,
+        y: (e.touches[0].clientY - rect.top) * scaleY
       };
     }
     return {
       x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      y: (e.clientY - rect.top) * scaleY
     };
   }
-
   function start(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault();
     const canvas = canvasRef.current;
@@ -111,7 +106,6 @@ function SignaturePad({
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
   }
-
   function move(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault();
     if (!drawing.current) return;
@@ -128,12 +122,10 @@ function SignaturePad({
     ctx.stroke();
     setHasStrokes(true);
   }
-
   function end(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault();
     drawing.current = false;
   }
-
   function clear() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -142,37 +134,22 @@ function SignaturePad({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasStrokes(false);
   }
-
-  return (
-    <div className="flex flex-col gap-3">
+  return <div className="flex flex-col gap-3">
       <div className="border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-white touch-none">
-        <canvas
-          ref={canvasRef}
-          width={600}
-          height={200}
-          className="w-full h-36 cursor-crosshair"
-          onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
-          onTouchStart={start} onTouchMove={move} onTouchEnd={end}
-        />
+        <canvas ref={canvasRef} width={600} height={200} className="w-full h-36 cursor-crosshair" onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end} onTouchStart={start} onTouchMove={move} onTouchEnd={end} />
       </div>
       <p className="text-xs text-slate-400 text-center">{label}</p>
       <div className="flex gap-2">
         <button type="button" onClick={clear} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm">Clear</button>
         <button type="button" onClick={onCancel} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm">Cancel</button>
-        <button
-          type="button"
-          onClick={() => {
-            const canvas = canvasRef.current;
-            if (canvas) onSave(canvas.toDataURL('image/png'));
-          }}
-          disabled={!hasStrokes}
-          className="flex-1 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold disabled:opacity-40"
-        >
+        <button type="button" onClick={() => {
+        const canvas = canvasRef.current;
+        if (canvas) onSave(canvas.toDataURL('image/png'));
+      }} disabled={!hasStrokes} className="flex-1 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold disabled:opacity-40">
           Save
         </button>
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // ── Supervisor permit sign-off panel ─────────────────────────────────────────
@@ -181,7 +158,7 @@ function SupervisorPermitSignoff({
   assessment,
   jobId,
   onDone,
-  onClose,
+  onClose
 }: {
   assessment: RiskyAssessment;
   jobId: number;
@@ -192,15 +169,19 @@ function SupervisorPermitSignoff({
   const [showPad, setShowPad] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
   async function handleSave(signatureData: string) {
-    if (!name.trim()) { setError('Enter supervisor name'); return; }
+    if (!name.trim()) {
+      setError('Enter supervisor name');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const r = await fetch(`/api/jobs/${jobId}/risky/${assessment.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           // pass through all existing fields unchanged
           linkedPrestartId: assessment.linked_prestart_id,
@@ -217,20 +198,27 @@ function SupervisorPermitSignoff({
           permitNotes: assessment.permit_notes,
           workersInvolved: assessment.workers_involved,
           workersBriefed: Boolean(assessment.workers_briefed),
-          notes: assessment.notes,
+          notes: assessment.notes
           // supervisor sign-off via a dedicated endpoint would be cleaner,
           // but we store it directly on the record for simplicity
-        }),
+        })
       });
       if (!r.ok) throw new Error('Save failed');
 
       // Save supervisor signature via dedicated endpoint
       const r2 = await fetch(`/api/jobs/${jobId}/risky/${assessment.id}/supervisor-signoff`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supervisorName: name.trim(), signatureData }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          supervisorName: name.trim(),
+          signatureData
+        })
       });
-      const d2 = await r2.json() as { error?: string };
+      const d2 = (await r2.json()) as {
+        error?: string;
+      };
       if (!r2.ok) throw new Error(d2.error ?? 'Failed');
       onDone(name.trim(), signatureData);
     } catch (e) {
@@ -239,11 +227,8 @@ function SupervisorPermitSignoff({
       setSaving(false);
     }
   }
-
   const permitTypes = parseJson(assessment.permit_types);
-
-  return (
-    <div className="flex flex-col h-full bg-slate-900 text-white">
+  return <div className="flex flex-col h-full bg-slate-900 text-white">
       <div className="flex items-center gap-3 px-4 safe-top pb-3 bg-amber-700">
         <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-white/20">
           <X size={18} />
@@ -259,13 +244,9 @@ function SupervisorPermitSignoff({
         <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl p-3">
           <p className="text-xs text-amber-200 font-semibold mb-2">Permit types required</p>
           <div className="flex flex-wrap gap-1.5">
-            {permitTypes.map(pt => (
-              <span key={pt} className="bg-amber-600/60 text-white text-xs px-2 py-0.5 rounded-full">{pt}</span>
-            ))}
+            {permitTypes.map(pt => <span key={pt} className="bg-amber-600/60 text-white text-xs px-2 py-0.5 rounded-full">{pt}</span>)}
           </div>
-          {assessment.permit_notes && (
-            <p className="text-xs text-slate-300 mt-2">{assessment.permit_notes}</p>
-          )}
+          {assessment.permit_notes && <p className="text-xs text-slate-300 mt-2">{assessment.permit_notes}</p>}
         </div>
 
         {/* Consent text */}
@@ -276,61 +257,37 @@ function SupervisorPermitSignoff({
         </div>
 
         {/* Already signed */}
-        {assessment.permit_supervisor_signature && (
-          <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-xl p-3 flex items-center gap-3">
-            <img
-              src={assessment.permit_supervisor_signature}
-              alt={assessment.permit_supervisor_name ?? 'Supervisor'}
-              className="h-10 w-24 object-contain bg-white rounded"
-            />
+        {assessment.permit_supervisor_signature && <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-xl p-3 flex items-center gap-3">
+            <img src={assessment.permit_supervisor_signature} alt={assessment.permit_supervisor_name ?? 'Supervisor'} className="h-10 w-24 object-contain bg-white rounded" />
             <div>
               <p className="text-sm font-semibold text-emerald-300">{assessment.permit_supervisor_name}</p>
               <p className="text-xs text-slate-400">Permit sign-off recorded</p>
             </div>
-          </div>
-        )}
+          </div>}
 
-        {!assessment.permit_supervisor_signature && (
-          <>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Supervisor name"
-              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm"
-            />
+        {!assessment.permit_supervisor_signature && <>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Supervisor name" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm" />
             {error && <p className="text-xs text-red-400">{error}</p>}
-            {!showPad ? (
-              <button
-                type="button"
-                onClick={() => { if (!name.trim()) { setError('Enter supervisor name'); return; } setError(''); setShowPad(true); }}
-                className="w-full py-3 rounded-xl bg-amber-600 text-white font-semibold text-sm flex items-center justify-center gap-2"
-              >
+            {!showPad ? <button type="button" onClick={() => {
+          if (!name.trim()) {
+            setError('Enter supervisor name');
+            return;
+          }
+          setError('');
+          setShowPad(true);
+        }} className="w-full py-3 rounded-xl bg-amber-600 text-white font-semibold text-sm flex items-center justify-center gap-2">
                 <Pencil size={15} /> Sign as Supervisor
-              </button>
-            ) : (
-              <SignaturePad
-                label="Supervisor signature"
-                onSave={handleSave}
-                onCancel={() => setShowPad(false)}
-              />
-            )}
+              </button> : <SignaturePad label="Supervisor signature" onSave={handleSave} onCancel={() => setShowPad(false)} />}
             {saving && <div className="flex justify-center"><Loader2 size={20} className="animate-spin text-amber-400" /></div>}
-          </>
-        )}
+          </>}
       </div>
 
       <div className="p-4 border-t border-white/10">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold text-sm"
-        >
+        <button type="button" onClick={onClose} className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold text-sm">
           Done
         </button>
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // ── Party sign-off screen ─────────────────────────────────────────────────────
@@ -339,7 +296,7 @@ function SignOffScreen({
   assessment,
   jobId,
   onDone,
-  onClose,
+  onClose
 }: {
   assessment: RiskyAssessment;
   jobId: number;
@@ -351,24 +308,34 @@ function SignOffScreen({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [signatures, setSignatures] = useState<Signature[]>(assessment.signatures ?? []);
-
   async function handleSave(signatureData: string) {
-    if (!signerName.trim()) { setError('Enter your name first'); return; }
+    if (!signerName.trim()) {
+      setError('Enter your name first');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const r = await fetch(`/api/jobs/${jobId}/risky/${assessment.id}/signatures`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signerName: signerName.trim(), signatureData }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          signerName: signerName.trim(),
+          signatureData
+        })
       });
-      const d = await r.json() as { id?: number; error?: string };
+      const d = (await r.json()) as {
+        id?: number;
+        error?: string;
+      };
       if (!r.ok) throw new Error(d.error ?? 'Failed');
       setSignatures(prev => [...prev, {
         id: d.id ?? 0,
         signer_name: signerName.trim(),
         signature_data: signatureData,
-        signed_at: new Date().toISOString(),
+        signed_at: new Date().toISOString()
       }]);
       setSignerName('');
       setShowPad(false);
@@ -378,13 +345,10 @@ function SignOffScreen({
       setSaving(false);
     }
   }
-
   const hazards = parseJson(assessment.hazards_selected);
   const permitTypes = parseJson(assessment.permit_types);
   const permitRequired = Boolean(assessment.permit_required);
-
-  return (
-    <div className="flex flex-col h-full bg-slate-900 text-white">
+  return <div className="flex flex-col h-full bg-slate-900 text-white">
       <div className="flex items-center gap-3 px-4 safe-top pb-3 bg-rose-700">
         <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-white/20">
           <X size={18} />
@@ -401,25 +365,17 @@ function SignOffScreen({
         <div className="bg-white/10 rounded-xl p-3 text-sm space-y-2">
           <p className="font-semibold text-rose-200 text-xs uppercase tracking-wide">Hazards</p>
           <div className="flex flex-wrap gap-1.5">
-            {hazards.map(h => (
-              <span key={h} className="bg-rose-600/60 text-white text-xs px-2 py-0.5 rounded-full">{h}</span>
-            ))}
+            {hazards.map(h => <span key={h} className="bg-rose-600/60 text-white text-xs px-2 py-0.5 rounded-full">{h}</span>)}
           </div>
-          {assessment.other_hazard_text && (
-            <p className="text-xs text-slate-300">Other: {assessment.other_hazard_text}</p>
-          )}
+          {assessment.other_hazard_text && <p className="text-xs text-slate-300">Other: {assessment.other_hazard_text}</p>}
           <p className="font-semibold text-rose-200 text-xs uppercase tracking-wide mt-2">Controls</p>
           <p className="text-xs text-slate-200">{assessment.control_measures}</p>
-          {permitRequired && permitTypes.length > 0 && (
-            <>
+          {permitRequired && permitTypes.length > 0 && <>
               <p className="font-semibold text-amber-300 text-xs uppercase tracking-wide mt-2">Permits required</p>
               <div className="flex flex-wrap gap-1.5">
-                {permitTypes.map(pt => (
-                  <span key={pt} className="bg-amber-600/60 text-white text-xs px-2 py-0.5 rounded-full">{pt}</span>
-                ))}
+                {permitTypes.map(pt => <span key={pt} className="bg-amber-600/60 text-white text-xs px-2 py-0.5 rounded-full">{pt}</span>)}
               </div>
-            </>
-          )}
+            </>}
         </div>
 
         {/* Consent text */}
@@ -430,63 +386,45 @@ function SignOffScreen({
         </div>
 
         {/* Existing signatures */}
-        {signatures.length > 0 && (
-          <div className="space-y-2">
+        {signatures.length > 0 && <div className="space-y-2">
             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Signed parties</p>
-            {signatures.map(sig => (
-              <div key={sig.id} className="bg-white/10 rounded-xl p-3 flex items-center gap-3">
+            {signatures.map(sig => <div key={sig.id} className="bg-white/10 rounded-xl p-3 flex items-center gap-3">
                 <img src={sig.signature_data} alt={sig.signer_name} className="h-10 w-24 object-contain bg-white rounded" />
                 <div>
                   <p className="text-sm font-semibold">{sig.signer_name}</p>
-                  <p className="text-xs text-slate-400">{new Date(sig.signed_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-xs text-slate-400">{new Date(sig.signed_at).toLocaleTimeString('en-AU', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              </div>)}
+          </div>}
 
         {/* Add signer */}
-        {!showPad ? (
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={signerName}
-              onChange={e => setSignerName(e.target.value)}
-              placeholder="Your name"
-              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm"
-            />
+        {!showPad ? <div className="space-y-2">
+            <input type="text" value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Your name" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm" />
             {error && <p className="text-xs text-red-400">{error}</p>}
-            <button
-              type="button"
-              onClick={() => {
-                if (!signerName.trim()) { setError('Enter your name first'); return; }
-                setError('');
-                setShowPad(true);
-              }}
-              className="w-full py-3 rounded-xl bg-rose-600 text-white font-semibold text-sm flex items-center justify-center gap-2"
-            >
+            <button type="button" onClick={() => {
+          if (!signerName.trim()) {
+            setError('Enter your name first');
+            return;
+          }
+          setError('');
+          setShowPad(true);
+        }} className="w-full py-3 rounded-xl bg-rose-600 text-white font-semibold text-sm flex items-center justify-center gap-2">
               <Pencil size={15} /> Sign
             </button>
-          </div>
-        ) : (
-          <SignaturePad onSave={handleSave} onCancel={() => setShowPad(false)} />
-        )}
+          </div> : <SignaturePad onSave={handleSave} onCancel={() => setShowPad(false)} />}
 
         {saving && <div className="flex justify-center"><Loader2 size={20} className="animate-spin text-rose-400" /></div>}
       </div>
 
       <div className="p-4 border-t border-white/10">
-        <button
-          type="button"
-          onClick={onDone}
-          disabled={signatures.length === 0}
-          className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-40"
-        >
+        <button type="button" onClick={onDone} disabled={signatures.length === 0} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-40">
           Done — {signatures.length} {signatures.length === 1 ? 'person' : 'people'} signed
         </button>
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // ── Form state ────────────────────────────────────────────────────────────────
@@ -507,7 +445,6 @@ interface FormState {
   workersBriefed: boolean;
   notes: string;
 }
-
 function emptyForm(): FormState {
   return {
     assessmentDate: today(),
@@ -523,15 +460,12 @@ function emptyForm(): FormState {
     permitNotes: '',
     workersInvolved: '',
     workersBriefed: false,
-    notes: '',
+    notes: ''
   };
 }
-
 function formFromAssessment(a: RiskyAssessment): FormState {
   // permit_required may be null (column not yet added) — treat as null
-  const pr = a.permit_required === null || a.permit_required === undefined
-    ? null
-    : Boolean(a.permit_required);
+  const pr = a.permit_required === null || a.permit_required === undefined ? null : Boolean(a.permit_required);
   return {
     assessmentDate: a.assessment_date ?? today(),
     assessmentTime: a.assessment_time ?? nowTime(),
@@ -546,10 +480,9 @@ function formFromAssessment(a: RiskyAssessment): FormState {
     permitNotes: a.permit_notes ?? '',
     workersInvolved: a.workers_involved ?? '',
     workersBriefed: Boolean(a.workers_briefed),
-    notes: a.notes ?? '',
+    notes: a.notes ?? ''
   };
 }
-
 function formToBody(f: FormState) {
   return {
     assessmentDate: f.assessmentDate,
@@ -565,7 +498,7 @@ function formToBody(f: FormState) {
     permitNotes: f.permitNotes,
     workersInvolved: f.workersInvolved,
     workersBriefed: f.workersBriefed,
-    notes: f.notes,
+    notes: f.notes
   };
 }
 
@@ -576,7 +509,7 @@ function Chip({
   selected,
   onClick,
   disabled,
-  color = 'rose',
+  color = 'rose'
 }: {
   label: string;
   selected: boolean;
@@ -584,22 +517,11 @@ function Chip({
   disabled?: boolean;
   color?: 'rose' | 'amber';
 }) {
-  const sel = color === 'amber'
-    ? 'bg-amber-600 text-white border-amber-600'
-    : 'bg-rose-600 text-white border-rose-600';
-  const unsel = color === 'amber'
-    ? 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
-    : 'bg-white text-slate-600 border-slate-200 hover:border-rose-300';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:cursor-default ${selected ? sel : unsel}`}
-    >
+  const sel = color === 'amber' ? 'bg-amber-600 text-white border-amber-600' : 'bg-rose-600 text-white border-rose-600';
+  const unsel = color === 'amber' ? 'bg-white text-slate-600 border-slate-200 hover:border-amber-300' : 'bg-white text-slate-600 border-slate-200 hover:border-rose-300';
+  return <button type="button" onClick={onClick} disabled={disabled} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:cursor-default ${selected ? sel : unsel}`}>
       {label}
-    </button>
-  );
+    </button>;
 }
 
 // ── Dropdown multi-selector ───────────────────────────────────────────────────
@@ -611,7 +533,7 @@ function MultiDropdown({
   disabled,
   placeholder,
   color = 'rose',
-  error,
+  error
 }: {
   options: string[];
   selected: string[];
@@ -633,103 +555,69 @@ function MultiDropdown({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
-
   function toggle(opt: string) {
-    if (selected.includes(opt)) onChange(selected.filter(x => x !== opt));
-    else onChange([...selected, opt]);
+    if (selected.includes(opt)) onChange(selected.filter(x => x !== opt));else onChange([...selected, opt]);
   }
-
-  const accentSel  = color === 'amber' ? 'bg-amber-600' : 'bg-rose-600';
+  const accentSel = color === 'amber' ? 'bg-amber-600' : 'bg-rose-600';
   const accentText = color === 'amber' ? 'text-amber-700' : 'text-rose-700';
-  const accentBg   = color === 'amber' ? 'bg-amber-50'   : 'bg-rose-50';
+  const accentBg = color === 'amber' ? 'bg-amber-50' : 'bg-rose-50';
   const accentBorder = color === 'amber' ? 'border-amber-200' : 'border-rose-200';
-  const ringFocus  = color === 'amber' ? 'ring-amber-400' : 'ring-rose-400';
-
-  return (
-    <div ref={ref} className="relative">
+  const ringFocus = color === 'amber' ? 'ring-amber-400' : 'ring-rose-400';
+  return <div ref={ref} className="relative">
       {/* Trigger */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setOpen(o => !o)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors disabled:cursor-default disabled:bg-slate-50 disabled:text-slate-400 ${
-          error ? 'border-red-400 bg-red-50' :
-          open  ? `border-slate-300 ring-2 ${ringFocus} bg-white` :
-          'border-slate-200 bg-white hover:border-slate-300'
-        }`}
-      >
+      <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(o => !o)} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors disabled:cursor-default disabled:bg-slate-50 disabled:text-slate-400 ${error ? 'border-red-400 bg-red-50' : open ? `border-slate-300 ring-2 ${ringFocus} bg-white` : 'border-slate-200 bg-white hover:border-slate-300'}`}>
         <span className={selected.length === 0 ? 'text-slate-400' : 'text-slate-700 font-medium'}>
-          {selected.length === 0
-            ? placeholder
-            : selected.length === 1
-              ? selected[0]
-              : `${selected.length} selected`}
+          {selected.length === 0 ? placeholder : selected.length === 1 ? selected[0] : `${selected.length} selected`}
         </span>
         <ChevronDown size={15} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Selected pills (when >1) */}
-      {selected.length > 1 && !open && (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {selected.map(s => (
-            <span key={s} className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${accentBg} ${accentText} border ${accentBorder}`}>
+      {selected.length > 1 && !open && <div className="flex flex-wrap gap-1.5 mt-2">
+          {selected.map(s => <span key={s} className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${accentBg} ${accentText} border ${accentBorder}`}>
               {s}
-              {!disabled && (
-                <button type="button" onClick={() => toggle(s)} className="ml-0.5 opacity-60 hover:opacity-100">
+              {!disabled && <button type="button" onClick={() => toggle(s)} className="ml-0.5 opacity-60 hover:opacity-100">
                   <X size={10} />
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+                </button>}
+            </span>)}
+        </div>}
 
       {/* Dropdown panel */}
-      {open && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+      {open && <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
           <div className="max-h-56 overflow-y-auto divide-y divide-slate-50">
             {options.map(opt => {
-              const isSel = selected.includes(opt);
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => toggle(opt)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
-                    isSel ? `${accentBg} ${accentText} font-semibold` : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    isSel ? `${accentSel} border-transparent` : 'border-slate-300'
-                  }`}>
+          const isSel = selected.includes(opt);
+          return <button key={opt} type="button" onClick={() => toggle(opt)} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${isSel ? `${accentBg} ${accentText} font-semibold` : 'text-slate-700 hover:bg-slate-50'}`}>
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSel ? `${accentSel} border-transparent` : 'border-slate-300'}`}>
                     {isSel && <CheckCircle2 size={10} className="text-white" />}
                   </div>
                   {opt}
-                </button>
-              );
-            })}
+                </button>;
+        })}
           </div>
           <div className="px-4 py-2 border-t border-slate-100 flex justify-between items-center">
             <span className="text-xs text-slate-400">{selected.length} selected</span>
             <button type="button" onClick={() => setOpen(false)} className={`text-xs font-semibold ${accentText}`}>Done</button>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 type View = 'list' | 'form' | 'signoff' | 'supervisor-signoff';
-
 export default function JobRiskyPage() {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const returnTo: string = (location.state as { returnTo?: string } | null)?.returnTo ?? '/home';
+  const returnTo: string = (location.state as {
+    returnTo?: string;
+  } | null)?.returnTo ?? '/home';
   const jobId = parseInt(id ?? '0', 10);
-
   const [view, setView] = useState<View>('list');
   const [assessments, setAssessments] = useState<RiskyAssessment[]>([]);
   const [activeAssessment, setActiveAssessment] = useState<RiskyAssessment | null>(null);
@@ -749,22 +637,23 @@ export default function JobRiskyPage() {
     setLoading(true);
     try {
       const r = await fetch(`/api/jobs/${jobId}/risky`);
-      if (r.ok) setAssessments(await r.json() as RiskyAssessment[]);
+      if (r.ok) setAssessments((await r.json()) as RiskyAssessment[]);
     } finally {
       setLoading(false);
     }
   }, [jobId]);
-
-  useEffect(() => { void loadList(); }, [loadList]);
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
 
   // Load job name
   useEffect(() => {
-    fetch(`/api/jobs/${jobId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then((d: { name?: string; job_name?: string } | null) => {
-        if (d) setJobName(d.name ?? d.job_name ?? `Job #${jobId}`);
-      })
-      .catch(() => {});
+    fetch(`/api/jobs/${jobId}`).then(r => r.ok ? r.json() : null).then((d: {
+      name?: string;
+      job_name?: string;
+    } | null) => {
+      if (d) setJobName(d.name ?? d.job_name ?? `Job #${jobId}`);
+    }).catch(() => {});
   }, [jobId]);
 
   // Auto-save draft
@@ -774,42 +663,42 @@ export default function JobRiskyPage() {
       try {
         await fetch(`/api/jobs/${jobId}/risky/${assessmentId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formToBody(f)),
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formToBody(f))
         });
-      } catch { /* silent */ }
+      } catch {/* silent */}
     }, 1200);
   }, [jobId]);
-
   function updateForm(patch: Partial<FormState>) {
     setForm(prev => {
-      const next = { ...prev, ...patch };
+      const next = {
+        ...prev,
+        ...patch
+      };
       if (activeAssessment?.status === 'draft') scheduleSave(next, activeAssessment.id);
       return next;
     });
     const keys = Object.keys(patch) as (keyof FormState)[];
     if (keys.some(k => errors[k])) {
       setErrors(prev => {
-        const next = { ...prev };
+        const next = {
+          ...prev
+        };
         keys.forEach(k => delete next[k]);
         return next;
       });
     }
   }
-
   function toggleHazard(h: string) {
     updateForm({
-      hazardsSelected: form.hazardsSelected.includes(h)
-        ? form.hazardsSelected.filter(x => x !== h)
-        : [...form.hazardsSelected, h],
+      hazardsSelected: form.hazardsSelected.includes(h) ? form.hazardsSelected.filter(x => x !== h) : [...form.hazardsSelected, h]
     });
   }
-
   function togglePermitType(pt: string) {
     updateForm({
-      permitTypes: form.permitTypes.includes(pt)
-        ? form.permitTypes.filter(x => x !== pt)
-        : [...form.permitTypes, pt],
+      permitTypes: form.permitTypes.includes(pt) ? form.permitTypes.filter(x => x !== pt) : [...form.permitTypes, pt]
     });
   }
 
@@ -821,20 +710,27 @@ export default function JobRiskyPage() {
       setForm(f);
       const r = await fetch(`/api/jobs/${jobId}/risky`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formToBody(f)),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formToBody(f))
       });
-      const d = await r.json() as { id?: number; error?: string };
+      const d = (await r.json()) as {
+        id?: number;
+        error?: string;
+      };
       if (!r.ok) throw new Error(d.error ?? 'Failed');
       const r2 = await fetch(`/api/jobs/${jobId}/risky/${d.id!}`);
-      const assessment = await r2.json() as RiskyAssessment;
+      const assessment = (await r2.json()) as RiskyAssessment;
       setActiveAssessment(assessment);
       setForm(formFromAssessment(assessment));
       setErrors({});
       setFinaliseError('');
       setView('form');
     } catch (e) {
-      setErrors({ general: String(e) });
+      setErrors({
+        general: String(e)
+      });
     } finally {
       setSaving(false);
     }
@@ -845,7 +741,7 @@ export default function JobRiskyPage() {
     setLoading(true);
     try {
       const r = await fetch(`/api/jobs/${jobId}/risky/${a.id}`);
-      const full = await r.json() as RiskyAssessment;
+      const full = (await r.json()) as RiskyAssessment;
       setActiveAssessment(full);
       setForm(formFromAssessment(full));
       setErrors({});
@@ -885,8 +781,10 @@ export default function JobRiskyPage() {
     try {
       await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formToBody(form)),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formToBody(form))
       });
       await loadList();
       setSaveDraftSuccess(true);
@@ -901,19 +799,24 @@ export default function JobRiskyPage() {
   async function handleGoSignOff() {
     if (!validate()) return;
     if (!form.workersBriefed) {
-      setErrors(prev => ({ ...prev, workersBriefed: 'Confirm workers have been briefed' }));
+      setErrors(prev => ({
+        ...prev,
+        workersBriefed: 'Confirm workers have been briefed'
+      }));
       return;
     }
     if (!activeAssessment) return;
     // Save first
     await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formToBody(form)),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formToBody(form))
     });
     // Reload fresh record
     const r = await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`);
-    const full = await r.json() as RiskyAssessment;
+    const full = (await r.json()) as RiskyAssessment;
     setActiveAssessment(full);
     setView('signoff');
   }
@@ -926,9 +829,13 @@ export default function JobRiskyPage() {
     try {
       const r = await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}/finalise`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-      const d = await r.json() as { error?: string };
+      const d = (await r.json()) as {
+        error?: string;
+      };
       if (!r.ok) throw new Error(d.error ?? 'Failed');
       await loadList();
       setView('list');
@@ -944,39 +851,25 @@ export default function JobRiskyPage() {
   async function reloadActive() {
     if (!activeAssessment) return;
     const r = await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`);
-    const full = await r.json() as RiskyAssessment;
+    const full = (await r.json()) as RiskyAssessment;
     setActiveAssessment(full);
     setForm(formFromAssessment(full));
   }
 
   // ── Supervisor sign-off view ──────────────────────────────────────────────
   if (view === 'supervisor-signoff' && activeAssessment) {
-    return (
-      <SupervisorPermitSignoff
-        assessment={activeAssessment}
-        jobId={jobId}
-        onClose={() => setView('form')}
-        onDone={async () => {
-          await reloadActive();
-          setView('form');
-        }}
-      />
-    );
+    return <SupervisorPermitSignoff assessment={activeAssessment} jobId={jobId} onClose={() => setView('form')} onDone={async () => {
+      await reloadActive();
+      setView('form');
+    }} />;
   }
 
   // ── Party sign-off view ───────────────────────────────────────────────────
   if (view === 'signoff' && activeAssessment) {
-    return (
-      <SignOffScreen
-        assessment={activeAssessment}
-        jobId={jobId}
-        onClose={() => setView('form')}
-        onDone={async () => {
-          await reloadActive();
-          setView('form');
-        }}
-      />
-    );
+    return <SignOffScreen assessment={activeAssessment} jobId={jobId} onClose={() => setView('form')} onDone={async () => {
+      await reloadActive();
+      setView('form');
+    }} />;
   }
 
   // ── Form view ─────────────────────────────────────────────────────────────
@@ -991,9 +884,7 @@ export default function JobRiskyPage() {
     // - If a permit is required, the supervisor has also signed
     // - If no permit required (or permit_required is null/false), supervisor sig not needed
     const canFinalise = sigCount > 0 && (!permitRequired || hasSupervisorSig);
-
-    return (
-      <>
+    return <>
         <Helmet>
           <title>Risk Assessment & Work Permits — {jobName}</title>
           <meta name="description" content="Field risk assessment and permit check." />
@@ -1003,290 +894,159 @@ export default function JobRiskyPage() {
         <div className="flex flex-col min-h-dvh bg-slate-50">
           {/* Header */}
           <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => { setView('list'); void loadList(); }}
-              className="p-1.5 rounded-lg bg-white/20"
-            >
+            <button type="button" onClick={() => {
+            setView('list');
+            void loadList();
+          }} className="p-1.5 rounded-lg bg-white/20">
               <ChevronLeft size={20} />
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="font-bold text-sm truncate">Risk Assessment</h1>
               <p className="text-xs text-rose-200 truncate">{jobName}</p>
             </div>
-            {isFinalised && (
-              <span className="flex items-center gap-1 text-xs bg-emerald-600 px-2 py-0.5 rounded-full">
+            {isFinalised && <span className="flex items-center gap-1 text-xs bg-emerald-600 px-2 py-0.5 rounded-full">
                 <Lock size={11} /> Finalised
-              </span>
-            )}
+              </span>}
             {/* Overflow menu — secondary actions */}
-            {!isFinalised && (
-              <MobileOverflowMenu
-                surface="dark"
-                items={[
-                  {
-                    label: 'Save Draft',
-                    icon: saving ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />,
-                    onSelect: () => void handleSaveDraft(),
-                    disabled: saving,
-                  },
-                  {
-                    label: 'Back to list',
-                    icon: <ChevronLeft size={15} />,
-                    onSelect: () => { setView('list'); void loadList(); },
-                    dividerAbove: true,
-                  },
-                ]}
-              />
-            )}
+            {!isFinalised && <MobileOverflowMenu surface="dark" items={[{
+            label: 'Save Draft',
+            icon: saving ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />,
+            onSelect: () => void handleSaveDraft(),
+            disabled: saving
+          }, {
+            label: 'Back to list',
+            icon: <ChevronLeft size={15} />,
+            onSelect: () => {
+              setView('list');
+              void loadList();
+            },
+            dividerAbove: true
+          }]} />}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-32">
 
             {/* Details */}
-            <FormSection
-              title="Details"
-              icon={<ClipboardCheck size={13} />}
-              complete={!!(form.assessmentDate && form.recordedBy && form.workersInvolved)}
-              fillRatio={[form.assessmentDate, form.recordedBy, form.workersInvolved].filter(Boolean).length / 3}
-              required
-              accent="rose"
-              defaultOpen
-            >
+            <FormSection title="Details" icon={<ClipboardCheck size={13} />} complete={!!(form.assessmentDate && form.recordedBy && form.workersInvolved)} fillRatio={[form.assessmentDate, form.recordedBy, form.workersInvolved].filter(Boolean).length / 3} required accent="rose" defaultOpen>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Date</label>
-                <input
-                  type="date"
-                  value={form.assessmentDate}
-                  onChange={e => updateForm({ assessmentDate: e.target.value })}
-                  disabled={isFinalised}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
+                <input type="date" value={form.assessmentDate} onChange={e => updateForm({
+                assessmentDate: e.target.value
+              })} disabled={isFinalised} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Time</label>
-                <input
-                  type="time"
-                  value={form.assessmentTime}
-                  onChange={e => updateForm({ assessmentTime: e.target.value })}
-                  disabled={isFinalised}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
+                <input type="time" value={form.assessmentTime} onChange={e => updateForm({
+                assessmentTime: e.target.value
+              })} disabled={isFinalised} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Recorded by / supervisor</label>
-                <input
-                  type="text"
-                  value={form.recordedBy}
-                  onChange={e => updateForm({ recordedBy: e.target.value })}
-                  disabled={isFinalised}
-                  placeholder="Name"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
+                <input type="text" value={form.recordedBy} onChange={e => updateForm({
+                recordedBy: e.target.value
+              })} disabled={isFinalised} placeholder="Name" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Workers / parties involved</label>
-                <input
-                  type="text"
-                  value={form.workersInvolved}
-                  onChange={e => updateForm({ workersInvolved: e.target.value })}
-                  disabled={isFinalised}
-                  placeholder="Names or crew"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-                />
+                <input type="text" value={form.workersInvolved} onChange={e => updateForm({
+                workersInvolved: e.target.value
+              })} disabled={isFinalised} placeholder="Names or crew" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400" />
               </div>
             </FormSection>
 
             {/* Activity */}
-            <FormSection
-              title="Activity / Task"
-              icon={<ClipboardCheck size={13} />}
-              complete={!!(form.activity.trim())}
-              required
-              accent="rose"
-              defaultOpen
-            >
-              <textarea
-                value={form.activity}
-                onChange={e => updateForm({ activity: e.target.value })}
-                disabled={isFinalised}
-                placeholder="Describe the activity or task being assessed…"
-                rows={3}
-                className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.activity ? 'border-red-400' : 'border-slate-200'}`}
-              />
+            <FormSection title="Activity / Task" icon={<ClipboardCheck size={13} />} complete={!!form.activity.trim()} required accent="rose" defaultOpen>
+              <textarea value={form.activity} onChange={e => updateForm({
+              activity: e.target.value
+            })} disabled={isFinalised} placeholder="Describe the activity or task being assessed…" rows={3} className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.activity ? 'border-red-400' : 'border-slate-200'}`} />
               {errors.activity && <p className="text-xs text-red-500">{errors.activity}</p>}
             </FormSection>
 
             {/* Hazards */}
-            <FormSection
-              title="Hazards Identified"
-              icon={<AlertTriangle size={13} />}
-              complete={form.hazardsSelected.length > 0}
-              required
-              accent="rose"
-              defaultOpen
-            >
-              <MultiDropdown
-                options={job_risky.HAZARD_OPTIONS}
-                selected={form.hazardsSelected}
-                onChange={v => updateForm({ hazardsSelected: v })}
-                disabled={isFinalised}
-                placeholder="Select hazards…"
-                color="rose"
-                error={errors.hazardsSelected}
-              />
+            <FormSection title="Hazards Identified" icon={<AlertTriangle size={13} />} complete={form.hazardsSelected.length > 0} required accent="rose" defaultOpen>
+              <MultiDropdown options={job_risky.HAZARD_OPTIONS} selected={form.hazardsSelected} onChange={v => updateForm({
+              hazardsSelected: v
+            })} disabled={isFinalised} placeholder="Select hazards…" color="rose" error={errors.hazardsSelected} />
               {errors.hazardsSelected && <p className="text-xs text-red-500">{errors.hazardsSelected}</p>}
-              {form.hazardsSelected.includes('Other') && (
-                <div>
+              {form.hazardsSelected.includes('Other') && <div>
                   <label className="text-xs text-slate-500 mb-1 block">Describe other hazard</label>
-                  <input
-                    type="text"
-                    value={form.otherHazardText}
-                    onChange={e => updateForm({ otherHazardText: e.target.value })}
-                    disabled={isFinalised}
-                    placeholder="Required"
-                    className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.otherHazardText ? 'border-red-400' : 'border-slate-200'}`}
-                  />
+                  <input type="text" value={form.otherHazardText} onChange={e => updateForm({
+                otherHazardText: e.target.value
+              })} disabled={isFinalised} placeholder="Required" className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.otherHazardText ? 'border-red-400' : 'border-slate-200'}`} />
                   {errors.otherHazardText && <p className="text-xs text-red-500 mt-1">{errors.otherHazardText}</p>}
-                </div>
-              )}
+                </div>}
             </FormSection>
 
             {/* Controls */}
-            <FormSection
-              title="Control Measures"
-              icon={<ShieldAlert size={13} />}
-              complete={!!(form.controlMeasures.trim())}
-              required
-              accent="rose"
-              defaultOpen
-            >
+            <FormSection title="Control Measures" icon={<ShieldAlert size={13} />} complete={!!form.controlMeasures.trim()} required accent="rose" defaultOpen>
               <p className="text-xs text-slate-400">Write what will be done to remove or reduce the risk before work continues.</p>
-              <textarea
-                value={form.controlMeasures}
-                onChange={e => updateForm({ controlMeasures: e.target.value })}
-                disabled={isFinalised}
-                placeholder="Describe control measures…"
-                rows={4}
-                className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.controlMeasures ? 'border-red-400' : 'border-slate-200'}`}
-              />
+              <textarea value={form.controlMeasures} onChange={e => updateForm({
+              controlMeasures: e.target.value
+            })} disabled={isFinalised} placeholder="Describe control measures…" rows={4} className={`w-full border rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400 ${errors.controlMeasures ? 'border-red-400' : 'border-slate-200'}`} />
               {errors.controlMeasures && <p className="text-xs text-red-500">{errors.controlMeasures}</p>}
             </FormSection>
 
             {/* Permit required */}
-            <FormSection
-              title="Permit Required?"
-              icon={<FileWarning size={13} />}
-              complete={form.permitRequired !== null && form.permitRequired !== undefined}
-              required
-              accent="amber"
-              defaultOpen
-            >
+            <FormSection title="Permit Required?" icon={<FileWarning size={13} />} complete={form.permitRequired !== null && form.permitRequired !== undefined} required accent="amber" defaultOpen>
               {errors.permitRequired && <p className="text-xs text-red-500">{errors.permitRequired}</p>}
               <div className="flex gap-3">
-                {[{ label: 'No', value: false }, { label: 'Yes', value: true }].map(opt => (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => !isFinalised && updateForm({ permitRequired: opt.value, permitTypes: opt.value ? form.permitTypes : [], otherPermitText: '' })}
-                    disabled={isFinalised}
-                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default ${
-                      form.permitRequired === opt.value
-                        ? opt.value
-                          ? 'border-amber-500 bg-amber-50 text-amber-700'
-                          : 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 text-slate-500'
-                    }`}
-                  >
+                {[{
+                label: 'No',
+                value: false
+              }, {
+                label: 'Yes',
+                value: true
+              }].map(opt => <button key={opt.label} type="button" onClick={() => !isFinalised && updateForm({
+                permitRequired: opt.value,
+                permitTypes: opt.value ? form.permitTypes : [],
+                otherPermitText: ''
+              })} disabled={isFinalised} className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default ${form.permitRequired === opt.value ? opt.value ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}>
                     {opt.label}
-                  </button>
-                ))}
+                  </button>)}
               </div>
 
-              {permitRequired && (
-                <div className="space-y-3 pt-1">
+              {permitRequired && <div className="space-y-3 pt-1">
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                     <p className="text-xs text-amber-700">Confirm required permit controls are in place before work continues.</p>
                   </div>
                   <p className="text-xs text-slate-500 font-medium">Permit type(s)</p>
                   {errors.permitTypes && <p className="text-xs text-red-500">{errors.permitTypes}</p>}
-                  <MultiDropdown
-                    options={job_risky.PERMIT_TYPE_OPTIONS}
-                    selected={form.permitTypes}
-                    onChange={v => updateForm({ permitTypes: v })}
-                    disabled={isFinalised}
-                    placeholder="Select permit types…"
-                    color="amber"
-                    error={errors.permitTypes}
-                  />
-                  {form.permitTypes.includes('Other') && (
-                    <div>
+                  <MultiDropdown options={job_risky.PERMIT_TYPE_OPTIONS} selected={form.permitTypes} onChange={v => updateForm({
+                permitTypes: v
+              })} disabled={isFinalised} placeholder="Select permit types…" color="amber" error={errors.permitTypes} />
+                  {form.permitTypes.includes('Other') && <div>
                       <label className="text-xs text-slate-500 mb-1 block">Describe other permit</label>
-                      <input
-                        type="text"
-                        value={form.otherPermitText}
-                        onChange={e => updateForm({ otherPermitText: e.target.value })}
-                        disabled={isFinalised}
-                        placeholder="Required"
-                        className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.otherPermitText ? 'border-red-400' : 'border-slate-200'}`}
-                      />
+                      <input type="text" value={form.otherPermitText} onChange={e => updateForm({
+                  otherPermitText: e.target.value
+                })} disabled={isFinalised} placeholder="Required" className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.otherPermitText ? 'border-red-400' : 'border-slate-200'}`} />
                       {errors.otherPermitText && <p className="text-xs text-red-500 mt-1">{errors.otherPermitText}</p>}
-                    </div>
-                  )}
+                    </div>}
                   <div>
                     <label className="text-xs text-slate-500 mb-1 block">Permit notes (optional)</label>
-                    <textarea
-                      value={form.permitNotes}
-                      onChange={e => updateForm({ permitNotes: e.target.value })}
-                      disabled={isFinalised}
-                      placeholder="Additional permit details…"
-                      rows={2}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
-                    />
+                    <textarea value={form.permitNotes} onChange={e => updateForm({
+                  permitNotes: e.target.value
+                })} disabled={isFinalised} placeholder="Additional permit details…" rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400" />
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 font-medium mb-2">Supervisor permit sign-off</p>
-                    {hasSupervisorSig ? (
-                      <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    {hasSupervisorSig ? <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                         <img src={activeAssessment.permit_supervisor_signature!} alt={activeAssessment.permit_supervisor_name ?? 'Supervisor'} className="h-10 w-24 object-contain bg-white rounded border border-slate-100" />
                         <div>
                           <p className="text-sm font-semibold text-emerald-700">{activeAssessment.permit_supervisor_name}</p>
                           <p className="text-xs text-slate-400">Permit sign-off recorded</p>
                         </div>
-                      </div>
-                    ) : (
-                      !isFinalised && (
-                        <button type="button" onClick={() => setView('supervisor-signoff')} className="w-full py-3 rounded-xl border-2 border-dashed border-amber-300 text-amber-600 text-sm font-semibold flex items-center justify-center gap-2">
+                      </div> : !isFinalised && <button type="button" onClick={() => setView('supervisor-signoff')} className="w-full py-3 rounded-xl border-2 border-dashed border-amber-300 text-amber-600 text-sm font-semibold flex items-center justify-center gap-2">
                           <Pencil size={14} /> Supervisor Sign Off Permit
-                        </button>
-                      )
-                    )}
+                        </button>}
                   </div>
-                </div>
-              )}
+                </div>}
             </FormSection>
 
             {/* Workers briefed */}
-            <FormSection
-              title="Workers Briefed"
-              icon={<Users size={13} />}
-              complete={form.workersBriefed}
-              required
-              accent="emerald"
-              alwaysOpen
-            >
-              <button
-                type="button"
-                onClick={() => !isFinalised && updateForm({ workersBriefed: !form.workersBriefed })}
-                disabled={isFinalised}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
-                  form.workersBriefed
-                    ? 'border-emerald-500 bg-emerald-50'
-                    : errors.workersBriefed
-                    ? 'border-red-400 bg-red-50'
-                    : 'border-slate-200 bg-white'
-                }`}
-              >
+            <FormSection title="Workers Briefed" icon={<Users size={13} />} complete={form.workersBriefed} required accent="emerald" alwaysOpen>
+              <button type="button" onClick={() => !isFinalised && updateForm({
+              workersBriefed: !form.workersBriefed
+            })} disabled={isFinalised} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${form.workersBriefed ? 'border-emerald-500 bg-emerald-50' : errors.workersBriefed ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'}`}>
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${form.workersBriefed ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
                   {form.workersBriefed && <CheckCircle2 size={14} className="text-white" />}
                 </div>
@@ -1298,129 +1058,70 @@ export default function JobRiskyPage() {
             </FormSection>
 
             {/* Signatures summary */}
-            {sigCount > 0 && (
-              <FormSection
-                title="Party Signatures"
-                icon={<Users size={13} />}
-                complete={sigCount > 0}
-                accent="emerald"
-                defaultOpen
-                headerRight={<span className="text-xs text-emerald-600 font-semibold">{sigCount} signed</span>}
-              >
+            {sigCount > 0 && <FormSection title="Party Signatures" icon={<Users size={13} />} complete={sigCount > 0} accent="emerald" defaultOpen headerRight={<span className="text-xs text-emerald-600 font-semibold">{sigCount} signed</span>}>
                 <div className="space-y-2">
-                  {(activeAssessment.signatures ?? []).map(sig => (
-                    <div key={sig.id} className="flex items-center gap-3">
+                  {(activeAssessment.signatures ?? []).map(sig => <div key={sig.id} className="flex items-center gap-3">
                       <img src={sig.signature_data} alt={sig.signer_name} className="h-8 w-20 object-contain bg-slate-50 rounded border border-slate-100" />
                       <span className="text-sm text-slate-700">{sig.signer_name}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
-              </FormSection>
-            )}
+              </FormSection>}
 
             {/* Notes */}
-            <FormSection
-              title="Notes (optional)"
-              icon={<FileText size={13} />}
-              accent="violet"
-              defaultOpen={false}
-            >
-              <textarea
-                value={form.notes}
-                onChange={e => updateForm({ notes: e.target.value })}
-                disabled={isFinalised}
-                placeholder="Any additional notes…"
-                rows={2}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
-              />
+            <FormSection title="Notes (optional)" icon={<FileText size={13} />} accent="violet" defaultOpen={false}>
+              <textarea value={form.notes} onChange={e => updateForm({
+              notes: e.target.value
+            })} disabled={isFinalised} placeholder="Any additional notes…" rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400" />
             </FormSection>
 
             {/* Finalise error */}
-            {finaliseError && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+            {finaliseError && <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
                 <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-red-600">{finaliseError}</p>
-              </div>
-            )}
+              </div>}
 
             {/* Permit required — sign-off reminder */}
-            {permitRequired && !hasSupervisorSig && !isFinalised && (
-              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            {permitRequired && !hasSupervisorSig && !isFinalised && <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                 <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">Supervisor permit sign-off is required before you can finalise.</p>
-              </div>
-            )}
+              </div>}
           </div>
 
           {/* Bottom actions */}
-          {!isFinalised && (
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 safe-bottom">
+          {!isFinalised && <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 safe-bottom">
               {/* Save draft success banner */}
-              {saveDraftSuccess && (
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border-t border-emerald-200 text-emerald-700 text-sm font-medium">
+              {saveDraftSuccess && <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border-t border-emerald-200 text-emerald-700 text-sm font-medium">
                   <CheckCircle2 size={14} className="shrink-0" />
                   Draft saved
-                </div>
-              )}
+                </div>}
               {/* Finalise blocker hint */}
-              {sigCount > 0 && permitRequired && !hasSupervisorSig && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-t border-amber-200 text-amber-700 text-xs">
+              {sigCount > 0 && permitRequired && !hasSupervisorSig && <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-t border-amber-200 text-amber-700 text-xs">
                   <AlertTriangle size={12} className="shrink-0" />
                   Supervisor permit sign-off required to finalise
-                </div>
-              )}
-              {sigCount === 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-slate-500 text-xs">
+                </div>}
+              {sigCount === 0 && <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-slate-500 text-xs">
                   <Users size={12} className="shrink-0" />
                   At least one party signature required to finalise
-                </div>
-              )}
+                </div>}
               <div className="flex gap-3 p-4">
-                <button
-                  type="button"
-                  onClick={handleSaveDraft}
-                  disabled={saving}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center justify-center gap-2"
-                >
+                <button type="button" onClick={handleSaveDraft} disabled={saving} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center justify-center gap-2">
                   {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Save Draft'}
                 </button>
-                {sigCount === 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleGoSignOff}
-                    className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                  >
+                {sigCount === 0 ? <button type="button" onClick={handleGoSignOff} className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2">
                     <Users size={15} /> Sign Off
-                  </button>
-                ) : canFinalise ? (
-                  <button
-                    type="button"
-                    onClick={handleFinalise}
-                    disabled={finalising}
-                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                  >
+                  </button> : canFinalise ? <button type="button" onClick={handleFinalise} disabled={finalising} className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2">
                     {finalising ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={15} /> Finalise</>}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleGoSignOff}
-                    className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                  >
+                  </button> : <button type="button" onClick={handleGoSignOff} className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2">
                     <Users size={15} /> Add Signatures
-                  </button>
-                )}
+                  </button>}
               </div>
-            </div>
-          )}
+            </div>}
         </div>
-      </>
-    );
+      </>;
   }
 
   // ── List view ─────────────────────────────────────────────────────────────
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Risk Assessment & Work Permits — {jobName}</title>
         <meta name="description" content="Field risk assessments and permit checks for this job." />
@@ -1429,102 +1130,63 @@ export default function JobRiskyPage() {
       </Helmet>
       <div className="flex flex-col min-h-dvh bg-slate-50">
         <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(returnTo)}
-            className="p-1.5 rounded-lg bg-white/20"
-          >
+          <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
             <ChevronLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-sm">Risk Assessment & Work Permits</h1>
             <p className="text-xs text-rose-200 truncate">{jobName}</p>
           </div>
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={saving}
-            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold"
-          >
+          <button type="button" onClick={handleCreate} disabled={saving} className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             New
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {errors.general && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+          {errors.general && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
               {errors.general}
-            </div>
-          )}
+            </div>}
 
-          {loading ? (
-            <div className="flex justify-center py-16">
+          {loading ? <div className="flex justify-center py-16">
               <Loader2 size={28} className="animate-spin text-rose-400" />
-            </div>
-          ) : assessments.length === 0 ? (
-            <div className="text-center py-16">
+            </div> : assessments.length === 0 ? <div className="text-center py-16">
               <ShieldAlert size={36} className="text-slate-200 mx-auto mb-3" />
               <p className="text-slate-400 text-sm font-medium">No risk assessments yet</p>
               <p className="text-slate-300 text-xs mt-1">Tap New to start one</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
+            </div> : <div className="space-y-3">
               {assessments.map(a => {
-                const hazards = parseJson(a.hazards_selected);
-                const permitTypes = parseJson(a.permit_types);
-                const isFinalised = a.status === 'finalised';
-                const hasPermit = Boolean(a.permit_required);
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => handleOpen(a)}
-                    className="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:border-rose-200 transition-colors"
-                  >
+            const hazards = parseJson(a.hazards_selected);
+            const permitTypes = parseJson(a.permit_types);
+            const isFinalised = a.status === 'finalised';
+            const hasPermit = Boolean(a.permit_required);
+            return <button key={a.id} type="button" onClick={() => handleOpen(a)} className="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:border-rose-200 transition-colors">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <p className="text-sm font-semibold text-slate-800 leading-snug flex-1">
                         {a.activity ?? 'Untitled assessment'}
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {hasPermit && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Permit</span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          isFinalised ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
+                        {hasPermit && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Permit</span>}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFinalised ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                           {isFinalised ? 'Finalised' : 'Draft'}
                         </span>
                       </div>
                     </div>
-                    {hazards.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {hazards.slice(0, 3).map(h => (
-                          <span key={h} className="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">{h}</span>
-                        ))}
-                        {hazards.length > 3 && (
-                          <span className="text-xs text-slate-400">+{hazards.length - 3} more</span>
-                        )}
-                      </div>
-                    )}
-                    {hasPermit && permitTypes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {permitTypes.slice(0, 2).map(pt => (
-                          <span key={pt} className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">{pt}</span>
-                        ))}
-                      </div>
-                    )}
+                    {hazards.length > 0 && <div className="flex flex-wrap gap-1 mb-2">
+                        {hazards.slice(0, 3).map(h => <span key={h} className="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">{h}</span>)}
+                        {hazards.length > 3 && <span className="text-xs text-slate-400">+{hazards.length - 3} more</span>}
+                      </div>}
+                    {hasPermit && permitTypes.length > 0 && <div className="flex flex-wrap gap-1 mb-2">
+                        {permitTypes.slice(0, 2).map(pt => <span key={pt} className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">{pt}</span>)}
+                      </div>}
                     <div className="flex items-center gap-3 text-xs text-slate-400">
                       <span>{a.assessment_date ?? new Date(a.created_at).toLocaleDateString('en-AU')}</span>
                       {a.recorded_by && <span>· {a.recorded_by}</span>}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                  </button>;
+          })}
+            </div>}
         </div>
       </div>
-    </>
-  );
+    </>;
 }

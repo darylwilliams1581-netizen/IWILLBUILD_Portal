@@ -9,13 +9,17 @@
  * and the @/server/db/client alias both resolve here.
  *
  * Exports the same surface as the real client:
- *   db              — chainable no-op Proxy
+ *   db              — Proxy with controllable execute + query mocks
  *   testConnection  — async noop returning true
  *   closeConnection — async noop
+ *
+ * Tests that need to control db.execute return values should import
+ * __dbExecuteMock and call .mockResolvedValue / .mockImplementation on it.
+ *
+ * Tests that need to control db.query.profiles.findFirst should import
+ * __dbQueryProfilesMock and configure it similarly.
  */
 
-// NOTE: vi is imported lazily inside the factory so this file is safe to
-// import in both test and (accidentally) non-test contexts.
 import { vi } from 'vitest';
 
 /** Chainable no-op proxy — absorbs .select().from().where()... etc. */
@@ -27,13 +31,31 @@ function makeChain(): unknown {
   return new Proxy({}, h);
 }
 
+/**
+ * Controllable execute mock — exported so tests can call
+ * __dbExecuteMock.mockResolvedValue([[row], undefined]) etc.
+ */
+export const __dbExecuteMock = vi.fn().mockResolvedValue([[], undefined]);
+
+/**
+ * Controllable query.profiles.findFirst mock.
+ * Default: returns null (no profile found).
+ */
+export const __dbQueryProfilesMock = vi.fn().mockResolvedValue(null);
+
 export const db = new Proxy(
   {},
   {
     get(_t, prop) {
-      if (prop === 'execute') return vi.fn().mockResolvedValue([[], []]);
+      if (prop === 'execute') return __dbExecuteMock;
       if (prop === 'transaction')
         return vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
+      if (prop === 'query') {
+        return {
+          profiles: { findFirst: __dbQueryProfilesMock },
+          jobs: { findFirst: vi.fn().mockResolvedValue(null) },
+        };
+      }
       return (..._a: unknown[]) => makeChain();
     },
   },

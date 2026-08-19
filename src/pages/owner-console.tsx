@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import {
-  RefreshCw, Shield, ChevronRight, Activity, Loader2,
-  ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, X, Bot,
-  Mail, BarChart2, StickyNote, Receipt,
-  Send, Ban, RotateCcw, Server, AlertCircle,
-  Play, Info, Clock, Copy, Check, Plus, Database,
-  Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode,
-} from 'lucide-react';
+import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -23,7 +15,6 @@ import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
 import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
 import SystemAITab from '@/components/owner-console/SystemAITab';
-
 import ManualVerifyModal from '@/components/ManualVerifyModal';
 import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
@@ -33,7 +24,6 @@ import PlatformEmailTab from '@/components/owner-console/PlatformEmailTab';
 import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
-
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
@@ -54,7 +44,6 @@ interface Stats {
   onlineNow: number;
   loginsToday: number;
 }
-
 interface Company {
   id: number;
   name: string;
@@ -64,7 +53,6 @@ interface Company {
   createdAt: string;
   status: string;
 }
-
 interface OcUser {
   id: number;
   userId: string;
@@ -82,7 +70,6 @@ interface OcUser {
   isOrphan?: boolean;
   orphanReason?: string | null;
 }
-
 interface ActivityEvent {
   id: number;
   userId: string;
@@ -93,7 +80,6 @@ interface ActivityEvent {
   userName: string | null;
   userEmail: string | null;
 }
-
 interface AuditEvent {
   id: number;
   ownerUserId: string;
@@ -106,7 +92,6 @@ interface AuditEvent {
   ownerName: string | null;
   ownerEmail: string | null;
 }
-
 interface ChecklistItem {
   id: string;
   label: string;
@@ -127,39 +112,48 @@ function timeAgo(dateStr: string | null): string {
   const days = Math.floor(hrs / 24);
   return `${days}d ago`;
 }
-
 function fmtDate(dateStr: string | null): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-AU', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
 }
-
 function auditActionLabel(type: string): string {
   const map: Record<string, string> = {
     enter_support_mode: 'Entered support mode',
     exit_support_mode: 'Exited support mode',
-    update_setup_checklist: 'Updated checklist',
+    update_setup_checklist: 'Updated checklist'
   };
   return map[type] ?? type.replace(/_/g, ' ');
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 
-function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${
-        active ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-      }`}
-    >
+function Tab({
+  active,
+  onClick,
+  children
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return <button onClick={onClick} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${active ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
       {children}
-    </button>
-  );
+    </button>;
 }
 
 // ── Support Setup Panel ───────────────────────────────────────────────────────
 
-function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () => void }) {
+function SupportSetupPanel({
+  company,
+  onExit
+}: {
+  company: Company;
+  onExit: () => void;
+}) {
   const navigate = useNavigate();
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [percent, setPercent] = useState(0);
@@ -169,13 +163,13 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [showAudit, setShowAudit] = useState(false);
-
   const load = useCallback(async () => {
     setLoading(true);
-    const [cl, au] = await Promise.all([
-      fetch(`/api/support-mode/checklist?companyId=${company.id}`, { credentials: 'include' }).then((r) => r.json()),
-      fetch(`/api/support-mode/audit?companyId=${company.id}&limit=50`, { credentials: 'include' }).then((r) => r.json()),
-    ]);
+    const [cl, au] = await Promise.all([fetch(`/api/support-mode/checklist?companyId=${company.id}`, {
+      credentials: 'include'
+    }).then(r => r.json()), fetch(`/api/support-mode/audit?companyId=${company.id}&limit=50`, {
+      credentials: 'include'
+    }).then(r => r.json())]);
     setChecklist(cl.checklist ?? []);
     setPercent(cl.percent ?? 0);
     setDone(cl.done ?? 0);
@@ -183,35 +177,65 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
     setAuditEvents(au.events ?? []);
     setLoading(false);
   }, [company.id]);
-
-  useEffect(() => { void load(); }, [load]);
-
+  useEffect(() => {
+    void load();
+  }, [load]);
   const toggleItem = async (itemId: string, completed: boolean) => {
     setToggling(itemId);
     await fetch('/api/support-mode/checklist', {
       method: 'PUT',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyId: company.id, itemId, completed }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        companyId: company.id,
+        itemId,
+        completed
+      })
     });
     await load();
     setToggling(null);
   };
-
-  const quickActions = [
-    { label: 'Edit Company Profile', icon: Settings, href: '/settings?tab=company' },
-    { label: 'Manage Users', icon: Users, href: '/settings?tab=team' },
-    { label: 'Configure Permissions', icon: ShieldCheck, href: '/settings?tab=team' },
-    { label: 'Cost Guide', icon: FileText, href: '/estimating?tab=cost-guide' },
-    { label: 'Form Templates', icon: ClipboardList, href: '/forms' },
-    { label: 'PDF / Print Style', icon: FileText, href: '/settings?tab=pdf' },
-    { label: 'Fleet Assets', icon: Building2, href: '/fleet' },
-    { label: 'Files', icon: FileText, href: '/files' },
-    { label: 'Support Inbox', icon: Mail, href: 'https://outlook.office.com/mail/?realm=iwillbuild.com&login_hint=support@iwillbuild.com', external: true },
-  ];
-
-  return (
-    <div className="flex flex-col gap-6 max-w-4xl">
+  const quickActions = [{
+    label: 'Edit Company Profile',
+    icon: Settings,
+    href: '/settings?tab=company'
+  }, {
+    label: 'Manage Users',
+    icon: Users,
+    href: '/settings?tab=team'
+  }, {
+    label: 'Configure Permissions',
+    icon: ShieldCheck,
+    href: '/settings?tab=team'
+  }, {
+    label: 'Cost Guide',
+    icon: FileText,
+    href: '/estimating?tab=cost-guide'
+  }, {
+    label: 'Form Templates',
+    icon: ClipboardList,
+    href: '/forms'
+  }, {
+    label: 'PDF / Print Style',
+    icon: FileText,
+    href: '/settings?tab=pdf'
+  }, {
+    label: 'Fleet Assets',
+    icon: Building2,
+    href: '/fleet'
+  }, {
+    label: 'Files',
+    icon: FileText,
+    href: '/files'
+  }, {
+    label: 'Support Inbox',
+    icon: Mail,
+    href: 'https://outlook.office.com/mail/?realm=iwillbuild.com&login_hint=support@iwillbuild.com',
+    external: true
+  }];
+  return <div className="flex flex-col gap-6 max-w-4xl">
       {/* Header */}
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
         <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
@@ -221,10 +245,7 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
           <p className="font-black text-amber-900 text-lg leading-tight">{company.name}</p>
           <p className="text-sm text-amber-700 mt-0.5">Support Setup Mode — all actions are audited</p>
         </div>
-        <button
-          onClick={onExit}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 font-bold text-sm rounded-xl hover:bg-amber-50 transition-colors shrink-0"
-        >
+        <button onClick={onExit} className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 font-bold text-sm rounded-xl hover:bg-amber-50 transition-colors shrink-0">
           <LogOut size={13} />
           Exit Support Mode
         </button>
@@ -239,32 +260,17 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
           </div>
           {/* Progress bar */}
           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${percent}%` }}
-            />
+            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{
+            width: `${percent}%`
+          }} />
           </div>
         </div>
-        {loading ? (
-          <div className="flex items-center justify-center py-10">
+        {loading ? <div className="flex items-center justify-center py-10">
             <Loader2 size={20} className="animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {checklist.map((item) => (
-              <div key={item.id} className={`px-5 py-3.5 flex items-center gap-4 transition-colors ${item.completed ? 'bg-green-50/40' : ''}`}>
-                <button
-                  onClick={() => void toggleItem(item.id, !item.completed)}
-                  disabled={toggling === item.id}
-                  className="shrink-0 transition-transform hover:scale-110 disabled:opacity-50"
-                >
-                  {toggling === item.id ? (
-                    <Loader2 size={20} className="animate-spin text-slate-400" />
-                  ) : item.completed ? (
-                    <CheckCircle2 size={20} className="text-green-500" />
-                  ) : (
-                    <XCircle size={20} className="text-slate-300 hover:text-slate-400" />
-                  )}
+          </div> : <div className="divide-y divide-slate-100">
+            {checklist.map(item => <div key={item.id} className={`px-5 py-3.5 flex items-center gap-4 transition-colors ${item.completed ? 'bg-green-50/40' : ''}`}>
+                <button onClick={() => void toggleItem(item.id, !item.completed)} disabled={toggling === item.id} className="shrink-0 transition-transform hover:scale-110 disabled:opacity-50">
+                  {toggling === item.id ? <Loader2 size={20} className="animate-spin text-slate-400" /> : item.completed ? <CheckCircle2 size={20} className="text-green-500" /> : <XCircle size={20} className="text-slate-300 hover:text-slate-400" />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold ${item.completed ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
@@ -272,10 +278,8 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              </div>)}
+          </div>}
       </div>
 
       {/* Quick Actions */}
@@ -285,44 +289,30 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
           <p className="text-xs text-slate-400 mt-0.5">Navigate to setup areas for this company</p>
         </div>
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.label}
-                onClick={() => action.external ? window.open(action.href, '_blank', 'noopener,noreferrer') : navigate(action.href)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-colors text-left group"
-              >
+          {quickActions.map(action => {
+          const Icon = action.icon;
+          return <button key={action.label} onClick={() => action.external ? window.open(action.href, '_blank', 'noopener,noreferrer') : navigate(action.href)} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-colors text-left group">
                 <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 group-hover:border-primary/30 transition-colors">
                   <Icon size={14} className="text-slate-500 group-hover:text-primary transition-colors" />
                 </div>
                 <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 truncate">{action.label}</span>
                 <ExternalLink size={11} className="text-slate-300 group-hover:text-primary ml-auto shrink-0 transition-colors" />
-              </button>
-            );
-          })}
+              </button>;
+        })}
         </div>
       </div>
 
       {/* Audit Log */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <button
-          onClick={() => setShowAudit((v) => !v)}
-          className="w-full px-5 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
-        >
+        <button onClick={() => setShowAudit(v => !v)} className="w-full px-5 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors">
           <h2 className="font-bold text-slate-800">Support Audit Log</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400">{auditEvents.length} events</span>
             <ChevronDown size={14} className={`text-slate-400 transition-transform ${showAudit ? 'rotate-180' : ''}`} />
           </div>
         </button>
-        {showAudit && (
-          auditEvents.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">No audit events yet for this company</p>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {auditEvents.map((e) => (
-                <div key={e.id} className="px-5 py-3 flex items-start gap-3">
+        {showAudit && (auditEvents.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">No audit events yet for this company</p> : <div className="divide-y divide-slate-100">
+              {auditEvents.map(e => <div key={e.id} className="px-5 py-3 flex items-start gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-2 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700">
@@ -333,14 +323,10 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
                     {e.summary && <p className="text-xs text-slate-400 mt-0.5 truncate">{e.summary}</p>}
                   </div>
                   <span className="text-[11px] text-slate-400 shrink-0">{timeAgo(e.createdAt)}</span>
-                </div>
-              ))}
-            </div>
-          )
-        )}
+                </div>)}
+            </div>)}
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -348,9 +334,11 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
 export default function OwnerConsolePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isPlatformOwner, loading: permsLoading } = usePermissions();
+  const {
+    isPlatformOwner,
+    loading: permsLoading
+  } = usePermissions();
   const supportMode = useSupportMode();
-
   const [migrated, setMigrated] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -358,14 +346,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy'>(
-    (searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null) === 'support-setup' ? 'support-setup'
-    : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
-    : (searchParams.get('tab') as 'bug-reports' | null) === 'bug-reports' ? 'bug-reports'
-    : (searchParams.get('tab') as 'incidents' | null) === 'incidents' ? 'incidents'
-    : (searchParams.get('tab') as 'client-rescue' | null) === 'client-rescue' ? 'client-rescue'
-    : 'overview'
-  );
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
@@ -378,31 +359,52 @@ export default function OwnerConsolePage() {
   const [filterVerified, setFilterVerified] = useState('');
 
   // User action modal state
-  const [pendingAction, setPendingAction] = useState<{ action: UserAction; user: OcUserForActions } | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    action: UserAction;
+    user: OcUserForActions;
+  } | null>(null);
   const [actionToast, setActionToast] = useState<string | null>(null);
 
   // Orphan action modal state
-  const [pendingOrphanAction, setPendingOrphanAction] = useState<{ action: OrphanAction; user: OrphanUser } | null>(null);
+  const [pendingOrphanAction, setPendingOrphanAction] = useState<{
+    action: OrphanAction;
+    user: OrphanUser;
+  } | null>(null);
 
   // Create company modal state
   const [showCreateCompany, setShowCreateCompany] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', plan: 'team', abn: '', phone: '', email: '' });
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    plan: 'team',
+    abn: '',
+    phone: '',
+    email: ''
+  });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
   // Manual verify modal state
-  const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<{
+    id: string;
+    name: string;
+    email: string;
+  } | null>(null);
 
   // ── Safety migration state ────────────────────────────────────────────────────
   const [safetyMigStatus, setSafetyMigStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [safetyMigResults, setSafetyMigResults] = useState<string[]>([]);
-
   const runSafetyMigration = useCallback(async () => {
     setSafetyMigStatus('running');
     setSafetyMigResults([]);
     try {
-      const res = await fetch('/api/migrate-safety', { method: 'POST', credentials: 'include' });
-      const data = await res.json() as { ok: boolean; results: string[] };
+      const res = await fetch('/api/migrate-safety', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        results: string[];
+      };
       setSafetyMigResults(data.results ?? []);
       setSafetyMigStatus(data.ok ? 'done' : 'error');
     } catch (e) {
@@ -418,7 +420,6 @@ export default function OwnerConsolePage() {
   const [annetteWarnings, setAnnetteWarnings] = useState<string[]>([]);
   const [annetteCopied, setAnnetteCopied] = useState(false);
   const annetteReportRef = useRef<HTMLDivElement>(null);
-
   const runAnnette = useCallback(async () => {
     setAnnetteStatus('running');
     setAnnetteReport('');
@@ -428,11 +429,17 @@ export default function OwnerConsolePage() {
       const res = await fetch('/api/dazza/annette', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supportCompanyId: null }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          supportCompanyId: null
+        })
       });
       if (!res.ok || !res.body) {
-        const d = await res.json() as { error?: string };
+        const d = (await res.json()) as {
+          error?: string;
+        };
         setAnnetteReport(`⚠️ Error: ${d.error ?? 'Failed to start Health Check'}`);
         setAnnetteStatus('error');
         return;
@@ -442,22 +449,42 @@ export default function OwnerConsolePage() {
       let buffer = '';
       let fullText = '';
       while (true) {
-        const { done, value } = await reader.read();
+        const {
+          done,
+          value
+        } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, {
+          stream: true
+        });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           try {
-            const parsed = JSON.parse(line.slice(6)) as { text?: string; done?: boolean; warnings?: string[]; error?: boolean };
-            if (parsed.text) { fullText += parsed.text; setAnnetteReport(fullText); }
+            const parsed = JSON.parse(line.slice(6)) as {
+              text?: string;
+              done?: boolean;
+              warnings?: string[];
+              error?: boolean;
+            };
+            if (parsed.text) {
+              fullText += parsed.text;
+              setAnnetteReport(fullText);
+            }
             if (parsed.done) {
               setAnnetteWarnings(parsed.warnings ?? []);
-              setAnnetteRunAt(new Date().toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+              setAnnetteRunAt(new Date().toLocaleString('en-AU', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }));
               setAnnetteStatus(parsed.error ? 'error' : 'done');
             }
-          } catch { /* skip */ }
+          } catch {/* skip */}
         }
       }
     } catch (e) {
@@ -465,7 +492,6 @@ export default function OwnerConsolePage() {
       setAnnetteStatus('error');
     }
   }, []);
-
   async function copyAnnetteReport() {
     await navigator.clipboard.writeText(annetteReport);
     setAnnetteCopied(true);
@@ -487,12 +513,18 @@ export default function OwnerConsolePage() {
         nodes.push(<div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">{emoji && <span className="text-lg leading-none">{emoji}</span>}<h2 className="font-heading font-black text-sm text-slate-800 uppercase tracking-wider">{rest}</h2></div>);
         continue;
       }
-      if (line.startsWith('### ')) { nodes.push(<h3 key={key++} className="font-bold text-sm text-slate-700 mt-3 mb-1">{line.slice(4)}</h3>); continue; }
+      if (line.startsWith('### ')) {
+        nodes.push(<h3 key={key++} className="font-bold text-sm text-slate-700 mt-3 mb-1">{line.slice(4)}</h3>);
+        continue;
+      }
       if (line.startsWith('- ') || line.startsWith('• ')) {
         nodes.push(<div key={key++} className="flex items-start gap-2 py-0.5 pl-1"><span className="text-primary mt-1.5 shrink-0 text-[8px]">●</span><span className="text-sm text-slate-700 leading-relaxed">{line.slice(2)}</span></div>);
         continue;
       }
-      if (line.trim() === '') { nodes.push(<div key={key++} className="h-1" />); continue; }
+      if (line.trim() === '') {
+        nodes.push(<div key={key++} className="h-1" />);
+        continue;
+      }
       nodes.push(<p key={key++} className="text-sm text-slate-700 leading-relaxed">{line}</p>);
     }
     return nodes;
@@ -500,30 +532,55 @@ export default function OwnerConsolePage() {
 
   // ── Run migrations ────────────────────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([
-      fetch('/api/migrate-owner-console', { method: 'POST', credentials: 'include' }),
-      fetch('/api/migrate-support-mode', { method: 'POST', credentials: 'include' }),
-      fetch('/api/migrate-account-recovery', { method: 'POST', credentials: 'include' }),
-      fetch('/api/migrate-safety', { method: 'POST', credentials: 'include' }),
-    ]).finally(() => setMigrated(true));
+    Promise.all([fetch('/api/migrate-owner-console', {
+      method: 'POST',
+      credentials: 'include'
+    }), fetch('/api/migrate-support-mode', {
+      method: 'POST',
+      credentials: 'include'
+    }), fetch('/api/migrate-account-recovery', {
+      method: 'POST',
+      credentials: 'include'
+    }), fetch('/api/migrate-safety', {
+      method: 'POST',
+      credentials: 'include'
+    })]).finally(() => setMigrated(true));
   }, []);
-
   const loadData = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
-    else setRefreshing(true);
+    if (!quiet) setLoading(true);else setRefreshing(true);
     try {
-      const [s, c, u, a, br] = await Promise.all([
-        fetch('/api/owner-console/stats', { credentials: 'include' }).then((r) => r.json()),
-        fetch('/api/owner-console/companies', { credentials: 'include' }).then((r) => r.json()),
-        fetch('/api/owner-console/users', { credentials: 'include' }).then((r) => r.json()),
-        fetch('/api/owner-console/activity?limit=100', { credentials: 'include' }).then((r) => r.json()),
-        fetch('/api/bug-reports?status=open&limit=1', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ counts: { open: 0, in_progress: 0 } })),
-      ]);
+      const [s, c, u, a, br] = await Promise.all([fetch('/api/owner-console/stats', {
+        credentials: 'include'
+      }).then(r => r.json()), fetch('/api/owner-console/companies', {
+        credentials: 'include'
+      }).then(r => r.json()), fetch('/api/owner-console/users', {
+        credentials: 'include'
+      }).then(r => r.json()), fetch('/api/owner-console/activity?limit=100', {
+        credentials: 'include'
+      }).then(r => r.json()), fetch('/api/bug-reports?status=open&limit=1', {
+        credentials: 'include'
+      }).then(r => r.json()).catch(() => ({
+        counts: {
+          open: 0,
+          in_progress: 0
+        }
+      }))]);
       setStats(s as Stats);
-      setCompanies((c as { companies: Company[] }).companies ?? []);
-      setUsers((u as { users: OcUser[] }).users ?? []);
-      setActivity((a as { events: ActivityEvent[] }).events ?? []);
-      const brCounts = (br as { counts?: { open?: number; in_progress?: number } }).counts ?? {};
+      setCompanies((c as {
+        companies: Company[];
+      }).companies ?? []);
+      setUsers((u as {
+        users: OcUser[];
+      }).users ?? []);
+      setActivity((a as {
+        events: ActivityEvent[];
+      }).events ?? []);
+      const brCounts = (br as {
+        counts?: {
+          open?: number;
+          in_progress?: number;
+        };
+      }).counts ?? {};
       setBugReportCount((brCounts.open ?? 0) + (brCounts.in_progress ?? 0));
     } catch (e) {
       console.error('Owner console load error:', e);
@@ -532,7 +589,6 @@ export default function OwnerConsolePage() {
       setRefreshing(false);
     }
   }, []);
-
   useEffect(() => {
     if (migrated && !permsLoading && isPlatformOwner) {
       void loadData();
@@ -548,11 +604,10 @@ export default function OwnerConsolePage() {
   // If already in support mode, pre-populate supportCompany
   useEffect(() => {
     if (supportMode.active && supportMode.companyId && companies.length > 0) {
-      const c = companies.find((co) => co.id === supportMode.companyId);
+      const c = companies.find(co => co.id === supportMode.companyId);
       if (c) setSupportCompany(c);
     }
   }, [supportMode.active, supportMode.companyId, companies]);
-
   const handleEnterSupport = async (company: Company) => {
     setEnteringSupport(company.id);
     const result = await supportMode.enter(company.id);
@@ -560,42 +615,58 @@ export default function OwnerConsolePage() {
     if (result.ok) {
       setSupportCompany(company);
       setTab('support-setup');
-      setSearchParams({ tab: 'support-setup' });
+      setSearchParams({
+        tab: 'support-setup'
+      });
     }
   };
-
   const handleExitSupport = async () => {
     await supportMode.exit();
     setSupportCompany(null);
     setTab('companies');
     setSearchParams({});
   };
-
   const handleViewUsers = (company: Company) => {
     setFilterCompanyId(company.id);
     setTab('users');
   };
-
   const handleViewActivity = (company: Company) => {
     setFilterCompanyId(company.id);
     setTab('activity');
   };
-
   const handleCreateCompany = async () => {
-    if (!createForm.name.trim()) { setCreateError('Company name is required.'); return; }
+    if (!createForm.name.trim()) {
+      setCreateError('Company name is required.');
+      return;
+    }
     setCreating(true);
     setCreateError('');
     try {
       const res = await fetch('/api/owner-console/companies', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include',
-        body: JSON.stringify(createForm),
+        body: JSON.stringify(createForm)
       });
-      const data = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok) { setCreateError(data.error ?? 'Failed to create company.'); setCreating(false); return; }
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setCreateError(data.error ?? 'Failed to create company.');
+        setCreating(false);
+        return;
+      }
       setShowCreateCompany(false);
-      setCreateForm({ name: '', plan: 'team', abn: '', phone: '', email: '' });
+      setCreateForm({
+        name: '',
+        plan: 'team',
+        abn: '',
+        phone: '',
+        email: ''
+      });
       void loadData(true);
     } catch {
       setCreateError('Something went wrong.');
@@ -605,8 +676,7 @@ export default function OwnerConsolePage() {
 
   // Access guard
   if (!permsLoading && !isPlatformOwner) {
-    return (
-      <div className="flex-1 bg-[#F4F5F7] flex flex-col lg-portal">
+    return <div className="flex-1 bg-[#F4F5F7] flex flex-col lg-portal">
         <PortalSidebar />
         <DesktopTopBar />
         <DesktopDock />
@@ -617,28 +687,16 @@ export default function OwnerConsolePage() {
             </div>
             <h2 className="text-xl font-black text-slate-900 mb-2">Access Denied</h2>
             <p className="text-sm text-slate-500 mb-6">Platform developer access is required to view the Developer Console.</p>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors"
-            >
+            <button onClick={() => navigate('/dashboard')} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors">
               Back to Dashboard
             </button>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  const filteredActivity = filterCompanyId
-    ? activity.filter((a) => a.companyId === filterCompanyId)
-    : activity;
-
-  const filterCompanyName = filterCompanyId
-    ? companies.find((c) => c.id === filterCompanyId)?.name
-    : null;
-
-  return (
-    <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg-portal">
+  const filteredActivity = filterCompanyId ? activity.filter(a => a.companyId === filterCompanyId) : activity;
+  const filterCompanyName = filterCompanyId ? companies.find(c => c.id === filterCompanyId)?.name : null;
+  return <div className="flex-1 min-h-0 bg-[#F4F5F7] flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
@@ -662,11 +720,7 @@ export default function OwnerConsolePage() {
 
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 shrink-0">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0"
-            aria-label="Go back"
-          >
+          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
@@ -676,19 +730,13 @@ export default function OwnerConsolePage() {
             </div>
             <h1 className="font-heading font-black text-xl text-slate-900">Developer Console</h1>
           </div>
-          {supportMode.active && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
+          {supportMode.active && <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
               <ShieldAlert size={13} className="text-amber-600" />
               <span className="text-xs font-bold text-amber-700 truncate max-w-[160px]">
                 {supportMode.companyName}
               </span>
-            </div>
-          )}
-          <button
-            onClick={() => void loadData(true)}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors disabled:opacity-50"
-          >
+            </div>}
+          <button onClick={() => void loadData(true)} disabled={refreshing} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors disabled:opacity-50">
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             Refresh
           </button>
@@ -696,254 +744,302 @@ export default function OwnerConsolePage() {
 
         {/* Tabs */}
         <div className="bg-white border-b border-slate-200 px-6 py-2 flex gap-1 shrink-0 flex-wrap">
-          <Tab active={tab === 'overview'} onClick={() => { setTab('overview'); setSearchParams({}); }}>Overview</Tab>
-          <Tab active={tab === 'companies'} onClick={() => { setTab('companies'); setFilterCompanyId(null); setSearchParams({}); }}>
+          <Tab active={tab === 'overview'} onClick={() => {
+          setTab('overview');
+          setSearchParams({});
+        }}>Overview</Tab>
+          <Tab active={tab === 'companies'} onClick={() => {
+          setTab('companies');
+          setFilterCompanyId(null);
+          setSearchParams({});
+        }}>
             Companies {companies.length > 0 && <span className="ml-1 text-xs opacity-70">({companies.length})</span>}
           </Tab>
-          <Tab active={tab === 'users'} onClick={() => { setTab('users'); setSearchParams({}); }}>
+          <Tab active={tab === 'users'} onClick={() => {
+          setTab('users');
+          setSearchParams({});
+        }}>
             Users {users.length > 0 && <span className="ml-1 text-xs opacity-70">({users.length})</span>}
           </Tab>
-          <Tab active={tab === 'activity'} onClick={() => { setTab('activity'); setFilterCompanyId(null); setSearchParams({}); }}>Activity Log</Tab>
-          <Tab active={tab === 'usage'} onClick={() => { setTab('usage'); setSearchParams({}); }}>Usage</Tab>
-          <Tab active={tab === 'storage'} onClick={() => { setTab('storage'); setSearchParams({}); }}>System Storage</Tab>
-          <Tab active={tab === 'cancellation-feedback'} onClick={() => { setTab('cancellation-feedback'); setSearchParams({}); }}>Cancellation Feedback</Tab>
-          <Tab active={tab === 'system-ai'} onClick={() => { setTab('system-ai'); setSearchParams({}); }}>
+          <Tab active={tab === 'activity'} onClick={() => {
+          setTab('activity');
+          setFilterCompanyId(null);
+          setSearchParams({});
+        }}>Activity Log</Tab>
+          <Tab active={tab === 'usage'} onClick={() => {
+          setTab('usage');
+          setSearchParams({});
+        }}>Usage</Tab>
+          <Tab active={tab === 'storage'} onClick={() => {
+          setTab('storage');
+          setSearchParams({});
+        }}>System Storage</Tab>
+          <Tab active={tab === 'cancellation-feedback'} onClick={() => {
+          setTab('cancellation-feedback');
+          setSearchParams({});
+        }}>Cancellation Feedback</Tab>
+          <Tab active={tab === 'system-ai'} onClick={() => {
+          setTab('system-ai');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <Bot size={12} />
               System AI
             </span>
           </Tab>
-          <Tab active={tab === 'audit-log'} onClick={() => { setTab('audit-log'); setSearchParams({}); }}>
+          <Tab active={tab === 'audit-log'} onClick={() => {
+          setTab('audit-log');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <ShieldCheck size={12} />
               Audit Log
             </span>
           </Tab>
-          <Tab active={tab === 'activity-log'} onClick={() => { setTab('activity-log'); setSearchParams({}); }}>
+          <Tab active={tab === 'activity-log'} onClick={() => {
+          setTab('activity-log');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <Activity size={12} />
               Activity Log
             </span>
           </Tab>
-          <Tab active={tab === 'email-log'} onClick={() => { setTab('email-log'); setSearchParams({}); }}>
+          <Tab active={tab === 'email-log'} onClick={() => {
+          setTab('email-log');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <Mail size={12} />
               Email Log
             </span>
           </Tab>
-          <Tab active={tab === 'platform-email'} onClick={() => { setTab('platform-email'); setSearchParams({}); }}>
+          <Tab active={tab === 'platform-email'} onClick={() => {
+          setTab('platform-email');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <Mail size={12} />
               Email Settings
             </span>
           </Tab>
-          <Tab active={tab === 'company-health'} onClick={() => { setTab('company-health'); setSearchParams({}); }}>
+          <Tab active={tab === 'company-health'} onClick={() => {
+          setTab('company-health');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <BarChart2 size={12} />
               Company Health
             </span>
           </Tab>
-          <Tab active={tab === 'support-notes'} onClick={() => { setTab('support-notes'); setSearchParams({}); }}>
+          <Tab active={tab === 'support-notes'} onClick={() => {
+          setTab('support-notes');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <StickyNote size={12} />
               Support Notes
             </span>
           </Tab>
-          <Tab active={tab === 'accounting-smoke'} onClick={() => { setTab('accounting-smoke'); setSearchParams({}); }}>
+          <Tab active={tab === 'accounting-smoke'} onClick={() => {
+          setTab('accounting-smoke');
+          setSearchParams({});
+        }}>
             <span className="flex items-center gap-1.5">
               <Receipt size={12} />
               Accounting Tests
             </span>
           </Tab>
-          <Tab active={tab === 'health-check'} onClick={() => { setTab('health-check'); setSearchParams({ tab: 'health-check' }); }}>
+          <Tab active={tab === 'health-check'} onClick={() => {
+          setTab('health-check');
+          setSearchParams({
+            tab: 'health-check'
+          });
+        }}>
             <span className="flex items-center gap-1.5">
               <Activity size={12} />
               Health Check
             </span>
           </Tab>
-          <Tab active={tab === 'bug-reports'} onClick={() => { setTab('bug-reports'); setSearchParams({ tab: 'bug-reports' }); }}>
+          <Tab active={tab === 'bug-reports'} onClick={() => {
+          setTab('bug-reports');
+          setSearchParams({
+            tab: 'bug-reports'
+          });
+        }}>
             <span className="flex items-center gap-1.5">
               <Bug size={12} />
               Bug Reports
-              {bugReportCount > 0 && (
-                <span className="bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-none">
+              {bugReportCount > 0 && <span className="bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-none">
                   {bugReportCount}
-                </span>
-              )}
+                </span>}
             </span>
           </Tab>
-          <Tab active={tab === 'incidents'} onClick={() => { setTab('incidents'); setSearchParams({ tab: 'incidents' }); }}>
+          <Tab active={tab === 'incidents'} onClick={() => {
+          setTab('incidents');
+          setSearchParams({
+            tab: 'incidents'
+          });
+        }}>
             <span className="flex items-center gap-1.5">
               <AlertTriangle size={12} />
               Incidents
             </span>
           </Tab>
-          <Tab active={tab === 'client-rescue'} onClick={() => { setTab('client-rescue'); setSearchParams({ tab: 'client-rescue' }); }}>
+          <Tab active={tab === 'client-rescue'} onClick={() => {
+          setTab('client-rescue');
+          setSearchParams({
+            tab: 'client-rescue'
+          });
+        }}>
             <span className="flex items-center gap-1.5">
               <Phone size={12} />
               Client Rescue
             </span>
           </Tab>
-          <Tab active={tab === 'anatomy'} onClick={() => { setTab('anatomy'); setSearchParams({ tab: 'anatomy' }); }}>
+          <Tab active={tab === 'anatomy'} onClick={() => {
+          setTab('anatomy');
+          setSearchParams({
+            tab: 'anatomy'
+          });
+        }}>
             <span className="flex items-center gap-1.5">
               <FileCode size={12} />
               Anatomy
             </span>
           </Tab>
-          {(supportMode.active || tab === 'support-setup') && (
-            <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
+          {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
+          setTab('support-setup');
+          setSearchParams({
+            tab: 'support-setup'
+          });
+        }}>
               <span className="flex items-center gap-1.5">
                 <ShieldAlert size={12} />
                 Support Setup
                 {supportMode.active && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
               </span>
-            </Tab>
-          )}
+            </Tab>}
           {/* Open GoDaddy — platform owner ONLY */}
-          {isPlatformOwner && (
-            <a
-              href="https://sso.godaddy.com/?realm=idp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            >
+          {isPlatformOwner && <a href="https://sso.godaddy.com/?realm=idp" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors">
               <Code2 size={12} />
               Open GoDaddy
-            </a>
-          )}
+            </a>}
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 ${(tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue' || tab === 'builder') ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
-          {loading ? (
-            <div className="flex items-center justify-center py-24">
+        <div className={`flex-1 min-h-0 ${tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue' || tab === 'builder' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+          {loading ? <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 size={28} className="animate-spin text-primary" />
                 <p className="text-sm text-slate-400">Loading Developer Console…</p>
               </div>
-            </div>
-          ) : (
-            <>
+            </div> : <>
               {/* ── Overview ── */}
-              {tab === 'overview' && (
-                <OverviewTab
-                  stats={stats}
-                  companies={companies}
-                  activity={activity}
-                  enteringSupport={enteringSupport}
-                  onEnterSupport={handleEnterSupport}
-                  onViewCompanies={() => { setTab('companies'); setFilterCompanyId(null); setSearchParams({}); }}
-                  onViewActivity={() => { setTab('activity'); setFilterCompanyId(null); setSearchParams({}); }}
-                />
-              )}
+              {tab === 'overview' && <OverviewTab stats={stats} companies={companies} activity={activity} enteringSupport={enteringSupport} onEnterSupport={handleEnterSupport} onViewCompanies={() => {
+            setTab('companies');
+            setFilterCompanyId(null);
+            setSearchParams({});
+          }} onViewActivity={() => {
+            setTab('activity');
+            setFilterCompanyId(null);
+            setSearchParams({});
+          }} />}
 
               {/* ── Companies ── */}
-              {tab === 'companies' && (
-                <CompaniesTab
-                  companies={companies}
-                  supportMode={supportMode}
-                  enteringSupport={enteringSupport}
-                  onEnterSupport={handleEnterSupport}
-                  onViewUsers={handleViewUsers}
-                  onViewActivity={handleViewActivity}
-                  onCreateCompany={() => setShowCreateCompany(true)}
-                />
-              )}
+              {tab === 'companies' && <CompaniesTab companies={companies} supportMode={supportMode} enteringSupport={enteringSupport} onEnterSupport={handleEnterSupport} onViewUsers={handleViewUsers} onViewActivity={handleViewActivity} onCreateCompany={() => setShowCreateCompany(true)} />}
 
               {/* ── Users ── */}
-              {tab === 'users' && (
-                <UsersTab
-                  users={users}
-                  companies={companies}
-                  filterStatus={filterStatus}
-                  filterRole={filterRole}
-                  filterVerified={filterVerified}
-                  filterCompanyId={filterCompanyId}
-                  userSearch={userSearch}
-                  onFilterStatus={setFilterStatus}
-                  onFilterRole={setFilterRole}
-                  onFilterVerified={setFilterVerified}
-                  onFilterCompanyId={setFilterCompanyId}
-                  onUserSearch={setUserSearch}
-                  onClearFilters={() => { setFilterStatus(''); setFilterRole(''); setFilterVerified(''); setFilterCompanyId(null); }}
-                  onUserAction={async (action, target) => {
-                    if (action === 'impersonate') {
-                      const r = await fetch(`/api/developer/users/${target.userId}/impersonate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ reason: 'Developer support session' }),
-                      });
-                      if (r.ok) {
-                        // Open in a new tab so the owner console session is preserved
-                        window.open('/home', '_blank', 'noopener');
-                      } else {
-                        const d = await r.json() as { error?: string };
-                        alert(d.error ?? 'Failed to start impersonation.');
-                      }
-                      return;
-                    }
-                    if (action === 'view-sessions') {
-                      const r = await fetch(`/api/developer/users/${target.userId}/sessions`, { credentials: 'include' });
-                      if (r.ok) {
-                        const d = await r.json() as { sessions: Array<{ id: string; ipAddress: string; userAgent: string; createdAt: string }>; total: number };
-                        const list = d.sessions.map(s => `\u2022 ${s.ipAddress} \u2014 ${s.userAgent?.slice(0, 60)} (${new Date(s.createdAt).toLocaleString('en-AU')})`).join('\n');
-                        alert(`${d.total} active session(s) for ${target.email}:\n\n${list || 'None'}`);
-                      }
-                      return;
-                    }
-                    if (action === 'revoke-sessions') {
-                      if (!confirm(`Force logout ${target.email}? All their active sessions will be revoked.`)) return;
-                      const r = await fetch(`/api/developer/users/${target.userId}/sessions`, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ reason: 'Force logout by developer' }),
-                      });
-                      if (r.ok) {
-                        setActionToast(`Sessions revoked for ${target.email}`);
-                        setTimeout(() => setActionToast(''), 3000);
-                      }
-                      return;
-                    }
-                    setPendingAction({ action, user: target });
-                  }}
-                  onOrphanAction={(action, user) => setPendingOrphanAction({ action, user })}
-                  actionToast={actionToast}
-                />
-              )}
+              {tab === 'users' && <UsersTab users={users} companies={companies} filterStatus={filterStatus} filterRole={filterRole} filterVerified={filterVerified} filterCompanyId={filterCompanyId} userSearch={userSearch} onFilterStatus={setFilterStatus} onFilterRole={setFilterRole} onFilterVerified={setFilterVerified} onFilterCompanyId={setFilterCompanyId} onUserSearch={setUserSearch} onClearFilters={() => {
+            setFilterStatus('');
+            setFilterRole('');
+            setFilterVerified('');
+            setFilterCompanyId(null);
+          }} onUserAction={async (action, target) => {
+            if (action === 'impersonate') {
+              const r = await fetch(`/api/developer/users/${target.userId}/impersonate`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  reason: 'Developer support session'
+                })
+              });
+              if (r.ok) {
+                // Open in a new tab so the owner console session is preserved
+                window.open('/home', '_blank', 'noopener');
+              } else {
+                const d = (await r.json()) as {
+                  error?: string;
+                };
+                alert(d.error ?? 'Failed to start impersonation.');
+              }
+              return;
+            }
+            if (action === 'view-sessions') {
+              const r = await fetch(`/api/developer/users/${target.userId}/sessions`, {
+                credentials: 'include'
+              });
+              if (r.ok) {
+                const d = (await r.json()) as {
+                  sessions: Array<{
+                    id: string;
+                    ipAddress: string;
+                    userAgent: string;
+                    createdAt: string;
+                  }>;
+                  total: number;
+                };
+                const list = d.sessions.map(s => `\u2022 ${s.ipAddress} \u2014 ${s.userAgent?.slice(0, 60)} (${new Date(s.createdAt).toLocaleString('en-AU')})`).join('\n');
+                alert(`${d.total} active session(s) for ${target.email}:\n\n${list || 'None'}`);
+              }
+              return;
+            }
+            if (action === 'revoke-sessions') {
+              if (!confirm(`Force logout ${target.email}? All their active sessions will be revoked.`)) return;
+              const r = await fetch(`/api/developer/users/${target.userId}/sessions`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  reason: 'Force logout by developer'
+                })
+              });
+              if (r.ok) {
+                setActionToast(`Sessions revoked for ${target.email}`);
+                setTimeout(() => setActionToast(''), 3000);
+              }
+              return;
+            }
+            setPendingAction({
+              action,
+              user: target
+            });
+          }} onOrphanAction={(action, user) => setPendingOrphanAction({
+            action,
+            user
+          })} actionToast={actionToast} />}
 
               {/* ── Activity ── */}
-              {tab === 'activity' && (
-                <ActivityTab
-                  activity={filteredActivity}
-                  filterCompanyName={filterCompanyName}
-                  onClearFilter={() => setFilterCompanyId(null)}
-                />
-              )}
+              {tab === 'activity' && <ActivityTab activity={filteredActivity} filterCompanyName={filterCompanyName} onClearFilter={() => setFilterCompanyId(null)} />}
 
               {/* ── Support Setup ── */}
-              {tab === 'support-setup' && (
-                supportCompany ? (
-                  <SupportSetupPanel company={supportCompany} onExit={handleExitSupport} />
-                ) : (
-                  <div className="max-w-lg">
+              {tab === 'support-setup' && (supportCompany ? <SupportSetupPanel company={supportCompany} onExit={handleExitSupport} /> : <div className="max-w-lg">
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
                       <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4">
                         <ShieldAlert size={24} className="text-amber-500" />
                       </div>
                       <h2 className="font-black text-slate-900 text-lg mb-2">No Company Selected</h2>
                       <p className="text-sm text-slate-500 mb-6">Select a company from the Companies tab to enter Support Setup mode.</p>
-                      <button
-                        onClick={() => setTab('companies')}
-                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors"
-                      >
+                      <button onClick={() => setTab('companies')} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors">
                         Go to Companies
                       </button>
                     </div>
-                  </div>
-                )
-              )}
+                  </div>)}
 
               {/* ── Usage ── */}
               {tab === 'usage' && <OwnerUsageTab />}
@@ -953,9 +1049,11 @@ export default function OwnerConsolePage() {
               {tab === 'cancellation-feedback' && <CancellationFeedbackTab />}
 
               {/* ── System AI ── */}
-              {tab === 'system-ai' && (
-                <SystemAITab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
-              )}
+              {tab === 'system-ai' && <SystemAITab companies={companies.map(c => ({
+            id: c.id,
+            name: c.name,
+            totalUsers: c.totalUsers
+          }))} />}
 
               {/* ── Developer Audit Log ── */}
               {tab === 'audit-log' && <DeveloperAuditLogTab />}
@@ -988,8 +1086,7 @@ export default function OwnerConsolePage() {
 
 
               {/* ── Health Check (Annette) ── */}
-              {tab === 'health-check' && (
-                <div className="max-w-3xl">
+              {tab === 'health-check' && <div className="max-w-3xl">
 
                   {/* Safety DB Migration card */}
                   <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6">
@@ -1003,29 +1100,15 @@ export default function OwnerConsolePage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={runSafetyMigration}
-                        disabled={safetyMigStatus === 'running'}
-                        className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-                      >
-                        {safetyMigStatus === 'running' ? (
-                          <><Loader2 size={13} className="animate-spin" />Running…</>
-                        ) : safetyMigStatus === 'done' ? (
-                          <><RefreshCw size={13} />Run again</>
-                        ) : (
-                          <><Play size={13} />Run Migration</>
-                        )}
+                      <button onClick={runSafetyMigration} disabled={safetyMigStatus === 'running'} className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+                        {safetyMigStatus === 'running' ? <><Loader2 size={13} className="animate-spin" />Running…</> : safetyMigStatus === 'done' ? <><RefreshCw size={13} />Run again</> : <><Play size={13} />Run Migration</>}
                       </button>
                       {safetyMigStatus === 'done' && <span className="text-xs text-emerald-600 font-semibold">✓ Complete</span>}
                       {safetyMigStatus === 'error' && <span className="text-xs text-red-600 font-semibold">✗ Error — see results</span>}
                     </div>
-                    {safetyMigResults.length > 0 && (
-                      <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto">
-                        {safetyMigResults.map((r, i) => (
-                          <p key={i} className={`text-xs font-mono leading-relaxed ${r.startsWith('✗') ? 'text-red-600' : r.startsWith('~') ? 'text-slate-400' : 'text-emerald-700'}`}>{r}</p>
-                        ))}
-                      </div>
-                    )}
+                    {safetyMigResults.length > 0 && <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        {safetyMigResults.map((r, i) => <p key={i} className={`text-xs font-mono leading-relaxed ${r.startsWith('✗') ? 'text-red-600' : r.startsWith('~') ? 'text-slate-400' : 'text-emerald-700'}`}>{r}</p>)}
+                      </div>}
                   </div>
 
                   {/* Dazza Health Check */}
@@ -1050,40 +1133,25 @@ export default function OwnerConsolePage() {
                       <div>
                         <p className="font-bold text-sm text-slate-800">Run health check</p>
                         <p className="text-xs text-slate-500 mt-0.5">Analyses jobs, to-dos, fleet, estimates, and forms. Takes 10–20 seconds.</p>
-                        {annetteRunAt && (
-                          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                        {annetteRunAt && <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                             <Clock size={10} />
                             Last run: {annetteRunAt}
-                          </p>
-                        )}
+                          </p>}
                       </div>
-                      <button
-                        onClick={runAnnette}
-                        disabled={annetteStatus === 'running'}
-                        className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors shrink-0"
-                      >
-                        {annetteStatus === 'running' ? (
-                          <><Loader2 size={14} className="animate-spin" />Running…</>
-                        ) : annetteStatus === 'done' ? (
-                          <><RefreshCw size={14} />Run again</>
-                        ) : (
-                          <><Play size={14} />Run Health Check</>
-                        )}
+                      <button onClick={runAnnette} disabled={annetteStatus === 'running'} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors shrink-0">
+                        {annetteStatus === 'running' ? <><Loader2 size={14} className="animate-spin" />Running…</> : annetteStatus === 'done' ? <><RefreshCw size={14} />Run again</> : <><Play size={14} />Run Health Check</>}
                       </button>
                     </div>
-                    {annetteStatus === 'running' && (
-                      <div className="mt-4">
+                    {annetteStatus === 'running' && <div className="mt-4">
                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div className="h-full bg-violet-500 rounded-full animate-pulse w-3/4" />
                         </div>
                         <p className="text-xs text-slate-400 mt-1.5">Analysing portal data…</p>
-                      </div>
-                    )}
+                      </div>}
                   </div>
 
                   {/* Streaming report */}
-                  {(annetteStatus === 'running' || annetteStatus === 'done' || annetteStatus === 'error') && annetteReport && (
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-5">
+                  {(annetteStatus === 'running' || annetteStatus === 'done' || annetteStatus === 'error') && annetteReport && <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-5">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
                         <div className="flex items-center gap-2">
                           {annetteStatus === 'done' && <CheckCircle2 size={13} className="text-emerald-500" />}
@@ -1093,42 +1161,28 @@ export default function OwnerConsolePage() {
                             {annetteStatus === 'running' ? 'Generating report…' : annetteStatus === 'error' ? 'Report completed with errors' : 'Report complete'}
                           </span>
                         </div>
-                        {annetteStatus === 'done' && (
-                          <button
-                            onClick={copyAnnetteReport}
-                            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100"
-                          >
+                        {annetteStatus === 'done' && <button onClick={copyAnnetteReport} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100">
                             {annetteCopied ? <><Check size={11} className="text-emerald-500" />Copied</> : <><Copy size={11} />Copy</>}
-                          </button>
-                        )}
+                          </button>}
                       </div>
                       <div ref={annetteReportRef} className="px-5 py-4 flex flex-col gap-0.5">
                         {renderAnnetteReport(annetteReport)}
-                        {annetteStatus === 'running' && (
-                          <span className="inline-block w-1.5 h-4 bg-violet-400 animate-pulse rounded-sm ml-0.5" />
-                        )}
+                        {annetteStatus === 'running' && <span className="inline-block w-1.5 h-4 bg-violet-400 animate-pulse rounded-sm ml-0.5" />}
                       </div>
-                      {annetteWarnings.length > 0 && (
-                        <div className="mx-4 mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                      {annetteWarnings.length > 0 && <div className="mx-4 mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
                           <p className="text-xs font-bold text-amber-700 flex items-center gap-1.5 mb-1.5">
                             <Info size={11} />
                             {annetteWarnings.length} module{annetteWarnings.length > 1 ? 's' : ''} failed to load
                           </p>
-                          {annetteWarnings.map((w, i) => (
-                            <p key={i} className="text-xs text-amber-600 font-mono">{w}</p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                          {annetteWarnings.map((w, i) => <p key={i} className="text-xs text-amber-600 font-mono">{w}</p>)}
+                        </div>}
+                    </div>}
 
-                  {annetteStatus === 'idle' && (
-                    <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-8 text-center mb-5">
+                  {annetteStatus === 'idle' && <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-8 text-center mb-5">
                       <Activity size={28} className="text-slate-300 mx-auto mb-3" />
                       <p className="text-sm font-semibold text-slate-500">No report yet</p>
                       <p className="text-xs text-slate-400 mt-1">Click "Run Health Check" to analyse your company data.</p>
-                    </div>
-                  )}
+                    </div>}
 
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
                     <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
@@ -1136,104 +1190,98 @@ export default function OwnerConsolePage() {
                       Reports are based on data currently in your IWILLBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
                     </p>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                </div>}
+            </>}
         </div>
       </div>
 
       {/* ── User Action Modal ─────────────────────────────────────────────────── */}
-      {pendingAction && (
-        <UserActionModal
-          action={pendingAction.action}
-          user={pendingAction.user}
-          onClose={() => setPendingAction(null)}
-          onSuccess={(action, userId, extra) => {
-            setPendingAction(null);
-            // Update local user state immediately
-            setUsers(prev => prev.map(u => {
-              if (u.userId !== userId) return u;
-              if (action === 'verify') return { ...u, emailVerified: true };
-              if (action === 'deactivate') return { ...u, status: 'inactive' };
-              if (action === 'reactivate') return { ...u, status: 'active' };
-              if (action === 'change-role' && extra?.role) return { ...u, role: extra.role as string };
-              return u;
-            }));
-            // Show toast
-            const msgs: Record<UserAction, string> = {
-              verify: 'Email verified successfully.',
-              'resend-verification': extra?.emailSent ? 'Verification email sent.' : 'Could not send email — use manual verify instead.',
-              deactivate: 'Account deactivated. User is now blocked from logging in.',
-              reactivate: 'Account reactivated.',
-              'change-role': `Role changed to ${extra?.role ?? 'new role'}.`,
-            };
-            setActionToast(msgs[action]);
-            setTimeout(() => setActionToast(null), 4000);
-          }}
-        />
-      )}
+      {pendingAction && <UserActionModal action={pendingAction.action} user={pendingAction.user} onClose={() => setPendingAction(null)} onSuccess={(action, userId, extra) => {
+      setPendingAction(null);
+      // Update local user state immediately
+      setUsers(prev => prev.map(u => {
+        if (u.userId !== userId) return u;
+        if (action === 'verify') return {
+          ...u,
+          emailVerified: true
+        };
+        if (action === 'deactivate') return {
+          ...u,
+          status: 'inactive'
+        };
+        if (action === 'reactivate') return {
+          ...u,
+          status: 'active'
+        };
+        if (action === 'change-role' && extra?.role) return {
+          ...u,
+          role: extra.role as string
+        };
+        return u;
+      }));
+      // Show toast
+      const msgs: Record<UserAction, string> = {
+        verify: 'Email verified successfully.',
+        'resend-verification': extra?.emailSent ? 'Verification email sent.' : 'Could not send email — use manual verify instead.',
+        deactivate: 'Account deactivated. User is now blocked from logging in.',
+        reactivate: 'Account reactivated.',
+        'change-role': `Role changed to ${extra?.role ?? 'new role'}.`
+      };
+      setActionToast(msgs[action]);
+      setTimeout(() => setActionToast(null), 4000);
+    }} />}
 
       {/* ── Orphan Action Modal ───────────────────────────────────────────────── */}
-      {pendingOrphanAction && (
-        <OrphanActionModal
-          action={pendingOrphanAction.action}
-          user={pendingOrphanAction.user}
-          onClose={() => setPendingOrphanAction(null)}
-          onSuccess={(action, userId) => {
-            setPendingOrphanAction(null);
-            if (action === 'delete-orphan') {
-              setUsers(prev => prev.filter(u => u.userId !== userId));
-              setActionToast('Orphaned account deleted.');
-            } else if (action === 'assign-company') {
-              // Reload data to get the new profile
-              void loadData(true);
-              setActionToast('User assigned to company. Profile created.');
-            } else if (action === 'verify-orphan') {
-              setUsers(prev => prev.map(u => u.userId === userId ? { ...u, emailVerified: true } : u));
-              setActionToast('Email verified.');
-            } else if (action === 'send-reset' || action === 'resume-setup') {
-              setActionToast('Password reset email sent.');
-            }
-            setTimeout(() => setActionToast(null), 4000);
-          }}
-        />
-      )}
+      {pendingOrphanAction && <OrphanActionModal action={pendingOrphanAction.action} user={pendingOrphanAction.user} onClose={() => setPendingOrphanAction(null)} onSuccess={(action, userId) => {
+      setPendingOrphanAction(null);
+      if (action === 'delete-orphan') {
+        setUsers(prev => prev.filter(u => u.userId !== userId));
+        setActionToast('Orphaned account deleted.');
+      } else if (action === 'assign-company') {
+        // Reload data to get the new profile
+        void loadData(true);
+        setActionToast('User assigned to company. Profile created.');
+      } else if (action === 'verify-orphan') {
+        setUsers(prev => prev.map(u => u.userId === userId ? {
+          ...u,
+          emailVerified: true
+        } : u));
+        setActionToast('Email verified.');
+      } else if (action === 'send-reset' || action === 'resume-setup') {
+        setActionToast('Password reset email sent.');
+      }
+      setTimeout(() => setActionToast(null), 4000);
+    }} />}
 
       {/* ── Create Company Modal ─────────────────────────────────────────────── */}
-      {showCreateCompany && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      {showCreateCompany && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="font-heading font-black text-base text-slate-900">Create New Company</h2>
-              <button onClick={() => { setShowCreateCompany(false); setCreateError(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+              <button onClick={() => {
+            setShowCreateCompany(false);
+            setCreateError('');
+          }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
                 <X size={16} />
               </button>
             </div>
             <div className="px-6 py-5 flex flex-col gap-4">
-              {createError && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-sm text-red-700">
+              {createError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-sm text-red-700">
                   <XCircle size={13} className="shrink-0" /> {createError}
-                </div>
-              )}
+                </div>}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Company Name *</label>
-                <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Walsh Constructions Pty Ltd"
-                  autoFocus
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-                />
+                <input type="text" value={createForm.name} onChange={e => setCreateForm(f => ({
+              ...f,
+              name: e.target.value
+            }))} placeholder="Walsh Constructions Pty Ltd" autoFocus className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Plan</label>
-                <select
-                  value={createForm.plan}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, plan: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-                >
+                <select value={createForm.plan} onChange={e => setCreateForm(f => ({
+              ...f,
+              plan: e.target.value
+            }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors">
                   <option value="trial">Trial (30 days)</option>
                   <option value="solo">Solo — 1 user ($19/mo +GST)</option>
                   <option value="team">Team — 5 users ($79/mo +GST)</option>
@@ -1245,76 +1293,55 @@ export default function OwnerConsolePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">ABN</label>
-                  <input
-                    type="text"
-                    value={createForm.abn}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, abn: e.target.value }))}
-                    placeholder="12 345 678 901"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-                  />
+                  <input type="text" value={createForm.abn} onChange={e => setCreateForm(f => ({
+                ...f,
+                abn: e.target.value
+              }))} placeholder="12 345 678 901" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone</label>
-                  <input
-                    type="text"
-                    value={createForm.phone}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))}
-                    placeholder="0400 000 000"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-                  />
+                  <input type="text" value={createForm.phone} onChange={e => setCreateForm(f => ({
+                ...f,
+                phone: e.target.value
+              }))} placeholder="0400 000 000" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Admin Email (optional)</label>
-                <input
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="admin@company.com.au"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-                />
+                <input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({
+              ...f,
+              email: e.target.value
+            }))} placeholder="admin@company.com.au" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors" />
               </div>
             </div>
             <div className="flex gap-3 px-6 pb-5">
-              <button
-                onClick={() => { setShowCreateCompany(false); setCreateError(''); }}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-              >
+              <button onClick={() => {
+            setShowCreateCompany(false);
+            setCreateError('');
+          }} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
                 Cancel
               </button>
-              <button
-                onClick={() => void handleCreateCompany()}
-                disabled={creating}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-60 transition-colors"
-              >
+              <button onClick={() => void handleCreateCompany()} disabled={creating} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-60 transition-colors">
                 {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Create Company
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Manual verify modal — owner only */}
-      <ManualVerifyModal
-        user={verifyTarget}
-        onClose={() => setVerifyTarget(null)}
-        onVerified={(userId) => {
-          setUsers(prev => prev.map(u =>
-            u.userId === userId
-              ? { ...u, emailVerified: true, verificationMethod: 'manual_owner' } as typeof u
-              : u
-          ));
-        }}
-      />
+      <ManualVerifyModal user={verifyTarget} onClose={() => setVerifyTarget(null)} onVerified={userId => {
+      setUsers(prev => prev.map(u => u.userId === userId ? {
+        ...u,
+        emailVerified: true,
+        verificationMethod: 'manual_owner'
+      } as typeof u : u));
+    }} />
 
       {/* Action toast */}
-      {actionToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+      {actionToast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
           {actionToast}
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }

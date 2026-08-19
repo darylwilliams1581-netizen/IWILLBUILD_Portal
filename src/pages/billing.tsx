@@ -4,16 +4,11 @@
  * Accessible to admin/owner of a company.
  */
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import {
-  CreditCard, CheckCircle2, AlertTriangle, Clock, Zap,
-  Users, User, Crown, ArrowRight, Loader2, RefreshCw,
-  ShieldCheck, XCircle, ExternalLink, Ban, RotateCcw,
-  CalendarClock, Receipt, ArrowLeft,
-} from 'lucide-react';
+import { CreditCard, CheckCircle2, AlertTriangle, Clock, Zap, Users, User, Crown, ArrowRight, Loader2, RefreshCw, ShieldCheck, XCircle, ExternalLink, Ban, RotateCcw, CalendarClock, Receipt, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -36,125 +31,123 @@ interface SubscriptionInfo {
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
 
-const PLANS = [
-  {
-    id: 'solo',
-    name: 'Solo',
-    price: 19,
-    period: '/mo +GST',
-    maxUsers: 1,
-    features: ['1 user', 'All core modules', 'Jobs, Fleet, Forms', 'Photos & files', 'Email support'],
-    icon: User,
-    highlight: false,
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    price: 79,
-    period: '/mo +GST',
-    maxUsers: 5,
-    features: ['Up to 5 users', 'All core modules', 'Jobs, Fleet, Forms', 'Scheduler & team permissions', 'Priority support'],
-    icon: Users,
-    highlight: true,
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    price: 149,
-    period: '/mo +GST',
-    maxUsers: 10,
-    features: ['Up to 10 users', 'All core modules', 'Advanced permissions', 'Safety plans & SWMS library', 'Dedicated support'],
-    icon: Zap,
-    highlight: false,
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: null,
-    period: '',
-    maxUsers: 999,
-    features: ['Unlimited users', 'All core modules', 'Custom integrations', 'Dedicated account manager', 'SLA guarantee'],
-    icon: Crown,
-    highlight: false,
-  },
-] as const;
-
+const PLANS = [{
+  id: 'solo',
+  name: 'Solo',
+  price: 19,
+  period: '/mo +GST',
+  maxUsers: 1,
+  features: ['1 user', 'All core modules', 'Jobs, Fleet, Forms', 'Photos & files', 'Email support'],
+  icon: User,
+  highlight: false
+}, {
+  id: 'team',
+  name: 'Team',
+  price: 79,
+  period: '/mo +GST',
+  maxUsers: 5,
+  features: ['Up to 5 users', 'All core modules', 'Jobs, Fleet, Forms', 'Scheduler & team permissions', 'Priority support'],
+  icon: Users,
+  highlight: true
+}, {
+  id: 'business',
+  name: 'Business',
+  price: 149,
+  period: '/mo +GST',
+  maxUsers: 10,
+  features: ['Up to 10 users', 'All core modules', 'Advanced permissions', 'Safety plans & SWMS library', 'Dedicated support'],
+  icon: Zap,
+  highlight: false
+}, {
+  id: 'enterprise',
+  name: 'Enterprise',
+  price: null,
+  period: '',
+  maxUsers: 999,
+  features: ['Unlimited users', 'All core modules', 'Custom integrations', 'Dedicated account manager', 'SLA guarantee'],
+  icon: Crown,
+  highlight: false
+}] as const;
 type PlanId = typeof PLANS[number]['id'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 }
-
 function planLabel(plan: string): string {
   const map: Record<string, string> = {
-    solo: 'Solo', team: 'Team', business: 'Business',
-    pro: 'Business', enterprise: 'Enterprise', trial: 'Free Trial', owner: 'Platform Developer',
+    solo: 'Solo',
+    team: 'Team',
+    business: 'Business',
+    pro: 'Business',
+    enterprise: 'Enterprise',
+    trial: 'Free Trial',
+    owner: 'Platform Developer'
   };
   return map[plan] ?? plan.charAt(0).toUpperCase() + plan.slice(1);
 }
-
 function planPrice(plan: string): string {
   const map: Record<string, string> = {
-    solo: '$19/mo', team: '$79/mo', business: '$149/mo', pro: '$149/mo',
-    enterprise: 'Custom', trial: 'Free', owner: '—',
+    solo: '$19/mo',
+    team: '$79/mo',
+    business: '$149/mo',
+    pro: '$149/mo',
+    enterprise: 'Custom',
+    trial: 'Free',
+    owner: '—'
   };
   return map[plan] ?? '—';
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | null }) {
+function StatusBadge({
+  status,
+  daysLeft
+}: {
+  status: string;
+  daysLeft: number | null;
+}) {
   if (status === 'active') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
         <ShieldCheck size={12} /> Active
-      </span>
-    );
+      </span>;
   }
   if (status === 'cancel_at_period_end' || status === 'cancel_pending') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
         <CalendarClock size={12} /> Cancelling
-      </span>
-    );
+      </span>;
   }
   if (status === 'trial') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
         <Clock size={12} /> Trial — {daysLeft ?? 0} day{daysLeft !== 1 ? 's' : ''} left
-      </span>
-    );
+      </span>;
   }
   if (status === 'trial_expired') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
         <XCircle size={12} /> Trial Expired
-      </span>
-    );
+      </span>;
   }
   if (status === 'past_due') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
         <AlertTriangle size={12} /> Payment Past Due
-      </span>
-    );
+      </span>;
   }
   if (status === 'cancelled') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
         <XCircle size={12} /> Cancelled
-      </span>
-    );
+      </span>;
   }
   if (status === 'suspended') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
         <Ban size={12} /> Suspended
-      </span>
-    );
+      </span>;
   }
   return null;
 }
@@ -165,40 +158,30 @@ function CancelConfirmModal({
   periodEnd,
   onConfirm,
   onClose,
-  loading,
+  loading
 }: {
   periodEnd: string | null;
   onConfirm: (reason: string | null, comment: string | null) => void;
   onClose: () => void;
   loading: boolean;
 }) {
-  const REASONS = [
-    'Too expensive',
-    'Not using it enough',
-    'Missing features',
-    'Too hard to use',
-    'Changed business / no longer needed',
-    'Moving to another system',
-    'Technical issues',
-    'Prefer not to say',
-    'Other',
-  ] as const;
-
+  const REASONS = ['Too expensive', 'Not using it enough', 'Missing features', 'Too hard to use', 'Changed business / no longer needed', 'Moving to another system', 'Technical issues', 'Prefer not to say', 'Other'] as const;
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [comment, setComment] = useState('');
-
   function handleConfirm() {
     onConfirm(selectedReason, comment.trim() || null);
   }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
-      >
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div initial={{
+      opacity: 0,
+      scale: 0.95
+    }} animate={{
+      opacity: 1,
+      scale: 1
+    }} exit={{
+      opacity: 0,
+      scale: 0.95
+    }} className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2.5 bg-red-100 rounded-xl shrink-0">
@@ -227,70 +210,35 @@ function CancelConfirmModal({
             <span className="font-normal text-slate-400">(optional)</span>
           </p>
           <div className="flex flex-col gap-2">
-            {REASONS.map((reason) => (
-              <button
-                key={reason}
-                type="button"
-                onClick={() => setSelectedReason(selectedReason === reason ? null : reason)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-sm text-left transition-all ${
-                  selectedReason === reason
-                    ? 'border-primary bg-primary/5 text-primary font-semibold'
-                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <span
-                  className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
-                    selectedReason === reason ? 'border-primary' : 'border-slate-300'
-                  }`}
-                >
-                  {selectedReason === reason && (
-                    <span className="w-2 h-2 rounded-full bg-primary block" />
-                  )}
+            {REASONS.map(reason => <button key={reason} type="button" onClick={() => setSelectedReason(selectedReason === reason ? null : reason)} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-sm text-left transition-all ${selectedReason === reason ? 'border-primary bg-primary/5 text-primary font-semibold' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}>
+                <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${selectedReason === reason ? 'border-primary' : 'border-slate-300'}`}>
+                  {selectedReason === reason && <span className="w-2 h-2 rounded-full bg-primary block" />}
                 </span>
                 {reason}
-              </button>
-            ))}
+              </button>)}
           </div>
         </div>
 
         {/* Comment box — always visible but labelled contextually */}
         <div className="mb-6">
           <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-            {selectedReason === 'Other'
-              ? 'Please tell us more (optional)'
-              : "Anything else you'd like to share? (optional)"}
+            {selectedReason === 'Other' ? 'Please tell us more (optional)' : "Anything else you'd like to share? (optional)"}
           </label>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Your feedback helps us improve…"
-            rows={3}
-            maxLength={2000}
-            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
-          />
+          <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Your feedback helps us improve…" rows={3} maxLength={2000} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none" />
         </div>
 
         {/* Action buttons */}
         <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-          >
+          <button onClick={onClose} disabled={loading} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
             Keep my subscription
           </button>
-          <button
-            onClick={handleConfirm}
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
+          <button onClick={handleConfirm} disabled={loading} className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
             Continue to cancel
           </button>
         </div>
       </motion.div>
-    </div>
-  );
+    </div>;
 }
 
 // ── Upgrade confirmation modal ────────────────────────────────────────────────
@@ -300,7 +248,7 @@ function UpgradeConfirmModal({
   toPlan,
   onConfirm,
   onClose,
-  loading,
+  loading
 }: {
   fromPlan: string;
   toPlan: typeof PLANS[number];
@@ -309,18 +257,25 @@ function UpgradeConfirmModal({
   loading: boolean;
 }) {
   const isUpgrade = (() => {
-    const order: Record<string, number> = { solo: 1, team: 2, business: 3, enterprise: 4 };
+    const order: Record<string, number> = {
+      solo: 1,
+      team: 2,
+      business: 3,
+      enterprise: 4
+    };
     return (order[toPlan.id] ?? 0) > (order[fromPlan] ?? 0);
   })();
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-      >
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div initial={{
+      opacity: 0,
+      scale: 0.95
+    }} animate={{
+      opacity: 1,
+      scale: 1
+    }} exit={{
+      opacity: 0,
+      scale: 0.95
+    }} className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className={`p-2.5 rounded-xl ${isUpgrade ? 'bg-emerald-100' : 'bg-amber-100'}`}>
             <ArrowRight size={18} className={isUpgrade ? 'text-emerald-600' : 'text-amber-600'} />
@@ -346,44 +301,33 @@ function UpgradeConfirmModal({
           </div>
           <div className="border-t border-slate-200 pt-2 mt-1">
             <p className="text-xs text-slate-500">
-              {isUpgrade
-                ? 'You\'ll be charged a prorated amount for the remainder of your current billing period. Your full new rate applies from the next billing cycle.'
-                : 'A prorated credit will be applied to your next invoice for the unused portion of your current plan.'}
+              {isUpgrade ? 'You\'ll be charged a prorated amount for the remainder of your current billing period. Your full new rate applies from the next billing cycle.' : 'A prorated credit will be applied to your next invoice for the unused portion of your current plan.'}
             </p>
           </div>
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-          >
+          <button onClick={onClose} disabled={loading} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
             Cancel
           </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
-              isUpgrade ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600'
-            }`}
-          >
+          <button onClick={onConfirm} disabled={loading} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${isUpgrade ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600'}`}>
             {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
             Confirm {isUpgrade ? 'Upgrade' : 'Downgrade'}
           </button>
         </div>
       </motion.div>
-    </div>
-  );
+    </div>;
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-  const { isAdmin, isOwner } = usePermissions();
+  const {
+    isAdmin,
+    isOwner
+  } = usePermissions();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -395,18 +339,19 @@ export default function BillingPage() {
   const [upgradePending, setUpgradePending] = useState<typeof PLANS[number] | null>(null);
   const [error, setError] = useState('');
   const [actionMsg, setActionMsg] = useState('');
-
   const paymentSuccess = searchParams.get('success') === '1';
   const paymentCancelled = searchParams.get('cancelled') === '1';
-
-  useEffect(() => { void fetchStatus(); }, []);
-
+  useEffect(() => {
+    void fetchStatus();
+  }, []);
   async function fetchStatus() {
     setLoading(true);
     try {
-      const res = await fetch('/api/subscription/status', { credentials: 'include' });
+      const res = await fetch('/api/subscription/status', {
+        credentials: 'include'
+      });
       if (res.ok) {
-        const data = await res.json() as SubscriptionInfo;
+        const data = (await res.json()) as SubscriptionInfo;
         setSubInfo(data);
         setError('');
       } else if (res.status === 401 || res.status === 403) {
@@ -419,7 +364,6 @@ export default function BillingPage() {
     }
     setLoading(false);
   }
-
   async function handleSubscribe(planId: PlanId) {
     if (planId === 'enterprise') {
       window.location.href = 'mailto:support@iwillbuild.com?subject=Enterprise Plan Enquiry';
@@ -430,11 +374,18 @@ export default function BillingPage() {
     try {
       const res = await fetch('/api/subscription/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include',
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({
+          plan: planId
+        })
       });
-      const data = await res.json() as { url?: string; error?: string };
+      const data = (await res.json()) as {
+        url?: string;
+        error?: string;
+      };
       if (!res.ok || !data.url) {
         setError(data.error ?? 'Could not start checkout. Please try again.');
         setCheckoutLoading(null);
@@ -446,16 +397,18 @@ export default function BillingPage() {
       setCheckoutLoading(null);
     }
   }
-
   async function handleManageBilling() {
     setPortalLoading(true);
     setError('');
     try {
       const res = await fetch('/api/billing/customer-portal', {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include'
       });
-      const data = await res.json() as { url?: string; error?: string };
+      const data = (await res.json()) as {
+        url?: string;
+        error?: string;
+      };
       if (!res.ok || !data.url) {
         setError(data.error ?? 'Could not open billing portal. Please try again.');
         return;
@@ -467,7 +420,6 @@ export default function BillingPage() {
       setPortalLoading(false);
     }
   }
-
   async function handleUpgradeConfirm() {
     if (!upgradePending) return;
     setUpgradeLoading(true);
@@ -475,11 +427,19 @@ export default function BillingPage() {
     try {
       const res = await fetch('/api/billing/upgrade-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include',
-        body: JSON.stringify({ plan: upgradePending.id }),
+        body: JSON.stringify({
+          plan: upgradePending.id
+        })
       });
-      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
       if (!res.ok) {
         setError(data.error ?? 'Could not change plan. Please try again.');
         setUpgradePending(null);
@@ -495,7 +455,6 @@ export default function BillingPage() {
       setUpgradeLoading(false);
     }
   }
-
   async function handleCancelConfirm(reason: string | null, comment: string | null) {
     setCancelLoading(true);
     setError('');
@@ -506,19 +465,28 @@ export default function BillingPage() {
           await fetch('/api/billing/cancellation-feedback', {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason, comment }),
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              reason,
+              comment
+            })
           });
         } catch {
           // Non-fatal — proceed with cancellation regardless
         }
       }
-
       const res = await fetch('/api/billing/cancel-subscription', {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include'
       });
-      const data = await res.json() as { ok?: boolean; message?: string; error?: string; currentPeriodEnd?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+        currentPeriodEnd?: string;
+      };
       if (!res.ok) {
         setError(data.error ?? 'Could not cancel subscription. Please try again.');
         return;
@@ -532,7 +500,6 @@ export default function BillingPage() {
       setCancelLoading(false);
     }
   }
-
   async function handleReactivate() {
     setReactivateLoading(true);
     setError('');
@@ -540,9 +507,13 @@ export default function BillingPage() {
     try {
       const res = await fetch('/api/billing/reactivate-subscription', {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include'
       });
-      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
       if (!res.ok) {
         setError(data.error ?? 'Could not reactivate subscription. Please try again.');
         return;
@@ -555,7 +526,6 @@ export default function BillingPage() {
       setReactivateLoading(false);
     }
   }
-
   const currentPlanId = subInfo?.plan ?? 'trial';
   const isActive = subInfo?.status === 'active';
   const isCancelPending = subInfo?.status === 'cancel_at_period_end' || subInfo?.status === 'cancel_pending';
@@ -564,9 +534,7 @@ export default function BillingPage() {
   const isViewOnly = subInfo?.isViewOnly ?? false;
   const hasPaidSub = isActive || isCancelPending;
   const canManage = isAdmin || isOwner;
-
-  return (
-    <div className="flex-1 bg-slate-50 flex flex-col lg-portal">
+  return <div className="flex-1 bg-slate-50 flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
@@ -589,11 +557,7 @@ export default function BillingPage() {
       {/* Sticky top bar */}
       <header className="h-16 bg-white border-b border-border flex items-center px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/home')}
-            className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Back to Home"
-          >
+          <button onClick={() => navigate('/home')} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
             <ArrowLeft size={20} />
           </button>
           <CreditCard size={18} className="text-primary shrink-0" />
@@ -606,50 +570,61 @@ export default function BillingPage() {
 
           {/* Banners */}
           <AnimatePresence>
-            {paymentSuccess && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5"
-              >
+            {paymentSuccess && <motion.div initial={{
+            opacity: 0,
+            y: -8
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0
+          }} className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5">
                 <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
                 <div>
                   <p className="text-sm font-bold text-emerald-800">Subscription activated!</p>
                   <p className="text-xs text-emerald-600">Your plan is now active. Welcome aboard.</p>
                 </div>
-              </motion.div>
-            )}
-            {paymentCancelled && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5"
-              >
+              </motion.div>}
+            {paymentCancelled && <motion.div initial={{
+            opacity: 0,
+            y: -8
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0
+          }} className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
                 <AlertTriangle size={18} className="text-amber-600 shrink-0" />
                 <p className="text-sm text-amber-800">Payment was cancelled. No charges were made.</p>
-              </motion.div>
-            )}
-            {actionMsg && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5"
-              >
+              </motion.div>}
+            {actionMsg && <motion.div initial={{
+            opacity: 0,
+            y: -8
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0
+          }} className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5">
                 <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
                 <p className="text-sm text-emerald-800">{actionMsg}</p>
-              </motion.div>
-            )}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5"
-              >
+              </motion.div>}
+            {error && <motion.div initial={{
+            opacity: 0,
+            y: -8
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0
+          }} className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
                 <AlertTriangle size={18} className="text-red-600 shrink-0" />
                 <p className="text-sm text-red-800">{error}</p>
-              </motion.div>
-            )}
+              </motion.div>}
           </AnimatePresence>
 
           {/* ── Cancel pending banner ── */}
-          {isCancelPending && subInfo?.currentPeriodEnd && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+          {isCancelPending && subInfo?.currentPeriodEnd && <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
               <CalendarClock size={18} className="text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-amber-800">
@@ -659,22 +634,14 @@ export default function BillingPage() {
                   Your portal remains fully active until then. Reactivate before that date to keep your subscription.
                 </p>
               </div>
-              {canManage && (
-                <button
-                  onClick={handleReactivate}
-                  disabled={reactivateLoading}
-                  className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                >
+              {canManage && <button onClick={handleReactivate} disabled={reactivateLoading} className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                   {reactivateLoading ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
                   Reactivate
-                </button>
-              )}
-            </div>
-          )}
+                </button>}
+            </div>}
 
           {/* ── Cancelled view-only banner ── */}
-          {isCancelled && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
+          {isCancelled && <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
               <XCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-red-800">
@@ -684,12 +651,10 @@ export default function BillingPage() {
                   Your records are still here if you choose to come back. Subscribe to a plan below to restore full access.
                 </p>
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* ── Past due banner ── */}
-          {isPastDue && !isViewOnly && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+          {isPastDue && !isViewOnly && <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
               <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-amber-800">
@@ -699,21 +664,13 @@ export default function BillingPage() {
                   Your account remains fully active during this grace period. After that, it becomes view-only.
                 </p>
               </div>
-              {canManage && (
-                <button
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                >
+              {canManage && <button onClick={handleManageBilling} disabled={portalLoading} className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                   {portalLoading ? <Loader2 size={12} className="animate-spin" /> : <CreditCard size={12} />}
                   Update Payment
-                </button>
-              )}
-            </div>
-          )}
+                </button>}
+            </div>}
 
-          {isPastDue && isViewOnly && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
+          {isPastDue && isViewOnly && <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
               <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-red-800">
@@ -723,48 +680,31 @@ export default function BillingPage() {
                   Update your payment method to restore full access immediately.
                 </p>
               </div>
-              {canManage && (
-                <button
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="shrink-0 flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                >
+              {canManage && <button onClick={handleManageBilling} disabled={portalLoading} className="shrink-0 flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                   {portalLoading ? <Loader2 size={12} className="animate-spin" /> : <CreditCard size={12} />}
                   Update Payment
-                </button>
-              )}
-            </div>
-          )}
+                </button>}
+            </div>}
 
           {/* ── Current plan card ── */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-6 shadow-sm">
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Current Plan</p>
-                {loading ? (
-                  <div className="h-7 w-40 bg-slate-100 rounded animate-pulse" />
-                ) : (
-                  <div className="flex items-center gap-3 flex-wrap">
+                {loading ? <div className="h-7 w-40 bg-slate-100 rounded animate-pulse" /> : <div className="flex items-center gap-3 flex-wrap">
                     <h2 className="font-heading font-black text-xl text-slate-900">
                       {planLabel(currentPlanId)}
                     </h2>
                     {subInfo && <StatusBadge status={subInfo.status} daysLeft={subInfo.daysLeft} />}
-                  </div>
-                )}
+                  </div>}
               </div>
-              <button
-                onClick={fetchStatus}
-                disabled={loading}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
-                title="Refresh status"
-              >
+              <button onClick={fetchStatus} disabled={loading} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50" title="Refresh status">
                 <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               </button>
             </div>
 
             {/* Billing detail grid */}
-            {!loading && subInfo && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            {!loading && subInfo && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                 <div className="bg-slate-50 rounded-xl p-3.5">
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Plan</p>
                   <p className="text-sm font-bold text-slate-800">{planLabel(currentPlanId)}</p>
@@ -773,147 +713,107 @@ export default function BillingPage() {
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Amount</p>
                   <p className="text-sm font-bold text-slate-800">{planPrice(currentPlanId)} +GST</p>
                 </div>
-                {subInfo.trialEndsAt && subInfo.status === 'trial' && (
-                  <div className="bg-slate-50 rounded-xl p-3.5">
+                {subInfo.trialEndsAt && subInfo.status === 'trial' && <div className="bg-slate-50 rounded-xl p-3.5">
                     <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Trial Ends</p>
                     <p className="text-sm font-bold text-slate-800">{fmtDate(subInfo.trialEndsAt)}</p>
-                  </div>
-                )}
-                {subInfo.currentPeriodEnd && (hasPaidSub || isCancelled) && (
-                  <div className="bg-slate-50 rounded-xl p-3.5">
+                  </div>}
+                {subInfo.currentPeriodEnd && (hasPaidSub || isCancelled) && <div className="bg-slate-50 rounded-xl p-3.5">
                     <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
                       {isCancelPending ? 'Access Until' : isCancelled ? 'Ended On' : 'Next Billing Date'}
                     </p>
                     <p className="text-sm font-bold text-slate-800">{fmtDate(subInfo.currentPeriodEnd)}</p>
-                  </div>
-                )}
+                  </div>}
                 <div className="bg-slate-50 rounded-xl p-3.5">
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Status</p>
                   <p className="text-sm font-bold text-slate-800 capitalize">
-                    {subInfo.status === 'cancel_at_period_end' || subInfo.status === 'cancel_pending'
-                      ? 'Cancelling at period end'
-                      : subInfo.status.replace(/_/g, ' ')}
+                    {subInfo.status === 'cancel_at_period_end' || subInfo.status === 'cancel_pending' ? 'Cancelling at period end' : subInfo.status.replace(/_/g, ' ')}
                   </p>
                 </div>
-              </div>
-            )}
+              </div>}
 
             {/* Status alerts */}
-            {subInfo?.status === 'trial' && (subInfo.daysLeft ?? 14) <= 5 && (
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4">
+            {subInfo?.status === 'trial' && (subInfo.daysLeft ?? 14) <= 5 && <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4">
                 <AlertTriangle size={14} className="text-amber-600 shrink-0" />
                 <p className="text-xs text-amber-800 font-medium">
                   Trial expires in {subInfo.daysLeft} day{subInfo.daysLeft !== 1 ? 's' : ''}. Subscribe below to keep access.
                 </p>
-              </div>
-            )}
-            {subInfo?.status === 'trial_expired' && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
+              </div>}
+            {subInfo?.status === 'trial_expired' && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
                 <XCircle size={14} className="text-red-600 shrink-0" />
                 <p className="text-xs text-red-800 font-medium">
                   Your trial has expired. Subscribe to a plan below to restore access.
                 </p>
-              </div>
-            )}
+              </div>}
 
             {/* ── Management action buttons (owner/admin + paid sub only) ── */}
-            {canManage && hasPaidSub && (
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+            {canManage && hasPaidSub && <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
                 {/* Manage Billing — opens Stripe Customer Portal */}
-                <button
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
-                >
+                <button onClick={handleManageBilling} disabled={portalLoading} className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                   {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
                   Manage Billing
                   <ExternalLink size={12} className="opacity-60" />
                 </button>
 
                 {/* Cancel — only show if active and not already cancelling */}
-                {isActive && !isCancelPending && (
-                  <button
-                    onClick={() => setShowCancelModal(true)}
-                    className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
-                  >
+                {isActive && !isCancelPending && <button onClick={() => setShowCancelModal(true)} className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
                     <Ban size={14} />
                     Cancel Subscription
-                  </button>
-                )}
+                  </button>}
 
                 {/* Reactivate — only show if cancellation is scheduled */}
-                {isCancelPending && (
-                  <button
-                    onClick={handleReactivate}
-                    disabled={reactivateLoading}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
-                  >
+                {isCancelPending && <button onClick={handleReactivate} disabled={reactivateLoading} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                     {reactivateLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
                     Reactivate Subscription
-                  </button>
-                )}
-              </div>
-            )}
+                  </button>}
+              </div>}
 
             {/* Past due — direct to portal */}
-            {canManage && isPastDue && (
-              <div className="pt-4 border-t border-slate-100">
-                <button
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
-                >
+            {canManage && isPastDue && <div className="pt-4 border-t border-slate-100">
+                <button onClick={handleManageBilling} disabled={portalLoading} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                   {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
                   Update Payment Method
                   <ExternalLink size={12} className="opacity-60" />
                 </button>
-              </div>
-            )}
+              </div>}
           </div>
 
           {/* ── Plan cards — always show for owner/admin; show for all when no active sub ── */}
-          {(canManage || !hasPaidSub || isCancelled) && (
-            <>
+          {(canManage || !hasPaidSub || isCancelled) && <>
               <h2 className="font-heading font-bold text-base text-slate-800 mb-4">
                 {hasPaidSub && !isCancelled ? 'Change Plan' : isCancelled ? 'Reactivate — Choose a Plan' : 'Choose a Plan'}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {PLANS.map((plan) => {
-                  const Icon = plan.icon;
-                  const isCurrent = hasPaidSub && currentPlanId === plan.id;
-                  const isLoading = checkoutLoading === plan.id;
-                  const planOrder: Record<string, number> = { solo: 1, team: 2, business: 3, enterprise: 4 };
-                  const isUpgradeAction = hasPaidSub && !isCancelled && !isCurrent && (planOrder[plan.id] ?? 0) > (planOrder[currentPlanId] ?? 0);
-                  const isDowngradeAction = hasPaidSub && !isCancelled && !isCurrent && (planOrder[plan.id] ?? 0) < (planOrder[currentPlanId] ?? 0);
-
-                  return (
-                    <motion.div
-                      key={plan.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={`relative flex flex-col bg-white rounded-2xl border-2 p-5 shadow-sm transition-all duration-150 ${
-                        plan.highlight && !isCurrent
-                          ? 'border-primary shadow-violet-200'
-                          : isCurrent
-                          ? 'border-emerald-400'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      {plan.highlight && !isCurrent && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                {PLANS.map(plan => {
+              const Icon = plan.icon;
+              const isCurrent = hasPaidSub && currentPlanId === plan.id;
+              const isLoading = checkoutLoading === plan.id;
+              const planOrder: Record<string, number> = {
+                solo: 1,
+                team: 2,
+                business: 3,
+                enterprise: 4
+              };
+              const isUpgradeAction = hasPaidSub && !isCancelled && !isCurrent && (planOrder[plan.id] ?? 0) > (planOrder[currentPlanId] ?? 0);
+              const isDowngradeAction = hasPaidSub && !isCancelled && !isCurrent && (planOrder[plan.id] ?? 0) < (planOrder[currentPlanId] ?? 0);
+              return <motion.div key={plan.id} initial={{
+                opacity: 0,
+                y: 12
+              }} animate={{
+                opacity: 1,
+                y: 0
+              }} transition={{
+                duration: 0.3
+              }} className={`relative flex flex-col bg-white rounded-2xl border-2 p-5 shadow-sm transition-all duration-150 ${plan.highlight && !isCurrent ? 'border-primary shadow-violet-200' : isCurrent ? 'border-emerald-400' : 'border-slate-200 hover:border-slate-300'}`}>
+                      {plan.highlight && !isCurrent && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <span className="bg-primary text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
                             Most Popular
                           </span>
-                        </div>
-                      )}
-                      {isCurrent && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        </div>}
+                      {isCurrent && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <span className="bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
                             Current Plan
                           </span>
-                        </div>
-                      )}
+                        </div>}
 
                       <div className="flex items-center gap-2 mb-3">
                         <div className={`p-1.5 rounded-lg ${plan.highlight && !isCurrent ? 'bg-primary/10' : 'bg-slate-100'}`}>
@@ -923,74 +823,39 @@ export default function BillingPage() {
                       </div>
 
                       <div className="mb-4">
-                        {plan.price !== null ? (
-                          <div className="flex items-baseline gap-0.5">
+                        {plan.price !== null ? <div className="flex items-baseline gap-0.5">
                             <span className="text-2xl font-black text-slate-900">${plan.price}</span>
                             <span className="text-xs text-slate-400">{plan.period}</span>
-                          </div>
-                        ) : (
-                          <span className="text-lg font-black text-slate-900">Custom</span>
-                        )}
+                          </div> : <span className="text-lg font-black text-slate-900">Custom</span>}
                       </div>
 
                       <ul className="flex flex-col gap-1.5 mb-5 flex-1">
-                        {plan.features.map((f) => (
-                          <li key={f} className="flex items-start gap-1.5 text-xs text-slate-600">
+                        {plan.features.map(f => <li key={f} className="flex items-start gap-1.5 text-xs text-slate-600">
                             <CheckCircle2 size={11} className="text-emerald-500 shrink-0 mt-0.5" />
                             {f}
-                          </li>
-                        ))}
+                          </li>)}
                       </ul>
 
-                      {isCurrent ? (
-                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold">
+                      {isCurrent ? <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold">
                           <CheckCircle2 size={12} /> Active
-                        </div>
-                      ) : canManage ? (
-                        <button
-                          onClick={() => {
-                            if (hasPaidSub && !isCancelled && plan.id !== 'enterprise') {
-                              // In-app upgrade/downgrade via proration
-                              setUpgradePending(plan);
-                            } else {
-                              // New subscription or enterprise enquiry
-                              void handleSubscribe(plan.id);
-                            }
-                          }}
-                          disabled={isLoading || !!checkoutLoading || upgradeLoading}
-                          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60 ${
-                            isUpgradeAction
-                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                              : isDowngradeAction
-                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                              : plan.highlight
-                              ? 'bg-primary hover:bg-violet-700 text-white'
-                              : 'bg-slate-900 hover:bg-slate-700 text-white'
-                          }`}
-                        >
-                          {isLoading ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : plan.price === null ? (
-                            <>Contact Us <ArrowRight size={13} /></>
-                          ) : isUpgradeAction ? (
-                            <><ArrowRight size={13} /> Upgrade</>
-                          ) : isDowngradeAction ? (
-                            <><ArrowRight size={13} className="rotate-180" /> Downgrade</>
-                          ) : (
-                            <><CreditCard size={13} /> Subscribe</>
-                          )}
-                        </button>
-                      ) : null}
-                    </motion.div>
-                  );
-                })}
+                        </div> : canManage ? <button onClick={() => {
+                  if (hasPaidSub && !isCancelled && plan.id !== 'enterprise') {
+                    // In-app upgrade/downgrade via proration
+                    setUpgradePending(plan);
+                  } else {
+                    // New subscription or enterprise enquiry
+                    void handleSubscribe(plan.id);
+                  }
+                }} disabled={isLoading || !!checkoutLoading || upgradeLoading} className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60 ${isUpgradeAction ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : isDowngradeAction ? 'bg-amber-500 hover:bg-amber-600 text-white' : plan.highlight ? 'bg-primary hover:bg-violet-700 text-white' : 'bg-slate-900 hover:bg-slate-700 text-white'}`}>
+                          {isLoading ? <Loader2 size={14} className="animate-spin" /> : plan.price === null ? <>Contact Us <ArrowRight size={13} /></> : isUpgradeAction ? <><ArrowRight size={13} /> Upgrade</> : isDowngradeAction ? <><ArrowRight size={13} className="rotate-180" /> Downgrade</> : <><CreditCard size={13} /> Subscribe</>}
+                        </button> : null}
+                    </motion.div>;
+            })}
               </div>
-            </>
-          )}
+            </>}
 
           {/* Active sub — non-admin view */}
-          {hasPaidSub && !isCancelled && !canManage && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          {hasPaidSub && !isCancelled && !canManage && <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <ShieldCheck size={18} className="text-emerald-600" />
                 <h3 className="font-heading font-bold text-base text-slate-900">Subscription Active</h3>
@@ -999,8 +864,7 @@ export default function BillingPage() {
                 Your subscription is active. To change or cancel your plan, contact your account administrator or email{' '}
                 <a href="mailto:support@iwillbuild.com" className="text-primary hover:underline">support@iwillbuild.com</a>.
               </p>
-            </div>
-          )}
+            </div>}
 
           {/* Fine print */}
           <p className="text-xs text-slate-400 text-center mt-8">
@@ -1012,28 +876,12 @@ export default function BillingPage() {
 
       {/* Cancel confirmation modal */}
       <AnimatePresence>
-        {showCancelModal && (
-          <CancelConfirmModal
-            periodEnd={subInfo?.currentPeriodEnd ?? null}
-            onConfirm={handleCancelConfirm}
-            onClose={() => setShowCancelModal(false)}
-            loading={cancelLoading}
-          />
-        )}
+        {showCancelModal && <CancelConfirmModal periodEnd={subInfo?.currentPeriodEnd ?? null} onConfirm={handleCancelConfirm} onClose={() => setShowCancelModal(false)} loading={cancelLoading} />}
       </AnimatePresence>
 
       {/* Upgrade / downgrade confirmation modal */}
       <AnimatePresence>
-        {upgradePending && (
-          <UpgradeConfirmModal
-            fromPlan={currentPlanId}
-            toPlan={upgradePending}
-            onConfirm={() => void handleUpgradeConfirm()}
-            onClose={() => setUpgradePending(null)}
-            loading={upgradeLoading}
-          />
-        )}
+        {upgradePending && <UpgradeConfirmModal fromPlan={currentPlanId} toPlan={upgradePending} onConfirm={() => void handleUpgradeConfirm()} onClose={() => setUpgradePending(null)} loading={upgradeLoading} />}
       </AnimatePresence>
-    </div>
-  );
+    </div>;
 }

@@ -36,14 +36,15 @@ export default async function handler(req: Request, res: Response) {
       .select()
       .from(jobProgressLines)
       .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      .orderBy(asc(jobProgressLines.id));
+      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
 
-    const reportRows = await db.execute(sql`
+    // Correct destructuring: db.execute returns [rows, fields]
+    const [reportRows] = await db.execute(sql`
       SELECT * FROM job_progress_reports
       WHERE company_id = ${profile.companyId} AND job_id = ${jobId}
       LIMIT 1
     `);
-    const report = ((reportRows as unknown as { rows?: Record<string, unknown>[] }).rows?.[0]) ?? {} as Record<string, unknown>;
+    const report = ((reportRows as unknown as Record<string, unknown>[])[0]) ?? {} as Record<string, unknown>;
 
     // ── Build PDF ──────────────────────────────────────────────────────────────
     const pdfLib = await import('pdf-lib');

@@ -462,6 +462,10 @@ textarea {
   .portal-content {
     padding: 1.5rem;
     padding-top: 112px;
+    /* Offset the fixed left sidebar — width is kept in sync by PortalSidebar */
+    padding-left: calc(var(--iwb-sidebar-w, 240px) + 1.5rem);
+    transition: padding-left 0.2s ease;
+    box-sizing: border-box;
   }
 }
 

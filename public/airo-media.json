@@ -613,5 +613,19 @@
     "uploadSources": {
       "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg": "f38wenbvln_1786936815751_file_JKbgzPDN9U.jpg"
     }
+  },
+  "debug/task-modal-off-center": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-task-modal-off-center-d3e06c6d.jpg",
+    "searchQuery": "project management dashboard new job creation form",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-19T22:34:10.958Z",
+    "lastUpdated": "2026-08-19T22:34:10.958Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-task-modal-off-center-d3e06c6d.jpg": "f38wenbvln_1787178561928_file_xPgsKFpOdF.jpg"
+    },
+    "uploadContentHash": "9889b99c94f0cfe6f060a20887e321b889a43f2d76a8b8e74ae8467b55c458ee",
+    "caption": "project management dashboard new job creation form"
   }
 }

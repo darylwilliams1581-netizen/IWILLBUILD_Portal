@@ -141,7 +141,7 @@ return (
 Update `src/routes.tsx` to include your pages:
 
 ```tsx
-import { RouteObject } from "react-router-dom";
+import { RouteObject } from "react-router";
 import { lazy } from "react";
 import HomePage from "./pages/index";
 

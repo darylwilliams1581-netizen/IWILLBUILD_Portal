@@ -7,13 +7,8 @@
 
 import { createAuthClient } from 'better-auth/react';
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-
-import {
-  SESSION_RECOVERY_URL,
-  claimSessionRecovery,
-  clearSessionRecovery,
-} from './session-recovery';
+import { Navigate, useLocation } from "react-router";
+import { SESSION_RECOVERY_URL, claimSessionRecovery, clearSessionRecovery } from './session-recovery';
 import { clearSessionExpiry } from './session-timeout';
 import { isNativeApp } from '@/lib/native-routing';
 import { resetDiagnosticBuffer } from '@/lib/diagnosticBuffer';
@@ -26,8 +21,11 @@ function consumeExpiryRedirectFlag(): boolean {
   try {
     const key = '__iwb_expiry_redirect__';
     const val = sessionStorage.getItem(key);
-    if (val) { sessionStorage.removeItem(key); return true; }
-  } catch { /* best-effort */ }
+    if (val) {
+      sessionStorage.removeItem(key);
+      return true;
+    }
+  } catch {/* best-effort */}
   return false;
 }
 
@@ -35,7 +33,11 @@ function consumeExpiryRedirectFlag(): boolean {
 // Logs only non-sensitive fields. Never logs passwords or tokens.
 function authLog(event: string, data?: Record<string, unknown>) {
   try {
-    console.info(JSON.stringify({ event: `auth.${event}`, ...data, ts: Date.now() }));
+    console.info(JSON.stringify({
+      event: `auth.${event}`,
+      ...data,
+      ts: Date.now()
+    }));
   } catch {
     // best-effort
   }
@@ -56,9 +58,8 @@ function getAuthBaseURL(): string {
   }
   return origin;
 }
-
 const _authClient = createAuthClient({
-  baseURL: getAuthBaseURL(),
+  baseURL: getAuthBaseURL()
 });
 
 // How long an unsettled session may stay pending before we treat it as a stuck
@@ -76,15 +77,17 @@ const SESSION_RECOVERY_PENDING_TIMEOUT_MS = 60_000;
 function recoverFromStaleSession(): void {
   if (typeof window === 'undefined') return;
   if (!claimSessionRecovery(window.sessionStorage)) return;
-
-  void fetch(SESSION_RECOVERY_URL, { cache: 'no-store', credentials: 'include' })
-    .catch(() => undefined)
-    .finally(() => {
-      // Logged so a future "preview keeps reloading" report is diagnosable —
-      // more than one of these per tab points at a clear that isn't sticking.
-      console.info(JSON.stringify({ event: 'auth.session.recovery.reloading' }));
-      window.location.reload();
-    });
+  void fetch(SESSION_RECOVERY_URL, {
+    cache: 'no-store',
+    credentials: 'include'
+  }).catch(() => undefined).finally(() => {
+    // Logged so a future "preview keeps reloading" report is diagnosable —
+    // more than one of these per tab points at a clear that isn't sticking.
+    console.info(JSON.stringify({
+      event: 'auth.session.recovery.reloading'
+    }));
+    window.location.reload();
+  });
 }
 
 /**
@@ -100,48 +103,40 @@ function recoverFromStaleSession(): void {
  * errors), not for server-side failures.
  */
 function useStaleSessionRecovery(error: unknown, isPending: boolean, isAuthenticated: boolean): void {
-  useEffect(
-    function staleSessionRecovery() {
-      if (typeof window === 'undefined') return;
-
-      if (error) {
-        const msg = String((error as Error)?.message ?? error).toLowerCase();
-        // Skip recovery for transient server/network errors — these don't mean
-        // the cookie is stale, just that the server had a momentary DB issue.
-        const isTransient =
-          msg.includes('500') ||
-          msg.includes('503') ||
-          msg.includes('network') ||
-          msg.includes('fetch') ||
-          msg.includes('failed to fetch') ||
-          msg.includes('connection') ||
-          msg.includes('timeout') ||
-          msg.includes('inactivity');
-
-        if (isTransient) {
-          authLog('session.error.transient', { errorMsg: msg.slice(0, 120) });
-          return; // Don't wipe the cookie for a server-side blip
-        }
-
-        authLog('session.error', { errorMsg: msg.slice(0, 120) });
-        recoverFromStaleSession();
-        return;
+  useEffect(function staleSessionRecovery() {
+    if (typeof window === 'undefined') return;
+    if (error) {
+      const msg = String((error as Error)?.message ?? error).toLowerCase();
+      // Skip recovery for transient server/network errors — these don't mean
+      // the cookie is stale, just that the server had a momentary DB issue.
+      const isTransient = msg.includes('500') || msg.includes('503') || msg.includes('network') || msg.includes('fetch') || msg.includes('failed to fetch') || msg.includes('connection') || msg.includes('timeout') || msg.includes('inactivity');
+      if (isTransient) {
+        authLog('session.error.transient', {
+          errorMsg: msg.slice(0, 120)
+        });
+        return; // Don't wipe the cookie for a server-side blip
       }
-      if (isAuthenticated) {
-        clearSessionRecovery(window.sessionStorage);
-        return;
-      }
-      if (!isPending) return;
-
-      const timer = setTimeout(recoverFromStaleSession, SESSION_RECOVERY_PENDING_TIMEOUT_MS);
-      return () => clearTimeout(timer);
-    },
-    [error, isPending, isAuthenticated],
-  );
+      authLog('session.error', {
+        errorMsg: msg.slice(0, 120)
+      });
+      recoverFromStaleSession();
+      return;
+    }
+    if (isAuthenticated) {
+      clearSessionRecovery(window.sessionStorage);
+      return;
+    }
+    if (!isPending) return;
+    const timer = setTimeout(recoverFromStaleSession, SESSION_RECOVERY_PENDING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [error, isPending, isAuthenticated]);
 }
-
 export const authClient = _authClient;
-export const { signIn, signUp, signOut } = _authClient;
+export const {
+  signIn,
+  signUp,
+  signOut
+} = _authClient;
 
 /**
  * useSession — null-safe session hook.
@@ -154,7 +149,11 @@ export const { signIn, signUp, signOut } = _authClient;
  *   return isAuthenticated ? <span>{user.name}</span> : <a href="/login">Sign In</a>;
  */
 export function useSession() {
-  const { data: session, isPending, error } = _authClient.useSession();
+  const {
+    data: session,
+    isPending,
+    error
+  } = _authClient.useSession();
 
   // Treat transient server/network errors as still-pending rather than
   // unauthenticated. A MySQL idle-timeout on the server returns a 500 which
@@ -163,32 +162,23 @@ export function useSession() {
   const isTransientError = (() => {
     if (!error) return false;
     const msg = String((error as Error)?.message ?? error).toLowerCase();
-    return (
-      msg.includes('500') ||
-      msg.includes('503') ||
-      msg.includes('network') ||
-      msg.includes('failed to fetch') ||
-      msg.includes('connection') ||
-      msg.includes('timeout') ||
-      msg.includes('inactivity')
-    );
+    return msg.includes('500') || msg.includes('503') || msg.includes('network') || msg.includes('failed to fetch') || msg.includes('connection') || msg.includes('timeout') || msg.includes('inactivity');
   })();
-
   const effectiveError = isTransientError ? null : error;
   const isAuthenticated = !isPending && !isTransientError && !!session?.user;
-
   useStaleSessionRecovery(effectiveError, isPending || isTransientError, isAuthenticated);
-
   return {
     session,
     user: session?.user ?? null,
     isPending: isPending || isTransientError,
     error: effectiveError,
-    isAuthenticated,
+    isAuthenticated
   };
 }
 // Alias for useSession (common naming convention)
-export function useAuth() { return useSession(); }
+export function useAuth() {
+  return useSession();
+}
 
 /**
  * SessionProvider - Wrapper for compatibility with common auth patterns.
@@ -199,7 +189,11 @@ export function useAuth() { return useSession(); }
  *
  * You can safely wrap your app with this, but it's optional.
  */
-export function SessionProvider({ children }: { children: ReactNode }) {
+export function SessionProvider({
+  children
+}: {
+  children: ReactNode;
+}) {
   return <>{children}</>;
 }
 
@@ -211,15 +205,23 @@ export const AuthProvider = SessionProvider;
 const SESSION_TIMEOUT_MS = 90_000;
 
 // ProtectedRoute component with timeout handling
-export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isPending } = useSession();
+export function ProtectedRoute({
+  children
+}: {
+  children: ReactNode;
+}) {
+  const {
+    isAuthenticated,
+    isPending
+  } = useSession();
   const location = useLocation();
   const [timedOut, setTimedOut] = useState(false);
-
   useEffect(() => {
     if (!isPending) return;
     const timeout = setTimeout(() => {
-      authLog('protected_route.timeout', { path: location.pathname });
+      authLog('protected_route.timeout', {
+        path: location.pathname
+      });
       setTimedOut(true);
     }, SESSION_TIMEOUT_MS);
     return () => clearTimeout(timeout);
@@ -228,32 +230,24 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   // Log redirect to login
   useEffect(() => {
     if (!isPending && !isAuthenticated) {
-      authLog('protected_route.redirect_to_login', { from: location.pathname });
+      authLog('protected_route.redirect_to_login', {
+        from: location.pathname
+      });
     }
   }, [isPending, isAuthenticated, location.pathname]);
-
   if (timedOut) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0F1117]">
+    return <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0F1117]">
         <p className="text-white/50 text-sm">Session check timed out. Please try again.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-violet-700 text-sm font-medium"
-        >
+        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-violet-700 text-sm font-medium">
           Retry
         </button>
-      </div>
-    );
+      </div>;
   }
-
   if (isPending || typeof window === 'undefined') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
+    return <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (!isAuthenticated) {
     // If useSessionTimeout already handled the expiry redirect (signOut + navigate
     // to /login?reason=expired), don't fire a second silent redirect that would
@@ -264,9 +258,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
       // Already navigating — render nothing while React Router processes the popstate
       return null;
     }
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{
+      from: location
+    }} replace />;
   }
-
   return <>{children}</>;
 }
 
@@ -278,19 +273,20 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
  */
 export function LogoutButton({
   className = '',
-  children = 'Logout',
+  children = 'Logout'
 }: {
   className?: string;
   children?: ReactNode;
 }) {
   const [isLoading, setIsLoading] = useState(false);
-
   async function handleLogout() {
     setIsLoading(true);
     try {
       clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
       // Reset diagnostic buffer on logout — clears any buffered events
-      try { resetDiagnosticBuffer(); } catch { /* non-fatal */ }
+      try {
+        resetDiagnosticBuffer();
+      } catch {/* non-fatal */}
       await signOut();
       // Native app → always return to login (never the public landing page)
       // Web browser → /login (same behaviour, landing page is at /)
@@ -300,14 +296,7 @@ export function LogoutButton({
       setIsLoading(false);
     }
   }
-
-  return (
-    <button
-      onClick={handleLogout}
-      disabled={isLoading}
-      className={className || 'px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md disabled:opacity-50'}
-    >
+  return <button onClick={handleLogout} disabled={isLoading} className={className || 'px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md disabled:opacity-50'}>
       {isLoading ? 'Logging out...' : children}
-    </button>
-  );
+    </button>;
 }

@@ -1,14 +1,23 @@
 /**
  * GET /api/jobs/:id/purchase-orders/:poId/pdf
- * Generates and streams a Purchase Order / Work Order PDF.
- * Supports cancelled POs with a prominent CANCELLED banner.
+ * Generates and streams a Purchase Order / Work Order printable HTML document.
+ *
+ * Gate 1 hardening:
+ *  - Finance permission required (permInvoices)
+ *  - Dollar visibility required (permSeeDollars) — document contains financial data
+ *  - PO must match job_id + company_id (wrong-job and cross-company → 404)
+ *
+ * Note: This endpoint returns text/html (printable). A real PDF binary will be
+ * implemented in Gate 3 alongside the Send Email feature.
  */
+
 import type { Request, Response } from 'express';
 import { db } from '../../../../../../db/client.js';
-import { profiles } from '../../../../../../db/schema.js';
-import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
-import { getAuth } from '../../../../../../../lib/auth/auth.js';
+import {
+  resolvePOProfile,
+  requireFinanceAndDollars,
+} from '../../../../../../lib/po-auth.js';
 
 function fmtCurrency(n: number | string | null | undefined): string {
   const num = parseFloat(String(n ?? 0)) || 0;
@@ -32,22 +41,20 @@ function esc(s: string | null | undefined): string {
 }
 
 export default async function handler(req: Request, res: Response) {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const profile = await resolvePOProfile(req, res);
+  if (!profile) return;
+  if (!requireFinanceAndDollars(profile, res)) return;
+
+  // ── IDs ───────────────────────────────────────────────────────────────────
+  const jobId = parseInt(String(req.params.id), 10);
+  if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
+
+  const poId = parseInt(String(req.params.poId), 10);
+  if (isNaN(poId)) return res.status(400).json({ error: 'Invalid PO ID' });
+
   try {
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
-
-    const poId = parseInt(String(req.params.poId), 10);
-    if (isNaN(poId)) return res.status(400).json({ error: 'Invalid PO ID' });
-
-    // Load PO with contractor and job info
+    // Scope by PO id + job_id + company_id
     const [poRows] = await db.execute(sql`
       SELECT po.*,
              c.name as contractor_name, c.email as contractor_email,
@@ -58,18 +65,20 @@ export default async function handler(req: Request, res: Response) {
       LEFT JOIN customers c ON c.id = po.contractor_id
       LEFT JOIN jobs j ON j.id = po.job_id
       LEFT JOIN customers cust ON cust.id = j.customer_id
-      WHERE po.id = ${poId} AND po.company_id = ${profile.companyId}
+      WHERE po.id = ${poId}
+        AND po.job_id = ${jobId}
+        AND po.company_id = ${profile.companyId}
     `) as unknown as [Array<Record<string, unknown>>, unknown];
 
     if (!poRows?.length) return res.status(404).json({ error: 'Purchase order not found' });
     const po = poRows[0];
 
-    // Load lines
     const [lineRows] = await db.execute(sql`
-      SELECT * FROM job_purchase_order_lines WHERE purchase_order_id = ${poId} ORDER BY sort_order ASC
+      SELECT * FROM job_purchase_order_lines
+      WHERE purchase_order_id = ${poId}
+      ORDER BY sort_order ASC
     `) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    // Load company info + PDF settings
     const [compRows] = await db.execute(sql`
       SELECT co.name as company_name, co.logo_url,
              cs.pdf_json
@@ -162,7 +171,7 @@ export default async function handler(req: Request, res: Response) {
       ${pdfSettings.businessAddress ? `<p style="font-size:11px;color:#6b7280;">${esc(pdfSettings.businessAddress)}</p>` : ''}
     </div>
     <div style="text-align:right;">
-      <p style="font-size:22px;font-weight:900;color:#7c3aed;letter-spacing:-0.5px;">PURCHASE ORDER</p>
+      <p style="font-size:22px;font-weight:900;color:#7c3aed;letter-spacing:-0.5px;">${isInternal ? 'WORK ORDER' : 'PURCHASE ORDER'}</p>
       <p style="font-size:16px;font-weight:700;color:#111827;margin-top:4px;">${esc(String(po.po_number))}</p>
       <span style="display:inline-block;margin-top:8px;padding:4px 12px;background:${sBg};color:${sColor};border:1px solid ${sColor};border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;">${sLabel}</span>
     </div>
@@ -244,9 +253,9 @@ export default async function handler(req: Request, res: Response) {
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Disposition', `inline; filename="${po.po_number}.html"`);
-    res.send(html);
+    return res.send(html);
   } catch (err) {
     console.error('GET /api/jobs/:id/purchase-orders/:poId/pdf error:', err);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    return res.status(500).json({ error: 'Failed to generate printable output' });
   }
 }

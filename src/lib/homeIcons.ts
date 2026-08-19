@@ -75,7 +75,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 
 // ── TOOLS ─────────────────────────────────────────────────────────────────────
 export const TOOLS_ICON_DEFS: HomeIconDef[] = [
-  { key: 'field_docs',    label: 'Doc',              icon: FileCheck,        href: '/job-docs',                   bg: 'bg-rose-500',    fg: 'text-white', group: 'tools' },
+  { key: 'field_docs',    label: 'Doc',              icon: FileCheck,        href: '/safety?safetyTab=documents',  bg: 'bg-rose-500',    fg: 'text-white', group: 'tools' },
   { key: 'studio_docs',   label: 'Doc Studio',       icon: FileText,         href: '/studio/documents',           bg: 'bg-cyan-600',    fg: 'text-white', group: 'management' },
   { key: 'forms',         label: 'Form',             icon: FileText,         href: '/studio/forms',               bg: 'bg-fuchsia-600', fg: 'text-white', group: 'tools' },
   { key: 'studio_forms',  label: 'Form Studio',      icon: ClipboardList,    href: '/studio/forms',               bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },

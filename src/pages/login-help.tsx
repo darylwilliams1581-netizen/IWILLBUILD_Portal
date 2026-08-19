@@ -1,141 +1,101 @@
-/**
- * /login-help — Public login help page
- * Helps users who can't log in: forgot password, no email received, browser tips.
- */
-import { Link } from 'react-router-dom';
+import { Link } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import {
-  KeyRound, Mail, HelpCircle, Monitor, RefreshCw,
-  ChevronRight, AlertCircle, CheckCircle2, ExternalLink
-} from 'lucide-react';
-
+import { KeyRound, Mail, HelpCircle, Monitor, RefreshCw, ChevronRight, AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
 const SUPPORT_EMAIL = 'support@iwillbuild.com';
-
 interface HelpSection {
   icon: React.ReactNode;
   title: string;
   color: string;
-  steps: Array<{ heading: string; body: React.ReactNode }>;
+  steps: Array<{
+    heading: string;
+    body: React.ReactNode;
+  }>;
 }
-
-const sections: HelpSection[] = [
-  {
-    icon: <KeyRound size={22} />,
-    title: 'Forgot your password?',
-    color: 'text-violet-600',
-    steps: [
-      {
-        heading: 'Reset via email',
-        body: (
-          <>
+const sections: HelpSection[] = [{
+  icon: <KeyRound size={22} />,
+  title: 'Forgot your password?',
+  color: 'text-violet-600',
+  steps: [{
+    heading: 'Reset via email',
+    body: <>
             Go to the{' '}
             <Link to="/forgot-password" className="text-violet-600 underline font-medium">
               Forgot Password
             </Link>{' '}
             page and enter your email address. You'll receive a reset link within a few minutes.
           </>
-        ),
-      },
-      {
-        heading: 'Link not arriving?',
-        body: "Check your spam/junk folder. The email comes from noreply@iwillbuild.com. If it's not there after 5 minutes, see the \"Didn't receive an email\" section below.",
-      },
-      {
-        heading: 'Reset link expired?',
-        body: 'Reset links expire after 30 minutes. Simply request a new one from the Forgot Password page.',
-      },
-    ],
-  },
-  {
-    icon: <Mail size={22} />,
-    title: "Didn't receive an email?",
-    color: 'text-blue-500',
-    steps: [
-      {
-        heading: 'Check spam and junk folders',
-        body: 'Emails from IWILLBUILD may be filtered by your email provider. Search for "iwillbuild" in all folders.',
-      },
-      {
-        heading: 'Work email blocking messages?',
-        body: 'Some corporate email systems (Microsoft 365, Google Workspace) block automated emails. Ask your IT team to whitelist noreply@iwillbuild.com, or use a personal email address.',
-      },
-      {
-        heading: 'Wait a few minutes',
-        body: 'Email delivery can occasionally be delayed by 2–5 minutes due to provider queues. If nothing arrives after 10 minutes, contact support.',
-      },
-      {
-        heading: 'Resend verification email',
-        body: (
-          <>
+  }, {
+    heading: 'Link not arriving?',
+    body: "Check your spam/junk folder. The email comes from noreply@iwillbuild.com. If it's not there after 5 minutes, see the \"Didn't receive an email\" section below."
+  }, {
+    heading: 'Reset link expired?',
+    body: 'Reset links expire after 30 minutes. Simply request a new one from the Forgot Password page.'
+  }]
+}, {
+  icon: <Mail size={22} />,
+  title: "Didn't receive an email?",
+  color: 'text-blue-500',
+  steps: [{
+    heading: 'Check spam and junk folders',
+    body: 'Emails from IWILLBUILD may be filtered by your email provider. Search for "iwillbuild" in all folders.'
+  }, {
+    heading: 'Work email blocking messages?',
+    body: 'Some corporate email systems (Microsoft 365, Google Workspace) block automated emails. Ask your IT team to whitelist noreply@iwillbuild.com, or use a personal email address.'
+  }, {
+    heading: 'Wait a few minutes',
+    body: 'Email delivery can occasionally be delayed by 2–5 minutes due to provider queues. If nothing arrives after 10 minutes, contact support.'
+  }, {
+    heading: 'Resend verification email',
+    body: <>
             If you're waiting for a verification email, you can request a new one from the{' '}
             <Link to="/login" className="text-violet-600 underline font-medium">
               login page
             </Link>{' '}
             by clicking "Resend verification email".
           </>
-        ),
-      },
-    ],
-  },
-  {
-    icon: <RefreshCw size={22} />,
-    title: 'Clear cache and cookies',
-    color: 'text-purple-500',
-    steps: [
-      {
-        heading: 'Why this helps',
-        body: 'Stale cookies or cached login state can prevent you from logging in, especially after a password reset or account change.',
-      },
-      {
-        heading: 'Chrome / Edge',
-        body: (
-          <span>
+  }]
+}, {
+  icon: <RefreshCw size={22} />,
+  title: 'Clear cache and cookies',
+  color: 'text-purple-500',
+  steps: [{
+    heading: 'Why this helps',
+    body: 'Stale cookies or cached login state can prevent you from logging in, especially after a password reset or account change.'
+  }, {
+    heading: 'Chrome / Edge',
+    body: <span>
             Press <kbd className="bg-slate-100 border border-slate-300 rounded px-1.5 py-0.5 text-xs font-mono">Ctrl+Shift+Delete</kbd> (Windows) or{' '}
             <kbd className="bg-slate-100 border border-slate-300 rounded px-1.5 py-0.5 text-xs font-mono">⌘+Shift+Delete</kbd> (Mac). Select "Cookies and other site data" and "Cached images and files", then click Clear data.
           </span>
-        ),
-      },
-      {
-        heading: 'Safari',
-        body: 'Go to Safari → Settings → Privacy → Manage Website Data. Search for "iwillbuild" and remove it.',
-      },
-      {
-        heading: 'Try a private/incognito window',
-        body: 'Open a private window (Ctrl+Shift+N / ⌘+Shift+N) and try logging in. If it works there, clearing your regular browser cache will fix it.',
-      },
-    ],
-  },
-  {
-    icon: <Monitor size={22} />,
-    title: 'Supported browsers',
-    color: 'text-green-500',
-    steps: [
-      {
-        heading: 'Recommended browsers',
-        body: (
-          <ul className="list-disc list-inside space-y-1 text-slate-600">
+  }, {
+    heading: 'Safari',
+    body: 'Go to Safari → Settings → Privacy → Manage Website Data. Search for "iwillbuild" and remove it.'
+  }, {
+    heading: 'Try a private/incognito window',
+    body: 'Open a private window (Ctrl+Shift+N / ⌘+Shift+N) and try logging in. If it works there, clearing your regular browser cache will fix it.'
+  }]
+}, {
+  icon: <Monitor size={22} />,
+  title: 'Supported browsers',
+  color: 'text-green-500',
+  steps: [{
+    heading: 'Recommended browsers',
+    body: <ul className="list-disc list-inside space-y-1 text-slate-600">
             <li>Google Chrome (latest)</li>
             <li>Microsoft Edge (latest)</li>
             <li>Mozilla Firefox (latest)</li>
             <li>Apple Safari 16+</li>
           </ul>
-        ),
-      },
-      {
-        heading: 'Not supported',
-        body: 'Internet Explorer is not supported. If you are using IE, please switch to a modern browser.',
-      },
-      {
-        heading: 'Mobile browsers',
-        body: 'Chrome for Android and Safari for iOS are fully supported. The portal is mobile-responsive.',
-      },
-    ],
-  },
-];
-
+  }, {
+    heading: 'Not supported',
+    body: 'Internet Explorer is not supported. If you are using IE, please switch to a modern browser.'
+  }, {
+    heading: 'Mobile browsers',
+    body: 'Chrome for Android and Safari for iOS are fully supported. The portal is mobile-responsive.'
+  }]
+}];
 export default function LoginHelpPage() {
-  return (
-    <div className="min-h-screen bg-slate-50">
+  return <div className="min-h-screen bg-slate-50">
       <Helmet>
         <title>Login Help — IWILLBUILD Portal</title>
         <meta name="description" content="Troubleshoot login issues with the IWILLBUILD portal. Reset your password, resend verification emails, and fix common browser problems." />
@@ -150,10 +110,7 @@ export default function LoginHelpPage() {
               <span className="text-violet-600">IWB</span> Portal
             </span>
           </Link>
-          <Link
-            to="/login"
-            className="text-sm text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors"
-          >
+          <Link to="/login" className="text-sm text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors">
             Back to login <ChevronRight size={14} />
           </Link>
         </div>
@@ -174,10 +131,7 @@ export default function LoginHelpPage() {
 
         {/* Quick links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-          <Link
-            to="/forgot-password"
-            className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl p-4 hover:bg-violet-100 transition-colors"
-          >
+          <Link to="/forgot-password" className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl p-4 hover:bg-violet-100 transition-colors">
             <div className="w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white shrink-0">
               <KeyRound size={16} />
             </div>
@@ -187,10 +141,7 @@ export default function LoginHelpPage() {
             </div>
             <ChevronRight size={16} className="ml-auto text-slate-400" />
           </Link>
-          <a
-            href={`mailto:${SUPPORT_EMAIL}`}
-            className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl p-4 hover:bg-slate-200 transition-colors"
-          >
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl p-4 hover:bg-slate-200 transition-colors">
             <div className="w-9 h-9 rounded-lg bg-slate-600 flex items-center justify-center text-white shrink-0">
               <Mail size={16} />
             </div>
@@ -204,15 +155,13 @@ export default function LoginHelpPage() {
 
         {/* Help sections */}
         <div className="space-y-6">
-          {sections.map((section) => (
-            <div key={section.title} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {sections.map(section => <div key={section.title} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
                 <span className={section.color}>{section.icon}</span>
                 <h2 className="font-semibold text-slate-800">{section.title}</h2>
               </div>
               <div className="divide-y divide-slate-100">
-                {section.steps.map((step, i) => (
-                  <div key={i} className="px-6 py-4 flex gap-3">
+                {section.steps.map((step, i) => <div key={i} className="px-6 py-4 flex gap-3">
                     <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
                       <CheckCircle2 size={12} className="text-slate-400" />
                     </div>
@@ -220,11 +169,9 @@ export default function LoginHelpPage() {
                       <div className="font-medium text-slate-700 text-sm mb-0.5">{step.heading}</div>
                       <div className="text-sm text-slate-500 leading-relaxed">{step.body}</div>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
 
         {/* Still stuck */}
@@ -235,10 +182,7 @@ export default function LoginHelpPage() {
             <p className="text-sm text-slate-600 mb-3">
               If you've tried everything above and still can't log in, contact our support team. Include your email address and a description of what's happening.
             </p>
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=Login%20Help%20Request&body=Hi%20IWILLBUILD%20Support%2C%0A%0AI%20am%20having%20trouble%20logging%20in.%0A%0AEmail%3A%20%0AWhat%20I%20tried%3A%20%0AError%20message%20(if%20any)%3A%20`}
-              className="inline-flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors"
-            >
+            <a href={`mailto:${SUPPORT_EMAIL}?subject=Login%20Help%20Request&body=Hi%20IWILLBUILD%20Support%2C%0A%0AI%20am%20having%20trouble%20logging%20in.%0A%0AEmail%3A%20%0AWhat%20I%20tried%3A%20%0AError%20message%20(if%20any)%3A%20`} className="inline-flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
               <Mail size={14} />
               Email support
             </a>
@@ -254,6 +198,5 @@ export default function LoginHelpPage() {
           <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-violet-600 transition-colors">Contact support</a>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

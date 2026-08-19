@@ -3,7 +3,7 @@
  * Standalone full-page layout — matches fleet.tsx pattern.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { FolderOpen, ArrowLeft } from 'lucide-react';
 import FilePanel from '@/components/FilePanel';
@@ -13,13 +13,11 @@ import PageError from '@/components/ui/PageError';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
-
 export default function FilesPage() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<CompanyFile[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
-
   const load = useCallback(async () => {
     setLoadError(false);
     try {
@@ -30,13 +28,11 @@ export default function FilesPage() {
     }
     setLoaded(true);
   }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
+  useEffect(() => {
+    void load();
+  }, [load]);
   const totalSize = files.reduce((s, f) => s + f.sizeBytes, 0);
-
-  return (
-    <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+  return <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
@@ -59,22 +55,16 @@ export default function FilesPage() {
       {/* Sticky top bar */}
       <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 safe-top">
         <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => navigate('/home')}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            aria-label="Back to Home"
-          >
+          <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
             <ArrowLeft size={16} />
             <span className="hidden sm:inline">Home</span>
           </button>
           <span className="text-slate-300">|</span>
           <FolderOpen size={18} className="text-primary shrink-0" />
           <h1 className="font-heading font-bold text-base truncate">Files</h1>
-          {loaded && (
-            <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
+          {loaded && <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
               {files.length} file{files.length !== 1 ? 's' : ''}
-            </span>
-          )}
+            </span>}
         </div>
       </header>
 
@@ -83,25 +73,20 @@ export default function FilesPage() {
         <div className="w-full">
 
           {/* Loading skeleton for stats */}
-          {!loaded && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
+          {!loaded && <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {Array.from({
+            length: 4
+          }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
                   <Skeleton className="h-3 w-20 rounded" />
                   <Skeleton className="h-7 w-12 rounded" />
-                </div>
-              ))}
-            </div>
-          )}
+                </div>)}
+            </div>}
 
           {/* Error state */}
-          {loaded && loadError && (
-            <PageError message="Could not load files. Please try again." onRetry={load} />
-          )}
+          {loaded && loadError && <PageError message="Could not load files. Please try again." onRetry={load} />}
 
           {/* Stats row */}
-          {loaded && !loadError && files.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {loaded && !loadError && files.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="bg-white rounded-xl border border-slate-200 p-4">
                 <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Total Files</p>
                 <p className="font-heading font-black text-2xl text-slate-800">{files.length}</p>
@@ -118,8 +103,7 @@ export default function FilesPage() {
                 <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Fleet Files</p>
                 <p className="font-heading font-black text-2xl text-slate-800">{files.filter(f => f.fleetAssetId).length}</p>
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Shared FilePanel */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-visible">
@@ -128,6 +112,5 @@ export default function FilesPage() {
 
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

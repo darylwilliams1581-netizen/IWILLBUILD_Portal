@@ -40,7 +40,7 @@ export default async function handler(req: Request, res: Response) {
       .select()
       .from(jobProgressLines)
       .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      .orderBy(asc(jobProgressLines.id));
+      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
 
     const headerRow = ['Description', 'Qty', 'Unit', 'Rate', '% Complete', 'Progress Note'];
     const rows = [headerRow.join(',')];

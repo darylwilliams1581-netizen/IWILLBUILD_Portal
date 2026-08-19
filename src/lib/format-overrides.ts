@@ -15,6 +15,7 @@ export interface FormatOverrideMarks {
   bold?: boolean
   italic?: boolean
   color?: string | null
+  fontSize?: string
 }
 
 export interface FormatOverrideEntry {
@@ -82,7 +83,8 @@ function isFormatOverrideMarks(value: unknown): value is FormatOverrideMarks {
   return (
     (value.bold === undefined || typeof value.bold === 'boolean') &&
     (value.italic === undefined || typeof value.italic === 'boolean') &&
-    (value.color === undefined || value.color === null || typeof value.color === 'string')
+    (value.color === undefined || value.color === null || typeof value.color === 'string') &&
+    (value.fontSize === undefined || typeof value.fontSize === 'string')
   )
 }
 
@@ -167,10 +169,29 @@ export function findApplicableFormatOverride(
   return { status: 'applicable', marks: entry.marks }
 }
 
+const FONT_SIZE_LINE_HEIGHT: Record<string, string> = {
+  '0.75rem': '1rem',
+  '0.875rem': '1.25rem',
+  '1rem': '1.5rem',
+  '1.125rem': '1.75rem',
+  '1.25rem': '1.75rem',
+  '1.5rem': '2rem',
+  '1.875rem': '2.25rem',
+  '2.25rem': '2.5rem',
+  '3rem': '1',
+  '3.75rem': '1',
+  '4.5rem': '1',
+  '6rem': '1',
+  '8rem': '1',
+}
+
 export function buildFormatOverrideStyle(marks: FormatOverrideMarks): CSSProperties {
+  const lineHeight: string | undefined = marks.fontSize ? FONT_SIZE_LINE_HEIGHT[marks.fontSize] : undefined
   return {
     ...(marks.bold ? { fontWeight: 700 } : {}),
     ...(marks.italic ? { fontStyle: 'italic' } : {}),
     ...(marks.color ? { color: marks.color } : {}),
+    ...(marks.fontSize ? { fontSize: marks.fontSize } : {}),
+    ...(lineHeight ? { lineHeight } : {}),
   }
 }

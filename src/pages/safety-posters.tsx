@@ -1,20 +1,18 @@
-/**
- * /safety/posters — Standalone Safety Posters page
- * Renders the PostersTab directly with DesktopTopBar + DesktopDock on desktop.
- */
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Image } from 'lucide-react';
 import { PostersTab } from '@/pages/safety';
-import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 
+// NOTE: DesktopTopBar is intentionally NOT imported here.
+// PortalSidebar renders DesktopTopBar internally (PortalSidebar.tsx line 715).
+// Every portal page that renders <PortalSidebar /> already gets one DesktopTopBar.
+// Adding a second import here would produce a visible duplicate at lg+ viewports.
+
 export default function SafetyPostersPage() {
   const navigate = useNavigate();
-
-  return (
-    <div className="flex flex-col flex-1 min-h-0">
+  return <div className="flex flex-col flex-1 min-h-0">
       <Helmet>
         <title>Safety Posters — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD safety posters — generate and print job-linked safety posters." />
@@ -22,18 +20,13 @@ export default function SafetyPostersPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      {/* Desktop nav */}
+      {/* Desktop nav — PortalSidebar owns DesktopTopBar; DesktopDock is separate */}
       <PortalSidebar />
-      <DesktopTopBar />
       <DesktopDock />
 
       {/* Mobile header */}
       <header className="md:hidden sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          aria-label="Back to Home"
-        >
+        <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>
@@ -46,6 +39,5 @@ export default function SafetyPostersPage() {
       <div className="flex-1 min-h-0 overflow-y-auto pt-0 lg-portal">
         <PostersTab />
       </div>
-    </div>
-  );
+    </div>;
 }

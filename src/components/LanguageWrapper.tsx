@@ -7,27 +7,30 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate } from "react-router";
 import { useTranslation } from 'react-i18next';
 import { isLanguageSupported, getLanguage, defaultLanguage } from '../lib/i18n/config';
-
 interface LanguageWrapperProps {
   children: React.ReactNode;
 }
-
-export default function LanguageWrapper({ children }: LanguageWrapperProps) {
-  const { lang } = useParams<{ lang: string }>();
-  const { i18n } = useTranslation();
+export default function LanguageWrapper({
+  children
+}: LanguageWrapperProps) {
+  const {
+    lang
+  } = useParams<{
+    lang: string;
+  }>();
+  const {
+    i18n
+  } = useTranslation();
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
     setMounted(true);
   }, []);
-
   useEffect(() => {
     if (lang && isLanguageSupported(lang)) {
       i18n.changeLanguage(lang);
-
       const language = getLanguage(lang);
       if (language) {
         document.documentElement.dir = language.dir;
@@ -40,6 +43,5 @@ export default function LanguageWrapper({ children }: LanguageWrapperProps) {
   if (mounted && lang && !isLanguageSupported(lang)) {
     return <Navigate to={`/${defaultLanguage}`} replace />;
   }
-
   return <>{children}</>;
 }

@@ -1,4 +1,4 @@
-import { Link as RouterLink, Navigate as RouterNavigate } from 'react-router-dom';
+import { Link as RouterLink, Navigate as RouterNavigate } from "react-router";
 import { Path, Params } from './routes';
 
 // Export standard React Router components with type safety
