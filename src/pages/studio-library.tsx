@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, BookOpen, Layers, ClipboardList } from 'lucide-react';
-import { LibraryPage as LibraryContent } from '@/pages/library';
+import { LibraryView as LibraryContent } from '../features/library/LibraryView';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';

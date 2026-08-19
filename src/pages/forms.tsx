@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
-import { LibraryPage } from '@/pages/library';
+import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

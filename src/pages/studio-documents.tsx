@@ -18,7 +18,7 @@ import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import { studio } from 'virtual:content';
-import { LibraryPage } from '@/pages/library';
+import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
