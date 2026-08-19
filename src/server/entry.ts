@@ -691,6 +691,7 @@ import risk_register_id_unarchive_post_658 from "./api/risk-register/[id]/unarch
 import safety_ai_draft_post_659 from "./api/safety/ai/draft/POST";
 import safety_documents_get_660 from "./api/safety/documents/GET";
 import safety_documents_post_661 from "./api/safety/documents/POST";
+import safety_documents_new_post from "./api/safety/documents/new/POST";
 import safety_documents_id_delete_662 from "./api/safety/documents/[id]/DELETE";
 import safety_documents_id_download_get_663 from "./api/safety/documents/[id]/download/GET";
 import safety_generated_posters_get_664 from "./api/safety/generated-posters/GET";
@@ -3744,6 +3745,7 @@ app.post("/api/risk-register/:id/unarchive", risk_register_id_unarchive_post_658
 app.post("/api/safety/ai/draft", safety_ai_draft_post_659);
 app.get("/api/safety/documents", safety_documents_get_660);
 app.post("/api/safety/documents", safety_documents_post_661);
+app.post("/api/safety/documents/new", safety_documents_new_post);
 app.delete("/api/safety/documents/:id", safety_documents_id_delete_662);
 app.get("/api/safety/documents/:id/download", safety_documents_id_download_get_663);
 app.get("/api/safety/generated-posters", safety_generated_posters_get_664);

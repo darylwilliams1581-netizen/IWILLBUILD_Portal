@@ -12,6 +12,7 @@ import PlanFormModal from '@/components/safety/PlanFormModal';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
 import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
 import UploadDocModal from '@/components/safety/UploadDocModal';
+import NewDocModal from '@/components/safety/NewDocModal';
 import { type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster, type GeneratedPoster, POLICY_TYPES, POSTER_TYPES, fmtBytes, fmtDate, statusBadge } from '@/components/safety/safety-types';
 
 // ── SWMS Library Tab ──────────────────────────────────────────────────────────
@@ -522,6 +523,7 @@ export function PoliciesTab() {
   const [docs, setDocs] = useState<SafetyDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [showNewDoc, setShowNewDoc] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [policyPublishTarget, setPolicyPublishTarget] = useState<{
     id: number;
@@ -551,9 +553,14 @@ export function PoliciesTab() {
   return <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{docs.length} document{docs.length !== 1 ? 's' : ''}</p>
-        <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-          <Plus size={15} /><span className="hidden sm:inline">Import Document</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowNewDoc(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+            <Plus size={15} /><span className="hidden sm:inline">New Document</span>
+          </button>
+          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+            <Plus size={15} /><span className="hidden sm:inline">Import Document</span>
+          </button>
+        </div>
       </div>
 
       {loading && <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>}
@@ -602,6 +609,13 @@ export function PoliciesTab() {
         setDocs(prev => [doc as SafetyDocument, ...prev]);
         setShowUpload(false);
       }} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showNewDoc && <NewDocModal onClose={() => setShowNewDoc(false)} onCreated={(doc) => {
+          setDocs(prev => [doc as SafetyDocument, ...prev]);
+          setShowNewDoc(false);
+        }} />}
       </AnimatePresence>
 
       {policyPublishTarget && isPolicyOwner && <ShareToLibraryModal templateId={policyPublishTarget.id} templateName={policyPublishTarget.title} isPlatformOwner={true} onClose={() => setPolicyPublishTarget(null)} />}
