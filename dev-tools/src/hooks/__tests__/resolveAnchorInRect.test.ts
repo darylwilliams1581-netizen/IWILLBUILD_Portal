@@ -185,4 +185,74 @@ describe('resolveAnchorInRect', () => {
 
     expect(result).toBeNull();
   });
+
+  describe('box coverage', () => {
+    function stubRect(el: Element, rect: { x: number; y: number; width: number; height: number }): void {
+      el.getBoundingClientRect = (): DOMRect =>
+        ({
+          x: rect.x,
+          y: rect.y,
+          left: rect.x,
+          top: rect.y,
+          width: rect.width,
+          height: rect.height,
+          right: rect.x + rect.width,
+          bottom: rect.y + rect.height,
+          toJSON: () => ({}),
+        }) as DOMRect;
+    }
+
+    it('prefers text inside the box over an image that barely overlaps it', () => {
+      const heading: HTMLHeadingElement = document.createElement('h3');
+      heading.textContent = 'Healing has teeth.';
+      document.body.appendChild(heading);
+      const heroImg: HTMLImageElement = makeImg('https://cdn.example.com/hero.jpg');
+
+      const box: Box = { x: 0, y: 0, width: 100, height: 100 };
+      stubRect(heading, { x: 10, y: 10, width: 80, height: 40 });
+      stubRect(heroImg, { x: 0, y: 900, width: 1200, height: 600 });
+      stubElementsFromPoint(() => [heading, heroImg]);
+
+      const result = resolveAnchorInRect(box, 0, 0);
+
+      expect(result?.type).toBe('content');
+      if (result?.type === 'content') {
+        expect(result.element).toBe(heading);
+      }
+    });
+
+    it('ignores a sliver image whose overlap area is negligible', () => {
+      const heading: HTMLHeadingElement = document.createElement('h3');
+      heading.textContent = 'Healing has teeth.';
+      document.body.appendChild(heading);
+      const sliver: HTMLImageElement = makeImg('https://cdn.example.com/divider.png');
+
+      const box: Box = { x: 0, y: 0, width: 100, height: 100 };
+      stubRect(heading, { x: 10, y: 10, width: 80, height: 40 });
+      stubRect(sliver, { x: 40, y: 40, width: 2, height: 10 });
+      stubElementsFromPoint((x: number, y: number) => (x === 50 && y === 50 ? [sliver] : [heading]));
+
+      const result = resolveAnchorInRect(box, 0, 0);
+
+      expect(result?.type).toBe('content');
+      if (result?.type === 'content') {
+        expect(result.element).toBe(heading);
+      }
+    });
+
+    it('still resolves a large image when the box sits inside it', () => {
+      const heroImg: HTMLImageElement = makeImg('https://cdn.example.com/hero.jpg');
+
+      const box: Box = { x: 0, y: 0, width: 100, height: 100 };
+      stubRect(heroImg, { x: -200, y: -200, width: 1200, height: 600 });
+      stubElementsFromPoint(() => [heroImg]);
+
+      const result = resolveAnchorInRect(box, 0, 0);
+
+      expect(result?.type).toBe('image');
+      if (result?.type === 'image') {
+        expect(result.element).toBe(heroImg);
+      }
+    });
+  });
 });

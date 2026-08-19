@@ -101,12 +101,37 @@ export function resolveHoverableAnchorAtPoint(
   return primary;
 }
 
+const MIN_ELEMENT_INSIDE_RATIO = 0.5;
+// Without a floor, any sliver overlapping the box (a 2px decorative span, a small
+// icon) scores 1.0 on element area alone and outranks a mostly-covered text block.
+const MIN_OVERLAP_AREA_PX = 400;
+
+function elementFractionInsideBox(
+  element: HTMLElement,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+): number {
+  const rect = element.getBoundingClientRect();
+  const area = rect.width * rect.height;
+  if (area <= 0) return 0;
+  const overlapWidth = Math.max(0, Math.min(rect.right, left + width) - Math.max(rect.left, left));
+  const overlapHeight = Math.max(0, Math.min(rect.bottom, top + height) - Math.max(rect.top, top));
+  const overlapArea = overlapWidth * overlapHeight;
+  if (overlapArea < MIN_OVERLAP_AREA_PX) return 0;
+  return overlapArea / area;
+}
+
 /**
  * Resolve the element under a drawn annotation box. Boxes are sloppy, so we
  * sample 9 points and take a majority vote instead of trusting one point.
  * `box` is document coords; elementsFromPoint needs client coords (subtract
- * scroll). Image hits beat content hits; within a kind the most-hit element
- * wins, center (sampled first) breaking ties.
+ * scroll). Candidates that sit inside the box beat ones that only overlap it;
+ * within a coverage tier images beat content, and the most-hit element wins with
+ * center (sampled first) breaking ties. The overlapping tier is still a valid
+ * answer — a box drawn inside one large hero image covers little of it, yet that
+ * image is what the user meant.
  */
 export function resolveAnchorInRect(
   box: { x: number; y: number; width: number; height: number },
@@ -134,8 +159,9 @@ export function resolveAnchorInRect(
     [left + w - insetX, top + h - insetY],
   ];
 
-  const images = new Map<HTMLElement, { anchor: HoveredElement; count: number }>();
-  const contents = new Map<HTMLElement, { anchor: HoveredElement; count: number }>();
+  type Candidate = { anchor: HoveredElement; count: number; insideBox: boolean };
+  const images = new Map<HTMLElement, Candidate>();
+  const contents = new Map<HTMLElement, Candidate>();
 
   for (const [px, py] of points) {
     const stack = document.elementsFromPoint(px, py);
@@ -148,18 +174,31 @@ export function resolveAnchorInRect(
     const bucket = anchor.type === "image" ? images : contents;
     const existing = bucket.get(anchor.element);
     if (existing) existing.count += 1;
-    else bucket.set(anchor.element, { anchor, count: 1 });
+    // Measured once per candidate: re-reading the rect per tier would both repeat
+    // layout work and let a mid-resolution shift tier the same element two ways.
+    else
+      bucket.set(anchor.element, {
+        anchor,
+        count: 1,
+        insideBox: elementFractionInsideBox(anchor.element, left, top, w, h) >= MIN_ELEMENT_INSIDE_RATIO,
+      });
   }
 
-  const pickTop = (m: Map<HTMLElement, { anchor: HoveredElement; count: number }>): HoveredElement | null => {
-    let best: { anchor: HoveredElement; count: number } | null = null;
+  const pickTop = (m: Map<HTMLElement, Candidate>, insideBox: boolean): HoveredElement | null => {
+    let best: Candidate | null = null;
     for (const entry of m.values()) {
+      if (entry.insideBox !== insideBox) continue;
       if (!best || entry.count > best.count) best = entry;
     }
     return best ? best.anchor : null;
   };
 
-  return pickTop(images) ?? pickTop(contents);
+  return (
+    pickTop(images, true) ??
+    pickTop(contents, true) ??
+    pickTop(images, false) ??
+    pickTop(contents, false)
+  );
 }
 
 function pointerLeftDocument(relatedTarget: EventTarget | null): boolean {

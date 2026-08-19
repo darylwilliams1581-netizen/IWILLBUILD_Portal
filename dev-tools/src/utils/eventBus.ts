@@ -279,6 +279,10 @@ export interface BusEventMap {
       resolvedElement?: ResolvedAnnotationElement | null;
     };
   };
+  /** PNG data URL of the page cropped to every current annotation box, boxes and
+   *  number badges included. Re-sent on each add/remove so the attachment in chat
+   *  always matches the live set of selections. */
+  ANNOTATION_SCREENSHOT_RESPONSE: { screenshot: string };
   /** Sent when the user clicks a `.map`-backed element that is not yet content-backed.
    *  The builder runs the heal conform and replies with CONFORM_SUCCEEDED or
    *  CONFORM_FAILED via raw window 'message' (not the bus — outbound-to-iframe only). */

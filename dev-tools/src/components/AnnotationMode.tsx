@@ -5,6 +5,7 @@ import { isOriginAllowed } from '../utils/postMessage'
 import { send, type ResolvedAnnotationElement } from '../utils/eventBus'
 import { resolveAnchorInRect, type HoveredElement } from '../hooks/useImageHoverDetection'
 import { extractDevContext, generatePreciseSelector, getElementClassName } from '../utils/element-helpers'
+import { captureCroppedDocumentScreenshot } from '../utils/screenshot'
 import { QuickEditBar } from './QuickEditBar'
 
 interface Box {
@@ -44,6 +45,8 @@ const FILL_COLOR = 'rgba(139, 92, 246, 0.12)'
 const STROKE_WIDTH = 2.5
 const MIN_BOX_SIZE = 4
 const Z_INDEX = 2147483645
+const SCREENSHOT_PADDING = 60
+const SCREENSHOT_DEBOUNCE_MS = 250
 
 const BADGE_STYLES: React.CSSProperties = {
   minWidth: '20px',
@@ -79,6 +82,33 @@ function rectFromDraft(draft: DraftBox): Box {
 
 function viewportWidthExcludingScrollbarGutter(): number {
   return document.documentElement.clientWidth
+}
+
+function waitForPaint(): Promise<void> {
+  return new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  )
+}
+
+function paddedBoundsOf(
+  selections: AnnotationSelection[]
+): { x: number; y: number; width: number; height: number } {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const selection of selections) {
+    minX = Math.min(minX, selection.rect.x)
+    minY = Math.min(minY, selection.rect.y)
+    maxX = Math.max(maxX, selection.rect.x + selection.rect.width)
+    maxY = Math.max(maxY, selection.rect.y + selection.rect.height)
+  }
+  return {
+    x: minX - SCREENSHOT_PADDING,
+    y: minY - SCREENSHOT_PADDING,
+    width: maxX - minX + SCREENSHOT_PADDING * 2,
+    height: maxY - minY + SCREENSHOT_PADDING * 2,
+  }
 }
 
 function getDocSize(): DocSize {
@@ -222,6 +252,32 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [isActive])
+
+  useEffect(function recaptureScreenshotForCurrentSelections() {
+    if (!isActive || selections.length === 0 || window.parent === window) return
+    let cancelled = false
+    // Each capture rasterizes the whole document, so a burst of box edits must
+    // collapse into one run instead of racing several to completion.
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        await waitForPaint()
+        if (cancelled) return
+        const bounds = paddedBoundsOf(selections)
+        const screenshot = await captureCroppedDocumentScreenshot(
+          bounds.x,
+          bounds.y,
+          bounds.width,
+          bounds.height
+        )
+        if (cancelled || !screenshot) return
+        send({ type: 'ANNOTATION_SCREENSHOT_RESPONSE', screenshot })
+      })()
+    }, SCREENSHOT_DEBOUNCE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [isActive, selections])
 
   const handlePointerDown = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) return

@@ -1560,6 +1560,11 @@ export default function DevelopmentMode() {
               }
             }, 100)
           }
+        } else if (event.data && event.data.type === 'NAVIGATE_FULL_RELOAD') {
+          const reloadUrl: string | null = typeof event.data.url === 'string' ? event.data.url : null
+          if (reloadUrl) {
+            window.location.replace(reloadUrl)
+          }
         } else if (event.data && event.data.type === 'REQUEST_VISUAL_CONTEXT') {
           // Update cache one final time to ensure freshness, then send immediately
           updateCachedContext()

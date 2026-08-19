@@ -1,12 +1,35 @@
 /**
  * Security utility for postMessage operations
  *
- * Gets the target origin for postMessage calls. Uses environment variable
- * VITE_PARENT_ORIGIN if set, otherwise falls back to '*' (not recommended for production).
+ * Gets the target origin for postMessage calls. Prefers a GoDaddy-owned origin
+ * derived from document.referrer, then environment variable VITE_PARENT_ORIGIN
+ * if set, otherwise falls back to '*' (not recommended for production).
  *
  * This function centralizes origin handling to make security auditing easier.
  */
+const GODADDY_ORIGIN_PATTERN = /^https:\/\/[a-zA-Z0-9][a-zA-Z0-9.-]*\.(dev-|test-)?godaddy\.com(:\d+)?$/
+
+function getGodaddyReferrerOrigin(): string | undefined {
+  if (typeof document === 'undefined' || !document.referrer) return undefined
+  try {
+    const origin = new URL(document.referrer).origin
+    // A same-origin referrer means this document navigated to itself (e.g. an
+    // in-iframe full-page reload), not that a parent frame embedded it — never
+    // treat it as the parent's origin.
+    if (origin === window.location.origin) return undefined
+    return GODADDY_ORIGIN_PATTERN.test(origin) ? origin : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Target origin for postMessage calls: a GoDaddy-owned referrer origin, then VITE_PARENT_ORIGIN, then '*'. */
 export function getTargetOrigin(): string {
+  const referrerOrigin = getGodaddyReferrerOrigin()
+  if (referrerOrigin) {
+    return referrerOrigin
+  }
+
   // Use configured parent origin from environment if available
   const parentOrigin = import.meta.env.VITE_PARENT_ORIGIN
 
@@ -49,8 +72,7 @@ export function isOriginAllowed(event: MessageEvent): boolean {
   // but we bound the trust to GoDaddy domains — arbitrary third-party embedders are NOT trusted
   // even if they happen to be the direct parent (e.g. a customer site that is itself embedded).
   if (typeof window !== 'undefined' && window.parent !== window && event.source === window.parent) {
-    const godaddyPattern = /^https:\/\/[a-zA-Z0-9][a-zA-Z0-9.-]*\.(dev-|test-)?godaddy\.com(:\d+)?$/
-    if (godaddyPattern.test(event.origin)) return true
+    if (GODADDY_ORIGIN_PATTERN.test(event.origin)) return true
   }
 
   return false
