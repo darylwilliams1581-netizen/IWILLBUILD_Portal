@@ -58,6 +58,7 @@ const ProfilePage = lazy(() => import('./pages/profile'));
 const SafetyPage = lazy(() => import('./pages/safety'));
 const FilesPage = lazy(() => import('./pages/files'));
 const EstimatingPage = lazy(() => import('./pages/estimating'));
+const FinancePage = lazy(() => import('./pages/finance'));
 const BuildersCalcPage = lazy(() => import('./pages/builders-calc-page'));
 const TakeoffPadPage = lazy(() => import('./pages/takeoff-pad-page'));
 const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
@@ -406,6 +407,10 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/files',
   element: protect(<FilesPage />),
+  errorElement: routeError
+}, {
+  path: '/finance',
+  element: protect(<FinancePage />),
   errorElement: routeError
 }, {
   path: '/estimating',

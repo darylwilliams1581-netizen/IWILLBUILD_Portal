@@ -71,12 +71,12 @@ const ALL_ITEMS: DockItem[] = [
 },
 // ── Finance ───────────────────────────────────────────────────────────────
 {
-  label: 'Invoices',
+  label: 'Finance',
   icon: Receipt,
-  href: '/invoices',
+  href: '/finance?financeTab=estimates',
   color: '#0ea5e9'
 },
-// Estimating (Costing) is accessible via Settings → Costing
+// Estimating (Costing) is accessible via Finance → Settings → Costing
 // ── People ────────────────────────────────────────────────────────────────
 {
   label: 'Contacts',

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2, AlertCircle, Lock, FileText, Check, ChevronDown, Upload, Download, Share2, Calculator, BookOpen, Mail } from 'lucide-react';
@@ -52,6 +52,13 @@ export default function EstimateEditorPage() {
     id: string;
   }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Allow callers to pass ?from=/finance%3FfinanceTab%3Destimates so Back returns there
+  const ALLOWED_FROM_PREFIXES = ['/finance', '/jobs/', '/estimating', '/job-quotes'];
+  const fromParam = searchParams.get('from');
+  const returnTo = fromParam && ALLOWED_FROM_PREFIXES.some(p => fromParam.startsWith(p))
+    ? fromParam
+    : null;
   const {
     isAdmin,
     isOwner
@@ -224,7 +231,10 @@ export default function EstimateEditorPage() {
     if (est && !isLocked && dirty) {
       await save(est, currentLines);
     }
-    if (est?.jobId) {
+    // If opened from Finance (or another allowlisted origin), return there
+    if (returnTo) {
+      navigate(returnTo);
+    } else if (est?.jobId) {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
       // No estimate loaded — go back in history, or fall back to jobs list

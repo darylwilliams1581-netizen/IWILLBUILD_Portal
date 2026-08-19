@@ -104,12 +104,14 @@ function fmtDate(d: string | null | undefined) {
 
 // ── Add Entry Modal ───────────────────────────────────────────────────────────
 
-interface AddEntryModalProps {
+export interface AddEntryModalProps {
   jobId: number;
   onClose: () => void;
   onCreated: (entry: LedgerEntry) => void;
   editEntry?: LedgerEntry | null;
 }
+
+export type { LedgerEntry };
 
 const COST_CATEGORIES = [
   { key: 'MATERIAL',      label: 'Material' },
@@ -120,7 +122,7 @@ const COST_CATEGORIES = [
   { key: 'ADJUSTMENT',    label: 'Other' },
 ];
 
-function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalProps) {
+export function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalProps) {
   const [form, setForm] = useState({
     entryDate: editEntry?.entry_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
     eventType: editEntry?.event_type ?? 'MATERIAL',

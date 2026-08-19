@@ -159,9 +159,9 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   items: [{
     id: 'nav-11',
     idx: '11',
-    label: 'Invoices',
+    label: 'Finance',
     icon: Receipt,
-    href: '/invoices'
+    href: '/finance?financeTab=estimates'
   }, {
     id: 'nav-12',
     idx: '12',

@@ -45,9 +45,9 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 },
 // Row 2
 {
-  label: 'Estimating',
-  icon: Calculator,
-  href: '/estimating',
+  label: 'Finance',
+  icon: Receipt,
+  href: '/finance?financeTab=estimates',
   color: '#7c3aed',
   bg: '#f5f3ff'
 }, {
