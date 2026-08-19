@@ -1,28 +1,21 @@
 /**
- * Finance PO Gate 1 — Security & Data Hardening tests
+ * PO Gate 1 — Security & Data Hardening
  *
- * Strategy: source-code analysis (no live DB) for structural guarantees,
- * plus handler unit tests with fully mocked db + auth for runtime behaviour.
+ * Two layers of tests:
+ *  1. Source-level structural checks (grep the handler source for required patterns)
+ *  2. Runtime handler tests (invoke handlers with mocked db + auth via stubs)
  *
- * Scenarios covered:
- *  1.  Company A cannot see or mutate Company B POs (cross-company isolation)
- *  2.  Job A PO cannot be accessed through Job B's URL (same-company, wrong job)
- *  3.  Foreign Supplier/Contractor ID is rejected
- *  4.  Progress-line ID from another job/company is rejected
- *  5.  Unauthenticated user receives 401
- *  6.  Authenticated user without Finance permission receives 403
- *  7.  User without permSeeDollars receives 403 from financial endpoints
- *  8.  Client-supplied line amount and total are ignored (server recomputes)
- *  9.  Forced line-insert failure rolls back the entire PO
- * 10.  Concurrent creation produces unique PO numbers
- * 11.  Only Draft POs can be deleted
- * 12.  Existing legacy statuses remain readable
- * 13.  Deleting/cancelling a PO revokes active share links and updates Document record
+ * Auth is controlled via the vitest-aliased auth.stub.ts → __setMockSession()
+ * DB is controlled via the vitest-aliased db-client.stub.ts → __dbExecuteMock / __dbQueryProfilesMock
+ *
+ * The real po-auth.ts is used (not mocked) — its dependencies are stubbed instead.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { __setMockSession } from '../../test/stubs/auth.stub';
+import { __dbExecuteMock, __dbQueryProfilesMock } from '../../test/stubs/db-client.stub';
 
 // ── Source reader ─────────────────────────────────────────────────────────────
 function src(relPath: string): string {
@@ -51,108 +44,21 @@ function makeReq(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// ── Shared mock state (reset per test) ───────────────────────────────────────
-const mockSession = vi.hoisted(() => ({ value: null as null | { user: { id: string } } }));
-const mockProfile = vi.hoisted(() => ({ value: null as null | Record<string, unknown> }));
-const mockDbExecute = vi.hoisted(() => ({ fn: vi.fn() }));
-const mockDbQuery = vi.hoisted(() => ({ fn: vi.fn() }));
-
-// po-auth.ts is the single source of truth for permissions.
-// We mock it directly so runtime tests don't need a live DB or auth service.
-const mockPoAuthProfile = vi.hoisted(() => ({
-  value: null as null | {
-    id: number; userId: string; role: string; companyId: number;
-    isOwner: boolean; isAdmin: boolean; canFinance: boolean;
-    canSeeDollars: boolean; canDelete: boolean;
-  },
-}));
-
-const mockDbExecuteForRuntime = vi.hoisted(() => ({ fn: vi.fn() }));
-
-// Also mock with .js extension — handlers import po-auth.js
-vi.mock('../../lib/po-auth.js', async () => (await import('../../lib/po-auth')));
-
-vi.mock('../../lib/po-auth', () => ({
-  resolvePOProfile: async (_req: unknown, res: { status: (n: number) => { json: (b: unknown) => unknown } }) => {
-    if (!mockPoAuthProfile.value) {
-      res.status(401).json({ error: 'Unauthorised' });
-      return null;
-    }
-    return mockPoAuthProfile.value;
-  },
-  requireFinance: (profile: { canFinance: boolean }, res: { status: (n: number) => { json: (b: unknown) => unknown } }) => {
-    if (!profile.canFinance) { res.status(403).json({ error: 'Finance permission required' }); return false; }
-    return true;
-  },
-  requireFinanceAndDollars: (profile: { canFinance: boolean; canSeeDollars: boolean }, res: { status: (n: number) => { json: (b: unknown) => unknown } }) => {
-    if (!profile.canFinance) { res.status(403).json({ error: 'Finance permission required' }); return false; }
-    if (!profile.canSeeDollars) { res.status(403).json({ error: 'Dollar visibility permission required' }); return false; }
-    return true;
-  },
-  requireFinanceAndDelete: (profile: { canFinance: boolean; canDelete: boolean }, res: { status: (n: number) => { json: (b: unknown) => unknown } }) => {
-    if (!profile.canFinance) { res.status(403).json({ error: 'Finance permission required' }); return false; }
-    if (!profile.canDelete) { res.status(403).json({ error: 'Delete permission required' }); return false; }
-    return true;
-  },
-  validateTransition: (current: string, next: string) => {
-    const VALID = ['draft', 'sent', 'completed', 'cancelled', 'paid'];
-    if (!VALID.includes(next)) return { code: 422, message: `Invalid status: ${next}` };
-    if (next === current) return null;
-    const TRANSITIONS: Record<string, string[]> = {
-      draft: ['sent', 'cancelled'],
-      sent: ['completed', 'cancelled'],
-      completed: ['cancelled'],
-      cancelled: [],
-      paid: [],
-    };
-    if (!(TRANSITIONS[current] ?? []).includes(next)) {
-      return { code: 409, message: `Cannot transition from '${current}' to '${next}'` };
-    }
-    return null;
-  },
-  ALLOWED_TRANSITIONS: {
-    draft: new Set(['sent', 'cancelled']),
-    sent: new Set(['completed', 'cancelled']),
-    completed: new Set(['cancelled']),
-    cancelled: new Set([]),
-    paid: new Set([]),
-  },
-  MAX_LINES: 200,
-  validateLines: (lines: unknown[]) => {
-    if (!lines.length) return { errors: [{ index: -1, message: 'At least one line required' }] };
-    return {
-      lines: lines.map((l: unknown) => {
-        const r = l as Record<string, unknown>;
-        const qty = Number(r.qty ?? 1);
-        const rate = Number(r.rate ?? 0);
-        return { progressLineId: r.progressLineId ?? null, description: String(r.description ?? ''), qty, unit: null, rate, amount: Math.round(qty * rate * 100) / 100 };
-      }),
-    };
-  },
-  computeTotals: (lines: Array<{ amount: number }>) => {
-    const subtotal = lines.reduce((s, l) => s + l.amount, 0);
-    const gst = Math.round(subtotal * 0.1 * 100) / 100;
-    return { subtotal, gst, total: subtotal + gst };
-  },
-}));
-
-vi.mock('../../db/client', () => ({
-  db: {
-    execute: (...args: unknown[]) => mockDbExecuteForRuntime.fn(...args),
-    query: {
-      profiles: { findFirst: () => Promise.resolve(null) },
-      jobs: { findFirst: () => Promise.resolve(null) },
-    },
-  },
-}));
-
-vi.mock('../../lib/document-engine.js', () => ({
-  ensureDocument: vi.fn().mockResolvedValue(1),
-  logEvent: vi.fn().mockResolvedValue(undefined),
-  updateDocument: vi.fn().mockResolvedValue(undefined),
-  revokeShare: vi.fn().mockResolvedValue(undefined),
-  getDocumentBySource: vi.fn().mockResolvedValue(null),
-}));
+// ── Profile factory ───────────────────────────────────────────────────────────
+// Builds a DB profile row that po-auth.ts will read from db.query.profiles.findFirst
+function makeDbProfile(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    userId: 'user-1',
+    role: 'owner',
+    companyId: 10,
+    permInvoices: true,
+    permSeeDollars: true,
+    permAdmin: false,
+    permDeleteRecords: true,
+    ...overrides,
+  };
+}
 
 // ── Source-level structural tests ─────────────────────────────────────────────
 
@@ -162,7 +68,6 @@ describe('PO Gate 1 — Source structure: permission gates', () => {
   const putSrc  = src('src/server/api/jobs/[id]/purchase-orders/[poId]/PUT.ts');
   const delSrc  = src('src/server/api/jobs/[id]/purchase-orders/[poId]/DELETE.ts');
   const pdfSrc  = src('src/server/api/jobs/[id]/purchase-orders/[poId]/pdf/GET.ts');
-  // The permission logic lives in po-auth.ts; handlers import helpers from it
   const poAuthSrc = src('src/server/lib/po-auth.ts');
 
   it('POST.ts enforces Finance permission (imports requireFinance from po-auth)', () => {
@@ -243,19 +148,13 @@ describe('PO Gate 1 — Source structure: server-computed totals', () => {
 
   it('POST.ts computes subtotal server-side (not from body)', () => {
     expect(postSrc).toContain('subtotal');
-    // Must NOT use body.subtotal or body.total
     expect(postSrc).not.toContain('body.subtotal');
     expect(postSrc).not.toContain('body.total');
     expect(postSrc).not.toContain('body.gst');
   });
 
   it('POST.ts does NOT trust body.lines[].amount (uses validateLines from po-auth)', () => {
-    // The handler uses validateLines which ignores browser amount
     expect(postSrc).toContain('validateLines');
-    // The handler must not reference l.amount in its INSERT statement
-    // (it uses l.amount from the validated line which was server-computed)
-    // Verify the comment in po-auth confirms server computation
-    const poAuthSrc = src('src/server/lib/po-auth.ts');
     expect(poAuthSrc).toContain('Server-computed');
     expect(poAuthSrc).not.toContain('raw.amount');
   });
@@ -303,11 +202,9 @@ describe('PO Gate 1 — Source structure: Document Engine consistency', () => {
   const delSrc  = src('src/server/api/jobs/[id]/purchase-orders/[poId]/DELETE.ts');
 
   it('POST.ts creates Document record inside transaction (not best-effort after response)', () => {
-    // Must NOT have res.status(201) before ensureDocument
     const resIdx = postSrc.indexOf('res.status(201)');
     const docIdx = postSrc.indexOf('ensureDocument');
     expect(docIdx).toBeGreaterThan(-1);
-    // ensureDocument must come before or at the same level as the response
     expect(docIdx).toBeLessThan(resIdx === -1 ? Infinity : resIdx);
   });
 
@@ -346,7 +243,6 @@ describe('PO Gate 1 — Source structure: Supplier/Contractor validation', () =>
 
   it('POST.ts validates progress lines belong to the correct job and company', () => {
     expect(postSrc).toContain('progressLineId');
-    // Must check job_id on progress lines
     expect(postSrc).toMatch(/job_id.*jobId|jobId.*job_id/);
   });
 });
@@ -388,23 +284,38 @@ describe('PO Gate 1 — Source structure: legacy status visibility', () => {
   const putSrc = src('src/server/api/jobs/[id]/purchase-orders/[poId]/PUT.ts');
 
   it('GET.ts does NOT filter out paid status from results', () => {
-    // Must not have WHERE status != paid or similar exclusion
     expect(getSrc).not.toContain("!= 'paid'");
-    expect(getSrc).not.toContain("status NOT IN");
+    expect(getSrc).not.toContain('status NOT IN');
   });
 
   it('PUT.ts ALLOWED_TRANSITIONS includes paid as a readable legacy status', () => {
-    expect(putSrc).toContain("'paid'");
+    const poAuthSrc = src('src/server/lib/po-auth.ts');
+    expect(poAuthSrc).toContain("'paid'");
+    expect(poAuthSrc).toContain('paid:');
   });
 });
 
-// ── Runtime handler tests (mocked db + auth) ──────────────────────────────────
+// ── Runtime handler tests ─────────────────────────────────────────────────────
+//
+// Auth is controlled via auth.stub.ts (aliased over src/lib/auth/auth.ts):
+//   __setMockSession(null)                    → getSession returns null → 401
+//   __setMockSession({ user: { id: 'u1' } }) → getSession returns session
+//
+// DB profile is controlled via db-client.stub.ts:
+//   __dbQueryProfilesMock.mockResolvedValue(profileRow) → profile found
+//   __dbQueryProfilesMock.mockResolvedValue(null)       → no profile → 403
+//
+// DB execute is controlled via:
+//   __dbExecuteMock.mockResolvedValue([[row], undefined]) → PO found
+//   __dbExecuteMock.mockResolvedValue([[], undefined])    → PO not found → 404
 
 describe('PO Gate 1 — Runtime: 401 for unauthenticated requests', () => {
   beforeEach(() => {
-    mockPoAuthProfile.value = null;
-    mockDbExecuteForRuntime.fn.mockReset();
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[], undefined]);
+    __setMockSession(null);
+    __dbQueryProfilesMock.mockReset();
+    __dbQueryProfilesMock.mockResolvedValue(null);
+    __dbExecuteMock.mockReset();
+    __dbExecuteMock.mockResolvedValue([[], undefined]);
   });
 
   it('GET /api/jobs/:id/purchase-orders returns 401 when no session', async () => {
@@ -450,12 +361,18 @@ describe('PO Gate 1 — Runtime: 401 for unauthenticated requests', () => {
 
 describe('PO Gate 1 — Runtime: 403 for missing Finance permission', () => {
   beforeEach(() => {
-    mockPoAuthProfile.value = {
-      id: 1, userId: 'user-no-finance', role: 'staff', companyId: 10,
-      isOwner: false, isAdmin: false, canFinance: false, canSeeDollars: true, canDelete: false,
-    };
-    mockDbExecuteForRuntime.fn.mockReset();
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[], undefined]);
+    __setMockSession({ user: { id: 'user-no-finance' } });
+    __dbQueryProfilesMock.mockReset();
+    __dbQueryProfilesMock.mockResolvedValue(makeDbProfile({
+      userId: 'user-no-finance',
+      role: 'staff',
+      permInvoices: false,
+      permSeeDollars: true,
+      permAdmin: false,
+      permDeleteRecords: false,
+    }));
+    __dbExecuteMock.mockReset();
+    __dbExecuteMock.mockResolvedValue([[], undefined]);
   });
 
   it('GET /api/jobs/:id/purchase-orders returns 403 without Finance permission', async () => {
@@ -493,12 +410,18 @@ describe('PO Gate 1 — Runtime: 403 for missing Finance permission', () => {
 
 describe('PO Gate 1 — Runtime: 403 for missing permSeeDollars', () => {
   beforeEach(() => {
-    mockPoAuthProfile.value = {
-      id: 1, userId: 'user-no-dollars', role: 'staff', companyId: 10,
-      isOwner: false, isAdmin: false, canFinance: true, canSeeDollars: false, canDelete: false,
-    };
-    mockDbExecuteForRuntime.fn.mockReset();
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[], undefined]);
+    __setMockSession({ user: { id: 'user-no-dollars' } });
+    __dbQueryProfilesMock.mockReset();
+    __dbQueryProfilesMock.mockResolvedValue(makeDbProfile({
+      userId: 'user-no-dollars',
+      role: 'staff',
+      permInvoices: true,
+      permSeeDollars: false,
+      permAdmin: false,
+      permDeleteRecords: false,
+    }));
+    __dbExecuteMock.mockReset();
+    __dbExecuteMock.mockResolvedValue([[], undefined]);
   });
 
   it('GET /api/jobs/:id/purchase-orders/:poId returns 403 without permSeeDollars', async () => {
@@ -520,19 +443,19 @@ describe('PO Gate 1 — Runtime: 403 for missing permSeeDollars', () => {
 
 describe('PO Gate 1 — Runtime: 404 for cross-company and wrong-job access', () => {
   beforeEach(() => {
-    mockPoAuthProfile.value = {
-      id: 1, userId: 'user-company-a', role: 'owner', companyId: 10,
-      isOwner: true, isAdmin: true, canFinance: true, canSeeDollars: true, canDelete: true,
-    };
-    mockDbExecuteForRuntime.fn.mockReset();
-    mockDbExecuteForRuntime.fn.mockImplementation(() => Promise.resolve([[], undefined]));
+    __setMockSession({ user: { id: 'user-owner' } });
+    __dbQueryProfilesMock.mockReset();
+    __dbQueryProfilesMock.mockResolvedValue(makeDbProfile({ userId: 'user-owner', role: 'owner' }));
+    __dbExecuteMock.mockReset();
+    // db.execute returns empty rows — PO not found for this job+company
+    __dbExecuteMock.mockResolvedValue([[], undefined]);
   });
 
   it('GET /:poId returns 404 for cross-company PO', async () => {
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/GET');
     const req = makeReq({ params: { id: '1', poId: '999' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(404);
   });
 
@@ -540,7 +463,7 @@ describe('PO Gate 1 — Runtime: 404 for cross-company and wrong-job access', ()
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/GET');
     const req = makeReq({ params: { id: '1', poId: '5' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(404);
   });
 
@@ -548,7 +471,7 @@ describe('PO Gate 1 — Runtime: 404 for cross-company and wrong-job access', ()
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/PUT');
     const req = makeReq({ params: { id: '1', poId: '999' }, body: { status: 'sent' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(404);
   });
 
@@ -556,76 +479,73 @@ describe('PO Gate 1 — Runtime: 404 for cross-company and wrong-job access', ()
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/DELETE');
     const req = makeReq({ params: { id: '1', poId: '999' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(404);
   });
 });
 
 describe('PO Gate 1 — Runtime: Draft-only deletion', () => {
   beforeEach(() => {
-    mockPoAuthProfile.value = {
-      id: 1, userId: 'user-owner', role: 'owner', companyId: 10,
-      isOwner: true, isAdmin: true, canFinance: true, canSeeDollars: true, canDelete: true,
-    };
-    mockDbExecuteForRuntime.fn.mockReset();
+    __setMockSession({ user: { id: 'user-owner' } });
+    __dbQueryProfilesMock.mockReset();
+    __dbQueryProfilesMock.mockResolvedValue(makeDbProfile({ userId: 'user-owner', role: 'owner' }));
+    __dbExecuteMock.mockReset();
   });
 
   it('DELETE returns 409 when PO status is sent', async () => {
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[{ id: 5, status: 'sent', job_id: 1, company_id: 10 }], undefined]);
+    __dbExecuteMock.mockResolvedValue([[{ id: 5, status: 'sent', job_id: 1, company_id: 10 }], undefined]);
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/DELETE');
     const req = makeReq({ params: { id: '1', poId: '5' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(409);
   });
 
   it('DELETE returns 409 when PO status is completed', async () => {
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[{ id: 5, status: 'completed', job_id: 1, company_id: 10 }], undefined]);
+    __dbExecuteMock.mockResolvedValue([[{ id: 5, status: 'completed', job_id: 1, company_id: 10 }], undefined]);
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/DELETE');
     const req = makeReq({ params: { id: '1', poId: '5' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(409);
   });
 
   it('DELETE returns 409 when PO status is cancelled', async () => {
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[{ id: 5, status: 'cancelled', job_id: 1, company_id: 10 }], undefined]);
+    __dbExecuteMock.mockResolvedValue([[{ id: 5, status: 'cancelled', job_id: 1, company_id: 10 }], undefined]);
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/DELETE');
     const req = makeReq({ params: { id: '1', poId: '5' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(409);
   });
 });
 
 describe('PO Gate 1 — Runtime: Invalid status transitions', () => {
   beforeEach(() => {
-    mockPoAuthProfile.value = {
-      id: 1, userId: 'user-owner', role: 'owner', companyId: 10,
-      isOwner: true, isAdmin: true, canFinance: true, canSeeDollars: true, canDelete: true,
-    };
-    mockDbExecuteForRuntime.fn.mockReset();
+    __setMockSession({ user: { id: 'user-owner' } });
+    __dbQueryProfilesMock.mockReset();
+    __dbQueryProfilesMock.mockResolvedValue(makeDbProfile({ userId: 'user-owner', role: 'owner' }));
+    __dbExecuteMock.mockReset();
   });
 
   it('PUT returns 422 for invalid status value', async () => {
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[{ id: 5, status: 'draft', job_id: 1, company_id: 10 }], undefined]);
+    __dbExecuteMock.mockResolvedValue([[{ id: 5, status: 'draft', job_id: 1, company_id: 10 }], undefined]);
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/PUT');
     const req = makeReq({ params: { id: '1', poId: '5' }, body: { status: 'bogus_status' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(422);
   });
 
-  it('PUT returns 409 for disallowed transition (completed to draft)', async () => {
-    mockDbExecuteForRuntime.fn.mockResolvedValue([[{ id: 5, status: 'completed', job_id: 1, company_id: 10 }], undefined]);
+  it('PUT returns 409 for disallowed transition (completed → draft)', async () => {
+    __dbExecuteMock.mockResolvedValue([[{ id: 5, status: 'completed', job_id: 1, company_id: 10 }], undefined]);
     const { default: handler } = await import('../api/jobs/[id]/purchase-orders/[poId]/PUT');
     const req = makeReq({ params: { id: '1', poId: '5' }, body: { status: 'draft' } });
     const res = makeRes();
-    await handler(req, res);
+    await handler(req as never, res as never);
     expect(res._status).toBe(409);
   });
 });
-
 
 describe('PO Gate 1 — Source structure: transaction rollback on line failure', () => {
   const postSrc = src('src/server/api/jobs/[id]/purchase-orders/POST.ts');
@@ -637,7 +557,6 @@ describe('PO Gate 1 — Source structure: transaction rollback on line failure',
 
   it('POST.ts commits only after all writes succeed', () => {
     expect(postSrc).toContain('COMMIT');
-    // COMMIT must come after line inserts
     const commitIdx = postSrc.lastIndexOf('COMMIT');
     const lineInsertIdx = postSrc.indexOf('INSERT INTO job_purchase_order_lines');
     expect(commitIdx).toBeGreaterThan(lineInsertIdx);
@@ -649,7 +568,6 @@ describe('PO Gate 1 — Source structure: concurrent unique PO numbers', () => {
 
   it('POST.ts uses INSERT INTO po_sequences for atomic increment', () => {
     expect(postSrc).toContain('po_sequences');
-    // Must use INSERT or UPDATE with ON DUPLICATE KEY for atomicity
     expect(postSrc).toMatch(/ON DUPLICATE KEY|INSERT INTO po_sequences/);
   });
 
