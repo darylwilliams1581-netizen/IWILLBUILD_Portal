@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { HardHat, ChevronRight, Plus, AlertTriangle, Calendar, Wrench, CheckSquare, Clock, XCircle, BarChart3, RefreshCw } from 'lucide-react';
 import { Link } from "react-router";
-import NewJobModal from '@/components/NewJobModal';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
@@ -49,7 +48,6 @@ export default function DashboardPage() {
   const {
     user
   } = useSession();
-  const [showNewJob, setShowNewJob] = useState(false);
   const {
     addWorkLabel
   } = useTerminology();
@@ -115,10 +113,6 @@ export default function DashboardPage() {
   }, []);
   const recentJobs = jobs.slice(0, 8);
   return <div className="portal-page">
-      <NewJobModal open={showNewJob} onClose={() => setShowNewJob(false)} onCreated={(job: Job) => {
-      setJobs(prev => [job, ...prev]);
-      setShowNewJob(false);
-    }} />
       <Helmet>
         <title>Dashboard — IWILLBUILD Portal</title>
         <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
@@ -186,10 +180,6 @@ export default function DashboardPage() {
             <div className="flex-1 min-w-0">
               <DashboardBanner userId={user?.id ?? 'anon'} />
             </div>
-            <button onClick={() => setShowNewJob(true)} className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all border border-primary/30 shadow-md">
-              <Plus size={15} strokeWidth={2.5} />
-              New Job
-            </button>
           </div>
         </div>
 
@@ -197,12 +187,8 @@ export default function DashboardPage() {
         <div className="lg:hidden bg-white border-b border-border shrink-0 print:hidden" style={{
         paddingTop: 'env(safe-area-inset-top)'
       }}>
-          <div className="h-12 flex items-center justify-between px-4">
+          <div className="h-12 flex items-center px-4">
             <h1 className="font-heading font-bold text-base text-foreground leading-tight">Dashboard</h1>
-            <button onClick={() => setShowNewJob(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground active:scale-95 transition-all">
-              <Plus size={13} strokeWidth={2.5} />
-              Add Job
-            </button>
           </div>
         </div>
 
