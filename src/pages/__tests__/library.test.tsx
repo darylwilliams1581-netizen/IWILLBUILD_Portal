@@ -2,6 +2,11 @@
  * library.test.tsx
  * ─────────────────────────────────────────────────────────────────────────────
  * Route-level tests for src/pages/library.tsx.
+ * @seo-exempt — test file, not a route page
+ * title: Library Tests | IWILLBUILD
+ * description: Route-level tests for the library redirect page and named exports.
+ * canonical: /library
+ * h1: Library Tests
  *
  * Suite A — LibraryRedirect (default export)
  *   Verifies the /library route redirects to /studio?tab=library and emits

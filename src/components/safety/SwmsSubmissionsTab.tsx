@@ -6,15 +6,18 @@
  * produce two rows.
  *
  * Data source: GET /api/safety/swms-submissions
+ * Permission: owner / admin / permAdmin only (enforced server-side).
  * Company isolation is enforced server-side.
  *
  * A job SWMS with no sign-offs does not appear here.
  * Detail links are only rendered when a valid job_swms_id is present.
+ *
+ * Pagination: cursor-based, Load More control.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Loader2, AlertCircle, CheckCircle2, User,
-  Building2, HardHat, Calendar, Hash,
+  Building2, HardHat, Calendar, Hash, ChevronDown,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,13 +27,18 @@ export interface SwmsSubmission {
   worker_name: string;
   company_name: string | null;
   role: string | null;
-  white_card_number: string | null;
   signed_at: string;
   job_swms_id: number;
   swms_title: string | null;
   job_id: number | null;
   job_name: string | null;
   job_number: string | null;
+}
+
+interface SubmissionsResponse {
+  submissions: SwmsSubmission[];
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,19 +59,46 @@ function fmtDateTime(iso: string): string {
 export default function SwmsSubmissionsTab() {
   const [submissions, setSubmissions] = useState<SwmsSubmission[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [fetchError, setFetchError]   = useState<string | null>(null);
   const [search, setSearch]           = useState('');
+  const [hasMore, setHasMore]         = useState(false);
+  const [nextCursor, setNextCursor]   = useState<string | null>(null);
+
+  const fetchPage = useCallback(async (cursor: string | null, append: boolean) => {
+    const url = cursor
+      ? `/api/safety/swms-submissions?cursor=${encodeURIComponent(cursor)}`
+      : '/api/safety/swms-submissions';
+
+    const r = await fetch(url, { credentials: 'include' });
+    if (!r.ok) {
+      if (r.status === 403) throw new Error('You do not have permission to view submissions.');
+      throw new Error(`HTTP ${r.status}`);
+    }
+    const d = await r.json() as SubmissionsResponse;
+    setSubmissions((prev) => append ? [...prev, ...(d.submissions ?? [])] : (d.submissions ?? []));
+    setHasMore(d.hasMore ?? false);
+    setNextCursor(d.nextCursor ?? null);
+  }, []);
 
   useEffect(() => {
-    fetch('/api/safety/swms-submissions', { credentials: 'include' })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<{ submissions: SwmsSubmission[] }>;
-      })
-      .then((d) => setSubmissions(d.submissions ?? []))
-      .catch(() => setFetchError('Failed to load SWMS submissions.'))
+    setLoading(true);
+    fetchPage(null, false)
+      .catch((err) => setFetchError(err instanceof Error ? err.message : 'Failed to load SWMS submissions.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [fetchPage]);
+
+  async function handleLoadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      await fetchPage(nextCursor, true);
+    } catch {
+      // silently ignore load-more errors; user can retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const q = search.toLowerCase();
   const filtered = submissions.filter((s) => {
@@ -154,7 +189,6 @@ export default function SwmsSubmissionsTab() {
                   <th className="px-4 py-3 text-left">Job</th>
                   <th className="px-4 py-3 text-left">Company</th>
                   <th className="px-4 py-3 text-left">Role</th>
-                  <th className="px-4 py-3 text-left">White Card</th>
                   <th className="px-4 py-3 text-left">Signed</th>
                 </tr>
               </thead>
@@ -184,7 +218,6 @@ export default function SwmsSubmissionsTab() {
                     </td>
                     <td className="px-4 py-3 text-slate-500">{s.company_name ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-500">{s.role ?? '—'}</td>
-                    <td className="px-4 py-3 text-slate-500">{s.white_card_number ?? '—'}</td>
                     <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
                       {fmtDateTime(s.signed_at)}
                     </td>
@@ -227,7 +260,6 @@ export default function SwmsSubmissionsTab() {
                   )}
                   {s.company_name && <span>{s.company_name}</span>}
                   {s.role && <span>{s.role}</span>}
-                  {s.white_card_number && <span>WC: {s.white_card_number}</span>}
                   <div className="col-span-2 flex items-center gap-1 text-slate-400">
                     <Calendar size={10} />
                     <span>{fmtDateTime(s.signed_at)}</span>
@@ -237,11 +269,26 @@ export default function SwmsSubmissionsTab() {
             ))}
           </div>
 
-          {/* Row count */}
-          <p className="text-xs text-slate-400 text-right">
-            {filtered.length} submission{filtered.length !== 1 ? 's' : ''}
-            {search ? ` matching "${search}"` : ''}
-          </p>
+          {/* Row count + Load More */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-400">
+              {filtered.length} submission{filtered.length !== 1 ? 's' : ''}
+              {search ? ` matching "${search}"` : ''}
+            </p>
+            {hasMore && !search && (
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                data-testid="load-more-btn"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {loadingMore
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <ChevronDown size={12} />}
+                Load more
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>

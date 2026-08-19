@@ -552,7 +552,7 @@ export function PoliciesTab() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{docs.length} document{docs.length !== 1 ? 's' : ''}</p>
         <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-          <Plus size={15} /><span className="hidden sm:inline">Upload Document</span>
+          <Plus size={15} /><span className="hidden sm:inline">Import Document</span>
         </button>
       </div>
 
@@ -562,9 +562,9 @@ export function PoliciesTab() {
           <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><BookOpen size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No policies uploaded yet</p>
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Upload your WHS policies, procedures, and safety management documents.</p>
-          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-            <Plus size={15} />Upload First Document
-          </button>
+          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+              <Plus size={15} />Upload First Document
+            </button>
         </div>}
 
       {!loading && docs.length > 0 && <div className="flex flex-col gap-2">
