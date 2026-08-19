@@ -238,6 +238,44 @@ describe('+ New Job ownership — sidebar vs page header', () => {
   });
 });
 
+// ── Plan Manager — now inside the office shell ───────────────────────────────
+
+describe('Plan Manager page — portal shell', () => {
+  it('uses portal-page + portal-content layout (not portal-main)', async () => {
+    const src = await readSrc('src/pages/plan-manager.tsx');
+    expect(src).toContain('portal-page');
+    expect(src).toContain('portal-content');
+    expect(src).not.toContain('"portal-main"');
+  });
+
+  it('renders PortalSidebar', async () => {
+    const src = await readSrc('src/pages/plan-manager.tsx');
+    expect(src).toContain('<PortalSidebar');
+  });
+
+  it('renders DesktopDock', async () => {
+    const src = await readSrc('src/pages/plan-manager.tsx');
+    expect(src).toContain('DesktopDock');
+  });
+
+  it('does NOT render DesktopTopBar directly (PortalSidebar owns it)', async () => {
+    const src = await readSrc('src/pages/plan-manager.tsx');
+    expect(src).not.toContain('<DesktopTopBar');
+  });
+
+  it('does NOT have a standalone Home back button (sidebar handles navigation)', async () => {
+    const src = await readSrc('src/pages/plan-manager.tsx');
+    // The old Home icon back-button was removed — sidebar owns navigation
+    expect(src).not.toContain("navigate('/')");
+    expect(src).not.toContain('navigate(\'/\')');
+  });
+
+  it('does NOT dispatch portal:open-menu (sidebar owns the mobile drawer trigger)', async () => {
+    const src = await readSrc('src/pages/plan-manager.tsx');
+    expect(src).not.toContain('portal:open-menu');
+  });
+});
+
 // ── Estimating tools — now inside the office shell ───────────────────────────
 
 describe('Estimating tool pages — portal shell', () => {
