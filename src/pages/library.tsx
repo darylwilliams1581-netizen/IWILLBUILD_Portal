@@ -40,6 +40,7 @@ export default function LibraryRedirect() {
         <link rel="canonical" href="https://iwillbuild.com/library" />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
+      <h1 className="sr-only">Library</h1>
       <Navigate to="/studio?tab=library" replace />
     </>
   );

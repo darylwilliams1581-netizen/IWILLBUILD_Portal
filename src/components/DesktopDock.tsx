@@ -39,7 +39,7 @@ const ALL_ITEMS: DockItem[] = [
 }, {
   label: 'Field Docs',
   icon: FileStack,
-  href: '/job-docs',
+  href: '/safety?safetyTab=documents',
   color: '#8b5cf6'
 }, {
   label: 'Scheduler',
@@ -93,7 +93,7 @@ const ALL_ITEMS: DockItem[] = [
 {
   label: 'Safety',
   icon: ShieldCheck,
-  href: '/safety',
+  href: '/safety?safetyTab=documents',
   color: '#dc2626'
 }, {
   label: 'Safety Posters',

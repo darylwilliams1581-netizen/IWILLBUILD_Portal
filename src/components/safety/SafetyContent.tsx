@@ -64,6 +64,10 @@ export default function SafetyContent() {
   const activeTab: TabId =
     TABS.some((t) => t.id === rawTab) ? (rawTab as TabId) : DEFAULT_TAB;
 
+  // Optional jobId filter — passed through from /job-docs redirect or deep links
+  const jobIdParam = searchParams.get('jobId');
+  const initialJobId = jobIdParam ? Number(jobIdParam) : null;
+
   function setTab(id: TabId) {
     setSearchParams(
       (prev) => {
@@ -116,7 +120,7 @@ export default function SafetyContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'documents'   && <JobSwmsTab />}
+          {activeTab === 'documents'   && <JobSwmsTab initialJobId={initialJobId} />}
           {activeTab === 'submissions' && <SwmsSubmissionsTab />}
           {activeTab === 'swms'        && <SwmsLibraryTab />}
           {activeTab === 'plans'       && <SafetyPlansTab />}

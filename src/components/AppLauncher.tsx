@@ -107,7 +107,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 {
   label: 'Safety',
   icon: ShieldCheck,
-  href: '/safety',
+  href: '/safety?safetyTab=documents',
   color: '#dc2626',
   bg: '#fef2f2'
 }, {
@@ -159,7 +159,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 }, {
   label: 'Job Field Docs',
   icon: FileStack,
-  href: '/job-docs',
+  href: '/safety?safetyTab=documents',
   color: '#0891b2',
   bg: '#ecfeff'
 }, {

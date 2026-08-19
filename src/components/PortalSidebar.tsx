@@ -176,7 +176,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     idx: '05',
     label: 'Field Docs',
     icon: FileStack,
-    href: '/job-docs'
+    href: '/safety?safetyTab=documents'
   }, {
     id: 'nav-18',
     idx: '18',
@@ -188,7 +188,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     idx: '13',
     label: 'Safety',
     icon: ShieldCheck,
-    href: '/safety'
+    href: '/safety?safetyTab=documents'
   }, {
     id: 'nav-14',
     idx: '14',
@@ -320,7 +320,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
   }, {
     label: 'Safety',
     icon: ShieldCheck,
-    href: '/safety',
+    href: '/safety?safetyTab=documents',
     permKey: null
   }, {
     label: 'Incidents',

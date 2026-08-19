@@ -25,7 +25,7 @@ import ExternalFormPage from './pages/external-form';
 import LoginHelpPage from './pages/login-help';
 const DownloadAppPage = lazy(() => import('./pages/download-app'));
 const SubscribePage = lazy(() => import('./pages/subscribe'));
-import { Navigate } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
 const DashboardPage = lazy(() => import('./pages/dashboard'));
 const JobsPage = lazy(() => import('./pages/jobs'));
@@ -135,6 +135,20 @@ function PageLoader() {
 }
 function protect(element: React.ReactElement) {
   return <ProtectedRoute><Suspense fallback={<PageLoader />}>{element}</Suspense></ProtectedRoute>;
+}
+
+/**
+ * /job-docs compatibility redirect.
+ * Sends existing bookmarks and deep links to /safety?safetyTab=documents.
+ * Preserves an optional ?jobId= so job-specific links still filter correctly.
+ */
+function JobDocsRedirect() {
+  const [searchParams] = useSearchParams();
+  const jobId = searchParams.get('jobId');
+  const to = jobId
+    ? `/safety?safetyTab=documents&jobId=${jobId}`
+    : '/safety?safetyTab=documents';
+  return <Navigate to={to} replace />;
 }
 
 /** Platform developer route — redirects non-developers to /home */
@@ -462,7 +476,10 @@ export const routes: RouteObject[] = [{
   errorElement: routeError
 }, {
   path: '/job-docs',
-  element: protect(<Suspense fallback={<PageLoader />}><JobFieldDocsPage /></Suspense>),
+  // Compatibility redirect — preserves existing bookmarks, QR codes, and deep links.
+  // Passes optional jobId through to the Safety Documents tab.
+  // The original JobFieldDocsPage is kept for rollback; do not delete it.
+  element: protect(<JobDocsRedirect />),
   errorElement: routeError
 },
 // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token

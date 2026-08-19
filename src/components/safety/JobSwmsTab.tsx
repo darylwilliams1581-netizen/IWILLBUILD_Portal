@@ -254,7 +254,7 @@ function AddJobSwmsModal({ onClose, onAdded }: {
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-violet-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
             <div>
-              <h2 className="font-heading font-bold text-base">Add SWMS to Job</h2>
+              <h2 className="font-heading font-bold text-base">Add SWMS Document to Job</h2>
               <p className="text-xs text-slate-400">Select a job and one or more templates</p>
             </div>
           </div>
@@ -448,7 +448,7 @@ function SignoffPanel({ swmsId, onClose }: { swmsId: number; onClose: () => void
   );
 }
 
-export default function JobSwmsTab() {
+export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | null } = {}) {
   const [list, setList] = useState<JobSwms[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -461,12 +461,15 @@ export default function JobSwmsTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/safety/job-swms', { credentials: 'include' })
+    const url = initialJobId
+      ? `/api/safety/job-swms?jobId=${initialJobId}`
+      : '/api/safety/job-swms';
+    fetch(url, { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setList(d.jobSwms ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialJobId]);
 
   useEffect(() => { load(); }, [load]);
 
