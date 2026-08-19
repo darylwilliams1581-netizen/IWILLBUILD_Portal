@@ -3,22 +3,23 @@
  * extracted so it can be embedded inside Studio without its own
  * page wrapper, sidebar, or Helmet.
  *
- * All tab components (SwmsLibraryTab, SafetyPlansTab, etc.) live in
- * safety.tsx and are re-exported from here via a thin re-export so
- * we don't duplicate hundreds of lines.
+ * Tab order:
+ *   Dashboard | SWMS | Submissions | Templates | Safety Plans | Policies | Posters
  *
- * This component renders:
- *   - Safety sub-tab bar (Dashboard / SWMS Library / Safety Plans / Policies / Posters)
- *   - Active tab content
- * It does NOT render PortalSidebar, Helmet, or the outer page header.
+ * SWMS tab      — renders JobSwmsTab (job-level SWMS management)
+ * Submissions   — renders SwmsSubmissionsTab (company sign-off register)
+ * Templates     — renders SwmsLibraryTab (was "SWMS Library"; label only renamed)
+ *
+ * This component does NOT render PortalSidebar, Helmet, or the outer page header.
  */
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   ShieldAlert, ShieldCheck, ClipboardList, BookOpen, Image,
+  HardHat, ClipboardCheck,
 } from 'lucide-react';
 
-// Re-use the tab components directly from the safety page module.
+// Tab components from safety.tsx (unchanged behaviour)
 import {
   SafetyDashboardTab,
   SwmsLibraryTab,
@@ -27,12 +28,18 @@ import {
   PostersTab,
 } from '@/pages/safety';
 
+// New components
+import JobSwmsTab from './JobSwmsTab';
+import SwmsSubmissionsTab from './SwmsSubmissionsTab';
+
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard',    icon: ShieldCheck },
-  { id: 'swms',      label: 'SWMS Library', icon: ShieldAlert },
-  { id: 'plans',     label: 'Safety Plans', icon: ClipboardList },
-  { id: 'policies',  label: 'Policies',     icon: BookOpen },
-  { id: 'posters',   label: 'Posters',      icon: Image },
+  { id: 'dashboard',    label: 'Dashboard',    icon: ShieldCheck    },
+  { id: 'swms',         label: 'SWMS',         icon: HardHat        },
+  { id: 'submissions',  label: 'Submissions',  icon: ClipboardCheck },
+  { id: 'templates',    label: 'Templates',    icon: ShieldAlert    },
+  { id: 'plans',        label: 'Safety Plans', icon: ClipboardList  },
+  { id: 'policies',     label: 'Policies',     icon: BookOpen       },
+  { id: 'posters',      label: 'Posters',      icon: Image          },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -76,11 +83,13 @@ export default function SafetyContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'dashboard' && <SafetyDashboardTab />}
-          {activeTab === 'swms'      && <SwmsLibraryTab />}
-          {activeTab === 'plans'     && <SafetyPlansTab />}
-          {activeTab === 'policies'  && <PoliciesTab />}
-          {activeTab === 'posters'   && <PostersTab />}
+          {activeTab === 'dashboard'   && <SafetyDashboardTab />}
+          {activeTab === 'swms'        && <JobSwmsTab />}
+          {activeTab === 'submissions' && <SwmsSubmissionsTab />}
+          {activeTab === 'templates'   && <SwmsLibraryTab />}
+          {activeTab === 'plans'       && <SafetyPlansTab />}
+          {activeTab === 'policies'    && <PoliciesTab />}
+          {activeTab === 'posters'     && <PostersTab />}
         </motion.div>
       </div>
     </div>
