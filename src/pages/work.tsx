@@ -118,10 +118,11 @@ export default function WorkPage() {
               </div>
             </div>
 
+            {/* Sidebar owns + New Job on desktop (lg+); show here only on mobile/tablet */}
             {!isViewOnly && (
               <button
                 onClick={() => setNewJobOpen(true)}
-                className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
+                className="lg:hidden flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
               >
                 <Plus size={13} />
                 <span className="hidden sm:inline">New Job</span>
