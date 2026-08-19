@@ -33,8 +33,6 @@ export async function resolvePOProfile(
   _req: unknown,
   res: { status: (n: number) => { json: (b: unknown) => unknown } },
 ): Promise<POProfile | null> {
-  // eslint-disable-next-line no-console
-  console.log('[po-auth.stub] resolvePOProfile called, _profile:', _profile ? 'SET' : 'NULL');
   if (!_profile) {
     res.status(401).json({ error: 'Unauthorised' });
     return null;
