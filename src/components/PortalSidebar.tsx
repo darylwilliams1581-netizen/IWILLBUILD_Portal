@@ -178,6 +178,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
 }, {
   heading: 'Safety',
   items: [{
+    id: 'nav-18',
+    idx: '18',
+    label: 'Forms',
+    icon: ClipboardList,
+    href: '/studio/forms'
+  }, {
     id: 'nav-13',
     idx: '13',
     label: 'Safety',
@@ -210,12 +216,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'App Docs',
     icon: FileText,
     href: '/studio/documents'
-  }, {
-    id: 'nav-18',
-    idx: '18',
-    label: 'Forms',
-    icon: ClipboardList,
-    href: '/studio/forms'
   }, {
     id: 'nav-19',
     idx: '19',
