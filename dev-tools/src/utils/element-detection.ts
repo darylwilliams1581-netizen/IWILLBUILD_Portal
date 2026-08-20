@@ -166,7 +166,13 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
     // dynamic as well as dynamic descendants, matching conservative mode.
     if (element.hasAttribute("data-dev-dynamic") || element.querySelector("[data-dev-dynamic]")) return false;
   } else {
-    if (element.closest("[data-dev-dynamic]") || element.querySelector("[data-dev-dynamic]")) return false;
+    const isSelfOrDescendantDynamic: boolean =
+      element.hasAttribute("data-dev-dynamic") || element.querySelector("[data-dev-dynamic]") !== null;
+    if (isSelfOrDescendantDynamic) return false;
+
+    const isPerItemList: boolean =
+      isListElement(element) && element.closest("[data-dev-content-list]") !== null;
+    if (isPerItemList) return false;
   }
 
   const tagName = element.tagName.toLowerCase();

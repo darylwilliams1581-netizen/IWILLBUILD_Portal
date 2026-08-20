@@ -1385,6 +1385,40 @@ describe('jsxSourceMapper — data-dev-editable authoritative marker', () => {
     const output = transform('<h1>Text <Highlight>word</Highlight></h1>');
     expect(output).not.toContain('data-dev-editable');
   });
+
+  it('does NOT mark a static text node inside a .map() callback', () => {
+    const output: string = transform('<div>{items.map((i) => <h3>Featured</h3>)}</div>');
+    expect(output).not.toContain('data-dev-editable');
+    expect(output).toContain('data-dev-dynamic="true"');
+  });
+
+  it('marks a static heading rendered once beside a sibling .map()', () => {
+    const output: string = transform(`
+      export default () => (
+        <section>
+          <h2>What customers say</h2>
+          <ul>{reviews.map((r) => <li>{r.body}</li>)}</ul>
+        </section>
+      );
+    `);
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('re-marks a static heading at depth 0 after a nested .map() has closed', () => {
+    const output: string = transform(`
+      export default () => (
+        <section>
+          <ul>{menu.categories.map((cat) => (
+            <li>{cat.items.map((item) => <span>{item.name}</span>)}</li>
+          ))}</ul>
+          <h2>Contact us</h2>
+        </section>
+      );
+    `);
+    const editableMatches: RegExpMatchArray | null = output.match(/data-dev-editable="text"/g);
+    expect(editableMatches?.length ?? 0).toBe(1);
+    expect(output).toMatch(/<h2[^>]*data-dev-editable="text"[^>]*>/);
+  });
 });
 
 describe('jsxSourceMapper — alias-before-map and derive-before-map attribution', () => {

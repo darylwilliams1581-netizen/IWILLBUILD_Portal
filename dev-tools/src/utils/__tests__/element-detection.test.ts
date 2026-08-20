@@ -312,6 +312,66 @@ describe('element-detection', () => {
       );
       expect(isTextEditable(element, true)).toBe(true);
     });
+
+    it('allows a static editable node under a far-up dynamic ancestor (conservative)', () => {
+      const wrapper: HTMLElement = buildElement(
+        '<div data-dev-dynamic="true"><h2 data-dev-editable="text" data-dev-file="src/layouts/Website.tsx">What customers say</h2></div>',
+      );
+      const heading: HTMLElement = wrapper.querySelector('h2') as HTMLElement;
+      expect(isTextEditable(heading, false)).toBe(true);
+    });
+
+    it('still blocks a self-dynamic list in conservative mode', () => {
+      const element: HTMLElement = buildElement(
+        '<ul data-dev-dynamic="true" data-dev-file="src/pages/index.tsx"><li>Item</li></ul>',
+      );
+      expect(isTextEditable(element, false)).toBe(false);
+    });
+
+    it('still blocks a node with a dynamic descendant in conservative mode', () => {
+      const element: HTMLElement = buildElement(
+        '<p data-dev-editable="text" data-dev-file="src/pages/index.tsx">Total <span data-dev-dynamic="true">500+</span></p>',
+      );
+      expect(isTextEditable(element, false)).toBe(false);
+    });
+
+    it('blocks a marker-less heading under a dynamic ancestor in conservative mode', () => {
+      const wrapper: HTMLElement = buildElement(
+        '<div data-dev-dynamic="true"><h3 data-dev-file="src/pages/index.tsx">Featured</h3></div>',
+      );
+      const heading: HTMLElement = wrapper.querySelector('h3') as HTMLElement;
+      expect(isTextEditable(heading, false)).toBe(false);
+    });
+
+    it('allows a static list container under a dynamic (conditional-render) ancestor in conservative mode', () => {
+      const wrapper: HTMLElement = buildElement(
+        '<div data-dev-dynamic="true"><ul data-dev-file="src/pages/index.tsx"><li>Item A</li><li>Item B</li></ul></div>',
+      );
+      const list: HTMLElement = wrapper.querySelector('ul') as HTMLElement;
+      expect(isTextEditable(list, false)).toBe(true);
+    });
+
+    it('blocks a per-item list container (map-callback root) in conservative mode', () => {
+      const list: HTMLElement = buildElement(
+        '<ul data-dev-content-list="products" data-dev-file="src/pages/index.tsx"><li>Item A</li><li>Item B</li></ul>',
+      );
+      expect(isTextEditable(list, false)).toBe(false);
+    });
+
+    it('blocks a static list nested inside a content-list item in conservative mode', () => {
+      const wrapper: HTMLElement = buildElement(
+        '<div data-dev-content-list="products"><div data-dev-content-list-index="0"><ul data-dev-file="src/pages/index.tsx"><li>Item A</li><li>Item B</li></ul></div></div>',
+      );
+      const list: HTMLElement = wrapper.querySelector('ul') as HTMLElement;
+      expect(isTextEditable(list, false)).toBe(false);
+    });
+
+    it('still allows a static list container with no dynamic ancestor in conservative mode', () => {
+      const list: HTMLElement = buildElement(
+        '<ul data-dev-file="src/pages/index.tsx"><li>Item A</li><li>Item B</li></ul>',
+      );
+      expect(isTextEditable(list, false)).toBe(true);
+    });
   });
 
   // ─── isTextEditable — data-dev-bound-text requires a content-file ancestor ────

@@ -1054,6 +1054,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
             } else if (
               textTagName &&
               !hasDynamic &&
+              state.genericMapDepth === 0 &&
               isStaticallyTextEditable(path.node) &&
               !hasAttr(openingElement.attributes, 'data-dev-editable')
             ) {
