@@ -205,6 +205,30 @@ export interface ResolvedAnnotationElement {
   imageInfo?: { type: "img" | "background"; currentUrl: string; alt: string; slotPath: string | null; isMediaSlot: boolean };
 }
 
+// Discriminated union declared by the ImageActionPopover. The builder issues
+// a server-side authorization from this shape before submitting a chat turn.
+export interface BusManualEditActionBase {
+  targetAlt: string;
+  targetSrc: string;
+  isLoopRendered: boolean;
+  existingSharedHref: string | null;
+}
+export interface BusManualEditActionSetLink extends BusManualEditActionBase {
+  actionType: "set_link";
+  linkHref: string;
+}
+export interface BusManualEditActionSetPage extends BusManualEditActionBase {
+  actionType: "set_page";
+  pagePath: string;
+}
+export interface BusManualEditActionClear extends BusManualEditActionBase {
+  actionType: "clear_action";
+}
+export type BusManualEditActionPayload =
+  | BusManualEditActionSetLink
+  | BusManualEditActionSetPage
+  | BusManualEditActionClear;
+
 // ── Event map ─────────────────────────────────────────────────────────────
 
 export interface BusEventMap {
@@ -225,7 +249,18 @@ export interface BusEventMap {
   REMOVE_SELECTION_FROM_PREVIEW: { data: { number: number } };
   CLEAR_AI_EDIT_CONTEXT: object;
   SELECTIONS_CLEARED_BY_NAVIGATION: object;
-  QUICK_EDIT_SEND: { data: { prompt: string; selectionNumber?: number | null } };
+  QUICK_EDIT_SEND: {
+    data: {
+      prompt: string;
+      selectionNumber?: number | null;
+      source?: string;
+      // Structured manual-edit action. Presence signals the builder should
+      // request a server-issued authorization before sending the chat turn.
+      // Kept as an unrestricted object at the bus layer; the builder and the
+      // agents service validate the discriminated shape independently.
+      action?: BusManualEditActionPayload;
+    };
+  };
   REPLACE_IMAGE: { data?: BusAiEditContextPayload };
   DELETE_MEDIA_ELEMENT: { data: BusMediaDeletePayload };
   REPOSITION_MEDIA_ELEMENT: { data: BusMediaRepositionPayload };

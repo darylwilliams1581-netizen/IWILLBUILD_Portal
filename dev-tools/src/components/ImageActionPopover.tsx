@@ -2,14 +2,25 @@ import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUp, Globe, Link2, Trash2, X } from "lucide-react";
 import { t } from "../utils/translations";
 import { discoverRoutes } from "../route-discovery";
+import type { BusManualEditActionPayload } from "../utils/eventBus";
 
 export interface ExistingLinkInfo {
   href: string;
   isInternal: boolean;
 }
 
+export const IMAGE_ACTION_POPOVER_MANUAL_EDIT_SOURCE = "image-action-popover:link-edit";
+
 interface ImageActionPopoverProps {
-  onSubmit: (prompt: string) => void;
+  /**
+   * Called when the user submits an action. `prompt` is the canonical prompt
+   * (matches the server-side template in agents/src/server/manual-edit) and is
+   * what the agent sees on the paid-fallback path — when the free override flag
+   * is off on the server. When `action` is present the builder requests a
+   * server-issued authorization; the agent-service regenerates the canonical
+   * prompt from the action shape at that point, so the two stay equivalent.
+   */
+  onSubmit: (prompt: string, source?: string, action?: BusManualEditActionPayload) => void;
   onDismiss: () => void;
   style?: React.CSSProperties;
   onMouseEnter?: () => void;
@@ -207,12 +218,33 @@ const CURRENT_TARGET_STYLES: React.CSSProperties = {
 // — safe to drop into prompt text without prompt-injection from quotes.
 const q = (s: string): string => JSON.stringify(s ?? "");
 
+// Canonical prompt used on the paid-submit path when the free-override flag is
+// off on the server. The intent path re-renders an equivalent prompt on the
+// agent side (see agents/src/server/manual-edit/prompt-templates.ts); the two
+// must stay in sync so behaviour does not depend on which path handled the
+// submit. Kept client-side because the paid fallback runs before any server
+// round-trip.
 function loopGuidance(targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
   const targetLine = ` The targeted image is the data entry whose name/alt/title matches ${q(targetAlt)} (its slot/src/image field contains ${q(targetSrc)}). Match by this alt text — never by array index or source order.`;
   const preserve = existingSharedHref
     ? ` Every sibling currently shares the same wrapper that points to ${q(existingSharedHref)}. Before changing anything, initialize each non-target sibling's link field to ${q(existingSharedHref)} so their behavior is preserved. Only the entry matching ${q(targetAlt)} may change.`
     : "";
   return ` IMPORTANT: this <img> is rendered inside a .map() loop, so all iterations share the same JSX. Do NOT wrap the <img> directly inside the loop — that attaches the same action to every sibling. Refactor to a per-item pattern: add an optional link field (e.g. \`link?: string\`) to the data entry, render conditionally — e.g. \`{item.link ? <a href={item.link} target="_blank" rel="noopener"><img .../></a> : <img .../>}\` — and apply the change to ONLY that one entry.${targetLine}${preserve} If a previous edit wrapped the <img> directly inside the loop, undo that shared wrap as part of this refactor.`;
+}
+
+export function buildLinkPrompt(url: string, loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
+  const base = `When the C2 clicks the image with alt=${q(targetAlt)}, navigate to ${q(url)}. Wrap that image in an <a> tag with target="_blank" and rel="noopener". Keep all existing styling and alt text.`;
+  return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
+}
+
+export function buildPagePrompt(path: string, loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
+  const base = `When the C2 clicks the image with alt=${q(targetAlt)}, navigate to the route ${q(path)}. Wrap that image in the React Router Link component (import from src/router or react-router-dom as the project already uses). Keep all existing styling and alt text.`;
+  return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
+}
+
+export function buildClearPrompt(loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
+  const base = `Remove any link or click action currently wrapping the image with alt=${q(targetAlt)} so it is no longer clickable. Keep the image element and its styling intact.`;
+  return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
 }
 
 const ALLOWED_LINK_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
@@ -227,21 +259,6 @@ export function normalizeExternalUrl(raw: string): { url: string } | { error: "b
   }
   const scheme = schemeMatch[1]!.toLowerCase();
   return ALLOWED_LINK_SCHEMES.has(scheme) ? { url: trimmed } : { error: "blocked-scheme" };
-}
-
-export function buildLinkPrompt(url: string, loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
-  const base = `When the C2 clicks the image with alt=${q(targetAlt)}, navigate to ${q(url)}. Wrap that image in an <a> tag with target="_blank" and rel="noopener". Keep all existing styling and alt text.`;
-  return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
-}
-
-export function buildPagePrompt(path: string, loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
-  const base = `When the C2 clicks the image with alt=${q(targetAlt)}, navigate to the route ${q(path)}. Wrap that image in the React Router Link component (import from src/router or react-router as the project already uses). Keep all existing styling and alt text.`;
-  return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
-}
-
-export function buildClearPrompt(loopRendered: boolean, targetAlt: string, targetSrc: string, existingSharedHref: string | null): string {
-  const base = `Remove any link or click action currently wrapping the image with alt=${q(targetAlt)} so it is no longer clickable. Keep the image element and its styling intact.`;
-  return loopRendered ? base + loopGuidance(targetAlt, targetSrc, existingSharedHref) : base;
 }
 
 export function buildFreeformPrompt(userText: string, loopRendered: boolean, targetAlt: string, targetSrc: string): string {
@@ -311,13 +328,37 @@ export function ImageActionPopover({
       return;
     }
     setLinkError(null);
-    onSubmit(buildLinkPrompt(result.url, isLoopRendered, targetAlt, targetSrc, sharedHref));
+    const action: BusManualEditActionPayload = {
+      actionType: "set_link",
+      targetAlt,
+      targetSrc,
+      isLoopRendered,
+      existingSharedHref: sharedHref,
+      linkHref: result.url,
+    };
+    onSubmit(
+      buildLinkPrompt(result.url, isLoopRendered, targetAlt, targetSrc, sharedHref),
+      IMAGE_ACTION_POPOVER_MANUAL_EDIT_SOURCE,
+      action,
+    );
   };
 
   const submitPage = (): void => {
     const path = pagePath.trim();
     if (!path) return;
-    onSubmit(buildPagePrompt(path, isLoopRendered, targetAlt, targetSrc, sharedHref));
+    const action: BusManualEditActionPayload = {
+      actionType: "set_page",
+      targetAlt,
+      targetSrc,
+      isLoopRendered,
+      existingSharedHref: sharedHref,
+      pagePath: path,
+    };
+    onSubmit(
+      buildPagePrompt(path, isLoopRendered, targetAlt, targetSrc, sharedHref),
+      IMAGE_ACTION_POPOVER_MANUAL_EDIT_SOURCE,
+      action,
+    );
   };
 
   const submitFreeform = (): void => {
@@ -437,7 +478,18 @@ export function ImageActionPopover({
                 style={QUICK_ACTION_BTN_STYLES}
                 onClick={(e) => {
                   stop(e);
-                  onSubmit(buildClearPrompt(isLoopRendered, targetAlt, targetSrc, sharedHref));
+                  const clearAction: BusManualEditActionPayload = {
+                    actionType: "clear_action",
+                    targetAlt,
+                    targetSrc,
+                    isLoopRendered,
+                    existingSharedHref: sharedHref,
+                  };
+                  onSubmit(
+                    buildClearPrompt(isLoopRendered, targetAlt, targetSrc, sharedHref),
+                    IMAGE_ACTION_POPOVER_MANUAL_EDIT_SOURCE,
+                    clearAction,
+                  );
                 }}
               >
                 <Trash2 width={16} height={16} />

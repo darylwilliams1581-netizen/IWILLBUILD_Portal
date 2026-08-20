@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { type BusAiEditContextPayload, type BusElementInfo, send } from "../utils/eventBus";
+import { type BusAiEditContextPayload, type BusElementInfo, type BusManualEditActionPayload, send } from "../utils/eventBus";
 import { setCarouselSlotEdit, setCarouselToolbarPause } from "../utils/carousel-slot-edit";
 import { hasActiveCarouselTimers } from "../utils/edit-mode-timer-pause";
 import { openMediaSlotDialogForElement } from "../utils/open-media-slot-dialog";
@@ -787,15 +787,25 @@ export default function ElementHoverBar({
     setQuickEditMode(false);
   }, []);
 
-  const handleClickActionSubmit = useCallback((prompt: string) => {
-    trackEventBus.click("devtools.toolbar.image_click_action_submit");
-    if (pendingContextRef.current) {
-      send({ type: "EDIT_WITH_AI", data: pendingContextRef.current });
-      pendingContextRef.current = null;
-    }
-    send({ type: "QUICK_EDIT_SEND", data: { prompt } });
-    setClickActionMode(false);
-  }, []);
+  const handleClickActionSubmit = useCallback(
+    (prompt: string, source?: string, action?: BusManualEditActionPayload) => {
+      trackEventBus.click("devtools.toolbar.image_click_action_submit");
+      if (pendingContextRef.current) {
+        send({ type: "EDIT_WITH_AI", data: pendingContextRef.current });
+        pendingContextRef.current = null;
+      }
+      send({
+        type: "QUICK_EDIT_SEND",
+        data: {
+          prompt,
+          ...(source ? { source } : {}),
+          ...(action ? { action } : {}),
+        },
+      });
+      setClickActionMode(false);
+    },
+    [],
+  );
 
   const handleClickActionDismiss = useCallback(() => {
     trackEventBus.click("devtools.toolbar.image_click_action_dismiss");

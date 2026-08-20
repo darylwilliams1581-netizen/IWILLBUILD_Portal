@@ -15,11 +15,13 @@ const SRC = '/airo-assets/images/menu/sourdough-bread';
 
 describe('ImageActionPopover prompt builders', () => {
   describe('buildLinkPrompt', () => {
-    it('produces a base prompt that JSON-quotes alt and url', () => {
+    it('produces a base prompt that JSON-quotes alt and url and carries the anti-tabnabbing constraint', () => {
       const out = buildLinkPrompt('https://example.com', false, ALT, SRC, null);
       expect(out).toContain('alt="Country Sourdough"');
       expect(out).toContain('navigate to "https://example.com"');
       expect(out).toContain('target="_blank"');
+      expect(out).toContain('rel="noopener"');
+      expect(out).toContain('Keep all existing styling and alt text');
       expect(out).not.toContain('IMPORTANT'); // no loop guidance when not loop-rendered
     });
 
@@ -50,11 +52,12 @@ describe('ImageActionPopover prompt builders', () => {
   });
 
   describe('buildPagePrompt', () => {
-    it('produces a base prompt that uses React Router Link wording', () => {
+    it('produces a base prompt that uses React Router Link wording and preserves styling', () => {
       const out = buildPagePrompt('/about', false, ALT, SRC, null);
       expect(out).toContain('alt="Country Sourdough"');
       expect(out).toContain('navigate to the route "/about"');
       expect(out).toContain('React Router Link');
+      expect(out).toContain('Keep all existing styling and alt text');
     });
 
     it('appends loop guidance for loop-rendered images', () => {
@@ -65,9 +68,10 @@ describe('ImageActionPopover prompt builders', () => {
   });
 
   describe('buildClearPrompt', () => {
-    it('produces a base clear prompt scoped to the targeted alt', () => {
+    it('produces a base clear prompt scoped to the targeted alt and preserves the image element', () => {
       const out = buildClearPrompt(false, ALT, SRC, null);
       expect(out).toContain('Remove any link or click action currently wrapping the image with alt="Country Sourdough"');
+      expect(out).toContain('Keep the image element and its styling intact');
       expect(out).not.toContain('IMPORTANT');
     });
 
