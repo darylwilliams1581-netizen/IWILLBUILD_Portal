@@ -100,7 +100,7 @@ export function HoverBarButton({
         // We gate clicks ourselves below, so aria-disabled is enough for
         // semantics + keyboard behavior while keeping mouseenter/leave alive.
         aria-disabled={disabled || undefined}
-        {...(label ? {} : { "aria-label": title })}
+        {...(disabled && label ? { "aria-label": `${label}, ${title}` } : label ? {} : { "aria-label": title })}
         {...(testId ? { "data-testid": testId } : {})}
         style={{
           display: "flex",

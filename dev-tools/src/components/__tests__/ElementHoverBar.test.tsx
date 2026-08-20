@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import type { HoveredElement } from '../../hooks/useImageHoverDetection';
-import { safePostMessage } from '../../utils/postMessage';
+import { isOriginAllowed, safePostMessage } from '../../utils/postMessage';
 import { HOVER_BAR_VIEWPORT_CHANGE_EVENT } from '../../utils/hover-bar-placement';
 import { computePopoverPlacement } from '../ElementHoverBar';
 
@@ -24,6 +24,7 @@ const formatOverrideControlsMock = vi.hoisted(() => ({
 
 vi.mock('../../utils/postMessage', () => ({
   safePostMessage: vi.fn(),
+  isOriginAllowed: vi.fn(() => true),
 }));
 
 vi.mock('../../utils/element-helpers', () => ({
@@ -598,6 +599,95 @@ describe('ElementHoverBar - delete media button', () => {
     openToolbar(img);
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(findTrackCall('devtools.toolbar.delete_media')).toBeTruthy();
+  });
+});
+
+function dispatchMediaEditLock(locked: boolean): void {
+  window.dispatchEvent(new MessageEvent('message', { data: { type: 'MEDIA_EDIT_LOCKED', locked } }));
+}
+
+describe('ElementHoverBar - media edit lock (AIROBUILD-5037)', () => {
+  it('enables Replace/Modify by default', async () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement();
+    renderHoverBar(makeImageHover(img));
+    openToolbar(img);
+
+    const replace = await screen.findByRole('button', { name: /Replace/ });
+    const modify = screen.getByRole('button', { name: /Modify/ });
+    expect(replace.getAttribute('aria-disabled')).toBeNull();
+    expect(modify.getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('disables Replace/Modify when the site is locked', async () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement();
+    renderHoverBar(makeImageHover(img));
+    openToolbar(img);
+
+    dispatchMediaEditLock(true);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Replace/ }).getAttribute('aria-disabled')).toBe('true'),
+    );
+    expect(screen.getByRole('button', { name: /Modify/ }).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('exposes the lock reason in the accessible name of the disabled buttons', async () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement();
+    renderHoverBar(makeImageHover(img));
+    openToolbar(img);
+
+    dispatchMediaEditLock(true);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Replace, Available when Airo finishes the current change/ }),
+      ).not.toBeNull(),
+    );
+    expect(
+      screen.getByRole('button', { name: /Modify, Available when Airo finishes the current change/ }),
+    ).not.toBeNull();
+  });
+
+  it('ignores a MEDIA_EDIT_LOCKED message from a disallowed origin', async () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    vi.mocked(isOriginAllowed).mockReturnValue(false);
+    try {
+      const img = makeImageElement();
+      renderHoverBar(makeImageHover(img));
+      openToolbar(img);
+
+      dispatchMediaEditLock(true);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(screen.getByRole('button', { name: /Replace/ }).getAttribute('aria-disabled')).toBeNull();
+
+      vi.mocked(isOriginAllowed).mockReturnValue(true);
+      dispatchMediaEditLock(true);
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /Replace/ }).getAttribute('aria-disabled')).toBe('true'),
+      );
+    } finally {
+      vi.mocked(isOriginAllowed).mockReturnValue(true);
+    }
+  });
+
+  it('re-enables Replace/Modify when the lock clears', async () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement();
+    renderHoverBar(makeImageHover(img));
+    openToolbar(img);
+
+    dispatchMediaEditLock(true);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Replace/ }).getAttribute('aria-disabled')).toBe('true'),
+    );
+
+    dispatchMediaEditLock(false);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Replace/ }).getAttribute('aria-disabled')).toBeNull(),
+    );
   });
 });
 

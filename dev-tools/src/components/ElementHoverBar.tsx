@@ -12,6 +12,7 @@ import {
   getNextSelectionNumber,
 } from "../utils/selection-overlay";
 import { isMediaReplaceSessionActive } from "../utils/media-replace-session";
+import { isOriginAllowed } from "../utils/postMessage";
 import type { HoveredElement } from "../hooks/useImageHoverDetection";
 import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Image, MousePointerClick, Move, Pencil, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { isClickable, isTextElement, isTextBlockElement, isListElement } from "../utils/element-detection";
@@ -159,6 +160,19 @@ export default function ElementHoverBar({
   const [quickEditMode, setQuickEditMode] = useState(false);
   const [clickActionMode, setClickActionMode] = useState(false);
   const [repositionMode, setRepositionMode] = useState(false);
+  const [mediaEditLocked, setMediaEditLocked] = useState(false);
+  useEffect(() => {
+    const handler = (event: MessageEvent): void => {
+      if (!isOriginAllowed(event)) return;
+      if (event.data?.type === "MEDIA_EDIT_LOCKED") {
+        setMediaEditLocked(Boolean(event.data.locked));
+      }
+    };
+    window.addEventListener("message", handler);
+    send({ type: "request-media-edit-lock" });
+    return () => window.removeEventListener("message", handler);
+  }, []);
+  const mediaEditLockedTitle = t("devtools_media_edit_locked_title", "Available when Airo finishes the current change");
   // Single source of truth for which Hover Bar popover is open (Color Picker /
   // Size Stepper / Text Align). Children are controlled — opening one
   // implicitly closes any other so they never stack on screen.
@@ -970,14 +984,16 @@ export default function ElementHoverBar({
               <>
                 <HoverBarButton
                   onClick={handleReplace}
-                  title={t("devtools_image_replace_title", "Replace image")}
+                  disabled={mediaEditLocked}
+                  title={mediaEditLocked ? mediaEditLockedTitle : t("devtools_image_replace_title", "Replace image")}
                   icon={<Image width={15} height={15} />}
                   label={t("devtools_image_replace", "Replace")}
                 />
                 {!isVideo && (
                   <HoverBarButton
                     onClick={handleModify}
-                    title={t("devtools_image_modify_title", "Modify image")}
+                    disabled={mediaEditLocked}
+                    title={mediaEditLocked ? mediaEditLockedTitle : t("devtools_image_modify_title", "Modify image")}
                     icon={<Pencil width={15} height={15} />}
                     label={t("devtools_image_modify", "Modify")}
                   />

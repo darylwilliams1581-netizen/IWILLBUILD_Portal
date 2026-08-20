@@ -250,6 +250,7 @@ export interface BusEventMap {
   "runtime-errors-cycle": { cycleId: number };
   "error-fix-user-requested": { errorData: BusRuntimeErrorPayload };
   "request-processing-state": object;
+  "request-media-edit-lock": object;
   "build-page-request": { pathToBuild: string };
   "build-error-fix-request": {
     appId: string;
