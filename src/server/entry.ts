@@ -789,12 +789,6 @@ import support_mode_status_get_756 from "./api/support-mode/status/GET";
 import tag_tasks_get_757 from "./api/tag-tasks/GET";
 import tag_tasks_id_patch_758 from "./api/tag-tasks/[id]/PATCH";
 import takeoff_pad_get_759 from "./api/takeoff-pad/GET";
-// Work workspace — company-wide registers
-import work_tasks_get from "./api/work/tasks/GET";
-import work_notes_get from "./api/work/notes/GET";
-import work_delays_get from "./api/work/delays/GET";
-import work_progress_get from "./api/work/progress/GET";
-import work_attendance_get from "./api/work/attendance/GET";
 import takeoff_pad_put_760 from "./api/takeoff-pad/PUT";
 import tasks_post_761 from "./api/tasks/POST";
 import tasks_id_put_762 from "./api/tasks/[id]/PUT";
@@ -823,6 +817,11 @@ import team_id_put_784 from "./api/team/[id]/PUT";
 import usage_get_785 from "./api/usage/GET";
 import user_logs_get_786 from "./api/user-logs/GET";
 import user_logs_users_get_787 from "./api/user-logs/users/GET";
+import work_attendance_get_788 from "./api/work/attendance/GET";
+import work_delays_get_789 from "./api/work/delays/GET";
+import work_notes_get_790 from "./api/work/notes/GET";
+import work_progress_get_791 from "./api/work/progress/GET";
+import work_tasks_get_792 from "./api/work/tasks/GET";
 // </api-imports>
 // ── Job Cards ─────────────────────────────────────────────────────────────────
 import job_cards_get from "./api/job-cards/GET.js";
@@ -3877,12 +3876,6 @@ app.get("/api/takeoff-pad", takeoff_pad_get_759);
 app.put("/api/takeoff-pad", takeoff_pad_put_760);
 app.post("/api/tasks", tasks_post_761);
 app.put("/api/tasks/:id", tasks_id_put_762);
-// Work workspace — company-wide registers
-app.get("/api/work/tasks", work_tasks_get);
-app.get("/api/work/notes", work_notes_get);
-app.get("/api/work/delays", work_delays_get);
-app.get("/api/work/progress", work_progress_get);
-app.get("/api/work/attendance", work_attendance_get);
 app.get("/api/team", team_get_763);
 app.post("/api/team/invite", team_invite_post_764);
 app.get("/api/team/invites", team_invites_get_765);
@@ -3908,6 +3901,11 @@ app.put("/api/team/:id", team_id_put_784);
 app.get("/api/usage", usage_get_785);
 app.get("/api/user-logs", user_logs_get_786);
 app.get("/api/user-logs/users", user_logs_users_get_787);
+app.get("/api/work/attendance", work_attendance_get_788);
+app.get("/api/work/delays", work_delays_get_789);
+app.get("/api/work/notes", work_notes_get_790);
+app.get("/api/work/progress", work_progress_get_791);
+app.get("/api/work/tasks", work_tasks_get_792);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
