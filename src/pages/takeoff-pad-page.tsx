@@ -1,7 +1,6 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ClipboardList } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import DesktopDock from '@/components/DesktopDock';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 
 export default function TakeoffPadPage() {
@@ -16,7 +15,6 @@ export default function TakeoffPadPage() {
 
       {/* Shared portal chrome */}
       <PortalSidebar />
-      <DesktopDock />
 
       {/* Content area — portal-content handles sidebar + topbar offsets */}
       <div className="portal-content">

@@ -19,7 +19,6 @@ import {
   Plus, Loader2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import DesktopDock from '@/components/DesktopDock';
 import NewJobModal from '@/components/NewJobModal';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -98,14 +97,13 @@ export default function WorkPage() {
       </Helmet>
 
       <PortalSidebar />
-      <DesktopDock />
 
-      <div className="portal-content flex flex-col h-[100dvh] overflow-hidden bg-background">
+      <div className="flex-1 flex flex-col min-w-0 lg-portal overflow-hidden">
 
         {/* ── Header ── */}
         <header className="shrink-0 border-b border-border bg-background">
           {/* Top row: title + New Job */}
-          <div className="flex items-center justify-between px-4 py-3 gap-3">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3 gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Briefcase size={16} className="text-primary" />
@@ -133,7 +131,7 @@ export default function WorkPage() {
 
           {/* Tab nav */}
           <nav
-            className="flex overflow-x-auto scrollbar-none border-t border-border"
+            className="flex overflow-x-auto scrollbar-none border-t border-border px-2 md:px-4"
             aria-label="Work sections"
           >
             {TABS.map((tab) => {

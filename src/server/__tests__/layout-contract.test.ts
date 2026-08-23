@@ -118,9 +118,12 @@ describe('Work page — layout contract', () => {
     expect(src).toContain('portal-page');
   });
 
-  it('uses portal-content as content wrapper (gets sidebar offset from CSS)', async () => {
+  it('uses lg-portal as content wrapper (full-height workspace — not portal-content)', async () => {
     const src = await readSrc('src/pages/work.tsx');
-    expect(src).toContain('portal-content');
+    expect(src).toContain('lg-portal');
+    // Work is a full-height flex workspace; portal-content is the padded scrollable column
+    // used by register/list pages (customers, finance). Work uses the workspace pattern instead.
+    expect(src).not.toContain('"portal-content');
   });
 
   it('renders PortalSidebar (which owns DesktopTopBar)', async () => {
@@ -284,9 +287,9 @@ describe('Estimating tool pages — portal shell', () => {
     expect(src).toContain('PortalSidebar');
   });
 
-  it('builders-calc-page renders DesktopDock', async () => {
+  it('builders-calc-page does NOT render DesktopDock (PortalSidebar owns chrome)', async () => {
     const src = await readSrc('src/pages/builders-calc-page.tsx');
-    expect(src).toContain('DesktopDock');
+    expect(src).not.toContain('DesktopDock');
   });
 
   it('builders-calc-page uses portal-page + portal-content layout', async () => {
@@ -311,9 +314,9 @@ describe('Estimating tool pages — portal shell', () => {
     expect(src).toContain('PortalSidebar');
   });
 
-  it('takeoff-pad-page renders DesktopDock', async () => {
+  it('takeoff-pad-page does NOT render DesktopDock (PortalSidebar owns chrome)', async () => {
     const src = await readSrc('src/pages/takeoff-pad-page.tsx');
-    expect(src).toContain('DesktopDock');
+    expect(src).not.toContain('DesktopDock');
   });
 
   it('takeoff-pad-page uses portal-page + portal-content layout', async () => {

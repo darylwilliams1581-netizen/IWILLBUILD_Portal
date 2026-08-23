@@ -1,7 +1,6 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Calculator } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import DesktopDock from '@/components/DesktopDock';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
 
 export default function BuildersCalcPage() {
@@ -34,7 +33,6 @@ export default function BuildersCalcPage() {
 
       {/* Shared portal chrome */}
       <PortalSidebar />
-      <DesktopDock />
 
       {/* Content area — portal-content handles sidebar + topbar offsets */}
       <div className="portal-content">
