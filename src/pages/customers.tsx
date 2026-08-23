@@ -491,14 +491,15 @@ export default function CustomersPage() {
 
       <div className="portal-content">
         {/* Page header */}
-        <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="op-page-header flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <Link to="/home" className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" aria-label="Back to home">
-              <ArrowLeft size={18} />
+            <Link to="/home" className="flex items-center justify-center w-7 h-7 rounded hover:bg-slate-100 text-slate-500 transition-colors" aria-label="Back to home">
+              <ArrowLeft size={15} />
             </Link>
+            <Users size={14} className="text-primary shrink-0" />
             <div>
-              <h1 className="font-heading font-bold text-base text-foreground">Contacts</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <h1 className="op-page-title">Contacts</h1>
+              <p className="op-page-subtitle hidden sm:block">
                 {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
               </p>
             </div>
@@ -506,9 +507,9 @@ export default function CustomersPage() {
           <button onClick={() => {
           setEditing(null);
           setShowModal(true);
-        }} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            <Plus size={15} />
-            <span className="hidden sm:inline">+ New Contact</span>
+        }} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <Plus size={14} />
+            <span className="hidden sm:inline">New Contact</span>
             <span className="sm:hidden">Add</span>
           </button>
         </div>

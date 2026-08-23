@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { HardHat, ChevronRight, Plus, AlertTriangle, Calendar, Wrench, CheckSquare, Clock, XCircle, BarChart3, RefreshCw } from 'lucide-react';
+import { HardHat, ChevronRight, Plus, AlertTriangle, Calendar, Wrench, CheckSquare, Clock, XCircle, BarChart3, RefreshCw, LayoutDashboard } from 'lucide-react';
 import { Link } from "react-router";
 import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
@@ -180,6 +180,13 @@ export default function DashboardPage() {
             <div className="flex-1 min-w-0">
               <DashboardBanner userId={user?.id ?? 'anon'} />
             </div>
+            <Link
+              to="/jobs"
+              className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-white/10"
+            >
+              <Plus size={14} />
+              New Job
+            </Link>
           </div>
         </div>
 
@@ -187,7 +194,8 @@ export default function DashboardPage() {
         <div className="lg:hidden bg-white border-b border-border shrink-0 print:hidden" style={{
         paddingTop: 'env(safe-area-inset-top)'
       }}>
-          <div className="h-12 flex items-center px-4">
+          <div className="h-12 flex items-center gap-2 px-4">
+            <LayoutDashboard size={15} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base text-foreground leading-tight">Dashboard</h1>
           </div>
         </div>
