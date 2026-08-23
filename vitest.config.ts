@@ -104,6 +104,19 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src/test/stubs/po-auth.stub.ts'),
       },
 
+      // ── po-service stub ─────────────────────────────────────────────────────
+      // Prevents po-service from loading DB/document-engine in test environments.
+      {
+        find: /[/\\]src[/\\]server[/\\]lib[/\\]po-service(?:\.ts|\.js)?$/,
+        replacement: path.resolve(__dirname, './src/test/stubs/po-service.stub.ts'),
+      },
+
+      // ── purchase-order-pdf-document stub ────────────────────────────────────
+      {
+        find: /[/\\]src[/\\]server[/\\]lib[/\\]purchase-order-pdf-document(?:\.ts|\.js)?$/,
+        replacement: path.resolve(__dirname, './src/test/stubs/purchase-order-pdf-document.stub.ts'),
+      },
+
       // ── auth stub ───────────────────────────────────────────────────────────
       // Replaces the real BetterAuth instance so handler unit tests can control
       // session outcomes via __setMockSession() without a real auth server.
