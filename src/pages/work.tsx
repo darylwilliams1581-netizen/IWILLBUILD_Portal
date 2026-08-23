@@ -11,12 +11,12 @@
  *
  * @seo-exempt
  */
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Briefcase, CheckSquare, StickyNote, Clock, TrendingUp, Users, Wrench,
-  Plus, Loader2,
+  Plus, Loader2, Calculator, Ruler, ChevronDown,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import NewJobModal from '@/components/NewJobModal';
@@ -28,11 +28,10 @@ const WorkNotesTab = lazy(() => import('@/components/work/WorkNotesTab'));
 const WorkDelaysTab = lazy(() => import('@/components/work/WorkDelaysTab'));
 const WorkProgressTab = lazy(() => import('@/components/work/WorkProgressTab'));
 const WorkAttendanceTab = lazy(() => import('@/components/work/WorkAttendanceTab'));
-const WorkToolsTab = lazy(() => import('@/components/work/WorkToolsTab'));
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
-type WorkTab = 'tasks' | 'notes' | 'delays' | 'progress' | 'attendance' | 'tools';
+type WorkTab = 'tasks' | 'notes' | 'delays' | 'progress' | 'attendance';
 
 interface TabDef {
   id: WorkTab;
@@ -46,10 +45,98 @@ const TABS: TabDef[] = [
   { id: 'delays',     label: 'Delays',     icon: Clock       },
   { id: 'progress',   label: 'Progress',   icon: TrendingUp  },
   { id: 'attendance', label: 'Attendance', icon: Users       },
-  { id: 'tools',      label: 'Tools',      icon: Wrench      },
 ];
 
 const VALID_TABS = new Set<string>(TABS.map((t) => t.id));
+
+// ── Tools dropdown ────────────────────────────────────────────────────────────
+
+const TOOLS = [
+  { label: 'Builders Calculator', icon: Calculator, href: '/builders-calc' },
+  { label: 'Takeoff Pad',         icon: Ruler,      href: '/takeoff-pad'   },
+] as const;
+
+function ToolsDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0 self-end">
+      <button
+        ref={btnRef}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Tools menu"
+        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors min-h-[44px] ${
+          open
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+        }`}
+      >
+        <Wrench size={13} />
+        Tools
+        <ChevronDown
+          size={11}
+          className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1 z-50 bg-background border border-border rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+          style={{ maxWidth: 'calc(100vw - 1rem)' }}
+        >
+          {TOOLS.map((tool) => {
+            const Icon = tool.icon;
+            return (
+              <button
+                key={tool.href}
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  navigate(tool.href);
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors text-left min-h-[44px]"
+              >
+                <Icon size={15} className="text-muted-foreground shrink-0" />
+                {tool.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TabFallback() {
   return (
@@ -83,9 +170,6 @@ export default function WorkPage() {
     // Preserve jobId/jobName when switching tabs
     setSearchParams(next, { replace: true });
   }
-
-  const activeTabDef = TABS.find((t) => t.id === activeTab)!;
-  const ActiveIcon = activeTabDef.icon;
 
   return (
     <div className="portal-page">
@@ -142,7 +226,7 @@ export default function WorkPage() {
                   key={tab.id}
                   onClick={() => switchTab(tab.id)}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0 ${
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0 min-h-[44px] ${
                     active
                       ? 'border-primary text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -153,6 +237,8 @@ export default function WorkPage() {
                 </button>
               );
             })}
+            {/* Tools dropdown — not a tab, opens popover with tool links */}
+            <ToolsDropdown />
           </nav>
         </header>
 
@@ -189,7 +275,6 @@ export default function WorkPage() {
                 initialJobName={jobName}
               />
             )}
-            {activeTab === 'tools' && <WorkToolsTab />}
           </Suspense>
         </main>
       </div>

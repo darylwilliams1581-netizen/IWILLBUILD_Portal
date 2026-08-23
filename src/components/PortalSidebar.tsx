@@ -5,7 +5,7 @@ import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, 
 // Desktop sidebar icons
 Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert,
 // Work section icons
-Plus, CheckSquare, StickyNote, Clock, TrendingUp, Wrench } from 'lucide-react';
+Plus, Briefcase, Wrench } from 'lucide-react';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -127,47 +127,11 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     icon: Zap,
     href: '/job-cards'
   }, {
-    id: 'nav-w1',
-    idx: 'w1',
-    label: 'Tasks',
-    icon: CheckSquare,
-    href: '/work?workTab=tasks'
-  }, {
-    id: 'nav-w2',
-    idx: 'w2',
-    label: 'Notes',
-    icon: StickyNote,
-    href: '/work?workTab=notes'
-  }, {
-    id: 'nav-w3',
-    idx: 'w3',
-    label: 'Delays',
-    icon: Clock,
-    href: '/work?workTab=delays'
-  }, {
-    id: 'nav-w4',
-    idx: 'w4',
-    label: 'Progress',
-    icon: TrendingUp,
-    href: '/work?workTab=progress'
-  }, {
-    id: 'nav-w5',
-    idx: 'w5',
-    label: 'Attendance',
-    icon: Users,
-    href: '/work?workTab=attendance'
-  }, {
-    id: 'nav-w6',
-    idx: 'w6',
-    label: 'Builders Calc',
-    icon: Wrench,
-    href: '/builders-calc'
-  }, {
-    id: 'nav-w7',
-    idx: 'w7',
-    label: 'Takeoff Pad',
-    icon: TableProperties,
-    href: '/takeoff-pad'
+    id: 'nav-work',
+    idx: 'work',
+    label: 'Work',
+    icon: Briefcase,
+    href: '/work'
   }]
 }, {
   heading: 'Field & Files',
@@ -367,6 +331,11 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     href: '/job-cards',
     permKey: 'jobs'
   }, {
+    label: 'Work',
+    icon: Briefcase,
+    href: '/work',
+    permKey: 'jobs'
+  }, {
     label: 'Scheduler',
     icon: CalendarDays,
     href: '/scheduler',
@@ -491,6 +460,14 @@ function DesktopSidebarContent({
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
   const [newJobOpen, setNewJobOpen] = useState(false);
   const isActive = (href: string) => {
+    // Work item: highlight for any /work path AND the tool pages launched from Work
+    if (href === '/work') {
+      return (
+        location.pathname === '/work' ||
+        location.pathname === '/builders-calc' ||
+        location.pathname === '/takeoff-pad'
+      );
+    }
     // For hrefs with query params (e.g. /work?workTab=tasks, /finance?financeTab=estimates),
     // match pathname AND the first query param value — never compare pathname to the full href.
     const [hrefPath, hrefQuery] = href.split('?');
@@ -656,6 +633,14 @@ function SidebarContent({
   const companyLogoUrl = useCompanyLogo();
   const companyName = me?.company?.name ?? 'Portal';
   const isActive = (href: string) => {
+    // Work item: highlight for any /work path AND the tool pages launched from Work
+    if (href === '/work') {
+      return (
+        location.pathname === '/work' ||
+        location.pathname === '/builders-calc' ||
+        location.pathname === '/takeoff-pad'
+      );
+    }
     if (href.includes('?')) {
       const [hPath, hQuery] = href.split('?');
       const hParams = new URLSearchParams(hQuery);

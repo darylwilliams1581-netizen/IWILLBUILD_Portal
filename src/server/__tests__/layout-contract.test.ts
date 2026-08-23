@@ -144,10 +144,13 @@ describe('Work page — layout contract', () => {
     expect(src).toContain('setNewJobOpen(true)');
   });
 
-  it('does not use w-screen or 100vw (would cause horizontal overflow)', async () => {
+  it('does not use w-screen or 100vw as page-level width (would cause horizontal overflow)', async () => {
     const src = await readSrc('src/pages/work.tsx');
     expect(src).not.toContain('w-screen');
-    expect(src).not.toContain('100vw');
+    // 100vw is allowed in dropdown/popover maxWidth guards (viewport containment)
+    // but must not appear as a page-level width assignment
+    const pageWidthMatch = src.match(/width:\s*['"]?100vw['"]?/);
+    expect(pageWidthMatch).toBeNull();
   });
 
   it('does not use hard-coded margin-left or padding-left pixel values for sidebar offset', async () => {
@@ -241,7 +244,56 @@ describe('+ New Job ownership — sidebar vs page header', () => {
   });
 });
 
-// ── Plan Manager — now inside the office shell ───────────────────────────────
+// ── Sidebar Work consolidation ────────────────────────────────────────────────
+
+describe('Sidebar Work consolidation', () => {
+  it('DESKTOP_NAV_GROUPS Work section has a single Work entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).toContain("label: 'Work'");
+    expect(src).toContain("href: '/work'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have individual Tasks entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/work?workTab=tasks'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have individual Notes entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/work?workTab=notes'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have Builders Calc direct entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/builders-calc'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have Takeoff Pad direct entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/takeoff-pad'");
+  });
+
+  it('Work isActive matches /builders-calc', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).toContain('/builders-calc');
+    // The isActive function for href === '/work' must include builders-calc
+    const workActiveBlock = src.match(/href === '\/work'[^}]+}/s)?.[0] ?? '';
+    expect(workActiveBlock).toContain('/builders-calc');
+  });
+
+  it('Work isActive matches /takeoff-pad', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    const workActiveBlock = src.match(/href === '\/work'[^}]+}/s)?.[0] ?? '';
+    expect(workActiveBlock).toContain('/takeoff-pad');
+  });
+
+  it('buildNavEntries includes Work entry for mobile drawer', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    // buildNavEntries is used by the mobile SidebarContent
+    const buildNavBlock = src.match(/function buildNavEntries[\s\S]*?^}/m)?.[0] ?? src;
+    expect(buildNavBlock).toContain("href: '/work'");
+  });
+});
 
 describe('Plan Manager page — portal shell', () => {
   it('uses portal-page + portal-content layout (not portal-main)', async () => {

@@ -44,17 +44,21 @@ const progressTab = read('src/components/work/WorkProgressTab.tsx');
 const attendanceTab = read('src/components/work/WorkAttendanceTab.tsx');
 const toolsTab = read('src/components/work/WorkToolsTab.tsx');
 
-const ALL_TAB_COMPONENTS = [tasksTab, notesTab, delaysTab, progressTab, attendanceTab, toolsTab];
-
 // ── Tab mapping ───────────────────────────────────────────────────────────────
 
 describe('Work tab mapping', () => {
-  const validTabs = ['tasks', 'notes', 'delays', 'progress', 'attendance', 'tools'];
+  const validTabs = ['tasks', 'notes', 'delays', 'progress', 'attendance'];
 
-  it('defines all 6 valid tabs in TABS array', () => {
+  it('defines all 5 valid tabs in TABS array', () => {
     for (const tab of validTabs) {
       expect(workPage).toContain(`id: '${tab}'`);
     }
+  });
+
+  it('Tools is a dropdown button — not a tab in TABS', () => {
+    // Tools was removed from TABS and is now a ToolsDropdown component in the nav row
+    expect(workPage).not.toContain(`id: 'tools'`);
+    expect(workPage).toContain('ToolsDropdown');
   });
 
   it('VALID_TABS set is built from TABS', () => {
@@ -79,20 +83,46 @@ describe('Work tab mapping', () => {
 
 // ── Sidebar links ─────────────────────────────────────────────────────────────
 
-describe('Sidebar Work links', () => {
-  const expectedLinks = [
-    '/work?workTab=tasks',
-    '/work?workTab=notes',
-    '/work?workTab=delays',
-    '/work?workTab=progress',
-    '/work?workTab=attendance',
-  ];
+describe('Sidebar Work links — consolidated', () => {
+  it('sidebar has a single Work entry pointing to /work', () => {
+    expect(sidebar).toContain("href: '/work'");
+  });
 
-  for (const link of expectedLinks) {
-    it(`sidebar contains link: ${link}`, () => {
-      expect(sidebar).toContain(link);
-    });
-  }
+  it('sidebar does NOT have individual Tasks link', () => {
+    expect(sidebar).not.toContain("href: '/work?workTab=tasks'");
+  });
+
+  it('sidebar does NOT have individual Notes link', () => {
+    expect(sidebar).not.toContain("href: '/work?workTab=notes'");
+  });
+
+  it('sidebar does NOT have individual Delays link', () => {
+    expect(sidebar).not.toContain("href: '/work?workTab=delays'");
+  });
+
+  it('sidebar does NOT have individual Progress link', () => {
+    expect(sidebar).not.toContain("href: '/work?workTab=progress'");
+  });
+
+  it('sidebar does NOT have individual Attendance link', () => {
+    expect(sidebar).not.toContain("href: '/work?workTab=attendance'");
+  });
+
+  it('sidebar does NOT have Builders Calc direct link', () => {
+    expect(sidebar).not.toContain("href: '/builders-calc'");
+  });
+
+  it('sidebar does NOT have Takeoff Pad direct link', () => {
+    expect(sidebar).not.toContain("href: '/takeoff-pad'");
+  });
+
+  it('sidebar WORK section still has Jobs', () => {
+    expect(sidebar).toContain("href: '/jobs'");
+  });
+
+  it('sidebar WORK section still has Job Cards', () => {
+    expect(sidebar).toContain("href: '/job-cards'");
+  });
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -235,23 +265,55 @@ describe('Refresh and Back/Forward behaviour', () => {
   });
 });
 
-// ── Tools tab ────────────────────────────────────────────────────────────────
+// ── Tools dropdown ────────────────────────────────────────────────────────────
 
-describe('Tools tab', () => {
-  it('Tools tab is defined in TABS', () => {
-    expect(workPage).toContain("id: 'tools'");
+describe('Tools dropdown', () => {
+  it('ToolsDropdown component exists in work.tsx', () => {
+    expect(workPage).toContain('function ToolsDropdown');
   });
 
-  it('WorkToolsTab is lazy-loaded', () => {
-    expect(workPage).toContain("import('@/components/work/WorkToolsTab')");
+  it('ToolsDropdown has aria-haspopup', () => {
+    expect(workPage).toContain('aria-haspopup');
   });
 
-  it('WorkToolsTab links to /builders-calc', () => {
-    expect(toolsTab).toContain('/builders-calc');
+  it('ToolsDropdown has aria-expanded', () => {
+    expect(workPage).toContain('aria-expanded');
   });
 
-  it('WorkToolsTab links to /takeoff-pad', () => {
-    expect(toolsTab).toContain('/takeoff-pad');
+  it('ToolsDropdown closes on Escape', () => {
+    expect(workPage).toContain("e.key === 'Escape'");
+  });
+
+  it('ToolsDropdown closes on outside click (pointerdown)', () => {
+    expect(workPage).toContain('pointerdown');
+  });
+
+  it('ToolsDropdown menu items have role="menuitem"', () => {
+    expect(workPage).toContain('role="menuitem"');
+  });
+
+  it('ToolsDropdown has role="menu" on the popover', () => {
+    expect(workPage).toContain('role="menu"');
+  });
+
+  it('ToolsDropdown links to /builders-calc', () => {
+    expect(workPage).toContain('/builders-calc');
+  });
+
+  it('ToolsDropdown links to /takeoff-pad', () => {
+    expect(workPage).toContain('/takeoff-pad');
+  });
+
+  it('ToolsDropdown button has min-h-[44px] for touch target', () => {
+    expect(workPage).toContain('min-h-[44px]');
+  });
+
+  it('WorkToolsTab component still exists (not deleted)', () => {
+    expect(toolsTab).toContain('WorkToolsTab');
+  });
+
+  it('WorkToolsTab is NOT lazy-loaded in work.tsx (no longer a tab)', () => {
+    expect(workPage).not.toContain("import('@/components/work/WorkToolsTab')");
   });
 });
 
