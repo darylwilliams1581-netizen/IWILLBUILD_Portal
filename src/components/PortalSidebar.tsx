@@ -232,6 +232,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     icon: BookOpen,
     href: '/finance?financeTab=ledger'
   }, {
+    id: 'nav-11e',
+    idx: '11e',
+    label: 'Purchase Orders',
+    icon: ClipboardList,
+    href: '/finance?financeTab=purchase-orders'
+  }, {
     id: 'nav-11d',
     idx: '11d',
     label: 'Settings',
