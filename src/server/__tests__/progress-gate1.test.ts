@@ -242,14 +242,26 @@ describe('JobProgress component — sync button removed', () => {
     expect(source).toContain('CreatePOModal');
   });
 
-  it('JobProgress.tsx still contains PODetailModal', () => {
+  it('JobProgress.tsx does NOT contain PODetailModal (moved to JobPurchaseOrders)', () => {
     const source = src('src/components/job/JobProgress.tsx');
-    expect(source).toContain('PODetailModal');
+    expect(source).not.toContain('PODetailModal');
   });
 
-  it('JobProgress.tsx still contains purchase orders section', () => {
+  it('JobProgress.tsx does NOT contain Purchase Orders section (moved to Money/Records)', () => {
     const source = src('src/components/job/JobProgress.tsx');
+    expect(source).not.toContain('Purchase Orders / Work Orders');
+  });
+
+  it('JobPurchaseOrders.tsx exists and contains the PO list UI', () => {
+    const source = src('src/components/job/JobPurchaseOrders.tsx');
+    expect(source).toContain('PODetailModal');
     expect(source).toContain('Purchase Orders');
+  });
+
+  it('job-detail.tsx has purchase-orders tab in Money/Records', () => {
+    const source = src('src/pages/job-detail.tsx');
+    expect(source).toContain("key: 'purchase-orders'");
+    expect(source).toContain('JobPurchaseOrders');
   });
 });
 

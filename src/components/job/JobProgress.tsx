@@ -1,19 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AlertCircle, TrendingUp, CheckSquare, Square,
-  Plus, ExternalLink, FileText,
+  Plus, FileText,
 } from 'lucide-react';
 import {
-  type ProgressLine, type Contractor, type PurchaseOrder,
+  type ProgressLine, type Contractor,
   lineTotal, fmt, TRADE_TYPES,
-  AssignmentBadge, POStatusBadge, CreatePOModal, PODetailModal,
+  AssignmentBadge, CreatePOModal,
 } from './JobProgressPOModals';
 
 interface Props { jobId: number; }
 
 export default function JobProgress({ jobId }: Props) {
   const [lines, setLines] = useState<ProgressLine[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,24 +20,18 @@ export default function JobProgress({ jobId }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [tradeFilter, setTradeFilter] = useState('');
   const [showCreatePO, setShowCreatePO] = useState(false);
-  const [activePO, setActivePO] = useState<PurchaseOrder | null>(null);
   const pendingRef = useRef<Record<number, { percentComplete?: number; progressNote?: string }>>({});
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [progRes, poRes, contRes] = await Promise.all([
+      const [progRes, contRes] = await Promise.all([
         fetch(`/api/jobs/${jobId}/progress`, { credentials: 'include' }),
-        fetch(`/api/jobs/${jobId}/purchase-orders`, { credentials: 'include' }),
         fetch(`/api/customers?type=contractor&status=active`, { credentials: 'include' }),
       ]);
       if (progRes.ok) {
         const d = await progRes.json() as { lines: ProgressLine[] };
         setLines(d.lines ?? []);
-      }
-      if (poRes.ok) {
-        const d = await poRes.json() as { purchaseOrders: PurchaseOrder[] };
-        setPurchaseOrders(d.purchaseOrders ?? []);
       }
       if (contRes.ok) {
         const d = await contRes.json() as { customers: Contractor[] };
@@ -278,79 +271,6 @@ export default function JobProgress({ jobId }: Props) {
         </div>
       )}
 
-      {/* ── Purchase Orders section ── */}
-      <div className="bg-white rounded-xl border border-border overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="font-heading font-bold text-sm text-foreground flex items-center gap-2">
-            <FileText size={14} className="text-primary" />
-            Purchase Orders / Work Orders
-            {purchaseOrders.length > 0 && (
-              <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">{purchaseOrders.length}</span>
-            )}
-          </h3>
-          {lines.length > 0 && selectedIds.size === 0 && (
-            <button
-              onClick={() => {
-                if (lines.length > 0) {
-                  setSelectedIds(new Set(lines.map((l) => l.id)));
-                  setShowCreatePO(true);
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"
-            >
-              <Plus size={12} />New PO
-            </button>
-          )}
-        </div>
-
-        {purchaseOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
-              <FileText size={18} className="text-muted-foreground" />
-            </div>
-            <p className="text-sm font-semibold text-foreground mb-1">No purchase orders yet</p>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              Select scope lines above and click "Generate PO / Work Order" to create one.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {purchaseOrders.map((po) => {
-              const total = parseFloat(po.total) || 0;
-              return (
-                <button
-                  key={po.id}
-                  onClick={() => setActivePO(po)}
-                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted/20 transition-colors text-left"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <FileText size={14} className="text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-foreground">{po.po_number}</p>
-                      <POStatusBadge status={po.status} />
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{po.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {po.assigned_to_type === 'internal'
-                        ? `Internal${po.assigned_to_name ? ` — ${po.assigned_to_name}` : ''}`
-                        : (po.contractor_name ?? po.assigned_to_name ?? 'Contractor')}
-                      {po.trade_type ? ` · ${po.trade_type}` : ''}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold font-mono text-foreground">{fmt(total)}</p>
-                    <p className="text-xs text-muted-foreground">{po.lines.length} line{po.lines.length !== 1 ? 's' : ''}</p>
-                  </div>
-                  <ExternalLink size={13} className="text-muted-foreground shrink-0" />
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* ── Modals ── */}
       {showCreatePO && (
         <CreatePOModal
@@ -358,28 +278,10 @@ export default function JobProgress({ jobId }: Props) {
           selectedLines={selectedLines}
           contractors={contractors}
           onClose={() => setShowCreatePO(false)}
-          onCreated={(po) => {
-            setPurchaseOrders((prev) => [po, ...prev]);
+          onCreated={() => {
             setSelectedIds(new Set());
             setShowCreatePO(false);
-            // Refresh lines to show updated assignment badges
             void load();
-          }}
-        />
-      )}
-
-      {activePO && (
-        <PODetailModal
-          po={activePO}
-          jobId={jobId}
-          onClose={() => setActivePO(null)}
-          onUpdated={(updated) => {
-            setPurchaseOrders((prev) => prev.map((p) => p.id === updated.id ? updated : p));
-            setActivePO(updated);
-          }}
-          onDeleted={(poId) => {
-            setPurchaseOrders((prev) => prev.filter((p) => p.id !== poId));
-            setActivePO(null);
           }}
         />
       )}

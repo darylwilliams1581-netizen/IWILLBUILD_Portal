@@ -18,7 +18,7 @@ import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelectorComponent from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
-import JobAttendanceTab from '@/components/job/JobAttendanceTab';
+import JobPurchaseOrders from '@/components/job/JobPurchaseOrders';
 import JobTodos from '@/components/job/JobTodos';
 import AssetSelectorComponent from '@/components/AssetManager/AssetSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
@@ -29,7 +29,7 @@ import JobPhotosTab from '@/components/job/JobPhotosTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'purchase-orders' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
 // ── Wrapper components to adapt actual selectors to JobDetailsDashboard interface ──
 
@@ -118,6 +118,10 @@ const NAV_GROUPS: Array<{
     key: 'invoices' as const,
     label: 'Invoices',
     icon: DollarSign
+  }, {
+    key: 'purchase-orders' as const,
+    label: 'Purchase Orders',
+    icon: FileText
   }, {
     key: 'files' as const,
     label: 'Files',
@@ -808,6 +812,9 @@ export default function JobDetailPage() {
 
                   {/* ── Invoices ── */}
                   {activeTab === 'invoices' && <JobInvoices jobId={job.id} job={job} />}
+
+                  {/* ── Purchase Orders ── */}
+                  {activeTab === 'purchase-orders' && <JobPurchaseOrders jobId={job.id} />}
 
                   {/* ── Files ── */}
                   {activeTab === 'files' && <div className="bg-white rounded-xl border border-border">
