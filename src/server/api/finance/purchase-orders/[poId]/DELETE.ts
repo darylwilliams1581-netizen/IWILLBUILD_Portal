@@ -3,8 +3,8 @@
  * Delete a draft PO from the Finance workspace (company-scoped).
  */
 import type { Request, Response } from 'express';
-import { resolvePOProfile, requireFinanceAndDelete } from '../../../../lib/po-auth.js';
-import { deletePO } from '../../../../lib/po-service.js';
+import { resolvePOProfile, requireFinanceAndDelete } from '@/server/lib/po-auth.js';
+import { deletePO } from '@/server/lib/po-service.js';
 
 export default async function handler(req: Request, res: Response) {
   const profile = await resolvePOProfile(req, res);

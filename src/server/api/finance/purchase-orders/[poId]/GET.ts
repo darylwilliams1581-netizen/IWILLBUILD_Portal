@@ -3,8 +3,8 @@
  * Company-scoped PO detail (no job_id requirement).
  */
 import type { Request, Response } from 'express';
-import { resolvePOProfile, requireFinanceAndDollars } from '../../../../lib/po-auth.js';
-import { fetchPODetail } from '../../../../lib/po-service.js';
+import { resolvePOProfile, requireFinanceAndDollars } from '@/server/lib/po-auth.js';
+import { fetchPODetail } from '@/server/lib/po-service.js';
 
 export default async function handler(req: Request, res: Response) {
   const profile = await resolvePOProfile(req, res);

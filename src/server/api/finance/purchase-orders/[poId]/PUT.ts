@@ -3,8 +3,8 @@
  * Update a PO from the Finance workspace (company-scoped, no job_id requirement).
  */
 import type { Request, Response } from 'express';
-import { resolvePOProfile, requireFinance } from '../../../../lib/po-auth.js';
-import { updatePO } from '../../../../lib/po-service.js';
+import { resolvePOProfile, requireFinance } from '@/server/lib/po-auth.js';
+import { updatePO } from '@/server/lib/po-service.js';
 
 export default async function handler(req: Request, res: Response) {
   const profile = await resolvePOProfile(req, res);

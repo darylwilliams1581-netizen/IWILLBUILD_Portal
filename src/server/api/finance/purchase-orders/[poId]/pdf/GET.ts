@@ -7,8 +7,8 @@ import type { Request, Response } from 'express';
 import {
   resolvePOProfile,
   requireFinanceAndDollars,
-} from '../../../../../lib/po-auth.js';
-import { buildPOPdf } from '../../../../../lib/purchase-order-pdf-document.js';
+} from '@/server/lib/po-auth.js';
+import { buildPOPdf } from '@/server/lib/purchase-order-pdf-document.js';
 
 export default async function handler(req: Request, res: Response) {
   const profile = await resolvePOProfile(req, res);

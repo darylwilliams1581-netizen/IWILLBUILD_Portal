@@ -13,8 +13,8 @@
  *   limit        — page size (max 100, default 25)
  */
 import type { Request, Response } from 'express';
-import { resolvePOProfile, requireFinance } from '../../../../lib/po-auth.js';
-import { listPOs } from '../../../../lib/po-service.js';
+import { resolvePOProfile, requireFinance } from '@/server/lib/po-auth.js';
+import { listPOs } from '@/server/lib/po-service.js';
 
 export default async function handler(req: Request, res: Response) {
   const profile = await resolvePOProfile(req, res);
