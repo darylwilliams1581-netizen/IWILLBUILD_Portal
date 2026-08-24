@@ -17,13 +17,12 @@
 import { useState, useCallback, useRef } from 'react';
 import {
   Plus, ChevronUp, ChevronDown, Pencil, Copy, Trash2,
-  FolderPlus, AlertCircle, CheckCircle2, Clock, AlertTriangle,
-  Minus, GripVertical, ChevronRight, ChevronDown as ChevronDownIcon,
+  FolderPlus, AlertCircle,
+  GripVertical, ChevronRight, ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
-import type { ProgressSection, ProgressActivity, ActivityStatus } from '@/lib/pow-types';
+import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
 import {
-  calcStatus, calcDuration, fmtDuration, calcOverallPct, calcSectionPct,
-  STATUS_CLASSES, todayISO,
+  calcDuration, fmtDuration, calcOverallPct, calcSectionPct,
 } from '@/lib/pow-types';
 import ActivityForm, { type ActivityFormValues } from './ActivityForm';
 import SectionForm, { type SectionFormValues } from './SectionForm';
@@ -63,15 +62,6 @@ function fmtDate(d: string | null | undefined): string {
   } catch {
     return dateOnly;
   }
-}
-
-// ── Status icon ───────────────────────────────────────────────────────────────
-
-function StatusIcon({ status }: { status: ActivityStatus }) {
-  if (status === 'Complete')    return <CheckCircle2 size={13} className="text-emerald-600" />;
-  if (status === 'Overdue')     return <AlertTriangle size={13} className="text-red-500" />;
-  if (status === 'In Progress') return <Clock size={13} className="text-blue-500" />;
-  return <Minus size={13} className="text-muted-foreground" />;
 }
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
@@ -135,7 +125,6 @@ export default function ProgramOfWorksView({
   onReorderActivities,
   onUpdatePct,
 }: Props) {
-  const today = todayISO();
   const overallPct = calcOverallPct(activities);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
@@ -261,7 +250,6 @@ export default function ProgramOfWorksView({
   // ── Render helpers ────────────────────────────────────────────────────────────
 
   function renderActivityRow(a: ProgressActivity, globalIdx: number, isFirst: boolean, isLast: boolean) {
-    const status = calcStatus(a.percentComplete, a.endDate, today);
     const dur = calcDuration(a.startDate, a.endDate);
     const isEditing = editingActivityId === a.id;
     const isDeleting = deletingActivityId === a.id;
@@ -282,7 +270,7 @@ export default function ProgramOfWorksView({
       <div key={a.id} className={`border-b border-border last:border-0 ${isReordering ? 'opacity-50' : ''}`}>
         {/* ── Desktop row ── */}
         <div className="hidden lg:grid items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors"
-          style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 90px 108px' }}>
+          style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 140px 90px 108px' }}>
           {/* Seq */}
           <span className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</span>
           {/* Activity */}
@@ -296,10 +284,8 @@ export default function ProgramOfWorksView({
           {/* Progress */}
           <div className="flex items-center gap-1.5">
             <ProgressBar pct={a.percentComplete} small />
-            <span className="text-xs font-semibold text-foreground w-8 text-right">{a.percentComplete}%</span>
+            <span className={`text-xs font-semibold w-8 text-right ${a.percentComplete === 100 ? 'text-emerald-600' : 'text-foreground'}`}>{a.percentComplete}%</span>
           </div>
-          {/* Status */}
-          <StatusBadge status={status} />
           {/* Notes */}
           <span className="text-xs text-muted-foreground truncate" title={a.progressNote ?? ''}>{a.progressNote || '—'}</span>
           {/* Actions */}
@@ -341,7 +327,6 @@ export default function ProgramOfWorksView({
               <span className="text-xs text-muted-foreground font-mono shrink-0">{globalIdx + 1}</span>
               <span className="text-sm font-semibold text-foreground leading-snug">{a.description}</span>
             </div>
-            <StatusBadge status={status} />
           </div>
 
           {/* Dates + Duration */}
@@ -355,7 +340,7 @@ export default function ProgramOfWorksView({
           <div className="mb-2">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Progress</span>
-              <span className="text-xs font-bold">{a.percentComplete}%</span>
+              <span className={`text-xs font-bold ${a.percentComplete === 100 ? 'text-emerald-600' : ''}`}>{a.percentComplete}%</span>
             </div>
             <ProgressBar pct={a.percentComplete} />
           </div>
@@ -524,14 +509,13 @@ export default function ProgramOfWorksView({
             {/* Desktop table header */}
             {sectionActivities.length > 0 && (
               <div className="hidden lg:grid items-center gap-2 px-3 py-1.5 bg-muted/20 border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wide"
-                style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 90px 108px' }}>
+                style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 140px 90px 108px' }}>
                 <span>#</span>
                 <span>Activity</span>
                 <span>Start</span>
                 <span>Finish</span>
                 <span>Duration</span>
                 <span>Progress</span>
-                <span>Status</span>
                 <span>Notes</span>
                 <span>Actions</span>
               </div>
@@ -609,8 +593,7 @@ export default function ProgramOfWorksView({
           <ProgressBar pct={overallPct} />
           <p className="text-xs text-muted-foreground mt-1">
             {activities.length} {activities.length === 1 ? 'activity' : 'activities'} ·{' '}
-            {activities.filter((a) => a.percentComplete === 100).length} complete ·{' '}
-            {activities.filter((a) => calcStatus(a.percentComplete, a.endDate, today) === 'Overdue').length} overdue
+            {activities.filter((a) => a.percentComplete === 100).length} complete
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
