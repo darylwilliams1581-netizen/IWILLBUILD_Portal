@@ -238,7 +238,7 @@ const GROUPS: GroupDoc[] = [{
     label: 'Estimating',
     icon: Calculator,
     bg: 'bg-indigo-500',
-    purpose: 'Build detailed cost estimates and quotes. Add labour, materials, subcontractors, and margins to produce a professional quote document. Includes Cost Guide, Recipes, Builders Calc, and Take-off Pad tabs.',
+    purpose: 'Build detailed cost estimates. Add labour, materials, subcontractors, and margins to produce a professional estimate document. Includes Cost Guide, Recipes, Builders Calc, and Take-off Pad tabs.',
     howTo: ['Tap Estimating on the dock.', 'Use the Cost Guide tab to browse standard rates.', 'Use Recipes to build reusable cost bundles.', 'Use Builders Calc for on-site construction calculations.', 'Use Take-off Pad to measure quantities from drawings.', 'Create a new estimate, add sections and line items, apply margins and GST.', 'Generate a quote PDF to send to the client.']
   }, {
     key: 'scheduler',

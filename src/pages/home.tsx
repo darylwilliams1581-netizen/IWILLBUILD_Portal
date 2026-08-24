@@ -2109,7 +2109,7 @@ export default function HomeScreen() {
           setSignInOutOpen(false);
           setActiveStatusKey(k => k + 1);
         }} />
-      <JobPickerSheet open={quotesPickerOpen} onClose={() => setQuotesPickerOpen(false)} title="Quotes" subtitle="Select a job to view its quotes" iconBg="bg-violet-100" iconFg="text-violet-700" Icon={FileText} onSelect={job => {
+      <JobPickerSheet open={quotesPickerOpen} onClose={() => setQuotesPickerOpen(false)} title="Estimates" subtitle="Select a job to view its estimates" iconBg="bg-violet-100" iconFg="text-violet-700" Icon={FileText} onSelect={job => {
           setQuotesPickerOpen(false);
           navigate(`/jobs/${job.id}/quotes`);
         }} />

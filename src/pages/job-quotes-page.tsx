@@ -260,12 +260,12 @@ export default function JobQuotesPage() {
   return <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>{job ? `Quotes — ${job.name}` : 'Quotes'} — IWILLBUILD</title>
-        <meta name="description" content="View and manage quotes for this job." />
+        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWILLBUILD</title>
+        <meta name="description" content="View and manage estimates for this job." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/quotes`} />
       </Helmet>
-      <h1 className="sr-only">{job ? `Quotes — ${job.name}` : 'Quotes'}</h1>
+      <h1 className="sr-only">{job ? `Estimates — ${job.name}` : 'Estimates'}</h1>
 
       {/* ════════════════════════════════════════════════════════
           HEADER — single row, locked height, nothing shifts
@@ -287,7 +287,7 @@ export default function JobQuotesPage() {
 
           {/* Title — centred, flex-1 */}
           <div className="flex-1 min-w-0 text-center">
-            <p className="font-bold text-gray-900 text-[15px] leading-tight tracking-tight">Quotes</p>
+            <p className="font-bold text-gray-900 text-[15px] leading-tight tracking-tight">Estimates</p>
             <p className="text-[11px] text-gray-400 leading-tight truncate">{job?.name ?? '…'}</p>
           </div>
 
@@ -323,7 +323,7 @@ export default function JobQuotesPage() {
               <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mb-4">
                 <FileText size={22} className="text-violet-400" />
               </div>
-              <p className="font-bold text-gray-800 text-[15px] mb-1">No quotes yet</p>
+              <p className="font-bold text-gray-800 text-[15px] mb-1">No estimates yet</p>
               <p className="text-sm text-gray-400 mb-6 max-w-[220px]">Create your first quote for this job</p>
               {canEdit && <button onClick={handleCreate} disabled={creating} className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-colors disabled:opacity-60">
                   {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -335,7 +335,7 @@ export default function JobQuotesPage() {
           {!loading && estimates.length > 0 && <>
               {/* Section label */}
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-1">
-                {estimates.length} {estimates.length === 1 ? 'Quote' : 'Quotes'}
+                {estimates.length} {estimates.length === 1 ? 'Estimate' : 'Estimates'}
               </p>
 
               {/* Card container */}

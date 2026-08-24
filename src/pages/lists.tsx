@@ -62,7 +62,7 @@ const CATALOG: ListCatalogEntry[] = [{
   key: 'estimates',
   label: 'Estimates',
   icon: Calculator,
-  description: 'Estimates and quotes across all jobs'
+  description: 'Estimates across all jobs'
 }, {
   key: 'files',
   label: 'Files',
