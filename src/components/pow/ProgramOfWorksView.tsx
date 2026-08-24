@@ -19,6 +19,7 @@ import {
   Plus, ChevronUp, ChevronDown, Pencil, Copy, Trash2,
   FolderPlus, AlertCircle,
   GripVertical, ChevronRight, ChevronDown as ChevronDownIcon,
+  CalendarDays, List,
 } from 'lucide-react';
 import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
 import {
@@ -26,6 +27,7 @@ import {
 } from '@/lib/pow-types';
 import ActivityForm, { type ActivityFormValues } from './ActivityForm';
 import SectionForm, { type SectionFormValues } from './SectionForm';
+import PowCalendarView from './PowCalendarView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -128,6 +130,7 @@ export default function ProgramOfWorksView({
   const overallPct = calcOverallPct(activities);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
+  const [view, setView] = useState<'list' | 'calendar'>('list');
   const [addingSection, setAddingSection] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [deletingSectionId, setDeletingSectionId] = useState<number | null>(null);
@@ -598,6 +601,25 @@ export default function ProgramOfWorksView({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* View toggle */}
+          <div className="flex items-center border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setView('list')}
+              title="List view"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition-colors min-h-[36px]
+                ${view === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+            >
+              <List size={13} /> List
+            </button>
+            <button
+              onClick={() => setView('calendar')}
+              title="Calendar view"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition-colors min-h-[36px]
+                ${view === 'calendar' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+            >
+              <CalendarDays size={13} /> Calendar
+            </button>
+          </div>
           <button
             onClick={() => { setAddingSection(true); setSectionError(''); }}
             className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[36px]"
@@ -627,11 +649,21 @@ export default function ProgramOfWorksView({
         </div>
       )}
 
-      {/* Sections */}
-      {sections.map((s, idx) => renderSection(s, idx))}
+      {/* Calendar view */}
+      {view === 'calendar' && (
+        <PowCalendarView sections={sections} activities={activities} />
+      )}
 
-      {/* Unsectioned group — always rendered last */}
-      {renderSection(null, -1)}
+      {/* List view */}
+      {view === 'list' && (
+        <>
+          {/* Sections */}
+          {sections.map((s, idx) => renderSection(s, idx))}
+
+          {/* Unsectioned group — always rendered last */}
+          {renderSection(null, -1)}
+        </>
+      )}
 
       {/* Empty state */}
       {activities.length === 0 && sections.length === 0 && !addingSection && addingActivitySectionId === null && (
