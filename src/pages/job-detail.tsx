@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, LogIn, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail } from 'lucide-react';
+import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen } from 'lucide-react';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import type { JobEmailContext, SendSuccessPayload } from '@/components/SendDocumentEmailModal';
 import { EmailToastContainer } from '@/components/EmailSentToast';
@@ -59,12 +59,38 @@ const NAV_GROUPS: Array<{
   label: string;
   items: NavItem[];
 }> = [{
-  label: 'Site / Daily',
+  label: 'Job',
   items: [{
     key: 'details' as const,
     label: 'Details',
     icon: FileText
+  }]
+}, {
+  label: 'Work',
+  items: [{
+    key: 'tasks' as const,
+    label: 'Tasks',
+    icon: CheckSquare
   }, {
+    key: 'notes' as const,
+    label: 'Notes',
+    icon: StickyNote
+  }, {
+    key: 'delays' as const,
+    label: 'Delays',
+    icon: Clock
+  }, {
+    key: 'progress' as const,
+    label: 'Progress',
+    icon: TrendingUp
+  }, {
+    key: 'attendance' as const,
+    label: 'Attendance',
+    icon: UserCheck
+  }]
+}, {
+  label: 'Field & Files',
+  items: [{
     key: 'photos' as const,
     label: 'Photos',
     icon: Image
@@ -73,29 +99,32 @@ const NAV_GROUPS: Array<{
     label: 'Drawings',
     icon: Layers
   }, {
-    key: 'delays' as const,
-    label: 'Delays',
-    icon: Clock
-  }, {
-    key: 'notes' as const,
-    label: 'Notes',
-    icon: StickyNote
+    key: 'files' as const,
+    label: 'Files',
+    icon: FolderOpen
   }]
 }, {
-  label: 'Work / Compliance',
+  label: 'Finance',
   items: [{
     key: 'estimates' as const,
     label: 'Estimates',
     icon: Calculator
   }, {
-    key: 'tasks' as const,
-    label: 'Tasks',
-    icon: CheckSquare
+    key: 'purchase-orders' as const,
+    label: 'Purchase Orders',
+    icon: Receipt
   }, {
-    key: 'progress' as const,
-    label: 'Progress',
-    icon: TrendingUp
+    key: 'invoices' as const,
+    label: 'Invoices',
+    icon: DollarSign
   }, {
+    key: 'costs' as const,
+    label: 'Job Ledger',
+    icon: BookOpen
+  }]
+}, {
+  label: 'Safety',
+  items: [{
     key: 'forms' as const,
     label: 'Forms',
     icon: ClipboardList
@@ -103,29 +132,6 @@ const NAV_GROUPS: Array<{
     key: 'safety' as const,
     label: 'Safety',
     icon: ShieldAlert
-  }, {
-    key: 'attendance' as const,
-    label: 'Attendance',
-    icon: LogIn
-  }]
-}, {
-  label: 'Money / Records',
-  items: [{
-    key: 'costs' as const,
-    label: 'Costs',
-    icon: Receipt
-  }, {
-    key: 'invoices' as const,
-    label: 'Invoices',
-    icon: DollarSign
-  }, {
-    key: 'purchase-orders' as const,
-    label: 'Purchase Orders',
-    icon: FileText
-  }, {
-    key: 'files' as const,
-    label: 'Files',
-    icon: FolderOpen
   }]
 }];
 const ALL_NAV_ITEMS = NAV_GROUPS.flatMap(g => g.items);
@@ -244,7 +250,7 @@ export default function JobDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'purchase-orders' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
     return 'details';
   });
   const [form, setForm] = useState({

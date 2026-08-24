@@ -1,7 +1,7 @@
 /**
  * JobPurchaseOrders — Purchase Orders / Work Orders for a specific job.
  *
- * Lives under Money / Records in the job detail sidebar.
+ * Lives under Finance in the job detail sidebar.
  * Extracted from JobProgress where it did not belong.
  */
 import { useState, useEffect, useCallback } from 'react';
