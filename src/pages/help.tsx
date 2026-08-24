@@ -6,7 +6,15 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from "react-router";
-import { Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote, DollarSign, Clock, TrendingUp, Layers, ClipboardList, BookOpen, LayoutDashboard, Calculator, Receipt, Users, HardHat, CalendarDays, Truck, FolderOpen, UserCircle, CreditCard, Settings, ShieldAlert, AlertTriangle, ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft, Zap, FileStack, Map, ShieldCheck, AlertCircle, Building2, TableProperties, ScrollText, Link2, History } from 'lucide-react';
+import {
+  Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote, DollarSign, Clock,
+  TrendingUp, Layers, ClipboardList, BookOpen, LayoutDashboard, Calculator,
+  Receipt, Users, HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
+  CreditCard, Settings, ShieldAlert, AlertTriangle, ChevronDown, ChevronRight,
+  Search, BookMarked, ArrowLeft, Zap, FileStack, Map, ShieldCheck, AlertCircle,
+  Building2, TableProperties, ScrollText, Link2, History,
+  ShoppingCart, BarChart2,
+} from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -84,11 +92,22 @@ const GROUPS: GroupDoc[] = [{
     tip: 'Delay records are critical for extension-of-time claims. Log them the same day they occur.'
   }, {
     key: 'progress',
-    label: 'Progress',
+    label: 'Program of Works',
     icon: TrendingUp,
     bg: 'bg-cyan-500',
-    purpose: 'Log a progress update for a job — what was completed today, percentage complete, and any notes. Keeps the job timeline up to date.',
-    howTo: ['Tap Progress on the home screen.', 'Select the job to update.', 'Enter what was completed and the current percentage.', 'Add photos to support the update (optional).', 'Tap Save.']
+    purpose: 'A full Gantt-style Program of Works for each job. Organise activities into sections, track start/finish dates, progress percentage, responsible person, and notes. Switch between List view and a monthly Calendar view.',
+    howTo: [
+      'Open a job and tap the Progress tab (under the WORK nav group).',
+      'Tap "Add section" to create a logical grouping (e.g. Foundations, Frame, Fit-out).',
+      'Tap "Add activity" to add a work item — set description, section, start/finish dates, progress %, trade, and responsible person.',
+      'Use the ↑ ↓ buttons on each section header to reorder sections.',
+      'Use the move arrows on each activity row to reorder within a section.',
+      'Toggle to Calendar view to see all activities as Gantt bars across the month — navigate months with the arrows.',
+      'Hover over a bar (desktop) to see the full activity tooltip.',
+      'Activities at 100% turn green automatically.',
+      'Export to CSV or PDF Report using the buttons above the table.',
+    ],
+    tip: 'Activities without dates still appear in the Calendar view — they are listed below the Gantt chart so nothing is lost.'
   }, {
     key: 'drawings',
     label: 'Drawings',
@@ -173,6 +192,43 @@ const GROUPS: GroupDoc[] = [{
     tip: 'Extreme and high risks are highlighted at the top of the register. Review and update risk entries regularly — at least before each new project phase.'
   }]
 }, {
+  id: 'finance',
+  label: 'Finance',
+  description: 'Purchase orders, job ledger, and financial tracking tools.',
+  color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  icons: [{
+    key: 'purchase_orders',
+    label: 'Purchase Orders',
+    icon: ShoppingCart,
+    bg: 'bg-emerald-600',
+    purpose: 'Create and manage Purchase Orders (POs) for contractors and suppliers against a job. Track PO status from Draft through to Approved, Sent, and Completed. Generate a professional PDF to send directly to the contractor.',
+    howTo: [
+      'Open a job and tap the Finance nav group, then select Purchase Orders.',
+      'Tap + New PO to open the multi-step create workflow.',
+      'Select the contractor, add a title, and set the PO date.',
+      'Add line items — description, quantity, unit, and rate.',
+      'Review the subtotal and GST, then save as Draft or submit for approval.',
+      'Change status to Approved when authorised, then Sent once issued to the contractor.',
+      'Tap the PDF button on any PO to generate and download a formatted PDF.',
+      'Use the search and status filter tabs to find POs quickly across large jobs.',
+    ],
+    tip: 'PO numbers are auto-generated in sequence per company. Approved POs lock their line items to prevent accidental edits.'
+  }, {
+    key: 'job_ledger',
+    label: 'Job Ledger',
+    icon: BarChart2,
+    bg: 'bg-teal-600',
+    purpose: 'A running ledger of all costs and income entries against a job. Every cost logged, invoice raised, and manual entry appears here in chronological order. Use it to track job profitability in real time.',
+    howTo: [
+      'Open a job and tap the Finance nav group, then select Job Ledger.',
+      'Browse all entries — costs, invoices, and manual adjustments.',
+      'Tap + to add a manual ledger entry.',
+      'Use the export button to download the ledger as CSV.',
+      'Tap any entry to view its full detail or correct it.',
+    ],
+    tip: 'The ledger is the source of truth for job financials. Costs logged from the field and invoices raised in the office both flow here automatically.'
+  }]
+}, {
   id: 'tools',
   label: 'Tools & Studio',
   description: 'Calculation, estimation, document creation, and form design tools for the office and field.',
@@ -253,8 +309,15 @@ const GROUPS: GroupDoc[] = [{
     label: 'Jobs',
     icon: HardHat,
     bg: 'bg-cyan-600',
-    purpose: 'The central hub for all jobs. Create, manage, and monitor every project across 14 tabs — details, estimates, costs, invoices, progress, delays, photos, files, forms, notes, safety, drawings, attendance, and tasks.',
-    howTo: ['Tap Jobs on the dock.', 'Browse active jobs or use search to find one.', 'Tap a job to open its detail view.', 'Use the tabs to navigate between all job data.', 'Tap + to create a new job.']
+    purpose: 'The central hub for all jobs. Create, manage, and monitor every project. The job workspace is organised into five nav groups — JOB, WORK, FIELD & FILES, FINANCE, and SAFETY — each containing the relevant tabs for that area.',
+    howTo: [
+      'Tap Jobs on the dock.',
+      'Browse active jobs or use search to find one.',
+      'Tap a job to open its detail view.',
+      'Use the five nav groups at the top to switch areas: JOB (details, milestones), WORK (job cards, progress/Program of Works), FIELD & FILES (photos, files, forms, notes, drawings), FINANCE (Job Ledger, Purchase Orders), SAFETY (SWMS, risk assessments, prestarts, incidents).',
+      'Tap + to create a new job.',
+    ],
+    tip: 'The Finance nav group is only visible to users with the Finance permission. The Safety nav group is visible to all team members assigned to the job.'
   }, {
     key: 'job_cards',
     label: 'Job Cards',
@@ -348,6 +411,7 @@ export default function HelpPage() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     field: true,
     safety: true,
+    finance: true,
     tools: true,
     management: true,
     admin: false
