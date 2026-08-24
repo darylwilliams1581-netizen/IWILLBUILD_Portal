@@ -128,8 +128,8 @@ export default function WorkProgressTab({ initialJobId, initialJobName }: Props)
         {!loading && !error && rows.length === 0 && (
           <WorkEmpty
             icon={TrendingUp}
-            title="No progress records"
-            subtitle={q ? 'Try adjusting your search.' : 'Sync estimates to a job to create progress lines.'}
+            title="No program of works yet"
+            subtitle={q ? 'Try adjusting your search.' : 'Open a job and add activities to its Program of Works.'}
             action={
               <button
                 onClick={() => setPickerOpen(true)}
@@ -151,7 +151,7 @@ export default function WorkProgressTab({ initialJobId, initialJobName }: Props)
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Job</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Status</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Progress</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Lines</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Activities</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Start</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Expected completion</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Updated</th>
@@ -218,7 +218,7 @@ export default function WorkProgressTab({ initialJobId, initialJobName }: Props)
                   </div>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                     {r.jobNumber && <span className="font-mono">{r.jobNumber}</span>}
-                    <span>{r.lineCount} lines</span>
+                    <span>{r.lineCount} activities</span>
                     {r.expectedCompletionDate && <span>Due {fmtDate(r.expectedCompletionDate)}</span>}
                   </div>
                   <a

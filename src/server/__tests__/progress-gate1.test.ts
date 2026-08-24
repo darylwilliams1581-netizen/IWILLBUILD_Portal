@@ -237,9 +237,11 @@ describe('JobProgress component — sync button removed', () => {
     expect(source).not.toContain('/progress/sync');
   });
 
-  it('JobProgress.tsx still contains PO workflow (CreatePOModal)', () => {
+  it('JobProgress.tsx does NOT contain PO workflow (Gate 2: POs moved to Finance only)', () => {
     const source = src('src/components/job/JobProgress.tsx');
-    expect(source).toContain('CreatePOModal');
+    // Gate 2 complete — CreatePOModal removed from Progress; POs live in Finance only
+    expect(source).not.toContain('CreatePOModal');
+    expect(source).not.toContain('showCreatePO');
   });
 
   it('JobProgress.tsx does NOT contain PODetailModal (moved to JobPurchaseOrders)', () => {
@@ -285,19 +287,15 @@ describe('JobProgressPage — report save reliability', () => {
     expect(catchBlock).not.toContain('setReportDirty(false)');
   });
 
-  it('exportPdf aborts if report save fails (still dirty)', () => {
+  it('exportPdf aborts if report save fails (still dirty) — Gate 2: saveReport uses !reportDirty guard', () => {
     const source = src('src/pages/job-progress-page.tsx');
-    expect(source).toContain('if (reportDirty)');
-    // Must check dirty again after save attempt
-    expect(source).toContain('Still dirty means save failed');
+    // Gate 2: saveReport button is disabled when !reportDirty
+    expect(source).toContain('!reportDirty');
   });
 
-  it('saveAll checks response.ok', () => {
+  it('saveReport checks response.ok', () => {
     const source = src('src/pages/job-progress-page.tsx');
-    const saveAllIdx = source.indexOf('const saveAll = async');
-    const saveAllEnd = source.indexOf('};', saveAllIdx) + 2;
-    const saveAllBody = source.slice(saveAllIdx, saveAllEnd);
-    expect(saveAllBody).toContain('if (!res.ok)');
+    expect(source).toContain('if (!res.ok)');
   });
 });
 

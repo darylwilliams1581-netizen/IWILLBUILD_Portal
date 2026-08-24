@@ -66,6 +66,7 @@ export const ChevronRightIcon = NullIcon;
 export const ChevronUp = NullIcon;
 export const Circle = NullIcon;
 export const ClipboardList = NullIcon;
+export const FolderPlus = NullIcon;
 export const Clock = NullIcon;
 export const Cloud = NullIcon;
 export const CloudDrizzle = NullIcon;
