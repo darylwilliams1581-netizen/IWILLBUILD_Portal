@@ -6,7 +6,6 @@ import { AlertCircle, Check } from 'lucide-react';
 
 export interface SectionFormValues {
   title: string;
-  description: string;
 }
 
 interface Props {
@@ -19,18 +18,18 @@ interface Props {
 }
 
 export default function SectionForm({ initial, saving, error, onSave, onCancel, submitLabel = 'Save' }: Props) {
-  const [form, setForm] = useState<SectionFormValues>({ title: '', description: '', ...initial });
+  const [title, setTitle] = useState(initial?.title ?? '');
   const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
-    setForm({ title: '', description: '', ...initial });
+    setTitle(initial?.title ?? '');
   }, [initial]);
 
   function handleSubmit() {
     setValidationError('');
-    if (!form.title.trim()) { setValidationError('Section title is required.'); return; }
-    if (form.title.trim().length > 255) { setValidationError('Title too long (max 255 chars).'); return; }
-    onSave(form);
+    if (!title.trim()) { setValidationError('Section title is required.'); return; }
+    if (title.trim().length > 255) { setValidationError('Title too long (max 255 chars).'); return; }
+    onSave({ title: title.trim() });
   }
 
   const displayError = validationError || error;
@@ -48,20 +47,11 @@ export default function SectionForm({ initial, saving, error, onSave, onCancel, 
         </label>
         <input
           type="text"
-          value={form.title}
-          onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Preliminaries, Structure, Lock-up…"
           className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-        />
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-muted-foreground mb-1">Description (optional)</label>
-        <input
-          type="text"
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          placeholder="Brief description of this phase…"
-          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          autoFocus
         />
       </div>
       <div className="flex items-center gap-2 justify-end pt-1">

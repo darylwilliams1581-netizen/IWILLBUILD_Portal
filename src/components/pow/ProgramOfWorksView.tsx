@@ -450,7 +450,7 @@ export default function ProgramOfWorksView({
             <div className="flex-1 min-w-0">
               {isEditingSection ? (
                 <SectionForm
-                  initial={{ title: section.title, description: section.description ?? '' }}
+                  initial={{ title: section.title }}
                   saving={savingSection}
                   error={sectionError}
                   onSave={(values) => handleEditSection(section.id, values)}
@@ -460,9 +460,6 @@ export default function ProgramOfWorksView({
               ) : (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-bold text-foreground">{section.title}</span>
-                  {section.description && (
-                    <span className="text-xs text-muted-foreground">{section.description}</span>
-                  )}
                   {sectionPct !== null && (
                     <div className="flex items-center gap-1.5 ml-auto">
                       <ProgressBar pct={sectionPct} small />
