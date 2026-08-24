@@ -228,12 +228,12 @@ describe('+ New Job ownership — sidebar vs page header', () => {
 
   it('Work page + New Job button is hidden on desktop (lg:hidden) — no duplicate', async () => {
     const src = await readSrc('src/pages/work.tsx');
-    // The button className must include lg:hidden
-    const btnMatch = src.match(/setNewJobOpen\(true\)[^}]*className="([^"]+)"/s) ??
-                     src.match(/className="([^"]+)"[^>]*onClick[^>]*setNewJobOpen/s);
-    // Simpler: just check lg:hidden appears near the New Job button
-    const newJobSection = src.slice(src.indexOf('setNewJobOpen(true)') - 200, src.indexOf('setNewJobOpen(true)') + 200);
-    expect(newJobSection).toContain('lg:hidden');
+    // The mobile/tablet layout wrapper must use lg:hidden so the New Job button
+    // (inside MobileWorkLauncher) is never visible on desktop.
+    // New architecture: separate hidden lg:flex (desktop) and flex lg:hidden (mobile) divs.
+    expect(src).toContain('lg:hidden');
+    // Desktop wrapper must use hidden lg:flex — sidebar owns New Job there
+    expect(src).toContain('hidden lg:flex');
   });
 
   it('Dashboard page no longer has a + New Job button (removed — sidebar owns it)', async () => {

@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import JobPickerSheet from '@/components/JobPickerSheet';
 import PortalSidebar from '@/components/PortalSidebar';
-import DesktopDock from '@/components/DesktopDock';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
@@ -121,7 +120,6 @@ export default function WorkJobPickerPage() {
       </Helmet>
 
       <PortalSidebar />
-      <DesktopDock />
 
       {/* Minimal background while picker is open */}
       <div className="portal-content flex flex-col items-center justify-center h-[100dvh] bg-background">
