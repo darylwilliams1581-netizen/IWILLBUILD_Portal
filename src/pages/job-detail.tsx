@@ -26,6 +26,7 @@ import { fetchCustomer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 import JobDetailsDashboard, { type JobSummary, type Customer } from '@/components/job/JobDetailsDashboard';
 import JobPhotosTab from '@/components/job/JobPhotosTab';
+import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
