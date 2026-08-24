@@ -49,6 +49,22 @@ interface Props {
   onUpdatePct: (activityId: number, pct: number) => Promise<void>;
 }
 
+// ── Date formatter ────────────────────────────────────────────────────────────
+
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return '—';
+  // Strip time component if present (e.g. "2026-08-24T00:00:00.000Z" → "2026-08-24")
+  const dateOnly = d.slice(0, 10);
+  try {
+    const [y, m, day] = dateOnly.split('-').map(Number);
+    return new Date(y, m - 1, day).toLocaleDateString('en-AU', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch {
+    return dateOnly;
+  }
+}
+
 // ── Status icon ───────────────────────────────────────────────────────────────
 
 function StatusIcon({ status }: { status: ActivityStatus }) {
@@ -266,15 +282,15 @@ export default function ProgramOfWorksView({
       <div key={a.id} className={`border-b border-border last:border-0 ${isReordering ? 'opacity-50' : ''}`}>
         {/* ── Desktop row ── */}
         <div className="hidden lg:grid items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors"
-          style={{ gridTemplateColumns: '28px 1fr 88px 88px 64px 120px 100px 100px 80px 100px' }}>
+          style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 110px 90px 108px' }}>
           {/* Seq */}
           <span className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</span>
           {/* Activity */}
           <span className="text-sm font-medium text-foreground truncate" title={a.description}>{a.description}</span>
           {/* Start */}
-          <span className="text-xs text-muted-foreground">{a.startDate ?? '—'}</span>
+          <span className="text-xs text-muted-foreground">{fmtDate(a.startDate)}</span>
           {/* Finish */}
-          <span className="text-xs text-muted-foreground">{a.endDate ?? '—'}</span>
+          <span className="text-xs text-muted-foreground">{fmtDate(a.endDate)}</span>
           {/* Duration */}
           <span className="text-xs text-muted-foreground">{fmtDuration(dur) || '—'}</span>
           {/* Progress */}
@@ -332,8 +348,8 @@ export default function ProgramOfWorksView({
 
           {/* Dates + Duration */}
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-2">
-            {a.startDate && <span>Start: <strong className="text-foreground">{a.startDate}</strong></span>}
-            {a.endDate && <span>Finish: <strong className="text-foreground">{a.endDate}</strong></span>}
+            {a.startDate && <span>Start: <strong className="text-foreground">{fmtDate(a.startDate)}</strong></span>}
+            {a.endDate && <span>Finish: <strong className="text-foreground">{fmtDate(a.endDate)}</strong></span>}
             {dur !== null && <span>Duration: <strong className="text-foreground">{fmtDuration(dur)}</strong></span>}
             {(a.assignedToName || a.tradeType) && (
               <span>Responsible: <strong className="text-foreground">{a.assignedToName || a.tradeType}</strong></span>
@@ -516,7 +532,7 @@ export default function ProgramOfWorksView({
             {/* Desktop table header */}
             {sectionActivities.length > 0 && (
               <div className="hidden lg:grid items-center gap-2 px-3 py-1.5 bg-muted/20 border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wide"
-                style={{ gridTemplateColumns: '28px 1fr 88px 88px 64px 120px 100px 100px 80px 100px' }}>
+                style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 110px 90px 108px' }}>
                 <span>#</span>
                 <span>Activity</span>
                 <span>Start</span>
