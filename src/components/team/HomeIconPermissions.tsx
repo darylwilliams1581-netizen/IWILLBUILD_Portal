@@ -29,7 +29,7 @@ const ROLE_LOCKED_KEYS: Record<string, string[]> = {
 // dazza_ai is shown only for platform_owner / developer — hidden for everyone else
 const HIDDEN_KEYS_DEFAULT = new Set(['dazza_ai']);
 
-const GROUP_ORDER: IconGroup[] = ['field', 'safety', 'tools', 'management'];
+const GROUP_ORDER: IconGroup[] = ['field', 'files', 'fleet', 'finance', 'safety', 'management'];
 
 function getLockedKeys(role: string): Set<string> {
   return new Set(ROLE_LOCKED_KEYS[role] ?? []);

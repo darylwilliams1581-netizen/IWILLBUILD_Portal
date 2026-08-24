@@ -212,7 +212,7 @@ const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [{
 
 // ── Page definitions ──────────────────────────────────────────────────────────
 
-const PAGE_LABELS = ['Dashboard', 'Field', 'Manage'] as const;
+const PAGE_LABELS = ['Dashboard', 'Work & Field', 'Manage'] as const;
 const PAGE_ICONS = [LayoutDashboard, Zap, Settings2] as const;
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -366,7 +366,7 @@ function DashboardPage({
 // "Desktop features" link card at the bottom.
 
 /** Keys that are desktop-only and should be hidden from the Manage tile grid */
-const DESKTOP_ONLY_KEYS = new Set(['studio_docs', 'studio_forms', 'estimating', 'equipment']);
+const DESKTOP_ONLY_KEYS = new Set<string>([]);
 function ManagePage({
   icons,
   onNavigate
@@ -422,17 +422,14 @@ export default function PagedHomeScreen({
   }));
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
 
-  // ── Page 1: Field icons (field + safety + tools groups) ─────────────────────
-  const fieldGroupDefs = [{
-    group: 'field',
-    label: 'Field'
-  }, {
-    group: 'safety',
-    label: 'Finance & Tools'
-  }, {
-    group: 'tools',
-    label: 'Studio'
-  }];
+  // ── Page 1: Work & Field icons (field + files + fleet + finance + safety groups) ─
+  const fieldGroupDefs = [
+    { group: 'field',   label: 'Work'         },
+    { group: 'files',   label: 'Field & Files' },
+    { group: 'fleet',   label: 'Fleet'         },
+    { group: 'finance', label: 'Finance'       },
+    { group: 'safety',  label: 'Safety'        },
+  ];
   const fieldSections = fieldGroupDefs.map(g => ({
     ...g,
     icons: allIcons.filter(i => i.group === g.group)
