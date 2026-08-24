@@ -455,28 +455,29 @@ export default function ProgramOfWorksView({
               )}
             </div>
             {!isEditingSection && (
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => moveSectionUp(sectionIdx)}
                   disabled={isFirstSection || reorderingId === section.id}
                   title="Move section up"
-                  className="p-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
-                ><ChevronUp size={13} /></button>
+                  className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted disabled:opacity-25 disabled:cursor-not-allowed transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                ><ChevronUp size={14} /></button>
                 <button
                   onClick={() => moveSectionDown(sectionIdx)}
                   disabled={isLastSection || reorderingId === section.id}
                   title="Move section down"
-                  className="p-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
-                ><ChevronDown size={13} /></button>
+                  className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted disabled:opacity-25 disabled:cursor-not-allowed transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                ><ChevronDown size={14} /></button>
+                <div className="w-px h-5 bg-border mx-0.5" />
                 <button
                   onClick={() => { setEditingSectionId(section.id); setDeletingSectionId(null); }}
                   title="Rename section"
-                  className="p-1.5 rounded hover:bg-muted transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                 ><Pencil size={13} /></button>
                 <button
                   onClick={() => { setDeletingSectionId(section.id); setEditingSectionId(null); }}
                   title="Delete section"
-                  className="p-1.5 rounded hover:bg-red-50 text-red-500 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                 ><Trash2 size={13} /></button>
               </div>
             )}
