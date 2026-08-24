@@ -470,6 +470,9 @@ import jobs_id_photos_photoId_replace_post_429 from "./api/jobs/[id]/photos/[pho
 import jobs_id_photos_photoId_report_image_get_430 from "./api/jobs/[id]/photos/[photoId]/report-image/GET";
 import jobs_id_progress_get_431 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_432 from "./api/jobs/[id]/progress/PUT";
+import jobs_id_progress_lines_post from "./api/jobs/[id]/progress/lines/POST";
+import jobs_id_progress_lines_lineid_patch from "./api/jobs/[id]/progress/lines/[lineId]/PATCH";
+import jobs_id_progress_lines_lineid_delete from "./api/jobs/[id]/progress/lines/[lineId]/DELETE";
 import jobs_id_progress_export_csv_get_433 from "./api/jobs/[id]/progress/export-csv/GET";
 import jobs_id_progress_report_get_434 from "./api/jobs/[id]/progress/report/GET";
 import jobs_id_progress_report_put_435 from "./api/jobs/[id]/progress/report/PUT";
@@ -3564,6 +3567,9 @@ app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace
 app.get("/api/jobs/:id/photos/:photoId/report-image", jobs_id_photos_photoId_report_image_get_430);
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_431);
 app.put("/api/jobs/:id/progress", jobs_id_progress_put_432);
+app.post("/api/jobs/:id/progress/lines", jobs_id_progress_lines_post);
+app.patch("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineid_patch);
+app.delete("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineid_delete);
 app.get("/api/jobs/:id/progress/export-csv", jobs_id_progress_export_csv_get_433);
 app.get("/api/jobs/:id/progress/report", jobs_id_progress_report_get_434);
 app.put("/api/jobs/:id/progress/report", jobs_id_progress_report_put_435);
