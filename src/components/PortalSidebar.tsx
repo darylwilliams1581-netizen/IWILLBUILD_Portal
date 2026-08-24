@@ -159,7 +159,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   items: [{
     id: 'nav-09a',
     idx: '09a',
-    label: 'Assets',
+    label: 'Fleet Assets',
     icon: Truck,
     href: '/fleet?fleetView=assets'
   }, {
@@ -192,7 +192,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   }, {
     id: 'nav-11c',
     idx: '11c',
-    label: 'Ledger',
+    label: 'Job Ledger',
     icon: BookOpen,
     href: '/finance?financeTab=ledger'
   }, {

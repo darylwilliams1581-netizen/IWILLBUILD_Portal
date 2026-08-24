@@ -1,6 +1,6 @@
 /**
  * /finance — Finance workspace
- * Tabs: Estimates | Invoices | Ledger | Settings
+ * Tabs: Estimates | Invoices | Job Ledger | Settings
  * URL param: financeTab=estimates|invoices|ledger|settings
  * Settings sub-param: settingsTab=accounting|costing|pdf-style
  *

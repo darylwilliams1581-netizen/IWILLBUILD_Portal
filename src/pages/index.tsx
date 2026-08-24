@@ -262,7 +262,7 @@ const plans = [{
   period: '/ month + GST',
   users: 'Up to 10 users',
   popular: false,
-  features: ['Up to 10 users', 'Everything in Team', 'Advanced permissions', 'Safety plans & SWMS library', 'Ledger / job cost tracking', 'Secure file storage', 'Owner & admin reporting', '30-day free trial'],
+  features: ['Up to 10 users', 'Everything in Team', 'Advanced permissions', 'Safety plans & SWMS library', 'Job Ledger / job cost tracking', 'Secure file storage', 'Owner & admin reporting', '30-day free trial'],
   cta: 'Start Business Trial',
   ctaStyle: 'outline'
 }, {
