@@ -282,7 +282,7 @@ export default function ProgramOfWorksView({
       <div key={a.id} className={`border-b border-border last:border-0 ${isReordering ? 'opacity-50' : ''}`}>
         {/* ── Desktop row ── */}
         <div className="hidden lg:grid items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors"
-          style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 110px 90px 108px' }}>
+          style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 90px 108px' }}>
           {/* Seq */}
           <span className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</span>
           {/* Activity */}
@@ -300,8 +300,6 @@ export default function ProgramOfWorksView({
           </div>
           {/* Status */}
           <StatusBadge status={status} />
-          {/* Responsible */}
-          <span className="text-xs text-muted-foreground truncate">{a.assignedToName || a.tradeType || '—'}</span>
           {/* Notes */}
           <span className="text-xs text-muted-foreground truncate" title={a.progressNote ?? ''}>{a.progressNote || '—'}</span>
           {/* Actions */}
@@ -351,9 +349,6 @@ export default function ProgramOfWorksView({
             {a.startDate && <span>Start: <strong className="text-foreground">{fmtDate(a.startDate)}</strong></span>}
             {a.endDate && <span>Finish: <strong className="text-foreground">{fmtDate(a.endDate)}</strong></span>}
             {dur !== null && <span>Duration: <strong className="text-foreground">{fmtDuration(dur)}</strong></span>}
-            {(a.assignedToName || a.tradeType) && (
-              <span>Responsible: <strong className="text-foreground">{a.assignedToName || a.tradeType}</strong></span>
-            )}
           </div>
 
           {/* Progress */}
@@ -532,7 +527,7 @@ export default function ProgramOfWorksView({
             {/* Desktop table header */}
             {sectionActivities.length > 0 && (
               <div className="hidden lg:grid items-center gap-2 px-3 py-1.5 bg-muted/20 border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wide"
-                style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 110px 90px 108px' }}>
+                style={{ gridTemplateColumns: '28px minmax(120px,1fr) 90px 90px 70px 130px 110px 90px 108px' }}>
                 <span>#</span>
                 <span>Activity</span>
                 <span>Start</span>
@@ -540,7 +535,6 @@ export default function ProgramOfWorksView({
                 <span>Duration</span>
                 <span>Progress</span>
                 <span>Status</span>
-                <span>Responsible</span>
                 <span>Notes</span>
                 <span>Actions</span>
               </div>
