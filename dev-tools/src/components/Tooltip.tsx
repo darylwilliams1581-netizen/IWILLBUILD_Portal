@@ -12,10 +12,12 @@ import { createPortal } from "react-dom";
 
 import {
   FLOATING_TOOLTIP_Z_INDEX,
+  TOOLTIP_OFFSET_PX,
   injectTooltipStyles,
   TOOLTIP_EXIT_FALLBACK_BUFFER_MS,
   TOOLTIP_EXIT_MS,
 } from "./tooltipStyles";
+import type { VerticalPlacement } from "../utils/hover-bar-placement";
 
 const GAP = 8;
 const VIEWPORT_MARGIN = 8;
@@ -62,7 +64,7 @@ export function Tooltip({
 }: TooltipProps) {
   const [open, setOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const [coords, setCoords] = useState<{ top: number, left: number, arrowOffsetPx: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; arrowOffsetPx: number; placement: VerticalPlacement } | null>(null);
   const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,9 +94,10 @@ export function Tooltip({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const triggerCenterX = rect.left + rect.width / 2;
-      const top = rect.top - GAP;
+      let top = rect.top - GAP;
       let left = triggerCenterX;
       let arrowOffsetPx = 0;
+      let placement: VerticalPlacement = "above";
 
       const bubbleEl = bubbleRef.current;
       if (bubbleEl?.offsetWidth) {
@@ -105,13 +108,20 @@ export function Tooltip({
         arrowOffsetPx = triggerCenterX - left + half;
       }
 
+      const bubbleHeight = bubbleEl?.offsetHeight;
+      if (bubbleHeight && top - bubbleHeight - TOOLTIP_OFFSET_PX < VIEWPORT_MARGIN) {
+        placement = "below";
+        top = rect.bottom + GAP;
+      }
+
       setCoords((prev) => {
-        const next = { left, top, arrowOffsetPx };
+        const next = { left, top, arrowOffsetPx, placement };
         if (
           prev
           && prev.left === next.left
           && prev.top === next.top
           && prev.arrowOffsetPx === next.arrowOffsetPx
+          && prev.placement === next.placement
         ) {
           return prev;
         }
@@ -241,6 +251,7 @@ export function Tooltip({
     <div
       ref={bubbleRef}
       className="airo-tooltip-bubble"
+      data-placement={coords.placement}
       data-exiting={exiting || undefined}
       style={{
         left: coords.left,

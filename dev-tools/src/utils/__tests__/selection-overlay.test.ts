@@ -9,8 +9,11 @@ import {
   startMediaReplaceSession,
 } from "../media-replace-session";
 import {
+  addNumberedOverlay,
+  clearAllNumberedOverlays,
   clearSelectionOverlay,
   showSelectionOverlay,
+  updateAllNumberedOverlays,
   updateSelectionOverlay,
 } from "../selection-overlay";
 
@@ -89,6 +92,50 @@ describe("selection-overlay", function packageTests() {
 
       updateSelectionOverlay();
       expect(document.getElementById("ai-select-overlay")).toBeTruthy();
+    });
+  });
+
+  describe("numbered overlay remove badge", function badgeTests() {
+    function stubRect(el: HTMLElement, rect: Partial<DOMRect>): void {
+      el.getBoundingClientRect = function stubbed(): DOMRect {
+        return { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}), ...rect } as DOMRect;
+      };
+    }
+
+    function badgeTop(number: number): number {
+      const overlay: HTMLElement | null = document.getElementById(`ai-select-overlay-${number}`);
+      const badge: HTMLElement | null = (overlay?.firstElementChild ?? null) as HTMLElement | null;
+      return Number.parseFloat(badge?.style.top ?? "NaN");
+    }
+
+    beforeEach(function stubContainer() {
+      stubRect(container, { top: -1000, bottom: 1000, right: 1000, width: 1000, height: 2000 });
+    });
+
+    afterEach(function clearOverlays() {
+      clearAllNumberedOverlays();
+    });
+
+    it("stays inside the viewport when the element is taller than it", function tallElement() {
+      const img = document.createElement("img");
+      container.appendChild(img);
+      stubRect(img, { top: -400, bottom: 200, right: 300, width: 300, height: 600 });
+
+      addNumberedOverlay(img, 1);
+      expect(badgeTop(1)).toBeGreaterThanOrEqual(0);
+
+      stubRect(img, { top: -800, bottom: -200, right: 300, width: 300, height: 600 });
+      updateAllNumberedOverlays();
+      expect(badgeTop(1)).toBeGreaterThanOrEqual(0);
+    });
+
+    it("hangs off the corner when the element top is on screen", function visibleElement() {
+      const img = document.createElement("img");
+      container.appendChild(img);
+      stubRect(img, { top: 100, bottom: 300, right: 300, width: 300, height: 200 });
+
+      addNumberedOverlay(img, 2);
+      expect(badgeTop(2)).toBe(-10);
     });
   });
 });

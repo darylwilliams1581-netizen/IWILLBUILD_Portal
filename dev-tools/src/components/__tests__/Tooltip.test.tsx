@@ -132,6 +132,96 @@ describe("Tooltip", function tooltipTests() {
     expect(document.querySelector("button")).toHaveAttribute("title", "Text color");
   });
 
+  it("flips tooltip below when trigger is near top of viewport", async function flipsBelow() {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get() { return 35; } });
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get() { return 100; } });
+
+    try {
+      render(
+        createElement(
+          Tooltip,
+          { content: "Reposition" },
+          createElement("button", { type: "button" }, "↕"),
+        ),
+      );
+
+      const root = document.querySelector(".airo-tooltip-root")!;
+      vi.spyOn(root, "getBoundingClientRect").mockReturnValue({
+        top: 16,
+        bottom: 56,
+        left: 100,
+        right: 140,
+        width: 40,
+        height: 40,
+        x: 100,
+        y: 16,
+        toJSON: () => ({}),
+      });
+
+      fireEvent.mouseEnter(root);
+      await act(async () => {
+        vi.runAllTimers();
+        await Promise.resolve();
+      });
+
+      const bubble = document.querySelector(".airo-tooltip-bubble");
+      expect(bubble).not.toBeNull();
+      expect(bubble?.getAttribute("data-placement")).toBe("below");
+    } finally {
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+      else Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+      if (originalOffsetWidth) Object.defineProperty(HTMLElement.prototype, "offsetWidth", originalOffsetWidth);
+      else Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+    }
+  });
+
+  it("places tooltip above when trigger has sufficient space", async function staysAbove() {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get() { return 35; } });
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get() { return 80; } });
+
+    try {
+      render(
+        createElement(
+          Tooltip,
+          { content: "Delete" },
+          createElement("button", { type: "button" }, "🗑"),
+        ),
+      );
+
+      const root = document.querySelector(".airo-tooltip-root")!;
+      vi.spyOn(root, "getBoundingClientRect").mockReturnValue({
+        top: 300,
+        bottom: 340,
+        left: 100,
+        right: 140,
+        width: 40,
+        height: 40,
+        x: 100,
+        y: 300,
+        toJSON: () => ({}),
+      });
+
+      fireEvent.mouseEnter(root);
+      await act(async () => {
+        vi.runAllTimers();
+        await Promise.resolve();
+      });
+
+      const bubble = document.querySelector(".airo-tooltip-bubble");
+      expect(bubble).not.toBeNull();
+      expect(bubble?.getAttribute("data-placement")).toBe("above");
+    } finally {
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+      else Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+      if (originalOffsetWidth) Object.defineProperty(HTMLElement.prototype, "offsetWidth", originalOffsetWidth);
+      else Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+    }
+  });
+
   it("portals bubble into the dev-tools root when present", async function portalIntoDevToolsRoot() {
     const devToolsRoot = document.createElement("div");
     devToolsRoot.id = "airo-dev-tools-injected";

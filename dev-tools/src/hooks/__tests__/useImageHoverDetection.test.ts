@@ -185,60 +185,143 @@ describe('useImageHoverDetection toolbar dismiss', () => {
     vi.restoreAllMocks();
   });
 
+  function renderWithOpenToolbar() {
+    const paragraph = document.createElement('p');
+    paragraph.textContent = 'Body';
+    document.body.appendChild(paragraph);
+
+    const editingRef = makeEditingRef();
+    const rendered = renderHook(
+      ({ active }: { active: boolean }) => useImageHoverDetection(active, editingRef),
+      { initialProps: { active: true } },
+    );
+
+    fireClick(paragraph);
+    expect(rendered.result.current.toolbarMode).toBe(true);
+    return { ...rendered, paragraph };
+  }
+
   it('keeps the toolbar open on in-document mouseout while toolbar is open', () => {
     const h1 = document.createElement('h1');
     h1.textContent = 'Title';
-    const p = document.createElement('p');
-    p.textContent = 'Body';
-    document.body.append(h1, p);
+    document.body.appendChild(h1);
 
-    const editingRef = makeEditingRef();
-    const { result } = renderHook(() => useImageHoverDetection(true, editingRef));
-
-    fireClick(p);
+    const { result, paragraph } = renderWithOpenToolbar();
     act(() => {
-      p.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: h1 }));
+      paragraph.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: h1 }));
     });
 
     expect(result.current.toolbarMode).toBe(true);
-    expect(result.current.hoveredElement?.element).toBe(p);
+    expect(result.current.hoveredElement?.element).toBe(paragraph);
   });
 
-  it('dismisses the toolbar when the pointer leaves the document', () => {
-    const p = document.createElement('p');
-    p.textContent = 'Body';
-    document.body.appendChild(p);
+  it('keeps the toolbar open when the pointer leaves the document, and tracks it (AIROBUILD-5123)', () => {
+    const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
 
-    const editingRef = makeEditingRef();
-    const { result } = renderHook(() => useImageHoverDetection(true, editingRef));
-
-    fireClick(p);
+    const { result, paragraph } = renderWithOpenToolbar();
     act(() => {
-      p.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }));
+      paragraph.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }));
     });
 
-    expect(result.current.toolbarMode).toBe(false);
-    expect(result.current.hoveredElement).toBeNull();
+    expect(result.current.toolbarMode).toBe(true);
+    expect(result.current.hoveredElement?.element).toBe(paragraph);
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TRACK_EVENT',
+        kind: 'impression',
+        eid: 'devtools.toolbar.persist_pointer_out',
+        properties: { surface: 'text' },
+      }),
+      expect.anything(),
+    );
   });
 
-  it('dismisses the toolbar when the document becomes hidden', () => {
-    const p = document.createElement('p');
-    p.textContent = 'Body';
-    document.body.appendChild(p);
+  it('fires the persist impression once per toolbar-open session, not per crossing (AIROBUILD-5123)', () => {
+    const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
+    const persistImpressions = (): number =>
+      postMessageSpy.mock.calls.filter(
+        ([message]) => (message as { eid?: string }).eid === 'devtools.toolbar.persist_pointer_out',
+      ).length;
 
+    const { result, paragraph } = renderWithOpenToolbar();
+    const crossDocumentEdge = (): void => {
+      act(() => {
+        paragraph.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }));
+      });
+    };
+
+    crossDocumentEdge();
+    crossDocumentEdge();
+    crossDocumentEdge();
+    expect(result.current.toolbarMode).toBe(true);
+    expect(persistImpressions()).toBe(1);
+
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    fireClick(paragraph);
+    crossDocumentEdge();
+    expect(persistImpressions()).toBe(2);
+  });
+
+  it('keeps the toolbar open when the pointer leaves the toolbar itself', () => {
+    vi.useFakeTimers();
+    const { result, paragraph } = renderWithOpenToolbar();
+
+    act(() => {
+      result.current.handleBarMouseLeave();
+      vi.advanceTimersByTime(1_000);
+    });
+
+    expect(result.current.toolbarMode).toBe(true);
+    expect(result.current.hoveredElement?.element).toBe(paragraph);
+    vi.useRealTimers();
+  });
+
+  it('keeps the toolbar open when the document becomes hidden', () => {
     const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
 
-    const editingRef = makeEditingRef();
-    const { result } = renderHook(() => useImageHoverDetection(true, editingRef));
-
-    fireClick(p);
+    const { result, paragraph } = renderWithOpenToolbar();
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    expect(result.current.toolbarMode).toBe(false);
-    expect(result.current.hoveredElement).toBeNull();
+    expect(result.current.toolbarMode).toBe(true);
+    expect(result.current.hoveredElement?.element).toBe(paragraph);
 
     visibilitySpy.mockRestore();
+  });
+
+  it('dismisses the toolbar on Escape', () => {
+    const { result } = renderWithOpenToolbar();
+
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+
+    expect(result.current.toolbarMode).toBe(false);
+    expect(result.current.hoveredElement).toBeNull();
+  });
+
+  it('leaves Escape to the focused input so quick edit keeps its own dismissal', () => {
+    const { result } = renderWithOpenToolbar();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    act(() => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+
+    expect(result.current.toolbarMode).toBe(true);
+  });
+
+  it('drops the anchor when edit mode turns off so re-entering starts clean', () => {
+    const { result, rerender } = renderWithOpenToolbar();
+
+    rerender({ active: false });
+    rerender({ active: true });
+
+    expect(result.current.toolbarMode).toBe(false);
+    expect(result.current.hoveredElement).toBeNull();
   });
 });

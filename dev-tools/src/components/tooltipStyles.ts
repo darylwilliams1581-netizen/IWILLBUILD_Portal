@@ -1,6 +1,9 @@
 /** Above `HOVER_BAR_CONTAINER_STYLES` toolbar container (z-index 10000). */
 export const FLOATING_TOOLTIP_Z_INDEX = 10001;
 
+/** Matches the `5px` vertical offset in translateY rules below. */
+export const TOOLTIP_OFFSET_PX = 5;
+
 const STYLE_ID = "airo-dev-tools-tooltip-styles";
 
 const TOOLTIP_CSS = `
@@ -11,7 +14,7 @@ const TOOLTIP_CSS = `
 
   .airo-tooltip-bubble {
     position: fixed;
-    transform: translateX(-50%) translateY(calc(-100% - 5px));
+    transform: translateX(-50%) translateY(calc(-100% - ${TOOLTIP_OFFSET_PX}px));
     z-index: ${FLOATING_TOOLTIP_Z_INDEX};
     padding: 8px 12px;
     background: #1a1a1a;
@@ -23,6 +26,11 @@ const TOOLTIP_CSS = `
     white-space: nowrap;
     pointer-events: none;
     animation: airoTooltipFadeInUp 0.15s ease-out;
+  }
+
+  .airo-tooltip-bubble[data-placement="below"] {
+    transform: translateX(-50%) translateY(${TOOLTIP_OFFSET_PX}px);
+    animation: airoTooltipFadeInDown 0.15s ease-out;
   }
 
   .airo-tooltip-bubble[data-exiting] {
@@ -41,6 +49,13 @@ const TOOLTIP_CSS = `
     border-top: 6px solid #1a1a1a;
   }
 
+  .airo-tooltip-bubble[data-placement="below"] .airo-tooltip-arrow {
+    bottom: auto;
+    top: -6px;
+    border-top: none;
+    border-bottom: 6px solid #1a1a1a;
+  }
+
   @keyframes airoTooltipFadeInUp {
     from {
       opacity: 0;
@@ -48,7 +63,18 @@ const TOOLTIP_CSS = `
     }
     to {
       opacity: 1;
-      transform: translateX(-50%) translateY(calc(-100% - 5px));
+      transform: translateX(-50%) translateY(calc(-100% - ${TOOLTIP_OFFSET_PX}px));
+    }
+  }
+
+  @keyframes airoTooltipFadeInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(${TOOLTIP_OFFSET_PX}px);
     }
   }
 
@@ -59,6 +85,11 @@ const TOOLTIP_CSS = `
     to {
       opacity: 0;
     }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .airo-tooltip-bubble,
+    .airo-tooltip-bubble[data-placement="below"] { animation: none; }
   }
 `;
 

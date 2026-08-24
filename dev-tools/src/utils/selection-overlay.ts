@@ -7,6 +7,14 @@ import {
 
 const OVERLAY_ID = "ai-select-overlay";
 const SELECTION_COLOR = "#8b5cf6";
+const BADGE_OUTSET_PX = 10;
+const BADGE_MIN_VISIBLE_Y_PX = 2;
+
+function keepRemoveBadgeOnScreen(overlay: HTMLElement, overlayTop: number): void {
+  const badge: HTMLElement | null = overlay.firstElementChild as HTMLElement | null;
+  if (!badge) return;
+  badge.style.top = `${Math.max(-BADGE_OUTSET_PX, BADGE_MIN_VISIBLE_Y_PX - overlayTop)}px`;
+}
 
 /** Position (or reposition) the overlay to match the element's visible rect */
 function positionOverlay(overlay: HTMLElement, el: HTMLElement): void {
@@ -14,10 +22,12 @@ function positionOverlay(overlay: HTMLElement, el: HTMLElement): void {
   const pad = 5;
   const width: number = b.width;
   const height: number = Math.max(0, b.bottom - b.top);
-  overlay.style.top = `${b.top - pad}px`;
+  const top: number = b.top - pad;
+  overlay.style.top = `${top}px`;
   overlay.style.left = `${b.left - pad}px`;
   overlay.style.width = `${width + pad * 2}px`;
   overlay.style.height = `${height + pad * 2}px`;
+  keepRemoveBadgeOnScreen(overlay, top);
 }
 
 /** Inject pulse keyframe once */
@@ -193,9 +203,9 @@ export function addNumberedOverlay(el: HTMLElement, number: number, onRemove?: (
   const overlay = document.createElement("div");
   overlay.id = `${NUMBERED_OVERLAY_PREFIX}${number}`;
   overlay.style.cssText = createOverlayStyle();
-  positionOverlay(overlay, el);
   const handleRemove = onRemove ?? (() => removeNumberedOverlay(number));
   overlay.appendChild(createNumberBadge(number, handleRemove));
+  positionOverlay(overlay, el);
   document.body.appendChild(overlay);
   numberedOverlays.set(number, { overlay, el });
 }

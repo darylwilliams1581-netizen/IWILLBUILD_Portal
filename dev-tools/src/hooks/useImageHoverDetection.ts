@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { flushSync } from "react-dom";
 import { isDevToolsElement, isContentElement, detectImage, getMediaSlotPath, isInsideNavSurface } from "../utils/element-detection";
 import { isTouchDevice } from "../utils/device";
+import { trackEventBus } from "../utils/eventBus";
 
 export interface HoveredImage {
   element: HTMLElement;
@@ -227,12 +228,14 @@ export function useImageHoverDetection(
   const hoveredElementRef = useRef<HoveredElement | null>(null);
   const showBarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideBarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistImpressionSentRef = useRef(false);
 
   // Ref must update in the same tick as state — not in useEffect (runs after paint)
   // or even useLayoutEffect (still after the setState call returns). Event handlers
   // and flushSync commits read toolbarModeRef immediately after setToolbarMode.
   const setToolbarMode = useCallback((value: boolean) => {
     toolbarModeRef.current = value;
+    if (!value) persistImpressionSentRef.current = false;
     setToolbarModeState(value);
   }, []);
 
@@ -383,13 +386,20 @@ export function useImageHoverDetection(
       }, delay);
     };
 
+    const trackToolbarSurvivedDocumentExit = (): void => {
+      // Once per toolbar-open session, not per boundary crossing: a cursor can
+      // cross the iframe edge repeatedly while the same toolbar stays open.
+      if (persistImpressionSentRef.current) return;
+      persistImpressionSentRef.current = true;
+      trackEventBus.impression("devtools.toolbar.persist_pointer_out", {
+        surface: hoveredImageRef.current ? "image" : "text",
+      });
+    };
+
     const handleMouseOut = (e: MouseEvent) => {
       if (toolbarModeRef.current) {
-        // Keep the bar open for in-document moves (e.g. toward the toolbar over a
-        // neighbor element), but dismiss when the pointer leaves the document
-        // (iframe edge, tab switch without bar mouseleave, etc.).
         if (pointerLeftDocument(e.relatedTarget)) {
-          clearToolbarAnchor();
+          trackToolbarSurvivedDocumentExit();
         }
         return;
       }
@@ -506,25 +516,31 @@ export function useImageHoverDetection(
       });
     };
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && toolbarModeRef.current) {
-        clearToolbarAnchor();
-      }
+    const ownsItsOwnEscape = (target: HTMLElement | null): boolean => {
+      if (!target) return false;
+      const tag = target.tagName.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || isDevToolsElement(target);
+    };
+
+    const handleEscapeDismiss = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (!toolbarModeRef.current) return;
+      if (ownsItsOwnEscape(e.target as HTMLElement | null)) return;
+      clearToolbarAnchor();
     };
 
     document.addEventListener("mouseover", handleMouseOver);
     document.addEventListener("mouseout", handleMouseOut);
     document.addEventListener("mousedown", handleMouseDown, true);
     document.addEventListener("click", handleClick, true);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("keydown", handleEscapeDismiss);
     return () => {
       document.removeEventListener("mouseover", handleMouseOver);
       document.removeEventListener("mouseout", handleMouseOut);
       document.removeEventListener("mousedown", handleMouseDown, true);
       document.removeEventListener("click", handleClick, true);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (showBarTimerRef.current) clearTimeout(showBarTimerRef.current);
-      if (hideBarTimerRef.current) clearTimeout(hideBarTimerRef.current);
+      document.removeEventListener("keydown", handleEscapeDismiss);
+      clearToolbarAnchor();
     };
   }, [isEditModeActive, editingStateRef, updateHoveredImage, updateHoveredElement, setToolbarMode, clearToolbarAnchor]);
 
@@ -536,6 +552,7 @@ export function useImageHoverDetection(
   }, []);
 
   const handleBarMouseLeave = useCallback(() => {
+    if (toolbarModeRef.current) return;
     hideBarTimerRef.current = setTimeout(clearToolbarAnchor, 300);
   }, [clearToolbarAnchor]);
 
