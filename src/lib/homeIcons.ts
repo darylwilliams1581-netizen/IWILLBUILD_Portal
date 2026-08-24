@@ -79,7 +79,7 @@ export const TOOLS_ICON_DEFS: HomeIconDef[] = [
   { key: 'studio_docs',   label: 'Doc Studio',       icon: FileText,         href: '/studio/documents',           bg: 'bg-cyan-600',    fg: 'text-white', group: 'management' },
   { key: 'forms',         label: 'Form',             icon: FileText,         href: '/studio/forms',               bg: 'bg-fuchsia-600', fg: 'text-white', group: 'tools' },
   { key: 'studio_forms',  label: 'Form Studio',      icon: ClipboardList,    href: '/studio/forms',               bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
-  { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '?panel=progress-picker',      bg: 'bg-green-600',   fg: 'text-white', group: 'tools' },
+  { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '/work?workTab=progress',      bg: 'bg-green-600',   fg: 'text-white', group: 'tools' },
   { key: 'files',         label: 'Files',            icon: FolderOpen,       href: '/files',                      bg: 'bg-violet-700',  fg: 'text-white', group: 'tools' },
   { key: 'estimating',    label: 'Estimating',       icon: Calculator,       href: '/estimating',                 bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
   { key: 'poster',        label: 'Safety Posters',   icon: Image,            href: '/safety/posters',             bg: 'bg-pink-500',    fg: 'text-white', group: 'tools' },
