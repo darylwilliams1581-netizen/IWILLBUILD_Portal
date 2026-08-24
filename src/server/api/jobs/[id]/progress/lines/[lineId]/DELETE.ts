@@ -1,11 +1,14 @@
 /**
  * DELETE /api/jobs/:id/progress/lines/:lineId
- * Delete a progress line. Triple-scoped: line + job + company.
+ * Delete a progress activity. Triple-scoped: line + job + company.
+ *
+ * Guard: if the activity is referenced by any PO line, returns 409 CONFLICT
+ * with code PO_REFERENCE so the UI can show a clear message.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../../db/client.js';
 import { jobProgressLines, jobs, profiles } from '../../../../../../db/schema.js';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -30,6 +33,23 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    // PO reference guard — check job_purchase_order_lines.progress_line_id
+    const [poRefRows] = await db.execute(sql`
+      SELECT COUNT(*) AS n
+      FROM job_purchase_order_lines pol
+      INNER JOIN job_purchase_orders po ON po.id = pol.purchase_order_id
+      WHERE pol.progress_line_id = ${lineId}
+        AND po.company_id = ${profile.companyId}
+        AND po.job_id = ${jobId}
+    `);
+    const poRefCount = Number((poRefRows as unknown as Array<{ n: number }>)[0]?.n ?? 0);
+    if (poRefCount > 0) {
+      return res.status(409).json({
+        error: 'This activity is referenced by a Purchase Order and cannot be deleted. Edit the PO to remove the reference first.',
+        code: 'PO_REFERENCE',
+      });
+    }
+
     await db.delete(jobProgressLines).where(
       and(
         eq(jobProgressLines.id, lineId),
@@ -38,15 +58,15 @@ export default async function handler(req: Request, res: Response) {
       ),
     );
 
-    const lines = await db
+    const activities = await db
       .select()
       .from(jobProgressLines)
       .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
       .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
 
-    return res.json({ lines });
+    return res.json({ activities });
   } catch (err) {
     console.error('DELETE /api/jobs/:id/progress/lines/:lineId error:', err);
-    return res.status(500).json({ error: 'Failed to delete progress line' });
+    return res.status(500).json({ error: 'Failed to delete activity' });
   }
 }

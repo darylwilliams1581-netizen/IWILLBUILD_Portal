@@ -471,8 +471,14 @@ import jobs_id_photos_photoId_report_image_get_430 from "./api/jobs/[id]/photos/
 import jobs_id_progress_get_431 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_432 from "./api/jobs/[id]/progress/PUT";
 import jobs_id_progress_lines_post from "./api/jobs/[id]/progress/lines/POST";
+import jobs_id_progress_lines_reorder_post from "./api/jobs/[id]/progress/lines/reorder/POST";
 import jobs_id_progress_lines_lineid_patch from "./api/jobs/[id]/progress/lines/[lineId]/PATCH";
 import jobs_id_progress_lines_lineid_delete from "./api/jobs/[id]/progress/lines/[lineId]/DELETE";
+import jobs_id_progress_lines_lineid_duplicate_post from "./api/jobs/[id]/progress/lines/[lineId]/duplicate/POST";
+import jobs_id_progress_sections_post from "./api/jobs/[id]/progress/sections/POST";
+import jobs_id_progress_sections_reorder_post from "./api/jobs/[id]/progress/sections/reorder/POST";
+import jobs_id_progress_sections_sectionid_patch from "./api/jobs/[id]/progress/sections/[sectionId]/PATCH";
+import jobs_id_progress_sections_sectionid_delete from "./api/jobs/[id]/progress/sections/[sectionId]/DELETE";
 import jobs_id_progress_export_csv_get_433 from "./api/jobs/[id]/progress/export-csv/GET";
 import jobs_id_progress_report_get_434 from "./api/jobs/[id]/progress/report/GET";
 import jobs_id_progress_report_put_435 from "./api/jobs/[id]/progress/report/PUT";
@@ -1480,6 +1486,8 @@ async function runStartupMigrations() {
     { table: 'job_progress_lines', column: 'start_date',  definition: 'DATE NULL' },
     { table: 'job_progress_lines', column: 'end_date',    definition: 'DATE NULL' },
     { table: 'job_progress_lines', column: 'sort_order',  definition: 'INT NOT NULL DEFAULT 0' },
+    // ── job_progress_lines: section membership (PoW Gate 2) ──────────────────
+    { table: 'job_progress_lines', column: 'section_id',  definition: 'INT NULL' },
     // ── job_form_submissions: external share fields ───────────────────────────
     { table: 'job_form_submissions', column: 'submitted_at',              definition: 'DATETIME NULL' },
     { table: 'job_form_submissions', column: 'external_submitter_name',   definition: 'VARCHAR(255) NULL' },
@@ -1884,6 +1892,8 @@ async function runStartupMigrations() {
     // ── Purchase Orders ────────────────────────────────────────────────────────
     { name: 'job_purchase_orders', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_orders (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, contractor_id INT NULL, assigned_to_type VARCHAR(20) NOT NULL DEFAULT 'internal', assigned_to_name VARCHAR(255) NULL, trade_type VARCHAR(100) NULL, po_number VARCHAR(50) NOT NULL, title VARCHAR(255) NOT NULL DEFAULT '', instructions TEXT NULL, start_date DATE NULL, finish_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, cancelled_note TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
     { name: 'job_purchase_order_lines', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_order_lines (id INT AUTO_INCREMENT PRIMARY KEY, purchase_order_id INT NOT NULL, progress_line_id INT NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_po (purchase_order_id))" },
+    // ── Program of Works sections (PoW Gate 2) ────────────────────────────────
+    { name: 'job_progress_sections', ddl: "CREATE TABLE IF NOT EXISTS job_progress_sections (id INT AUTO_INCREMENT PRIMARY KEY, job_id INT NOT NULL, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, description TEXT NULL, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_section_company_job (company_id, job_id, sort_order, id))" },
     // ── PO sequence counter: one row per company, atomic increment, no reuse on delete ──
     { name: 'po_sequences', ddl: "CREATE TABLE IF NOT EXISTS po_sequences (company_id INT NOT NULL, last_seq INT NOT NULL DEFAULT 0, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (company_id), UNIQUE KEY uq_company (company_id))" },
     // ── Job Cost Ledger — single source of truth for all job financial events ──
@@ -3567,9 +3577,15 @@ app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace
 app.get("/api/jobs/:id/photos/:photoId/report-image", jobs_id_photos_photoId_report_image_get_430);
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_431);
 app.put("/api/jobs/:id/progress", jobs_id_progress_put_432);
+app.post("/api/jobs/:id/progress/sections/reorder", jobs_id_progress_sections_reorder_post);
+app.post("/api/jobs/:id/progress/sections", jobs_id_progress_sections_post);
+app.patch("/api/jobs/:id/progress/sections/:sectionId", jobs_id_progress_sections_sectionid_patch);
+app.delete("/api/jobs/:id/progress/sections/:sectionId", jobs_id_progress_sections_sectionid_delete);
+app.post("/api/jobs/:id/progress/lines/reorder", jobs_id_progress_lines_reorder_post);
 app.post("/api/jobs/:id/progress/lines", jobs_id_progress_lines_post);
 app.patch("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineid_patch);
 app.delete("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineid_delete);
+app.post("/api/jobs/:id/progress/lines/:lineId/duplicate", jobs_id_progress_lines_lineid_duplicate_post);
 app.get("/api/jobs/:id/progress/export-csv", jobs_id_progress_export_csv_get_433);
 app.get("/api/jobs/:id/progress/report", jobs_id_progress_report_get_434);
 app.put("/api/jobs/:id/progress/report", jobs_id_progress_report_put_435);

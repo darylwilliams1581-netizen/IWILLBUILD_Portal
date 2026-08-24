@@ -1,19 +1,17 @@
 /**
  * GET /api/jobs/:id/progress/export-csv
- * Downloads a CSV of all progress lines for a job.
+ * Downloads a CSV of the Program of Works for a job.
+ *
+ * Columns: Seq, Section, Activity, Start, Finish, Duration, Progress %, Status, Responsible, Notes
+ * Financial fields (Qty, Unit, Rate) are intentionally excluded.
+ * CSV injection guard applied to all string cells.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
-import { jobProgressLines, jobs, profiles } from '../../../../../db/schema.js';
+import { jobProgressLines, jobProgressSections, jobs, profiles } from '../../../../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
-
-function esc(v: string | number | null | undefined): string {
-  if (v === null || v === undefined) return '';
-  const s = String(v);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
+import { calcStatus, calcDuration, csvEsc, todayISO } from '../../../../../../lib/pow-types.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -36,33 +34,48 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const lines = await db
-      .select()
-      .from(jobProgressLines)
-      .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
+    const [sections, activities] = await Promise.all([
+      db.select().from(jobProgressSections)
+        .where(and(eq(jobProgressSections.jobId, jobId), eq(jobProgressSections.companyId, profile.companyId)))
+        .orderBy(asc(jobProgressSections.sortOrder), asc(jobProgressSections.id)),
+      db.select().from(jobProgressLines)
+        .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
+        .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id)),
+    ]);
 
-    const headerRow = ['Description', 'Qty', 'Unit', 'Rate', '% Complete', 'Progress Note'];
+    const sectionMap = new Map(sections.map((s) => [s.id, s.title]));
+    const today = todayISO();
+
+    const headerRow = ['Seq', 'Section', 'Activity', 'Start', 'Finish', 'Duration', 'Progress %', 'Status', 'Responsible', 'Notes'];
     const rows = [headerRow.join(',')];
 
-    for (const l of lines) {
+    activities.forEach((a, idx) => {
+      const sectionTitle = a.sectionId ? (sectionMap.get(a.sectionId) ?? 'Unsectioned') : 'Unsectioned';
+      const dur = calcDuration(a.startDate, a.endDate);
+      const durStr = dur !== null ? `${dur} day${dur === 1 ? '' : 's'}` : '';
+      const status = calcStatus(a.percentComplete, a.endDate, today);
+      const responsible = a.assignedToName ?? a.tradeType ?? '';
       rows.push([
-        esc(l.description),
-        esc(l.quantity),
-        esc(l.unit),
-        esc(l.rate),
-        esc(l.percentComplete),
-        esc(l.progressNote),
+        csvEsc(idx + 1),
+        csvEsc(sectionTitle),
+        csvEsc(a.description),
+        csvEsc(a.startDate ?? ''),
+        csvEsc(a.endDate ?? ''),
+        csvEsc(durStr),
+        csvEsc(a.percentComplete),
+        csvEsc(status),
+        csvEsc(responsible),
+        csvEsc(a.progressNote ?? ''),
       ].join(','));
-    }
+    });
 
     const csv = rows.join('\r\n');
-    const filename = `job-${jobId}-progress.csv`;
-    res.setHeader('Content-Type', 'text/csv');
+    const filename = `job-${jobId}-program-of-works.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    return res.send(csv);
+    res.send('\uFEFF' + csv); // BOM for Excel
   } catch (err) {
     console.error('GET /api/jobs/:id/progress/export-csv error:', err);
-    return res.status(500).json({ error: 'Export failed' });
+    res.status(500).json({ error: 'Failed to export CSV' });
   }
 }

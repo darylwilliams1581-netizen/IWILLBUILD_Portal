@@ -1,6 +1,15 @@
+/**
+ * GET /api/jobs/:id/progress
+ * Returns the full Program of Works payload for a job:
+ *   { sections: ProgressSection[], activities: ProgressActivity[] }
+ *
+ * Sections are ordered by sort_order, id.
+ * Activities are ordered by sort_order, id.
+ * Activities with sectionId = null appear in the "Unsectioned" group.
+ */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
-import { jobProgressLines, jobs, profiles } from '../../../../db/schema.js';
+import { jobProgressLines, jobProgressSections, jobs, profiles } from '../../../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 
@@ -20,17 +29,26 @@ export default async function handler(req: Request, res: Response) {
     const jobId = parseInt(String(req.params.id), 10);
     if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
 
-    const job = await db.query.jobs.findFirst({ where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)) });
+    const job = await db.query.jobs.findFirst({
+      where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)),
+    });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const lines = await db
-      .select()
-      .from(jobProgressLines)
-      .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      // Primary: saved sort_order; secondary: id for deterministic ordering of rows with equal sort_order (e.g. all-zero on first load)
-      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
+    const [sections, activities] = await Promise.all([
+      db
+        .select()
+        .from(jobProgressSections)
+        .where(and(eq(jobProgressSections.jobId, jobId), eq(jobProgressSections.companyId, profile.companyId)))
+        .orderBy(asc(jobProgressSections.sortOrder), asc(jobProgressSections.id)),
+      db
+        .select()
+        .from(jobProgressLines)
+        .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
+        .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id)),
+    ]);
 
-    res.json({ lines });
+    // Legacy compatibility: also expose as `lines` for any existing consumers
+    res.json({ sections, activities, lines: activities });
   } catch (err) {
     console.error('GET /api/jobs/:id/progress error:', err);
     res.status(500).json({ error: 'Failed to fetch progress' });

@@ -1,12 +1,15 @@
 /**
  * GET /api/jobs/:id/progress/report/pdf
- * Generates a Progress Report PDF for the job.
+ * Generates a Program of Works Progress Report PDF.
+ * Columns: Seq, Section, Activity, Start, Finish, Duration, Progress %, Status
+ * Financial fields (Qty, Unit, Rate) are excluded.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../../db/client.js';
-import { jobs, profiles, jobProgressLines } from '../../../../../../db/schema.js';
+import { jobs, profiles, jobProgressLines, jobProgressSections } from '../../../../../../db/schema.js';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
+import { calcStatus, calcDuration, todayISO } from '../../../../../../../lib/pow-types.js';
 
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
@@ -32,11 +35,15 @@ export default async function handler(req: Request, res: Response) {
     const job = await db.query.jobs.findFirst({ where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)) });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const lines = await db
-      .select()
-      .from(jobProgressLines)
-      .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
-      .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id));
+    const [sections, lines] = await Promise.all([
+      db.select().from(jobProgressSections)
+        .where(and(eq(jobProgressSections.jobId, jobId), eq(jobProgressSections.companyId, profile.companyId)))
+        .orderBy(asc(jobProgressSections.sortOrder), asc(jobProgressSections.id)),
+      db.select().from(jobProgressLines)
+        .where(and(eq(jobProgressLines.jobId, jobId), eq(jobProgressLines.companyId, profile.companyId)))
+        .orderBy(asc(jobProgressLines.sortOrder), asc(jobProgressLines.id)),
+    ]);
+    const sectionMap = new Map(sections.map((s) => [s.id, s.title]));
 
     // Correct destructuring: db.execute returns [rows, fields]
     const [reportRows] = await db.execute(sql`
@@ -166,7 +173,7 @@ export default async function handler(req: Request, res: Response) {
     rect(page, MARGIN + 6, y - 2, barW, 10, LIGHT);
     rect(page, MARGIN + 6, y - 2, barW * overallPct / 100, 10, overallPct === 100 ? CYAN : ORANGE);
     text(page, `${overallPct}%`, MARGIN + barW + 12, y + 1, boldFont, 10, DARK);
-    text(page, `${lines.length} lines · ${lines.filter(l => l.percentComplete === 100).length} complete`, MARGIN + 6, y - 16, regularFont, 8, MUTED);
+    text(page, `${lines.length} activities · ${lines.filter(l => l.percentComplete === 100).length} complete`, MARGIN + 6, y - 16, regularFont, 8, MUTED);
     y -= 32;
 
     // Achievements
@@ -192,19 +199,30 @@ export default async function handler(req: Request, res: Response) {
       y -= 8;
     }
 
-    // ── Scope Progress table ───────────────────────────────────────────────────
+    // ── Program of Works table ─────────────────────────────────────────────────
     y -= 4;
-    y = sectionHead(page, y, 'Scope Progress');
+    y = sectionHead(page, y, 'Program of Works');
 
-    const COL_DESC = MARGIN + 6;
-    const COL_NOTE = PAGE_W - MARGIN - 180;
-    const COL_PCT  = PAGE_W - MARGIN - 30;
+    const today = todayISO();
+    const COL_SEQ   = MARGIN + 6;
+    const COL_SEC   = MARGIN + 24;
+    const COL_DESC  = MARGIN + 90;
+    const COL_START = PAGE_W - MARGIN - 200;
+    const COL_FIN   = PAGE_W - MARGIN - 150;
+    const COL_DUR   = PAGE_W - MARGIN - 100;
+    const COL_PCT   = PAGE_W - MARGIN - 55;
+    const COL_STAT  = PAGE_W - MARGIN - 30;
 
     // Table header row
     rect(page, MARGIN, y - 2, CONTENT_W, 14, GRAY_HEADER);
-    text(page, 'Description', COL_DESC, y + 1, boldFont, 8, DARK);
-    text(page, 'Note', COL_NOTE, y + 1, boldFont, 8, DARK);
-    text(page, '%', COL_PCT, y + 1, boldFont, 8, DARK);
+    text(page, '#',        COL_SEQ,   y + 1, boldFont, 7, DARK);
+    text(page, 'Section',  COL_SEC,   y + 1, boldFont, 7, DARK);
+    text(page, 'Activity', COL_DESC,  y + 1, boldFont, 7, DARK);
+    text(page, 'Start',    COL_START, y + 1, boldFont, 7, DARK);
+    text(page, 'Finish',   COL_FIN,   y + 1, boldFont, 7, DARK);
+    text(page, 'Dur',      COL_DUR,   y + 1, boldFont, 7, DARK);
+    text(page, '%',        COL_PCT,   y + 1, boldFont, 7, DARK);
+    text(page, 'Status',   COL_STAT,  y + 1, boldFont, 7, DARK);
     y -= 16;
 
     for (let i = 0; i < lines.length; i++) {
@@ -216,32 +234,49 @@ export default async function handler(req: Request, res: Response) {
         text(page, 'PROGRESS REPORT (continued)', MARGIN, PAGE_H - 18, boldFont, 10, WHITE);
         y = PAGE_H - 50;
         rect(page, MARGIN, y - 2, CONTENT_W, 14, GRAY_HEADER);
-        text(page, 'Description', COL_DESC, y + 1, boldFont, 8, DARK);
-        text(page, 'Note', COL_NOTE, y + 1, boldFont, 8, DARK);
-        text(page, '%', COL_PCT, y + 1, boldFont, 8, DARK);
+        text(page, '#',        COL_SEQ,   y + 1, boldFont, 7, DARK);
+        text(page, 'Section',  COL_SEC,   y + 1, boldFont, 7, DARK);
+        text(page, 'Activity', COL_DESC,  y + 1, boldFont, 7, DARK);
+        text(page, 'Start',    COL_START, y + 1, boldFont, 7, DARK);
+        text(page, 'Finish',   COL_FIN,   y + 1, boldFont, 7, DARK);
+        text(page, 'Dur',      COL_DUR,   y + 1, boldFont, 7, DARK);
+        text(page, '%',        COL_PCT,   y + 1, boldFont, 7, DARK);
+        text(page, 'Status',   COL_STAT,  y + 1, boldFont, 7, DARK);
         y -= 16;
       }
 
       if (i % 2 === 0) rect(page, MARGIN, y - 3, CONTENT_W, 13, LIGHT_GRAY);
 
-      // Truncate description
-      const maxDescW = COL_NOTE - COL_DESC - 8;
-      let desc = String(lines[i].description ?? '');
-      while (desc.length > 0 && regularFont.widthOfTextAtSize(desc, 8) > maxDescW) desc = desc.slice(0, -1);
-      if (desc.length < String(lines[i].description ?? '').length) desc += '…';
-      text(page, desc, COL_DESC, y, regularFont, 8, DARK);
-
-      // Truncate note
-      const maxNoteW = COL_PCT - COL_NOTE - 8;
-      let note = String(lines[i].progressNote ?? '');
-      while (note.length > 0 && regularFont.widthOfTextAtSize(note, 8) > maxNoteW) note = note.slice(0, -1);
-      if (note.length < String(lines[i].progressNote ?? '').length) note += '…';
-      text(page, note, COL_NOTE, y, regularFont, 8, MUTED);
-
-      // % with colour
-      const pct = lines[i].percentComplete ?? 0;
+      const a = lines[i];
+      const sectionTitle = a.sectionId ? (sectionMap.get(a.sectionId) ?? '') : '';
+      const dur = calcDuration(a.startDate, a.endDate);
+      const durStr = dur !== null ? `${dur}d` : '';
+      const status = calcStatus(a.percentComplete, a.endDate, today);
+      const pct = a.percentComplete ?? 0;
       const pctColor = pct === 100 ? CYAN : pct >= 50 ? ORANGE : RED;
-      text(page, `${pct}%`, COL_PCT, y, boldFont, 8, pctColor);
+      const statusColor = status === 'Complete' ? CYAN : status === 'Overdue' ? RED : DARK;
+
+      text(page, String(i + 1), COL_SEQ, y, regularFont, 7, MUTED);
+
+      // Truncate section
+      let sec = sectionTitle;
+      const maxSecW = COL_DESC - COL_SEC - 4;
+      while (sec.length > 0 && regularFont.widthOfTextAtSize(sec, 7) > maxSecW) sec = sec.slice(0, -1);
+      if (sec.length < sectionTitle.length) sec += '…';
+      text(page, sec, COL_SEC, y, regularFont, 7, MUTED);
+
+      // Truncate description
+      const maxDescW = COL_START - COL_DESC - 4;
+      let desc = String(a.description ?? '');
+      while (desc.length > 0 && regularFont.widthOfTextAtSize(desc, 7) > maxDescW) desc = desc.slice(0, -1);
+      if (desc.length < String(a.description ?? '').length) desc += '…';
+      text(page, desc, COL_DESC, y, regularFont, 7, DARK);
+
+      text(page, a.startDate ?? '', COL_START, y, regularFont, 7, MUTED);
+      text(page, a.endDate ?? '',   COL_FIN,   y, regularFont, 7, MUTED);
+      text(page, durStr,            COL_DUR,   y, regularFont, 7, MUTED);
+      text(page, `${pct}%`,         COL_PCT,   y, boldFont,    7, pctColor);
+      text(page, status,            COL_STAT,  y, boldFont,    7, statusColor);
 
       y -= 13;
     }

@@ -124,10 +124,15 @@ export default async function handler(req: Request, res: Response) {
     // ── 2. Parallel data fetches ──────────────────────────────────────────────
     const [progressRows, delayRows, incidentRows, estimateRows] = await Promise.all([
       sections.progress
-        ? db.execute(sql`SELECT description, quantity, unit, rate, percent_complete, progress_note
-                         FROM job_progress_lines
-                         WHERE job_id = ${jobId} AND company_id = ${companyId}
-                         ORDER BY id ASC`)
+        ? db.execute(sql`SELECT jpl.id, jpl.description, jpl.percent_complete, jpl.progress_note,
+                                jpl.start_date, jpl.end_date, jpl.sort_order,
+                                jpl.assigned_to_name, jpl.trade_type,
+                                jps.title AS section_title
+                         FROM job_progress_lines jpl
+                         LEFT JOIN job_progress_sections jps
+                           ON jps.id = jpl.section_id AND jps.company_id = ${companyId}
+                         WHERE jpl.job_id = ${jobId} AND jpl.company_id = ${companyId}
+                         ORDER BY jpl.sort_order ASC, jpl.id ASC`)
             .then(([r]) => (r as Array<Record<string, unknown>>) ?? [])
         : Promise.resolve([]),
 
@@ -195,22 +200,32 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Progress ──────────────────────────────────────────────────────────────
     if (sections.progress) {
-      blocks.push(heading('Progress Summary'));
+      blocks.push(heading('Program of Works'));
       if ((progressRows as Array<Record<string, unknown>>).length === 0) {
-        blocks.push(textBlock('No progress lines recorded for this job.'));
+        blocks.push(textBlock('No activities recorded for this job.'));
       } else {
-        const pCols = ['Description', 'Qty', 'Unit', '% Complete', 'Note'];
+        const pCols = ['#', 'Section', 'Activity', 'Start', 'Finish', '% Complete', 'Status', 'Responsible'];
+        const today = new Date().toISOString().slice(0, 10);
         blocks.push(staticTable(
           pCols.map(h => ({ id: colId(h), header: h })),
-          (progressRows as Array<Record<string, unknown>>).map(p =>
-            makeRow(pCols, [
+          (progressRows as Array<Record<string, unknown>>).map((p, idx) => {
+            const pct = Number(p.percent_complete ?? 0);
+            const endDate = p.end_date ? String(p.end_date).slice(0, 10) : null;
+            let status = 'Not Started';
+            if (pct >= 100) status = 'Complete';
+            else if (endDate && endDate < today) status = 'Overdue';
+            else if (pct > 0) status = 'In Progress';
+            return makeRow(pCols, [
+              String(idx + 1),
+              String(p.section_title ?? 'Unsectioned'),
               String(p.description ?? ''),
-              String(p.quantity ?? '1'),
-              String(p.unit ?? ''),
-              `${String(p.percent_complete ?? 0)}%`,
-              String(p.progress_note ?? ''),
-            ])
-          )
+              p.start_date ? String(p.start_date).slice(0, 10) : '',
+              endDate ?? '',
+              `${pct}%`,
+              status,
+              String(p.assigned_to_name ?? p.trade_type ?? ''),
+            ]);
+          })
         ));
       }
       blocks.push(spacer(16));
