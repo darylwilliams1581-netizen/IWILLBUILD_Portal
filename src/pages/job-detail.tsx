@@ -160,7 +160,6 @@ export default function JobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [costSummary, setCostSummary] = useState<{
     actual: number;
@@ -475,10 +474,8 @@ export default function JobDetailPage() {
   function switchTab(tab: Tab) {
     setActiveTab(tab);
     setStatusOpen(false);
-    setMobileNavOpen(false);
   }
   const statusStyle = job ? getStatusStyle(job.status) : null;
-  const activeNavItem = ALL_NAV_ITEMS.find((i: NavItem) => i.key === activeTab);
   return <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
@@ -714,32 +711,42 @@ export default function JobDetailPage() {
                   </div>}
               </div>
 
-              {/* ── Mobile section selector ── */}
-              <div className="md:hidden bg-white border-b border-border px-4 py-2 shrink-0">
-                <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 border border-border rounded-xl text-sm font-semibold text-foreground bg-white hover:bg-muted transition-colors">
-                  <span className="flex items-center gap-2">
-                    {activeNavItem && activeNavItem.icon && <activeNavItem.icon size={15} className="text-primary" />}
-                    {activeNavItem?.label ?? 'Select section'}
-                  </span>
-                  <ChevronDown size={15} className={`text-muted-foreground transition-transform ${mobileNavOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {mobileNavOpen && <>
-                    <div className="fixed inset-0 z-40" onClick={() => setMobileNavOpen(false)} />
-                    <div className="absolute left-4 right-4 mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-2 max-h-80 overflow-y-auto">
-                      {NAV_GROUPS.map(group => <div key={group.label}>
-                          <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</p>
-                          {group.items.map(({
-                    key,
-                    label,
-                    icon: Icon
-                  }) => <button key={key} onClick={() => switchTab(key)} className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${activeTab === key ? 'text-primary font-bold bg-violet-50' : 'text-foreground hover:bg-muted'}`}>
-                              <Icon size={14} className={activeTab === key ? 'text-primary' : 'text-muted-foreground'} />
-                              {label}
-                              {activeTab === key && <Check size={12} className="ml-auto text-primary" />}
-                            </button>)}
-                        </div>)}
-                    </div>
-                  </>}
+              {/* ── Section pill nav (mobile + tablet — hidden on desktop where side nav is used) ── */}
+              <div
+                className="md:hidden bg-white border-b border-border shrink-0"
+                data-testid="job-pill-nav"
+              >
+                {/* Horizontally scrollable pill row — no page-level overflow */}
+                <div
+                  className="flex overflow-x-auto scrollbar-none px-3 py-2 gap-2"
+                  role="tablist"
+                  aria-label="Job sections"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                  {ALL_NAV_ITEMS.map(({ key, label, icon: Icon }) => {
+                    const active = activeTab === key;
+                    return (
+                      <button
+                        key={key}
+                        role="tab"
+                        aria-selected={active}
+                        aria-label={label}
+                        onClick={() => switchTab(key)}
+                        data-testid={`job-pill-${key}`}
+                        className={[
+                          'flex items-center gap-1.5 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors',
+                          'min-h-[44px] min-w-[44px]',
+                          active
+                            ? 'bg-primary border-primary text-white shadow-sm'
+                            : 'bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5',
+                        ].join(' ')}
+                      >
+                        <Icon size={13} className="shrink-0" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* ── Two-column layout: side nav + content ── */}

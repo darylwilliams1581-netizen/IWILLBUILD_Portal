@@ -47,12 +47,13 @@ const toolsTab = read('src/components/work/WorkToolsTab.tsx');
 // ── Tab mapping ───────────────────────────────────────────────────────────────
 
 describe('Work tab mapping', () => {
-  const validTabs = ['tasks', 'notes', 'delays', 'progress', 'attendance'];
-
-  it('defines all 5 valid tabs in TABS array', () => {
-    for (const tab of validTabs) {
-      expect(workPage).toContain(`id: '${tab}'`);
-    }
+  it('Work page is now a Jobs register — no TABS array for job-feature tabs', () => {
+    // Tasks, Notes, Delays, Progress, Attendance are on the Job detail page, not here
+    expect(workPage).not.toContain(`id: 'tasks'`);
+    expect(workPage).not.toContain(`id: 'notes'`);
+    expect(workPage).not.toContain(`id: 'delays'`);
+    expect(workPage).not.toContain(`id: 'progress'`);
+    expect(workPage).not.toContain(`id: 'attendance'`);
   });
 
   it('Tools is a dropdown button — not a tab in TABS', () => {
@@ -61,19 +62,12 @@ describe('Work tab mapping', () => {
     expect(workPage).toContain('ToolsDropdown');
   });
 
-  it('VALID_TABS set is built from TABS', () => {
-    expect(workPage).toContain('VALID_TABS');
-    expect(workPage).toContain("new Set<string>(TABS.map((t) => t.id))");
+  it('Work page renders a Jobs list (JobsList component)', () => {
+    expect(workPage).toContain('JobsList');
   });
 
-  it('unknown tab falls back to tasks', () => {
-    // The fallback expression: VALID_TABS.has(rawTab) ? ... : 'tasks'
-    expect(workPage).toContain("'tasks'");
-    expect(workPage).toContain('VALID_TABS.has(rawTab)');
-  });
-
-  it('active tab uses aria-current="page"', () => {
-    expect(workPage).toContain('aria-current={active ? \'page\' : undefined}');
+  it('Work page has a search input for filtering jobs', () => {
+    expect(workPage).toContain("placeholder=\"Search jobs");
   });
 
   it('tab nav has overflow-x-auto for mobile scrolling', () => {
@@ -256,12 +250,13 @@ describe('Tab content scroll ownership', () => {
 // ── Refresh / Back-Forward ────────────────────────────────────────────────────
 
 describe('Refresh and Back/Forward behaviour', () => {
-  it('switchTab uses replace:true to avoid polluting history', () => {
-    expect(workPage).toContain('replace: true');
+  it('active tab is derived from searchParams (not local state)', () => {
+    // The Work page reads workTab from searchParams for Tools visibility
+    expect(workPage).toContain("searchParams.get('workTab')");
   });
 
-  it('active tab is derived from searchParams (not local state)', () => {
-    expect(workPage).toContain("searchParams.get('workTab')");
+  it('Work page uses useSearchParams for URL state', () => {
+    expect(workPage).toContain('useSearchParams');
   });
 });
 

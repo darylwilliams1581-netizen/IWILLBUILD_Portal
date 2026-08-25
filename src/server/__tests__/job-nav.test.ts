@@ -242,12 +242,28 @@ describe('Job nav — no duplicate entries', () => {
   });
 });
 
-// ── 12. Mobile access — both nav renderers use NAV_GROUPS ────────────────────
+// ── 12. Mobile access — pill nav uses ALL_NAV_ITEMS ─────────────────────────
 
 describe('Job nav — mobile access', () => {
-  it('NAV_GROUPS is used in the mobile drawer', () => {
-    // Both the mobile dropdown and desktop aside map over NAV_GROUPS
-    const usages = (jobDetailSrc.match(/NAV_GROUPS\.map/g) ?? []).length;
-    expect(usages).toBeGreaterThanOrEqual(2);
+  it('ALL_NAV_ITEMS is used in the mobile pill nav', () => {
+    // The pill nav maps over ALL_NAV_ITEMS (flattened from NAV_GROUPS)
+    expect(jobDetailSrc).toContain('ALL_NAV_ITEMS');
+    expect(jobDetailSrc).toContain('ALL_NAV_ITEMS.map');
+  });
+
+  it('desktop side nav still maps over NAV_GROUPS', () => {
+    expect(jobDetailSrc).toContain('NAV_GROUPS.map');
+  });
+
+  it('mobile pill nav has role="tablist"', () => {
+    expect(jobDetailSrc).toContain('role="tablist"');
+  });
+
+  it('mobile pill nav has aria-label="Job sections"', () => {
+    expect(jobDetailSrc).toContain('aria-label="Job sections"');
+  });
+
+  it('mobile pill nav does NOT use a dropdown (no mobileNavOpen state)', () => {
+    expect(jobDetailSrc).not.toContain('mobileNavOpen');
   });
 });
