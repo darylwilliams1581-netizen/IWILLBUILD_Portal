@@ -43,11 +43,16 @@ function nextSaturday(from: Date = new Date()): string {
 }
 
 function weekDates(weekEnding: string): string[] {
+  // Returns Mon–Sun for the week ending on weekEnding (Saturday)
+  // weekEnding is Saturday (day 6), so Mon is 5 days before it
   const end = new Date(weekEnding + 'T00:00:00');
   const dates: string[] = [];
-  for (let i = 6; i >= 0; i--) {
+  // end = Saturday; Mon is end - 5, Tue - 4, ... Sun = end + 1
+  // Week: Mon Tue Wed Thu Fri Sat Sun
+  const offsets = [-5, -4, -3, -2, -1, 0, 1];
+  for (const offset of offsets) {
     const d = new Date(end);
-    d.setDate(end.getDate() - i);
+    d.setDate(end.getDate() + offset);
     dates.push(d.toISOString().slice(0, 10));
   }
   return dates;
