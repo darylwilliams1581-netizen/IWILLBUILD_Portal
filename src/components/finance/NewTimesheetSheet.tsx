@@ -38,6 +38,10 @@ interface DayRow {
   unpaid_break_mins: string;  // numeric string
   job_id: number | null;
   description: string;
+  // Meal allowances
+  meal_breakfast: boolean;
+  meal_lunch: boolean;
+  meal_dinner: boolean;
 }
 
 interface Props {
@@ -142,6 +146,9 @@ function blankDay(date: string): DayRow {
     lunch_finish: DEFAULT_LUNCH_FINISH,
     unpaid_break_mins: DEFAULT_BREAK_MINS,
     job_id: null, description: '',
+    meal_breakfast: false,
+    meal_lunch: false,
+    meal_dinner: false,
   };
 }
 
@@ -180,19 +187,78 @@ function timingOf(r: DayRow): TimingFields {
 const inputCls =
   'w-full h-11 sm:h-8 px-2 rounded-lg border border-border bg-background text-sm sm:text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40';
 
+// ── Meal allowance row (shared between mobile + desktop) ──────────────────────
+
+interface MealAllowanceProps {
+  row: DayRow;
+  onUpdate: (date: string, patch: Partial<DayRow>) => void;
+  compact?: boolean; // desktop uses compact pill style
+}
+
+function MealAllowanceRow({ row, onUpdate, compact }: MealAllowanceProps) {
+  const meals: { key: 'meal_breakfast' | 'meal_lunch' | 'meal_dinner'; label: string; short: string }[] = [
+    { key: 'meal_breakfast', label: 'Breakfast', short: 'Bfast' },
+    { key: 'meal_lunch',     label: 'Lunch',     short: 'Lunch' },
+    { key: 'meal_dinner',    label: 'Dinner',    short: 'Dinner' },
+  ];
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[10px] font-semibold text-muted-foreground mr-0.5">Meals:</span>
+        {meals.map(m => (
+          <label key={m.key}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer select-none transition-colors ${
+              row[m.key]
+                ? 'bg-orange-100 text-orange-700 border-orange-400'
+                : 'bg-transparent text-muted-foreground border-transparent hover:border-border hover:text-foreground'
+            }`}>
+            <input type="checkbox" checked={row[m.key]}
+              onChange={e => onUpdate(row.work_date, { [m.key]: e.target.checked })}
+              className="sr-only" />
+            {m.short}
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted-foreground mb-2">Meal allowances</p>
+      <div className="flex flex-wrap gap-2">
+        {meals.map(m => (
+          <label key={m.key}
+            className={`flex items-center gap-2 min-h-[40px] px-3 py-1.5 rounded-xl border cursor-pointer select-none transition-colors ${
+              row[m.key]
+                ? 'bg-orange-100 text-orange-700 border-orange-400'
+                : 'bg-muted/30 text-muted-foreground border-border hover:text-foreground'
+            }`}>
+            <input type="checkbox" checked={row[m.key]}
+              onChange={e => onUpdate(row.work_date, { [m.key]: e.target.checked })}
+              className="w-4 h-4 rounded accent-orange-500 cursor-pointer" />
+            <span className="text-sm font-semibold">{m.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Mobile Day Card ───────────────────────────────────────────────────────────
 
 interface DayCardMobileProps {
   row: DayRow;
   jobs: Job[];
   globalJobId: number | null;
+  lafh: boolean;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
   onSetType: (date: string, type: DayType) => void;
   /** If provided, show a "Copy previous day" button */
   onCopyPrev?: () => void;
 }
 
-function DayCardMobile({ row, jobs, globalJobId, onUpdate, onSetType, onCopyPrev }: DayCardMobileProps) {
+function DayCardMobile({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCopyPrev }: DayCardMobileProps) {
   const isWork = row.day_type === 'work';
   const cfg = DAY_TYPES.find(d => d.key === row.day_type);
   const hrs = rowHours(row);
@@ -357,7 +423,20 @@ function DayCardMobile({ row, jobs, globalJobId, onUpdate, onSetType, onCopyPrev
                 className="w-full h-11 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
+
+            {/* Meal allowances — shown on work days, or any day when LAFH is on */}
+            {lafh && (
+              <MealAllowanceRow row={row} onUpdate={onUpdate} />
+            )}
+            {!lafh && isWork && (
+              <MealAllowanceRow row={row} onUpdate={onUpdate} />
+            )}
           </>
+        )}
+
+        {/* Meal allowances on non-work days when LAFH is active */}
+        {!isWork && lafh && (
+          <MealAllowanceRow row={row} onUpdate={onUpdate} />
         )}
       </div>
     </div>
@@ -370,12 +449,13 @@ interface DayRowDesktopProps {
   row: DayRow;
   jobs: Job[];
   globalJobId: number | null;
+  lafh: boolean;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
   onSetType: (date: string, type: DayType) => void;
   onCopyPrev?: () => void;
 }
 
-function DayRowDesktop({ row, jobs, globalJobId, onUpdate, onSetType, onCopyPrev }: DayRowDesktopProps) {
+function DayRowDesktop({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCopyPrev }: DayRowDesktopProps) {
   const isWork = row.day_type === 'work';
   const cfg = DAY_TYPES.find(d => d.key === row.day_type);
   const hrs = rowHours(row);
@@ -459,13 +539,16 @@ function DayRowDesktop({ row, jobs, globalJobId, onUpdate, onSetType, onCopyPrev
         )}
       </div>
 
-      {/* Description */}
-      {isWork && (
-        <div className="px-3 pb-2.5 pt-1">
-          <input type="text" placeholder="Work description (optional)"
-            value={row.description}
-            onChange={e => onUpdate(row.work_date, { description: e.target.value })}
-            className="w-full h-7 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      {/* Description + meals */}
+      {(isWork || lafh) && (
+        <div className="px-3 pb-2.5 pt-1 space-y-1.5">
+          {isWork && (
+            <input type="text" placeholder="Work description (optional)"
+              value={row.description}
+              onChange={e => onUpdate(row.work_date, { description: e.target.value })}
+              className="w-full h-7 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40" />
+          )}
+          <MealAllowanceRow row={row} onUpdate={onUpdate} compact />
         </div>
       )}
     </div>
@@ -478,6 +561,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [weekEnding, setWeekEnding] = useState(nextSunday);
   const [globalJobId, setGlobalJobId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
+  const [lafh, setLafh] = useState(false);
   const [rows, setRows] = useState<DayRow[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -524,6 +608,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
         setGlobalJobId(ts.job_id ?? null);
         setNotes(ts.notes ?? '');
         setEmployeeProfileId(ts.employee_profile_id ?? null);
+        setLafh(!!ts.lafh);
         if (Array.isArray(ts.entries) && ts.entries.length > 0) {
           const dates = weekDates(we);
           const byDate: Record<string, DayRow> = {};
@@ -539,6 +624,9 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
               unpaid_break_mins: e.unpaid_break_mins != null ? String(e.unpaid_break_mins) : '',
               job_id: e.job_id ?? null,
               description: e.description ?? '',
+              meal_breakfast: !!e.meal_breakfast,
+              meal_lunch: !!e.meal_lunch,
+              meal_dinner: !!e.meal_dinner,
             };
           }
           setRows(dates.map(d => byDate[d] ?? blankDay(d)));
@@ -553,6 +641,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       setWeekEnding(nextSunday());
       setGlobalJobId(null);
       setNotes('');
+      setLafh(false);
       setEmployeeProfileId(null);
       setError(null);
       setSaving(false);
@@ -638,6 +727,9 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
           unpaid_break_mins: e.unpaid_break_mins != null ? String(e.unpaid_break_mins) : '',
           job_id: (e.job_id as number | null) ?? null,
           description: (e.description as string) ?? '',
+          meal_breakfast: !!(e.meal_breakfast),
+          meal_lunch: !!(e.meal_lunch),
+          meal_dinner: !!(e.meal_dinner),
         };
       }
       setRows(prev => prev.map(r => {
@@ -669,6 +761,9 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
           start_time: null, finish_time: null,
           lunch_start: null, lunch_finish: null,
           unpaid_break_mins: 0, day_type: r.day_type,
+          meal_breakfast: r.meal_breakfast,
+          meal_lunch: r.meal_lunch,
+          meal_dinner: r.meal_dinner,
         };
       }
       const hrs = calcHours(r.start_time, r.finish_time, r.unpaid_break_mins);
@@ -684,6 +779,9 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
         lunch_finish: r.lunch_finish || null,
         unpaid_break_mins: parseInt(r.unpaid_break_mins, 10) || 0,
         day_type: 'work',
+        meal_breakfast: r.meal_breakfast,
+        meal_lunch: r.meal_lunch,
+        meal_dinner: r.meal_dinner,
       };
     }).filter(Boolean);
 
@@ -692,7 +790,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       return;
     }
 
-    const payload = { weekEnding, employeeProfileId, jobId: globalJobId, notes: notes.trim() || null, entries };
+    const payload = { weekEnding, employeeProfileId, jobId: globalJobId, lafh, notes: notes.trim() || null, entries };
 
     setSaving(true);
     try {
@@ -830,8 +928,24 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 </div>
               </div>
 
-              {/* ── Daily hours section ── */}
+              {/* ── LAFH + Daily hours section ── */}
               <div>
+                {/* LAFH checkbox */}
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-border bg-muted/20 cursor-pointer select-none hover:bg-muted/40 transition-colors mb-4">
+                  <input
+                    type="checkbox"
+                    checked={lafh}
+                    onChange={e => setLafh(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 rounded accent-primary cursor-pointer shrink-0"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Living Away From Home (LAFH)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Tick if the employee is staying away from home this week. Meal allowances will be shown on every day.
+                    </p>
+                  </div>
+                </label>
+
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Daily hours</p>
                   <span className="text-xs text-muted-foreground">
@@ -886,6 +1000,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           row={row}
                           jobs={jobs}
                           globalJobId={globalJobId}
+                          lafh={lafh}
                           onUpdate={updateRow}
                           onSetType={setDayType}
                           onCopyPrev={idx > 0 ? () => copyPrevDay(row.work_date) : undefined}
@@ -897,6 +1012,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           row={row}
                           jobs={jobs}
                           globalJobId={globalJobId}
+                          lafh={lafh}
                           onUpdate={updateRow}
                           onSetType={setDayType}
                           onCopyPrev={idx > 0 ? () => copyPrevDay(row.work_date) : undefined}
