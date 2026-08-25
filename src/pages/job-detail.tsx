@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from "react-router";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router";
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen } from 'lucide-react';
@@ -247,12 +247,15 @@ export default function JobDetailPage() {
       setDownloadingZip(false);
     }
   };
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
+  // ── Tab state — URL-driven so refresh and deep links work ────────────────
+  const location = useLocation();
+  const resolveTab = useCallback((): Tab => {
     if (formInstanceId) return 'forms';
-    const t = searchParams.get('tab');
+    const t = new URLSearchParams(location.search).get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'purchase-orders' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
     return 'details';
-  });
+  }, [location.search, formInstanceId]);
+  const activeTab = resolveTab();
   const [form, setForm] = useState({
     name: '',
     jobNumber: '',
@@ -471,10 +474,30 @@ export default function JobDetailPage() {
       // silent
     }
   }
+  // Pill nav scroll ref — used to scroll active pill into view
+  const pillRowRef = useRef<HTMLDivElement>(null);
+
   function switchTab(tab: Tab) {
-    setActiveTab(tab);
     setStatusOpen(false);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'details') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    const search = params.toString();
+    navigate(`/jobs/${id}${search ? `?${search}` : ''}`, { replace: false });
   }
+
+  // Scroll active pill into view whenever activeTab changes
+  useEffect(() => {
+    const row = pillRowRef.current;
+    if (!row) return;
+    const activePill = row.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!activePill) return;
+    // scrollIntoView with nearest — doesn't force-centre if already visible
+    activePill.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [activeTab]);
   const statusStyle = job ? getStatusStyle(job.status) : null;
   return <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
@@ -558,7 +581,7 @@ export default function JobDetailPage() {
         </header>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
 
           {loading && <div className="flex items-center justify-center py-20">
               <Loader2 size={24} className="animate-spin text-primary" />
@@ -579,175 +602,204 @@ export default function JobDetailPage() {
         }} transition={{
           duration: 0.3,
           ease: 'easeOut' as const
-        }} className="flex flex-col h-full">
-              {/* ── Status bar ── */}
-              <div className="bg-white border-b border-gray-200 px-4 md:px-4 py-2 flex flex-col gap-1.5 shrink-0">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {statusStyle && <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
-                        <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
-                        {job.status}
-                      </span>}
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                    </span>
+        }} className="flex flex-col min-h-full">
+
+              {/* ── Sticky job meta + pill nav ── */}
+              <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shrink-0">
+
+                {/* ── Status bar ── */}
+                <div className="px-4 md:px-4 py-2 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {statusStyle && <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
+                          <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
+                          {job.status}
+                        </span>}
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Cost mini-summary */}
+                      {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && <button onClick={() => switchTab('costs')} className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
+                          <span className="text-slate-500">Costs</span>
+                          <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      })}</span>
+                          {costSummary.approved > 0 && <>
+                              <span className="text-slate-300">/</span>
+                              <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
+                                {costSummary.actual > costSummary.approved ? '⚠ Over' : `${(costSummary.actual / costSummary.approved * 100).toFixed(0)}%`}
+                              </span>
+                            </>}
+                          <Receipt size={11} className="text-slate-400" />
+                        </button>}
+
+                      {/* Quick status change */}
+                      <div className="relative shrink-0">
+                        <button onClick={() => setStatusOpen(!statusOpen)} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+                          Change Status <ChevronDown size={12} />
+                        </button>
+                        {statusOpen && <>
+                            <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                            <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
+                              {JOB_STATUSES.map(s => {
+                          const st = getStatusStyle(s);
+                          return <button key={s} onClick={() => handleStatusChange(s)} className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}>
+                                    <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                    {s}
+                                    {job.status === s && <Check size={12} className="ml-auto text-primary" />}
+                                  </button>;
+                        })}
+                            </div>
+                          </>}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Cost mini-summary */}
-                    {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && <button onClick={() => switchTab('costs')} className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
-                        <span className="text-slate-500">Costs</span>
-                        <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0
-                    })}</span>
-                        {costSummary.approved > 0 && <>
-                            <span className="text-slate-300">/</span>
-                            <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {costSummary.actual > costSummary.approved ? '⚠ Over' : `${(costSummary.actual / costSummary.approved * 100).toFixed(0)}%`}
-                            </span>
-                          </>}
-                        <Receipt size={11} className="text-slate-400" />
-                      </button>}
+                  {/* ── Schedule summary strip ── */}
+                  {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedSupervisorUserId || job.assignedTeamLabel) && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-t border-slate-100 pt-2">
+                      {job.scheduledStartDate && <span className="flex items-center gap-1">
+                          <CalendarClock size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Sched. Start:</span>
+                          <span className="font-medium text-slate-700">
+                            {(() => {
+                      const [y, m, d] = job.scheduledStartDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                            {job.scheduledStartTime && <span className="ml-1 text-violet-700">{fmtJobTime(job.scheduledStartTime)}</span>}
+                          </span>
+                        </span>}
+                      {job.expectedCompletionDate && <span className="flex items-center gap-1">
+                          <CalendarCheck size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Exp. Completion:</span>
+                          <span className="font-medium text-slate-700">
+                            {(() => {
+                      const [y, m, d] = job.expectedCompletionDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                            {job.scheduledEndTime && <span className="ml-1 text-slate-500">{fmtJobTime(job.scheduledEndTime)}</span>}
+                          </span>
+                        </span>}
+                      {job.actualStartDate && <span className="flex items-center gap-1">
+                          <CalendarClock size={11} className="text-emerald-500 shrink-0" />
+                          <span className="text-slate-400">Actual Start:</span>
+                          <span className="font-medium text-emerald-700">
+                            {(() => {
+                      const [y, m, d] = job.actualStartDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                          </span>
+                        </span>}
+                      {job.actualCompletionDate && <span className="flex items-center gap-1">
+                          <CalendarCheck size={11} className="text-emerald-500 shrink-0" />
+                          <span className="text-slate-400">Actual Completion:</span>
+                          <span className="font-medium text-emerald-700">
+                            {(() => {
+                      const [y, m, d] = job.actualCompletionDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                          </span>
+                        </span>}
+                      {job.assignedSupervisorUserId && <span className="flex items-center gap-1">
+                          <UserCheck size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Supervisor:</span>
+                          <span className="font-medium text-slate-700">
+                            {teamMembers.find(m => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
+                          </span>
+                        </span>}
+                      {job.assignedTeamLabel && <span className="flex items-center gap-1">
+                          <Users size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Team:</span>
+                          <span className="font-medium text-slate-700">{job.assignedTeamLabel}</span>
+                        </span>}
+                    </div>}
+                </div>
 
-                    {/* Quick status change */}
-                    <div className="relative shrink-0">
-                      <button onClick={() => setStatusOpen(!statusOpen)} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
-                        Change Status <ChevronDown size={12} />
-                      </button>
-                      {statusOpen && <>
-                          <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
-                          <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
-                            {JOB_STATUSES.map(s => {
-                        const st = getStatusStyle(s);
-                        return <button key={s} onClick={() => handleStatusChange(s)} className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}>
-                                  <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                                  {s}
-                                  {job.status === s && <Check size={12} className="ml-auto text-primary" />}
-                                </button>;
+                {/* ── Section pill nav (mobile + tablet — hidden on desktop where side nav is used) ── */}
+                <div
+                  className="md:hidden"
+                  data-testid="job-pill-nav"
+                >
+                  {/* Pill row wrapper — relative so edge fades can be positioned inside */}
+                  <div className="relative">
+                    {/* Left fade — indicates more pills to the left */}
+                    <div
+                      className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 job-pill-fade-left"
+                      aria-hidden="true"
+                    />
+                    {/* Right fade — indicates more pills to the right */}
+                    <div
+                      className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 z-10 job-pill-fade-right"
+                      aria-hidden="true"
+                    />
+                    {/* Scrollable pill row */}
+                    <div
+                      ref={pillRowRef}
+                      role="tablist"
+                      aria-label="Job sections"
+                      data-testid="job-pill-nav-row"
+                      className="job-pill-row flex overflow-x-auto gap-1.5 px-4 py-2.5"
+                      style={{
+                        WebkitOverflowScrolling: 'touch',
+                        scrollSnapType: 'x proximity',
+                        overscrollBehaviorX: 'contain',
+                      }}
+                    >
+                      {/* Invisible spacer so first pill clears the left fade */}
+                      <span className="shrink-0 w-0" aria-hidden="true" />
+                      {ALL_NAV_ITEMS.map(({ key, label, icon: Icon }) => {
+                        const active = activeTab === key;
+                        return (
+                          <button
+                            key={key}
+                            role="tab"
+                            aria-selected={active}
+                            aria-label={label}
+                            onClick={() => switchTab(key)}
+                            data-testid={`job-pill-${key}`}
+                            style={{ scrollSnapAlign: 'start' }}
+                            className={[
+                              'flex items-center gap-1.5 shrink-0 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors outline-none',
+                              'min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
+                              active
+                                ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                                : 'bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5',
+                            ].join(' ')}
+                          >
+                            <Icon size={13} className="shrink-0" />
+                            {label}
+                          </button>
+                        );
                       })}
-                          </div>
-                        </>}
+                      {/* Invisible spacer so last pill clears the right fade */}
+                      <span className="shrink-0 w-4" aria-hidden="true" />
                     </div>
                   </div>
                 </div>
-
-                {/* ── Schedule summary strip ── */}
-                {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedSupervisorUserId || job.assignedTeamLabel) && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-t border-slate-100 pt-2">
-                    {job.scheduledStartDate && <span className="flex items-center gap-1">
-                        <CalendarClock size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Sched. Start:</span>
-                        <span className="font-medium text-slate-700">
-                          {(() => {
-                    const [y, m, d] = job.scheduledStartDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                          {job.scheduledStartTime && <span className="ml-1 text-violet-700">{fmtJobTime(job.scheduledStartTime)}</span>}
-                        </span>
-                      </span>}
-                    {job.expectedCompletionDate && <span className="flex items-center gap-1">
-                        <CalendarCheck size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Exp. Completion:</span>
-                        <span className="font-medium text-slate-700">
-                          {(() => {
-                    const [y, m, d] = job.expectedCompletionDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                          {job.scheduledEndTime && <span className="ml-1 text-slate-500">{fmtJobTime(job.scheduledEndTime)}</span>}
-                        </span>
-                      </span>}
-                    {job.actualStartDate && <span className="flex items-center gap-1">
-                        <CalendarClock size={11} className="text-emerald-500 shrink-0" />
-                        <span className="text-slate-400">Actual Start:</span>
-                        <span className="font-medium text-emerald-700">
-                          {(() => {
-                    const [y, m, d] = job.actualStartDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                        </span>
-                      </span>}
-                    {job.actualCompletionDate && <span className="flex items-center gap-1">
-                        <CalendarCheck size={11} className="text-emerald-500 shrink-0" />
-                        <span className="text-slate-400">Actual Completion:</span>
-                        <span className="font-medium text-emerald-700">
-                          {(() => {
-                    const [y, m, d] = job.actualCompletionDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                        </span>
-                      </span>}
-                    {job.assignedSupervisorUserId && <span className="flex items-center gap-1">
-                        <UserCheck size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Supervisor:</span>
-                        <span className="font-medium text-slate-700">
-                          {teamMembers.find(m => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
-                        </span>
-                      </span>}
-                    {job.assignedTeamLabel && <span className="flex items-center gap-1">
-                        <Users size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Team:</span>
-                        <span className="font-medium text-slate-700">{job.assignedTeamLabel}</span>
-                      </span>}
-                  </div>}
-              </div>
-
-              {/* ── Section pill nav (mobile + tablet — hidden on desktop where side nav is used) ── */}
-              <div
-                className="md:hidden bg-white border-b border-border shrink-0"
-                data-testid="job-pill-nav"
-              >
-                {/* Horizontally scrollable pill row — no page-level overflow */}
-                <div
-                  className="flex overflow-x-auto scrollbar-none px-3 py-2 gap-2"
-                  role="tablist"
-                  aria-label="Job sections"
-                  style={{ WebkitOverflowScrolling: 'touch' }}
-                >
-                  {ALL_NAV_ITEMS.map(({ key, label, icon: Icon }) => {
-                    const active = activeTab === key;
-                    return (
-                      <button
-                        key={key}
-                        role="tab"
-                        aria-selected={active}
-                        aria-label={label}
-                        onClick={() => switchTab(key)}
-                        data-testid={`job-pill-${key}`}
-                        className={[
-                          'flex items-center gap-1.5 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors',
-                          'min-h-[44px] min-w-[44px]',
-                          active
-                            ? 'bg-primary border-primary text-white shadow-sm'
-                            : 'bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5',
-                        ].join(' ')}
-                      >
-                        <Icon size={13} className="shrink-0" />
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              </div>{/* end sticky wrapper */}
 
               {/* ── Two-column layout: side nav + content ── */}
               <div className="flex flex-1 min-h-0">
@@ -773,7 +825,7 @@ export default function JobDetailPage() {
 
                 {/* ── Content area ── */}
                 {/* pb-24 on mobile reserves space above MobileTabBar (~64px bar + safe area) */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 min-w-0">
+                <div className="flex-1 p-4 md:p-6 pb-24 md:pb-6 min-w-0">
 
                   {/* Save error */}
                   {saveError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700 mb-4">
