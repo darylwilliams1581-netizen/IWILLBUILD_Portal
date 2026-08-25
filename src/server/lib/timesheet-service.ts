@@ -96,22 +96,23 @@ export async function ensureTimesheetSchema(): Promise<void> {
   }
 
   // Unique index: one timesheet per employee per week per company
-  // (employee_profile_id may be NULL for legacy rows — use a partial approach via application logic)
-  const [idxRows] = await db.execute(sql`
-    SELECT COUNT(*) AS cnt
-    FROM INFORMATION_SCHEMA.STATISTICS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME   = 'timesheets'
-      AND INDEX_NAME   = 'uq_ts_employee_week'
-  `);
-  const idxCnt = (idxRows as Array<{ cnt: number }>)[0]?.cnt ?? 0;
-  if (idxCnt === 0) {
-    // Only enforce uniqueness when employee_profile_id is set (non-null)
-    // MySQL doesn't support partial indexes, so we enforce this in the service layer.
-    // We still add a regular index for query performance.
-    await db.execute(sql.raw(
-      'ALTER TABLE `timesheets` ADD INDEX `idx_ts_employee_week` (`company_id`, `employee_profile_id`, `week_ending`)'
-    ));
+  // Wrapped in try/catch — may fail if column not yet added (will succeed on next call)
+  try {
+    const [idxRows] = await db.execute(sql`
+      SELECT COUNT(*) AS cnt
+      FROM INFORMATION_SCHEMA.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME   = 'timesheets'
+        AND INDEX_NAME   = 'idx_ts_employee_week'
+    `);
+    const idxCnt = (idxRows as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+    if (idxCnt === 0) {
+      await db.execute(sql.raw(
+        'ALTER TABLE `timesheets` ADD INDEX `idx_ts_employee_week` (`company_id`, `employee_profile_id`, `week_ending`)'
+      ));
+    }
+  } catch {
+    // Index creation deferred — column may not exist yet on first migration pass
   }
 }
 
