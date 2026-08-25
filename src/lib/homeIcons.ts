@@ -26,6 +26,9 @@ import {
   DollarSign,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet,
+  TriangleAlert, Bot, Library, Link2, TableProperties,
+  ScrollText, History, HardDriveUpload, SlidersHorizontal,
+  User, Calculator, Ruler, Layers,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'files' | 'fleet' | 'finance' | 'safety' | 'management' | 'comingSoon';
@@ -44,6 +47,10 @@ export interface HomeIconDef {
   group: IconGroup;
   /** If true: shown greyed in permission grid, never rendered on home screen */
   comingSoon?: boolean;
+  /** If true: only shown to admin/owner roles — hidden from regular workers */
+  adminOnly?: boolean;
+  /** If true: only shown to owner/platform_owner roles */
+  ownerOnly?: boolean;
 }
 
 // ── FIELD (mirrors desktop sidebar "Work" heading) ────────────────────────────
@@ -60,6 +67,7 @@ export const FILES_ICON_DEFS: HomeIconDef[] = [
   { key: 'lens',        label: 'Lens',        icon: Camera,       href: '/lens',                        bg: 'bg-violet-600',  fg: 'text-white', group: 'files' },
   { key: 'plan_mgr',   label: 'Plan Manager',icon: Map,          href: '/plan-manager',                bg: 'bg-blue-500',    fg: 'text-white', group: 'files' },
   { key: 'files',       label: 'Files',       icon: FolderOpen,   href: '/files',                       bg: 'bg-violet-700',  fg: 'text-white', group: 'files' },
+  { key: 'asset_mgr',  label: 'Asset Manager', icon: HardDriveUpload, href: '/studio/asset-manager',   bg: 'bg-sky-700',     fg: 'text-white', group: 'files', adminOnly: true },
 ];
 
 // ── FLEET (mirrors desktop sidebar "Fleet" heading) ───────────────────────────
@@ -73,6 +81,10 @@ export const FINANCE_ICON_DEFS: HomeIconDef[] = [
   { key: 'invoices_mgmt', label: 'Invoices',  icon: Receipt,      href: '/invoices',                    bg: 'bg-teal-500',    fg: 'text-white', group: 'finance' },
   { key: 'ledger',      label: 'Job Ledger',  icon: BookOpen,     href: '/finance?financeTab=ledger',   bg: 'bg-emerald-600', fg: 'text-white', group: 'finance' },
   { key: 'purchase_orders', label: 'Purchase Orders', icon: ClipboardList, href: '/finance?financeTab=purchase-orders', bg: 'bg-teal-700', fg: 'text-white', group: 'finance' },
+  { key: 'estimating',  label: 'Estimating',  icon: Calculator,   href: '/estimating',                  bg: 'bg-cyan-700',    fg: 'text-white', group: 'finance', adminOnly: true },
+  { key: 'builders_calc', label: 'Builders Calc', icon: Ruler,    href: '/builders-calc',               bg: 'bg-cyan-600',    fg: 'text-white', group: 'finance' },
+  { key: 'takeoff_pad', label: 'Takeoff Pad', icon: Layers,       href: '/takeoff-pad',                 bg: 'bg-cyan-500',    fg: 'text-white', group: 'finance' },
+  { key: 'finance_settings', label: 'Finance Settings', icon: SlidersHorizontal, href: '/finance?financeTab=settings', bg: 'bg-slate-500', fg: 'text-white', group: 'finance', adminOnly: true },
 ];
 
 // ── SAFETY (mirrors desktop sidebar "Safety" heading) ─────────────────────────
@@ -81,6 +93,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'safety',      label: 'Safety',      icon: ClipboardCheck, href: '/safety?safetyTab=documents', bg: 'bg-rose-600',   fg: 'text-white', group: 'safety' },
   { key: 'poster',      label: 'Safety Posters', icon: Image,      href: '/safety/posters',             bg: 'bg-pink-500',    fg: 'text-white', group: 'safety' },
   { key: 'incidents',   label: 'Incidents',   icon: AlertTriangle, href: '/incidents',                  bg: 'bg-red-700',     fg: 'text-white', group: 'safety' },
+  { key: 'risk_register', label: 'Risk Register', icon: TriangleAlert, href: '/risk-register',          bg: 'bg-orange-600',  fg: 'text-white', group: 'safety' },
   { key: 'risky',       label: 'Risk & Permits', icon: ShieldAlert, href: '?panel=risky-picker',        bg: 'bg-rose-600',    fg: 'text-white', group: 'safety' },
 ];
 
@@ -88,11 +101,19 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // Note: Contacts is surfaced directly on the Dashboard as a quick-dial panel
 // (ContactsPanel) — it is intentionally excluded from the Manage icon grid here.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
-  { key: 'timesheet',   label: 'Timesheets',  icon: FileSpreadsheet, href: '/timesheets',               bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
-  { key: 'team',        label: 'Team',        icon: UserCircle,   href: '/team',                        bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
-  { key: 'billing',     label: 'My Billing',  icon: CreditCard,   href: '/billing',                     bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
-  { key: 'settings',    label: 'Settings',    icon: Settings,     href: '/settings',                    bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
-  { key: 'help',        label: 'Help',        icon: BookMarked,   href: '/help',                        bg: 'bg-gray-900',    fg: 'text-white', group: 'management' },
+  { key: 'timesheet',      label: 'Timesheets',      icon: FileSpreadsheet,  href: '/timesheets',             bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
+  { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
+  { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', ownerOnly: true },
+  { key: 'app_docs',       label: 'App Docs',        icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'library',        label: 'Library',         icon: Library,          href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'quick_links',    label: 'Quick Links',     icon: Link2,            href: '/quick-links',            bg: 'bg-lime-700',    fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'lists',          label: 'Lists',           icon: TableProperties,  href: '/lists',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'user_logs',      label: 'User Logs',       icon: ScrollText,       href: '/user-logs',              bg: 'bg-gray-700',    fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'signin_history', label: 'Sign-in History', icon: History,          href: '/signin-history',         bg: 'bg-gray-600',    fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'team',           label: 'Team',            icon: UserCircle,       href: '/team',                   bg: 'bg-slate-600',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'billing',        label: 'My Billing',      icon: CreditCard,       href: '/billing',                bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
+  { key: 'settings',       label: 'Settings',        icon: Settings,         href: '/settings',               bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
+  { key: 'help',           label: 'Help',            icon: BookMarked,       href: '/help',                   bg: 'bg-gray-900',    fg: 'text-white', group: 'management' },
 ];
 
 // ── COMING SOON — reserved placeholder slots ──────────────────────────────────
@@ -134,21 +155,34 @@ export const ALL_LIVE_KEYS: string[] = ALL_HOME_ICONS
 export const OWNER_ADMIN_ALWAYS_ON: string[] = ALL_LIVE_KEYS;
 
 // ── Helper: resolve allowed icons for a user ──────────────────────────────────
+const ADMIN_ROLES = new Set(['owner', 'admin', 'platform_owner']);
+const OWNER_ROLES = new Set(['owner', 'platform_owner']);
+
 export function resolveHomeIcons(
   allowedKeys: string[] | null,
   role: string,
   isSolo: boolean,
 ): HomeIconDef[] {
-  const live = ALL_HOME_ICONS.filter(i => !i.comingSoon);
+  const isAdmin = isSolo || ADMIN_ROLES.has(role);
+  const isOwner = isSolo || OWNER_ROLES.has(role);
 
-  if (isSolo || role === 'owner' || role === 'admin' || role === 'platform_owner') {
-    return live;
-  }
+  // Start with all live icons, then apply role-based visibility gates
+  const live = ALL_HOME_ICONS.filter(i => {
+    if (i.comingSoon) return false;
+    if (i.ownerOnly && !isOwner) return false;
+    if (i.adminOnly && !isAdmin) return false;
+    return true;
+  });
 
+  // Owners / admins / solo users get everything they're permitted to see
+  if (isAdmin) return live;
+
+  // Workers with no explicit permissions get the minimal default set
   if (!allowedKeys || allowedKeys.length === 0) {
     return live.filter(i => DEFAULT_FIELD_KEYS.includes(i.key));
   }
 
+  // Workers with explicit permissions get their allowed set
   return live.filter(i => allowedKeys.includes(i.key));
 }
 

@@ -20,10 +20,10 @@ interface Props {
 
 // Icons that are always-on and cannot be toggled off, keyed by role
 const ROLE_LOCKED_KEYS: Record<string, string[]> = {
-  owner:          ['settings', 'billing', 'team'],
-  admin:          ['settings', 'billing', 'team'],
-  platform_owner: ['settings', 'billing', 'team', 'dazza_ai'],
-  developer:      ['settings', 'billing', 'team', 'dazza_ai'],
+  owner:          ['settings', 'billing', 'team', 'profile'],
+  admin:          ['settings', 'billing', 'team', 'profile'],
+  platform_owner: ['settings', 'billing', 'team', 'dazza_ai', 'profile'],
+  developer:      ['settings', 'billing', 'team', 'dazza_ai', 'profile'],
 };
 
 // dazza_ai is shown only for platform_owner / developer — hidden for everyone else
@@ -120,13 +120,21 @@ export default function HomeIconPermissions({ memberId, memberRole, canEdit }: P
     );
   }
 
-  // Build grouped icon list — live icons only, filter dazza_ai based on role
+  const isAdminRole = memberRole === 'owner' || memberRole === 'admin' || memberRole === 'platform_owner';
+  const isOwnerRole = memberRole === 'owner' || memberRole === 'platform_owner';
+
+  // Build grouped icon list — live icons only, filter role-gated icons appropriately
   const grouped = GROUP_ORDER.map(group => ({
     group,
     label: GROUP_LABELS[group],
     icons: ALL_HOME_ICONS.filter(i => {
       if (i.group !== group) return false;
       if (i.comingSoon) return false;
+      // ownerOnly icons: only show in grid for owner/platform_owner members
+      if (i.ownerOnly && !isOwnerRole) return false;
+      // adminOnly icons: only show in grid for admin/owner members
+      if (i.adminOnly && !isAdminRole) return false;
+      // dazza_ai legacy hidden-key check
       if (HIDDEN_KEYS_DEFAULT.has(i.key) && !showDazzaAi(memberRole)) return false;
       return true;
     }),
