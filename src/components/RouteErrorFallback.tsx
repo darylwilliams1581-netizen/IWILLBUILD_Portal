@@ -34,32 +34,6 @@ async function signOutAndGoToLogin() {
 export default function RouteErrorFallback() {
   const error = useRouteError();
 
-  // ── Stale shim auto-reload ──────────────────────────────────────────────────
-  // The stale sos-shim snapshot (t=1784519099416) throws NotFoundError from its
-  // patchedRemoveChild. React Router's RenderErrorBoundary catches it before
-  // SosInterceptBoundary/StaleShimBoundary (which sit outside RouterProvider).
-  // Detect it here and trigger a one-shot reload to evict the stale module.
-  const STALE_TS = ['1784519099416', '1784518714435', '1784516505220', '1784585282530', '1784589710474', '1784590013856', '1784800000000'];
-  function isStaleShimError(e: unknown): boolean {
-    if (!(e instanceof Error)) return false;
-    const text = (e.message ?? '') + (e.stack ?? '');
-    if (e.name === 'NotFoundError' && text.includes('removeChild')) return true;
-    return STALE_TS.some(ts => text.includes(ts));
-  }
-  if (isStaleShimError(error)) {
-    try {
-      const RELOAD_KEY = 'route_stale_reload_ts';
-      const last = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? '0', 10);
-      if (Date.now() - last > 4000) {
-        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-        window.location.reload();
-      }
-    } catch {/* ignore */}
-    // Render nothing while reload is in flight
-    return null;
-  }
-  // ── End stale shim guard ────────────────────────────────────────────────────
-
   let message = 'An unexpected error occurred on this page.';
   let stack = '';
   if (isRouteErrorResponse(error)) {

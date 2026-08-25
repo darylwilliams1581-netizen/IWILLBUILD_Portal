@@ -1,19 +1,9 @@
 /**
- * IWILLBUILD Service Worker — v5
+ * IWILLBUILD Service Worker — v7
  * App Shell Cache + Push Notifications + Background Sync
- * + Frozen HMR snapshot rewrite (SOSAlertPopup fix)
  */
 
-const CACHE_NAME = 'iwillbuild-shell-v6';
-
-// ── Frozen HMR snapshot rewrite ───────────────────────────────────────────────
-// The browser module registry may hold a frozen Vite HMR snapshot of
-// RootLayout.tsx at ?t=1783772358219. That snapshot has SOSAlertPopup as a
-// bare identifier — a strict-mode ES module ReferenceError that cannot be
-// patched via window globals. The SW intercepts the fetch for that exact URL
-// and rewrites it to the current (unfrozen) file, forcing the browser to load
-// the fixed version instead of the cached snapshot.
-const FROZEN_TS = '1783772358219';
+const CACHE_NAME = 'iwillbuild-shell-v7';
 
 const NEVER_CACHE_PATTERNS = [
   /^\/api\//,
@@ -85,19 +75,6 @@ self.addEventListener('fetch', (event) => {
     request.url.startsWith('capacitor://') ||
     self.location.origin === 'capacitor://localhost'
   ) return;
-
-  // ── Frozen snapshot rewrite ──────────────────────────────────────────────
-  // Intercept ANY src/*.tsx HMR URL with the frozen ?t= param and strip it
-  // so Vite serves the current (fixed) version of the file.
-  if (
-    request.url.includes('.tsx') &&
-    request.url.includes('t=' + FROZEN_TS)
-  ) {
-    const fresh = new URL(request.url);
-    fresh.searchParams.delete('t');
-    event.respondWith(fetch(new Request(fresh.toString(), request)));
-    return;
-  }
 
   if (shouldNeverCache(request.url)) return;
 

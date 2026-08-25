@@ -152,47 +152,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   plugins: [
-    // ---------------------------------------------------------------------------
-    // Frozen-snapshot eviction plugin
-    // The browser's module registry has a frozen compiled copy of RootLayout.tsx
-    // at ?t=1783772358219. That snapshot references SOSAlertPopup as a free
-    // variable (module-scope identifier). ES modules are strict — free variables
-    // that aren't declared in the module throw ReferenceError regardless of
-    // globalThis. The only fix is to prevent the browser from executing that
-    // frozen URL at all.
-    //
-    // This middleware intercepts ANY request for RootLayout.tsx that carries the
-    // frozen timestamp and returns a JS module that re-exports everything from
-    // the current RootLayout.tsx (without the timestamp). The browser executes
-    // this shim instead of the frozen snapshot, so SOSAlertPopup is never
-    // referenced as an undeclared identifier.
-    // ---------------------------------------------------------------------------
-    {
-      name: 'evict-frozen-rootlayout-snapshot',
-      configureServer(server: ViteDevServer) {
-        server.middlewares.use((req, res, next) => {
-          if (
-            req.url &&
-            req.url.includes('RootLayout.tsx') &&
-            req.url.includes('t=1783772358219')
-          ) {
-            // Serve the current transformed RootLayout at the frozen URL.
-            // transformRequest expects the URL as Vite sees it (with leading /).
-            server.transformRequest('/src/layouts/RootLayout.tsx').then((result) => {
-              if (result?.code) {
-                res.setHeader('Content-Type', 'application/javascript');
-                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-                res.end(result.code);
-              } else {
-                next();
-              }
-            }).catch(() => next());
-            return;
-          }
-          next();
-        });
-      },
-    } as Plugin,
     // Intercept the stale Vite-pre-bundled leaflet chunk that browsers have
     // disk-cached from before Leaflet was removed. The hash in the URL is
     // immutable so browsers never re-validate it.
