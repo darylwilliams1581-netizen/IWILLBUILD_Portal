@@ -78,8 +78,8 @@ function ToolsDropdown() {
         aria-haspopup="true"
         aria-expanded={open}
         aria-label="Tools menu"
-        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0 min-h-[44px] ${
-          open ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+        className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg transition-colors shrink-0 min-h-[36px] my-1.5 ${
+          open ? 'bg-primary text-white' : 'bg-primary/10 text-primary hover:bg-primary/20'
         }`}
       >
         <Wrench size={13} />
@@ -318,7 +318,7 @@ function MobileWorkLauncher({ onToolsOpen, onNewJob, isViewOnly }: MobileLaunche
         </div>
         <button
           onClick={onToolsOpen}
-          className="flex items-center gap-1.5 border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted px-3 h-9 rounded-lg transition-colors min-h-[44px]"
+          className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 h-9 rounded-lg transition-colors min-h-[44px]"
           data-testid="mobile-tools-btn"
         >
           <Wrench size={13} />
