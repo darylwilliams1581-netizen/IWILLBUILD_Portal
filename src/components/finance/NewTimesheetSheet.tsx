@@ -11,6 +11,8 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type DayType = 'work' | 'leave' | 'sick' | 'public-holiday';
+
 interface Job {
   id: number;
   job_number: string | null;
@@ -32,6 +34,17 @@ interface Props {
   editId?: number | null;
 }
 
+// ── Day type config ───────────────────────────────────────────────────────────
+
+const DAY_TYPES: { key: DayType; label: string; color: string; bg: string; border: string }[] = [
+  { key: 'work',           label: 'Work',           color: 'text-foreground',        bg: 'bg-muted/60',          border: 'border-border'       },
+  { key: 'leave',          label: 'Leave',          color: 'text-blue-600',          bg: 'bg-blue-50',           border: 'border-blue-200'     },
+  { key: 'sick',           label: 'Sick',           color: 'text-amber-600',         bg: 'bg-amber-50',          border: 'border-amber-200'    },
+  { key: 'public-holiday', label: 'Public Holiday', color: 'text-purple-600',        bg: 'bg-purple-50',         border: 'border-purple-200'   },
+];
+
+const STANDARD_HOURS = 7.6;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Use local date arithmetic to avoid UTC offset shifting dates (e.g. Brisbane UTC+10).
@@ -41,8 +54,6 @@ function toLocalISO(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
-
-
 
 function nextSaturday(from: Date = new Date()): string {
   const d = new Date(from);
@@ -55,7 +66,6 @@ function nextSaturday(from: Date = new Date()): string {
 function weekDates(weekEnding: string): string[] {
   // weekEnding is a Saturday (YYYY-MM-DD local).
   // Returns Mon Tue Wed Thu Fri Sat Sun — 7 days starting 5 days before Saturday.
-  // Parse as local date to avoid UTC offset shifting the day.
   const [y, mo, dy] = weekEnding.split('-').map(Number);
   const end = new Date(y, mo - 1, dy); // local midnight, no UTC shift
   const offsets = [-5, -4, -3, -2, -1, 0, 1]; // Mon … Sun
@@ -79,8 +89,18 @@ function uid(): string {
   return Math.random().toString(36).slice(2);
 }
 
-function totalHours(entries: EntryRow[]): number {
-  return entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+function totalHours(entries: EntryRow[], dayTypes: Record<string, DayType>, dates: string[]): number {
+  let total = 0;
+  for (const date of dates) {
+    const type = dayTypes[date] ?? 'work';
+    if (type !== 'work') {
+      total += STANDARD_HOURS;
+    } else {
+      const dayEntries = entries.filter(e => e.work_date === date);
+      total += dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+    }
+  }
+  return total;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -90,6 +110,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [globalJobId, setGlobalJobId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [dayTypes, setDayTypes] = useState<Record<string, DayType>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,13 +157,21 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
         setGlobalJobId(ts.job_id ?? null);
         setNotes(ts.notes ?? '');
         if (Array.isArray(ts.entries) && ts.entries.length > 0) {
-          setEntries(ts.entries.map((e: { work_date: string; job_id: number | null; description: string; hours: number }) => ({
+          setEntries(ts.entries.map((e: { work_date: string; job_id: number | null; description: string; hours: number; day_type?: DayType }) => ({
             _key: uid(),
             work_date: e.work_date?.slice(0, 10) ?? '',
             job_id: e.job_id ?? null,
             description: e.description ?? '',
             hours: String(e.hours ?? ''),
           })));
+          // Restore day types from entries that have a day_type marker
+          const restoredTypes: Record<string, DayType> = {};
+          for (const e of ts.entries) {
+            if (e.day_type && e.day_type !== 'work') {
+              restoredTypes[e.work_date?.slice(0, 10)] = e.day_type;
+            }
+          }
+          setDayTypes(restoredTypes);
         }
       })
       .catch(() => setError('Failed to load timesheet'));
@@ -154,6 +183,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       setWeekEnding(nextSaturday());
       setGlobalJobId(null);
       setNotes('');
+      setDayTypes({});
       setError(null);
       setSaving(false);
     }
@@ -184,13 +214,36 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
     });
   }, []);
 
+  const setDayType = useCallback((date: string, type: DayType) => {
+    setDayTypes(prev => ({ ...prev, [date]: type }));
+  }, []);
+
   async function save(andSubmit: boolean) {
     setError(null);
     if (!weekEnding) { setError('Week ending date is required'); return; }
-    const validEntries = entries.filter(e => e.description.trim() || parseFloat(e.hours) > 0);
-    if (validEntries.length === 0) { setError('Add at least one time entry with hours'); return; }
-    const badHours = validEntries.find(e => {
-      const h = parseFloat(e.hours);
+
+    const dates = weekDates(weekEnding);
+
+    // Build entries to send — work days use actual entries, non-work days get a synthetic entry
+    const allEntries: { work_date: string; job_id: number | null; description: string; hours: number; day_type: DayType }[] = [];
+
+    for (const date of dates) {
+      const type = dayTypes[date] ?? 'work';
+      if (type !== 'work') {
+        const cfg = DAY_TYPES.find(d => d.key === type)!;
+        allEntries.push({ work_date: date, job_id: null, description: cfg.label, hours: STANDARD_HOURS, day_type: type });
+      } else {
+        const dayEntries = entries.filter(e => e.work_date === date && (e.description.trim() || parseFloat(e.hours) > 0));
+        for (const e of dayEntries) {
+          allEntries.push({ work_date: e.work_date, job_id: e.job_id, description: e.description.trim(), hours: parseFloat(e.hours), day_type: 'work' });
+        }
+      }
+    }
+
+    if (allEntries.length === 0) { setError('Add at least one time entry or mark a day as leave/sick/public holiday'); return; }
+
+    const badHours = allEntries.filter(e => e.day_type === 'work').find(e => {
+      const h = e.hours;
       return !isFinite(h) || h <= 0 || h > 24;
     });
     if (badHours) { setError('Hours must be between 0.1 and 24 per entry'); return; }
@@ -199,12 +252,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       weekEnding,
       jobId: globalJobId,
       notes: notes.trim() || null,
-      entries: validEntries.map(e => ({
-        work_date: e.work_date,
-        job_id: e.job_id,
-        description: e.description.trim(),
-        hours: parseFloat(e.hours),
-      })),
+      entries: allEntries,
     };
 
     setSaving(true);
@@ -257,7 +305,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
     if (!byDate[e.work_date]) byDate[e.work_date] = [];
     byDate[e.work_date].push(e);
   }
-  const total = totalHours(entries);
+  const total = totalHours(entries, dayTypes, dates);
 
   return (
     <AnimatePresence>
@@ -289,7 +337,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   {editId ? 'Edit Timesheet' : 'New Timesheet'}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  {total > 0 ? `${total.toFixed(2)} hrs entered` : 'Fill in your hours for the week'}
+                  {total > 0 ? `${total.toFixed(2)} hrs total` : 'Fill in your hours for the week'}
                 </p>
               </div>
               <button
@@ -364,75 +412,115 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
                 {dates.map(date => {
                   const dayEntries = byDate[date] ?? [];
-                  const dayTotal = dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+                  const dayType = dayTypes[date] ?? 'work';
+                  const isWork = dayType === 'work';
+                  const cfg = DAY_TYPES.find(d => d.key === dayType)!;
+                  const dayTotal = isWork
+                    ? dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0)
+                    : STANDARD_HOURS;
+
                   return (
                     <div key={date} className="rounded-xl border border-border overflow-hidden">
                       {/* Day header */}
-                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border">
-                        <span className="text-xs font-semibold text-foreground">{fmtDayLabel(date)}</span>
-                        {dayTotal > 0 && (
-                          <span className="text-xs font-medium text-primary">{dayTotal.toFixed(2)} hrs</span>
-                        )}
+                      <div className={`flex items-center justify-between px-3 py-2 border-b border-border ${isWork ? 'bg-muted/40' : cfg.bg}`}>
+                        <span className={`text-xs font-semibold ${isWork ? 'text-foreground' : cfg.color}`}>
+                          {fmtDayLabel(date)}
+                        </span>
+
+                        {/* Day type pill toggles */}
+                        <div className="flex items-center gap-1">
+                          {DAY_TYPES.filter(d => d.key !== 'work').map(d => (
+                            <button
+                              key={d.key}
+                              onClick={() => setDayType(date, dayType === d.key ? 'work' : d.key)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors ${
+                                dayType === d.key
+                                  ? `${d.bg} ${d.color} ${d.border}`
+                                  : 'bg-transparent text-muted-foreground border-transparent hover:border-border hover:text-foreground'
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          ))}
+                          {dayTotal > 0 && (
+                            <span className={`ml-1 text-xs font-medium ${isWork ? 'text-primary' : cfg.color}`}>
+                              {dayTotal.toFixed(2)} hrs
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Entry rows */}
-                      <div className="divide-y divide-border">
-                        {dayEntries.map(entry => (
-                          <div key={entry._key} className="px-3 py-2.5 space-y-2">
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                placeholder="What did you work on?"
-                                value={entry.description}
-                                onChange={e => updateEntry(entry._key, 'description', e.target.value)}
-                                className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                              />
-                              <input
-                                type="number"
-                                placeholder="hrs"
-                                min="0.1"
-                                max="24"
-                                step="0.25"
-                                value={entry.hours}
-                                onChange={e => updateEntry(entry._key, 'hours', e.target.value)}
-                                className="w-[72px] h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground text-right placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                              />
-                              <button
-                                onClick={() => removeEntry(entry._key)}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                            {jobs.length > 0 && (
-                              <div className="relative">
-                                <select
-                                  value={entry.job_id ?? ''}
-                                  onChange={e => updateEntry(entry._key, 'job_id', e.target.value ? parseInt(e.target.value, 10) : null)}
-                                  className="w-full h-7 pl-2.5 pr-7 rounded-lg border border-border bg-background text-xs text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                >
-                                  <option value="">{globalJobId ? 'Using default job' : 'No job assigned'}</option>
-                                  {jobs.map(j => (
-                                    <option key={j.id} value={j.id}>
-                                      {j.job_number ? `${j.job_number} — ` : ''}{j.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      {/* Non-work day — collapsed with badge */}
+                      {!isWork && (
+                        <div className={`px-3 py-3 flex items-center gap-2 ${cfg.bg}`}>
+                          <span className={`text-xs ${cfg.color}`}>
+                            {cfg.label} — {STANDARD_HOURS} hrs (standard day)
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Work day — entry rows */}
+                      {isWork && (
+                        <>
+                          <div className="divide-y divide-border">
+                            {dayEntries.map(entry => (
+                              <div key={entry._key} className="px-3 py-2.5 space-y-2">
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="What did you work on?"
+                                    value={entry.description}
+                                    onChange={e => updateEntry(entry._key, 'description', e.target.value)}
+                                    className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                  />
+                                  <input
+                                    type="number"
+                                    placeholder="hrs"
+                                    min="0.1"
+                                    max="24"
+                                    step="0.25"
+                                    value={entry.hours}
+                                    onChange={e => updateEntry(entry._key, 'hours', e.target.value)}
+                                    className="w-[72px] h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground text-right placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                  />
+                                  <button
+                                    onClick={() => removeEntry(entry._key)}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                                {jobs.length > 0 && (
+                                  <div className="relative">
+                                    <select
+                                      value={entry.job_id ?? ''}
+                                      onChange={e => updateEntry(entry._key, 'job_id', e.target.value ? parseInt(e.target.value, 10) : null)}
+                                      className="w-full h-7 pl-2.5 pr-7 rounded-lg border border-border bg-background text-xs text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    >
+                                      <option value="">{globalJobId ? 'Using default job' : 'No job assigned'}</option>
+                                      {jobs.map(j => (
+                                        <option key={j.id} value={j.id}>
+                                          {j.job_number ? `${j.job_number} — ` : ''}{j.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            ))}
                           </div>
-                        ))}
-                      </div>
 
-                      {/* Add entry for this day */}
-                      <button
-                        onClick={() => addEntryForDate(date)}
-                        className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-primary hover:bg-primary/5 transition-colors border-t border-border"
-                      >
-                        <Plus size={12} />
-                        Add entry for this day
-                      </button>
+                          {/* Add entry for this day */}
+                          <button
+                            onClick={() => addEntryForDate(date)}
+                            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-primary hover:bg-primary/5 transition-colors border-t border-border"
+                          >
+                            <Plus size={12} />
+                            Add entry for this day
+                          </button>
+                        </>
+                      )}
                     </div>
                   );
                 })}
