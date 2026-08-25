@@ -2,10 +2,11 @@
  * NewTimesheetSheet — FairWork compliant
  * Each day: Start time · Finish time · Unpaid break (mins) → hours auto-calculated.
  * Non-work days (Leave / Sick / Public Holiday) collapse to a badge row.
+ * Employee field: select from company users — required before saving.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X, Clock, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
+import { X, Clock, ChevronDown, Loader2, AlertCircle, User } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,12 @@ interface Job {
   id: number;
   job_number: string | null;
   name: string;
+}
+
+interface Employee {
+  profileId: number;
+  name: string;
+  email: string;
 }
 
 /** One row per calendar day — mirrors FairWork template exactly */
@@ -113,6 +120,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [notes, setNotes] = useState('');
   const [rows, setRows] = useState<DayRow[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeeProfileId, setEmployeeProfileId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,13 +136,18 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
     });
   }, [weekEnding]);
 
-  // Load jobs
+  // Load jobs + employees when sheet opens
   useEffect(() => {
     if (!open) return;
     fetch('/api/jobs?status=active&limit=200', { credentials: 'include' })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(data => setJobs(Array.isArray(data.jobs) ? data.jobs : []))
       .catch(() => setJobs([]));
+
+    fetch('/api/finance/timesheets/employees', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(data => setEmployees(Array.isArray(data.employees) ? data.employees : []))
+      .catch(() => setEmployees([]));
   }, [open]);
 
   // Load existing timesheet for editing
@@ -147,6 +161,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
         setWeekEnding(we);
         setGlobalJobId(ts.job_id ?? null);
         setNotes(ts.notes ?? '');
+        setEmployeeProfileId(ts.employee_profile_id ?? null);
         if (Array.isArray(ts.entries) && ts.entries.length > 0) {
           const dates = weekDates(we);
           const byDate: Record<string, DayRow> = {};
@@ -174,6 +189,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       setWeekEnding(nextSunday());
       setGlobalJobId(null);
       setNotes('');
+      setEmployeeProfileId(null);
       setError(null);
       setSaving(false);
     }
@@ -190,6 +206,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   async function save(andSubmit: boolean) {
     setError(null);
     if (!weekEnding) { setError('Week ending date is required'); return; }
+    if (!employeeProfileId) { setError('Please select an employee'); return; }
 
     // Build entries payload
     const entries = rows.map(r => {
@@ -216,7 +233,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       return;
     }
 
-    const payload = { weekEnding, jobId: globalJobId, notes: notes.trim() || null, entries };
+    const payload = { weekEnding, employeeProfileId, jobId: globalJobId, notes: notes.trim() || null, entries };
 
     setSaving(true);
     try {
@@ -257,6 +274,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   }
 
   const total = totalHours(rows);
+  const selectedEmployee = employees.find(e => e.profileId === employeeProfileId);
 
   return (
     <AnimatePresence>
@@ -282,7 +300,9 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   {editId ? 'Edit Timesheet' : 'New Timesheet'}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  {total > 0 ? `${total.toFixed(2)} hrs total` : 'Enter start & finish times for each day'}
+                  {selectedEmployee
+                    ? <span className="font-semibold text-foreground">{selectedEmployee.name}</span>
+                    : total > 0 ? `${total.toFixed(2)} hrs total` : 'Select employee to begin'}
                 </p>
               </div>
               <button onClick={onClose} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors">
@@ -302,6 +322,30 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* ── Employee picker ── */}
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  Employee <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={employeeProfileId ?? ''}
+                    onChange={e => setEmployeeProfileId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                    className="w-full h-10 pl-9 pr-8 rounded-lg border border-border bg-background text-sm text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Select employee…</option>
+                    {employees.map(emp => (
+                      <option key={emp.profileId} value={emp.profileId}>{emp.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                {selectedEmployee && (
+                  <p className="text-xs text-muted-foreground mt-1 pl-1">{selectedEmployee.email}</p>
+                )}
+              </div>
 
               {/* Week ending + default job */}
               <div className="grid grid-cols-2 gap-3">
@@ -357,14 +401,12 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
                         {/* Main row */}
                         <div className={`grid grid-cols-[1fr_64px_64px_52px_64px] gap-1.5 items-center px-3 py-2 ${isWork ? '' : cfg?.rowBg}`}>
-                          {/* Day label */}
                           <div className="min-w-0">
                             <span className={`text-xs font-semibold truncate block ${isWork ? 'text-foreground' : cfg?.color}`}>
                               {fmtDayLabel(row.work_date)}
                             </span>
                           </div>
 
-                          {/* Start */}
                           {isWork ? (
                             <input type="time" value={row.start_time}
                               onChange={e => updateRow(row.work_date, { start_time: e.target.value })}
@@ -373,7 +415,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                             <span className={`text-xs text-center ${cfg?.color}`}>—</span>
                           )}
 
-                          {/* Finish */}
                           {isWork ? (
                             <input type="time" value={row.finish_time}
                               onChange={e => updateRow(row.work_date, { finish_time: e.target.value })}
@@ -382,7 +423,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                             <span className={`text-xs text-center ${cfg?.color}`}>—</span>
                           )}
 
-                          {/* Break (mins) */}
                           {isWork ? (
                             <input type="number" placeholder="0" min="0" max="480" step="5"
                               value={row.unpaid_break_mins}
@@ -392,7 +432,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                             <span className={`text-xs text-center ${cfg?.color}`}>—</span>
                           )}
 
-                          {/* Calculated hours */}
                           <div className="text-right">
                             {hrs !== null && hrs > 0 ? (
                               <span className={`text-xs font-semibold ${isWork ? 'text-primary' : cfg?.color}`}>
@@ -404,7 +443,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           </div>
                         </div>
 
-                        {/* Day type pills + optional job/description row */}
+                        {/* Day type pills + optional job row */}
                         <div className={`flex items-center gap-1.5 px-3 py-1.5 border-t border-border/50 ${isWork ? 'bg-muted/20' : cfg?.rowBg}`}>
                           {DAY_TYPES.map(d => (
                             <button key={d.key}
@@ -418,7 +457,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                             </button>
                           ))}
 
-                          {/* Per-day job override (work days only) */}
                           {isWork && jobs.length > 0 && (
                             <div className="relative ml-auto">
                               <select value={row.job_id ?? ''}
