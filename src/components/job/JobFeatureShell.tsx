@@ -1,16 +1,16 @@
 /**
- * JobFeatureShell — Shared standalone feature wrapper (Path B).
+ * JobFeatureShell — Shared standalone feature wrapper.
  *
  * Renders the header (Back, feature icon+name, job name+number, Change Job)
  * and wraps the canonical feature component as children.
  *
  * Used by every standalone /jobs/:id/<feature> page that is reached
- * via the Work & Field launcher or directly via a deep link.
+ * via the home screen opening-page icons or directly via a deep link.
  *
  * BACK NAVIGATION — deterministic, not history-dependent:
  *   - If `backTo` is provided, Back navigates there explicitly.
  *   - Otherwise falls back to navigate(-1) when history depth > 1.
- *   - Safe fallback: /work-field (never an arbitrary external URL).
+ *   - Safe fallback: / (home screen — never an arbitrary external URL).
  *   - backTo is validated to be an internal path (starts with /).
  */
 import { type ReactNode } from 'react';
@@ -29,7 +29,7 @@ interface JobFeatureShellProps {
   /**
    * Explicit back destination.
    * Must be an internal path starting with "/".
-   * If omitted, falls back to navigate(-1) or /work-field.
+   * If omitted, falls back to navigate(-1) or / (home screen).
    */
   backTo?: string;
   /** Called when user taps "Change Job" — should navigate back to the launcher picker */
@@ -75,12 +75,12 @@ export default function JobFeatureShell({
       return;
     }
     // Safe fallback for direct deep links
-    navigate('/work-field');
+    navigate('/');
   }
 
   // Derive a display back label for the header
   const backLabel = isSafeBackPath(backTo)
-    ? backTo === '/work-field' ? 'Work & Field' : 'Back'
+    ? backTo === '/' ? 'Home' : 'Back'
     : 'Back';
 
   return (

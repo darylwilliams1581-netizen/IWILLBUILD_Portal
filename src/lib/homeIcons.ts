@@ -23,9 +23,9 @@ import {
   FileText, Receipt, BookOpen, ClipboardList,
   ClipboardCheck, Image, AlertTriangle, ShieldAlert,
   UserCircle, CreditCard, Settings, BookMarked,
-  TrendingUp, Clock, StickyNote, DollarSign,
+  DollarSign,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, Wallet, Wrench,
+  MessageSquare, ClipboardSignature, Wallet,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'files' | 'fleet' | 'finance' | 'safety' | 'management' | 'comingSoon';
@@ -50,12 +50,8 @@ export interface HomeIconDef {
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'jobs',        label: 'Jobs',        icon: HardHat,      href: '/jobs',                        bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'work',        label: 'Work',        icon: Briefcase,    href: '/work',                        bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
-  { key: 'work_field',  label: 'Work & Field',icon: Wrench,       href: '/work-field',                  bg: 'bg-indigo-600',  fg: 'text-white', group: 'field' },
   { key: 'job_card',    label: 'Job Cards',   icon: Zap,          href: '/job-cards',                   bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
   { key: 'scheduler',   label: 'Scheduler',   icon: CalendarDays, href: '/scheduler',                   bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
-  { key: 'progress',    label: 'Progress',    icon: TrendingUp,   href: '/work-field/progress',         bg: 'bg-green-600',   fg: 'text-white', group: 'field' },
-  { key: 'delays',      label: 'Delays',      icon: Clock,        href: '?panel=delays-picker',         bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
-  { key: 'notes',       label: 'Notes',       icon: StickyNote,   href: '?panel=notes-picker',          bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
   { key: 'log_cost',    label: 'Log Cost',    icon: DollarSign,   href: '?panel=log-cost',              bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
 ];
 

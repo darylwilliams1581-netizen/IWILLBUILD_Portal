@@ -57,7 +57,7 @@ export default function JobNotesPage() {
   };
 
   function handleChangeJob() {
-    navigate('/work-field/notes');
+    navigate('/?picker=notes');
   }
 
   return (
@@ -82,7 +82,7 @@ export default function JobNotesPage() {
             featureLabel="Notes"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
-            backTo="/work-field/notes"
+            backTo="/"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">

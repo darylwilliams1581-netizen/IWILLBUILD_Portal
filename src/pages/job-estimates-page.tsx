@@ -23,7 +23,7 @@ export default function JobEstimatesPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/work-field/estimates');
+    navigate('/?picker=estimates');
   }
 
   return (
@@ -55,7 +55,7 @@ export default function JobEstimatesPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/work-field/estimates"
+            backTo="/"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

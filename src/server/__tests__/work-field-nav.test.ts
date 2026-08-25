@@ -58,7 +58,7 @@ describe('Feature registry — completeness', () => {
     });
   });
 
-  it('exports LAUNCHER_FEATURES', () => {
+  it('exports LAUNCHER_FEATURES (alias for OPENING_PAGE_FEATURES)', () => {
     expect(registrySrc).toContain('export const LAUNCHER_FEATURES');
   });
 
@@ -194,57 +194,30 @@ describe('Feature registry — launcher routes', () => {
 
 // ── 2. Work & Field launcher ──────────────────────────────────────────────────
 
-describe('Work & Field launcher — structure', () => {
+describe('Work & Field redirect page — backward compat', () => {
   it('imports from jobFeatureRegistry', () => {
     expect(launcherSrc).toContain("from '@/lib/jobFeatureRegistry'");
-  });
-
-  it('imports LAUNCHER_FEATURES', () => {
-    expect(launcherSrc).toContain('LAUNCHER_FEATURES');
   });
 
   it('imports getFeatureByLauncherSlug', () => {
     expect(launcherSrc).toContain('getFeatureByLauncherSlug');
   });
 
-  it('imports JobPickerSheet', () => {
-    expect(launcherSrc).toContain("from '@/components/JobPickerSheet'");
+  it('redirects /work-field to / (home screen)', () => {
+    expect(launcherSrc).toContain("navigate('/', { replace: true })");
   });
 
-  it('uses data-testid for launcher cards', () => {
-    expect(launcherSrc).toContain('data-testid={`launcher-card-${feature.key}`}');
+  it('redirects /work-field/:slug to /?picker=<key>', () => {
+    expect(launcherSrc).toContain('navigate(`/?picker=${feature.key}`');
   });
 
-  it('uses data-testid for launcher groups', () => {
-    expect(launcherSrc).toContain('data-testid={`launcher-group-${group.label}`}');
+  it('is marked noindex', () => {
+    expect(launcherSrc).toContain('noindex');
   });
 
-  it('has 4 launcher groups (Work, Field & Files, Finance, Safety)', () => {
-    const groups = ['Work', 'Field & Files', 'Finance', 'Safety'];
-    groups.forEach(g => {
-      expect(launcherSrc).toContain(`label: '${g}'`);
-    });
-  });
-
-  it('opens picker on card click', () => {
-    expect(launcherSrc).toContain('setPickerOpen(true)');
-  });
-
-  it('navigates to /work-field on picker close', () => {
-    expect(launcherSrc).toContain("navigate('/work-field'");
-  });
-
-  it('navigates to standaloneRoute on job select', () => {
-    expect(launcherSrc).toContain('pendingFeature.standaloneRoute(job.id)');
-  });
-
-  it('updates URL to /work-field/:featureSlug on card click (deep-link support)', () => {
-    expect(launcherSrc).toContain('/work-field/');
-  });
-
-  it('opens picker immediately when featureSlug is in URL', () => {
-    expect(launcherSrc).toContain('getFeatureByLauncherSlug(featureSlug)');
-    expect(launcherSrc).toContain('setPickerOpen(true)');
+  it('does not define its own feature array', () => {
+    expect(launcherSrc).not.toContain('const LAUNCHER_GROUPS');
+    expect(launcherSrc).not.toContain('JOB_FEATURES');
   });
 });
 
@@ -378,12 +351,11 @@ describe('Tablet navigation gap — breakpoint fix', () => {
   });
 });
 
-// ── 6. homeIcons.ts fixes ─────────────────────────────────────────────────────
+// ── 6. homeIcons.ts — no /work-field hrefs ───────────────────────────────────
 
-describe('homeIcons.ts — fixes', () => {
-  it('progress icon routes to /work-field/progress (not /work?workTab=progress)', () => {
-    expect(homeIconsSrc).toContain("href: '/work-field/progress'");
-    expect(homeIconsSrc).not.toContain("href: '/work?workTab=progress'");
+describe('homeIcons.ts — no /work-field hrefs', () => {
+  it('no icon href points to /work-field (job features now on opening page)', () => {
+    expect(homeIconsSrc).not.toMatch(/href: '\/work-field/);
   });
 
   it('timesheet comingSoon icon routes to /finance?financeTab=timesheets (not /timesheets)', () => {
@@ -391,21 +363,21 @@ describe('homeIcons.ts — fixes', () => {
     expect(homeIconsSrc).not.toContain("href: '/timesheets'");
   });
 
-  it('Work & Field icon is present in FIELD_ICON_DEFS', () => {
-    expect(homeIconsSrc).toContain("key: 'work_field'");
-    expect(homeIconsSrc).toContain("href: '/work-field'");
+  it('Work & Field icon is NOT in FIELD_ICON_DEFS (removed)', () => {
+    expect(homeIconsSrc).not.toContain("key: 'work_field'");
+    expect(homeIconsSrc).not.toContain("href: '/work-field'");
   });
 });
 
-// ── 7. Sidebar — Work & Field entry ──────────────────────────────────────────
+// ── 7. Sidebar — Work & Field entry removed ───────────────────────────────────
 
-describe('Sidebar — Work & Field nav entry', () => {
-  it('sidebar has Work & Field nav item', () => {
-    expect(sidebarSrc).toContain("label: 'Work & Field'");
+describe('Sidebar — Work & Field nav entry removed', () => {
+  it('sidebar no longer has Work & Field nav item', () => {
+    expect(sidebarSrc).not.toContain("label: 'Work & Field'");
   });
 
-  it('Work & Field nav item links to /work-field', () => {
-    expect(sidebarSrc).toContain("href: '/work-field'");
+  it('sidebar no longer links to /work-field', () => {
+    expect(sidebarSrc).not.toContain("href: '/work-field'");
   });
 });
 
@@ -546,42 +518,42 @@ describe('useJobForFeature — shared data hook', () => {
   });
 });
 
-// ── 11. Path B — Change Job preserves feature ────────────────────────────────
+// ── 11. Change Job navigates to /?picker=<key> ───────────────────────────────
 
-describe('Path B — Change Job preserves feature', () => {
-  it('job-tasks-page navigates to /work-field/tasks on Change Job', () => {
+describe('Change Job — navigates to /?picker=<key>', () => {
+  it('job-tasks-page navigates to /?picker=tasks on Change Job', () => {
     const tasksSrc = src('src/pages/job-tasks-page.tsx');
-    expect(tasksSrc).toContain("navigate('/work-field/tasks')");
+    expect(tasksSrc).toContain("navigate('/?picker=tasks')");
   });
 
-  it('job-attendance-page navigates to /work-field/attendance on Change Job', () => {
+  it('job-attendance-page navigates to /?picker=attendance on Change Job', () => {
     const attSrc = src('src/pages/job-attendance-page.tsx');
-    expect(attSrc).toContain("navigate('/work-field/attendance')");
+    expect(attSrc).toContain("navigate('/?picker=attendance')");
   });
 
-  it('job-files-page navigates to /work-field/files on Change Job', () => {
+  it('job-files-page navigates to /?picker=files on Change Job', () => {
     const filesSrc = src('src/pages/job-files-page.tsx');
-    expect(filesSrc).toContain("navigate('/work-field/files')");
+    expect(filesSrc).toContain("navigate('/?picker=files')");
   });
 
-  it('job-estimates-page navigates to /work-field/estimates on Change Job', () => {
+  it('job-estimates-page navigates to /?picker=estimates on Change Job', () => {
     const estSrc = src('src/pages/job-estimates-page.tsx');
-    expect(estSrc).toContain("navigate('/work-field/estimates')");
+    expect(estSrc).toContain("navigate('/?picker=estimates')");
   });
 
-  it('job-purchase-orders-page navigates to /work-field/purchase-orders on Change Job', () => {
+  it('job-purchase-orders-page navigates to /?picker=purchase-orders on Change Job', () => {
     const poSrc = src('src/pages/job-purchase-orders-page.tsx');
-    expect(poSrc).toContain("navigate('/work-field/purchase-orders')");
+    expect(poSrc).toContain("navigate('/?picker=purchase-orders')");
   });
 
-  it('job-invoices-page navigates to /work-field/invoices on Change Job', () => {
+  it('job-invoices-page navigates to /?picker=invoices on Change Job', () => {
     const invSrc = src('src/pages/job-invoices-page.tsx');
-    expect(invSrc).toContain("navigate('/work-field/invoices')");
+    expect(invSrc).toContain("navigate('/?picker=invoices')");
   });
 
-  it('job-safety-page navigates to /work-field/safety on Change Job', () => {
+  it('job-safety-page navigates to /?picker=safety on Change Job', () => {
     const safSrc = src('src/pages/job-safety-page.tsx');
-    expect(safSrc).toContain("navigate('/work-field/safety')");
+    expect(safSrc).toContain("navigate('/?picker=safety')");
   });
 });
 
@@ -597,7 +569,7 @@ describe('Timesheets — not in job picker launcher', () => {
     expect(homeIconsSrc).toContain("href: '/finance?financeTab=timesheets'");
   });
 
-  it('Timesheets is NOT in the Work & Field launcher groups', () => {
+  it('Timesheets is NOT in the Work & Field redirect page', () => {
     expect(launcherSrc).not.toContain('timesheet');
   });
 });
@@ -644,7 +616,6 @@ describe('Legacy backward-compat', () => {
 
 describe('No duplicate feature lists', () => {
   it('work-field.tsx does NOT define its own feature array', () => {
-    // Should not contain a local array of feature objects with keys
     expect(launcherSrc).not.toContain("key: 'tasks'");
     expect(launcherSrc).not.toContain("key: 'notes'");
   });

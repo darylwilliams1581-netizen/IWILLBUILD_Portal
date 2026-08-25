@@ -5,7 +5,7 @@ import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, 
 // Desktop sidebar icons
 Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert,
 // Work section icons
-Plus, Briefcase, Wrench, Clock } from 'lucide-react';
+Plus, Briefcase, Clock } from 'lucide-react';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -132,12 +132,6 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Work',
     icon: Briefcase,
     href: '/work'
-  }, {
-    id: 'nav-work-field',
-    idx: 'work-field',
-    label: 'Work & Field',
-    icon: Wrench,
-    href: '/work-field'
   }]
 }, {
   heading: 'Field & Files',
@@ -346,11 +340,6 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     label: 'Work',
     icon: Briefcase,
     href: '/work',
-    permKey: 'jobs'
-  }, {
-    label: 'Work & Field',
-    icon: Wrench,
-    href: '/work-field',
     permKey: 'jobs'
   }, {
     label: 'Scheduler',

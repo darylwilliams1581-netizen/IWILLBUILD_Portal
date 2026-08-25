@@ -195,8 +195,8 @@ describe('JobFeatureShell — deterministic back navigation', () => {
     expect(shellSrc).toContain("!path.startsWith('//')");
   });
 
-  it('falls back to /work-field for direct deep links (no history)', () => {
-    expect(shellSrc).toContain("navigate('/work-field')");
+  it('falls back to / (home screen) for direct deep links (no history)', () => {
+    expect(shellSrc).toContain("navigate('/')");
   });
 
   it('exports a default function component', async () => {
@@ -245,9 +245,10 @@ describe('Standalone pages — deterministic backTo prop', () => {
   ];
 
   pageFiles.forEach(file => {
-    it(`${file} passes a /work-field/ backTo to JobFeatureShell`, () => {
+    it(`${file} passes backTo="/" to JobFeatureShell`, () => {
       const pageSrc = src(`src/pages/${file}`);
-      expect(pageSrc).toMatch(/backTo="\/work-field\//);
+      expect(pageSrc).toContain('backTo="/"');
+      expect(pageSrc).not.toMatch(/backTo="\/work-field/);
     });
   });
 });

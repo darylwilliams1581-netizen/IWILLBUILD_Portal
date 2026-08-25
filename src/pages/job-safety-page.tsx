@@ -19,7 +19,7 @@ export default function JobSafetyPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/work-field/safety');
+    navigate('/?picker=safety');
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JobSafetyPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/work-field/safety"
+            backTo="/"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

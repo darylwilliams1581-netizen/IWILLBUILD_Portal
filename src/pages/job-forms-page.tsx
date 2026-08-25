@@ -110,7 +110,7 @@ export default function JobFormsPage() {
   const title = job ? `${job.name} — Forms` : 'Job Forms';
 
   function handleChangeJob() {
-    navigate('/work-field/forms');
+    navigate('/?picker=forms');
   }
 
   return <div className="portal-page">
@@ -128,7 +128,7 @@ export default function JobFormsPage() {
           featureLabel="Forms"
           jobName={job?.name ?? 'Job'}
           jobNumber={job?.jobNumber}
-          backTo="/work-field/forms"
+          backTo="/"
           onChangeJob={handleChangeJob}
           desktopActions={
             <div className="hidden md:flex items-center gap-1.5">

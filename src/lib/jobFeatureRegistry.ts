@@ -1,18 +1,21 @@
 /**
  * jobFeatureRegistry.ts — Single source of truth for all job-scoped features.
  *
- * Both navigation paths (Path A — inside an open Job, Path B — Work & Field
- * launcher) derive their icon, label, route and permission data from this
- * registry.  Nothing else should maintain a parallel feature list.
+ * Three navigation paths derive their icon, label, route and permission data
+ * from this registry.  Nothing else should maintain a parallel feature list.
  *
  * Key rules:
- *  - `tabKey`       matches the ?tab= query param used in job-detail.tsx
+ *  - `tabKey`         matches the ?tab= query param used in job-detail.tsx
  *  - `standaloneRoute(jobId)` returns the canonical standalone URL
- *  - `launcherRoute` is the Work & Field launcher entry point (Path B)
- *  - `inDropdown`   controls whether the feature appears in the job-detail
- *                   section dropdown (Path A)
- *  - `inLauncher`   controls whether the feature appears on the Work & Field
- *                   launcher page (Path B)
+ *  - `pickerRoute`    canonical URL that opens the home screen and immediately
+ *                     launches the job picker for this feature.
+ *                     Format: `/?picker=<key>`
+ *  - `launcherRoute`  kept for backward-compat redirects from /work-field/*
+ *                     Alias: same value as pickerRoute for new code.
+ *  - `inDropdown`     controls whether the feature appears in the job-detail
+ *                     section dropdown (Path A — inside an open Job)
+ *  - `inOpeningPage`  controls whether the feature appears on the home screen
+ *                     opening-page icon grid (Path B — direct from home)
  *
  * The `tabKey` for Job Ledger is intentionally kept as 'costs' to preserve
  * backward-compatible deep links (/jobs/:id?tab=costs).
@@ -53,11 +56,24 @@ export interface JobFeature {
   fg: string;
   /** Canonical standalone route for this feature + job */
   standaloneRoute: (jobId: number | string) => string;
-  /** Work & Field launcher URL (Path B entry point) */
+  /**
+   * Canonical picker entry point — opens home screen and immediately launches
+   * the job picker for this feature.  Format: `/?picker=<key>`
+   */
+  pickerRoute: string;
+  /**
+   * @deprecated Use pickerRoute.  Kept for backward-compat redirects from
+   * /work-field/* routes.  Value is identical to pickerRoute.
+   */
   launcherRoute: string;
   /** Show in job-detail section dropdown (Path A) */
   inDropdown: boolean;
-  /** Show on Work & Field launcher page (Path B) */
+  /** Show on home screen opening-page icon grid (Path B) */
+  inOpeningPage: boolean;
+  /**
+   * @deprecated Use inOpeningPage.  Kept so existing code that reads
+   * inLauncher still compiles without changes.
+   */
   inLauncher: boolean;
   /** Nav group in the job-detail dropdown */
   group: 'Work' | 'Field & Files' | 'Finance' | 'Safety';
@@ -74,8 +90,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-blue-100',
     fg: 'text-blue-600',
     standaloneRoute: (id) => `/jobs/${id}/tasks`,
+    pickerRoute: '/?picker=tasks',
     launcherRoute: '/work-field/tasks',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Work',
   },
@@ -88,8 +106,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-yellow-100',
     fg: 'text-yellow-600',
     standaloneRoute: (id) => `/jobs/${id}/notes`,
+    pickerRoute: '/?picker=notes',
     launcherRoute: '/work-field/notes',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Work',
   },
@@ -102,8 +122,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-orange-100',
     fg: 'text-orange-600',
     standaloneRoute: (id) => `/jobs/${id}/delays`,
+    pickerRoute: '/?picker=delays',
     launcherRoute: '/work-field/delays',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Work',
   },
@@ -116,8 +138,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-cyan-100',
     fg: 'text-cyan-600',
     standaloneRoute: (id) => `/jobs/${id}/progress`,
+    pickerRoute: '/?picker=progress',
     launcherRoute: '/work-field/progress',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Work',
   },
@@ -130,8 +154,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-green-100',
     fg: 'text-green-600',
     standaloneRoute: (id) => `/jobs/${id}/attendance`,
+    pickerRoute: '/?picker=attendance',
     launcherRoute: '/work-field/attendance',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Work',
   },
@@ -146,8 +172,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-violet-100',
     fg: 'text-violet-600',
     standaloneRoute: (id) => `/jobs/${id}/photos`,
+    pickerRoute: '/?picker=photos',
     launcherRoute: '/work-field/photos',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Field & Files',
   },
@@ -160,8 +188,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-blue-100',
     fg: 'text-blue-700',
     standaloneRoute: (id) => `/jobs/${id}/drawings`,
+    pickerRoute: '/?picker=drawings',
     launcherRoute: '/work-field/drawings',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Field & Files',
   },
@@ -174,8 +204,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-violet-100',
     fg: 'text-violet-700',
     standaloneRoute: (id) => `/jobs/${id}/files`,
+    pickerRoute: '/?picker=files',
     launcherRoute: '/work-field/files',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Field & Files',
   },
@@ -190,8 +222,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-violet-100',
     fg: 'text-violet-600',
     standaloneRoute: (id) => `/jobs/${id}/quotes`,
+    pickerRoute: '/?picker=estimates',
     launcherRoute: '/work-field/estimates',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Finance',
   },
@@ -204,8 +238,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-teal-100',
     fg: 'text-teal-600',
     standaloneRoute: (id) => `/jobs/${id}/purchase-orders`,
+    pickerRoute: '/?picker=purchase-orders',
     launcherRoute: '/work-field/purchase-orders',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Finance',
   },
@@ -218,8 +254,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-emerald-100',
     fg: 'text-emerald-600',
     standaloneRoute: (id) => `/jobs/${id}/invoices`,
+    pickerRoute: '/?picker=invoices',
     launcherRoute: '/work-field/invoices',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Finance',
   },
@@ -232,8 +270,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-emerald-100',
     fg: 'text-emerald-700',
     standaloneRoute: (id) => `/jobs/${id}/costs`,
+    pickerRoute: '/?picker=costs',
     launcherRoute: '/work-field/ledger',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Finance',
   },
@@ -248,8 +288,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-fuchsia-100',
     fg: 'text-fuchsia-600',
     standaloneRoute: (id) => `/jobs/${id}/forms`,
+    pickerRoute: '/?picker=forms',
     launcherRoute: '/work-field/forms',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Safety',
   },
@@ -262,8 +304,10 @@ export const JOB_FEATURES: JobFeature[] = [
     bg: 'bg-rose-100',
     fg: 'text-rose-600',
     standaloneRoute: (id) => `/jobs/${id}/safety`,
+    pickerRoute: '/?picker=safety',
     launcherRoute: '/work-field/safety',
     inDropdown: true,
+    inOpeningPage: true,
     inLauncher: true,
     group: 'Safety',
   },
@@ -272,15 +316,18 @@ export const JOB_FEATURES: JobFeature[] = [
 /** All features that appear in the job-detail section dropdown */
 export const DROPDOWN_FEATURES = JOB_FEATURES.filter(f => f.inDropdown);
 
-/** All features that appear on the Work & Field launcher */
-export const LAUNCHER_FEATURES = JOB_FEATURES.filter(f => f.inLauncher);
+/** All features that appear on the home screen opening-page icon grid */
+export const OPENING_PAGE_FEATURES = JOB_FEATURES.filter(f => f.inOpeningPage);
+
+/** @deprecated Use OPENING_PAGE_FEATURES */
+export const LAUNCHER_FEATURES = OPENING_PAGE_FEATURES;
 
 /** Look up a feature by its key */
 export function getFeatureByKey(key: string): JobFeature | undefined {
   return JOB_FEATURES.find(f => f.key === key);
 }
 
-/** Look up a feature by its launcher route segment (the last path segment) */
+/** Look up a feature by its legacy launcher route slug (e.g. "tasks", "ledger") */
 export function getFeatureByLauncherSlug(slug: string): JobFeature | undefined {
   return JOB_FEATURES.find(f => f.launcherRoute === `/work-field/${slug}`);
 }
