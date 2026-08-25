@@ -80,13 +80,13 @@ describe("extractEditableText", () => {
 
 describe("findEditableContainer", () => {
   it("returns a text element when clicked directly", () => {
-    const root = html('<p data-dev-editable="text">Hello</p>');
+    const root = html('<p data-dev-file="Test.tsx" data-dev-editable="text">Hello</p>');
     const p = root.querySelector("p")!;
     expect(findEditableContainer(p, true)).toBe(p);
   });
 
   it("walks up through inline tags to find container", () => {
-    const root = html('<p data-dev-editable="text"><strong>Bold</strong></p>');
+    const root = html('<p data-dev-file="Test.tsx" data-dev-editable="text"><strong>Bold</strong></p>');
     const strong = root.querySelector("strong")!;
     expect(findEditableContainer(strong, true)?.tagName).toBe("P");
   });
@@ -98,27 +98,27 @@ describe("findEditableContainer", () => {
   });
 
   it("rejects elements containing <br>", () => {
-    const root = html('<h1 data-dev-editable="text">Hello<br /><span>World</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Hello<br /><span>World</span></h1>');
     const h1 = root.querySelector("h1")!;
     expect(findEditableContainer(h1, true)).toBeNull();
   });
 
   it("lifts from <li> to parent <ul> when parent is editable", () => {
-    const root = html('<ul class="list-disc pl-6"><li data-dev-editable="text">Item text</li></ul>');
+    const root = html('<ul class="list-disc pl-6" data-dev-file="Test.tsx"><li data-dev-file="Test.tsx" data-dev-editable="text">Item text</li></ul>');
     const li = root.querySelector("li")!;
     const ul = root.querySelector("ul")!;
     expect(findEditableContainer(li, true)).toBe(ul);
   });
 
   it("lifts from <li> to parent <ol> when parent is editable", () => {
-    const root = html('<ol class="list-decimal pl-6"><li data-dev-editable="text">Item text</li></ol>');
+    const root = html('<ol class="list-decimal pl-6" data-dev-file="Test.tsx"><li data-dev-file="Test.tsx" data-dev-editable="text">Item text</li></ol>');
     const li = root.querySelector("li")!;
     const ol = root.querySelector("ol")!;
     expect(findEditableContainer(li, true)).toBe(ol);
   });
 
   it("returns <ul> directly when clicked", () => {
-    const root = html('<ul class="list-disc"><li>Item</li></ul>');
+    const root = html('<ul class="list-disc" data-dev-file="Test.tsx"><li>Item</li></ul>');
     const ul = root.querySelector("ul")!;
     expect(findEditableContainer(ul, true)).toBe(ul);
   });
@@ -174,13 +174,35 @@ describe("findEditableContainer", () => {
     const i = root.querySelector("i")!;
     expect(findEditableContainer(i as HTMLElement, true)).toBe(i);
   });
+
+  it("returns null for an inline wrapper containing two keyed <Text> descendants (content-owned, unresolvable)", () => {
+    const root = html(
+      '<div><i>' +
+        '<span data-dev-content-key=\'{"key":"home.a","kind":"copy"}\'>alpha</span>' +
+        '<span data-dev-content-key=\'{"key":"home.b","kind":"copy"}\'>beta</span>' +
+        '</i></div>',
+    );
+    const i = root.querySelector("i")!;
+    expect(findEditableContainer(i as HTMLElement, true)).toBeNull();
+  });
+
+  it("still resolves an inline wrapper with a single covering keyed <Text> descendant via the outermost-inline fallback", () => {
+    const root = html(
+      '<div><i>' +
+        '<span data-dev-content-key=\'{"key":"home.title","kind":"copy"}\'>Styled heading</span>' +
+        '</i></div>',
+    );
+    const i = root.querySelector("i")!;
+    const result = findEditableContainer(i as HTMLElement, true);
+    expect(result).not.toBeNull();
+  });
 });
 
 // ── findBrSegment ──
 
 describe("findBrSegment", () => {
   it("returns existing inline child as segment", () => {
-    const root = html('<h1 data-dev-editable="text">Hello<br /><span class="x">World</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Hello<br /><span class="x">World</span></h1>');
     const span = root.querySelector("span")!;
     const h1 = root.querySelector("h1")!;
     const result = findBrSegment(span, 0, 0, true);
@@ -190,7 +212,7 @@ describe("findBrSegment", () => {
   });
 
   it("walks up nested inline to find direct child segment", () => {
-    const root = html('<h1 data-dev-editable="text">Text<br /><span><strong>Bold</strong></span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Text<br /><span><strong>Bold</strong></span></h1>');
     const strong = root.querySelector("strong")!;
     const span = root.querySelector("span")!;
     const result = findBrSegment(strong, 0, 0, true);
@@ -205,7 +227,7 @@ describe("findBrSegment", () => {
   });
 
   it("returns null for a <br> element itself", () => {
-    const root = html('<h1 data-dev-editable="text">Hello<br /><span>World</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Hello<br /><span>World</span></h1>');
     const br = root.querySelector("br")!;
     expect(findBrSegment(br as HTMLElement, 0, 0, true)).toBeNull();
   });
@@ -216,7 +238,7 @@ describe("findBrSegment", () => {
     // self-healing fallback now wraps the first non-empty direct-child text
     // node instead. In this markup "Hello" is a bare text node, so clicking the
     // <h1> with a failed caret heals to "Hello" rather than refusing the cursor.
-    const root = html('<h1 data-dev-editable="text">Hello<br /><span>World</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Hello<br /><span>World</span></h1>');
     const h1 = root.querySelector("h1")!;
     document.caretRangeFromPoint = vi.fn(() => null);
     const result = findBrSegment(h1, 0, 0, true);
@@ -227,7 +249,7 @@ describe("findBrSegment", () => {
   });
 
   it("heals to first bare line on a bare-text <br> heading when caret is null", () => {
-    const root = html('<h1 data-dev-editable="text">Shop better.<br />Spend less.</h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Shop better.<br />Spend less.</h1>');
     const h1 = root.querySelector("h1")!;
     document.caretRangeFromPoint = vi.fn(() => null);
     const result = findBrSegment(h1, 0, 0, true);
@@ -238,7 +260,7 @@ describe("findBrSegment", () => {
   });
 
   it("wraps the precise bare text node the caret resolves to (precise click)", () => {
-    const root = html('<h1 data-dev-editable="text">Shop better.<br />Spend less.</h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Shop better.<br />Spend less.</h1>');
     const h1 = root.querySelector("h1")!;
     const secondLine: Node = Array.from(h1.childNodes).find(
       (n: ChildNode): boolean => n.nodeType === Node.TEXT_NODE && n.textContent === "Spend less.",
@@ -263,7 +285,7 @@ describe("findBrSegment", () => {
   });
 
   it("wraps multi-element segment before first <br>", () => {
-    const root = html('<h1 data-dev-editable="text"><span>Find </span><strong>stillness.</strong><br /><span>Rest.</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text"><span>Find </span><strong>stillness.</strong><br /><span>Rest.</span></h1>');
     const strong = root.querySelector("strong")!;
     const h1 = root.querySelector("h1")!;
     const result = findBrSegment(strong, 0, 0, true);
@@ -274,7 +296,7 @@ describe("findBrSegment", () => {
   });
 
   it("wraps multi-element segment after last <br>", () => {
-    const root = html('<h1 data-dev-editable="text"><span>Hello</span><br /><span>Find </span><strong>stillness.</strong></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text"><span>Hello</span><br /><span>Find </span><strong>stillness.</strong></h1>');
     const strong = root.querySelector("strong")!;
     const result = findBrSegment(strong, 0, 0, true);
     expect(result).not.toBeNull();
@@ -283,7 +305,7 @@ describe("findBrSegment", () => {
   });
 
   it("wraps multi-element segment between <br>s", () => {
-    const root = html('<h1 data-dev-editable="text"><span>Hello</span><br /><span>Find </span><strong>stillness.</strong><br /><span>Rest.</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text"><span>Hello</span><br /><span>Find </span><strong>stillness.</strong><br /><span>Rest.</span></h1>');
     const span = root.querySelectorAll("span")[1]; // "Find "
     const result = findBrSegment(span, 0, 0, true);
     expect(result).not.toBeNull();
@@ -292,7 +314,7 @@ describe("findBrSegment", () => {
   });
 
   it("does not wrap single-element segment", () => {
-    const root = html('<h1 data-dev-editable="text">Hello<br /><span>World</span></h1>');
+    const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Hello<br /><span>World</span></h1>');
     const span = root.querySelector("span")!;
     const result = findBrSegment(span, 0, 0, true);
     expect(result).not.toBeNull();

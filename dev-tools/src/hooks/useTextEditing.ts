@@ -13,6 +13,7 @@ import {
   generateSelector,
   isBodyTextElement,
   resolveContentKey,
+  resolveContentKeyWithElement,
   resolveConformTarget,
   isInsideNavSurface,
   type ConformTarget,
@@ -206,12 +207,16 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
 
       // Prefer the content-layer path when the element is attributed to a
       // CMS field. Falls back to the JSX-literal AST-edit path otherwise.
-      const contentTarget = resolveContentKey(element);
+      // Use the element the resolution says actually owns the key — not
+      // necessarily the clicked `element` — since data-dev-content-derived
+      // lives on that same element and buildContentUpdatePayload reads it
+      // from whatever element it's given.
+      const contentTarget = resolveContentKeyWithElement(element);
       if (contentTarget) {
         trackInlineEdit("save", contentTarget);
         safePostMessage(window.parent, {
           type: "CONTENT_UPDATED",
-          data: buildContentUpdatePayload(element, contentTarget, originalText, newText),
+          data: buildContentUpdatePayload(contentTarget.element, contentTarget, originalText, newText),
         });
 
         cleanupOverlay();

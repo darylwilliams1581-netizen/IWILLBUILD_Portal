@@ -4,8 +4,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   isTextEditable,
+  isUnresolvableContentOwned,
   isBodyTextElement,
   resolveContentKey,
+  resolveOwnContentKey,
   resolveConformTarget,
   getMediaSlotPath,
   isTextElement,
@@ -891,4 +893,363 @@ describe('element-detection', () => {
       expect(hasManagedDocMarkup(root)).toBe(false);
     });
   });
-})
+
+  // ─── authored content binding (v9 Text primitive) ──────────────────────────────
+
+  describe('authored content binding (v9 Text primitive)', () => {
+    it('treats an element with only data-dev-content-key as editable', () => {
+      const el: HTMLElement = document.createElement('h1');
+      el.setAttribute('data-dev-content-key', 'home.hero.title');
+      el.textContent = 'We Buy Houses';
+
+      expect(isTextEditable(el, true)).toBe(true);
+    });
+
+    it('needs no source-mapper attributes to do it', () => {
+      const el: HTMLElement = document.createElement('h1');
+      el.setAttribute('data-dev-content-key', 'home.hero.title');
+      el.textContent = 'We Buy Houses';
+
+      expect(el.hasAttribute('data-dev-file')).toBe(false);
+      expect(el.hasAttribute('data-dev-editable')).toBe(false);
+      expect(el.hasAttribute('data-dev-bound-text')).toBe(false);
+      expect(isTextEditable(el, true)).toBe(true);
+    });
+
+    it('stays editable under a dynamic ancestor', () => {
+      const wrapper: HTMLElement = document.createElement('div');
+      wrapper.setAttribute('data-dev-dynamic', 'true');
+      const el: HTMLElement = document.createElement('h1');
+      el.setAttribute('data-dev-content-key', 'home.hero.title');
+      el.textContent = 'We Buy Houses';
+      wrapper.appendChild(el);
+
+      expect(isTextEditable(el, true)).toBe(true);
+    });
+
+    // The content-key branch returns before the tag / hasText / hasOnlyText checks,
+    // so a non-text element carrying a content key is reported text-editable. This is
+    // why Media, Link and Collection use data-dev-content-media / -link / -collection
+    // instead. Changing this assertion means changing that decision.
+    it('reports a non-text element with a content key as text-editable', () => {
+      const img: HTMLElement = document.createElement('img');
+      img.setAttribute('data-dev-content-key', 'home.hero.image');
+
+      expect(isTextEditable(img, true)).toBe(true);
+    });
+  });
+
+  // ─── resolveContentKey — last-resort keyed-descendant fallback (nested <Text>) ─
+
+  describe('resolveContentKey — last-resort keyed-descendant fallback', () => {
+    function buildScheduleRow(): { li: HTMLElement; span: HTMLElement } {
+      const li: HTMLElement = document.createElement('li');
+      li.setAttribute('data-dev-content-list', 'home.locationSection.schedule');
+      li.setAttribute('data-dev-item-id', 'day-4');
+      li.setAttribute('data-dev-file', '/app/src/pages/index.tsx');
+      li.setAttribute('data-dev-line', '462');
+      li.setAttribute('data-dev-id', '5209dd');
+
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', 'home.locationSection.schedule[@day-4].location');
+      span.textContent = 'Northgate Corporate Campus — 3300 Summit Ave';
+
+      li.appendChild(span);
+      return { li, span };
+    }
+
+    it('resolves the li to its sole keyed descendant, and isTextEditable routes it via the content path', () => {
+      const { li } = buildScheduleRow();
+      expect(resolveContentKey(li)).toEqual({
+        key: 'home.locationSection.schedule[@day-4].location',
+        kind: 'copy',
+      });
+      expect(isTextEditable(li, true)).toBe(true);
+    });
+
+    it('the span itself still resolves its own key unchanged', () => {
+      const { span } = buildScheduleRow();
+      expect(resolveContentKey(span)).toEqual({
+        key: 'home.locationSection.schedule[@day-4].location',
+        kind: 'copy',
+      });
+    });
+
+    it('returns null when there are two keyed descendants (ambiguous)', () => {
+      const p: HTMLElement = document.createElement('p');
+      const first: HTMLElement = document.createElement('span');
+      first.setAttribute('data-dev-content-key', 'a.b');
+      first.textContent = 'A';
+      const second: HTMLElement = document.createElement('span');
+      second.setAttribute('data-dev-content-key', 'a.c');
+      second.textContent = 'B';
+      p.appendChild(first);
+      p.appendChild(second);
+
+      expect(resolveContentKey(p)).toBeNull();
+    });
+
+    it('returns null when two keyed descendants are nested (ambiguous), even though text equality and the single-element-child-chain both hold', () => {
+      // Both keyed nodes share the same trimmed text ('text') and each level
+      // has exactly one element child, so only the exact-one-keyed-descendant
+      // count check can catch this — the other two guards would pass it.
+      const outer: HTMLElement = document.createElement('div');
+      const middle: HTMLElement = document.createElement('span');
+      middle.setAttribute('data-dev-content-key', 'home.a');
+      const inner: HTMLElement = document.createElement('span');
+      inner.setAttribute('data-dev-content-key', 'home.b');
+      inner.textContent = 'text';
+      middle.appendChild(inner);
+      outer.appendChild(middle);
+
+      expect(resolveContentKey(outer)).toBeNull();
+    });
+
+    it('returns null when the keyed descendant does not cover the parent\'s full text', () => {
+      const li: HTMLElement = document.createElement('li');
+      li.appendChild(document.createTextNode('Prefix '));
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', 'a.b');
+      span.textContent = 'value';
+      li.appendChild(span);
+
+      expect(resolveContentKey(li)).toBeNull();
+    });
+
+    it('the element\'s own key takes precedence over a descendant with a different key', () => {
+      const outer: HTMLElement = document.createElement('div');
+      outer.setAttribute('data-dev-content-key', 'outer.key');
+      outer.textContent = 'value';
+      const inner: HTMLElement = document.createElement('span');
+      inner.setAttribute('data-dev-content-key', 'inner.key');
+      inner.textContent = 'value';
+      outer.appendChild(inner);
+
+      expect(resolveContentKey(outer)).toEqual({ key: 'outer.key', kind: 'copy' });
+    });
+
+    it('resolves through deeper nesting (wrapper > intermediate span > keyed element)', () => {
+      const wrapper: HTMLElement = document.createElement('div');
+      const intermediate: HTMLElement = document.createElement('span');
+      const keyed: HTMLElement = document.createElement('span');
+      keyed.setAttribute('data-dev-content-key', 'deep.key');
+      keyed.textContent = 'value';
+      intermediate.appendChild(keyed);
+      wrapper.appendChild(intermediate);
+
+      expect(resolveContentKey(wrapper)).toEqual({ key: 'deep.key', kind: 'copy' });
+    });
+
+    it('picks up kind=richText from the descendant, not the parent', () => {
+      const li: HTMLElement = document.createElement('li');
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', 'a.b');
+      span.setAttribute('data-dev-content-kind', 'richText');
+      span.textContent = 'value';
+      li.appendChild(span);
+
+      expect(resolveContentKey(li)).toEqual({ key: 'a.b', kind: 'richText' });
+    });
+
+    it('returns null for an element with no keyed descendant at all (no regression)', () => {
+      const li: HTMLElement = document.createElement('li');
+      li.textContent = 'Plain unkeyed text';
+
+      expect(resolveContentKey(li)).toBeNull();
+    });
+  });
+
+  // ─── isTextEditable — content-owned subtree must decline, never fall through ──
+  //
+  // resolveContentKey returning null is ambiguous on its own: it means either
+  // "no content involvement" (AST heuristics correctly apply) or "this subtree
+  // IS content-owned but no single key is resolvable" (must decline — falling
+  // through produces accept-then-400, since the source line holds a <Text/>
+  // element rather than a string literal). isTextEditable must tell these apart.
+
+  describe('isTextEditable — content-owned subtree must decline, never fall through to AST', () => {
+    function keyedDescendant(tag: string, key: string, text: string): HTMLElement {
+      const el: HTMLElement = document.createElement(tag);
+      el.setAttribute('data-dev-content-key', key);
+      el.textContent = text;
+      return el;
+    }
+
+    function sourceMappedWrapper(tag: string): HTMLElement {
+      const el: HTMLElement = document.createElement(tag);
+      el.setAttribute('data-dev-file', '/app/src/pages/index.tsx');
+      el.setAttribute('data-dev-line', '100');
+      return el;
+    }
+
+    it('gap 1 — two keyed descendants: resolves null AND is not editable (no AST fallthrough)', () => {
+      const p: HTMLElement = sourceMappedWrapper('p');
+      p.appendChild(keyedDescendant('span', 'home.a', 'alpha'));
+      p.appendChild(keyedDescendant('span', 'home.b', 'beta'));
+
+      expect(resolveContentKey(p)).toBeNull();
+      expect(isTextEditable(p, true)).toBe(false);
+    });
+
+    it('gap 2 — keyed descendant covers only part of the text: resolves null AND is not editable', () => {
+      const li: HTMLElement = sourceMappedWrapper('li');
+      li.appendChild(document.createTextNode('Prefix '));
+      li.appendChild(keyedDescendant('span', 'home.a', 'value'));
+
+      expect(resolveContentKey(li)).toBeNull();
+      expect(isTextEditable(li, true)).toBe(false);
+    });
+
+    it('gap 3 — non-text-node element sibling alongside the keyed descendant (e.g. <img>): resolves null AND is not editable', () => {
+      const fig: HTMLElement = sourceMappedWrapper('figure');
+      fig.appendChild(document.createElement('img'));
+      fig.appendChild(keyedDescendant('span', 'home.caption', 'A caption'));
+
+      expect(resolveContentKey(fig)).toBeNull();
+      expect(isTextEditable(fig, true)).toBe(false);
+    });
+
+    it('gap 3 (control) — a pure single-element-child chain down to the keyed node still resolves and is editable', () => {
+      const wrapper: HTMLElement = sourceMappedWrapper('div');
+      const child: HTMLElement = keyedDescendant('p', 'home.body', 'Chained copy');
+      wrapper.appendChild(child);
+
+      expect(resolveContentKey(wrapper)).toEqual({ key: 'home.body', kind: 'copy' });
+      expect(isTextEditable(wrapper, true)).toBe(true);
+    });
+
+    it('gap 3 (control) — an unresolvable template attribution on the element itself also declines rather than falling through', () => {
+      // The element carries data-dev-content-key-template but has no enclosing
+      // ContentListContext, so resolveOwnContentKey fails. It is still
+      // content-owned markup and must decline, not fall through to AST.
+      const el: HTMLElement = sourceMappedWrapper('h3');
+      el.setAttribute('data-dev-content-key-template', 'products[].name');
+      el.textContent = 'Widget';
+
+      expect(resolveContentKey(el)).toBeNull();
+      expect(isTextEditable(el, true)).toBe(false);
+    });
+
+    it('out of scope (pinned) — a keyed ancestor with click landing on an inner formatting node stays non-editable, unchanged', () => {
+      // CASE 1 from the probe: the key lives on the ancestor <p>, not on/under
+      // the clicked <b>. resolveContentKey(b) already correctly returns null
+      // (no content attribution anywhere in b's own subtree), and isTextEditable
+      // already fails safe today because b carries no data-dev-file marker. This
+      // is the deliberately-out-of-scope mirror case — pinned so a future change
+      // to it is deliberate, not incidental.
+      const p: HTMLElement = keyedDescendant('p', 'home.a', '');
+      const b: HTMLElement = document.createElement('b');
+      b.textContent = 'bold text';
+      p.appendChild(b);
+
+      expect(resolveContentKey(b)).toBeNull();
+      expect(isTextEditable(b, true)).toBe(false);
+    });
+  });
+
+  // ─── isUnresolvableContentOwned ───────────────────────────────────────────────
+
+  describe('isUnresolvableContentOwned', () => {
+    it('returns true for two keyed descendants (ambiguous)', () => {
+      const p: HTMLElement = document.createElement('p');
+      const first: HTMLElement = document.createElement('span');
+      first.setAttribute('data-dev-content-key', 'a.b');
+      first.textContent = 'A';
+      const second: HTMLElement = document.createElement('span');
+      second.setAttribute('data-dev-content-key', 'a.c');
+      second.textContent = 'B';
+      p.appendChild(first);
+      p.appendChild(second);
+
+      expect(isUnresolvableContentOwned(p)).toBe(true);
+    });
+
+    it('returns true for a keyed descendant covering only part of the text', () => {
+      const li: HTMLElement = document.createElement('li');
+      li.appendChild(document.createTextNode('Prefix '));
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', 'a.b');
+      span.textContent = 'value';
+      li.appendChild(span);
+
+      expect(isUnresolvableContentOwned(li)).toBe(true);
+    });
+
+    it('returns false when the element itself resolves a single content key', () => {
+      const el: HTMLElement = document.createElement('h1');
+      el.setAttribute('data-dev-content-key', 'home.hero.title');
+      el.textContent = 'We Buy Houses';
+
+      expect(isUnresolvableContentOwned(el)).toBe(false);
+    });
+
+    it('returns false when there is no content attribution at all', () => {
+      const p: HTMLElement = document.createElement('p');
+      p.textContent = 'Plain unkeyed text';
+
+      expect(isUnresolvableContentOwned(p)).toBe(false);
+    });
+  });
+
+  // ─── data-dev-content-readonly — directory-backed collection items decline, never fall through ─
+  //
+  // A directory-backed collection item (src/content/data/<name>/*.md) keeps its
+  // data-dev-content-key so hasContentKeyAttribution still sees it — that is what
+  // routes both the leaf and its ancestors to the isUnresolvableContentOwned decline
+  // in isTextEditable, instead of falling through to the AST source-rewriting editor
+  // (which would 400: the ancestor's source line holds a <Text/> element, not a
+  // string literal).
+
+  describe('data-dev-content-readonly (directory-backed collection items)', () => {
+    function readonlyKeyedSpan(key: string, text: string): HTMLElement {
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', key);
+      span.setAttribute('data-dev-content-readonly', '');
+      span.textContent = text;
+      return span;
+    }
+
+    it('case 1 — a readonly-marked keyed span resolves to nothing and declines', () => {
+      const span: HTMLElement = readonlyKeyedSpan('data.posts[0].title', 'First Post');
+
+      expect(resolveOwnContentKey(span)).toBeNull();
+      expect(resolveContentKey(span)).toBeNull();
+      expect(isUnresolvableContentOwned(span)).toBe(true);
+      expect(isTextEditable(span, true)).toBe(false);
+    });
+
+    it('case 2 — an <li data-dev-file/data-dev-line> whose only child is the readonly span also declines (no AST fallthrough)', () => {
+      const li: HTMLElement = document.createElement('li');
+      li.setAttribute('data-dev-file', '/app/src/pages/blog.tsx');
+      li.setAttribute('data-dev-line', '42');
+      li.appendChild(readonlyKeyedSpan('data.posts[0].title', 'First Post'));
+
+      expect(resolveContentKey(li)).toBeNull();
+      expect(isUnresolvableContentOwned(li)).toBe(true);
+      expect(isTextEditable(li, true)).toBe(false);
+    });
+
+    it('regression — a normal keyed span with no readonly marker is still editable', () => {
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', 'home.hero.title');
+      span.textContent = 'Welcome';
+
+      expect(resolveOwnContentKey(span)).toEqual({ key: 'home.hero.title', kind: 'copy' });
+      expect(resolveContentKey(span)).toEqual({ key: 'home.hero.title', kind: 'copy' });
+      expect(isTextEditable(span, true)).toBe(true);
+    });
+
+    it('regression — an <li> wrapping a normal (non-readonly) keyed span still resolves through it', () => {
+      const li: HTMLElement = document.createElement('li');
+      li.setAttribute('data-dev-file', '/app/src/pages/blog.tsx');
+      li.setAttribute('data-dev-line', '42');
+      const span: HTMLElement = document.createElement('span');
+      span.setAttribute('data-dev-content-key', 'home.hero.title');
+      span.textContent = 'Welcome';
+      li.appendChild(span);
+
+      expect(resolveContentKey(li)).toEqual({ key: 'home.hero.title', kind: 'copy' });
+      expect(isTextEditable(li, true)).toBe(true);
+    });
+  });
+});

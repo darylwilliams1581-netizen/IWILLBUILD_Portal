@@ -126,6 +126,16 @@ export function isBodyTextElement(element: HTMLElement): boolean {
   return tag === "p" || tag === "li" || LIST_TAGS.has(tag);
 }
 
+/**
+ * True when `element` itself carries data-dev-dynamic, or a descendant does.
+ * Shared by isTextEditable's two dynamic-content shut-offs (permissive and
+ * conservative mode) and findEditableContainer's outermost-inline fallback,
+ * which bypasses isTextEditable and must re-apply the same exemption itself.
+ */
+export function hasDynamicContent(element: HTMLElement): boolean {
+  return element.hasAttribute("data-dev-dynamic") || element.querySelector("[data-dev-dynamic]") !== null;
+}
+
 /** Check if an element is suitable for inline text editing */
 export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boolean): boolean {
   if (isCommerceManagedContent(element)) return false;
@@ -135,6 +145,8 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
   // AST heuristics below — editing a content-bound element via the JSX source
   // path hardcodes the value and breaks the binding for every mapped item.
   if (resolveContentKey(element) !== null) return cmsInlineEditEnabled;
+
+  if (isUnresolvableContentOwned(element)) return false;
 
   // data-dev-bound-text marks text-tag elements whose sole JSX child is a bound
   // expression rendered via a render-prop pattern (e.g. ReactMarkdown renderers:
@@ -164,11 +176,9 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
     // genuinely non-attributable (e.g. `body.split('\n\n').map(p => <p>{p}</p>)`)
     // and would 400 on the /text/edit AST path (AIROBUILD-4362). Block self-
     // dynamic as well as dynamic descendants, matching conservative mode.
-    if (element.hasAttribute("data-dev-dynamic") || element.querySelector("[data-dev-dynamic]")) return false;
+    if (hasDynamicContent(element)) return false;
   } else {
-    const isSelfOrDescendantDynamic: boolean =
-      element.hasAttribute("data-dev-dynamic") || element.querySelector("[data-dev-dynamic]") !== null;
-    if (isSelfOrDescendantDynamic) return false;
+    if (hasDynamicContent(element)) return false;
 
     const isPerItemList: boolean =
       isListElement(element) && element.closest("[data-dev-content-list]") !== null;
@@ -202,24 +212,145 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
   return passesMarkerGate;
 }
 
+type ContentKeyResolution = { key: string; kind: "copy" | "richText" };
+type ContentKeyResolutionWithElement = ContentKeyResolution & { element: HTMLElement };
+
 /**
- * Resolve a concrete content key from an element's data-dev-content-key
- * attributes. Handles both direct keys and template keys combined with the
- * enclosing ContentListContext's data-dev-content-list + per-item index.
+ * Resolve a concrete content key from an element's own data-dev-content-key
+ * attributes only (direct key, or a data-dev-content-key-template resolved
+ * via the ancestor ContentListContext walk). Does not look at descendants.
  *
- * Returns null when the element is not content-keyed.
+ * Callers that need to know whether `element` itself is the authored
+ * `<Text>` primitive (as opposed to "is this element's text content-backed
+ * at all", which `resolveContentKey` answers) should use this instead.
+ *
+ * Returns null when the element itself is not content-keyed, and also when it
+ * carries `data-dev-content-readonly` — a key that is present but withheld
+ * from editing (e.g. a directory-backed collection item) must not resolve.
  */
-export function resolveContentKey(element: HTMLElement): { key: string; kind: "copy" | "richText" } | null {
-  const direct = element.getAttribute("data-dev-content-key");
-  const kindAttr = element.getAttribute("data-dev-content-kind");
+export function resolveOwnContentKey(element: HTMLElement): ContentKeyResolution | null {
+  if (element.hasAttribute("data-dev-content-readonly")) return null;
+
+  const direct: string | null = element.getAttribute("data-dev-content-key");
+  const kindAttr: string | null = element.getAttribute("data-dev-content-kind");
   const kind: "copy" | "richText" = kindAttr === "richText" ? "richText" : "copy";
   if (direct) {
     return { key: direct, kind };
   }
 
-  const template = element.getAttribute("data-dev-content-key-template");
+  const template: string | null = element.getAttribute("data-dev-content-key-template");
   if (!template) return null;
 
+  return resolveTemplateContentKey(element, template, kind);
+}
+
+/**
+ * Resolve a concrete content key for an element, following the same
+ * attributes as {@link resolveOwnContentKey}.
+ *
+ * Precedence: the element's own data-dev-content-key wins; then its own
+ * data-dev-content-key-template resolved via the ancestor walk; then, only
+ * when both produce nothing, a last-resort search of descendants. The
+ * descendant search exists because animation/style wrappers (e.g.
+ * `motion.div`, a Tailwind padding `<li>`) cannot themselves be the `<Text>`
+ * primitive, so a click frequently lands on an unkeyed ancestor instead of
+ * the keyed leaf. It resolves only when exactly one descendant is keyed,
+ * that descendant's trimmed textContent equals the element's own trimmed
+ * textContent, AND every level from `element` down to that descendant has
+ * exactly one element child — otherwise the parent's text/markup is not
+ * fully owned by that one key (ambiguous, partially covered, or sharing the
+ * wrapper with an unrelated element such as an `<img>`), and guessing would
+ * risk an ambiguous write or silently dropping/duplicating sibling content
+ * on save. `kind` is read from the descendant that supplied the key, not
+ * from `element`.
+ *
+ * Returns null when the element is not content-keyed. A null result does not
+ * by itself mean "no content involvement" — see isTextEditable, which must
+ * treat "not content-owned" and "content-owned but unresolvable" differently.
+ *
+ * Strips the resolved `element` from the return value: pre-existing callers
+ * assert this result with `toEqual({key, kind})` exact-match, which fails
+ * against an object carrying extra properties.
+ */
+export function resolveContentKey(element: HTMLElement): ContentKeyResolution | null {
+  const resolution: ContentKeyResolutionWithElement | null = resolveContentKeyResolution(element);
+  if (!resolution) return null;
+  return { key: resolution.key, kind: resolution.kind };
+}
+
+/**
+ * Same resolution as {@link resolveContentKey}, but also reports which
+ * element actually carries the resolved key — `element` itself when its own
+ * attributes resolve, or the covering keyed descendant when resolution fell
+ * through the last-resort search. Callers that need to read attributes
+ * (e.g. `data-dev-content-derived`) that live alongside the key rather than
+ * on the originally-clicked element must use this instead of re-deriving the
+ * source element via a second, independent search.
+ */
+export function resolveContentKeyWithElement(element: HTMLElement): ContentKeyResolutionWithElement | null {
+  return resolveContentKeyResolution(element);
+}
+
+function resolveContentKeyResolution(element: HTMLElement): ContentKeyResolutionWithElement | null {
+  const own: ContentKeyResolution | null = resolveOwnContentKey(element);
+  if (own) return { ...own, element };
+  return resolveContentKeyFromDescendant(element);
+}
+
+function resolveContentKeyFromDescendant(element: HTMLElement): ContentKeyResolutionWithElement | null {
+  const keyedDescendants: NodeListOf<HTMLElement> = element.querySelectorAll<HTMLElement>(
+    "[data-dev-content-key]:not([data-dev-content-readonly]), [data-dev-content-key-template]:not([data-dev-content-readonly])",
+  );
+  if (keyedDescendants.length !== 1) return null;
+
+  const descendant: HTMLElement = keyedDescendants[0];
+  const descendantText: string = (descendant.textContent ?? "").trim();
+  const elementText: string = (element.textContent ?? "").trim();
+  if (descendantText !== elementText) return null;
+  if (!isSingleElementChildChain(element, descendant)) return null;
+
+  const resolved: ContentKeyResolution | null = resolveOwnContentKey(descendant);
+  return resolved ? { ...resolved, element: descendant } : null;
+}
+
+function isSingleElementChildChain(ancestor: HTMLElement, descendant: HTMLElement): boolean {
+  let cursor: HTMLElement | null = descendant;
+  while (cursor && cursor !== ancestor) {
+    const parent: HTMLElement | null = cursor.parentElement;
+    if (!parent || parent.children.length !== 1) return false;
+    cursor = parent;
+  }
+  return cursor === ancestor;
+}
+
+/**
+ * True when `element`'s subtree is content-owned (carries content-key
+ * attribution somewhere in it, per {@link hasContentKeyAttribution}, which
+ * unlike {@link resolveContentKey} doesn't require a single unambiguous
+ * match) but {@link resolveContentKey} cannot resolve a single unambiguous
+ * key from it — two or more keyed descendants, a keyed descendant covering
+ * only part of the element's text, or an unresolvable template. Every path
+ * that might open a source-rewriting (AST) editor on `element` must decline
+ * when this is true and consult this instead of re-deriving the check: the
+ * source line holds a `<Text/>` element rather than a string literal, so
+ * accepting the edit produces an accept-then-400 on save.
+ */
+export function isUnresolvableContentOwned(element: HTMLElement): boolean {
+  return resolveContentKey(element) === null && hasContentKeyAttribution(element);
+}
+
+function hasContentKeyAttribution(element: HTMLElement): boolean {
+  if (element.hasAttribute("data-dev-content-key") || element.hasAttribute("data-dev-content-key-template")) {
+    return true;
+  }
+  return element.querySelectorAll("[data-dev-content-key], [data-dev-content-key-template]").length > 0;
+}
+
+function resolveTemplateContentKey(
+  element: HTMLElement,
+  template: string,
+  kind: "copy" | "richText",
+): ContentKeyResolution | null {
   // Walk ancestors (starting at the element itself) collecting (field, index) pairs.
   // Supports both self-describing layout (field + index on same element) and
   // ContentListContext layout (field on wrapper, index on child). Each [] in the

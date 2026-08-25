@@ -1,4 +1,11 @@
-import { isDevToolsElement, isTextEditable, resolveContentKey } from "./element-detection";
+import {
+  hasDynamicContent,
+  isDevToolsElement,
+  isTextEditable,
+  isUnresolvableContentOwned,
+  resolveContentKey,
+  resolveOwnContentKey,
+} from "./element-detection";
 import { t } from "./translations";
 import { rgbToHex } from "./color";
 
@@ -79,17 +86,19 @@ export function findEditableContainer(el: HTMLElement, cmsInlineEditEnabled: boo
       if (best) return best;
       // Fallback: the outermost inline element (e.g. motion.i used as a heading)
       // may not be in textTags but still looks like a text container. This path
-      // bypasses isTextEditable, so it must re-apply the dynamic shut-off itself —
-      // otherwise a data-dev-dynamic inline node (e.g. an animated counter's
-      // bound-expression <span>) opens an editor here and the save 400s on the
-      // server (UNSUPPORTED_DYNAMIC_TEXT_CONTENT).
+      // bypasses isTextEditable, so it must re-apply isTextEditable's own
+      // shut-off checks itself — a data-dev-dynamic inline node (e.g. an animated
+      // counter's bound-expression <span>) or a content-owned-but-unresolvable
+      // wrapper (e.g. two <Text> spans) would otherwise open an editor here and
+      // 400 on save.
       if (
         outermostInline &&
         outermostInline.textContent?.trim() &&
         !outermostInline.querySelector("br") &&
         hasOnlyInlineChildren(outermostInline) &&
         !outermostInline.closest("[data-dev-dynamic]") &&
-        !outermostInline.querySelector("[data-dev-dynamic]")
+        !hasDynamicContent(outermostInline) &&
+        !isUnresolvableContentOwned(outermostInline)
       ) {
         return outermostInline;
       }
@@ -652,13 +661,20 @@ export function watchTextReflected(
   return () => observer.disconnect();
 }
 
-/** Resolve the nearest content-keyed node at-or-within `el`, or null. */
+/**
+ * Resolve the nearest content-keyed node at-or-within `el`, or null.
+ *
+ * Checks `el`'s own attributes (via resolveOwnContentKey, not
+ * resolveContentKey) so this keeps returning the actual keyed leaf rather
+ * than short-circuiting to `el` through resolveContentKey's own
+ * last-resort descendant fallback.
+ */
 function resolveContentKeyAtOrWithin(el: HTMLElement): HTMLElement | null {
-  if (resolveContentKey(el) !== null) return el;
+  if (resolveOwnContentKey(el) !== null) return el;
   const descendant = el.querySelector(
     "[data-dev-content-key], [data-dev-content-key-template]",
   ) as HTMLElement | null;
-  if (descendant && resolveContentKey(descendant) !== null) return descendant;
+  if (descendant && resolveOwnContentKey(descendant) !== null) return descendant;
   return null;
 }
 

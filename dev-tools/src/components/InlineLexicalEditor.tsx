@@ -133,8 +133,11 @@ function CommitPlugin({ onCommit, onCancel, commitRef, externalCommitRef }: {
   externalCommitRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const [editor] = useLexicalComposerContext();
+  const committedRef = useRef(false);
 
   const doCommit = useCallback(() => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     editor.read(() => {
       const html = $generateHtmlFromNodes(editor);
       onCommit(html);
