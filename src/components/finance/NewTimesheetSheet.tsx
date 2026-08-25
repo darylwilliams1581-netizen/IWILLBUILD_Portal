@@ -8,9 +8,9 @@
  *
  * Employee field required before saving.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X, Clock, ChevronDown, Loader2, AlertCircle, User, Copy, ChevronsDown } from 'lucide-react';
+import { X, Clock, ChevronDown, Loader2, AlertCircle, User, Copy, ChevronsDown, Search } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -555,6 +555,141 @@ function DayRowDesktop({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCo
   );
 }
 
+// ── Employee Combobox ─────────────────────────────────────────────────────────
+
+interface EmployeeComboboxProps {
+  employees: Employee[];
+  value: number | null;
+  onChange: (id: number | null) => void;
+}
+
+function EmployeeCombobox({ employees, value, onChange }: EmployeeComboboxProps) {
+  const selected = employees.find(e => e.profileId === value) ?? null;
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const filtered = query.trim()
+    ? employees.filter(e =>
+        e.name.toLowerCase().includes(query.toLowerCase()) ||
+        e.email.toLowerCase().includes(query.toLowerCase())
+      )
+    : employees;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (
+        inputRef.current && !inputRef.current.closest('[data-emp-combo]')?.contains(e.target as Node)
+      ) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  function select(emp: Employee) {
+    onChange(emp.profileId);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function clear() {
+    onChange(null);
+    setQuery('');
+    inputRef.current?.focus();
+  }
+
+  return (
+    <div data-emp-combo="" className="relative">
+      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+        Employee <span className="text-destructive">*</span>
+      </label>
+
+      {/* Input row */}
+      <div className="relative">
+        <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+        <input
+          ref={inputRef}
+          type="text"
+          autoComplete="off"
+          placeholder={selected ? selected.name : 'Search employee…'}
+          value={open ? query : (selected ? selected.name : '')}
+          onFocus={() => { setOpen(true); setQuery(''); }}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          className={`w-full h-11 pl-9 pr-9 rounded-lg border bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${
+            selected ? 'border-primary/50 font-medium' : 'border-border'
+          }`}
+        />
+        {/* Clear / chevron */}
+        {selected && !open ? (
+          <button
+            type="button"
+            onClick={clear}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground rounded transition-colors"
+            aria-label="Clear employee"
+          >
+            <X size={13} />
+          </button>
+        ) : (
+          <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        )}
+      </div>
+
+      {/* Email hint */}
+      {selected && !open && (
+        <p className="text-xs text-muted-foreground mt-1 pl-1">{selected.email}</p>
+      )}
+
+      {/* Dropdown list */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={listRef}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute z-[1300] left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-xl overflow-hidden"
+            style={{ maxHeight: 260 }}
+          >
+            <div className="overflow-y-auto" style={{ maxHeight: 260 }}>
+              {filtered.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-muted-foreground">No employees found</div>
+              ) : (
+                filtered.map(emp => (
+                  <button
+                    key={emp.profileId}
+                    type="button"
+                    onMouseDown={e => { e.preventDefault(); select(emp); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors ${
+                      emp.profileId === value ? 'bg-primary/8 text-primary font-semibold' : 'text-foreground'
+                    }`}
+                  >
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-[11px] font-bold text-primary">
+                        {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{emp.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                    </div>
+                    {emp.profileId === value && (
+                      <span className="ml-auto text-primary text-xs font-bold shrink-0">✓</span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Main Sheet ────────────────────────────────────────────────────────────────
 
 export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Props) {
@@ -831,7 +966,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   }
 
   const total = totalHours(rows);
-  const selectedEmployee = employees.find(e => e.profileId === employeeProfileId);
 
   return (
     <AnimatePresence>
@@ -857,9 +991,12 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   {editId ? 'Edit Timesheet' : 'New Timesheet'}
                 </h2>
                 <p className="text-xs text-muted-foreground truncate">
-                  {selectedEmployee
-                    ? <span className="font-semibold text-foreground">{selectedEmployee.name}</span>
-                    : total > 0 ? `${total.toFixed(2)} hrs total` : 'Select employee to begin'}
+                  {(() => {
+                    const emp = employees.find(e => e.profileId === employeeProfileId);
+                    return emp
+                      ? <span className="font-semibold text-foreground">{emp.name}</span>
+                      : total > 0 ? `${total.toFixed(2)} hrs total` : 'Search to select an employee';
+                  })()}
                 </p>
               </div>
               <button onClick={onClose} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors" aria-label="Close">
@@ -880,29 +1017,12 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 )}
               </AnimatePresence>
 
-              {/* ── Employee picker ── */}
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Employee <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <select
-                    value={employeeProfileId ?? ''}
-                    onChange={e => setEmployeeProfileId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                    className="w-full h-11 pl-9 pr-8 rounded-lg border border-border bg-background text-sm text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  >
-                    <option value="">Select employee…</option>
-                    {employees.map(emp => (
-                      <option key={emp.profileId} value={emp.profileId}>{emp.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                </div>
-                {selectedEmployee && (
-                  <p className="text-xs text-muted-foreground mt-1 pl-1">{selectedEmployee.email}</p>
-                )}
-              </div>
+              {/* ── Employee picker (searchable combobox) ── */}
+              <EmployeeCombobox
+                employees={employees}
+                value={employeeProfileId}
+                onChange={setEmployeeProfileId}
+              />
 
               {/* ── Week ending + default job ── */}
               <div className="grid grid-cols-2 gap-3">
