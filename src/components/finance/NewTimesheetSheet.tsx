@@ -1,19 +1,13 @@
 /**
  * NewTimesheetSheet
- * Slide-up sheet for employees to fill out and submit a timesheet.
- *
- * Features:
- *  - Week-ending date picker (defaults to coming Saturday)
- *  - Optional job selector
- *  - Day-by-day time entries (Mon–Sun) with hours + description per row
- *  - Add extra entries per day (e.g. multiple jobs in one day)
- *  - Notes field
- *  - Save as Draft or Submit directly
- *  - Total hours summary
+ * Renders as a bottom sheet on mobile, right-side panel on desktop.
+ * Matches the NewPOSheet layout pattern exactly.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { X, Plus, Trash2, Clock, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  X, Plus, Trash2, Clock, ChevronDown, Loader2, AlertCircle,
+} from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,17 +19,16 @@ interface Job {
 
 interface EntryRow {
   _key: string;
-  work_date: string;   // YYYY-MM-DD
+  work_date: string;
   job_id: number | null;
   description: string;
-  hours: string;       // string for input binding
+  hours: string;
 }
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onSaved: (id: number, andSubmit: boolean) => void;
-  /** If editing an existing draft */
   editId?: number | null;
 }
 
@@ -43,14 +36,13 @@ interface Props {
 
 function nextSaturday(from: Date = new Date()): string {
   const d = new Date(from);
-  const day = d.getDay(); // 0=Sun … 6=Sat
+  const day = d.getDay();
   const daysUntilSat = day === 6 ? 0 : 6 - day;
   d.setDate(d.getDate() + daysUntilSat);
   return d.toISOString().slice(0, 10);
 }
 
 function weekDates(weekEnding: string): string[] {
-  // Returns Mon–Sun for the week that ends on weekEnding
   const end = new Date(weekEnding + 'T00:00:00');
   const dates: string[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -85,11 +77,10 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [notes, setNotes] = useState('');
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [loadingJobs, setLoadingJobs] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Rebuild entry rows whenever weekEnding changes (keep existing values where dates match)
+  // Rebuild entry rows when weekEnding changes
   useEffect(() => {
     if (!weekEnding) return;
     const dates = weekDates(weekEnding);
@@ -111,15 +102,13 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
     });
   }, [weekEnding]);
 
-  // Load jobs list
+  // Load jobs
   useEffect(() => {
     if (!open) return;
-    setLoadingJobs(true);
     fetch('/api/jobs?status=active&limit=200', { credentials: 'include' })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(data => setJobs(Array.isArray(data.jobs) ? data.jobs : []))
-      .catch(() => setJobs([]))
-      .finally(() => setLoadingJobs(false));
+      .catch(() => setJobs([]));
   }, [open]);
 
   // Load existing timesheet for editing
@@ -172,7 +161,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
   const removeEntry = useCallback((key: string) => {
     setEntries(prev => {
-      // Don't remove the last entry for a date — just clear it
       const date = prev.find(e => e._key === key)?.work_date;
       const sameDate = prev.filter(e => e.work_date === date);
       if (sameDate.length <= 1) {
@@ -185,10 +173,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   async function save(andSubmit: boolean) {
     setError(null);
     if (!weekEnding) { setError('Week ending date is required'); return; }
-
     const validEntries = entries.filter(e => e.description.trim() || parseFloat(e.hours) > 0);
     if (validEntries.length === 0) { setError('Add at least one time entry with hours'); return; }
-
     const badHours = validEntries.find(e => {
       const h = parseFloat(e.hours);
       return !isFinite(h) || h <= 0 || h > 24;
@@ -251,62 +237,63 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
     }
   }
 
-  // Group entries by date for rendering
   const dates = weekEnding ? weekDates(weekEnding) : [];
   const byDate: Record<string, EntryRow[]> = {};
   for (const e of entries) {
     if (!byDate[e.work_date]) byDate[e.work_date] = [];
     byDate[e.work_date].push(e);
   }
-
   const total = totalHours(entries);
 
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <div className="fixed inset-0 z-[1200] flex items-end md:items-center justify-center md:justify-end">
           {/* Backdrop */}
-          <motion.div
-            className="fixed inset-0 bg-black/50 z-40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
             onClick={onClose}
+            aria-hidden="true"
           />
 
-          {/* Sheet */}
+          {/* Panel — bottom sheet on mobile, right panel on desktop */}
           <motion.div
-            className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-2xl shadow-2xl flex flex-col"
-            style={{ maxHeight: '92dvh' }}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="relative z-10 w-full md:w-[520px] md:h-full bg-background flex flex-col rounded-t-2xl md:rounded-none shadow-2xl"
+            style={{ maxHeight: 'min(92dvh, 900px)' }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border shrink-0">
-              <div className="flex items-center gap-2">
-                <Clock size={18} className="text-primary" />
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Clock size={15} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
                 <h2 className="text-base font-bold text-foreground">
                   {editId ? 'Edit Timesheet' : 'New Timesheet'}
                 </h2>
+                <p className="text-xs text-muted-foreground">
+                  {total > 0 ? `${total.toFixed(2)} hrs entered` : 'Fill in your hours for the week'}
+                </p>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
               {/* Error */}
               <AnimatePresence>
                 {error && (
                   <motion.div
-                    initial={{ opacity: 0, y: -8 }}
+                    initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
@@ -317,10 +304,10 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 )}
               </AnimatePresence>
 
-              {/* Week ending + global job */}
+              {/* Week ending + default job */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                     Week ending <span className="text-destructive">*</span>
                   </label>
                   <input
@@ -331,8 +318,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Default job (optional)
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                    Default job
                   </label>
                   <div className="relative">
                     <select
@@ -347,46 +334,45 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                         </option>
                       ))}
                     </select>
-                    <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
               </div>
 
               {/* Day-by-day entries */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-foreground">Time entries</h3>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Time entries</p>
                   <span className="text-xs text-muted-foreground">
-                    Total: <span className="font-semibold text-foreground">{total.toFixed(2)} hrs</span>
+                    Total: <span className="font-bold text-foreground">{total.toFixed(2)} hrs</span>
                   </span>
                 </div>
 
                 {dates.map(date => {
                   const dayEntries = byDate[date] ?? [];
+                  const dayTotal = dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
                   return (
                     <div key={date} className="rounded-xl border border-border overflow-hidden">
                       {/* Day header */}
                       <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border">
                         <span className="text-xs font-semibold text-foreground">{fmtDayLabel(date)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0).toFixed(2)} hrs
-                        </span>
+                        {dayTotal > 0 && (
+                          <span className="text-xs font-medium text-primary">{dayTotal.toFixed(2)} hrs</span>
+                        )}
                       </div>
 
                       {/* Entry rows */}
                       <div className="divide-y divide-border">
-                        {dayEntries.map((entry, idx) => (
+                        {dayEntries.map(entry => (
                           <div key={entry._key} className="px-3 py-2.5 space-y-2">
                             <div className="flex gap-2">
-                              {/* Description */}
                               <input
                                 type="text"
                                 placeholder="What did you work on?"
                                 value={entry.description}
                                 onChange={e => updateEntry(entry._key, 'description', e.target.value)}
-                                className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
                               />
-                              {/* Hours */}
                               <input
                                 type="number"
                                 placeholder="hrs"
@@ -395,9 +381,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                                 step="0.25"
                                 value={entry.hours}
                                 onChange={e => updateEntry(entry._key, 'hours', e.target.value)}
-                                className="w-20 h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground text-right placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                className="w-[72px] h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground text-right placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
                               />
-                              {/* Remove */}
                               <button
                                 onClick={() => removeEntry(entry._key)}
                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -405,8 +390,6 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                                 <Trash2 size={13} />
                               </button>
                             </div>
-
-                            {/* Per-entry job override */}
                             {jobs.length > 0 && (
                               <div className="relative">
                                 <select
@@ -414,18 +397,14 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                                   onChange={e => updateEntry(entry._key, 'job_id', e.target.value ? parseInt(e.target.value, 10) : null)}
                                   className="w-full h-7 pl-2.5 pr-7 rounded-lg border border-border bg-background text-xs text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
                                 >
-                                  <option value="">
-                                    {globalJobId
-                                      ? `Using default job`
-                                      : 'No job assigned'}
-                                  </option>
+                                  <option value="">{globalJobId ? 'Using default job' : 'No job assigned'}</option>
                                   {jobs.map(j => (
                                     <option key={j.id} value={j.id}>
                                       {j.job_number ? `${j.job_number} — ` : ''}{j.name}
                                     </option>
                                   ))}
                                 </select>
-                                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                               </div>
                             )}
                           </div>
@@ -438,7 +417,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                         className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-primary hover:bg-primary/5 transition-colors border-t border-border"
                       >
                         <Plus size={12} />
-                        Add another entry for this day
+                        Add entry for this day
                       </button>
                     </div>
                   );
@@ -447,7 +426,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                   Notes (optional)
                 </label>
                 <textarea
@@ -455,22 +434,22 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   placeholder="Any additional notes for the office…"
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
 
-              {/* Spacer for bottom buttons */}
+              {/* Bottom spacer so last item clears the fixed footer */}
               <div className="h-2" />
             </div>
 
-            {/* Footer actions */}
-            <div className="shrink-0 px-4 pb-6 pt-3 border-t border-border flex gap-3">
+            {/* Footer */}
+            <div className="shrink-0 px-5 pb-6 pt-3 border-t border-border flex gap-3">
               <button
                 onClick={() => save(false)}
                 disabled={saving}
                 className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {saving ? <Loader2 size={15} className="animate-spin" /> : null}
+                {saving && <Loader2 size={14} className="animate-spin" />}
                 Save draft
               </button>
               <button
@@ -478,12 +457,12 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 disabled={saving}
                 className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {saving ? <Loader2 size={15} className="animate-spin" /> : null}
+                {saving && <Loader2 size={14} className="animate-spin" />}
                 Submit to office
               </button>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
