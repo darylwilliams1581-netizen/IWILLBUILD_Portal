@@ -309,8 +309,15 @@ function DashboardPage({
 
 // ── Manage page (Page 2) ──────────────────────────────────────────────────────
 
-/** Keys that are desktop-only and should be hidden from the Manage tile grid */
-const DESKTOP_ONLY_KEYS = new Set<string>([]);
+const MANAGE_GROUP_ORDER: Array<{ group: HomeIconDef['group']; label: string }> = [
+  { group: 'field',      label: 'Work' },
+  { group: 'files',      label: 'Field & Files' },
+  { group: 'fleet',      label: 'Fleet' },
+  { group: 'finance',    label: 'Finance' },
+  { group: 'safety',     label: 'Safety' },
+  { group: 'management', label: 'Administration' },
+];
+
 function ManagePage({
   icons,
   onNavigate
@@ -318,20 +325,28 @@ function ManagePage({
   icons: HomeIconDef[];
   onNavigate: (href: string) => void;
 }) {
-  const mobileIcons = icons.filter(i => !DESKTOP_ONLY_KEYS.has(i.key));
-  return <div className="h-full overflow-y-auto flex flex-col px-4 pt-2 gap-4" style={{
-    paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
-  }}>
-      <div className="mx-auto w-full" style={{
-      maxWidth: 480
+  return (
+    <div className="h-full overflow-y-auto flex flex-col px-4 pt-2 gap-5" style={{
+      paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
     }}>
-        <div className="grid grid-cols-2 gap-3" style={{
-        gridAutoRows: 'minmax(96px, 1fr)'
-      }}>
-          {mobileIcons.map(item => <IconTile key={item.key} item={item} onNavigate={onNavigate} />)}
-        </div>
+      <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
+        {MANAGE_GROUP_ORDER.map(({ group, label }) => {
+          const groupIcons = icons.filter(i => i.group === group);
+          if (groupIcons.length === 0) return null;
+          return (
+            <div key={group} className="mb-5">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
+              <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)' }}>
+                {groupIcons.map(item => (
+                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </div>;
+    </div>
+  );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -399,7 +414,7 @@ export default function PagedHomeScreen({
     group: 'management' as const
   }));
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
-  const mgmtIcons = allIcons.filter(i => i.group === 'management');
+  const mgmtIcons = allIcons.filter(i => i.group !== 'comingSoon');
 
   // ── Swipe handlers ────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e: ReactTouchEvent) => {
