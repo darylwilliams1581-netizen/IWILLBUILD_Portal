@@ -1,13 +1,11 @@
 /**
- * NewTimesheetSheet
- * Renders as a bottom sheet on mobile, right-side panel on desktop.
- * Matches the NewPOSheet layout pattern exactly.
+ * NewTimesheetSheet — FairWork compliant
+ * Each day: Start time · Finish time · Unpaid break (mins) → hours auto-calculated.
+ * Non-work days (Leave / Sick / Public Holiday) collapse to a badge row.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  X, Plus, Trash2, Clock, ChevronDown, Loader2, AlertCircle,
-} from 'lucide-react';
+import { X, Clock, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,12 +17,15 @@ interface Job {
   name: string;
 }
 
-interface EntryRow {
-  _key: string;
-  work_date: string;
+/** One row per calendar day — mirrors FairWork template exactly */
+interface DayRow {
+  work_date: string;       // YYYY-MM-DD
+  day_type: DayType;
+  start_time: string;      // HH:MM 24h, empty = blank
+  finish_time: string;     // HH:MM 24h, empty = blank
+  unpaid_break_mins: string; // numeric string, empty = 0
   job_id: number | null;
   description: string;
-  hours: string;
 }
 
 interface Props {
@@ -36,18 +37,16 @@ interface Props {
 
 // ── Day type config ───────────────────────────────────────────────────────────
 
-const DAY_TYPES: { key: DayType; label: string; color: string; bg: string; border: string }[] = [
-  { key: 'work',           label: 'Work',           color: 'text-foreground',        bg: 'bg-muted/60',          border: 'border-border'       },
-  { key: 'leave',          label: 'Leave',          color: 'text-blue-600',          bg: 'bg-blue-50',           border: 'border-blue-200'     },
-  { key: 'sick',           label: 'Sick',           color: 'text-amber-600',         bg: 'bg-amber-50',          border: 'border-amber-200'    },
-  { key: 'public-holiday', label: 'Public Holiday', color: 'text-purple-600',        bg: 'bg-purple-50',         border: 'border-purple-200'   },
+const DAY_TYPES: { key: DayType; label: string; color: string; activeBg: string; activeBorder: string; rowBg: string }[] = [
+  { key: 'leave',          label: 'Leave',          color: 'text-blue-700',   activeBg: 'bg-blue-100',   activeBorder: 'border-blue-400',   rowBg: 'bg-blue-50/60'   },
+  { key: 'sick',           label: 'Sick',           color: 'text-amber-700',  activeBg: 'bg-amber-100',  activeBorder: 'border-amber-400',  rowBg: 'bg-amber-50/60'  },
+  { key: 'public-holiday', label: 'Public Holiday', color: 'text-purple-700', activeBg: 'bg-purple-100', activeBorder: 'border-purple-400', rowBg: 'bg-purple-50/60' },
 ];
 
 const STANDARD_HOURS = 7.6;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Use local date arithmetic to avoid UTC offset shifting dates (e.g. Brisbane UTC+10).
 function toLocalISO(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -57,19 +56,16 @@ function toLocalISO(d: Date): string {
 
 function nextSunday(from: Date = new Date()): string {
   const d = new Date(from);
-  const day = d.getDay(); // 0=Sun … 6=Sat
+  const day = d.getDay();
   const daysUntilSun = day === 0 ? 0 : 7 - day;
   d.setDate(d.getDate() + daysUntilSun);
   return toLocalISO(d);
 }
 
 function weekDates(weekEnding: string): string[] {
-  // weekEnding is a Sunday (YYYY-MM-DD local).
-  // Returns Mon Tue Wed Thu Fri Sat Sun — Mon is 6 days before Sunday.
   const [y, mo, dy] = weekEnding.split('-').map(Number);
-  const end = new Date(y, mo - 1, dy); // local midnight, no UTC shift
-  const offsets = [-6, -5, -4, -3, -2, -1, 0]; // Mon … Sun
-  return offsets.map(offset => {
+  const end = new Date(y, mo - 1, dy);
+  return [-6, -5, -4, -3, -2, -1, 0].map(offset => {
     const d = new Date(end);
     d.setDate(end.getDate() + offset);
     return toLocalISO(d);
@@ -80,27 +76,33 @@ function fmtDayLabel(dateStr: string): string {
   try {
     const [y, mo, dy] = dateStr.split('-').map(Number);
     return new Date(y, mo - 1, dy).toLocaleDateString('en-AU', {
-      weekday: 'short', day: 'numeric', month: 'short',
+      weekday: 'long', day: 'numeric', month: 'short',
     });
   } catch { return dateStr; }
 }
 
-function uid(): string {
-  return Math.random().toString(36).slice(2);
+/** Convert HH:MM strings + break minutes → decimal hours, null if incomplete */
+function calcHours(start: string, finish: string, breakMins: string): number | null {
+  if (!start || !finish) return null;
+  const [sh, sm] = start.split(':').map(Number);
+  const [fh, fm] = finish.split(':').map(Number);
+  if (isNaN(sh) || isNaN(sm) || isNaN(fh) || isNaN(fm)) return null;
+  let mins = (fh * 60 + fm) - (sh * 60 + sm);
+  if (mins <= 0) mins += 24 * 60; // overnight
+  mins -= (parseInt(breakMins, 10) || 0);
+  if (mins <= 0) return null;
+  return Math.round((mins / 60) * 100) / 100;
 }
 
-function totalHours(entries: EntryRow[], dayTypes: Record<string, DayType>, dates: string[]): number {
-  let total = 0;
-  for (const date of dates) {
-    const type = dayTypes[date] ?? 'work';
-    if (type !== 'work') {
-      total += STANDARD_HOURS;
-    } else {
-      const dayEntries = entries.filter(e => e.work_date === date);
-      total += dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
-    }
-  }
-  return total;
+function blankDay(date: string): DayRow {
+  return { work_date: date, day_type: 'work', start_time: '', finish_time: '', unpaid_break_mins: '', job_id: null, description: '' };
+}
+
+function totalHours(rows: DayRow[]): number {
+  return rows.reduce((sum, r) => {
+    if (r.day_type !== 'work') return sum + STANDARD_HOURS;
+    return sum + (calcHours(r.start_time, r.finish_time, r.unpaid_break_mins) ?? 0);
+  }, 0);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -109,31 +111,19 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [weekEnding, setWeekEnding] = useState(nextSunday);
   const [globalJobId, setGlobalJobId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
-  const [entries, setEntries] = useState<EntryRow[]>([]);
-  const [dayTypes, setDayTypes] = useState<Record<string, DayType>>({});
+  const [rows, setRows] = useState<DayRow[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Rebuild entry rows when weekEnding changes
+  // Rebuild day rows when weekEnding changes
   useEffect(() => {
     if (!weekEnding) return;
     const dates = weekDates(weekEnding);
-    setEntries(prev => {
-      const byDate: Record<string, EntryRow[]> = {};
-      for (const e of prev) {
-        if (!byDate[e.work_date]) byDate[e.work_date] = [];
-        byDate[e.work_date].push(e);
-      }
-      const next: EntryRow[] = [];
-      for (const d of dates) {
-        if (byDate[d]?.length) {
-          next.push(...byDate[d]);
-        } else {
-          next.push({ _key: uid(), work_date: d, job_id: null, description: '', hours: '' });
-        }
-      }
-      return next;
+    setRows(prev => {
+      const byDate: Record<string, DayRow> = {};
+      for (const r of prev) byDate[r.work_date] = r;
+      return dates.map(d => byDate[d] ?? blankDay(d));
     });
   }, [weekEnding]);
 
@@ -153,25 +143,26 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(data => {
         const ts = data.timesheet;
-        setWeekEnding(ts.week_ending?.slice(0, 10) ?? nextSunday());
+        const we = ts.week_ending?.slice(0, 10) ?? nextSunday();
+        setWeekEnding(we);
         setGlobalJobId(ts.job_id ?? null);
         setNotes(ts.notes ?? '');
         if (Array.isArray(ts.entries) && ts.entries.length > 0) {
-          setEntries(ts.entries.map((e: { work_date: string; job_id: number | null; description: string; hours: number; day_type?: DayType }) => ({
-            _key: uid(),
-            work_date: e.work_date?.slice(0, 10) ?? '',
-            job_id: e.job_id ?? null,
-            description: e.description ?? '',
-            hours: String(e.hours ?? ''),
-          })));
-          // Restore day types from entries that have a day_type marker
-          const restoredTypes: Record<string, DayType> = {};
+          const dates = weekDates(we);
+          const byDate: Record<string, DayRow> = {};
           for (const e of ts.entries) {
-            if (e.day_type && e.day_type !== 'work') {
-              restoredTypes[e.work_date?.slice(0, 10)] = e.day_type;
-            }
+            const d = e.work_date?.slice(0, 10) ?? '';
+            byDate[d] = {
+              work_date: d,
+              day_type: (e.day_type as DayType) ?? 'work',
+              start_time: e.start_time ?? '',
+              finish_time: e.finish_time ?? '',
+              unpaid_break_mins: e.unpaid_break_mins != null ? String(e.unpaid_break_mins) : '',
+              job_id: e.job_id ?? null,
+              description: e.description ?? '',
+            };
           }
-          setDayTypes(restoredTypes);
+          setRows(dates.map(d => byDate[d] ?? blankDay(d)));
         }
       })
       .catch(() => setError('Failed to load timesheet'));
@@ -183,86 +174,56 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       setWeekEnding(nextSunday());
       setGlobalJobId(null);
       setNotes('');
-      setDayTypes({});
       setError(null);
       setSaving(false);
     }
   }, [open]);
 
-  const updateEntry = useCallback((key: string, field: keyof EntryRow, value: string | number | null) => {
-    setEntries(prev => prev.map(e => e._key === key ? { ...e, [field]: value } : e));
-  }, []);
-
-  const addEntryForDate = useCallback((date: string) => {
-    setEntries(prev => {
-      const idx = prev.map(e => e.work_date).lastIndexOf(date);
-      const newEntry: EntryRow = { _key: uid(), work_date: date, job_id: null, description: '', hours: '' };
-      const next = [...prev];
-      next.splice(idx + 1, 0, newEntry);
-      return next;
-    });
-  }, []);
-
-  const removeEntry = useCallback((key: string) => {
-    setEntries(prev => {
-      const date = prev.find(e => e._key === key)?.work_date;
-      const sameDate = prev.filter(e => e.work_date === date);
-      if (sameDate.length <= 1) {
-        return prev.map(e => e._key === key ? { ...e, description: '', hours: '' } : e);
-      }
-      return prev.filter(e => e._key !== key);
-    });
+  const updateRow = useCallback((date: string, patch: Partial<DayRow>) => {
+    setRows(prev => prev.map(r => r.work_date === date ? { ...r, ...patch } : r));
   }, []);
 
   const setDayType = useCallback((date: string, type: DayType) => {
-    setDayTypes(prev => ({ ...prev, [date]: type }));
+    setRows(prev => prev.map(r => r.work_date === date ? { ...r, day_type: type } : r));
   }, []);
 
   async function save(andSubmit: boolean) {
     setError(null);
     if (!weekEnding) { setError('Week ending date is required'); return; }
 
-    const dates = weekDates(weekEnding);
-
-    // Build entries to send — work days use actual entries, non-work days get a synthetic entry
-    const allEntries: { work_date: string; job_id: number | null; description: string; hours: number; day_type: DayType }[] = [];
-
-    for (const date of dates) {
-      const type = dayTypes[date] ?? 'work';
-      if (type !== 'work') {
-        const cfg = DAY_TYPES.find(d => d.key === type)!;
-        allEntries.push({ work_date: date, job_id: null, description: cfg.label, hours: STANDARD_HOURS, day_type: type });
-      } else {
-        const dayEntries = entries.filter(e => e.work_date === date && (e.description.trim() || parseFloat(e.hours) > 0));
-        for (const e of dayEntries) {
-          allEntries.push({ work_date: e.work_date, job_id: e.job_id, description: e.description.trim(), hours: parseFloat(e.hours), day_type: 'work' });
-        }
+    // Build entries payload
+    const entries = rows.map(r => {
+      if (r.day_type !== 'work') {
+        const cfg = DAY_TYPES.find(d => d.key === r.day_type)!;
+        return { work_date: r.work_date, job_id: null, description: cfg.label, hours: STANDARD_HOURS, start_time: null, finish_time: null, unpaid_break_mins: 0, day_type: r.day_type };
       }
+      const hrs = calcHours(r.start_time, r.finish_time, r.unpaid_break_mins);
+      if (hrs === null) return null; // skip blank days
+      return {
+        work_date: r.work_date,
+        job_id: r.job_id,
+        description: r.description.trim() || 'Work',
+        hours: hrs,
+        start_time: r.start_time || null,
+        finish_time: r.finish_time || null,
+        unpaid_break_mins: parseInt(r.unpaid_break_mins, 10) || 0,
+        day_type: 'work',
+      };
+    }).filter(Boolean);
+
+    if (entries.length === 0) {
+      setError('Enter start/finish times for at least one day, or mark a day as leave/sick/public holiday');
+      return;
     }
 
-    if (allEntries.length === 0) { setError('Add at least one time entry or mark a day as leave/sick/public holiday'); return; }
-
-    const badHours = allEntries.filter(e => e.day_type === 'work').find(e => {
-      const h = e.hours;
-      return !isFinite(h) || h <= 0 || h > 24;
-    });
-    if (badHours) { setError('Hours must be between 0.1 and 24 per entry'); return; }
-
-    const payload = {
-      weekEnding,
-      jobId: globalJobId,
-      notes: notes.trim() || null,
-      entries: allEntries,
-    };
+    const payload = { weekEnding, jobId: globalJobId, notes: notes.trim() || null, entries };
 
     setSaving(true);
     try {
       let id: number;
       if (editId) {
         const r = await fetch(`/api/finance/timesheets/${editId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify(payload),
         });
         const data = await r.json();
@@ -270,9 +231,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
         id = editId;
       } else {
         const r = await fetch('/api/finance/timesheets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify(payload),
         });
         const data = await r.json();
@@ -282,9 +241,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
       if (andSubmit) {
         const r2 = await fetch(`/api/finance/timesheets/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ status: 'submitted' }),
         });
         const d2 = await r2.json();
@@ -299,32 +256,20 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
     }
   }
 
-  const dates = weekEnding ? weekDates(weekEnding) : [];
-  const byDate: Record<string, EntryRow[]> = {};
-  for (const e of entries) {
-    if (!byDate[e.work_date]) byDate[e.work_date] = [];
-    byDate[e.work_date].push(e);
-  }
-  const total = totalHours(entries, dayTypes, dates);
+  const total = totalHours(rows);
 
   return (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[1200] flex items-end md:items-center justify-center md:justify-end">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={onClose}
-            aria-hidden="true"
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
 
-          {/* Panel — bottom sheet on mobile, right panel on desktop */}
           <motion.div
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative z-10 w-full md:w-[520px] md:h-full bg-background flex flex-col rounded-t-2xl md:rounded-none shadow-2xl"
+            className="relative z-10 w-full md:w-[560px] md:h-full bg-background flex flex-col rounded-t-2xl md:rounded-none shadow-2xl"
             style={{ maxHeight: 'min(92dvh, 900px)' }}
           >
             {/* Header */}
@@ -337,29 +282,21 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   {editId ? 'Edit Timesheet' : 'New Timesheet'}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  {total > 0 ? `${total.toFixed(2)} hrs total` : 'Fill in your hours for the week'}
+                  {total > 0 ? `${total.toFixed(2)} hrs total` : 'Enter start & finish times for each day'}
                 </p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-              >
+              <button onClick={onClose} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors">
                 <X size={16} />
               </button>
             </div>
 
-            {/* Scrollable body */}
+            {/* Body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
-              {/* Error */}
               <AnimatePresence>
                 {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
-                  >
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                     <AlertCircle size={15} className="shrink-0 mt-0.5" />
                     <span>{error}</span>
                   </motion.div>
@@ -372,28 +309,17 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                     Week ending <span className="text-destructive">*</span>
                   </label>
-                  <input
-                    type="date"
-                    value={weekEnding}
-                    onChange={e => setWeekEnding(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
+                  <input type="date" value={weekEnding} onChange={e => setWeekEnding(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                    Default job
-                  </label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Default job</label>
                   <div className="relative">
-                    <select
-                      value={globalJobId ?? ''}
-                      onChange={e => setGlobalJobId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                      className="w-full h-9 pl-3 pr-8 rounded-lg border border-border bg-background text-sm text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
+                    <select value={globalJobId ?? ''} onChange={e => setGlobalJobId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                      className="w-full h-9 pl-3 pr-8 rounded-lg border border-border bg-background text-sm text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40">
                       <option value="">No default job</option>
                       {jobs.map(j => (
-                        <option key={j.id} value={j.id}>
-                          {j.job_number ? `${j.job_number} — ` : ''}{j.name}
-                        </option>
+                        <option key={j.id} value={j.id}>{j.job_number ? `${j.job_number} — ` : ''}{j.name}</option>
                       ))}
                     </select>
                     <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -401,164 +327,148 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 </div>
               </div>
 
-              {/* Day-by-day entries */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Time entries</p>
+              {/* Column headers */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Daily hours</p>
                   <span className="text-xs text-muted-foreground">
                     Total: <span className="font-bold text-foreground">{total.toFixed(2)} hrs</span>
                   </span>
                 </div>
 
-                {dates.map(date => {
-                  const dayEntries = byDate[date] ?? [];
-                  const dayType = dayTypes[date] ?? 'work';
-                  const isWork = dayType === 'work';
-                  const cfg = DAY_TYPES.find(d => d.key === dayType)!;
-                  const dayTotal = isWork
-                    ? dayEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0)
-                    : STANDARD_HOURS;
+                {/* FairWork column header */}
+                <div className="grid grid-cols-[1fr_64px_64px_52px_64px] gap-1.5 px-3 mb-1">
+                  <span className="text-[10px] font-semibold text-muted-foreground">Day</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground text-center">Start</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground text-center">Finish</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground text-center">Break</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground text-right">Hours</span>
+                </div>
 
-                  return (
-                    <div key={date} className="rounded-xl border border-border overflow-hidden">
-                      {/* Day header */}
-                      <div className={`flex items-center justify-between px-3 py-2 border-b border-border ${isWork ? 'bg-muted/40' : cfg.bg}`}>
-                        <span className={`text-xs font-semibold ${isWork ? 'text-foreground' : cfg.color}`}>
-                          {fmtDayLabel(date)}
-                        </span>
+                {/* Day rows */}
+                <div className="space-y-1.5">
+                  {rows.map(row => {
+                    const isWork = row.day_type === 'work';
+                    const cfg = DAY_TYPES.find(d => d.key === row.day_type);
+                    const hrs = isWork ? calcHours(row.start_time, row.finish_time, row.unpaid_break_mins) : STANDARD_HOURS;
 
-                        {/* Day type pill toggles */}
-                        <div className="flex items-center gap-1">
-                          {DAY_TYPES.filter(d => d.key !== 'work').map(d => (
-                            <button
-                              key={d.key}
-                              onClick={() => setDayType(date, dayType === d.key ? 'work' : d.key)}
+                    return (
+                      <div key={row.work_date} className={`rounded-xl border overflow-hidden transition-colors ${isWork ? 'border-border' : `border ${cfg?.activeBorder}`}`}>
+
+                        {/* Main row */}
+                        <div className={`grid grid-cols-[1fr_64px_64px_52px_64px] gap-1.5 items-center px-3 py-2 ${isWork ? '' : cfg?.rowBg}`}>
+                          {/* Day label */}
+                          <div className="min-w-0">
+                            <span className={`text-xs font-semibold truncate block ${isWork ? 'text-foreground' : cfg?.color}`}>
+                              {fmtDayLabel(row.work_date)}
+                            </span>
+                          </div>
+
+                          {/* Start */}
+                          {isWork ? (
+                            <input type="time" value={row.start_time}
+                              onChange={e => updateRow(row.work_date, { start_time: e.target.value })}
+                              className="w-full h-8 px-1.5 rounded-lg border border-border bg-background text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                          ) : (
+                            <span className={`text-xs text-center ${cfg?.color}`}>—</span>
+                          )}
+
+                          {/* Finish */}
+                          {isWork ? (
+                            <input type="time" value={row.finish_time}
+                              onChange={e => updateRow(row.work_date, { finish_time: e.target.value })}
+                              className="w-full h-8 px-1.5 rounded-lg border border-border bg-background text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                          ) : (
+                            <span className={`text-xs text-center ${cfg?.color}`}>—</span>
+                          )}
+
+                          {/* Break (mins) */}
+                          {isWork ? (
+                            <input type="number" placeholder="0" min="0" max="480" step="5"
+                              value={row.unpaid_break_mins}
+                              onChange={e => updateRow(row.work_date, { unpaid_break_mins: e.target.value })}
+                              className="w-full h-8 px-1.5 rounded-lg border border-border bg-background text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                          ) : (
+                            <span className={`text-xs text-center ${cfg?.color}`}>—</span>
+                          )}
+
+                          {/* Calculated hours */}
+                          <div className="text-right">
+                            {hrs !== null && hrs > 0 ? (
+                              <span className={`text-xs font-semibold ${isWork ? 'text-primary' : cfg?.color}`}>
+                                {hrs.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/40">—</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Day type pills + optional job/description row */}
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 border-t border-border/50 ${isWork ? 'bg-muted/20' : cfg?.rowBg}`}>
+                          {DAY_TYPES.map(d => (
+                            <button key={d.key}
+                              onClick={() => setDayType(row.work_date, row.day_type === d.key ? 'work' : d.key)}
                               className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors ${
-                                dayType === d.key
-                                  ? `${d.bg} ${d.color} ${d.border}`
+                                row.day_type === d.key
+                                  ? `${d.activeBg} ${d.color} ${d.activeBorder}`
                                   : 'bg-transparent text-muted-foreground border-transparent hover:border-border hover:text-foreground'
-                              }`}
-                            >
+                              }`}>
                               {d.label}
                             </button>
                           ))}
-                          {dayTotal > 0 && (
-                            <span className={`ml-1 text-xs font-medium ${isWork ? 'text-primary' : cfg.color}`}>
-                              {dayTotal.toFixed(2)} hrs
-                            </span>
+
+                          {/* Per-day job override (work days only) */}
+                          {isWork && jobs.length > 0 && (
+                            <div className="relative ml-auto">
+                              <select value={row.job_id ?? ''}
+                                onChange={e => updateRow(row.work_date, { job_id: e.target.value ? parseInt(e.target.value, 10) : null })}
+                                className="h-6 pl-2 pr-6 rounded-lg border border-border bg-background text-[10px] text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 max-w-[140px]">
+                                <option value="">{globalJobId ? 'Default job' : 'No job'}</option>
+                                {jobs.map(j => (
+                                  <option key={j.id} value={j.id}>{j.job_number ? `${j.job_number}` : j.name}</option>
+                                ))}
+                              </select>
+                              <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                            </div>
                           )}
                         </div>
-                      </div>
 
-                      {/* Non-work day — collapsed with badge */}
-                      {!isWork && (
-                        <div className={`px-3 py-3 flex items-center gap-2 ${cfg.bg}`}>
-                          <span className={`text-xs ${cfg.color}`}>
-                            {cfg.label} — {STANDARD_HOURS} hrs (standard day)
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Work day — entry rows */}
-                      {isWork && (
-                        <>
-                          <div className="divide-y divide-border">
-                            {dayEntries.map(entry => (
-                              <div key={entry._key} className="px-3 py-2.5 space-y-2">
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    placeholder="What did you work on?"
-                                    value={entry.description}
-                                    onChange={e => updateEntry(entry._key, 'description', e.target.value)}
-                                    className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                  />
-                                  <input
-                                    type="number"
-                                    placeholder="hrs"
-                                    min="0.1"
-                                    max="24"
-                                    step="0.25"
-                                    value={entry.hours}
-                                    onChange={e => updateEntry(entry._key, 'hours', e.target.value)}
-                                    className="w-[72px] h-8 px-2.5 rounded-lg border border-border bg-background text-sm text-foreground text-right placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                  />
-                                  <button
-                                    onClick={() => removeEntry(entry._key)}
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                                {jobs.length > 0 && (
-                                  <div className="relative">
-                                    <select
-                                      value={entry.job_id ?? ''}
-                                      onChange={e => updateEntry(entry._key, 'job_id', e.target.value ? parseInt(e.target.value, 10) : null)}
-                                      className="w-full h-7 pl-2.5 pr-7 rounded-lg border border-border bg-background text-xs text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                    >
-                                      <option value="">{globalJobId ? 'Using default job' : 'No job assigned'}</option>
-                                      {jobs.map(j => (
-                                        <option key={j.id} value={j.id}>
-                                          {j.job_number ? `${j.job_number} — ` : ''}{j.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                        {/* Description (work days only) */}
+                        {isWork && (
+                          <div className="px-3 pb-2.5 pt-1">
+                            <input type="text" placeholder="Work description (optional)"
+                              value={row.description}
+                              onChange={e => updateRow(row.work_date, { description: e.target.value })}
+                              className="w-full h-7 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40" />
                           </div>
-
-                          {/* Add entry for this day */}
-                          <button
-                            onClick={() => addEntryForDate(date)}
-                            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-primary hover:bg-primary/5 transition-colors border-t border-border"
-                          >
-                            <Plus size={12} />
-                            Add entry for this day
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Notes (optional)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Any additional notes for the office…"
-                  value={notes}
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Notes (optional)</label>
+                <textarea rows={3} placeholder="Any additional notes for the office…" value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40" />
               </div>
 
-              {/* Bottom spacer so last item clears the fixed footer */}
               <div className="h-2" />
             </div>
 
             {/* Footer */}
             <div className="shrink-0 px-5 pb-6 pt-3 border-t border-border flex gap-3">
-              <button
-                onClick={() => save(false)}
-                disabled={saving}
-                className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
+              <button onClick={() => save(false)} disabled={saving}
+                className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 Save draft
               </button>
-              <button
-                onClick={() => save(true)}
-                disabled={saving}
-                className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
+              <button onClick={() => save(true)} disabled={saving}
+                className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 Submit to office
               </button>

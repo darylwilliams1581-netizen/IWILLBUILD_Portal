@@ -63,8 +63,11 @@ export async function ensureTimesheetSchema(): Promise<void> {
 
   // Ensure any columns added after initial release exist
   const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
-    // Future columns go here — e.g.:
-    // { table: 'timesheets', column: 'pay_period_type', definition: "VARCHAR(20) NOT NULL DEFAULT 'weekly'" },
+    // FairWork fields — start/finish times and unpaid break per entry
+    { table: 'timesheet_entries', column: 'start_time',        definition: "VARCHAR(5) NULL COMMENT 'HH:MM 24h'" },
+    { table: 'timesheet_entries', column: 'finish_time',       definition: "VARCHAR(5) NULL COMMENT 'HH:MM 24h'" },
+    { table: 'timesheet_entries', column: 'unpaid_break_mins', definition: 'SMALLINT NULL DEFAULT 0' },
+    { table: 'timesheet_entries', column: 'day_type',          definition: "VARCHAR(20) NOT NULL DEFAULT 'work'" },
   ];
 
   for (const col of colsToEnsure) {
@@ -90,10 +93,15 @@ export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
 export interface TimesheetEntry {
   id?: number;
-  work_date: string;   // YYYY-MM-DD
+  work_date: string;        // YYYY-MM-DD
   job_id?: number | null;
   description: string;
   hours: number;
+  // FairWork fields
+  start_time?: string | null;        // HH:MM 24h
+  finish_time?: string | null;       // HH:MM 24h
+  unpaid_break_mins?: number | null; // minutes
+  day_type?: string;                 // 'work' | 'leave' | 'sick' | 'public-holiday'
 }
 
 export interface Timesheet {
@@ -243,6 +251,7 @@ export async function getTimesheet(
 
   const [entryRows] = await db.execute(sql`
     SELECT te.id, te.work_date, te.job_id, te.description, te.hours,
+           te.start_time, te.finish_time, te.unpaid_break_mins, te.day_type,
            j.job_number AS entry_job_number, j.name AS entry_job_name
     FROM timesheet_entries te
     LEFT JOIN jobs j ON j.id = te.job_id AND j.company_id = ${companyId}
@@ -274,13 +283,16 @@ export async function createTimesheet(params: {
     return { ok: false, error: { code: 400, message: 'Maximum 100 entries per timesheet' } };
   }
 
-  // Validate entries
+  // Validate entries — skip validation for non-work day types
   for (let i = 0; i < params.entries.length; i++) {
     const e = params.entries[i];
     if (!e.work_date) return { ok: false, error: { code: 400, message: `Entry ${i + 1}: work_date is required` } };
-    if (!e.description?.trim()) return { ok: false, error: { code: 400, message: `Entry ${i + 1}: description is required` } };
-    const h = Number(e.hours);
-    if (!isFinite(h) || h <= 0 || h > 24) return { ok: false, error: { code: 400, message: `Entry ${i + 1}: hours must be between 0.1 and 24` } };
+    const dayType = e.day_type ?? 'work';
+    if (dayType === 'work') {
+      if (!e.description?.trim()) return { ok: false, error: { code: 400, message: `Entry ${i + 1}: description is required` } };
+      const h = Number(e.hours);
+      if (!isFinite(h) || h <= 0 || h > 24) return { ok: false, error: { code: 400, message: `Entry ${i + 1}: hours must be between 0.1 and 24` } };
+    }
   }
 
   const [result] = await db.execute(sql`
@@ -291,8 +303,13 @@ export async function createTimesheet(params: {
 
   for (const e of params.entries) {
     await db.execute(sql`
-      INSERT INTO timesheet_entries (timesheet_id, company_id, work_date, job_id, description, hours)
-      VALUES (${insertId}, ${params.companyId}, ${e.work_date}, ${e.job_id ?? null}, ${e.description.trim()}, ${Number(e.hours)})
+      INSERT INTO timesheet_entries
+        (timesheet_id, company_id, work_date, job_id, description, hours, start_time, finish_time, unpaid_break_mins, day_type)
+      VALUES
+        (${insertId}, ${params.companyId}, ${e.work_date}, ${e.job_id ?? null},
+         ${(e.description ?? '').trim()}, ${Number(e.hours)},
+         ${e.start_time ?? null}, ${e.finish_time ?? null},
+         ${e.unpaid_break_mins ?? 0}, ${e.day_type ?? 'work'})
     `);
   }
 
@@ -340,8 +357,13 @@ export async function updateTimesheet(params: {
     await db.execute(sql`DELETE FROM timesheet_entries WHERE timesheet_id = ${params.id}`);
     for (const e of params.entries) {
       await db.execute(sql`
-        INSERT INTO timesheet_entries (timesheet_id, company_id, work_date, job_id, description, hours)
-        VALUES (${params.id}, ${params.companyId}, ${e.work_date}, ${e.job_id ?? null}, ${e.description.trim()}, ${Number(e.hours)})
+        INSERT INTO timesheet_entries
+          (timesheet_id, company_id, work_date, job_id, description, hours, start_time, finish_time, unpaid_break_mins, day_type)
+        VALUES
+          (${params.id}, ${params.companyId}, ${e.work_date}, ${e.job_id ?? null},
+           ${(e.description ?? '').trim()}, ${Number(e.hours)},
+           ${e.start_time ?? null}, ${e.finish_time ?? null},
+           ${e.unpaid_break_mins ?? 0}, ${e.day_type ?? 'work'})
       `);
     }
   }
