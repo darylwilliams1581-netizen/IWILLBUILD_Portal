@@ -30,10 +30,12 @@ export default function JobEstimatesPage() {
     <div className="portal-page">
       <Helmet>
         <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWILLBUILD</title>
+        <meta name="description" content="View and manage estimates for this job in IWILLBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/quotes`} />}
       </Helmet>
       <PortalSidebar />
+      <h1 className="sr-only">{job ? `Estimates — ${job.name}` : 'Job Estimates'}</h1>
       <div className="portal-content flex flex-col p-0">
         {loading && (
           <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">

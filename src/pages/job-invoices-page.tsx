@@ -34,10 +34,12 @@ export default function JobInvoicesPage() {
     <div className="portal-page">
       <Helmet>
         <title>{fullJob ? `Invoices — ${fullJob.name}` : 'Invoices'} — IWILLBUILD</title>
+        <meta name="description" content="View and manage invoices for this job in IWILLBUILD." />
         <meta name="robots" content="noindex" />
         {fullJob && <link rel="canonical" href={`https://iwillbuild.com/jobs/${fullJob.id}/invoices`} />}
       </Helmet>
       <PortalSidebar />
+      <h1 className="sr-only">{fullJob ? `Invoices — ${fullJob.name}` : 'Job Invoices'}</h1>
       <div className="portal-content flex flex-col p-0">
         {loading && (
           <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">

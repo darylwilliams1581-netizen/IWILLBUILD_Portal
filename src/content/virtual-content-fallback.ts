@@ -174,3 +174,11 @@ export const job_site_prestart: {
     'Amenities available if required',
   ],
 };
+
+export const work_field: {
+  title: string;
+  subtitle: string;
+} = {
+  title: 'Work & Field',
+  subtitle: 'Select a feature, then choose a job',
+};

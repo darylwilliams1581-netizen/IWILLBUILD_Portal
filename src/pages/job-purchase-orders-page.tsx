@@ -26,10 +26,12 @@ export default function JobPurchaseOrdersPage() {
     <div className="portal-page">
       <Helmet>
         <title>{job ? `Purchase Orders — ${job.name}` : 'Purchase Orders'} — IWILLBUILD</title>
+        <meta name="description" content="Manage purchase orders for this job in IWILLBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/purchase-orders`} />}
       </Helmet>
       <PortalSidebar />
+      <h1 className="sr-only">{job ? `Purchase Orders — ${job.name}` : 'Job Purchase Orders'}</h1>
       <div className="portal-content flex flex-col p-0">
         {loading && (
           <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">

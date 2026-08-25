@@ -26,10 +26,12 @@ export default function JobSafetyPage() {
     <div className="portal-page">
       <Helmet>
         <title>{job ? `Safety — ${job.name}` : 'Safety'} — IWILLBUILD</title>
+        <meta name="description" content="Manage safety records and SWMS for this job in IWILLBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/safety`} />}
       </Helmet>
       <PortalSidebar />
+      <h1 className="sr-only">{job ? `Safety — ${job.name}` : 'Job Safety'}</h1>
       <div className="portal-content flex flex-col p-0">
         {loading && (
           <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">

@@ -26,10 +26,12 @@ export default function JobFilesPage() {
     <div className="portal-page">
       <Helmet>
         <title>{job ? `Files — ${job.name}` : 'Files'} — IWILLBUILD</title>
+        <meta name="description" content="Manage documents and files for this job in IWILLBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/files`} />}
       </Helmet>
       <PortalSidebar />
+      <h1 className="sr-only">{job ? `Files — ${job.name}` : 'Job Files'}</h1>
       <div className="portal-content flex flex-col p-0">
         {loading && (
           <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">

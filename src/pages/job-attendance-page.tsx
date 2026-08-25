@@ -26,10 +26,12 @@ export default function JobAttendancePage() {
     <div className="portal-page">
       <Helmet>
         <title>{job ? `Attendance — ${job.name}` : 'Attendance'} — IWILLBUILD</title>
+        <meta name="description" content="Track attendance and sign-on/off for this job in IWILLBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/attendance`} />}
       </Helmet>
       <PortalSidebar />
+      <h1 className="sr-only">{job ? `Attendance — ${job.name}` : 'Job Attendance'}</h1>
       <div className="portal-content flex flex-col p-0">
         {loading && (
           <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">
