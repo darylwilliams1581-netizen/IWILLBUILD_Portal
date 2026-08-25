@@ -124,9 +124,8 @@ function JobFeaturePage({
     <div
       className="h-full overflow-y-auto bg-gray-50/60"
       data-testid="opening-page-job-features"
-      // Extra bottom padding so the sticky Lens/Add Job bar never covers the last cards.
-      // 80px bar height + safe-area-inset-bottom + 8px breathing room.
-      style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom) + 88px), 96px)' }}
+      // Normal bottom padding — no sticky bar on this page.
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
     >
       {/* Content column — max 640px, centred on wide screens */}
       <div className="mx-auto w-full px-3 pt-2 flex flex-col gap-3" style={{ maxWidth: 640 }}>
@@ -160,42 +159,6 @@ function JobFeaturePage({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// ── Sticky bottom action bar (Work & Field page) ──────────────────────────────
-// Lens + Add Job — equal-width, respects safe-area-inset-bottom.
-
-function WorkFieldBottomBar({
-  onLens,
-  onNewJob,
-}: {
-  onLens: () => void;
-  onNewJob: () => void;
-}) {
-  return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-20 flex gap-2 px-3 bg-card/90 backdrop-blur-sm border-t border-border"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)', paddingTop: 10 }}
-      data-testid="work-field-bottom-bar"
-    >
-      <button
-        onClick={onLens}
-        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform"
-        style={{ minHeight: 44 }}
-      >
-        <CameraIcon size={18} strokeWidth={2} />
-        Lens
-      </button>
-      <button
-        onClick={onNewJob}
-        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform"
-        style={{ minHeight: 44 }}
-      >
-        <Plus size={18} strokeWidth={2} />
-        Add Job
-      </button>
     </div>
   );
 }
@@ -402,9 +365,6 @@ export default function PagedHomeScreen({
   const dragPercent = isDragging && containerRef.current ? dragDelta / containerRef.current.offsetWidth * 100 : 0;
   const totalTranslate = baseTranslate + dragPercent;
 
-  // Sticky bottom bar only visible on Work & Field page
-  const isWorkFieldPage = page === 1;
-
   return <>
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Top bar: page tabs + utility buttons ─────────────────────────────── */}
@@ -497,13 +457,7 @@ export default function PagedHomeScreen({
       </div>
     </div>
 
-    {/* ── Sticky Lens + Add Job bar — only on Work & Field page ──────────────── */}
-    {isWorkFieldPage && (
-      <WorkFieldBottomBar
-        onLens={() => onNavigate('/lens')}
-        onNewJob={() => setNewJobOpen(true)}
-      />
-    )}
+
 
     <NewJobModal open={newJobOpen} onClose={() => setNewJobOpen(false)} onCreated={() => setNewJobOpen(false)} />
 

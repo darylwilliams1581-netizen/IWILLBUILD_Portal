@@ -146,58 +146,11 @@ describe('Responsive grid', () => {
   });
 });
 
-// ── 17. Bottom padding for sticky bar ────────────────────────────────────────
+// ── 17. Bottom padding ────────────────────────────────────────────────────────
 
-describe('Job feature page — bottom padding for sticky bar', () => {
-  it('has bottom padding that accounts for the sticky bar (88px+)', () => {
-    expect(screenSrc).toContain('88px');
-  });
-
+describe('Job feature page — bottom padding', () => {
   it('uses safe-area-inset-bottom in the padding calculation', () => {
     expect(screenSrc).toContain('env(safe-area-inset-bottom)');
-  });
-});
-
-// ── 18–24. Sticky bottom bar ──────────────────────────────────────────────────
-
-describe('Sticky bottom bar — WorkFieldBottomBar', () => {
-  it('WorkFieldBottomBar component is defined', () => {
-    expect(screenSrc).toContain('function WorkFieldBottomBar(');
-  });
-
-  it('uses fixed positioning', () => {
-    expect(screenSrc).toContain('fixed bottom-0 left-0 right-0');
-  });
-
-  it('respects safe-area-inset-bottom', () => {
-    // Inside WorkFieldBottomBar
-    const barSection = screenSrc.slice(screenSrc.indexOf('function WorkFieldBottomBar'));
-    expect(barSection).toContain('env(safe-area-inset-bottom)');
-  });
-
-  it('has a Lens button', () => {
-    const barSection = screenSrc.slice(screenSrc.indexOf('function WorkFieldBottomBar'));
-    expect(barSection).toContain('Lens');
-  });
-
-  it('has an Add Job button', () => {
-    const barSection = screenSrc.slice(screenSrc.indexOf('function WorkFieldBottomBar'));
-    expect(barSection).toContain('Add Job');
-  });
-
-  it('is only shown when isWorkFieldPage is true', () => {
-    expect(screenSrc).toContain('isWorkFieldPage');
-    expect(screenSrc).toContain('{isWorkFieldPage && (');
-  });
-
-  it('has data-testid="work-field-bottom-bar"', () => {
-    expect(screenSrc).toContain('data-testid="work-field-bottom-bar"');
-  });
-
-  it('both buttons have minHeight 44 (WCAG touch target)', () => {
-    const barSection = screenSrc.slice(screenSrc.indexOf('function WorkFieldBottomBar'));
-    const count = (barSection.match(/minHeight: 44/g) ?? []).length;
-    expect(count).toBeGreaterThanOrEqual(2);
   });
 });
 
