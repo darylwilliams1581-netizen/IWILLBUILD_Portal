@@ -9,14 +9,10 @@
  *   • Touch swipe left/right
  *   • Page-dot taps
  *   • Page-label tab bar at the top of the swipe area
- *
- * The component is self-contained — it receives the same props that
- * HomeIconGrid used to receive, plus the handleNavigate callback.
  */
 
 import { useState, useRef, useCallback, useEffect, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
-import { AnimatePresence, motion } from 'motion/react';
 import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
@@ -33,6 +29,10 @@ import {
   FEATURE_GROUPS,
   type JobFeature,
 } from '@/lib/jobFeatureRegistry';
+
+// Suppress unused-import lint — OPENING_PAGE_FEATURES is referenced in tests via the module
+void OPENING_PAGE_FEATURES;
+
 const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [{
   label: 'Console',
   icon: ShieldCheck,
@@ -57,22 +57,32 @@ interface PagedHomeScreenProps {
   onNavigate: (href: string) => void;
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
+// ── Group panel config ────────────────────────────────────────────────────────
+// Panel background colours are defined as CSS custom properties in globals.css
+// (--panel-work, --panel-field-files, --panel-finance, --panel-safety).
+// Heading colours use Tailwind semantic classes so they respect the design system.
 
-function SectionLabel({
-  label
-}: {
-  label: string;
-}) {
-  return <div className="col-span-full flex items-center gap-2 pt-3 pb-1 px-1">
-      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400/80 select-none">
+const GROUP_PANEL: Record<string, { panelVar: string; headingColor: string }> = {
+  'Work':          { panelVar: 'var(--panel-work)',        headingColor: 'text-blue-700' },
+  'Field & Files': { panelVar: 'var(--panel-field-files)', headingColor: 'text-violet-700' },
+  'Finance':       { panelVar: 'var(--panel-finance)',     headingColor: 'text-emerald-700' },
+  'Safety':        { panelVar: 'var(--panel-safety)',      headingColor: 'text-rose-700' },
+};
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+function SectionHeading({ label, headingColor }: { label: string; headingColor: string }) {
+  return (
+    <div className="flex items-center gap-1.5 mb-2">
+      <span className={`text-[11px] font-bold uppercase tracking-[0.07em] select-none ${headingColor}`}>
         {label}
       </span>
-      <div className="flex-1 h-px bg-gray-200/60" />
-    </div>;
+    </div>
+  );
 }
 
-// ── Job feature card (Page 1) ─────────────────────────────────────────────────
+// ── Job feature card — compact horizontal layout ──────────────────────────────
+// Height: ~52–64px. Icon: 32×32px. Label: 13px semibold. Min touch target: 44px.
 
 function JobFeatureCard({
   feature,
@@ -87,12 +97,16 @@ function JobFeatureCard({
       type="button"
       onClick={() => onClick(feature)}
       data-testid={`opening-page-card-${feature.key}`}
-      className="flex flex-col items-center gap-2 p-3 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 min-h-[80px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      aria-label={feature.label}
+      className="flex items-center gap-2.5 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+      style={{ minHeight: 52 }}
     >
-      <div className={`w-10 h-10 rounded-xl ${feature.bg} flex items-center justify-center shrink-0`}>
-        <Icon size={18} className={feature.fg} />
+      {/* Icon badge — 32×32 */}
+      <div className={`w-8 h-8 rounded-lg ${feature.bg} flex items-center justify-center shrink-0`}>
+        <Icon size={16} className={feature.fg} />
       </div>
-      <span className="text-[11px] font-semibold text-gray-800 text-center leading-tight">
+      {/* Label — wraps naturally, never truncates */}
+      <span className="text-[13px] font-semibold text-gray-800 leading-tight text-left">
         {feature.label}
       </span>
     </button>
@@ -108,17 +122,31 @@ function JobFeaturePage({
 }) {
   return (
     <div
-      className="h-full overflow-y-auto flex flex-col px-3 pt-2 pb-4"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+      className="h-full overflow-y-auto bg-gray-50/60"
       data-testid="opening-page-job-features"
+      // Extra bottom padding so the sticky Lens/Add Job bar never covers the last cards.
+      // 80px bar height + safe-area-inset-bottom + 8px breathing room.
+      style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom) + 88px), 96px)' }}
     >
-      <div className="mx-auto w-full space-y-4" style={{ maxWidth: 480 }}>
+      {/* Content column — max 640px, centred on wide screens */}
+      <div className="mx-auto w-full px-3 pt-2 flex flex-col gap-3" style={{ maxWidth: 640 }}>
         {FEATURE_GROUPS.map(group => {
           const features = group.features.filter(f => f.inOpeningPage);
           if (features.length === 0) return null;
+          const panel = GROUP_PANEL[group.label] ?? { panelVar: 'hsl(var(--muted))', headingColor: 'text-muted-foreground' };
           return (
-            <section key={group.label} data-testid={`opening-page-group-${group.label}`}>
-              <SectionLabel label={group.label} />
+            <section
+              key={group.label}
+              data-testid={`opening-page-group-${group.label}`}
+              className="rounded-2xl px-3 pt-3 pb-3"
+              style={{ background: panel.panelVar }}
+              aria-label={`${group.label} features`}
+            >
+              <SectionHeading label={group.label} headingColor={panel.headingColor} />
+              {/*
+                Grid: 2 col mobile (≥320px) → 3 col sm (≥640px) → 4 col md (≥768px)
+                Very narrow (<340px): still 2 col — labels wrap rather than clip.
+              */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {features.map(feature => (
                   <JobFeatureCard
@@ -132,6 +160,42 @@ function JobFeaturePage({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Sticky bottom action bar (Work & Field page) ──────────────────────────────
+// Lens + Add Job — equal-width, respects safe-area-inset-bottom.
+
+function WorkFieldBottomBar({
+  onLens,
+  onNewJob,
+}: {
+  onLens: () => void;
+  onNewJob: () => void;
+}) {
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 z-20 flex gap-2 px-3 bg-card/90 backdrop-blur-sm border-t border-border"
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)', paddingTop: 10 }}
+      data-testid="work-field-bottom-bar"
+    >
+      <button
+        onClick={onLens}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform"
+        style={{ minHeight: 44 }}
+      >
+        <CameraIcon size={18} strokeWidth={2} />
+        Lens
+      </button>
+      <button
+        onClick={onNewJob}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform"
+        style={{ minHeight: 44 }}
+      >
+        <Plus size={18} strokeWidth={2} />
+        Add Job
+      </button>
     </div>
   );
 }
@@ -197,8 +261,6 @@ function DashboardPage({
             <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
           </div>
         </button>
-
-        {/* ── end grid ── */}
       </div>
 
       <NotificationList />
@@ -208,8 +270,6 @@ function DashboardPage({
 }
 
 // ── Manage page (Page 2) ──────────────────────────────────────────────────────
-// Shows management icon tiles (minus desktop-only ones) + a full-width
-// "Desktop features" link card at the bottom.
 
 /** Keys that are desktop-only and should be hidden from the Manage tile grid */
 const DESKTOP_ONLY_KEYS = new Set<string>([]);
@@ -227,7 +287,6 @@ function ManagePage({
       <div className="mx-auto w-full" style={{
       maxWidth: 480
     }}>
-        {/* ── Mobile icon grid ── */}
         <div className="grid grid-cols-2 gap-3" style={{
         gridAutoRows: 'minmax(96px, 1fr)'
       }}>
@@ -236,6 +295,9 @@ function ManagePage({
       </div>
     </div>;
 }
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function PagedHomeScreen({
   iconPermissions,
   role,
@@ -286,11 +348,9 @@ export default function PagedHomeScreen({
     navigate(pendingFeature.standaloneRoute(job.id));
   }
 
-  // ── Resolve icons (client-side only, same pattern as HomeIconGrid) ──────────
+  // ── Resolve icons (client-side only) ──────────────────────────────────────
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
   const allowedIcons = mounted ? resolveHomeIcons(iconPermissions, role, isSolo) : resolveHomeIcons(null, '', false);
   const platformAsIconDef: HomeIconDef[] = PLATFORM_ICONS.map(p => ({
     ...p,
@@ -298,11 +358,9 @@ export default function PagedHomeScreen({
     group: 'management' as const
   }));
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
-
-  // ── Page 2: Management icons ─────────────────────────────────────────────────
   const mgmtIcons = allIcons.filter(i => i.group === 'management');
 
-  // ── Swipe handlers ────────────────────────────────────────────────────────────
+  // ── Swipe handlers ────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e: ReactTouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -314,12 +372,10 @@ export default function PagedHomeScreen({
     if (touchStartX.current === null || touchStartY.current === null) return;
     const dx = e.touches[0].clientX - touchStartX.current;
     const dy = e.touches[0].clientY - touchStartY.current;
-
     if (isHorizontalSwipe.current === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
       isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy);
     }
     if (!isHorizontalSwipe.current) return;
-
     const atStart = page === 0 && dx > 0;
     const atEnd = page === 2 && dx < 0;
     const rubber = atStart || atEnd ? dx * 0.25 : dx;
@@ -333,7 +389,8 @@ export default function PagedHomeScreen({
       return;
     }
     const threshold = 60;
-    if (dragDelta < -threshold && page < 2) setPage(p => p + 1); else if (dragDelta > threshold && page > 0) setPage(p => p - 1);
+    if (dragDelta < -threshold && page < 2) setPage(p => p + 1);
+    else if (dragDelta > threshold && page > 0) setPage(p => p - 1);
     setDragDelta(0);
     setIsDragging(false);
     touchStartX.current = null;
@@ -344,59 +401,74 @@ export default function PagedHomeScreen({
   const baseTranslate = -page * 100;
   const dragPercent = isDragging && containerRef.current ? dragDelta / containerRef.current.offsetWidth * 100 : 0;
   const totalTranslate = baseTranslate + dragPercent;
+
+  // Sticky bottom bar only visible on Work & Field page
+  const isWorkFieldPage = page === 1;
+
   return <>
     <div className="flex flex-col flex-1 min-h-0">
-      {/* ── Top bar: page tabs (centred) + utility buttons (right) ─────────── */}
-      <div className="flex items-center shrink-0 px-2 pt-2 pb-1.5 gap-1.5">
+      {/* ── Top bar: page tabs + utility buttons ─────────────────────────────── */}
+      <div className="flex items-center shrink-0 px-2 pt-1.5 pb-1 gap-1.5">
         <div className="flex-1 min-w-0 flex items-center justify-center gap-1">
           {PAGE_LABELS.map((label, i) => {
             const Icon = PAGE_ICONS[i];
             const active = page === i;
-            return <button key={label} onClick={() => setPage(i)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}>
+            return (
+              <button
+                key={label}
+                onClick={() => setPage(i)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
+              >
                 <Icon size={11} strokeWidth={2.2} />
                 {label}
-              </button>;
+              </button>
+            );
           })}
         </div>
-
         <div className="flex items-center gap-1 shrink-0">
-          <div className="shrink-0">
-            <NotificationBell />
-          </div>
-          <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all shrink-0" aria-label="Profile">
+          <div className="shrink-0"><NotificationBell /></div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-8 h-8 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all shrink-0"
+            aria-label="Profile"
+          >
             <User size={15} className="text-white" />
           </button>
-          <button onClick={async () => {
-            await signOut();
-            navigate('/login');
-          }} className="w-8 h-8 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all shrink-0" aria-label="Log out" title="Log out">
+          <button
+            onClick={async () => { await signOut(); navigate('/login'); }}
+            className="w-8 h-8 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all shrink-0"
+            aria-label="Log out"
+            title="Log out"
+          >
             <LogOut size={13} className="text-slate-200" />
           </button>
         </div>
       </div>
 
-      {/* ── Swipe container ───────────────────────────────────────────────────── */}
-      <div ref={containerRef} className="flex-1 min-h-0 relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{
-        touchAction: 'pan-y',
-        overflowX: 'clip',
-        overflowY: 'visible'
-      }}>
-        <div className="flex h-full" style={{
-          width: '300%',
-          transform: `translateX(${totalTranslate / 3}%)`,
-          transition: isDragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          willChange: 'transform'
-        }}>
+      {/* ── Swipe container ──────────────────────────────────────────────────── */}
+      <div
+        ref={containerRef}
+        className="flex-1 min-h-0 relative"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ touchAction: 'pan-y', overflowX: 'clip', overflowY: 'visible' }}
+      >
+        <div
+          className="flex h-full"
+          style={{
+            width: '300%',
+            transform: `translateX(${totalTranslate / 3}%)`,
+            transition: isDragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            willChange: 'transform',
+          }}
+        >
           {/* Page 0 — Dashboard */}
-          <div className="overflow-y-auto min-h-0" style={{
-            width: '33.333%',
-            height: '100%',
-            paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
-          }}>
+          <div className="overflow-y-auto min-h-0" style={{ width: '33.333%', height: '100%', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
             <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} />
           </div>
 
-          {/* Page 1 — Work & Field: 14 job-feature icons from registry */}
+          {/* Page 1 — Work & Field */}
           <div className="min-h-0" style={{ width: '33.333%', height: '100%' }}>
             <JobFeaturePage onFeatureClick={handleFeatureClick} />
           </div>
@@ -408,20 +480,34 @@ export default function PagedHomeScreen({
         </div>
       </div>
 
-      {/* ── Page dots ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-center gap-2 py-2 shrink-0" style={{
-        paddingBottom: 'max(env(safe-area-inset-bottom), 8px)'
-      }}>
-        {[0, 1, 2].map(i => <button key={i} onClick={() => setPage(i)} aria-label={`Go to ${PAGE_LABELS[i]} page`} className={`transition-all duration-200 rounded-full ${page === i ? 'bg-primary' : 'bg-black/20'}`} style={{
-          width: page === i ? 20 : 6,
-          height: 6
-        }} />)}
+      {/* ── Page dots ────────────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-center gap-2 py-1.5 shrink-0"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)' }}
+      >
+        {[0, 1, 2].map(i => (
+          <button
+            key={i}
+            onClick={() => setPage(i)}
+            aria-label={`Go to ${PAGE_LABELS[i]} page`}
+            className={`transition-all duration-200 rounded-full ${page === i ? 'bg-primary' : 'bg-black/20'}`}
+            style={{ width: page === i ? 20 : 6, height: 6 }}
+          />
+        ))}
       </div>
     </div>
 
+    {/* ── Sticky Lens + Add Job bar — only on Work & Field page ──────────────── */}
+    {isWorkFieldPage && (
+      <WorkFieldBottomBar
+        onLens={() => onNavigate('/lens')}
+        onNewJob={() => setNewJobOpen(true)}
+      />
+    )}
+
     <NewJobModal open={newJobOpen} onClose={() => setNewJobOpen(false)} onCreated={() => setNewJobOpen(false)} />
 
-    {/* Job feature picker — rendered outside swipe track to avoid transform stacking context */}
+    {/* Job feature picker — outside swipe track to avoid transform stacking context */}
     {pendingFeature && (
       <SharedJobPickerSheet
         open={pickerOpen}
@@ -434,5 +520,5 @@ export default function PagedHomeScreen({
         onSelect={handleJobSelect}
       />
     )}
-    </>;
+  </>;
 }

@@ -8,6 +8,11 @@
   :root {
     /* Core Colors */
     --background: 0 0% 100%;
+    /* ── Opening-page group panel backgrounds ─────────────────────────────── */
+    --panel-work:        #F1F6FF;
+    --panel-field-files: #F7F3FF;
+    --panel-finance:     #F1FBF6;
+    --panel-safety:      #FFF8F5;
     --foreground: 0 0% 4%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 4%;
