@@ -10,6 +10,7 @@
  * @seo-exempt
  */
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -80,14 +81,25 @@ const TOOL_ITEMS = [
 
 function ToolsDropdown() {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+
+  function openMenu() {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setMenuPos({
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    setOpen(true);
+  }
 
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: PointerEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (btnRef.current && btnRef.current.contains(e.target as Node)) return;
+      setOpen(false);
     }
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
@@ -103,14 +115,14 @@ function ToolsDropdown() {
   }, [open]);
 
   return (
-    <div ref={ref} className="relative shrink-0 self-end">
+    <>
       <button
         ref={btnRef}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => open ? setOpen(false) : openMenu()}
         aria-haspopup="true"
         aria-expanded={open}
         aria-label="Tools menu"
-        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors min-h-[44px] ${
+        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0 min-h-[44px] ${
           open ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
         }`}
       >
@@ -119,11 +131,18 @@ function ToolsDropdown() {
         <ChevronDown size={11} className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
+      {open && menuPos && createPortal(
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 z-50 bg-background border border-border rounded-xl shadow-lg overflow-hidden min-w-[200px]"
-          style={{ maxWidth: 'calc(100vw - 1rem)' }}
+          style={{
+            position: 'fixed',
+            top: menuPos.top,
+            right: menuPos.right,
+            zIndex: 9999,
+            minWidth: 200,
+            maxWidth: 'calc(100vw - 1rem)',
+          }}
+          className="bg-background border border-border rounded-xl shadow-xl overflow-hidden"
         >
           {TOOL_ITEMS.map((tool) => {
             const Icon = tool.icon;
@@ -139,9 +158,10 @@ function ToolsDropdown() {
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
@@ -163,11 +183,19 @@ interface MobileLauncherProps {
 }
 
 function MobileWorkLauncher({ onSelect, onNewJob, isViewOnly }: MobileLauncherProps) {
+  const navigate = useNavigate();
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background shrink-0">
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate('/home')}
+            className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0 hover:bg-muted/80 transition-colors"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={15} className="text-muted-foreground" />
+          </button>
           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Briefcase size={16} className="text-primary" />
           </div>
