@@ -10,7 +10,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X, Clock, ChevronDown, Loader2, AlertCircle, User } from 'lucide-react';
+import { X, Clock, ChevronDown, Loader2, AlertCircle, User, Copy, ChevronsDown } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -157,6 +157,24 @@ function totalHours(rows: DayRow[]): number {
   return rows.reduce((sum, r) => sum + (rowHours(r) ?? 0), 0);
 }
 
+// ── Copy helpers ─────────────────────────────────────────────────────────────
+
+/** Return the week-ending date string for the week BEFORE the given one */
+function prevWeekEnding(we: string): string {
+  const [y, mo, dy] = we.split('-').map(Number);
+  const d = new Date(y, mo - 1, dy);
+  d.setDate(d.getDate() - 7);
+  return toLocalISO(d);
+}
+
+/** Strip work_date from a DayRow — used when copying times to a different date */
+type TimingFields = Omit<DayRow, 'work_date'>;
+
+function timingOf(r: DayRow): TimingFields {
+  const { work_date: _wd, ...rest } = r;
+  return rest;
+}
+
 // ── Shared input class ────────────────────────────────────────────────────────
 
 const inputCls =
@@ -170,9 +188,11 @@ interface DayCardMobileProps {
   globalJobId: number | null;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
   onSetType: (date: string, type: DayType) => void;
+  /** If provided, show a "Copy previous day" button */
+  onCopyPrev?: () => void;
 }
 
-function DayCardMobile({ row, jobs, globalJobId, onUpdate, onSetType }: DayCardMobileProps) {
+function DayCardMobile({ row, jobs, globalJobId, onUpdate, onSetType, onCopyPrev }: DayCardMobileProps) {
   const isWork = row.day_type === 'work';
   const cfg = DAY_TYPES.find(d => d.key === row.day_type);
   const hrs = rowHours(row);
@@ -180,14 +200,27 @@ function DayCardMobile({ row, jobs, globalJobId, onUpdate, onSetType }: DayCardM
   return (
     <div className={`rounded-2xl border overflow-hidden ${isWork ? 'border-border' : `border ${cfg?.activeBorder}`}`}>
 
-      {/* ── Card header: day name + daily total ── */}
+      {/* ── Card header: day name + copy-prev + daily total ── */}
       <div className={`flex items-center justify-between px-4 py-3 ${isWork ? 'bg-muted/30' : cfg?.rowBg}`}>
         <span className={`text-sm font-bold ${isWork ? 'text-foreground' : cfg?.color}`}>
           {fmtDayLabel(row.work_date)}
         </span>
-        <span className={`text-sm font-bold tabular-nums ${hrs && hrs > 0 ? (isWork ? 'text-primary' : cfg?.color) : 'text-muted-foreground/40'}`}>
-          {hrs !== null && hrs > 0 ? `${hrs.toFixed(2)} hrs` : '—'}
-        </span>
+        <div className="flex items-center gap-2">
+          {onCopyPrev && (
+            <button
+              type="button"
+              onClick={onCopyPrev}
+              title="Copy previous day"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-muted-foreground border border-border hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Copy size={11} />
+              Copy prev
+            </button>
+          )}
+          <span className={`text-sm font-bold tabular-nums ${hrs && hrs > 0 ? (isWork ? 'text-primary' : cfg?.color) : 'text-muted-foreground/40'}`}>
+            {hrs !== null && hrs > 0 ? `${hrs.toFixed(2)} hrs` : '—'}
+          </span>
+        </div>
       </div>
 
       <div className="px-4 pb-4 pt-3 space-y-3">
@@ -339,9 +372,10 @@ interface DayRowDesktopProps {
   globalJobId: number | null;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
   onSetType: (date: string, type: DayType) => void;
+  onCopyPrev?: () => void;
 }
 
-function DayRowDesktop({ row, jobs, globalJobId, onUpdate, onSetType }: DayRowDesktopProps) {
+function DayRowDesktop({ row, jobs, globalJobId, onUpdate, onSetType, onCopyPrev }: DayRowDesktopProps) {
   const isWork = row.day_type === 'work';
   const cfg = DAY_TYPES.find(d => d.key === row.day_type);
   const hrs = rowHours(row);
@@ -401,6 +435,15 @@ function DayRowDesktop({ row, jobs, globalJobId, onUpdate, onSetType }: DayRowDe
           </button>
         ))}
 
+        {onCopyPrev && (
+          <button type="button" onClick={onCopyPrev}
+            title="Copy previous day"
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-transparent text-muted-foreground hover:border-border hover:text-foreground transition-colors">
+            <Copy size={9} />
+            Copy prev
+          </button>
+        )}
+
         {isWork && jobs.length > 0 && (
           <div className="relative ml-auto">
             <select value={row.job_id ?? ''}
@@ -441,6 +484,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [employeeProfileId, setEmployeeProfileId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyingWeek, setCopyingWeek] = useState(false);
+  const [copyWeekMsg, setCopyWeekMsg] = useState<string | null>(null);
 
   // Rebuild day rows when weekEnding changes
   useEffect(() => {
@@ -521,6 +566,94 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const setDayType = useCallback((date: string, type: DayType) => {
     setRows(prev => prev.map(r => r.work_date === date ? { ...r, day_type: type } : r));
   }, []);
+
+  /** Copy the row at index i-1 onto row i */
+  const copyPrevDay = useCallback((date: string) => {
+    setRows(prev => {
+      const idx = prev.findIndex(r => r.work_date === date);
+      if (idx <= 0) return prev;
+      const source = timingOf(prev[idx - 1]);
+      return prev.map((r, i) => i === idx ? { ...r, ...source } : r);
+    });
+  }, []);
+
+  /** Copy all work-day times from the first filled row to every other work row */
+  const fillWeek = useCallback(() => {
+    setRows(prev => {
+      const source = prev.find(r => r.day_type === 'work' && r.start_time && r.finish_time);
+      if (!source) return prev;
+      const timing = timingOf(source);
+      return prev.map(r =>
+        r.work_date === source.work_date ? r
+          : r.day_type === 'work' ? { ...r, ...timing }
+          : r
+      );
+    });
+  }, []);
+
+  /** Fetch the previous week's saved timesheet and stamp its times onto current rows */
+  async function copyPrevWeek() {
+    if (!employeeProfileId || !weekEnding) {
+      setCopyWeekMsg('Select an employee and week first');
+      setTimeout(() => setCopyWeekMsg(null), 3000);
+      return;
+    }
+    setCopyingWeek(true);
+    setCopyWeekMsg(null);
+    try {
+      const pwe = prevWeekEnding(weekEnding);
+      const res = await fetch(
+        `/api/finance/timesheets?employeeProfileId=${employeeProfileId}&weekEnding=${pwe}&limit=1`,
+        { credentials: 'include' }
+      );
+      const data = await res.json();
+      const prev = Array.isArray(data.timesheets) ? data.timesheets[0] : null;
+      if (!prev) {
+        setCopyWeekMsg('No saved timesheet found for the previous week');
+        setTimeout(() => setCopyWeekMsg(null), 3500);
+        return;
+      }
+      // Fetch full entries
+      const r2 = await fetch(`/api/finance/timesheets/${prev.id}`, { credentials: 'include' });
+      const d2 = await r2.json();
+      const entries: Array<Record<string, unknown>> = Array.isArray(d2.timesheet?.entries) ? d2.timesheet.entries : [];
+      if (entries.length === 0) {
+        setCopyWeekMsg('Previous week timesheet has no entries');
+        setTimeout(() => setCopyWeekMsg(null), 3500);
+        return;
+      }
+      // Build a day-of-week → timing map (0=Mon … 6=Sun)
+      const byDow: Record<number, TimingFields> = {};
+      for (const e of entries) {
+        const dateStr = (e.work_date as string)?.slice(0, 10);
+        if (!dateStr) continue;
+        const [ey, emo, edy] = dateStr.split('-').map(Number);
+        const dow = (new Date(ey, emo - 1, edy).getDay() + 6) % 7; // Mon=0
+        byDow[dow] = {
+          day_type: (e.day_type as DayType) ?? 'work',
+          start_time: (e.start_time as string) ?? '',
+          finish_time: (e.finish_time as string) ?? '',
+          lunch_start: (e.lunch_start as string) ?? '',
+          lunch_finish: (e.lunch_finish as string) ?? '',
+          unpaid_break_mins: e.unpaid_break_mins != null ? String(e.unpaid_break_mins) : '',
+          job_id: (e.job_id as number | null) ?? null,
+          description: (e.description as string) ?? '',
+        };
+      }
+      setRows(prev => prev.map(r => {
+        const [ry, rmo, rdy] = r.work_date.split('-').map(Number);
+        const dow = (new Date(ry, rmo - 1, rdy).getDay() + 6) % 7;
+        return byDow[dow] ? { ...r, ...byDow[dow] } : r;
+      }));
+      setCopyWeekMsg('Previous week copied ✓');
+      setTimeout(() => setCopyWeekMsg(null), 2500);
+    } catch {
+      setCopyWeekMsg('Failed to load previous week');
+      setTimeout(() => setCopyWeekMsg(null), 3000);
+    } finally {
+      setCopyingWeek(false);
+    }
+  }
 
   async function save(andSubmit: boolean) {
     setError(null);
@@ -699,11 +832,39 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
               {/* ── Daily hours section ── */}
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Daily hours</p>
                   <span className="text-xs text-muted-foreground">
                     Total: <span className="font-bold text-foreground">{total.toFixed(2)} hrs</span>
                   </span>
+                </div>
+
+                {/* Copy actions row */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={copyPrevWeek}
+                    disabled={copyingWeek}
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    {copyingWeek
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <Copy size={12} />}
+                    Copy previous week
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fillWeek}
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ChevronsDown size={12} />
+                    Fill week
+                  </button>
+                  {copyWeekMsg && (
+                    <span className={`text-xs font-medium ${copyWeekMsg.includes('✓') ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {copyWeekMsg}
+                    </span>
+                  )}
                 </div>
 
                 {/* Desktop column headers — hidden on mobile */}
@@ -717,7 +878,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
 
                 {/* Day cards/rows */}
                 <div className="space-y-3 sm:space-y-1.5">
-                  {rows.map(row => (
+                  {rows.map((row, idx) => (
                     <div key={row.work_date}>
                       {/* Mobile card */}
                       <div className="sm:hidden">
@@ -727,6 +888,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           globalJobId={globalJobId}
                           onUpdate={updateRow}
                           onSetType={setDayType}
+                          onCopyPrev={idx > 0 ? () => copyPrevDay(row.work_date) : undefined}
                         />
                       </div>
                       {/* Desktop row */}
@@ -737,6 +899,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           globalJobId={globalJobId}
                           onUpdate={updateRow}
                           onSetType={setDayType}
+                          onCopyPrev={idx > 0 ? () => copyPrevDay(row.work_date) : undefined}
                         />
                       </div>
                     </div>
