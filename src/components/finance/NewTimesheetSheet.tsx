@@ -68,29 +68,81 @@ const STANDARD_HOURS = 7.6;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function toLocalISO(d: Date): string {
+/** Format a local Date as YYYY-MM-DD — never uses toISOString() to avoid UTC shift */
+export function toLocalISO(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 
-function nextSunday(from: Date = new Date()): string {
-  const d = new Date(from);
-  const day = d.getDay();
-  const daysUntilSun = day === 0 ? 0 : 7 - day;
+/** Parse a YYYY-MM-DD string into a local Date (no UTC shift) */
+export function parseLocalDate(dateStr: string): Date {
+  const [y, mo, dy] = dateStr.split('-').map(Number);
+  return new Date(y, mo - 1, dy);
+}
+
+/** Returns true only when the YYYY-MM-DD string falls on a Sunday (getDay() === 0) */
+export function isSunday(dateStr: string): boolean {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  return parseLocalDate(dateStr).getDay() === 0;
+}
+
+/**
+ * Snap any date string to the Sunday that ends its week.
+ * If the date is already a Sunday it is returned unchanged.
+ * Uses local arithmetic — no UTC shift.
+ */
+export function snapToSunday(dateStr: string): string {
+  const d = parseLocalDate(dateStr);
+  const dow = d.getDay(); // 0=Sun … 6=Sat
+  const daysUntilSun = dow === 0 ? 0 : 7 - dow;
   d.setDate(d.getDate() + daysUntilSun);
   return toLocalISO(d);
 }
 
-function weekDates(weekEnding: string): string[] {
-  const [y, mo, dy] = weekEnding.split('-').map(Number);
-  const end = new Date(y, mo - 1, dy);
+/** Return the next Sunday on or after today (local) */
+export function nextSunday(from: Date = new Date()): string {
+  return snapToSunday(toLocalISO(from));
+}
+
+/**
+ * Return the seven YYYY-MM-DD dates for the Mon–Sun week that ends on weekEnding.
+ * weekEnding MUST be a Sunday; callers should validate with isSunday() first.
+ */
+export function weekDates(weekEnding: string): string[] {
+  const end = parseLocalDate(weekEnding);
   return [-6, -5, -4, -3, -2, -1, 0].map(offset => {
     const d = new Date(end);
     d.setDate(end.getDate() + offset);
     return toLocalISO(d);
   });
+}
+
+/**
+ * Human-readable week range label.
+ * e.g. "Monday 24/08/2026 – Sunday 30/08/2026"
+ */
+export function weekRangeLabel(weekEnding: string): string {
+  if (!isSunday(weekEnding)) return '';
+  const dates = weekDates(weekEnding);
+  const fmt = (s: string) => {
+    const [y, mo, dy] = s.split('-').map(Number);
+    return new Date(y, mo - 1, dy).toLocaleDateString('en-AU', {
+      weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+  };
+  return `${fmt(dates[0])} – ${fmt(dates[6])}`;
+}
+
+/**
+ * Advance a Sunday week-ending by ±7 days.
+ * direction: +1 = next week, -1 = previous week.
+ */
+export function shiftWeek(weekEnding: string, direction: 1 | -1): string {
+  const d = parseLocalDate(weekEnding);
+  d.setDate(d.getDate() + direction * 7);
+  return toLocalISO(d);
 }
 
 /** Full label: "Monday, 25 Aug" */
@@ -164,10 +216,7 @@ function totalHours(rows: DayRow[]): number {
 
 /** Return the week-ending date string for the week BEFORE the given one */
 function prevWeekEnding(we: string): string {
-  const [y, mo, dy] = we.split('-').map(Number);
-  const d = new Date(y, mo - 1, dy);
-  d.setDate(d.getDate() - 7);
-  return toLocalISO(d);
+  return shiftWeek(we, -1);
 }
 
 /** Strip work_date from a DayRow — used when copying times to a different date */
@@ -623,6 +672,7 @@ function DayRowDesktop({ row, jobs, globalJobId, lafh, onToggleLafh, onUpdate, o
 
 export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Props) {
   const [weekEnding, setWeekEnding] = useState(nextSunday);
+  const [weekDateError, setWeekDateError] = useState<string | null>(null);
   const [globalJobId, setGlobalJobId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [lafh, setLafh] = useState(false);
@@ -635,9 +685,15 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   const [copyingWeek, setCopyingWeek] = useState(false);
   const [copyWeekMsg, setCopyWeekMsg] = useState<string | null>(null);
 
-  // Rebuild day rows when weekEnding changes
+  // Rebuild day rows when weekEnding changes — only when it is a valid Sunday
   useEffect(() => {
     if (!weekEnding) return;
+    if (!isSunday(weekEnding)) {
+      // Clear rows so stale data from a previous valid week is not shown
+      setRows([]);
+      return;
+    }
+    setWeekDateError(null);
     const dates = weekDates(weekEnding);
     setRows(prev => {
       const byDate: Record<string, DayRow> = {};
@@ -703,6 +759,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   useEffect(() => {
     if (!open) {
       setWeekEnding(nextSunday());
+      setWeekDateError(null);
       setGlobalJobId(null);
       setNotes('');
       setLafh(false);
@@ -748,8 +805,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   /** Fetch the previous week's saved timesheet and stamp its times onto current rows.
    *  The server enforces that only the authenticated user's own timesheets are returned. */
   async function copyPrevWeek() {
-    if (!weekEnding) {
-      setCopyWeekMsg('Select a week first');
+    if (!weekEnding || !isSunday(weekEnding)) {
+      setCopyWeekMsg('Week ending must be a Sunday first');
       setTimeout(() => setCopyWeekMsg(null), 3000);
       return;
     }
@@ -817,7 +874,11 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   async function save(andSubmit: boolean) {
     setError(null);
     if (!weekEnding) { setError('Week ending date is required'); return; }
-    // Note: no employeeProfileId check — server derives it from the session
+    if (!isSunday(weekEnding)) {
+      setError('Week ending must be a Sunday.');
+      setWeekDateError('Week ending must be a Sunday.');
+      return;
+    }
 
     const entries = rows.map(r => {
       if (r.day_type !== 'work') {
@@ -962,14 +1023,76 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 </div>
               )}
 
-              {/* ── Week ending + default job ── */}
+              {/* ── Week ending (Sunday-only) + default job ── */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                     Week ending <span className="text-destructive">*</span>
+                    <span className="ml-1 font-normal text-muted-foreground/70">(Sunday)</span>
                   </label>
-                  <input type="date" value={weekEnding} onChange={e => setWeekEnding(e.target.value)}
-                    className="w-full h-11 sm:h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+
+                  {/* Prev / date input / Next row */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label="Previous week"
+                      disabled={!isSunday(weekEnding)}
+                      onClick={() => {
+                        const prev = shiftWeek(weekEnding, -1);
+                        setWeekEnding(prev);
+                        setWeekDateError(null);
+                      }}
+                      className="shrink-0 w-8 h-11 sm:h-9 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                    >
+                      <ChevronDown size={14} className="rotate-90" />
+                    </button>
+
+                    <input
+                      type="date"
+                      value={weekEnding}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setWeekEnding(val);
+                        if (val && !isSunday(val)) {
+                          setWeekDateError('Week ending must be a Sunday.');
+                        } else {
+                          setWeekDateError(null);
+                        }
+                      }}
+                      className={`flex-1 min-w-0 h-11 sm:h-9 px-2 rounded-lg border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${
+                        weekDateError ? 'border-destructive ring-1 ring-destructive/40' : 'border-border'
+                      }`}
+                    />
+
+                    <button
+                      type="button"
+                      aria-label="Next week"
+                      disabled={!isSunday(weekEnding)}
+                      onClick={() => {
+                        const next = shiftWeek(weekEnding, 1);
+                        setWeekEnding(next);
+                        setWeekDateError(null);
+                      }}
+                      className="shrink-0 w-8 h-11 sm:h-9 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                    >
+                      <ChevronDown size={14} className="-rotate-90" />
+                    </button>
+                  </div>
+
+                  {/* Validation error */}
+                  {weekDateError && (
+                    <p className="mt-1 text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle size={11} className="shrink-0" />
+                      {weekDateError}
+                    </p>
+                  )}
+
+                  {/* Week range label */}
+                  {isSunday(weekEnding) && (
+                    <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+                      {weekRangeLabel(weekEnding)}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Default job</label>
@@ -985,6 +1108,16 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                   </div>
                 </div>
               </div>
+
+              {/* Non-Sunday warning banner — shown when rows are empty due to invalid date */}
+              {weekEnding && !isSunday(weekEnding) && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                  <AlertCircle size={13} className="shrink-0 mt-0.5 text-amber-600" />
+                  <span>
+                    <strong>Week ending must be a Sunday.</strong> Please select a Sunday to see the weekly timesheet.
+                  </span>
+                </div>
+              )}
 
               {/* ── Daily hours section ── */}
               <div>
