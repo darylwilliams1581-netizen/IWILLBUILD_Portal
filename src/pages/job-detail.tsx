@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router";
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen } from 'lucide-react';
+import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen, ChevronUp } from 'lucide-react';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import type { JobEmailContext, SendSuccessPayload } from '@/components/SendDocumentEmailModal';
 import { EmailToastContainer } from '@/components/EmailSentToast';
@@ -474,11 +474,35 @@ export default function JobDetailPage() {
       // silent
     }
   }
-  // Pill nav scroll ref — used to scroll active pill into view
-  const pillRowRef = useRef<HTMLDivElement>(null);
+  // ── Mobile section dropdown state ────────────────────────────────────────
+  const [sectionOpen, setSectionOpen] = useState(false);
+  const sectionDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!sectionOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (sectionDropdownRef.current && !sectionDropdownRef.current.contains(e.target as Node)) {
+        setSectionOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [sectionOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!sectionOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSectionOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [sectionOpen]);
 
   function switchTab(tab: Tab) {
     setStatusOpen(false);
+    setSectionOpen(false);
     const params = new URLSearchParams(searchParams.toString());
     if (tab === 'details') {
       params.delete('tab');
@@ -489,15 +513,6 @@ export default function JobDetailPage() {
     navigate(`/jobs/${id}${search ? `?${search}` : ''}`, { replace: false });
   }
 
-  // Scroll active pill into view whenever activeTab changes
-  useEffect(() => {
-    const row = pillRowRef.current;
-    if (!row) return;
-    const activePill = row.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!activePill) return;
-    // scrollIntoView with nearest — doesn't force-centre if already visible
-    activePill.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-  }, [activeTab]);
   const statusStyle = job ? getStatusStyle(job.status) : null;
   return <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
@@ -738,66 +753,94 @@ export default function JobDetailPage() {
                     </div>}
                 </div>
 
-                {/* ── Section pill nav (mobile + tablet — hidden on desktop where side nav is used) ── */}
+                {/* ── Section dropdown nav (mobile + tablet — hidden on desktop) ── */}
                 <div
-                  className="md:hidden"
+                  className="md:hidden border-t border-gray-100"
                   data-testid="job-pill-nav"
+                  ref={sectionDropdownRef}
                 >
-                  {/* Pill row wrapper — relative so edge fades can be positioned inside */}
-                  <div className="relative">
-                    {/* Left fade — indicates more pills to the left */}
-                    <div
-                      className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 job-pill-fade-left"
-                      aria-hidden="true"
-                    />
-                    {/* Right fade — indicates more pills to the right */}
-                    <div
-                      className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 z-10 job-pill-fade-right"
-                      aria-hidden="true"
-                    />
-                    {/* Scrollable pill row */}
-                    <div
-                      ref={pillRowRef}
-                      role="tablist"
-                      aria-label="Job sections"
-                      data-testid="job-pill-nav-row"
-                      className="job-pill-row flex overflow-x-auto gap-1.5 px-4 py-2.5"
-                      style={{
-                        WebkitOverflowScrolling: 'touch',
-                        scrollSnapType: 'x proximity',
-                        overscrollBehaviorX: 'contain',
-                      }}
-                    >
-                      {/* Invisible spacer so first pill clears the left fade */}
-                      <span className="shrink-0 w-0" aria-hidden="true" />
-                      {ALL_NAV_ITEMS.map(({ key, label, icon: Icon }) => {
-                        const active = activeTab === key;
-                        return (
-                          <button
-                            key={key}
-                            role="tab"
-                            aria-selected={active}
-                            aria-label={label}
-                            onClick={() => switchTab(key)}
-                            data-testid={`job-pill-${key}`}
-                            style={{ scrollSnapAlign: 'start' }}
-                            className={[
-                              'flex items-center gap-1.5 shrink-0 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors outline-none',
-                              'min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
-                              active
-                                ? 'bg-primary border-primary text-primary-foreground shadow-sm'
-                                : 'bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5',
-                            ].join(' ')}
-                          >
-                            <Icon size={13} className="shrink-0" />
-                            {label}
-                          </button>
-                        );
-                      })}
-                      {/* Invisible spacer so last pill clears the right fade */}
-                      <span className="shrink-0 w-4" aria-hidden="true" />
-                    </div>
-                  </div>
+                  {/* Trigger */}
+                  <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={sectionOpen}
+                    aria-label="Select section"
+                    data-testid="job-section-trigger"
+                    onClick={() => setSectionOpen(v => !v)}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white text-sm font-semibold text-slate-800 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+                  >
+                    {(() => {
+                      const active = ALL_NAV_ITEMS.find(i => i.key === activeTab);
+                      const Icon = active?.icon ?? FileText;
+                      return (
+                        <>
+                          <Icon size={15} className="text-primary shrink-0" />
+                          <span className="flex-1 text-left">{active?.label ?? 'Details'}</span>
+                          {sectionOpen
+                            ? <ChevronUp size={15} className="text-slate-400 shrink-0" />
+                            : <ChevronDown size={15} className="text-slate-400 shrink-0" />}
+                        </>
+                      );
+                    })()}
+                  </button>
+
+                  {/* Dropdown panel — fixed position so it escapes the sticky header */}
+                  {sectionOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        aria-hidden="true"
+                        onClick={() => setSectionOpen(false)}
+                      />
+                      {/* Options panel */}
+                      <div
+                        role="listbox"
+                        aria-label="Job sections"
+                        data-testid="job-section-dropdown"
+                        className="fixed left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-xl overflow-y-auto"
+                        style={{
+                          top: 'calc(56px + 56px + 44px)',
+                          maxHeight: 'calc(100dvh - 56px - 56px - 44px - 16px)',
+                        }}
+                      >
+                        {NAV_GROUPS.map(group => (
+                          <div key={group.label}>
+                            <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 select-none">
+                              {group.label}
+                            </p>
+                            {group.items.map(({ key, label, icon: Icon }) => {
+                              const active = activeTab === key;
+                              return (
+                                <button
+                                  key={key}
+                                  role="option"
+                                  aria-selected={active}
+                                  data-testid={`job-pill-${key}`}
+                                  onClick={() => switchTab(key)}
+                                  className={[
+                                    'w-full flex items-center gap-3 px-4 min-h-[44px] text-sm font-medium transition-colors',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+                                    active
+                                      ? 'bg-violet-50 text-violet-700'
+                                      : 'text-slate-700 hover:bg-slate-50 active:bg-slate-100',
+                                  ].join(' ')}
+                                >
+                                  <Icon
+                                    size={15}
+                                    className={active ? 'text-violet-600 shrink-0' : 'text-slate-400 shrink-0'}
+                                  />
+                                  <span className="flex-1 text-left">{label}</span>
+                                  {active && <Check size={14} className="text-violet-600 shrink-0 mr-1" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ))}
+                        <div className="h-3" aria-hidden="true" />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>{/* end sticky wrapper */}
 

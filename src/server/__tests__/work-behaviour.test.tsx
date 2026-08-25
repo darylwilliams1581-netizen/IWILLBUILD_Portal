@@ -400,16 +400,28 @@ describe('Job detail — pill navigation', () => {
     );
   }
 
-  it('renders the pill nav container', async () => {
+  it('renders the section nav container', async () => {
     await renderJobDetail();
     await waitFor(() => {
       expect(screen.getByTestId('job-pill-nav')).toBeInTheDocument();
     });
   });
 
-  it('renders a pill for every expected section', async () => {
+  it('renders a trigger button showing the active section', async () => {
     await renderJobDetail();
-    await waitFor(() => screen.getByTestId('job-pill-nav'));
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    const trigger = screen.getByTestId('job-section-trigger');
+    expect(trigger).toBeInTheDocument();
+    // Default section is Details
+    expect(trigger).toHaveTextContent('Details');
+  });
+
+  it('renders an option for every expected section after opening', async () => {
+    await renderJobDetail();
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    // Open the dropdown
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
+    await waitFor(() => screen.getByTestId('job-section-dropdown'));
 
     const expectedSections = ['details', 'tasks', 'notes', 'delays', 'progress', 'attendance', 'photos', 'drawings', 'files', 'estimates', 'purchase-orders', 'invoices', 'costs', 'forms', 'safety'];
     for (const section of expectedSections) {
@@ -417,16 +429,21 @@ describe('Job detail — pill navigation', () => {
     }
   });
 
-  it('Details pill is active by default', async () => {
+  it('Details option is active by default', async () => {
     await renderJobDetail();
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
     await waitFor(() => screen.getByTestId('job-pill-details'));
     // No ?tab= in URL → details is the default → aria-selected="true"
-    const detailsPill = screen.getByTestId('job-pill-details');
-    expect(detailsPill).toHaveAttribute('aria-selected', 'true');
+    const detailsOption = screen.getByTestId('job-pill-details');
+    expect(detailsOption).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('switching to Tasks pill marks it active', async () => {
+  it('selecting Tasks option navigates to ?tab=tasks', async () => {
     await renderJobDetail();
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    // Open dropdown
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
     await waitFor(() => screen.getByTestId('job-pill-tasks'));
     await userEvent.click(screen.getByTestId('job-pill-tasks'));
     // Tab is URL-driven — after navigation the URL should contain tab=tasks
@@ -436,26 +453,47 @@ describe('Job detail — pill navigation', () => {
     });
   });
 
-  it('does NOT render the old dropdown button', async () => {
+  it('dropdown closes after selecting an option', async () => {
     await renderJobDetail();
-    await waitFor(() => screen.getByTestId('job-pill-nav'));
-    // The old dropdown had text "Select section" or a ChevronDown toggle
-    expect(screen.queryByText('Select section')).not.toBeInTheDocument();
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
+    await waitFor(() => screen.getByTestId('job-section-dropdown'));
+    await userEvent.click(screen.getByTestId('job-pill-tasks'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('job-section-dropdown')).not.toBeInTheDocument();
+    });
   });
 
-  it('pill nav has role=tablist with accessible label', async () => {
+  it('trigger toggles dropdown open/closed', async () => {
     await renderJobDetail();
-    await waitFor(() => screen.getByTestId('job-pill-nav'));
-    const tablist = screen.getByRole('tablist', { name: /Job sections/i });
-    expect(tablist).toBeInTheDocument();
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    // Open
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
+    await waitFor(() => screen.getByTestId('job-section-dropdown'));
+    // Close by clicking trigger again
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('job-section-dropdown')).not.toBeInTheDocument();
+    });
   });
 
-  it('all pills have aria-label', async () => {
+  it('dropdown has role=listbox with accessible label', async () => {
     await renderJobDetail();
-    await waitFor(() => screen.getByTestId('job-pill-nav'));
-    const pills = screen.getAllByRole('tab');
-    for (const pill of pills) {
-      expect(pill).toHaveAttribute('aria-label');
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
+    await waitFor(() => screen.getByTestId('job-section-dropdown'));
+    const listbox = screen.getByRole('listbox', { name: /Job sections/i });
+    expect(listbox).toBeInTheDocument();
+  });
+
+  it('all options have aria-selected attribute', async () => {
+    await renderJobDetail();
+    await waitFor(() => screen.getByTestId('job-section-trigger'));
+    await userEvent.click(screen.getByTestId('job-section-trigger'));
+    await waitFor(() => screen.getByTestId('job-section-dropdown'));
+    const options = screen.getAllByRole('option');
+    for (const opt of options) {
+      expect(opt).toHaveAttribute('aria-selected');
     }
   });
 });

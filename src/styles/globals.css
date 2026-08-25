@@ -1203,38 +1203,6 @@ textarea {
   }
 }
 
-/* ── job-pill-row ────────────────────────────────────────────────────────────
-   Horizontally scrollable pill nav on the Job detail page (mobile).
-   - Hides the scrollbar on all browsers.
-   - Edge fades use the CSS background variable so they match any theme.
-   - No document-level horizontal overflow.
-*/
-.job-pill-row {
-  scrollbar-width: none;          /* Firefox */
-  -ms-overflow-style: none;       /* IE / Edge legacy */
-}
-.job-pill-row::-webkit-scrollbar {
-  display: none;                  /* Chrome / Safari / Opera */
-}
-
-/* Left fade — indicates pills hidden to the left */
-.job-pill-fade-left {
-  background: linear-gradient(
-    to right,
-    hsl(var(--background)) 0%,
-    transparent 100%
-  );
-}
-
-/* Right fade — indicates pills hidden to the right */
-.job-pill-fade-right {
-  background: linear-gradient(
-    to left,
-    hsl(var(--background)) 0%,
-    transparent 100%
-  );
-}
-
 /* ── op-table ────────────────────────────────────────────────────────────────
    Dense data table — used in scheduler, invoices, etc.
 */

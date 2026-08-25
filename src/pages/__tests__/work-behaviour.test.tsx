@@ -21,7 +21,7 @@
 import { describe, it } from 'vitest';
 
 describe('work-behaviour stub', () => {
-  it('tests are in src/server/__tests__/work-behaviour.test.tsx', () => {
+  it('tests are in src/server/__tests__/work-behaviour.test.tsx (section dropdown nav)', () => {
     // Intentionally empty — see canonical test file above
   });
 });

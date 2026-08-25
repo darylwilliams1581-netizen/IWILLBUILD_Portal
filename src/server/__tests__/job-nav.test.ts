@@ -242,28 +242,37 @@ describe('Job nav — no duplicate entries', () => {
   });
 });
 
-// ── 12. Mobile access — pill nav uses ALL_NAV_ITEMS ─────────────────────────
+// ── 12. Mobile access — section dropdown uses NAV_GROUPS ────────────────────
 
 describe('Job nav — mobile access', () => {
-  it('ALL_NAV_ITEMS is used in the mobile pill nav', () => {
-    // The pill nav maps over ALL_NAV_ITEMS (flattened from NAV_GROUPS)
-    expect(jobDetailSrc).toContain('ALL_NAV_ITEMS');
-    expect(jobDetailSrc).toContain('ALL_NAV_ITEMS.map');
-  });
-
-  it('desktop side nav still maps over NAV_GROUPS', () => {
+  it('mobile section dropdown maps over NAV_GROUPS (grouped options)', () => {
+    // The dropdown renders NAV_GROUPS.map to show group headings + options
     expect(jobDetailSrc).toContain('NAV_GROUPS.map');
   });
 
-  it('mobile pill nav has role="tablist"', () => {
-    expect(jobDetailSrc).toContain('role="tablist"');
+  it('desktop side nav also maps over NAV_GROUPS', () => {
+    // Both mobile dropdown and desktop sidebar use NAV_GROUPS.map
+    const count = (jobDetailSrc.match(/NAV_GROUPS\.map/g) ?? []).length;
+    expect(count).toBeGreaterThanOrEqual(2);
   });
 
-  it('mobile pill nav has aria-label="Job sections"', () => {
+  it('mobile section dropdown has role="listbox"', () => {
+    expect(jobDetailSrc).toContain('role="listbox"');
+  });
+
+  it('mobile section dropdown has aria-label="Job sections"', () => {
     expect(jobDetailSrc).toContain('aria-label="Job sections"');
   });
 
-  it('mobile pill nav does NOT use a dropdown (no mobileNavOpen state)', () => {
+  it('mobile section dropdown does NOT use a mobileNavOpen state', () => {
     expect(jobDetailSrc).not.toContain('mobileNavOpen');
+  });
+
+  it('mobile section trigger has aria-haspopup="listbox"', () => {
+    expect(jobDetailSrc).toContain('aria-haspopup="listbox"');
+  });
+
+  it('each option has role="option"', () => {
+    expect(jobDetailSrc).toContain('role="option"');
   });
 });
