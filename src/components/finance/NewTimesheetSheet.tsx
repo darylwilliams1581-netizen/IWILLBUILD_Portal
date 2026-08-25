@@ -34,33 +34,42 @@ interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Use local date arithmetic to avoid UTC offset shifting dates (e.g. Brisbane UTC+10).
+function toLocalISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+
+
 function nextSaturday(from: Date = new Date()): string {
   const d = new Date(from);
-  const day = d.getDay();
+  const day = d.getDay(); // 0=Sun … 6=Sat
   const daysUntilSat = day === 6 ? 0 : 6 - day;
   d.setDate(d.getDate() + daysUntilSat);
-  return d.toISOString().slice(0, 10);
+  return toLocalISO(d);
 }
 
 function weekDates(weekEnding: string): string[] {
-  // Returns Mon–Sun for the week ending on weekEnding (Saturday)
-  // weekEnding is Saturday (day 6), so Mon is 5 days before it
-  const end = new Date(weekEnding + 'T00:00:00');
-  const dates: string[] = [];
-  // end = Saturday; Mon is end - 5, Tue - 4, ... Sun = end + 1
-  // Week: Mon Tue Wed Thu Fri Sat Sun
-  const offsets = [-5, -4, -3, -2, -1, 0, 1];
-  for (const offset of offsets) {
+  // weekEnding is a Saturday (YYYY-MM-DD local).
+  // Returns Mon Tue Wed Thu Fri Sat Sun — 7 days starting 5 days before Saturday.
+  // Parse as local date to avoid UTC offset shifting the day.
+  const [y, mo, dy] = weekEnding.split('-').map(Number);
+  const end = new Date(y, mo - 1, dy); // local midnight, no UTC shift
+  const offsets = [-5, -4, -3, -2, -1, 0, 1]; // Mon … Sun
+  return offsets.map(offset => {
     const d = new Date(end);
     d.setDate(end.getDate() + offset);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-  return dates;
+    return toLocalISO(d);
+  });
 }
 
 function fmtDayLabel(dateStr: string): string {
   try {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', {
+    const [y, mo, dy] = dateStr.split('-').map(Number);
+    return new Date(y, mo - 1, dy).toLocaleDateString('en-AU', {
       weekday: 'short', day: 'numeric', month: 'short',
     });
   } catch { return dateStr; }
