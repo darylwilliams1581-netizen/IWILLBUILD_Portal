@@ -18,6 +18,7 @@ export default async function handler(req: Request, res: Response) {
     const result = await createTimesheet({
       companyId: profile.companyId,
       profileId: profile.id,
+      employeeProfileId: body.employeeProfileId != null ? parseInt(String(body.employeeProfileId), 10) : null,
       weekEnding: String(body.weekEnding ?? '').trim(),
       jobId: body.jobId != null ? parseInt(String(body.jobId), 10) : null,
       notes: body.notes != null ? String(body.notes).trim() || null : null,

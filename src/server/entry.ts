@@ -277,6 +277,7 @@ import finance_purchase_orders_poId_put_244 from "./api/finance/purchase-orders/
 import finance_purchase_orders_poId_pdf_get_245 from "./api/finance/purchase-orders/[poId]/pdf/GET";
 import finance_timesheets_get from "./api/finance/timesheets/GET";
 import finance_timesheets_post from "./api/finance/timesheets/POST";
+import finance_timesheets_employees_get from "./api/finance/timesheets/employees/GET";
 import finance_timesheets_id_get from "./api/finance/timesheets/[id]/GET";
 import finance_timesheets_id_put from "./api/finance/timesheets/[id]/PUT";
 import finance_timesheets_id_delete from "./api/finance/timesheets/[id]/DELETE";
@@ -3387,6 +3388,7 @@ app.put("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_put_2
 app.get("/api/finance/purchase-orders/:poId/pdf", finance_purchase_orders_poId_pdf_get_245);
 app.get("/api/finance/timesheets", finance_timesheets_get);
 app.post("/api/finance/timesheets", finance_timesheets_post);
+app.get("/api/finance/timesheets/employees", finance_timesheets_employees_get);
 app.get("/api/finance/timesheets/:id", finance_timesheets_id_get);
 app.put("/api/finance/timesheets/:id", finance_timesheets_id_put);
 app.delete("/api/finance/timesheets/:id", finance_timesheets_id_delete);

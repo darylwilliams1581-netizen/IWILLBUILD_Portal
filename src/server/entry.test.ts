@@ -81,6 +81,7 @@ vi.mock('./api/purchase-orders/[poId]/compose-defaults/GET', () => ({ default: a
 vi.mock('./api/purchase-orders/[poId]/send-email/POST', () => ({ default: async () => {} }));
 vi.mock('./api/finance/timesheets/GET', () => ({ default: async () => {} }));
 vi.mock('./api/finance/timesheets/POST', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/employees/GET', () => ({ default: async () => {} }));
 vi.mock('./api/finance/timesheets/[id]/GET', () => ({ default: async () => {} }));
 vi.mock('./api/finance/timesheets/[id]/PUT', () => ({ default: async () => {} }));
 vi.mock('./api/finance/timesheets/[id]/DELETE', () => ({ default: async () => {} }));

@@ -44,6 +44,7 @@ export default async function handler(req: Request, res: Response) {
       profileId: profile.id,
       isAdmin: profile.isAdmin,
       weekEnding: body.weekEnding != null ? String(body.weekEnding).trim() : undefined,
+      employeeProfileId: body.employeeProfileId !== undefined ? (body.employeeProfileId != null ? parseInt(String(body.employeeProfileId), 10) : null) : undefined,
       jobId: body.jobId !== undefined ? (body.jobId != null ? parseInt(String(body.jobId), 10) : null) : undefined,
       notes: body.notes !== undefined ? (body.notes != null ? String(body.notes).trim() || null : null) : undefined,
       entries: Array.isArray(body.entries) ? body.entries : undefined,
