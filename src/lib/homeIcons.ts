@@ -88,6 +88,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // Note: Contacts is surfaced directly on the Dashboard as a quick-dial panel
 // (ContactsPanel) — it is intentionally excluded from the Manage icon grid here.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
+  { key: 'timesheet',   label: 'Timesheets',  icon: FileSpreadsheet, href: '/timesheets',               bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
   { key: 'team',        label: 'Team',        icon: UserCircle,   href: '/team',                        bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',     label: 'My Billing',  icon: CreditCard,   href: '/billing',                     bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
   { key: 'settings',    label: 'Settings',    icon: Settings,     href: '/settings',                    bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
@@ -97,7 +98,6 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
 // ── COMING SOON — reserved placeholder slots ──────────────────────────────────
 export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
   { key: 'report',         label: 'Report',      icon: BarChart2,          href: '/report',      bg: 'bg-blue-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'timesheet',      label: 'Timesheets',  icon: FileSpreadsheet,    href: '/finance?financeTab=timesheets',  bg: 'bg-indigo-400', fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'site_diary',     label: 'Site Diary',  icon: ClipboardSignature, href: '/site-diary',  bg: 'bg-amber-600',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'rainfall',       label: 'Rainfall',    icon: CloudRain,          href: '/rainfall',    bg: 'bg-sky-600',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'checklist',      label: 'Checklist',   icon: Clipboard,          href: '/checklist',   bg: 'bg-lime-600',   fg: 'text-white', group: 'comingSoon', comingSoon: true },

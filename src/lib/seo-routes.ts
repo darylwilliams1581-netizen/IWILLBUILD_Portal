@@ -62,6 +62,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/forms", changefreq: "monthly", priority: 0.8 },
   { path: "/files", changefreq: "monthly", priority: 0.8 },
   { path: "/finance", changefreq: "monthly", priority: 0.8 },
+  { path: "/timesheets", changefreq: "monthly", priority: 0.8 },
   { path: "/estimating", changefreq: "monthly", priority: 0.8 },
   { path: "/builders-calc", changefreq: "monthly", priority: 0.8 },
   { path: "/takeoff-pad", changefreq: "monthly", priority: 0.8 },

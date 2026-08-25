@@ -50,6 +50,15 @@ export default function FinancePage() {
     }
   }, [rawTab, setSearchParams]);
 
+  // Legacy redirect: /finance?financeTab=timesheets → /timesheets
+  // Workers who land here via an old link or bookmark are sent to the
+  // dedicated employee-facing timesheets page instead.
+  useEffect(() => {
+    if (activeTab === 'timesheets') {
+      navigate('/timesheets', { replace: true });
+    }
+  }, [activeTab, navigate]);
+
   // Invoices tab navigates to the existing /invoices route
   useEffect(() => {
     if (activeTab === 'invoices') {

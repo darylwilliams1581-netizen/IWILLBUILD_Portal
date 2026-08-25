@@ -59,6 +59,7 @@ const SafetyPage = lazy(() => import('./pages/safety'));
 const FilesPage = lazy(() => import('./pages/files'));
 const EstimatingPage = lazy(() => import('./pages/estimating'));
 const FinancePage = lazy(() => import('./pages/finance'));
+const TimesheetsPage = lazy(() => import('./pages/timesheets'));
 const BuildersCalcPage = lazy(() => import('./pages/builders-calc-page'));
 const TakeoffPadPage = lazy(() => import('./pages/takeoff-pad-page'));
 const WorkJobPickerPage = lazy(() => import('./pages/work-job-picker'));
@@ -450,6 +451,10 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/finance',
   element: protect(<FinancePage />),
+  errorElement: routeError
+}, {
+  path: '/timesheets',
+  element: protect(<TimesheetsPage />),
   errorElement: routeError
 }, {
   path: '/estimating',
