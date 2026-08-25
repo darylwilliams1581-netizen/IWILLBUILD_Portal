@@ -275,6 +275,11 @@ import finance_purchase_orders_poId_delete_242 from "./api/finance/purchase-orde
 import finance_purchase_orders_poId_get_243 from "./api/finance/purchase-orders/[poId]/GET";
 import finance_purchase_orders_poId_put_244 from "./api/finance/purchase-orders/[poId]/PUT";
 import finance_purchase_orders_poId_pdf_get_245 from "./api/finance/purchase-orders/[poId]/pdf/GET";
+import finance_timesheets_get from "./api/finance/timesheets/GET";
+import finance_timesheets_post from "./api/finance/timesheets/POST";
+import finance_timesheets_id_get from "./api/finance/timesheets/[id]/GET";
+import finance_timesheets_id_put from "./api/finance/timesheets/[id]/PUT";
+import finance_timesheets_id_delete from "./api/finance/timesheets/[id]/DELETE";
 import fleet_get_246 from "./api/fleet/GET";
 import fleet_post_247 from "./api/fleet/POST";
 import fleet_analytics_settings_get_248 from "./api/fleet/analytics-settings/GET";
@@ -3380,6 +3385,11 @@ app.delete("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_de
 app.get("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_get_243);
 app.put("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_put_244);
 app.get("/api/finance/purchase-orders/:poId/pdf", finance_purchase_orders_poId_pdf_get_245);
+app.get("/api/finance/timesheets", finance_timesheets_get);
+app.post("/api/finance/timesheets", finance_timesheets_post);
+app.get("/api/finance/timesheets/:id", finance_timesheets_id_get);
+app.put("/api/finance/timesheets/:id", finance_timesheets_id_put);
+app.delete("/api/finance/timesheets/:id", finance_timesheets_id_delete);
 app.get("/api/fleet", fleet_get_246);
 app.post("/api/fleet", fleet_post_247);
 app.get("/api/fleet/analytics-settings", fleet_analytics_settings_get_248);
@@ -4633,6 +4643,15 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 		// ── All migrations done — now start accepting requests ─────────────────
 		console.log('[startup] all inline migrations complete — calling app.listen');
+
+		// ── Timesheet schema ──────────────────────────────────────────────────
+		try {
+			const { ensureTimesheetSchema } = await import('./lib/timesheet-service.js');
+			await ensureTimesheetSchema();
+			console.log('[startup] timesheet schema ready');
+		} catch (e) {
+			console.warn('[startup] timesheet schema migration skipped:', (e as Error)?.message?.slice(0, 200));
+		}
 
 		// ── Dazza engine startup log ──────────────────────────────────────────
 		// Logs which engine will be used for Dazza chat requests.

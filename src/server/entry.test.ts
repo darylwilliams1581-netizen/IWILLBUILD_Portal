@@ -79,6 +79,29 @@ vi.mock('./api/finance/purchase-orders/[poId]/DELETE', () => ({ default: async (
 vi.mock('./api/finance/purchase-orders/[poId]/pdf/GET', () => ({ default: async () => {} }));
 vi.mock('./api/purchase-orders/[poId]/compose-defaults/GET', () => ({ default: async () => {} }));
 vi.mock('./api/purchase-orders/[poId]/send-email/POST', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/POST', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/[id]/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/[id]/PUT', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/[id]/DELETE', () => ({ default: async () => {} }));
+vi.mock('./lib/timesheet-service.ts', () => ({
+  ensureTimesheetSchema: async () => {},
+  listTimesheets: async () => ({ timesheets: [], hasMore: false, nextCursor: null, counts: {} }),
+  getTimesheet: async () => null,
+  createTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  updateTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  transitionTimesheet: async () => ({ ok: true, data: { id: 1, status: 'submitted' } }),
+  deleteTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+}));
+vi.mock('./lib/timesheet-service.js', () => ({
+  ensureTimesheetSchema: async () => {},
+  listTimesheets: async () => ({ timesheets: [], hasMore: false, nextCursor: null, counts: {} }),
+  getTimesheet: async () => null,
+  createTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  updateTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  transitionTimesheet: async () => ({ ok: true, data: { id: 1, status: 'submitted' } }),
+  deleteTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+}));
 
 // ── Entry import (after mocks are hoisted) ─────────────────────────────────
 import type { Request, Response } from 'express';

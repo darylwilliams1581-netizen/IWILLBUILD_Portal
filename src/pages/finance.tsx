@@ -11,21 +11,23 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart } from 'lucide-react';
+import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, Clock } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopDock from '@/components/DesktopDock';
 import FinanceEstimatesTab from '@/components/finance/FinanceEstimatesTab';
 import FinancePurchaseOrdersTab from '@/components/finance/FinancePurchaseOrdersTab';
 import FinanceLedgerTab from '@/components/finance/FinanceLedgerTab';
 import FinanceSettingsTab from '@/components/finance/FinanceSettingsTab';
+import FinanceTimesheetsTab from '@/components/finance/FinanceTimesheetsTab';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type FinanceTab = 'estimates' | 'purchase-orders' | 'invoices' | 'ledger' | 'settings';
+type FinanceTab = 'estimates' | 'purchase-orders' | 'timesheets' | 'invoices' | 'ledger' | 'settings';
 
 const TABS: { key: FinanceTab; label: string; icon: React.ElementType }[] = [
   { key: 'estimates',       label: 'Estimates',       icon: FileText     },
   { key: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
+  { key: 'timesheets',      label: 'Timesheets',      icon: Clock        },
   { key: 'invoices',        label: 'Invoices',        icon: Receipt      },
   { key: 'ledger',          label: 'Ledger',          icon: BookOpen     },
   { key: 'settings',        label: 'Settings',        icon: Settings     },
@@ -114,6 +116,7 @@ export default function FinancePage() {
         <div className="flex-1 overflow-hidden">
           {activeTab === 'estimates'       && <FinanceEstimatesTab />}
           {activeTab === 'purchase-orders' && <FinancePurchaseOrdersTab />}
+          {activeTab === 'timesheets'      && <FinanceTimesheetsTab />}
           {activeTab === 'ledger'          && <FinanceLedgerTab />}
           {activeTab === 'settings'        && (
             <FinanceSettingsTab
