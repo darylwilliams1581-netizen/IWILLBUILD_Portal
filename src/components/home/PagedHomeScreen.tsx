@@ -17,6 +17,7 @@ import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, H
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
+import ContactsPanel from '@/components/dashboard/ContactsPanel';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
@@ -226,6 +227,7 @@ function DashboardPage({
         </button>
       </div>
 
+      <ContactsPanel />
       <NotificationList />
       <MyTasksPanel userRole={role} />
       </div>
