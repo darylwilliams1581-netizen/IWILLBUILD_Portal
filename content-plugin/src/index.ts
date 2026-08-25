@@ -5,12 +5,14 @@ import { parseJson } from './parse.js';
 import {
   CONTENT_SUBDIRS, canonicalKeyFor, classifyDirents,
   isCollectionItem, findFatalDuplicates,
-  assertSafeContentName, exportableAliasNames, normalizeCollectionItem,
+  assertSafeContentName, aliasableNames, exportableAliasNames, normalizeCollectionItem,
   type DirentLike, type KeyedEntry,
 } from './keys.js';
 
 const VIRTUAL_ID = 'virtual:content';
 const RESOLVED_VIRTUAL_ID = '\0' + VIRTUAL_ID;
+const RUNTIME_VIRTUAL_ID = 'virtual:content-runtime';
+const RESOLVED_RUNTIME_VIRTUAL_ID = '\0' + RUNTIME_VIRTUAL_ID;
 const AIRO_CONTENT_ID = '@airo/content';
 
 function directImportError(rel: string): Error {
@@ -73,21 +75,19 @@ export function contentPlugin(options: Options = {}): Plugin {
       // let Vite's HMR propagate through its importers (the React plugin
       // injects `import.meta.hot.accept` in component files, so React Fast
       // Refresh re-renders in place — no full page reload, no flash).
-      const invalidate = (file: string, event: string) => {
-        if (!file.startsWith(contentDir)) return;
-        s.config.logger.info(`[airo-content] ${event}: ${path.relative(projectRoot, file)}`);
-        const mod = s.moduleGraph.getModuleById(RESOLVED_VIRTUAL_ID);
+      const reloadIfPresent = (resolvedId: string, label: string) => {
+        const mod = s.moduleGraph.getModuleById(resolvedId);
         if (!mod) {
-          s.config.logger.info(`[airo-content] virtual:content not yet in module graph — skipping reload`);
+          s.config.logger.info(`[airo-content] ${label} not yet in module graph — skipping reload`);
           return;
         }
         void s.reloadModule(mod)
           .then(() => {
-            s.config.logger.info(`[airo-content] reloaded virtual:content (HMR propagating)`);
+            s.config.logger.info(`[airo-content] reloaded ${label} (HMR propagating)`);
           })
           .catch((err) => {
             s.config.logger.error(
-              `[airo-content] HMR reload failed for virtual:content: ${String(err)}`,
+              `[airo-content] HMR reload failed for ${label}: ${String(err)}`,
               { error: err as Error },
             );
             try {
@@ -96,6 +96,13 @@ export function contentPlugin(options: Options = {}): Plugin {
               // dev server shutting down
             }
           });
+      };
+
+      const invalidate = (file: string, event: string) => {
+        if (!file.startsWith(contentDir)) return;
+        s.config.logger.info(`[airo-content] ${event}: ${path.relative(projectRoot, file)}`);
+        reloadIfPresent(RESOLVED_VIRTUAL_ID, 'virtual:content');
+        reloadIfPresent(RESOLVED_RUNTIME_VIRTUAL_ID, 'virtual:content-runtime');
       };
       s.watcher.on('change', (f) => invalidate(f, 'change'));
       s.watcher.on('add', (f) => invalidate(f, 'add'));
@@ -118,6 +125,7 @@ export function contentPlugin(options: Options = {}): Plugin {
 
     resolveId(source, importer) {
       if (source === VIRTUAL_ID) return RESOLVED_VIRTUAL_ID;
+      if (source === RUNTIME_VIRTUAL_ID) return RESOLVED_RUNTIME_VIRTUAL_ID;
 
       if (source === AIRO_CONTENT_ID) {
         return path.resolve(projectRoot, 'content-lib/src/index.ts');
@@ -147,6 +155,11 @@ export function contentPlugin(options: Options = {}): Plugin {
     },
 
     async load(id) {
+      if (id === RESOLVED_RUNTIME_VIRTUAL_ID) {
+        const entries: DiscoveredEntry[] = await discover(contentDir);
+        return emitRuntimeModule(entries);
+      }
+
       if (id === RESOLVED_VIRTUAL_ID) {
         const entries = await discover(contentDir);
         const schemasPath = path.join(contentDir, 'schemas.ts');
@@ -382,6 +395,64 @@ async function emitVirtualModule(
 }
 
 /**
+ * Every content key that names a directory-backed collection — the canonical key
+ * (`data.posts`) and, when it resolves unambiguously, the bare alias (`posts`) — for
+ * every entry with `kind === 'collection'`. Uses {@link aliasableNames}, the wider
+ * RESOLUTION set, rather than {@link exportableAliasNames}: a guard must cover every
+ * key that resolves, not only the subset that got an export binding, or a collection
+ * directory named e.g. `new` would resolve and slip past the guard.
+ */
+function collectDirectoryBackedKeys(entries: readonly DiscoveredEntry[]): string[] {
+  const resolvableAliasNames: ReadonlySet<string> = aliasableNames(entries);
+  const keys: string[] = [];
+  for (const entry of entries) {
+    if (entry.kind !== 'collection') continue;
+    keys.push(entry.canonicalKey);
+    if (resolvableAliasNames.has(entry.bareName)) keys.push(entry.bareName);
+  }
+  return keys;
+}
+
+/**
+ * `virtual:content-runtime`'s source: one default export keyed by every
+ * namespace root and bare alias `virtual:content` exports.
+ *
+ * The emitted module accepts its own HMR updates because its body — both
+ * the values and the root/alias name list — is a snapshot taken at load()
+ * time; without a self-accept it would never re-execute on its own, and a
+ * content edit would depend entirely on propagation from `virtual:content`,
+ * which the dev-server watcher no longer assumes.
+ */
+function emitRuntimeModule(entries: DiscoveredEntry[]): string {
+  const roots: string[] = [];
+  if (entries.some((e: DiscoveredEntry): boolean => e.subdir === null)) roots.push('site');
+  for (const subdir of CONTENT_SUBDIRS) {
+    if (entries.some((e: DiscoveredEntry): boolean => e.subdir === subdir)) roots.push(subdir);
+  }
+
+  const aliasNames: ReadonlySet<string> = exportableAliasNames(entries);
+  const names: string[] = [...roots, ...aliasNames];
+  const props: string = names
+    .map((name: string): string => `${JSON.stringify(name)}: content[${JSON.stringify(name)}]`)
+    .join(', ');
+
+  const collectionRoots: string[] = collectDirectoryBackedKeys(entries);
+  const collectionRootsLiteral: string = JSON.stringify(collectionRoots);
+
+  return (
+    `import * as content from ${JSON.stringify(VIRTUAL_ID)};\n` +
+    `export default { ${props} };\n` +
+    `export const collectionRoots = ${collectionRootsLiteral};\n` +
+    `\n` +
+    `if (import.meta.hot) {\n` +
+    `  import.meta.hot.accept(() => {\n` +
+    `    import.meta.hot.invalidate();\n` +
+    `  });\n` +
+    `}\n`
+  );
+}
+
+/**
  * Evaluate `schemas.ts` via the dev server's SSR module loader and validate
  * every discovered content file against its matching schema. Any Zod parse
  * error is rethrown with the file path prefixed so dev-server stderr shows
@@ -423,6 +494,7 @@ export async function validateContentEager(
 
   const entries: DiscoveredEntry[] = await discover(contentDir);
   const uniqueBareNames: ReadonlySet<string> = uniqueBareNameSet(entries);
+  const strippedFindings: StrippedFinding[] = [];
   for (const entry of entries) {
     const where: string = entryLocation(entry);
     let value: unknown;
@@ -445,15 +517,78 @@ export async function validateContentEager(
     if (!schema) continue; // unregistered key — pass-through
     if (typeof schema.parse !== 'function') continue; // non-Zod export — skip silently
 
+    let parsed: unknown;
     try {
-      schema.parse(value);
+      parsed = schema.parse(value);
     } catch (err) {
       throw new Error(
         `[airo-content] content in ${where} does not match schemas.${entry.bareName}:\n` +
         (err instanceof Error ? err.message : String(err)),
       );
     }
+
+    const strippedPaths: string[] = collectStrippedPaths(value, parsed, '');
+    if (strippedPaths.length > 0) {
+      strippedFindings.push({ where, paths: strippedPaths });
+    }
   }
+
+  if (strippedFindings.length > 0) {
+    throw strippedFieldsError(strippedFindings);
+  }
+}
+
+interface StrippedFinding {
+  readonly where: string;
+  readonly paths: readonly string[];
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Fields present in `raw` but dropped by `parsed` — i.e. stripped by a Zod `z.object()` that
+ * doesn't declare them. Only descends where `raw` and `parsed` are the same kind of container
+ * (both plain objects, or both arrays); any other pairing (a `.transform()` reshaping the value
+ * into something else entirely) is left alone rather than risk a false positive.
+ */
+function collectStrippedPaths(raw: unknown, parsed: unknown, pathPrefix: string): string[] {
+  if (Array.isArray(raw) && Array.isArray(parsed)) {
+    const paths: string[] = [];
+    for (let i: number = 0; i < raw.length; i += 1) {
+      paths.push(...collectStrippedPaths(raw[i], parsed[i], `${pathPrefix}[${i}]`));
+    }
+    return paths;
+  }
+
+  if (isPlainObject(raw) && isPlainObject(parsed)) {
+    const paths: string[] = [];
+    for (const key of Object.keys(raw)) {
+      const childPath: string = pathPrefix === '' ? key : `${pathPrefix}.${key}`;
+      if (!Object.prototype.hasOwnProperty.call(parsed, key)) {
+        paths.push(childPath);
+        continue;
+      }
+      paths.push(...collectStrippedPaths(raw[key], parsed[key], childPath));
+    }
+    return paths;
+  }
+
+  return [];
+}
+
+function strippedFieldsError(findings: readonly StrippedFinding[]): Error {
+  const lines: string[] = findings.map(
+    (f: StrippedFinding): string => `  ${f.where}: ${f.paths.join(', ')}`,
+  );
+  return new Error(
+    `[airo-content] field(s) exist in the content file but are dropped before reaching virtual:content:\n` +
+    `${lines.join('\n')}\n` +
+    `Zod's z.object() strips any key it doesn't declare. These fields are present in the JSON above ` +
+    `but missing from src/content/schemas.ts, so they never reach virtual:content. Regenerate ` +
+    `schemas.ts (content_scaffold) or add the field(s) to it by hand.`,
+  );
 }
 
 /**

@@ -14,6 +14,10 @@
     "./keys": {
       "types": "./dist/keys.d.ts",
       "default": "./dist/keys.js"
+    },
+    "./frontmatter": {
+      "types": "./dist/frontmatter.d.ts",
+      "default": "./dist/frontmatter.js"
     }
   }
 }
