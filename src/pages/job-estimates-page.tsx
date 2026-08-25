@@ -55,6 +55,7 @@ export default function JobEstimatesPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
+            backTo="/work-field/estimates"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

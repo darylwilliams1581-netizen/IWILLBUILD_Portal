@@ -51,6 +51,7 @@ export default function JobSafetyPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
+            backTo="/work-field/safety"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

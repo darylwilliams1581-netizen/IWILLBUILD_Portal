@@ -81,9 +81,7 @@ describe('Feature registry — completeness', () => {
 
 describe('Feature registry — groups', () => {
   const WORK_KEYS = ['tasks', 'notes', 'delays', 'progress', 'attendance'];
-  const FIELD_KEYS = ['photos', 'drawings', 'files'];
   const FINANCE_KEYS = ['estimates', 'purchase-orders', 'invoices', 'costs'];
-  const SAFETY_KEYS = ['forms', 'safety'];
 
   it('has Work group', () => {
     expect(registrySrc).toContain("group: 'Work'");

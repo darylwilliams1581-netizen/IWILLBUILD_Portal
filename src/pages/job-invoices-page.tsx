@@ -12,7 +12,7 @@ import JobFeatureShell from '@/components/job/JobFeatureShell';
 import JobInvoices from '@/components/job/JobInvoices';
 import { useJobForFeature } from '@/lib/useJobForFeature';
 import { getFeatureByKey } from '@/lib/jobFeatureRegistry';
-import { fetchJob, type Job } from '@/lib/jobs-api';
+import { type Job } from '@/lib/jobs-api';
 
 const FEATURE = getFeatureByKey('invoices')!;
 
@@ -59,6 +59,7 @@ export default function JobInvoicesPage() {
             featureLabel={FEATURE.label}
             jobName={fullJob.name}
             jobNumber={fullJob.jobNumber}
+            backTo="/work-field/invoices"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

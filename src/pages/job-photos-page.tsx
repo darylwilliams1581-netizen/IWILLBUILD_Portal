@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Home, Upload, Share2, CheckSquare, Send, Camera, Trash2 } from 'lucide-react';
+import { Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Upload, Share2, CheckSquare, Send, Camera, Trash2 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
@@ -185,7 +185,43 @@ export default function JobPhotosPage() {
           featureLabel="Photos"
           jobName={job?.name ?? 'Job'}
           jobNumber={job?.jobNumber}
+          backTo="/work-field/photos"
           onChangeJob={handleChangeJob}
+          desktopActions={
+            <div className="hidden md:flex items-center gap-1.5">
+              {/* Upload */}
+              <button onClick={() => photosRef.current?.openFilePicker()} disabled={uploading || atLimit} title="Upload photos" className="flex items-center justify-center w-8 h-8 border border-border hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition-colors">
+                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              </button>
+              {/* Camera */}
+              <button onClick={openCameraPage} disabled={uploading || atLimit} title="Take a photo" className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+                <Camera size={16} />
+              </button>
+              {/* Select / Done */}
+              {!selectMode
+                ? <button onClick={() => handleSetSelectMode(true)} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                    <CheckSquare size={12} /> Select
+                  </button>
+                : <button onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                    <X size={12} /> Done {selectedCount > 0 && `(${selectedCount})`}
+                  </button>}
+              {selectMode && selectedCount > 0 && <>
+                <button onClick={() => photosRef.current?.deleteSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded transition-colors">
+                  <Trash2 size={12} /> Delete
+                </button>
+                <button onClick={handleDownloadSelected} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                  <Download size={12} /> Download
+                </button>
+                <button onClick={() => void handleSendSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                  <Send size={12} /> Send
+                </button>
+              </>}
+              {/* Share */}
+              <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
+                <Share2 size={12} /> Share
+              </button>
+            </div>
+          }
         >
         {/* ── Content ── */}
         {loading ? <div className="flex items-center justify-center py-20">

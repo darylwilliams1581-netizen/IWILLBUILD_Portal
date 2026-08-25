@@ -51,6 +51,7 @@ export default function JobPurchaseOrdersPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
+            backTo="/work-field/purchase-orders"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

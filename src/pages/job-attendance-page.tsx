@@ -51,6 +51,7 @@ export default function JobAttendancePage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
+            backTo="/work-field/attendance"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

@@ -128,8 +128,32 @@ export default function JobFormsPage() {
           featureLabel="Forms"
           jobName={job?.name ?? 'Job'}
           jobNumber={job?.jobNumber}
+          backTo="/work-field/forms"
           onChangeJob={handleChangeJob}
+          desktopActions={
+            <div className="hidden md:flex items-center gap-1.5">
+              <button onClick={() => setShowCompleted(v => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs font-semibold rounded-lg transition-colors ${showCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
+                {showCompleted ? 'Showing all' : 'Show completed'}
+              </button>
+              <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                <Plus size={13} /> New Form
+              </button>
+            </div>
+          }
         >
+        {/* ── Mobile bottom bar ── */}
+        <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-border">
+          <div className="flex items-center gap-2 px-3 py-2 pb-safe">
+            <button onClick={() => setShowCompleted(v => !v)} className={`flex-1 flex items-center justify-center gap-1.5 h-10 border text-xs font-semibold rounded-xl transition-colors ${showCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'}`}>
+              {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
+              {showCompleted ? 'All' : 'Active'}
+            </button>
+            <button onClick={() => setShowTemplates(true)} aria-label="New Form" className="w-10 h-10 rounded-xl bg-primary hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-primary-foreground transition-colors touch-manipulation shrink-0 shadow-sm">
+              <Plus size={18} />
+            </button>
+          </div>
+        </div>
         {/* ── Content ── */}
         {loading ? <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-purple-400" />

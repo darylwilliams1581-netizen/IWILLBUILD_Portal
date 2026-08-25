@@ -9,7 +9,6 @@ import { Loader2, Download } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { StickyNote } from 'lucide-react';
 import NotesPanel from '@/components/notes/NotesPanel';
-import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
 
 interface Job {
@@ -83,6 +82,7 @@ export default function JobNotesPage() {
             featureLabel="Notes"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
+            backTo="/work-field/notes"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">
