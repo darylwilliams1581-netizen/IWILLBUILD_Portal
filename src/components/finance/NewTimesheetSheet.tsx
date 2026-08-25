@@ -192,10 +192,12 @@ const inputCls =
 interface MealAllowanceProps {
   row: DayRow;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
-  compact?: boolean; // desktop uses compact pill style
+  compact?: boolean;
+  lafh?: boolean;
+  onToggleLafh?: () => void;
 }
 
-function MealAllowanceRow({ row, onUpdate, compact }: MealAllowanceProps) {
+function MealAllowanceRow({ row, onUpdate, compact, lafh, onToggleLafh }: MealAllowanceProps) {
   const meals: { key: 'meal_breakfast' | 'meal_lunch' | 'meal_dinner'; label: string; short: string }[] = [
     { key: 'meal_breakfast', label: 'Breakfast', short: 'Bfast' },
     { key: 'meal_lunch',     label: 'Lunch',     short: 'Lunch' },
@@ -241,6 +243,20 @@ function MealAllowanceRow({ row, onUpdate, compact }: MealAllowanceProps) {
             {m.short}
           </label>
         ))}
+        {/* LAFH inline toggle — only shown on the first day (caller passes onToggleLafh) */}
+        {onToggleLafh !== undefined && (
+          <button
+            type="button"
+            onClick={onToggleLafh}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ml-1 ${
+              lafh
+                ? 'bg-violet-500 text-white border-violet-500'
+                : 'bg-transparent text-muted-foreground border-border hover:border-violet-400 hover:text-violet-600'
+            }`}
+          >
+            LAFH
+          </button>
+        )}
       </div>
     );
   }
@@ -249,17 +265,33 @@ function MealAllowanceRow({ row, onUpdate, compact }: MealAllowanceProps) {
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-muted-foreground">Meal allowances</p>
-        <button
-          type="button"
-          onClick={toggleAll}
-          className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors ${
-            allChecked
-              ? 'bg-orange-500 text-white border-orange-500'
-              : 'bg-muted/40 text-muted-foreground border-border hover:border-orange-400 hover:text-orange-600'
-          }`}
-        >
-          {allChecked ? '✓ All' : 'All'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* LAFH inline toggle */}
+          {onToggleLafh !== undefined && (
+            <button
+              type="button"
+              onClick={onToggleLafh}
+              className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors ${
+                lafh
+                  ? 'bg-violet-500 text-white border-violet-500'
+                  : 'bg-muted/40 text-muted-foreground border-border hover:border-violet-400 hover:text-violet-600'
+              }`}
+            >
+              {lafh ? '✓ LAFH' : 'LAFH'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggleAll}
+            className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors ${
+              allChecked
+                ? 'bg-orange-500 text-white border-orange-500'
+                : 'bg-muted/40 text-muted-foreground border-border hover:border-orange-400 hover:text-orange-600'
+            }`}
+          >
+            {allChecked ? '✓ All' : 'All'}
+          </button>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         {meals.map(m => (
@@ -287,13 +319,13 @@ interface DayCardMobileProps {
   jobs: Job[];
   globalJobId: number | null;
   lafh: boolean;
+  onToggleLafh?: () => void;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
   onSetType: (date: string, type: DayType) => void;
-  /** If provided, show a "Copy previous day" button */
   onCopyPrev?: () => void;
 }
 
-function DayCardMobile({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCopyPrev }: DayCardMobileProps) {
+function DayCardMobile({ row, jobs, globalJobId, lafh, onToggleLafh, onUpdate, onSetType, onCopyPrev }: DayCardMobileProps) {
   const isWork = row.day_type === 'work';
   const cfg = DAY_TYPES.find(d => d.key === row.day_type);
   const hrs = rowHours(row);
@@ -461,17 +493,17 @@ function DayCardMobile({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCo
 
             {/* Meal allowances — shown on work days, or any day when LAFH is on */}
             {lafh && (
-              <MealAllowanceRow row={row} onUpdate={onUpdate} />
+              <MealAllowanceRow row={row} onUpdate={onUpdate} lafh={lafh} onToggleLafh={onToggleLafh} />
             )}
             {!lafh && isWork && (
-              <MealAllowanceRow row={row} onUpdate={onUpdate} />
+              <MealAllowanceRow row={row} onUpdate={onUpdate} lafh={lafh} onToggleLafh={onToggleLafh} />
             )}
           </>
         )}
 
         {/* Meal allowances on non-work days when LAFH is active */}
         {!isWork && lafh && (
-          <MealAllowanceRow row={row} onUpdate={onUpdate} />
+          <MealAllowanceRow row={row} onUpdate={onUpdate} lafh={lafh} onToggleLafh={onToggleLafh} />
         )}
       </div>
     </div>
@@ -485,12 +517,13 @@ interface DayRowDesktopProps {
   jobs: Job[];
   globalJobId: number | null;
   lafh: boolean;
+  onToggleLafh?: () => void;
   onUpdate: (date: string, patch: Partial<DayRow>) => void;
   onSetType: (date: string, type: DayType) => void;
   onCopyPrev?: () => void;
 }
 
-function DayRowDesktop({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCopyPrev }: DayRowDesktopProps) {
+function DayRowDesktop({ row, jobs, globalJobId, lafh, onToggleLafh, onUpdate, onSetType, onCopyPrev }: DayRowDesktopProps) {
   const isWork = row.day_type === 'work';
   const cfg = DAY_TYPES.find(d => d.key === row.day_type);
   const hrs = rowHours(row);
@@ -583,7 +616,7 @@ function DayRowDesktop({ row, jobs, globalJobId, lafh, onUpdate, onSetType, onCo
               onChange={e => onUpdate(row.work_date, { description: e.target.value })}
               className="w-full h-7 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40" />
           )}
-          <MealAllowanceRow row={row} onUpdate={onUpdate} compact />
+          <MealAllowanceRow row={row} onUpdate={onUpdate} compact lafh={lafh} onToggleLafh={onToggleLafh} />
         </div>
       )}
     </div>
@@ -1083,24 +1116,8 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                 </div>
               </div>
 
-              {/* ── LAFH + Daily hours section ── */}
+              {/* ── Daily hours section ── */}
               <div>
-                {/* LAFH checkbox */}
-                <label className="flex items-start gap-3 p-3 rounded-xl border border-border bg-muted/20 cursor-pointer select-none hover:bg-muted/40 transition-colors mb-4">
-                  <input
-                    type="checkbox"
-                    checked={lafh}
-                    onChange={e => setLafh(e.target.checked)}
-                    className="w-5 h-5 mt-0.5 rounded accent-primary cursor-pointer shrink-0"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Living Away From Home (LAFH)</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Tick if the employee is staying away from home this week. Meal allowances will be shown on every day.
-                    </p>
-                  </div>
-                </label>
-
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Daily hours</p>
                   <span className="text-xs text-muted-foreground">
@@ -1156,6 +1173,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           jobs={jobs}
                           globalJobId={globalJobId}
                           lafh={lafh}
+                          onToggleLafh={idx === 0 ? () => setLafh(v => !v) : undefined}
                           onUpdate={updateRow}
                           onSetType={setDayType}
                           onCopyPrev={idx > 0 ? () => copyPrevDay(row.work_date) : undefined}
@@ -1168,6 +1186,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
                           jobs={jobs}
                           globalJobId={globalJobId}
                           lafh={lafh}
+                          onToggleLafh={idx === 0 ? () => setLafh(v => !v) : undefined}
                           onUpdate={updateRow}
                           onSetType={setDayType}
                           onCopyPrev={idx > 0 ? () => copyPrevDay(row.work_date) : undefined}
