@@ -202,10 +202,32 @@ function MealAllowanceRow({ row, onUpdate, compact }: MealAllowanceProps) {
     { key: 'meal_dinner',    label: 'Dinner',    short: 'Dinner' },
   ];
 
+  const allChecked = row.meal_breakfast && row.meal_lunch && row.meal_dinner;
+  const someChecked = row.meal_breakfast || row.meal_lunch || row.meal_dinner;
+
+  function toggleAll() {
+    const next = !allChecked;
+    onUpdate(row.work_date, { meal_breakfast: next, meal_lunch: next, meal_dinner: next });
+  }
+
   if (compact) {
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] font-semibold text-muted-foreground mr-0.5">Meals:</span>
+        {/* All pill */}
+        <button
+          type="button"
+          onClick={toggleAll}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+            allChecked
+              ? 'bg-orange-500 text-white border-orange-500'
+              : someChecked
+              ? 'bg-orange-100 text-orange-600 border-orange-300'
+              : 'bg-transparent text-muted-foreground border-border hover:border-orange-300 hover:text-orange-600'
+          }`}
+        >
+          All
+        </button>
         {meals.map(m => (
           <label key={m.key}
             className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer select-none transition-colors ${
@@ -225,7 +247,20 @@ function MealAllowanceRow({ row, onUpdate, compact }: MealAllowanceProps) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-muted-foreground mb-2">Meal allowances</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted-foreground">Meal allowances</p>
+        <button
+          type="button"
+          onClick={toggleAll}
+          className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors ${
+            allChecked
+              ? 'bg-orange-500 text-white border-orange-500'
+              : 'bg-muted/40 text-muted-foreground border-border hover:border-orange-400 hover:text-orange-600'
+          }`}
+        >
+          {allChecked ? '✓ All' : 'All'}
+        </button>
+      </div>
       <div className="flex flex-wrap gap-2">
         {meals.map(m => (
           <label key={m.key}
