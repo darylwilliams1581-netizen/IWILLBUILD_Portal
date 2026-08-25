@@ -77,6 +77,11 @@ export async function ensureTimesheetSchema(): Promise<void> {
     // Submission confirmation
     { table: 'timesheets', column: 'confirmed_by_employee',    definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'timesheets', column: 'confirmed_at',             definition: 'DATETIME NULL' },
+    // FairWork V2 — LAFHA + meal allowances per entry
+    { table: 'timesheet_entries', column: 'meal_breakfast',    definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'timesheet_entries', column: 'meal_lunch',        definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'timesheet_entries', column: 'meal_dinner',       definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'timesheet_entries', column: 'lafh',              definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
   ];
 
   for (const col of colsToEnsure) {
@@ -134,6 +139,11 @@ export interface TimesheetEntry {
   lunch_finish?: string | null;      // HH:MM 24h
   unpaid_break_mins?: number | null; // minutes (derived from lunch window)
   day_type?: string;                 // 'work' | 'leave' | 'sick' | 'public-holiday' | 'unpaid-leave'
+  // LAFHA + meal allowances (per-entry)
+  lafh?: boolean | number | null;
+  meal_breakfast?: boolean | number | null;
+  meal_lunch?: boolean | number | null;
+  meal_dinner?: boolean | number | null;
 }
 
 export interface Timesheet {
@@ -211,12 +221,12 @@ export async function listTimesheets(params: ListTimesheetsParams): Promise<{
 }> {
   const limit = Math.min(params.limit ?? 25, 100);
 
-  // Status counts
+  // Status counts — workers only see their own
   const [countRows] = await db.execute(sql`
     SELECT status, COUNT(*) AS cnt
     FROM timesheets
     WHERE company_id = ${params.companyId}
-      ${params.profileId && !params.isAdmin ? sql`AND profile_id = ${params.profileId}` : sql``}
+      ${!params.isAdmin ? sql`AND employee_profile_id = ${params.profileId}` : sql``}
     GROUP BY status
   `);
   const counts: Record<string, number> = { all: 0, draft: 0, submitted: 0, approved: 0, rejected: 0 };
@@ -244,7 +254,7 @@ export async function listTimesheets(params: ListTimesheetsParams): Promise<{
     LEFT JOIN user eu ON eu.id = ep.user_id
     LEFT JOIN jobs j ON j.id = t.job_id AND j.company_id = ${params.companyId}
     WHERE t.company_id = ${params.companyId}
-      ${params.profileId && !params.isAdmin ? sql`AND (t.profile_id = ${params.profileId} OR t.employee_profile_id = ${params.profileId})` : sql``}
+      ${!params.isAdmin ? sql`AND t.employee_profile_id = ${params.profileId}` : sql``}
       ${params.status && params.status !== 'all' ? sql`AND t.status = ${params.status}` : sql``}
       ${params.weekEnding ? sql`AND t.week_ending = ${params.weekEnding}` : sql``}
       ${params.search ? sql`AND (COALESCE(eu.name, u.name) LIKE ${`%${params.search}%`} OR j.job_number LIKE ${`%${params.search}%`} OR j.name LIKE ${`%${params.search}%`})` : sql``}
@@ -286,7 +296,7 @@ export async function getTimesheet(
     LEFT JOIN user eu ON eu.id = ep.user_id
     LEFT JOIN jobs j ON j.id = t.job_id AND j.company_id = ${companyId}
     WHERE t.id = ${id} AND t.company_id = ${companyId}
-      ${!isAdmin ? sql`AND (t.profile_id = ${profileId} OR t.employee_profile_id = ${profileId})` : sql``}
+      ${!isAdmin ? sql`AND t.employee_profile_id = ${profileId}` : sql``}
     LIMIT 1
   `);
 
@@ -297,6 +307,7 @@ export async function getTimesheet(
     SELECT te.id, te.work_date, te.job_id, te.description, te.hours,
            te.start_time, te.finish_time, te.lunch_start, te.lunch_finish,
            te.unpaid_break_mins, te.day_type, te.sort_order,
+           te.lafh, te.meal_breakfast, te.meal_lunch, te.meal_dinner,
            j.job_number AS entry_job_number, j.name AS entry_job_name
     FROM timesheet_entries te
     LEFT JOIN jobs j ON j.id = te.job_id AND j.company_id = ${companyId}
@@ -364,13 +375,15 @@ export async function createTimesheet(params: {
     await db.execute(sql`
       INSERT INTO timesheet_entries
         (timesheet_id, company_id, work_date, job_id, description, hours,
-         start_time, finish_time, lunch_start, lunch_finish, unpaid_break_mins, day_type, sort_order)
+         start_time, finish_time, lunch_start, lunch_finish, unpaid_break_mins, day_type, sort_order,
+         lafh, meal_breakfast, meal_lunch, meal_dinner)
       VALUES
         (${insertId}, ${params.companyId}, ${e.work_date}, ${e.job_id ?? null},
          ${(e.description ?? '').trim()}, ${Number(e.hours)},
          ${e.start_time ?? null}, ${e.finish_time ?? null},
          ${e.lunch_start ?? null}, ${e.lunch_finish ?? null},
-         ${e.unpaid_break_mins ?? 0}, ${e.day_type ?? 'work'}, ${e.sort_order ?? i})
+         ${e.unpaid_break_mins ?? 0}, ${e.day_type ?? 'work'}, ${e.sort_order ?? i},
+         ${e.lafh ? 1 : 0}, ${e.meal_breakfast ? 1 : 0}, ${e.meal_lunch ? 1 : 0}, ${e.meal_dinner ? 1 : 0})
     `);
   }
 
@@ -397,7 +410,7 @@ export async function updateTimesheet(params: {
   `);
   const ts = (rows as Array<{ id: number; status: string; profile_id: number; employee_profile_id: number | null }>)[0];
   if (!ts) return { ok: false, error: { code: 404, message: 'Timesheet not found' } };
-  if (!params.isAdmin && ts.profile_id !== params.profileId && ts.employee_profile_id !== params.profileId) {
+  if (!params.isAdmin && ts.employee_profile_id !== params.profileId) {
     return { ok: false, error: { code: 403, message: 'Not your timesheet' } };
   }
   if (ts.status !== 'draft' && ts.status !== 'rejected') {
@@ -423,13 +436,15 @@ export async function updateTimesheet(params: {
       await db.execute(sql`
         INSERT INTO timesheet_entries
           (timesheet_id, company_id, work_date, job_id, description, hours,
-           start_time, finish_time, lunch_start, lunch_finish, unpaid_break_mins, day_type, sort_order)
+           start_time, finish_time, lunch_start, lunch_finish, unpaid_break_mins, day_type, sort_order,
+           lafh, meal_breakfast, meal_lunch, meal_dinner)
         VALUES
           (${params.id}, ${params.companyId}, ${e.work_date}, ${e.job_id ?? null},
            ${(e.description ?? '').trim()}, ${Number(e.hours)},
            ${e.start_time ?? null}, ${e.finish_time ?? null},
            ${e.lunch_start ?? null}, ${e.lunch_finish ?? null},
-           ${e.unpaid_break_mins ?? 0}, ${e.day_type ?? 'work'}, ${e.sort_order ?? i})
+           ${e.unpaid_break_mins ?? 0}, ${e.day_type ?? 'work'}, ${e.sort_order ?? i},
+           ${e.lafh ? 1 : 0}, ${e.meal_breakfast ? 1 : 0}, ${e.meal_lunch ? 1 : 0}, ${e.meal_dinner ? 1 : 0})
       `);
     }
   }
@@ -448,15 +463,15 @@ export async function transitionTimesheet(params: {
   rejectionReason?: string | null;
 }): Promise<ServiceResult<{ id: number; status: TimesheetStatus }>> {
   const [rows] = await db.execute(sql`
-    SELECT id, status, profile_id FROM timesheets
+    SELECT id, status, profile_id, employee_profile_id FROM timesheets
     WHERE id = ${params.id} AND company_id = ${params.companyId}
     LIMIT 1
   `);
-  const ts = (rows as Array<{ id: number; status: TimesheetStatus; profile_id: number }>)[0];
+  const ts = (rows as Array<{ id: number; status: TimesheetStatus; profile_id: number; employee_profile_id: number | null }>)[0];
   if (!ts) return { ok: false, error: { code: 404, message: 'Timesheet not found' } };
 
-  // Only owner can submit their own; only admin can approve/reject
-  if (params.newStatus === 'submitted' && !params.isAdmin && ts.profile_id !== params.profileId) {
+  // Only the employee whose timesheet it is can submit; only admin can approve/reject
+  if (params.newStatus === 'submitted' && !params.isAdmin && ts.employee_profile_id !== params.profileId) {
     return { ok: false, error: { code: 403, message: 'Not your timesheet' } };
   }
   if ((params.newStatus === 'approved' || params.newStatus === 'rejected') && !params.isAdmin) {
@@ -491,13 +506,13 @@ export async function deleteTimesheet(params: {
   isAdmin: boolean;
 }): Promise<ServiceResult<{ id: number }>> {
   const [rows] = await db.execute(sql`
-    SELECT id, status, profile_id FROM timesheets
+    SELECT id, status, profile_id, employee_profile_id FROM timesheets
     WHERE id = ${params.id} AND company_id = ${params.companyId}
     LIMIT 1
   `);
-  const ts = (rows as Array<{ id: number; status: string; profile_id: number }>)[0];
+  const ts = (rows as Array<{ id: number; status: string; profile_id: number; employee_profile_id: number | null }>)[0];
   if (!ts) return { ok: false, error: { code: 404, message: 'Timesheet not found' } };
-  if (!params.isAdmin && ts.profile_id !== params.profileId) {
+  if (!params.isAdmin && ts.employee_profile_id !== params.profileId) {
     return { ok: false, error: { code: 403, message: 'Not your timesheet' } };
   }
   if (ts.status !== 'draft') {

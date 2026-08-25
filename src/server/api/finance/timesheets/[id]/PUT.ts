@@ -2,6 +2,9 @@
  * PUT /api/finance/timesheets/:id
  * Update a timesheet (draft/rejected only) OR transition its status.
  *
+ * SECURITY: Workers can only edit their own timesheets.
+ * employeeProfileId cannot be changed by workers — only admins may reassign.
+ *
  * Body for edit:   { weekEnding?, jobId?, notes?, entries? }
  * Body for status: { status: 'submitted' | 'approved' | 'rejected', rejectionReason? }
  */
@@ -37,14 +40,17 @@ export default async function handler(req: Request, res: Response) {
       return res.json({ timesheet: result.data });
     }
 
-    // Field update request
+    // Field update request — workers cannot change employeeProfileId
     const result = await updateTimesheet({
       id,
       companyId: profile.companyId,
       profileId: profile.id,
       isAdmin: profile.isAdmin,
       weekEnding: body.weekEnding != null ? String(body.weekEnding).trim() : undefined,
-      employeeProfileId: body.employeeProfileId !== undefined ? (body.employeeProfileId != null ? parseInt(String(body.employeeProfileId), 10) : null) : undefined,
+      // Only admins may reassign the employee on a timesheet
+      employeeProfileId: profile.isAdmin && body.employeeProfileId !== undefined
+        ? (body.employeeProfileId != null ? parseInt(String(body.employeeProfileId), 10) : null)
+        : undefined,
       jobId: body.jobId !== undefined ? (body.jobId != null ? parseInt(String(body.jobId), 10) : null) : undefined,
       notes: body.notes !== undefined ? (body.notes != null ? String(body.notes).trim() || null : null) : undefined,
       entries: Array.isArray(body.entries) ? body.entries : undefined,
