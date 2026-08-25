@@ -11,7 +11,7 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, Clock } from 'lucide-react';
+import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, Clock, ArrowLeft } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopDock from '@/components/DesktopDock';
 import FinanceEstimatesTab from '@/components/finance/FinanceEstimatesTab';
@@ -85,6 +85,13 @@ export default function FinancePage() {
       <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors shrink-0"
+            aria-label="Back"
+          >
+            <ArrowLeft size={18} className="text-foreground" />
+          </button>
           <div className="w-9 h-9 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
             <DollarSign size={18} className="text-primary" />
           </div>
