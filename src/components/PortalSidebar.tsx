@@ -5,7 +5,7 @@ import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, 
 // Desktop sidebar icons
 Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert,
 // Work section icons
-Plus, Briefcase, Wrench } from 'lucide-react';
+Plus, Briefcase, Wrench, Clock } from 'lucide-react';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -201,6 +201,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Purchase Orders',
     icon: ClipboardList,
     href: '/finance?financeTab=purchase-orders'
+  }, {
+    id: 'nav-11f',
+    idx: '11f',
+    label: 'Timesheets',
+    icon: Clock,
+    href: '/finance?financeTab=timesheets'
   }, {
     id: 'nav-11d',
     idx: '11d',
