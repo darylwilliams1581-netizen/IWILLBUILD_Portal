@@ -12,6 +12,7 @@ import DashboardInstallCallout from '@/components/dashboard/DashboardInstallCall
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import DashboardPhotoUploader from '@/components/dashboard/DashboardPhotoUploader';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
+import ContactsPanel from '@/components/dashboard/ContactsPanel';
 import { useTerminology } from '@/lib/useTerminology';
 import { usePermissions } from '@/lib/usePermissions';
 import { AnimatePresence } from 'motion/react';
@@ -411,6 +412,11 @@ export default function DashboardPage() {
                     </Link>;
             })}
               </div>}
+          </motion.div>
+
+          {/* ── Contacts — quick call/SMS/email ── */}
+          <motion.div variants={itemVariants} initial="hidden" animate="visible" className="mt-2">
+            <ContactsPanel />
           </motion.div>
 
         </main>

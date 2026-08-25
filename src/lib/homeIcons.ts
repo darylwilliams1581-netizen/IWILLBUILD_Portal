@@ -85,8 +85,9 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 ];
 
 // ── MANAGEMENT (mirrors desktop sidebar "Administration" heading) ──────────────
+// Note: Contacts is surfaced directly on the Dashboard as a quick-dial panel
+// (ContactsPanel) — it is intentionally excluded from the Manage icon grid here.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
-  { key: 'stakeholders', label: 'Contacts',   icon: UserCircle,   href: '/customers',                   bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'team',        label: 'Team',        icon: UserCircle,   href: '/team',                        bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',     label: 'My Billing',  icon: CreditCard,   href: '/billing',                     bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
   { key: 'settings',    label: 'Settings',    icon: Settings,     href: '/settings',                    bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
