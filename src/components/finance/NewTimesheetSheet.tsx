@@ -55,20 +55,20 @@ function toLocalISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function nextSaturday(from: Date = new Date()): string {
+function nextSunday(from: Date = new Date()): string {
   const d = new Date(from);
   const day = d.getDay(); // 0=Sun … 6=Sat
-  const daysUntilSat = day === 6 ? 0 : 6 - day;
-  d.setDate(d.getDate() + daysUntilSat);
+  const daysUntilSun = day === 0 ? 0 : 7 - day;
+  d.setDate(d.getDate() + daysUntilSun);
   return toLocalISO(d);
 }
 
 function weekDates(weekEnding: string): string[] {
-  // weekEnding is a Saturday (YYYY-MM-DD local).
-  // Returns Mon Tue Wed Thu Fri Sat Sun — 7 days starting 5 days before Saturday.
+  // weekEnding is a Sunday (YYYY-MM-DD local).
+  // Returns Mon Tue Wed Thu Fri Sat Sun — Mon is 6 days before Sunday.
   const [y, mo, dy] = weekEnding.split('-').map(Number);
   const end = new Date(y, mo - 1, dy); // local midnight, no UTC shift
-  const offsets = [-5, -4, -3, -2, -1, 0, 1]; // Mon … Sun
+  const offsets = [-6, -5, -4, -3, -2, -1, 0]; // Mon … Sun
   return offsets.map(offset => {
     const d = new Date(end);
     d.setDate(end.getDate() + offset);
@@ -106,7 +106,7 @@ function totalHours(entries: EntryRow[], dayTypes: Record<string, DayType>, date
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Props) {
-  const [weekEnding, setWeekEnding] = useState(nextSaturday);
+  const [weekEnding, setWeekEnding] = useState(nextSunday);
   const [globalJobId, setGlobalJobId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [entries, setEntries] = useState<EntryRow[]>([]);
@@ -153,7 +153,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(data => {
         const ts = data.timesheet;
-        setWeekEnding(ts.week_ending?.slice(0, 10) ?? nextSaturday());
+        setWeekEnding(ts.week_ending?.slice(0, 10) ?? nextSunday());
         setGlobalJobId(ts.job_id ?? null);
         setNotes(ts.notes ?? '');
         if (Array.isArray(ts.entries) && ts.entries.length > 0) {
@@ -180,7 +180,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   // Reset on close
   useEffect(() => {
     if (!open) {
-      setWeekEnding(nextSaturday());
+      setWeekEnding(nextSunday());
       setGlobalJobId(null);
       setNotes('');
       setDayTypes({});
