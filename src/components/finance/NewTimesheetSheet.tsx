@@ -126,12 +126,21 @@ function calcHours(start: string, finish: string, breakMins: string): number | n
   return Math.round((mins / 60) * 100) / 100;
 }
 
+/** Default times for a new blank work day */
+const DEFAULT_START        = '07:00';
+const DEFAULT_FINISH       = '15:30';
+const DEFAULT_LUNCH_START  = '12:00';
+const DEFAULT_LUNCH_FINISH = '12:30';
+const DEFAULT_BREAK_MINS   = '30';
+
 function blankDay(date: string): DayRow {
   return {
     work_date: date, day_type: 'work',
-    start_time: '', finish_time: '',
-    lunch_start: '', lunch_finish: '',
-    unpaid_break_mins: '',
+    start_time: DEFAULT_START,
+    finish_time: DEFAULT_FINISH,
+    lunch_start: DEFAULT_LUNCH_START,
+    lunch_finish: DEFAULT_LUNCH_FINISH,
+    unpaid_break_mins: DEFAULT_BREAK_MINS,
     job_id: null, description: '',
   };
 }
