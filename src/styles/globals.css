@@ -454,12 +454,6 @@ textarea {
 
 @media (min-width: 768px) {
   .portal-content {
-    padding-top: 112px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .portal-content {
     padding: 1.5rem;
     padding-top: 112px;
     /* Offset the fixed left sidebar — width is kept in sync by PortalSidebar */

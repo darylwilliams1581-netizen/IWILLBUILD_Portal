@@ -132,6 +132,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Work',
     icon: Briefcase,
     href: '/work'
+  }, {
+    id: 'nav-work-field',
+    idx: 'work-field',
+    label: 'Work & Field',
+    icon: Wrench,
+    href: '/work-field'
   }]
 }, {
   heading: 'Field & Files',
@@ -340,6 +346,11 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     label: 'Work',
     icon: Briefcase,
     href: '/work',
+    permKey: 'jobs'
+  }, {
+    label: 'Work & Field',
+    icon: Wrench,
+    href: '/work-field',
     permKey: 'jobs'
   }, {
     label: 'Scheduler',
@@ -814,8 +825,8 @@ export default function PortalSidebar() {
       {/* ── Desktop top bar — fixed, full-width, z-1100 ── */}
       <DesktopTopBar />
 
-      {/* ── Desktop sidebar — fixed left rail, below topbar, lg+ only ── */}
-      <aside ref={_sidebarRef} aria-label="Desktop sidebar navigation" className="hidden lg:flex flex-col" style={{
+      {/* ── Desktop sidebar — fixed left rail, below topbar, md+ only ── */}
+      <aside ref={_sidebarRef} aria-label="Desktop sidebar navigation" className="hidden md:flex flex-col" style={{
       position: 'fixed',
       top: 56,
       left: 0,
@@ -840,7 +851,7 @@ export default function PortalSidebar() {
           opacity: 0
         }} transition={{
           duration: 0.2
-        }} onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />
+        }} onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/50 z-40 md:hidden" />
             <motion.aside key="drawer" initial={{
           x: -280
         }} animate={{
@@ -850,7 +861,7 @@ export default function PortalSidebar() {
         }} transition={{
           duration: 0.25,
           ease: 'easeOut' as const
-        }} className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 lg:hidden shadow-2xl border-r border-gray-200" style={{
+        }} className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200" style={{
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}>
               <SidebarContent onClose={() => setMobileOpen(false)} />

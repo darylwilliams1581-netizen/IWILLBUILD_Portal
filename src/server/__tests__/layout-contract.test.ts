@@ -45,14 +45,15 @@ describe('globals.css — portal layout classes', () => {
     expect(lgBlock).not.toBeNull();
   });
 
-  it('.portal-content applies sidebar left offset at lg+ (Work/Finance/Customers fix)', async () => {
+  it('.portal-content applies sidebar left offset at md+ (tablet nav fix)', async () => {
     const css = await readSrc('src/styles/globals.css');
-    // Find the lg+ portal-content block
-    const lgPortalContentMatch = css.match(
-      /@media \(min-width: 1024px\)\s*\{[^@]*\.portal-content\s*\{([^}]*)\}/s
+    // Find the md+ portal-content block that contains the sidebar offset
+    // Use a regex that matches the specific block with iwb-sidebar-w
+    const mdPortalContentMatch = css.match(
+      /@media \(min-width: 768px\)\s*\{\s*\.portal-content\s*\{([^}]*)\}/s
     );
-    expect(lgPortalContentMatch).not.toBeNull();
-    const block = lgPortalContentMatch![1];
+    expect(mdPortalContentMatch).not.toBeNull();
+    const block = mdPortalContentMatch![1];
     // Must include sidebar offset
     expect(block).toContain('var(--iwb-sidebar-w');
     // Must include top padding for topbar+dock

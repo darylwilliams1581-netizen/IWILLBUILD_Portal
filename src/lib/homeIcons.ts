@@ -25,7 +25,7 @@ import {
   UserCircle, CreditCard, Settings, BookMarked,
   TrendingUp, Clock, StickyNote, DollarSign,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, Wallet,
+  MessageSquare, ClipboardSignature, Wallet, Wrench,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'files' | 'fleet' | 'finance' | 'safety' | 'management' | 'comingSoon';
@@ -50,9 +50,10 @@ export interface HomeIconDef {
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'jobs',        label: 'Jobs',        icon: HardHat,      href: '/jobs',                        bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'work',        label: 'Work',        icon: Briefcase,    href: '/work',                        bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
+  { key: 'work_field',  label: 'Work & Field',icon: Wrench,       href: '/work-field',                  bg: 'bg-indigo-600',  fg: 'text-white', group: 'field' },
   { key: 'job_card',    label: 'Job Cards',   icon: Zap,          href: '/job-cards',                   bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
   { key: 'scheduler',   label: 'Scheduler',   icon: CalendarDays, href: '/scheduler',                   bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
-  { key: 'progress',    label: 'Progress',    icon: TrendingUp,   href: '/work?workTab=progress',       bg: 'bg-green-600',   fg: 'text-white', group: 'field' },
+  { key: 'progress',    label: 'Progress',    icon: TrendingUp,   href: '/work-field/progress',         bg: 'bg-green-600',   fg: 'text-white', group: 'field' },
   { key: 'delays',      label: 'Delays',      icon: Clock,        href: '?panel=delays-picker',         bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
   { key: 'notes',       label: 'Notes',       icon: StickyNote,   href: '?panel=notes-picker',          bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
   { key: 'log_cost',    label: 'Log Cost',    icon: DollarSign,   href: '?panel=log-cost',              bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
@@ -99,7 +100,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
 // ── COMING SOON — reserved placeholder slots ──────────────────────────────────
 export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
   { key: 'report',         label: 'Report',      icon: BarChart2,          href: '/report',      bg: 'bg-blue-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'timesheet',      label: 'Timesheets',  icon: FileSpreadsheet,    href: '/timesheets',  bg: 'bg-indigo-400', fg: 'text-white', group: 'comingSoon', comingSoon: true },
+  { key: 'timesheet',      label: 'Timesheets',  icon: FileSpreadsheet,    href: '/finance?financeTab=timesheets',  bg: 'bg-indigo-400', fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'site_diary',     label: 'Site Diary',  icon: ClipboardSignature, href: '/site-diary',  bg: 'bg-amber-600',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'rainfall',       label: 'Rainfall',    icon: CloudRain,          href: '/rainfall',    bg: 'bg-sky-600',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'checklist',      label: 'Checklist',   icon: Clipboard,          href: '/checklist',   bg: 'bg-lime-600',   fg: 'text-white', group: 'comingSoon', comingSoon: true },

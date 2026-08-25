@@ -793,16 +793,18 @@ export default function JobDetailPage() {
                         aria-hidden="true"
                         onClick={() => setSectionOpen(false)}
                       />
-                      {/* Options panel */}
+                      {/* Options panel — anchored below the trigger container */}
                       <div
                         role="listbox"
                         aria-label="Job sections"
                         data-testid="job-section-dropdown"
                         className="fixed left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-xl overflow-y-auto"
-                        style={{
-                          top: 'calc(56px + 56px + 44px)',
-                          maxHeight: 'calc(100dvh - 56px - 56px - 44px - 16px)',
-                        }}
+                        style={(() => {
+                          const rect = sectionDropdownRef.current?.getBoundingClientRect();
+                          const top = rect ? rect.bottom : 156;
+                          const maxH = `calc(100dvh - ${top}px - 16px)`;
+                          return { top, maxHeight: maxH };
+                        })()}
                       >
                         {NAV_GROUPS.map(group => (
                           <div key={group.label}>
@@ -867,7 +869,7 @@ export default function JobDetailPage() {
                 </aside>
 
                 {/* ── Content area ── */}
-                {/* pb-24 on mobile reserves space above MobileTabBar (~64px bar + safe area) */}
+                {/* pb-24 on mobile reserves space above the bottom safe area */}
                 <div className="flex-1 p-4 md:p-6 pb-24 md:pb-6 min-w-0">
 
                   {/* Save error */}
