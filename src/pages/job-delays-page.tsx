@@ -1,54 +1,47 @@
 /**
  * /jobs/:id/delays — Full-screen delays page for a job.
- * Mirrors the job-notes-page shell pattern.
+ * Path B standalone page — reached via Work & Field launcher.
+ * @seo-exempt
  */
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from "react-router";
-import { Home, Clock, Loader2, Download } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router';
+import { Clock, Loader2, Download } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import JobDelays from '@/components/job/JobDelays';
+import JobFeatureShell from '@/components/job/JobFeatureShell';
+
 interface Job {
   id: number;
   name: string;
   jobNumber?: string | null;
 }
+
 export default function JobDelaysPage() {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const jobId = Number(id);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+
   useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    fetch(`/api/jobs/${id}`, {
-      credentials: 'include'
-    }).then(async r => {
-      const ct = r.headers.get('content-type') ?? '';
-      if (!ct.includes('application/json')) {
-        setLoading(false);
-        return;
-      }
-      const data = (await r.json()) as {
-        job?: Job;
-      } | Job;
-      const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
-      setJob(j ?? null);
-    }).catch(() => setJob(null)).finally(() => setLoading(false));
+    if (!id) { setLoading(false); return; }
+    fetch(`/api/jobs/${id}`, { credentials: 'include' })
+      .then(async r => {
+        const ct = r.headers.get('content-type') ?? '';
+        if (!ct.includes('application/json')) { setLoading(false); return; }
+        const data = (await r.json()) as { job?: Job } | Job;
+        const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
+        setJob(j ?? null);
+      })
+      .catch(() => setJob(null))
+      .finally(() => setLoading(false));
   }, [id]);
+
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const res = await fetch(`/api/jobs/${id}/delays/export-csv`, {
-        credentials: 'include'
-      });
+      const res = await fetch(`/api/jobs/${id}/delays/export-csv`, { credentials: 'include' });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -61,74 +54,51 @@ export default function JobDelaysPage() {
       setExporting(false);
     }
   };
-  const title = job ? `${job.name} — Delays` : 'Job Delays';
-  return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+
+  function handleChangeJob() {
+    navigate('/work-field/delays');
+  }
+
+  return (
+    <div className="portal-page">
       <Helmet>
-        <title>{title} — IWILLBUILD</title>
+        <title>{job ? `Delays — ${job.name}` : 'Job Delays'} — IWILLBUILD</title>
         <meta name="description" content="View and manage delay entries for this job." />
-        <meta name="robots" content="noindex, nofollow" />
-        <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/delays`} />
+        <meta name="robots" content="noindex" />
+        {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/delays`} />}
       </Helmet>
+      <h1 className="sr-only">{job ? `Delays — ${job.name}` : 'Job Delays'}</h1>
 
-      {/* ── Desktop top bar ── */}
-      <div className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center gap-3 shrink-0" style={{
-      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
-    }}>
-        <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm shrink-0" title="Dashboard">
-          <Home size={18} />
-        </button>
-        <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-          {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
-              <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Delays'}</h1>
-              <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
-                <span>/</span>
-                <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
-                <span>/</span>
-                <span className="text-gray-500 font-medium">Delays</span>
-              </div>
-            </>}
-        </div>
-        <button onClick={exportCsv} disabled={exporting} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0">
-          {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-          <span>Export CSV</span>
-        </button>
-      </div>
-
-      {/* ── Mobile safe-area top bar ── */}
-      <div className="md:hidden bg-white border-b border-gray-100 shrink-0 safe-top">
-        <div className="flex items-center gap-2 px-3 h-12">
-          {/* Left: home */}
-          <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white active:bg-violet-700 transition-colors touch-manipulation shadow-sm shrink-0" aria-label="Dashboard">
-            <Home size={16} />
-          </button>
-
-          {/* Centre: title */}
-          <div className="flex-1 min-w-0 flex flex-col items-center justify-center">
-            <div className="flex items-center gap-1.5">
-              <Clock size={13} className="text-red-500 shrink-0" />
-              <h1 className="text-gray-900 font-bold text-sm leading-tight truncate">
-                {loading ? <span className="inline-block h-4 w-28 bg-gray-200 rounded animate-pulse" /> : job?.name ?? 'Delays'}
-              </h1>
-            </div>
-            {job?.jobNumber && <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>}
+      <div className="portal-content flex flex-col p-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Loading…</span>
           </div>
-
-          {/* Right: Export CSV */}
-          <button onClick={exportCsv} disabled={exporting} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-600 active:bg-gray-200 disabled:opacity-40 transition-colors shrink-0" aria-label="Export CSV">
-            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            <span>CSV</span>
-          </button>
-        </div>
+        ) : (
+          <JobFeatureShell
+            Icon={Clock}
+            featureLabel="Delays"
+            jobName={job?.name ?? 'Job'}
+            jobNumber={job?.jobNumber}
+            onChangeJob={handleChangeJob}
+          >
+            <div className="p-4 pb-6 max-w-3xl mx-auto w-full">
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={exportCsv}
+                  disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors"
+                >
+                  {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  <span>Export CSV</span>
+                </button>
+              </div>
+              <JobDelays jobId={jobId} />
+            </div>
+          </JobFeatureShell>
+        )}
       </div>
-
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto">
-        {loading ? <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-red-400" />
-          </div> : <div className="px-4 py-4 pb-6 max-w-3xl mx-auto w-full">
-            <JobDelays jobId={jobId} />
-          </div>}
-      </div>
-    </div>;
+    </div>
+  );
 }

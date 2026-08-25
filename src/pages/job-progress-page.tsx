@@ -2,18 +2,21 @@
  * /jobs/:id/progress — Full-screen Program of Works page for a job.
  * Shows ProgramOfWorksView + Progress Report narrative section.
  * Zero financial fields, zero permSeeDollars dependency.
+ * Path B standalone page — reached via Work & Field launcher.
+ * @seo-exempt
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   TrendingUp, Loader2, Download, Save, CheckCircle2,
-  FileText, ArrowLeft, AlertCircle, ClipboardList,
+  FileText, AlertCircle, ClipboardList,
 } from 'lucide-react';
 import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
 import type { ActivityFormValues } from '@/components/pow/ActivityForm';
 import type { SectionFormValues } from '@/components/pow/SectionForm';
 import ProgramOfWorksView from '@/components/pow/ProgramOfWorksView';
+import JobFeatureShell from '@/components/job/JobFeatureShell';
 
 interface Job { id: number; name: string; jobNumber?: string | null; }
 
@@ -211,6 +214,10 @@ export default function JobProgressPage() {
     setActivities(data.activities);
   }
 
+  function handleChangeJob() {
+    navigate('/work-field/progress');
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const pageTitle = job ? `Progress — ${job.jobNumber ? `#${job.jobNumber} ` : ''}${job.name}` : 'Program of Works';
@@ -233,141 +240,135 @@ export default function JobProgressPage() {
   }
 
   return (
-    <>
+    <div className="portal-page">
       <Helmet>
         <title>{pageTitle} — IWILLBUILD</title>
         <meta name="description" content="Program of Works — manage activities, sections, progress and scheduling for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/progress`} />
         <meta name="robots" content="noindex" />
       </Helmet>
+      <h1 className="sr-only">{pageTitle}</h1>
 
-      <div className="flex flex-col gap-6 p-4 pb-safe max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-lg border border-border hover:bg-muted transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={18} className="text-primary shrink-0" />
-              <h1 className="text-lg font-black text-foreground truncate">{pageTitle}</h1>
-            </div>
-            {job?.jobNumber && (
-              <p className="text-xs text-muted-foreground ml-7">Job #{job.jobNumber}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={`/api/jobs/${jobId}/progress/export-csv`}
-              download
-              className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[44px]"
-            >
-              <Download size={13} /> CSV
-            </a>
-            <a
-              href={`/api/jobs/${jobId}/progress/report/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[44px]"
-            >
-              <FileText size={13} /> PDF Report
-            </a>
-          </div>
-        </div>
-
-        {/* Program of Works */}
-        <ProgramOfWorksView
-          jobId={jobId}
-          sections={sections}
-          activities={activities}
-          loading={false}
-          onCreateSection={handleCreateSection}
-          onEditSection={handleEditSection}
-          onDeleteSection={handleDeleteSection}
-          onReorderSections={handleReorderSections}
-          onCreateActivity={handleCreateActivity}
-          onEditActivity={handleEditActivity}
-          onDeleteActivity={handleDeleteActivity}
-          onDuplicateActivity={handleDuplicateActivity}
-          onReorderActivities={handleReorderActivities}
-          onUpdatePct={handleUpdatePct}
-        />
-
-        {/* ── Progress Report narrative ─────────────────────────────────────────── */}
-        <div className="border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border">
-            <ClipboardList size={15} className="text-primary" />
-            <h2 className="text-sm font-bold text-foreground">Progress Report Narrative</h2>
-            <span className="text-xs text-muted-foreground ml-1">— optional written summary</span>
-          </div>
-
-          <div className="p-4 flex flex-col gap-4">
-            {/* Meta row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {([
-                ['prepared_by', 'Prepared by'],
-                ['report_date', 'Report date'],
-                ['period_from', 'Period from'],
-                ['period_to', 'Period to'],
-              ] as [keyof ProgressReport, string][]).map(([field, label]) => (
-                <div key={field}>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">{label}</label>
-                  <input
-                    type={field === 'prepared_by' ? 'text' : 'date'}
-                    value={report[field]}
-                    onChange={(e) => updateReport(field, e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Narrative fields */}
-            {([
-              ['achievements', 'Achievements this period'],
-              ['planned_next', 'Planned next period'],
-              ['outstanding_issues', 'Outstanding issues / risks'],
-            ] as [keyof ProgressReport, string][]).map(([field, label]) => (
-              <div key={field}>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">{label}</label>
-                <textarea
-                  value={report[field]}
-                  onChange={(e) => updateReport(field, e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                />
-              </div>
-            ))}
-
-            {/* Save button */}
-            <div className="flex items-center gap-3 justify-end">
-              {reportError && (
-                <p className="text-xs text-red-600 flex items-center gap-1">
-                  <AlertCircle size={11} /> {reportError}
-                </p>
-              )}
-              {reportSaved && (
-                <p className="text-xs text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 size={11} /> Saved
-                </p>
-              )}
-              <button
-                onClick={saveReport}
-                disabled={!reportDirty || reportSaving}
-                className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors min-h-[44px]"
+      <div className="portal-content flex flex-col p-0">
+        <JobFeatureShell
+          Icon={TrendingUp}
+          featureLabel="Progress"
+          jobName={job?.name ?? 'Job'}
+          jobNumber={job?.jobNumber}
+          onChangeJob={handleChangeJob}
+        >
+          <div className="flex flex-col gap-6 p-4 pb-safe max-w-6xl mx-auto w-full">
+            {/* Export actions */}
+            <div className="flex items-center gap-2 justify-end">
+              <a
+                href={`/api/jobs/${jobId}/progress/export-csv`}
+                download
+                className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[44px]"
               >
-                {reportSaving
-                  ? <Loader2 size={13} className="animate-spin" />
-                  : <Save size={13} />}
-                Save report
-              </button>
+                <Download size={13} /> CSV
+              </a>
+              <a
+                href={`/api/jobs/${jobId}/progress/report/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[44px]"
+              >
+                <FileText size={13} /> PDF Report
+              </a>
+            </div>
+
+            {/* Program of Works */}
+            <ProgramOfWorksView
+              jobId={jobId}
+              sections={sections}
+              activities={activities}
+              loading={false}
+              onCreateSection={handleCreateSection}
+              onEditSection={handleEditSection}
+              onDeleteSection={handleDeleteSection}
+              onReorderSections={handleReorderSections}
+              onCreateActivity={handleCreateActivity}
+              onEditActivity={handleEditActivity}
+              onDeleteActivity={handleDeleteActivity}
+              onDuplicateActivity={handleDuplicateActivity}
+              onReorderActivities={handleReorderActivities}
+              onUpdatePct={handleUpdatePct}
+            />
+
+            {/* ── Progress Report narrative ─────────────────────────────────────────── */}
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border">
+                <ClipboardList size={15} className="text-primary" />
+                <h2 className="text-sm font-bold text-foreground">Progress Report Narrative</h2>
+                <span className="text-xs text-muted-foreground ml-1">— optional written summary</span>
+              </div>
+
+              <div className="p-4 flex flex-col gap-4">
+                {/* Meta row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {([
+                    ['prepared_by', 'Prepared by'],
+                    ['report_date', 'Report date'],
+                    ['period_from', 'Period from'],
+                    ['period_to', 'Period to'],
+                  ] as [keyof ProgressReport, string][]).map(([field, label]) => (
+                    <div key={field}>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">{label}</label>
+                      <input
+                        type={field === 'prepared_by' ? 'text' : 'date'}
+                        value={report[field]}
+                        onChange={(e) => updateReport(field, e.target.value)}
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Narrative fields */}
+                {([
+                  ['achievements', 'Achievements this period'],
+                  ['planned_next', 'Planned next period'],
+                  ['outstanding_issues', 'Outstanding issues / risks'],
+                ] as [keyof ProgressReport, string][]).map(([field, label]) => (
+                  <div key={field}>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">{label}</label>
+                    <textarea
+                      value={report[field]}
+                      onChange={(e) => updateReport(field, e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    />
+                  </div>
+                ))}
+
+                {/* Save button */}
+                <div className="flex items-center gap-3 justify-end">
+                  {reportError && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle size={11} /> {reportError}
+                    </p>
+                  )}
+                  {reportSaved && (
+                    <p className="text-xs text-emerald-600 flex items-center gap-1">
+                      <CheckCircle2 size={11} /> Saved
+                    </p>
+                  )}
+                  <button
+                    onClick={saveReport}
+                    disabled={!reportDirty || reportSaving}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors min-h-[44px]"
+                  >
+                    {reportSaving
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <Save size={13} />}
+                    Save report
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </JobFeatureShell>
       </div>
-    </>
+    </div>
   );
 }

@@ -16,12 +16,15 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
-import { work_field } from 'virtual:content';
 import {
   LAUNCHER_FEATURES,
   getFeatureByLauncherSlug,
   type JobFeature,
 } from '@/lib/jobFeatureRegistry';
+
+// ── Page-level constants (application code — not managed content) ─────────────
+const PAGE_TITLE    = 'Work & Field';
+const PAGE_SUBTITLE = 'Select a feature, then choose a job';
 
 // ── Launcher card ─────────────────────────────────────────────────────────────
 
@@ -118,8 +121,8 @@ export default function WorkFieldPage() {
             <ArrowLeft size={15} />
           </button>
           <div className="flex flex-col min-w-0">
-            <h1 className="op-page-title">{work_field.title}</h1>
-            <p className="op-page-subtitle">{work_field.subtitle}</p>
+            <h1 className="op-page-title">{PAGE_TITLE}</h1>
+            <p className="op-page-subtitle">{PAGE_SUBTITLE}</p>
           </div>
         </div>
 
@@ -132,7 +135,7 @@ export default function WorkFieldPage() {
           >
             <ArrowLeft size={18} />
           </button>
-          <h1 className="font-heading font-bold text-sm text-gray-900">{work_field.title}</h1>
+          <h1 className="font-heading font-bold text-sm text-gray-900">{PAGE_TITLE}</h1>
         </header>
 
         {/* Feature groups */}

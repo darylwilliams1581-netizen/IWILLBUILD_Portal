@@ -150,10 +150,6 @@ export const schemas = {
     }))
   }),
   pages: {
-    work_field: z.object({
-      "title": z.string(),
-      "subtitle": z.string()
-    })
   }
 };
 export type Schemas = typeof schemas;
