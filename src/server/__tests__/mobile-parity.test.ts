@@ -39,7 +39,7 @@ describe('Mobile home screen — core routes present', () => {
 
   const required = [
     // Field
-    '/jobs', '/work', '/job-cards', '/scheduler',
+    '/jobs', '/work?workTab=tools', '/job-cards', '/scheduler',
     // Files
     '/lens', '/plan-manager', '/files', '/studio/asset-manager',
     // Fleet
