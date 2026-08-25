@@ -13,11 +13,10 @@
 
 import { useState, useRef, useCallback, useEffect, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
-import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users } from 'lucide-react';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
-import ContactsPanel from '@/components/dashboard/ContactsPanel';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
@@ -177,6 +176,19 @@ function DashboardPage({
   onNavigate: (href: string) => void;
   onNewJob: () => void;
 }) {
+  const [contactCount, setContactCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/customers?status=active&limit=200', { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { customers?: unknown[] }) => {
+        if (Array.isArray(d.customers)) setContactCount(d.customers.length);
+      })
+      .catch(() => {
+        // Silently ignore — badge is optional
+      });
+  }, [userId]);
+
   return <div className="px-4 pt-3 pb-6 flex flex-col gap-4">
       <div className="mx-auto w-full flex flex-col gap-4" style={{
       maxWidth: 480
@@ -216,6 +228,7 @@ function DashboardPage({
           <span className="text-sm font-bold leading-tight">Fleet</span>
           <span className="text-[10px] text-white/60 leading-tight">Vehicles &amp; equipment</span>
         </button>
+        {/* Site Prestart — col-span-2 */}
         <button onClick={() => onNavigate('?panel=site-prestart-picker')} className="col-span-2 flex items-center justify-center gap-3 px-3 py-4 rounded-2xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform">
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <HardHat size={20} strokeWidth={2} />
@@ -225,9 +238,28 @@ function DashboardPage({
             <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
           </div>
         </button>
+        {/* Contacts — col-span-2, matches Site Prestart exactly */}
+        <button
+          onClick={() => onNavigate('/customers')}
+          className="col-span-2 flex items-center justify-center gap-3 px-3 py-4 rounded-2xl bg-teal-600 text-white shadow-sm active:scale-95 transition-transform relative"
+          data-testid="contacts-launcher-btn"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Users size={20} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col items-start">
+            <span className="text-sm font-bold leading-tight">Contacts</span>
+            <span className="text-[10px] text-white/60 leading-tight">Call, message or email</span>
+          </div>
+          {/* Count badge — only shown once loaded and > 0 */}
+          {contactCount !== null && contactCount > 0 && (
+            <span className="absolute top-2.5 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center leading-none">
+              {contactCount > 99 ? '99+' : contactCount}
+            </span>
+          )}
+        </button>
       </div>
 
-      <ContactsPanel />
       <NotificationList />
       <MyTasksPanel userRole={role} />
       </div>
