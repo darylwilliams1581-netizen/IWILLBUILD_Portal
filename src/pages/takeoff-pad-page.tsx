@@ -22,7 +22,7 @@ export default function TakeoffPadPage() {
       <div className="portal-content">
         {/* Mobile back button — hidden on desktop where sidebar handles navigation */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/?page=2')}
           className="lg:hidden flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-4 -mt-1 transition-colors"
           aria-label="Back"
         >

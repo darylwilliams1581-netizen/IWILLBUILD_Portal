@@ -346,7 +346,10 @@ export default function PagedHomeScreen({
 }: PagedHomeScreenProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [page, setPage] = useState(0);
+  // Support ?page=N deep-link so back buttons from feature pages can land on
+  // the correct home screen page (0 = Field, 1 = Work & Field, 2 = Manage)
+  const initialPage = Math.min(2, Math.max(0, Number(searchParams.get('page') ?? 0) || 0));
+  const [page, setPage] = useState(initialPage);
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [newJobOpen, setNewJobOpen] = useState(false);
