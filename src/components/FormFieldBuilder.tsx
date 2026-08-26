@@ -952,7 +952,11 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
 // ── Add field panel ───────────────────────────────────────────────────────────
 
 function AddFieldPanel({ onAdd, adding }: { onAdd: (type: string) => Promise<void>; adding: boolean }) {
-  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  // Initialise false (matches server) — set real value post-hydration to avoid #418
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    setCollapsed(typeof window !== 'undefined' && window.innerWidth >= 1024);
+  }, []);
 
   return (
     <div className="rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">

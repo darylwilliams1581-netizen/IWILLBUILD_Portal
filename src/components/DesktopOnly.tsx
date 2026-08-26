@@ -63,14 +63,17 @@ export default function DesktopOnly({
   const navigate = useNavigate();
 
   // Track viewport width for web-browser narrow-window detection.
-  // On native we skip the listener — isNative() is stable for the app lifetime.
-  const [narrowViewport, setNarrowViewport] = useState(() => isMobileViewport());
+  // IMPORTANT: initialise to false (matching the server) so hydrateRoot sees
+  // the same tree the server rendered. The real viewport width is read in the
+  // first useEffect (post-hydration) to avoid React #418 on mobile devices
+  // where window.innerWidth < MOBILE_BREAKPOINT is true at hydration time.
+  const [narrowViewport, setNarrowViewport] = useState(false);
   useEffect(() => {
+    // Set the real value after hydration
+    setNarrowViewport(isMobileViewport());
     if (native) return; // native detection is sufficient; no need to listen
     const handler = () => setNarrowViewport(isMobileViewport());
-    window.addEventListener('resize', handler, {
-      passive: true
-    });
+    window.addEventListener('resize', handler, { passive: true });
     return () => window.removeEventListener('resize', handler);
   }, [native]);
   const blocked = native || narrowViewport;
