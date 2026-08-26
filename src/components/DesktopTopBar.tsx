@@ -13,7 +13,7 @@ import React from 'react';
 import { Link, useNavigate } from "react-router";
 import { LogOut, Terminal, Bot, UserCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
-import WeatherWidget from '@/components/WeatherWidget';
+
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
 import { useDriverSessionSafe } from '@/lib/useDriverSession';
@@ -147,16 +147,8 @@ export default function DesktopTopBar() {
         </span>
       </div>
 
-      {/* ── Centre: weather widget ── */}
-      <div style={{
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      paddingLeft: 16
-    }}>
-        <WeatherWidget variant="desktop" />
-      </div>
+      {/* ── Centre: spacer (weather widget removed) ── */}
+      <div style={{ flex: 1 }} />
 
       {/* ── Right ── */}
       <div style={{
