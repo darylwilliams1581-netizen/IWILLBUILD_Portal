@@ -15,7 +15,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { profiles } from '../../../db/schema.js';
 import { isSmsConfigured, sendSms } from '../../../lib/sms.js';
-import { checkSmsRate } from '../../../lib/signup-rate-limiter.js';
+import { checkSmsRate, clearSmsRate } from '../../../lib/signup-rate-limiter.js';
 import { normalisePhone } from '../../../lib/normalise-phone.js';
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
@@ -79,6 +79,10 @@ export default async function handler(req: Request, res: Response) {
     if (!sent) {
       return res.status(500).json({ error: 'Failed to send SMS. Please try again or use a different verification method.' });
     }
+
+    // Reset the rate-limit counter after a successful send so the user can
+    // request a new code without hitting the limit on their next attempt.
+    clearSmsRate(ip);
 
     return res.json({ ok: true, message: 'Verification code sent.' });
   } catch (err) {

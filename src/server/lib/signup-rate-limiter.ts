@@ -51,9 +51,14 @@ export function checkPasswordResetRate(ip: string): boolean {
   return check(ip, 'pwreset', 5, 15 * 60 * 1000);
 }
 
-/** Returns true if the SMS send request is allowed (3 per IP per 10 min) */
+/** Returns true if the SMS send request is allowed (10 per IP per 10 min) */
 export function checkSmsRate(ip: string): boolean {
-  return check(ip, 'sms', 3, 10 * 60 * 1000);
+  return check(ip, 'sms', 10, 10 * 60 * 1000);
+}
+
+/** Clear the SMS rate-limit bucket for an IP (call after a successful send to reset the counter) */
+export function clearSmsRate(ip: string): void {
+  buckets.delete(getKey(ip, 'sms'));
 }
 
 /** Returns true if the PIN attempt is allowed (5 per device per 15 min) */

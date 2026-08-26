@@ -68,13 +68,13 @@ describe('Source-level: GET /api/me/phone reads phone_verified column directly',
 // ── Rate limiting ──────────────────────────────────────────────────────────────
 
 describe('SMS rate limiting', () => {
-  it('checkSmsRate allows 3 requests then blocks', async () => {
+  it('checkSmsRate allows 10 requests then blocks', async () => {
     const { checkSmsRate } = await import('../signup-rate-limiter.js');
     const ip = `test-phone-rate-${Date.now()}-${Math.random()}`;
-    expect(checkSmsRate(ip)).toBe(true);
-    expect(checkSmsRate(ip)).toBe(true);
-    expect(checkSmsRate(ip)).toBe(true);
-    expect(checkSmsRate(ip)).toBe(false); // 4th attempt blocked
+    for (let i = 0; i < 10; i++) {
+      expect(checkSmsRate(ip)).toBe(true);
+    }
+    expect(checkSmsRate(ip)).toBe(false); // 11th attempt blocked
   });
 
   it('different IPs have independent buckets', async () => {
@@ -82,7 +82,7 @@ describe('SMS rate limiting', () => {
     const ip1 = `phone-rate-ip1-${Date.now()}`;
     const ip2 = `phone-rate-ip2-${Date.now()}`;
     // Exhaust ip1
-    checkSmsRate(ip1); checkSmsRate(ip1); checkSmsRate(ip1);
+    for (let i = 0; i < 10; i++) checkSmsRate(ip1);
     expect(checkSmsRate(ip1)).toBe(false);
     // ip2 should still be allowed
     expect(checkSmsRate(ip2)).toBe(true);
