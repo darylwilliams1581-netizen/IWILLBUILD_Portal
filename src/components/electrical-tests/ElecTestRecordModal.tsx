@@ -166,7 +166,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
             <Field label="Asset / Connection ID *">
               <Input value={assetId} onChange={e => setAssetId(e.target.value)} placeholder="e.g. ET-001, Pole 1234 Earth Tail" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Circuit / Feeder">
                 <Input value={circuitFeeder} onChange={e => setCircuitFeeder(e.target.value)} placeholder="e.g. Feeder 1" />
               </Field>
@@ -180,7 +180,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
             <Field label="Joint / Connection Description">
               <Input value={jointDescription} onChange={e => setJointDescription(e.target.value)} placeholder="e.g. Compression joint, pole top" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Reference Test Point">
                 <Input value={referenceTestPoint} onChange={e => setReferenceTestPoint(e.target.value)} placeholder="e.g. TP-A" />
               </Field>
@@ -188,7 +188,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
                 <Input value={drawingReference} onChange={e => setDrawingReference(e.target.value)} placeholder="e.g. DWG-001 Rev A" />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Work Type">
                 <select value={workType} onChange={e => setWorkType(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
                   {WORK_TYPES.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
@@ -216,7 +216,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
                 <span>Applicable customer: <strong>{tpl.applicableCustomer}</strong> — {tpl.applicableAssetClass}</span>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Standard / Specification">
                 <Input value={standardRef} onChange={e => setStandardRef(e.target.value)} placeholder="e.g. EQ STNW3359" />
               </Field>
@@ -224,7 +224,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
                 <Input value={documentNumber} onChange={e => setDocumentNumber(e.target.value)} placeholder="e.g. STNW3359" />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Version / Revision">
                 <Input value={documentVersion} onChange={e => setDocumentVersion(e.target.value)} placeholder="e.g. Rev 4" />
               </Field>
@@ -232,7 +232,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
                 <Input value={testCurrentVoltage} onChange={e => setTestCurrentVoltage(e.target.value)} placeholder="e.g. 500 V DC" />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Min Acceptance">
                 <Input type="number" value={minAccept} onChange={e => setMinAccept(e.target.value)} placeholder="Leave blank = manual" />
               </Field>
@@ -244,7 +244,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
 
           {/* ── Test Result ── */}
           <Section title="Test Result">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Measured Value">
                 <Input type="number" step="any" value={measuredValue} onChange={e => setMeasuredValue(e.target.value)} placeholder="e.g. 4.2" />
               </Field>
@@ -309,7 +309,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
 
           {/* ── Job Details ── */}
           <Section title="Job Details">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Test Date & Time">
                 <Input type="datetime-local" value={testDate} onChange={e => setTestDate(e.target.value)} />
               </Field>
