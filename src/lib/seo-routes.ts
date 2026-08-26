@@ -49,5 +49,6 @@ export const seoRoutes: SeoRoute[] = [
   // audit warning. These paths are never served as real routes.
   { path: "/__tests__/finance.test",        sitemap: false },
   { path: "/__tests__/library.test",        sitemap: false },
+  { path: "/__tests__/safety-posters.test", sitemap: false },
   { path: "/__tests__/work-behaviour.test", sitemap: false },
 ];

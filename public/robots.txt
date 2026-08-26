@@ -2,8 +2,6 @@ User-agent: *
 
 # ── Public marketing pages — allow crawling ──────────────────────────────────
 Allow: /$
-Allow: /subscribe$
-Allow: /download-app$
 Allow: /privacy$
 Allow: /terms$
 
@@ -61,11 +59,13 @@ Disallow: /portal/
 Disallow: /share/
 Disallow: /external/
 Disallow: /documents/
+Disallow: /view/
 
-# ── Block auth flows ──────────────────────────────────────────────────────────
+# ── Block auth flows and pre-launch pages ─────────────────────────────────────
 Disallow: /login
 Disallow: /signup
 Disallow: /subscribe
+Disallow: /download-app
 Disallow: /check-email
 Disallow: /verify-email
 Disallow: /verify-required
