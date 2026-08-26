@@ -140,6 +140,7 @@ export default function ElectricalTestsPage() {
       <Helmet>
         <title>Electrical Test Recorder — IWILLBUILD</title>
         <meta name="description" content="Record electrical test results with equipment register, sign-off, and PDF report." />
+        <link rel="canonical" href="https://iwillbuild.com/electrical-tests" />
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 

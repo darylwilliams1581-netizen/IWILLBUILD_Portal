@@ -11,6 +11,7 @@ export default function BuildersCalcPage() {
       <Helmet>
         <title>Builders Calc — IWILLBUILD</title>
         <meta name="description" content="Quick construction calculations — areas, volumes, materials and cost estimates." />
+        <link rel="canonical" href="https://iwillbuild.com/builders-calc" />
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 

@@ -14,6 +14,10 @@ import { tryClearStaleSession } from '@/lib/auth/session-cookies';
 import { recordLoginEvent } from '@/server/activity-tracker';
 import { logActivity, getIp, getUserAgent } from '@/server/lib/activity-log';
 import { checkLoginRate } from '@/server/lib/signup-rate-limiter';
+import {
+  createChallenge,
+  setChallengeCookie,
+} from '@/server/lib/pending-2fa';
 import { db } from '@/server/db/client';
 import { sql } from 'drizzle-orm';
 
@@ -152,6 +156,59 @@ export async function authHandler(req: Request, res: Response) {
             ipAddress: ip,
             userAgent: ua,
           });
+
+          // ── 2FA intercept ─────────────────────────────────────────────────
+          // If the user has TOTP or SMS 2FA enabled, we must NOT complete the
+          // sign-in. Instead: create a server-side pending challenge, set the
+          // challenge cookie, and return 403 TWO_FACTOR_REQUIRED.
+          // The client must then call /api/me/2fa/verify (TOTP) or
+          // /api/me/2fa/sms/verify (SMS) to complete the login.
+          try {
+            const [twoFaRows] = await db.execute(
+              sql`SELECT two_factor_enabled, sms_2fa_enabled
+                  FROM \`user\` WHERE id = ${userId} LIMIT 1`
+            ) as unknown as [Array<{ two_factor_enabled: number; sms_2fa_enabled: number }>, unknown];
+
+            const twoFaRow = twoFaRows?.[0];
+            const totpEnabled = !!twoFaRow?.two_factor_enabled;
+            const smsEnabled  = !!twoFaRow?.sms_2fa_enabled;
+
+            if (totpEnabled || smsEnabled) {
+              const method = totpEnabled ? 'totp' : 'sms';
+
+              // Create a server-side pending challenge (expires in 10 min)
+              const { token } = await createChallenge(userId, method);
+
+              // Revoke the BetterAuth session that was just created — we must
+              // not let it persist until 2FA is complete.
+              try {
+                const sessionToken: string | undefined = body?.token as string | undefined;
+                if (sessionToken) {
+                  const auth = getAuth();
+                  // revokeSession expects the raw session token
+                  await auth.api.revokeSession({
+                    body:    { token: sessionToken },
+                    headers: new Headers(),
+                  }).catch(() => null);
+                }
+              } catch { /* non-critical — challenge expiry is the safety net */ }
+
+              // Set the challenge cookie and return TWO_FACTOR_REQUIRED
+              setChallengeCookie(res, token);
+              res.status(403).json({
+                error:  'Two-factor authentication required.',
+                code:   'TWO_FACTOR_REQUIRED',
+                method,
+              });
+              return;
+            }
+          } catch (twoFaErr) {
+            // 2FA check failed — log and fall through to complete login normally.
+            // This is a fail-open decision: if we can't read the 2FA flag we
+            // don't lock users out, but we do log it for investigation.
+            console.error('[auth-middleware] 2FA intercept check failed:', twoFaErr instanceof Error ? twoFaErr.message : String(twoFaErr));
+          }
+          // ── end 2FA intercept ─────────────────────────────────────────────
 
           // Check must_change_password — if set, inject flag into response
           try {

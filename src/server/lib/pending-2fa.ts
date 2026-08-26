@@ -164,7 +164,7 @@ import type { Response } from 'express';
  * Set the challenge cookie on the response.
  * HttpOnly, SameSite=Strict, Secure in production.
  */
-export function setChallengecookie(res: Response, token: string): void {
+export function setChallengeCookie(res: Response, token: string): void {
   const isProd = process.env.NODE_ENV === 'production';
   res.cookie(CHALLENGE_COOKIE, token, {
     httpOnly:  true,

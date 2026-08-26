@@ -56,6 +56,7 @@ export default function SubscribePage() {
       <Helmet>
         <title>Subscribe — IWILLBUILD</title>
         <meta name="description" content="Choose a plan and start your 30-day free trial of IWILLBUILD construction management software." />
+        <link rel="canonical" href="https://iwillbuild.com/subscribe" />
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 
