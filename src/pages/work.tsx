@@ -342,11 +342,12 @@ export default function WorkPage() {
   const { isViewOnly } = usePermissions();
 
   const [newJobOpen, setNewJobOpen] = useState(false);
-  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
-  // Desktop: show tools tab when ?workTab=tools
+  // Desktop + mobile: show tools when ?workTab=tools
   const rawTab = searchParams.get('workTab') ?? '';
   const showDesktopTools = rawTab === 'tools';
+  // On mobile, open the tools launcher directly if ?workTab=tools is in the URL
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(rawTab === 'tools');
 
   return (
     <div className="portal-page">
