@@ -13,7 +13,7 @@ import {
   CreditCard, Settings, ShieldAlert, AlertTriangle, ChevronDown, ChevronRight,
   Search, BookMarked, ArrowLeft, Zap, FileStack, Map, ShieldCheck, AlertCircle,
   Building2, TableProperties, ScrollText, Link2, History,
-  ShoppingCart, BarChart2,
+  ShoppingCart, BarChart2, Download, FileDown,
 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -565,6 +565,41 @@ export default function HelpPage() {
                 </AnimatePresence>
               </div>;
         })}
+          {/* ── Download User Manual ─────────────────────────────────────── */}
+          {!q && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                {/* Icon */}
+                <div className="w-14 h-14 rounded-2xl bg-violet-600 flex items-center justify-center shrink-0 shadow-md">
+                  <FileDown size={28} className="text-white" />
+                </div>
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base font-bold text-slate-900 leading-tight">IWILLBUILD Product Guide</h2>
+                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">
+                    The complete product and platform guide — features, workflows, and best practices for getting the most out of IWILLBUILD.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">PDF · 0.75 MB</p>
+                </div>
+                {/* Download button */}
+                <a
+                  href="/data/Iwillbuild Product Guild.pdf"
+                  download="IWILLBUILD-Product-Guide.pdf"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold transition-colors shrink-0 shadow-sm"
+                >
+                  <Download size={16} />
+                  Download PDF
+                </a>
+              </div>
+              <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">
+                  Can't find what you're looking for? Search the feature list above or contact support at{' '}
+                  <a href="mailto:support@iwillbuild.com" className="text-violet-600 hover:underline font-medium">support@iwillbuild.com</a>
+                </span>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
     </>;
