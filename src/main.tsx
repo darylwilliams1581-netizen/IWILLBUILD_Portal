@@ -1,8 +1,7 @@
-import { StrictMode, useEffect, useState, type ReactNode } from 'react';
+import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import AiroErrorBoundary from '@/dev-tools/AiroErrorBoundary';
 import App from './App';
 import './styles/globals.css';
 import './lib/i18n';
@@ -34,59 +33,18 @@ const queryClient = new QueryClient({
   },
 });
 
-// ── DevBoundaryShell ──────────────────────────────────────────────────────────
-// Dev-only error boundaries must NOT be part of the server-rendered tree or the
-// initial hydrateRoot call — they don't exist in entry-server.tsx so including
-// them in the hydration tree causes React #418 (tree mismatch).
-//
-// Solution: use a module-level flag (not component state) so HMR hot-reloads
-// don't carry over a stale `mounted=true` into the next hydration attempt.
-// The flag starts false, is set to true after the first effect, and stays true
-// for the lifetime of the page (no reset on HMR).
-let _devShellHydrated = false;
-
-function DevBoundaryShell({ children }: { children: ReactNode }) {
-  const [hydrated, setHydrated] = useState(_devShellHydrated);
-  useEffect(() => {
-    if (!_devShellHydrated) {
-      _devShellHydrated = true;
-      setHydrated(true);
-    }
-  }, []);
-
-  if (!hydrated) {
-    // During hydration: transparent pass-through — tree matches entry-server.tsx.
-    return <>{children}</>;
-  }
-
-  // After hydration: wrap with dev error boundaries.
-  return (
-    <AiroErrorBoundary>
-      {children}
-    </AiroErrorBoundary>
-  );
-}
-
 const rootElement = document.getElementById('app');
 if (!rootElement) throw new Error('Root element #app not found');
 
 // Core providers — identical structure to entry-server.tsx so hydrateRoot
-// sees the same tree the server rendered. Dev boundaries are added by
-// DevBoundaryShell after the first effect (post-hydration).
-const providers = (
-  <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </HelmetProvider>
-);
-
+// sees the same tree the server rendered.
 const tree = (
   <StrictMode>
-    {import.meta.env.MODE === 'development'
-      ? <DevBoundaryShell>{providers}</DevBoundaryShell>
-      : providers
-    }
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </HelmetProvider>
   </StrictMode>
 );
 
@@ -104,6 +62,17 @@ if (rootElement.firstElementChild) {
 // renders them — doing so causes React #418 (hydration tree mismatch).
 // Mount each in its own createRoot() after hydrateRoot() so React's reconciler
 // never sees them during hydration.
+
+// AppErrorBoundary — overlay root that catches global errors and shows the
+// recovery screen. Mounted outside hydrateRoot so it never causes #418.
+// It catches window.error and unhandledrejection globally; render errors inside
+// the main root surface as unhandledrejection in production builds.
+import('@/components/AppErrorBoundary').then(({ AppErrorBoundary }) => {
+  const errorHost = document.createElement('div');
+  errorHost.id = 'app-error-boundary-root';
+  document.body.appendChild(errorHost);
+  createRoot(errorHost).render(<AppErrorBoundary>{null}</AppErrorBoundary>);
+});
 import('@/components/CapacitorInit').then(({ default: CapacitorInit }) => {
   const host = document.createElement('div');
   host.id = 'capacitor-init-root';
