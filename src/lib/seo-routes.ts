@@ -28,7 +28,11 @@ export interface SeoRoute {
 export const seoRoutes: SeoRoute[] = [
   // ── Public marketing pages ────────────────────────────────────────────────
   { path: "/",            changefreq: "weekly",  priority: 1.0, lastmod: "2026-08-26" },
-  { path: "/download-app",changefreq: "monthly", priority: 0.7, lastmod: "2026-08-26" },
+
+  // /download-app: noindex + excluded from sitemap until first signed APK release.
+  // To activate: set sitemap:true (or remove this entry), remove noindex from the
+  // page's <Helmet>, set APK_AVAILABLE=true in download-app.tsx, update lastmod.
+  { path: "/download-app", sitemap: false },
 
   // ── Legal pages ───────────────────────────────────────────────────────────
   { path: "/privacy",     changefreq: "yearly",  priority: 0.4 },

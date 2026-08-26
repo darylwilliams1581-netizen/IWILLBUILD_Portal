@@ -1,56 +1,59 @@
 /**
- * /download-app — Public page for drivers to download the IWILLBUILD Android APK
- * No login required — share this URL directly with drivers.
+ * /download-app — Android APK download page
+ *
+ * STATUS: Coming soon — no signed APK release exists yet.
+ * noindex,nofollow + excluded from sitemap until first release is published.
+ *
+ * TO ACTIVATE: when the first signed APK is published to GitHub Releases,
+ *   1. Set APK_AVAILABLE = true
+ *   2. Remove the noindex meta tag from <Helmet>
+ *   3. Set sitemap: true (or remove sitemap:false) for /download-app in seo-routes.ts
+ *   4. Update lastmod in seo-routes.ts
  */
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Smartphone, Download, Shield, Wifi, MapPin, Bell, CheckCircle, ExternalLink } from 'lucide-react';
+import { Smartphone, Shield, Wifi, MapPin, Bell, Clock } from 'lucide-react';
 
-const GITHUB_RELEASES_URL = 'https://github.com/YOUR_ORG/YOUR_REPO/releases/latest';
-// ↑ Replace with your actual GitHub repo URL once set up
+/** Flip to true once the first signed APK release exists on GitHub. */
+const APK_AVAILABLE = false;
+
+const GITHUB_RELEASES_URL =
+  'https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal/releases/latest';
 
 const features = [
-  { icon: MapPin,   label: 'Live GPS tracking',        desc: 'Your location updates automatically while on a job' },
-  { icon: Bell,     label: 'Push notifications',       desc: 'Get notified about job updates and fleet alerts' },
-  { icon: Wifi,     label: 'Works offline',            desc: 'Core features work even without mobile data' },
-  { icon: Shield,   label: 'Secure & private',         desc: 'Your data stays within your company account' },
+  { icon: MapPin,  label: 'Live GPS tracking',   desc: 'Your location updates automatically while on a job' },
+  { icon: Bell,    label: 'Push notifications',  desc: 'Get notified about job updates and fleet alerts' },
+  { icon: Wifi,    label: 'Works offline',        desc: 'Core features work even without mobile data' },
+  { icon: Shield,  label: 'Secure & private',     desc: 'Your data stays within your company account' },
 ];
 
 const steps = [
-  { n: '1', title: 'Download the APK', body: 'Tap the Download button below. Your browser will download the APK file.' },
-  { n: '2', title: 'Allow installation', body: 'Android will ask to allow installs from unknown sources. Tap Settings → enable "Install unknown apps" for your browser.' },
-  { n: '3', title: 'Install the app', body: 'Open the downloaded file from your notifications or Downloads folder and tap Install.' },
-  { n: '4', title: 'Sign in', body: 'Open IWILLBUILD and sign in with your existing portal credentials.' },
+  { n: '1', title: 'Download the APK',    body: 'Tap the Download button below. Your browser will download the APK file.' },
+  { n: '2', title: 'Allow installation',  body: 'Android will ask to allow installs from unknown sources. Tap Settings → enable "Install unknown apps" for your browser.' },
+  { n: '3', title: 'Install the app',     body: 'Open the downloaded file from your notifications or Downloads folder and tap Install.' },
+  { n: '4', title: 'Sign in',             body: 'Open IWILLBUILD and sign in with your existing portal credentials.' },
 ];
 
 export default function DownloadAppPage() {
+  const isIos = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
-  const isIos     = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   return (
     <>
       <Helmet>
-        <title>Download the IWILLBUILD Driver App — Fleet Management on Mobile</title>
-        <meta name="description" content="Download the IWILLBUILD driver app for Android. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket." />
+        <title>IWILLBUILD Driver App — Coming Soon</title>
+        <meta name="description" content="The IWILLBUILD Android driver app is coming soon. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket." />
         <link rel="canonical" href="https://iwillbuild.com/download-app" />
-        <meta property="og:title" content="Download the IWILLBUILD Driver App" />
-        <meta property="og:description" content="Live GPS tracking, job management, SWMS safety forms, and fleet tools for drivers — available on Android." />
+        {/* noindex until first APK release is published */}
+        <meta name="robots" content="noindex,nofollow" />
+        <meta property="og:title" content="IWILLBUILD Driver App — Coming Soon" />
+        <meta property="og:description" content="The IWILLBUILD Android driver app is coming soon. Live GPS, job management, safety forms, and fleet tools." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/download-app" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Download the IWILLBUILD Driver App" />
-        <meta name="twitter:description" content="Live GPS tracking, job management, SWMS safety forms, and fleet tools for drivers." />
+        <meta name="twitter:title" content="IWILLBUILD Driver App — Coming Soon" />
+        <meta name="twitter:description" content="The IWILLBUILD Android driver app is coming soon." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "@id": "https://iwillbuild.com/download-app#webpage",
-          "name": "Download the IWILLBUILD Driver App",
-          "url": "https://iwillbuild.com/download-app",
-          "description": "Download the IWILLBUILD driver app for Android. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket.",
-          "isPartOf": { "@id": "https://iwillbuild.com/#website" },
-          "about": { "@id": "https://iwillbuild.com/#organization" }
-        })}</script>
       </Helmet>
 
       <main className="min-h-screen bg-gray-950 text-white">
@@ -70,19 +73,32 @@ export default function DownloadAppPage() {
 
           {/* Hero */}
           <div className="text-center space-y-4">
-            <div className="w-20 h-20 rounded-3xl bg-violet-500 flex items-center justify-center mx-auto shadow-2xl shadow-violet-200/30">
+            <div className="w-20 h-20 rounded-3xl bg-violet-500 flex items-center justify-center mx-auto shadow-2xl shadow-violet-500/30">
               <Smartphone size={36} className="text-white" />
             </div>
             <div>
-              {/* H1 is visible and meaningful for SEO — not sr-only */}
-              <h1 className="text-2xl font-black text-white">Download the IWILLBUILD App</h1>
+              <h1 className="text-2xl font-black text-white">IWILLBUILD Android App</h1>
               <p className="text-gray-400 mt-1 text-sm leading-relaxed">
                 The full IWILLBUILD portal in your pocket — jobs, fleet tracking, forms, and more.
               </p>
             </div>
           </div>
 
-          {/* Platform detection banner */}
+          {/* Coming soon banner */}
+          {!APK_AVAILABLE && (
+            <div className="bg-amber-950/50 border border-amber-700/50 rounded-2xl p-5 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-amber-400">
+                <Clock size={18} />
+                <span className="font-bold text-sm">Android app coming soon</span>
+              </div>
+              <p className="text-amber-400/70 text-xs leading-relaxed">
+                The first release is being prepared. Check back here once your admin
+                notifies you that the app is ready to download.
+              </p>
+            </div>
+          )}
+
+          {/* iOS banner */}
           {isIos && (
             <div className="bg-blue-950/60 border border-blue-800/50 rounded-2xl p-4 text-center">
               <p className="text-blue-300 font-semibold text-sm">You're on iOS</p>
@@ -93,47 +109,56 @@ export default function DownloadAppPage() {
             </div>
           )}
 
-          {/* Download button */}
+          {/* Download button — disabled until APK is available */}
           <div className="space-y-3">
-            <a
-              href={GITHUB_RELEASES_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 w-full bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white font-bold py-4 px-6 rounded-2xl transition-colors shadow-lg shadow-violet-200/20 text-base"
-            >
-              <Download size={20} />
-              Download Android APK
-              <ExternalLink size={14} className="opacity-60" />
-            </a>
+            {APK_AVAILABLE ? (
+              <a
+                href={GITHUB_RELEASES_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 w-full bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white font-bold py-4 px-6 rounded-2xl transition-colors shadow-lg shadow-violet-500/20 text-base"
+              >
+                <Smartphone size={20} />
+                Download Android APK
+              </a>
+            ) : (
+              <button
+                disabled
+                className="flex items-center justify-center gap-3 w-full bg-gray-800 text-gray-500 font-bold py-4 px-6 rounded-2xl cursor-not-allowed text-base border border-gray-700"
+                aria-label="Android APK download not yet available"
+              >
+                <Smartphone size={20} />
+                Download Android APK
+                <span className="ml-1 text-xs font-normal text-gray-600">(coming soon)</span>
+              </button>
+            )}
 
-            {isAndroid && (
+            {APK_AVAILABLE && isAndroid && (
               <p className="text-center text-xs text-gray-500">
                 Android device detected — you're good to go
               </p>
             )}
-
-            <p className="text-center text-xs text-gray-600">
-              Free download · No Play Store required · Latest version
-            </p>
           </div>
 
-          {/* Install steps */}
-          <div className="space-y-3">
-            <h2 className="text-sm font-bold text-gray-300 uppercase tracking-wide">How to install</h2>
+          {/* Install steps — shown only when APK is available */}
+          {APK_AVAILABLE && (
             <div className="space-y-3">
-              {steps.map((step) => (
-                <div key={step.n} className="flex gap-3 bg-gray-900 rounded-xl p-4 border border-gray-800">
-                  <div className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-600/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-violet-400 font-black text-xs">{step.n}</span>
+              <h2 className="text-sm font-bold text-gray-300 uppercase tracking-wide">How to install</h2>
+              <div className="space-y-3">
+                {steps.map((step) => (
+                  <div key={step.n} className="flex gap-3 bg-gray-900 rounded-xl p-4 border border-gray-800">
+                    <div className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-600/40 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-violet-400 font-black text-xs">{step.n}</span>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{step.title}</p>
+                      <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">{step.body}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-semibold text-sm">{step.title}</p>
-                    <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">{step.body}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Features */}
           <div className="space-y-3">
@@ -151,15 +176,6 @@ export default function DownloadAppPage() {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Trust note */}
-          <div className="flex items-start gap-3 bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <CheckCircle size={18} className="text-green-400 shrink-0 mt-0.5" />
-            <p className="text-gray-400 text-xs leading-relaxed">
-              This app is distributed directly by your employer. It is not available on the Play Store —
-              you need to allow installation from unknown sources. This is normal for internal business apps.
-            </p>
           </div>
 
           {/* Footer */}
