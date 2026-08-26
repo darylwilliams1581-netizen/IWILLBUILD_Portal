@@ -1,7 +1,7 @@
 import { home } from 'virtual:content';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from "react-router";
-import { FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Smartphone, AlertTriangle, Calculator, Layers, Ruler, FileSpreadsheet, ScrollText, TableProperties, ShieldAlert, TriangleAlert } from 'lucide-react';
+import { Briefcase, FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Smartphone, AlertTriangle, Calculator, Layers, Ruler, FileSpreadsheet, ScrollText, TableProperties, ShieldAlert, TriangleAlert } from 'lucide-react';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
 
