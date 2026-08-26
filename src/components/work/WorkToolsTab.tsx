@@ -5,7 +5,7 @@
  * Preserves /estimating and Settings → Costing.
  */
 import { useNavigate } from 'react-router';
-import { Calculator, Ruler, ShieldAlert, MapPin, ExternalLink } from 'lucide-react';
+import { Calculator, Ruler, ShieldAlert, MapPin, ExternalLink, Zap } from 'lucide-react';
 
 const MAPS_TOILET_URL = 'https://www.google.com/maps/search/?api=1&query=public+toilets';
 
@@ -52,6 +52,14 @@ const TOOLS: ToolCard[] = [
     iconBg: 'bg-emerald-100',
     iconFg: 'text-emerald-600',
     href: '/rl-register',
+  },
+  {
+    title: 'Electrical Tests',
+    description: 'Record electrical test results with equipment register, sign-off, and PDF report.',
+    icon: Zap,
+    iconBg: 'bg-yellow-100',
+    iconFg: 'text-yellow-600',
+    href: '/electrical-tests',
   },
   {
     title: 'Public Toilet Finder',

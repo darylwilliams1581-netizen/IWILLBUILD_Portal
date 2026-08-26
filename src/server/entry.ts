@@ -728,6 +728,20 @@ import sds_register_id_delete from "./api/sds-register/[id]/DELETE";
 import sds_register_id_replace_post from "./api/sds-register/[id]/replace/POST";
 import rl_register_get from "./api/rl-register/GET";
 import rl_register_post from "./api/rl-register/POST";
+// ── Electrical Test Recorder ──────────────────────────────────────────────────
+import elec_tests_get from "./api/electrical-tests/GET";
+import elec_tests_post from "./api/electrical-tests/POST";
+import elec_test_id_get from "./api/electrical-tests/[id]/GET";
+import elec_test_id_put from "./api/electrical-tests/[id]/PUT";
+import elec_test_retest_post from "./api/electrical-tests/[id]/retest/POST";
+import elec_test_signoff_post from "./api/electrical-tests/[id]/sign-off/POST";
+import elec_test_photos_post from "./api/electrical-tests/[id]/photos/POST";
+import elec_test_photo_view from "./api/electrical-tests/photos/[photoId]/GET";
+import elec_equip_get from "./api/electrical-test-equipment/GET";
+import elec_equip_post from "./api/electrical-test-equipment/POST";
+import elec_equip_put from "./api/electrical-test-equipment/[id]/PUT";
+import elec_export_csv from "./api/electrical-tests/export/[jobId]/csv/GET";
+import elec_export_pdf from "./api/electrical-tests/export/[jobId]/pdf/GET";
 import rl_register_bm_points_get from "./api/rl-register/[benchmarkId]/points/GET";
 import rl_register_bm_points_post from "./api/rl-register/[benchmarkId]/points/POST";
 import rl_register_point_put from "./api/rl-register/points/[id]/PUT";
@@ -1876,6 +1890,11 @@ async function runStartupMigrations() {
     { name: 'rl_benchmarks', ddl: "CREATE TABLE IF NOT EXISTS rl_benchmarks (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, name VARCHAR(255) NOT NULL, rl DECIMAL(12,3) NOT NULL, description TEXT NULL, location VARCHAR(500) NULL, date_established DATE NULL, entered_by VARCHAR(255) NULL, notes TEXT NULL, photo_path VARCHAR(1000) NULL, archived_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_archived (company_id, archived_at))" },
     { name: 'rl_points', ddl: "CREATE TABLE IF NOT EXISTS rl_points (id INT AUTO_INCREMENT PRIMARY KEY, benchmark_id INT NOT NULL, company_id INT NOT NULL, job_id INT NOT NULL, point_name VARCHAR(255) NOT NULL, location VARCHAR(500) NULL, measured_rl DECIMAL(12,3) NOT NULL, target_rl DECIMAL(12,3) NULL, tolerance_mm INT NULL, rise_fall DECIMAL(12,3) NULL, measurement_date DATETIME NULL, entered_by VARCHAR(255) NULL, method VARCHAR(30) NOT NULL DEFAULT 'other', notes TEXT NULL, photo_path VARCHAR(1000) NULL, signed_off_at DATETIME NULL, signed_off_by VARCHAR(36) NULL, archived_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_benchmark (benchmark_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_archived (company_id, archived_at))" },
     { name: 'rl_point_history', ddl: "CREATE TABLE IF NOT EXISTS rl_point_history (id INT AUTO_INCREMENT PRIMARY KEY, point_id INT NOT NULL, company_id INT NOT NULL, snapshot_json LONGTEXT NOT NULL, changed_by_user_id VARCHAR(36) NULL, correction_note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_point (point_id), INDEX idx_company (company_id))" },
+    // ── Electrical Test Recorder ──────────────────────────────────────────────
+    { name: 'electrical_test_equipment', ddl: "CREATE TABLE IF NOT EXISTS electrical_test_equipment (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, owner VARCHAR(255) NULL, equipment_type VARCHAR(100) NOT NULL DEFAULT 'Other', make_model VARCHAR(255) NOT NULL, serial_number VARCHAR(100) NULL, calibration_date DATE NULL, calibration_expiry DATE NULL, cal_cert_storage_key VARCHAR(500) NULL, archived_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_archived (company_id, archived_at))" },
+    { name: 'electrical_test_records', ddl: "CREATE TABLE IF NOT EXISTS electrical_test_records (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, parent_test_id INT NULL, template_id VARCHAR(60) NOT NULL DEFAULT 'custom', template_name VARCHAR(255) NOT NULL DEFAULT 'Custom Test', asset_id VARCHAR(255) NULL, circuit_feeder VARCHAR(255) NULL, phase VARCHAR(20) NULL, joint_description TEXT NULL, reference_test_point VARCHAR(255) NULL, drawing_reference VARCHAR(255) NULL, work_type VARCHAR(30) NOT NULL DEFAULT 'new_installation', location VARCHAR(500) NULL, work_order_ref VARCHAR(100) NULL, measured_value DECIMAL(18,6) NULL, unit VARCHAR(30) NOT NULL DEFAULT '', test_current_voltage VARCHAR(50) NULL, ambient_temp DECIMAL(6,2) NULL, min_accept DECIMAL(18,6) NULL, max_accept DECIMAL(18,6) NULL, standard_ref VARCHAR(255) NULL, document_number VARCHAR(100) NULL, document_version VARCHAR(50) NULL, result VARCHAR(20) NOT NULL DEFAULT 'MANUAL', condition_class VARCHAR(10) NULL, standard_label VARCHAR(255) NULL, test_date DATETIME NULL, tester_name VARCHAR(255) NULL, tester_user_id VARCHAR(36) NULL, equipment_id INT NULL, corrective_work TEXT NULL, notes TEXT NULL, defect_action TEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', submitted_at DATETIME NULL, submitted_by_user_id VARCHAR(36) NULL, submitted_by_name VARCHAR(255) NULL, checked_by_name VARCHAR(255) NULL, checked_at DATETIME NULL, accepted_by_name VARCHAR(255) NULL, accepted_at DATETIME NULL, rejection_reason TEXT NULL, override_by_name VARCHAR(255) NULL, override_at DATETIME NULL, override_justification TEXT NULL, archived_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_parent (parent_test_id), INDEX idx_status (company_id, status), INDEX idx_result (company_id, result), INDEX idx_archived (company_id, archived_at))" },
+    { name: 'electrical_test_photos', ddl: "CREATE TABLE IF NOT EXISTS electrical_test_photos (id INT AUTO_INCREMENT PRIMARY KEY, test_record_id INT NOT NULL, company_id INT NOT NULL, photo_type VARCHAR(30) NOT NULL DEFAULT 'additional', caption TEXT NULL, storage_key VARCHAR(500) NOT NULL, original_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, uploaded_by_user_id VARCHAR(36) NULL, uploaded_by_name VARCHAR(255) NULL, uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_record (test_record_id), INDEX idx_company (company_id))" },
+    { name: 'electrical_test_audit', ddl: "CREATE TABLE IF NOT EXISTS electrical_test_audit (id INT AUTO_INCREMENT PRIMARY KEY, test_record_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, event_note TEXT NULL, user_id VARCHAR(36) NULL, user_name VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_record (test_record_id), INDEX idx_company (company_id), INDEX idx_created (test_record_id, created_at))" },
     { name: 'safety_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, poster_type VARCHAR(60) NOT NULL DEFAULT 'general', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
@@ -3870,6 +3889,23 @@ app.get("/api/rl-register/:benchmarkId/points", rl_register_bm_points_get);
 app.post("/api/rl-register/:benchmarkId/points", rl_register_bm_points_post);
 app.get("/api/rl-register", rl_register_get);
 app.post("/api/rl-register", rl_register_post);
+
+// ── Electrical Test Recorder ──────────────────────────────────────────────────
+// Static-prefix routes first
+app.get("/api/electrical-test-equipment", elec_equip_get);
+app.post("/api/electrical-test-equipment", elec_equip_post);
+app.put("/api/electrical-test-equipment/:id", elec_equip_put);
+app.get("/api/electrical-tests/photos/:photoId/view", elec_test_photo_view);
+app.get("/api/electrical-tests/export/:jobId/csv", elec_export_csv);
+app.get("/api/electrical-tests/export/:jobId/pdf", elec_export_pdf);
+// Param routes after
+app.get("/api/electrical-tests", elec_tests_get);
+app.post("/api/electrical-tests", elec_tests_post);
+app.get("/api/electrical-tests/:id", elec_test_id_get);
+app.put("/api/electrical-tests/:id", elec_test_id_put);
+app.post("/api/electrical-tests/:id/retest", elec_test_retest_post);
+app.post("/api/electrical-tests/:id/sign-off", elec_test_signoff_post);
+app.post("/api/electrical-tests/:id/photos", elec_test_photos_post);
 app.get("/api/safety/generated-posters", safety_generated_posters_get_691);
 app.post("/api/safety/generated-posters", safety_generated_posters_post_692);
 app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete_693);
