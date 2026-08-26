@@ -578,8 +578,8 @@ export default function PagedHomeScreen({
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-1 justify-end">
-          <div className="flex-1 flex">
-            <NotificationBell label="Alerts" />
+          <div className="shrink-0">
+            <NotificationBell />
           </div>
           <button
             onClick={() => navigate('/profile')}

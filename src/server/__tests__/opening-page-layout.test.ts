@@ -269,8 +269,8 @@ describe('Two-row stacked header', () => {
     expect(screenSrc).toContain('flex-1 justify-end');
   });
 
-  it('NotificationBell receives label="Alerts" for wide mode', () => {
-    expect(screenSrc).toContain('label="Alerts"');
+  it('NotificationBell is icon-only (no label prop)', () => {
+    expect(screenSrc).not.toContain('label="Alerts"');
   });
 
   it('Profile button is flex-1 with label', () => {
