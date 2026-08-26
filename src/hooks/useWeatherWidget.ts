@@ -2,8 +2,14 @@
  * useWeatherWidget — GPS-based weather via Open-Meteo (no API key required).
  *
  * Location strategy (in priority order):
- *   1. Capacitor Geolocation (iOS/Android native)
- *   2. browser navigator.geolocation
+ *   1. Capacitor Geolocation — ONLY when running in a real native Capacitor
+ *      shell (iOS / Android). Detected via window.Capacitor.isNativePlatform().
+ *      The @capacitor/geolocation package is bundled into the JS but the
+ *      native bridge is NOT present in Edge, Chrome, Safari, or any web
+ *      browser, so we must guard with isNativeCapacitor() before importing.
+ *   2. browser navigator.geolocation — used for all web browsers (Edge,
+ *      Chrome, Safari, Firefox) and as a fallback inside the Capacitor
+ *      WKWebView if the native plugin fails for a non-permission reason.
  *
  * Privacy rules:
  *   - Coordinates are never sent to IWILLBUILD servers.
@@ -82,48 +88,96 @@ function getCached(): CacheEntry | null {
 
 interface Coords { latitude: number; longitude: number; }
 
-async function getCoords(): Promise<Coords> {
-  // Try Capacitor first (iOS/Android native)
+/**
+ * Returns true ONLY when running inside a real Capacitor native shell
+ * (iOS / Android). The Capacitor bridge object is injected by the native
+ * runtime; it is NOT present in Edge, Chrome, Safari, or any plain web
+ * browser even though @capacitor/* packages are bundled into the JS.
+ */
+function isNativeCapacitor(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    !!(window as any).Capacitor?.isNativePlatform?.()
+  );
+}
+
+async function getCoordsNative(): Promise<Coords> {
+  const { Geolocation } = await import('@capacitor/geolocation');
+
+  // Request permission explicitly first — avoids silent failures on iOS
+  // when the app hasn't prompted yet (status = 'prompt').
   try {
-    const { Geolocation } = await import('@capacitor/geolocation');
-    const pos = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: false,
-      timeout: 10000,
-    });
-    return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-  } catch (capErr) {
-    // Map Capacitor permission errors to the same sentinel strings the
-    // browser path uses so the state machine handles them correctly.
-    const msg = capErr instanceof Error ? capErr.message.toLowerCase() : '';
-    if (msg.includes('denied') || msg.includes('notdetermined') || msg.includes('restricted')) {
-      throw new Error('denied');
-    }
-    // Any other Capacitor error (location services off, timeout, etc.) —
-    // fall through to the browser geolocation API as a last resort.
+    const perm = await Geolocation.requestPermissions();
+    const granted = perm.location === 'granted' || perm.coarseLocation === 'granted';
+    if (!granted) throw new Error('denied');
+  } catch (permErr) {
+    // requestPermissions() can itself throw on some Capacitor versions —
+    // if it's our sentinel re-throw it; otherwise fall through and let
+    // getCurrentPosition surface the real error.
+    const msg = permErr instanceof Error ? permErr.message.toLowerCase() : '';
+    if (msg === 'denied') throw permErr;
   }
 
-  // Browser geolocation (web / PWA fallback)
+  const pos = await Geolocation.getCurrentPosition({
+    enableHighAccuracy: false,
+    timeout: 10000,
+  });
+  return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+}
+
+function getCoordsWeb(): Promise<Coords> {
   return new Promise<Coords>((resolve, reject) => {
-    if (!navigator.geolocation) {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject(new Error('unavailable'));
       return;
     }
     navigator.geolocation.getCurrentPosition(
       pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
       err => {
-        if (err.code === err.PERMISSION_DENIED) reject(new Error('denied'));
+        if (err.code === err.PERMISSION_DENIED)         reject(new Error('denied'));
         else if (err.code === err.POSITION_UNAVAILABLE) reject(new Error('unavailable'));
-        else reject(new Error('timeout'));
+        else                                            reject(new Error('timeout'));
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: CACHE_MS },
     );
   });
 }
 
+async function getCoords(): Promise<Coords> {
+  if (isNativeCapacitor()) {
+    try {
+      return await getCoordsNative();
+    } catch (capErr) {
+      const msg = capErr instanceof Error ? capErr.message.toLowerCase() : '';
+      // Permission denied — propagate as our sentinel, don't fall through.
+      if (
+        msg === 'denied' ||
+        msg.includes('denied') ||
+        msg.includes('notdetermined') ||
+        msg.includes('restricted')
+      ) {
+        throw new Error('denied');
+      }
+      // Location services off, timeout, or unexpected plugin error —
+      // fall through to WKWebView navigator.geolocation as a last resort.
+    }
+  }
+
+  // Web browsers (Edge, Chrome, Safari, Firefox) and Capacitor WKWebView fallback.
+  return getCoordsWeb();
+}
+
 // ── Open-Meteo fetch ──────────────────────────────────────────────────────────
 
 async function fetchWeather(coords: Coords): Promise<{ temp: number; condition: string; icon: WeatherIcon }> {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.latitude.toFixed(4)}&longitude=${coords.longitude.toFixed(4)}&current=temperature_2m,weathercode&temperature_unit=celsius&forecast_days=1`;
+  const url =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=${coords.latitude.toFixed(4)}` +
+    `&longitude=${coords.longitude.toFixed(4)}` +
+    `&current=temperature_2m,weathercode` +
+    `&temperature_unit=celsius` +
+    `&forecast_days=1`;
 
   // AbortSignal.timeout() is not available in WKWebView on older iOS versions.
   // Use a manual AbortController + setTimeout instead.
@@ -174,10 +228,10 @@ export function useWeatherWidget() {
       const msg = err instanceof Error ? err.message.toLowerCase() : 'error';
       // AbortError comes from our manual AbortController timeout in fetchWeather
       const isAbort = err instanceof DOMException && err.name === 'AbortError';
-      if (msg === 'denied')           setState({ status: 'denied' });
-      else if (msg === 'unavailable') setState({ status: 'unavailable' });
-      else if (msg === 'timeout' || isAbort) setState({ status: 'error', message: 'timeout' });
-      else setState({ status: 'error', message: msg });
+      if (msg === 'denied')                      setState({ status: 'denied' });
+      else if (msg === 'unavailable')            setState({ status: 'unavailable' });
+      else if (msg === 'timeout' || isAbort)     setState({ status: 'error', message: 'timeout' });
+      else                                       setState({ status: 'error', message: msg });
     } finally {
       inFlight.current = false;
     }
