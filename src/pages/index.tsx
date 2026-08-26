@@ -698,7 +698,7 @@ export default function HomePage() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          {['✓ Australian-built', '✓ No lock-in contracts', '✓ 30-day free trial', '✓ Your data stays yours', '✓ Cancel anytime'].map(t => <span key={t} style={{
+          {['✓ Australian-built', '✓ No lock-in contracts', '✓ 30-day free trial', '✓ Cancel anytime'].map(t => <span key={t} style={{
             fontSize: 13,
             fontWeight: 700,
             color: '#475569'
