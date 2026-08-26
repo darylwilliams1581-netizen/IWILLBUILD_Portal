@@ -265,6 +265,22 @@ describe('Two-row stacked header', () => {
     expect(screenSrc).toContain('IWILLBUILD');
   });
 
+  it('utility buttons are flex-1 (fill remaining space equally)', () => {
+    expect(screenSrc).toContain('flex-1 justify-end');
+  });
+
+  it('NotificationBell receives label="Alerts" for wide mode', () => {
+    expect(screenSrc).toContain('label="Alerts"');
+  });
+
+  it('Profile button is flex-1 with label', () => {
+    expect(screenSrc).toContain('flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600');
+  });
+
+  it('Sign out button is flex-1 with label', () => {
+    expect(screenSrc).toContain('Sign out');
+  });
+
   it('row 2 contains page tabs (full-width, no overflow-x-auto)', () => {
     expect(screenSrc).toContain('px-2 pb-1.5 gap-1.5');
     // No horizontal scroll on the tab row

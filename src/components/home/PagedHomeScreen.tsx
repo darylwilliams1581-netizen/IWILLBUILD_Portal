@@ -577,22 +577,26 @@ export default function PagedHomeScreen({
             IWILLBUILD
           </span>
         </div>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <div className="shrink-0"><NotificationBell /></div>
+        <div className="flex items-center gap-1.5 flex-1 justify-end">
+          <div className="flex-1 flex">
+            <NotificationBell label="Alerts" />
+          </div>
           <button
             onClick={() => navigate('/profile')}
-            className="w-8 h-8 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all shrink-0"
+            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2"
             aria-label="Profile"
           >
-            <User size={15} className="text-white" />
+            <User size={14} className="text-white shrink-0" />
+            <span className="truncate">Profile</span>
           </button>
           <button
             onClick={async () => { await signOut(); navigate('/login'); }}
-            className="w-8 h-8 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all shrink-0"
+            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2"
             aria-label="Log out"
             title="Log out"
           >
-            <LogOut size={13} className="text-slate-200" />
+            <LogOut size={13} className="shrink-0" />
+            <span className="truncate">Sign out</span>
           </button>
         </div>
       </div>
