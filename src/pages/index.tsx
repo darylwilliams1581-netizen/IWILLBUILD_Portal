@@ -1,7 +1,7 @@
 import { home } from 'virtual:content';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from "react-router";
-import { Briefcase, FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Siren, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Lock, Smartphone, AlertTriangle } from 'lucide-react';
+import { FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Smartphone, AlertTriangle, Calculator, Layers, Ruler, FileSpreadsheet, ScrollText, TableProperties, ShieldAlert, TriangleAlert } from 'lucide-react';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
 
@@ -45,179 +45,166 @@ interface FeatureGroup {
   category: string;
 }
 const featureGroups: FeatureGroup[] = [
-// ── Jobs & Operations ──────────────────────────────────────────────────────
+// Jobs & Operations
 {
-  category: 'Jobs & operations',
-  icon: Briefcase,
-  color: '#1263d8',
-  bg: '#eff6ff',
+  category: 'Jobs & operations', icon: HardHat, color: '#7c3aed', bg: '#f5f3ff',
   title: 'Jobs',
   desc: 'Create jobs, assign crews, track status and close out cleanly — from first contact to final invoice.',
   bullets: ['Job register with status filters', 'Notes, tasks and cost tracking', 'Convert job cards to full jobs', 'Job history and audit trail']
 }, {
-  category: 'Jobs & operations',
-  icon: Zap,
-  color: '#ca8a04',
-  bg: '#fefce8',
+  category: 'Jobs & operations', icon: Zap, color: '#ca8a04', bg: '#fefce8',
   title: 'Job cards',
   desc: 'Field-first job cards for day work and small jobs. Auto-numbered, photo-ready and signature-captured on site.',
   bullets: ['Auto-numbered JC-XXXX', '3-step mobile flow', 'Photo capture & signature', 'Convert to invoice']
 }, {
-  category: 'Jobs & operations',
-  icon: FileText,
-  color: '#7c3aed',
-  bg: '#f5f3ff',
+  category: 'Jobs & operations', icon: Calendar, color: '#6366f1', bg: '#eef2ff',
+  title: 'Scheduler',
+  desc: 'Gantt and table views for job timelines, crew scheduling and progress tracking across your whole business.',
+  bullets: ['Gantt & table views', 'Crew & resource scheduling', 'Job timeline tracking', 'Progress milestones']
+}, {
+  category: 'Jobs & operations', icon: FileSpreadsheet, color: '#059669', bg: '#ecfdf5',
+  title: 'Timesheets',
+  desc: 'FairWork-compliant digital timesheets with allowances, overtime and Sunday week-ending — ready for payroll.',
+  bullets: ['FairWork V2 compliant', 'LAFH & meal allowances', 'Overtime & Sunday rules', 'CSV export for payroll']
+},
+// Finance
+{
+  category: 'Finance', icon: FileText, color: '#7c3aed', bg: '#f5f3ff',
   title: 'Estimating',
   desc: 'Build detailed cost guides, scope lines and PDF quotes. Approve estimates and track actuals against budget.',
   bullets: ['Line-item cost builder', 'Recipe / template library', 'PDF quote generation', 'Approved vs actual tracking']
 }, {
-  category: 'Jobs & operations',
-  icon: Receipt,
-  color: '#0284c7',
-  bg: '#f0f9ff',
+  category: 'Finance', icon: Receipt, color: '#1263d8', bg: '#eff6ff',
   title: 'Invoicing',
   desc: 'Create and send invoices linked to jobs. Sync approved invoices to Xero or QuickBooks with one click.',
   bullets: ['Job-linked invoices', 'PDF invoice generation', 'Xero & QuickBooks sync', 'Invoice status tracking']
 }, {
-  category: 'Jobs & operations',
-  icon: Calendar,
-  color: '#059669',
-  bg: '#ecfdf5',
-  title: 'Scheduler',
-  desc: 'Gantt and table views for job timelines, crew scheduling and progress tracking across your whole business.',
-  bullets: ['Gantt & table views', 'Crew & resource scheduling', 'Job timeline tracking', 'Progress milestones']
+  category: 'Finance', icon: ClipboardList, color: '#059669', bg: '#ecfdf5',
+  title: 'Purchase orders',
+  desc: 'Raise, approve and track purchase orders against jobs. Full CRUD with PDF export and job cost linkage.',
+  bullets: ['Job-linked purchase orders', 'PDF PO generation', 'Approval workflow', 'Cost tracking against budget']
+}, {
+  category: 'Finance', icon: BarChart3, color: '#16a34a', bg: '#f0fdf4',
+  title: 'Job ledger',
+  desc: 'Live job cost ledger — see every cost, invoice and PO against a job in one scrollable view.',
+  bullets: ['Real-time cost vs budget', 'Costs, POs & invoices in one view', 'Job profitability at a glance', 'Export to CSV']
+}, {
+  category: 'Finance', icon: Calculator, color: '#ca8a04', bg: '#fefce8',
+  title: 'Builders calc',
+  desc: 'On-site construction calculators — concrete, steel, timber, area and more. No internet required.',
+  bullets: ['Concrete volume calculator', 'Steel & timber quantities', 'Area & perimeter tools', 'Works fully offline']
+}, {
+  category: 'Finance', icon: Layers, color: '#1263d8', bg: '#eff6ff',
+  title: 'Takeoff pad',
+  desc: 'Digital quantity takeoff pad for measuring plans and building material lists before estimating.',
+  bullets: ['Plan measurement tools', 'Material quantity lists', 'Linked to estimating', 'PDF & CSV export']
 },
-// ── Documents & Forms ──────────────────────────────────────────────────────
+// Documents & Forms
 {
-  category: 'Documents & forms',
-  icon: FolderOpen,
-  color: '#0891b2',
-  bg: '#ecfeff',
+  category: 'Documents & forms', icon: FolderOpen, color: '#1263d8', bg: '#eff6ff',
   title: 'App docs',
   desc: 'Central document library for your business — policies, procedures, certificates and reference docs, all version-controlled.',
   bullets: ['Centralised doc library', 'Version control', 'Category & tag filtering', 'Share links to field crew']
 }, {
-  category: 'Documents & forms',
-  icon: ClipboardList,
-  color: '#6366f1',
-  bg: '#eef2ff',
+  category: 'Documents & forms', icon: ClipboardList, color: '#6366f1', bg: '#eef2ff',
   title: 'Forms',
   desc: 'Reusable digital form templates with conditional logic, photo capture, multi-signer support and completed PDF export.',
   bullets: ['Drag-and-drop form builder', 'Conditional field logic', 'Photo capture in the field', 'Multi-signer & PDF export']
 }, {
-  category: 'Documents & forms',
-  icon: Camera,
-  color: '#7c3aed',
-  bg: '#fff7ed',
-  title: 'Photos & files',
+  category: 'Documents & forms', icon: Camera, color: '#7c3aed', bg: '#f5f3ff',
+  title: 'Lens — photos & files',
   desc: 'Upload site photos, label them by job and view in a full lightbox. Attach any file type to the job record.',
   bullets: ['Bulk photo upload', 'Job-linked photo gallery', 'Lightbox viewer', 'Secure file attachments']
+}, {
+  category: 'Documents & forms', icon: Map, color: '#1263d8', bg: '#eff6ff',
+  title: 'Plan manager',
+  desc: 'Upload and annotate construction plans on site. Pin notes, markups and photos directly to the plan.',
+  bullets: ['PDF plan upload & viewer', 'On-plan annotations', 'Photo pins on plan', 'Share with field crew']
 },
-// ── Safety & Compliance ────────────────────────────────────────────────────
+// Safety & Compliance
 {
-  category: 'Safety & compliance',
-  icon: ShieldCheck,
-  color: '#dc2626',
-  bg: '#fef2f2',
-  title: 'SWMS',
+  category: 'Safety & compliance', icon: ShieldCheck, color: '#e11d48', bg: '#fff1f2',
+  title: 'SWMS & safety docs',
   desc: 'Build, manage and share Safe Work Method Statements. Import from .docx, activate and send to the field.',
   bullets: ['SWMS library & builder', 'Import from .docx', 'Activate & share to field', 'Safety pack PDF export']
 }, {
-  category: 'Safety & compliance',
-  icon: Bell,
-  color: '#b45309',
-  bg: '#fffbeb',
+  category: 'Safety & compliance', icon: Bell, color: '#b45309', bg: '#fffbeb',
   title: 'Safety posters',
   desc: 'Printable and digital safety posters for site display — PPE requirements, emergency contacts, site rules and more.',
   bullets: ['Ready-made poster library', 'Site-specific customisation', 'Print-ready PDF output', 'Display on site screens']
 }, {
-  category: 'Safety & compliance',
-  icon: HardHat,
-  color: '#7c3aed',
-  bg: '#f5f3ff',
-  title: 'Site prestart register',
-  desc: 'Daily site prestart sign-ons, hazard acknowledgements and attendance records — digital and timestamped.',
-  bullets: ['Daily sign-on register', 'Hazard acknowledgement', 'Attendance records', 'Timestamped & GPS-tagged']
+  category: 'Safety & compliance', icon: TriangleAlert, color: '#ea580c', bg: '#fff7ed',
+  title: 'Risk register',
+  desc: 'Company-wide risk register with likelihood/consequence matrix, controls and review dates — always audit-ready.',
+  bullets: ['Risk likelihood × consequence matrix', 'Control measures & owners', 'Review date tracking', 'PDF & CSV export']
 }, {
-  category: 'Safety & compliance',
-  icon: AlertTriangle,
-  color: '#ea580c',
-  bg: '#fff7ed',
-  title: 'Risk Assessment & Work Permits',
-  desc: 'Per-job risk assessments and permit checks for changed site conditions. Activity → Hazards → Controls → Sign-off.',
-  bullets: ['Activity-based risk flow', 'Hazard & control capture', 'Permit-required flag', 'Supervisor sign-off']
-}, {
-  category: 'Safety & compliance',
-  icon: Lock,
-  color: '#0f172a',
-  bg: '#f1f5f9',
-  title: 'Incidents',
+  category: 'Safety & compliance', icon: AlertTriangle, color: '#e11d48', bg: '#fff1f2',
+  title: 'Incident register',
   desc: 'Log, investigate and close out workplace incidents. Attach photos, assign actions and track resolution.',
   bullets: ['Incident register', 'Photo & evidence attach', 'Action assignment', 'Resolution tracking']
 }, {
-  category: 'Safety & compliance',
-  icon: Siren,
-  color: '#e11d48',
-  bg: '#fff1f2',
-  title: 'Emergency beacon',
-  desc: 'One-tap SOS from any job site — captures GPS location, reason and note, queues offline and alerts the team instantly.',
-  bullets: ['One-tap SOS trigger', 'GPS location capture', 'Works offline (queued)', 'Instant team alert']
+  category: 'Safety & compliance', icon: ShieldAlert, color: '#e11d48', bg: '#fff1f2',
+  title: 'SDS register',
+  desc: 'Searchable Safety Data Sheet register — upload, version-control and share SDS documents with your team.',
+  bullets: ['Searchable SDS library', 'Upload & replace versions', 'View, download & archive', 'Company-isolated records']
+}, {
+  category: 'Safety & compliance', icon: Ruler, color: '#16a34a', bg: '#f0fdf4',
+  title: 'RL register',
+  desc: 'Job site restricted layer register with benchmark cards, points table and automatic compliance calculation.',
+  bullets: ['Job-site benchmark cards', 'Points table calculation', 'Compliance pass/fail result', 'PDF & CSV export']
+}, {
+  category: 'Safety & compliance', icon: Zap, color: '#ca8a04', bg: '#fefce8',
+  title: 'Electrical test recorder',
+  desc: 'Record and sign off electrical test results on site. Retest tracking, sign-off modal and full PDF export.',
+  bullets: ['Test result recording', 'Sign-off & retest workflow', 'Assessment engine', 'PDF & CSV export']
+}, {
+  category: 'Safety & compliance', icon: HardHat, color: '#7c3aed', bg: '#f5f3ff',
+  title: 'Risk assessment & work permits',
+  desc: 'Per-job risk assessments and permit checks for changed site conditions. Activity → Hazards → Controls → Sign-off.',
+  bullets: ['Activity-based risk flow', 'Hazard & control capture', 'Permit-required flag', 'Supervisor sign-off']
 },
-// ── Fleet & Field ──────────────────────────────────────────────────────────
+// Fleet & Field
 {
-  category: 'Fleet & field',
-  icon: Truck,
-  color: '#059669',
-  bg: '#ecfdf5',
+  category: 'Fleet & field', icon: Truck, color: '#059669', bg: '#ecfdf5',
   title: 'Fleet manager',
   desc: 'Daily prestart checks, service schedules, rego reminders and live GPS map — all in one fleet dashboard.',
   bullets: ['Daily prestart checklists', 'Service & rego reminders', 'Live GPS map view', 'Fleet status dashboard']
 }, {
-  category: 'Fleet & field',
-  icon: Map,
-  color: '#16a34a',
-  bg: '#f0fdf4',
+  category: 'Fleet & field', icon: Map, color: '#16a34a', bg: '#f0fdf4',
   title: 'Live fleet map',
   desc: 'See every vehicle and plant item on a live Google Maps view. Last-known positions shown for offline assets.',
   bullets: ['Live GPS tracking', 'Last-known positions', 'Google Maps integration', 'Auto-refresh every 5s']
 }, {
-  category: 'Fleet & field',
-  icon: Smartphone,
-  color: '#7c3aed',
-  bg: '#fff7ed',
+  category: 'Fleet & field', icon: Smartphone, color: '#7c3aed', bg: '#f5f3ff',
   title: 'Mobile field app',
   desc: 'Native iOS and Android app — works offline, syncs when back online. Built for site, not the office.',
   bullets: ['iOS & Android native', 'Offline-first sync', 'Camera & GPS access', 'Push notifications']
 },
-// ── Team & Admin ───────────────────────────────────────────────────────────
+// Team & Admin
 {
-  category: 'Team & admin',
-  icon: Users,
-  color: '#7c3aed',
-  bg: '#f5f3ff',
+  category: 'Team & admin', icon: Users, color: '#7c3aed', bg: '#f5f3ff',
   title: 'Team & permissions',
   desc: 'Role-based access, invite users, control what each person can see and do — from field crew to admin.',
   bullets: ['Role-based access control', 'Invite users by email', 'Per-module permissions', 'Admin & owner roles']
 }, {
-  category: 'Team & admin',
-  icon: BarChart3,
-  color: '#0f172a',
-  bg: '#f1f5f9',
-  title: 'Reports & user logs',
-  desc: 'User activity logs, job cost reports, driver logs and CSV export — full visibility across your team and jobs.',
-  bullets: ['User activity logs', 'Job cost reporting', 'Driver log dataset', 'CSV export']
+  category: 'Team & admin', icon: ScrollText, color: '#64748b', bg: '#f8fafc',
+  title: 'User logs & sign-in history',
+  desc: 'Full audit trail of user activity and sign-in events — who did what, when, from which device.',
+  bullets: ['User activity audit log', 'Sign-in history per user', 'Device & IP tracking', 'CSV export']
 }, {
-  category: 'Team & admin',
-  icon: Link2,
-  color: '#6366f1',
-  bg: '#eef2ff',
+  category: 'Team & admin', icon: TableProperties, color: '#059669', bg: '#ecfdf5',
+  title: 'Lists',
+  desc: 'Admin-managed lookup lists used across the platform — trade types, cost codes, suppliers and more.',
+  bullets: ['Custom lookup lists', 'Used across all modules', 'Admin-managed values', 'Instant platform-wide update']
+}, {
+  category: 'Team & admin', icon: Link2, color: '#6366f1', bg: '#eef2ff',
   title: 'Quick links',
   desc: 'Pin your external portals — BYDA, Outlook, Teletrac, Xero, supplier portals — as one-click tiles for the whole team.',
   bullets: ['Custom tile launcher', 'Auto-fetches site icons', 'Admin-managed links', 'Opens in new tab']
 }];
 
 // Group labels in display order
-const CATEGORY_ORDER = ['Jobs & operations', 'Documents & forms', 'Safety & compliance', 'Fleet & field', 'Team & admin'] as const;
+const CATEGORY_ORDER = ['Jobs & operations', 'Finance', 'Documents & forms', 'Safety & compliance', 'Fleet & field', 'Team & admin'] as const;
 const howItWorks = [{
   n: '1',
   title: 'Create your company account',
