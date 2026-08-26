@@ -385,33 +385,50 @@ describe('Dashboard quick-action buttons — compact spec', () => {
   });
 });
 
-// ── 59–68. Collapsible Administration section ─────────────────────────────────
+// ── 59–68. Collapsible sections (Finance, Safety, Administration) ─────────────
+
+describe('Finance — collapsible section', () => {
+  it('testId finance-collapsible registered in COLLAPSIBLE_GROUPS', () => {
+    expect(screenSrc).toContain("testId: 'finance-collapsible'");
+  });
+  it('FINANCE_STORAGE_KEY constant is defined', () => {
+    expect(screenSrc).toContain('FINANCE_STORAGE_KEY');
+  });
+  it('storage key value is manage_finance_open', () => {
+    expect(screenSrc).toContain('manage_finance_open');
+  });
+});
+
+describe('Safety — collapsible section', () => {
+  it('testId safety-collapsible registered in COLLAPSIBLE_GROUPS', () => {
+    expect(screenSrc).toContain("testId: 'safety-collapsible'");
+  });
+  it('SAFETY_STORAGE_KEY constant is defined', () => {
+    expect(screenSrc).toContain('SAFETY_STORAGE_KEY');
+  });
+  it('storage key value is manage_safety_open', () => {
+    expect(screenSrc).toContain('manage_safety_open');
+  });
+});
 
 describe('Administration — collapsible section', () => {
-  it('uses Radix Collapsible.Root with data-testid="admin-collapsible"', () => {
-    expect(screenSrc).toContain('data-testid="admin-collapsible"');
+  it('testId admin-collapsible registered in COLLAPSIBLE_GROUPS', () => {
+    expect(screenSrc).toContain("testId: 'admin-collapsible'");
   });
-
-  it('trigger has data-testid="admin-collapsible-trigger"', () => {
-    expect(screenSrc).toContain('data-testid="admin-collapsible-trigger"');
+  it('trigger uses ${testId}-trigger template pattern', () => {
+    expect(screenSrc).toContain('`${testId}-trigger`');
   });
-
-  it('content has data-testid="admin-collapsible-content"', () => {
-    expect(screenSrc).toContain('data-testid="admin-collapsible-content"');
+  it('content uses ${testId}-content template pattern', () => {
+    expect(screenSrc).toContain('`${testId}-content`');
   });
-
   it('imports ChevronDown from lucide-react', () => {
     expect(screenSrc).toContain('ChevronDown');
   });
-
-  it('defaults to collapsed (reads sessionStorage; no default open={true})', () => {
-    // The component reads sessionStorage — default is false (collapsed)
-    // It must NOT have open={true} as a hardcoded default
+  it('defaults to collapsed (reads sessionStorage; no hardcoded open={true})', () => {
     expect(screenSrc).not.toContain('open={true}');
     expect(screenSrc).toContain(ADMIN_STORAGE_KEY_MARKER);
   });
-
-  it('sessionStorage key constant is defined', () => {
+  it('ADMIN_STORAGE_KEY constant is defined', () => {
     expect(screenSrc).toContain('ADMIN_STORAGE_KEY');
   });
 });
@@ -419,19 +436,29 @@ describe('Administration — collapsible section', () => {
 // Helper — the storage key literal must appear in the source
 const ADMIN_STORAGE_KEY_MARKER = 'manage_admin_open';
 
+describe('CollapsibleSection — generic component', () => {
+  it('uses a single generic CollapsibleSection component (not three separate ones)', () => {
+    expect(screenSrc).toContain('function CollapsibleSection(');
+  });
+  it('COLLAPSIBLE_GROUPS lookup table is defined', () => {
+    expect(screenSrc).toContain('COLLAPSIBLE_GROUPS');
+  });
+  it('Work, Field & Files, Fleet remain always-open (no collapsible config)', () => {
+    // The always-open path renders a plain <p> heading, not a CollapsibleSection
+    expect(screenSrc).toContain("// Always-open sections: Work, Field & Files, Fleet");
+  });
+});
+
 describe('globals.css — collapsible animations', () => {
   it('defines collapsible-down keyframe', () => {
     expect(globalsCss).toContain('@keyframes collapsible-down');
   });
-
   it('defines collapsible-up keyframe', () => {
     expect(globalsCss).toContain('@keyframes collapsible-up');
   });
-
   it('defines animate-collapsible-down utility class', () => {
     expect(globalsCss).toContain('.animate-collapsible-down');
   });
-
   it('defines animate-collapsible-up utility class', () => {
     expect(globalsCss).toContain('.animate-collapsible-up');
   });

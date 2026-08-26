@@ -324,44 +324,53 @@ const MANAGE_GROUP_ORDER: Array<{ group: HomeIconDef['group']; label: string }> 
   { group: 'management', label: 'Administration' },
 ];
 
-// ── Collapsible Administration section ───────────────────────────────────────
-// Collapsed by default; state persisted in sessionStorage so it survives
-// swipe-away and swipe-back within the same session.
+// ── Collapsible section — generic ────────────────────────────────────────────
+// Finance (8 icons), Safety (9 icons), and Administration (13 icons) all
+// collapse by default. Work (5), Field & Files (4), and Fleet (1) stay open.
+// State is persisted in sessionStorage so it survives swipe-away/swipe-back.
 
-const ADMIN_STORAGE_KEY = 'manage_admin_open';
+const ADMIN_STORAGE_KEY   = 'manage_admin_open';
+const FINANCE_STORAGE_KEY = 'manage_finance_open';
+const SAFETY_STORAGE_KEY  = 'manage_safety_open';
 
-function AdminSection({
+function CollapsibleSection({
+  label,
+  storageKey,
+  testId,
   icons,
   onNavigate,
 }: {
+  label: string;
+  storageKey: string;
+  testId: string;
   icons: HomeIconDef[];
   onNavigate: (href: string) => void;
 }) {
   const [open, setOpen] = useState<boolean>(() => {
-    try { return sessionStorage.getItem(ADMIN_STORAGE_KEY) === '1'; }
+    try { return sessionStorage.getItem(storageKey) === '1'; }
     catch { return false; }
   });
 
   const toggle = () => {
     setOpen(prev => {
       const next = !prev;
-      try { sessionStorage.setItem(ADMIN_STORAGE_KEY, next ? '1' : '0'); }
+      try { sessionStorage.setItem(storageKey, next ? '1' : '0'); }
       catch { /* ignore */ }
       return next;
     });
   };
 
   return (
-    <Collapsible.Root open={open} onOpenChange={toggle} data-testid="admin-collapsible">
+    <Collapsible.Root open={open} onOpenChange={toggle} data-testid={testId}>
       {/* Heading row — always visible, acts as the toggle trigger */}
       <Collapsible.Trigger asChild>
         <button
-          className="w-full flex items-center justify-between mb-2 px-0.5 group"
-          aria-label={open ? 'Collapse Administration' : 'Expand Administration'}
-          data-testid="admin-collapsible-trigger"
+          className="w-full flex items-center justify-between mb-2 px-0.5"
+          aria-label={open ? `Collapse ${label}` : `Expand ${label}`}
+          data-testid={`${testId}-trigger`}
         >
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-            Administration
+            {label}
           </p>
           <ChevronDown
             size={14}
@@ -371,20 +380,27 @@ function AdminSection({
         </button>
       </Collapsible.Trigger>
 
-      {/* Collapsible grid — animated open/close via CSS max-height */}
+      {/* Collapsible grid */}
       <Collapsible.Content
         className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
-        data-testid="admin-collapsible-content"
+        data-testid={`${testId}-content`}
       >
         <div className="grid grid-cols-2 gap-2 pb-1">
           {icons.map(item => (
-            <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+            <IconTile key={item.key} item={item} onNavigate={onNavigate} wide={item.key === 'tools'} />
           ))}
         </div>
       </Collapsible.Content>
     </Collapsible.Root>
   );
 }
+
+// Which groups get a collapsible toggle and their config
+const COLLAPSIBLE_GROUPS: Record<string, { storageKey: string; testId: string }> = {
+  finance:    { storageKey: FINANCE_STORAGE_KEY, testId: 'finance-collapsible' },
+  safety:     { storageKey: SAFETY_STORAGE_KEY,  testId: 'safety-collapsible'  },
+  management: { storageKey: ADMIN_STORAGE_KEY,   testId: 'admin-collapsible'   },
+};
 
 function ManagePage({
   icons,
@@ -402,15 +418,23 @@ function ManagePage({
           const groupIcons = icons.filter(i => i.group === group);
           if (groupIcons.length === 0) return null;
 
-          // Administration gets its own collapsible section
-          if (group === 'management') {
+          const collapsibleCfg = COLLAPSIBLE_GROUPS[group];
+
+          if (collapsibleCfg) {
             return (
               <div key={group} className="mb-5">
-                <AdminSection icons={groupIcons} onNavigate={onNavigate} />
+                <CollapsibleSection
+                  label={label}
+                  storageKey={collapsibleCfg.storageKey}
+                  testId={collapsibleCfg.testId}
+                  icons={groupIcons}
+                  onNavigate={onNavigate}
+                />
               </div>
             );
           }
 
+          // Always-open sections: Work, Field & Files, Fleet
           return (
             <div key={group} className="mb-5">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
