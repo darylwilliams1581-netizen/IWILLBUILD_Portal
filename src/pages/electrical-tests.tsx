@@ -4,11 +4,12 @@
  * New/Edit record modal, Equipment register, Retest, Sign-off, PDF/CSV export.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Zap, Plus, Search, Filter, Download, FileText, Settings2,
   ChevronDown, AlertTriangle, CheckCircle2, Clock, XCircle,
-  Camera, RotateCcw, ShieldCheck, Loader2, ChevronRight,
+  Camera, RotateCcw, ShieldCheck, Loader2, ChevronRight, ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,7 @@ function statusBadge(status: string) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ElectricalTestsPage() {
+  const navigate = useNavigate();
   const { isAdmin } = usePermissions();
 
   // Job picker
@@ -145,6 +147,13 @@ export default function ElectricalTestsPage() {
         {/* Header */}
         <div className="bg-white border-b sticky top-0 z-20">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+            <button
+              onClick={() => navigate('/?page=2')}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors shrink-0"
+              aria-label="Back to Manage"
+            >
+              <ArrowLeft size={18} />
+            </button>
             <div className="p-2 rounded-lg bg-yellow-100">
               <Zap size={20} className="text-yellow-600" />
             </div>
