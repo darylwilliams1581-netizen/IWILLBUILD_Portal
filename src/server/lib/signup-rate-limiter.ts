@@ -82,6 +82,18 @@ export function checkLoginRate(ip: string, email?: string): boolean {
   return check(ip, 'login', 30, 15 * 60 * 1000);
 }
 
+/**
+ * Returns true if the 2FA verification attempt is allowed.
+ * Per-IP: 10 per 15 min.
+ * Per-account: 5 per 15 min (keyed by userId).
+ */
+export function check2faRate(ip: string, userId?: string): boolean {
+  if (userId) {
+    if (!check(userId, '2fa_user', 5, 15 * 60 * 1000)) return false;
+  }
+  return check(ip, '2fa_ip', 10, 15 * 60 * 1000);
+}
+
 // Prune stale buckets every 30 minutes to avoid unbounded memory growth
 setInterval(() => {
   const now = Date.now();

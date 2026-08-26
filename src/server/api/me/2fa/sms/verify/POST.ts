@@ -3,14 +3,18 @@
  * Body: { code: string }
  *
  * Verifies the SMS OTP sent by /api/me/2fa/sms/send.
- * Returns { ok: true } on success — the login page then navigates to /home.
- * Max 5 attempts before the code is invalidated.
+ *
+ * Security fixes:
+ *   - Parameterised queries
+ *   - Rate-limited: 10/IP/15min + 5/account/15min
+ *   - Never logs the code or phone number
  */
 import type { Request, Response } from 'express';
 import { createHash } from 'node:crypto';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
+import { check2faRate } from '../../../../../lib/signup-rate-limiter.js';
 
 const MAX_ATTEMPTS = 5;
 
@@ -20,6 +24,9 @@ function hashCode(code: string): string {
 
 export default async function handler(req: Request, res: Response) {
   try {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+               || req.socket.remoteAddress || 'unknown';
+
     const auth = getAuth();
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
@@ -29,30 +36,33 @@ export default async function handler(req: Request, res: Response) {
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
     const userId = session.user.id;
+
+    if (!check2faRate(ip, userId)) {
+      return res.status(429).json({ error: 'Too many attempts. Please wait before trying again.' });
+    }
+
     const { code } = req.body as { code?: string };
     if (!code?.trim() || !/^\d{6}$/.test(code.trim())) {
       return res.status(400).json({ error: 'A 6-digit code is required.' });
     }
 
-    const now = new Date();
-    const nowStr = now.toISOString().slice(0, 19).replace('T', ' ');
+    const now    = new Date();
 
-    // Find active 2FA code for this user
-    const rows = (await db.execute(sql.raw(
-      `SELECT id, code_hash, attempts, verified_at
-       FROM sms_verification_codes
-       WHERE user_id = '${userId}'
-         AND phone LIKE '2fa:%'
-         AND expires_at > '${nowStr}'
-       LIMIT 1`
+    const rows = (await db.execute(
+      sql`SELECT id, code_hash, attempts, verified_at
+          FROM sms_verification_codes
+          WHERE user_id = ${userId}
+            AND phone LIKE '2fa:%'
+            AND expires_at > ${now}
+          LIMIT 1`,
     )) as unknown as [Array<{
       id: string;
       code_hash: string;
       attempts: number;
       verified_at: string | null;
-    }>, unknown])[0];
+    }>, unknown];
 
-    const row = rows[0];
+    const row = rows[0]?.[0];
     if (!row) {
       return res.status(400).json({ error: 'No active code found. Please request a new one.' });
     }
@@ -62,18 +72,18 @@ export default async function handler(req: Request, res: Response) {
     }
 
     if (row.attempts >= MAX_ATTEMPTS) {
-      await db.execute(sql.raw(
-        `DELETE FROM sms_verification_codes WHERE id = '${row.id}'`
-      ));
+      await db.execute(
+        sql`DELETE FROM sms_verification_codes WHERE id = ${row.id}`,
+      );
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
     }
 
     const hashed = hashCode(code.trim());
 
     if (hashed !== row.code_hash) {
-      await db.execute(sql.raw(
-        `UPDATE sms_verification_codes SET attempts = ${row.attempts + 1} WHERE id = '${row.id}'`
-      ));
+      await db.execute(
+        sql`UPDATE sms_verification_codes SET attempts = ${row.attempts + 1} WHERE id = ${row.id}`,
+      );
       const remaining = MAX_ATTEMPTS - row.attempts - 1;
       return res.status(400).json({
         error: remaining > 0
@@ -83,13 +93,13 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Mark code as used
-    await db.execute(sql.raw(
-      `UPDATE sms_verification_codes SET verified_at = '${nowStr}' WHERE id = '${row.id}'`
-    ));
+    await db.execute(
+      sql`UPDATE sms_verification_codes SET verified_at = ${now} WHERE id = ${row.id}`,
+    );
 
     return res.json({ ok: true });
   } catch (err) {
-    console.error('[2fa/sms/verify]', err);
+    console.error('[2fa/sms/verify] error (details redacted)');
     return res.status(500).json({ error: 'Verification failed.' });
   }
 }

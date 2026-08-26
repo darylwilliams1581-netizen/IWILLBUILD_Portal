@@ -547,6 +547,7 @@ import me_2fa_sms_send_setup_post_514 from "./api/me/2fa/sms/send-setup/POST";
 import me_2fa_sms_verify_post_515 from "./api/me/2fa/sms/verify/POST";
 import me_2fa_status_get_516 from "./api/me/2fa/status/GET";
 import me_2fa_verify_post_517 from "./api/me/2fa/verify/POST";
+import me_2fa_recover_post_518 from "./api/me/2fa/recover/POST";
 import me_active_status_get_518 from "./api/me/active-status/GET";
 import me_change_password_post_519 from "./api/me/change-password/POST";
 import me_email_status_get_520 from "./api/me/email-status/GET";
@@ -900,7 +901,7 @@ import adminFixPhotoRecordFieldsPost from "./api/admin/fix-photo-record-fields/P
 import adminFixAllPhotoFieldsPost from "./api/admin/fix-all-photo-fields/POST.js";
 
 import { seoRoutes } from "../lib/seo-routes";
-import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
+import { requireOwner, requireAdmin, isPublicRoute, checkPending2fa } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
 import { applyWriteGate } from "./lib/write-gate-apply.js";
 import {
@@ -1201,6 +1202,15 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
     if (!session?.user) {
       return res.status(401).json({ error: 'Unauthorised' });
     }
+
+    // ── Pending-2FA guard ────────────────────────────────────────────────────
+    // If the user has a pending challenge cookie, block all routes except the
+    // 2FA verification endpoints. This enforces server-side 2FA before any
+    // protected API access is granted.
+    const fullPath = req.path.startsWith('/') ? `/api${req.path}` : `/api/${req.path}`;
+    const blocked = await checkPending2fa(req, res, fullPath);
+    if (blocked) return;
+
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorised' });
@@ -1497,11 +1507,17 @@ async function runStartupMigrations() {
     // ── customers: Xero contact ID ────────────────────────────────────────────
     { table: 'customers', column: 'xero_contact_id', definition: "VARCHAR(100) NULL" },
     // ── user: TOTP 2FA ────────────────────────────────────────────────────────
-    { table: 'user', column: 'totp_secret',        definition: 'VARCHAR(64) NULL' },
+    // totp_secret: widened to 512 to hold v1:<base64url(encrypted)> envelope
+    { table: 'user', column: 'totp_secret',        definition: 'VARCHAR(512) NULL' },
     { table: 'user', column: 'two_factor_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── user: SMS 2FA ─────────────────────────────────────────────────────────
     { table: 'user', column: 'sms_2fa_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'user', column: 'sms_2fa_phone',   definition: 'VARCHAR(30) NULL' },
+    // ── user: dedicated phone_verified flag (replaces verificationMethod hack) ─
+    { table: 'user', column: 'phone_verified',  definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── user: TOTP attempt counter (brute-force protection) ──────────────────
+    { table: 'user', column: 'totp_attempts',   definition: 'INT NOT NULL DEFAULT 0' },
+    { table: 'user', column: 'totp_locked_until', definition: 'DATETIME NULL' },
     // ── Dazza AI — per-company OpenAI key ────────────────────────────────────
     { table: 'company_settings', column: 'openai_api_key',      definition: 'TEXT NULL' },
     // ── Xero — per-company OAuth config (shelved; columns kept for schema continuity) ──
@@ -2012,6 +2028,9 @@ async function runStartupMigrations() {
     { name: 'anatomy_files', ddl: "CREATE TABLE IF NOT EXISTS anatomy_files (id BIGINT PRIMARY KEY AUTO_INCREMENT, snapshot_id VARCHAR(36) NOT NULL, rel_path VARCHAR(1000) NOT NULL, file_sha256 VARCHAR(64) NULL, language VARCHAR(50) NULL, file_type VARCHAR(50) NULL, line_count INT NOT NULL DEFAULT 0, byte_size INT NOT NULL DEFAULT 0, is_excluded TINYINT(1) NOT NULL DEFAULT 0, is_quarantined TINYINT(1) NOT NULL DEFAULT 0, quarantine_reason VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_anatomy_files_snapshot (snapshot_id), INDEX idx_anatomy_files_path (snapshot_id, rel_path(255)), INDEX idx_anatomy_files_lang (snapshot_id, language))" },
     { name: 'anatomy_chunks', ddl: "CREATE TABLE IF NOT EXISTS anatomy_chunks (id BIGINT PRIMARY KEY AUTO_INCREMENT, snapshot_id VARCHAR(36) NOT NULL, file_id BIGINT NOT NULL, rel_path VARCHAR(1000) NOT NULL, start_line INT NOT NULL, end_line INT NOT NULL, content MEDIUMTEXT NOT NULL, chunk_type VARCHAR(50) NULL, symbol_name VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FULLTEXT INDEX ft_anatomy_chunks_content (content), INDEX idx_anatomy_chunks_snapshot (snapshot_id), INDEX idx_anatomy_chunks_file (file_id), INDEX idx_anatomy_chunks_path (snapshot_id, rel_path(255)))" },
     { name: 'anatomy_quarantine', ddl: "CREATE TABLE IF NOT EXISTS anatomy_quarantine (id BIGINT PRIMARY KEY AUTO_INCREMENT, snapshot_id VARCHAR(36) NOT NULL, rel_path VARCHAR(1000) NOT NULL, reason VARCHAR(500) NOT NULL, pattern_matched VARCHAR(200) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_anatomy_quarantine_snapshot (snapshot_id))" },
+    // ── 2FA security tables ───────────────────────────────────────────────────
+    { name: 'pending_2fa_challenges', ddl: "CREATE TABLE IF NOT EXISTS pending_2fa_challenges (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, method ENUM('totp','sms') NOT NULL DEFAULT 'totp', expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_p2fa_user (user_id), INDEX idx_p2fa_token (token_hash), INDEX idx_p2fa_expires (expires_at))" },
+    { name: 'totp_backup_codes', ddl: "CREATE TABLE IF NOT EXISTS totp_backup_codes (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_tbc_user (user_id), INDEX idx_tbc_hash (user_id, code_hash))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -3697,6 +3716,7 @@ app.post("/api/me/2fa/sms/send-setup", me_2fa_sms_send_setup_post_514);
 app.post("/api/me/2fa/sms/verify", me_2fa_sms_verify_post_515);
 app.get("/api/me/2fa/status", me_2fa_status_get_516);
 app.post("/api/me/2fa/verify", me_2fa_verify_post_517);
+app.post("/api/me/2fa/recover", me_2fa_recover_post_518);
 app.get("/api/me/active-status", me_active_status_get_518);
 app.post("/api/me/change-password", me_change_password_post_519);
 app.get("/api/me/email-status", me_email_status_get_520);

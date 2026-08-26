@@ -164,6 +164,62 @@ export async function requireOwner(req: AuthedRequest, res: Response, next: Next
   }
 }
 
+// ── Pending-2FA guard ──────────────────────────────────────────────────────────
+
+/**
+ * Routes that are accessible while a pending-2FA challenge is active.
+ * Everything else returns TWO_FACTOR_REQUIRED.
+ */
+const PENDING_2FA_ALLOWED: Array<{ method: string; pattern: RegExp }> = [
+  // 2FA verification endpoints
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/verify$/ },
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/verify$/ },
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/send$/ },
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/recover$/ },
+  // Logout
+  { method: 'POST', pattern: /^\/api\/auth\/sign-out$/ },
+  { method: 'POST', pattern: /^\/api\/auth\/signout$/ },
+  // 2FA status (needed by login page)
+  { method: 'GET',  pattern: /^\/api\/me\/2fa\/status$/ },
+];
+
+function isPending2faAllowed(method: string, path: string): boolean {
+  return PENDING_2FA_ALLOWED.some(
+    (r) => r.method === method.toUpperCase() && r.pattern.test(path),
+  );
+}
+
+/**
+ * Check whether the request carries a pending-2FA challenge cookie.
+ * If it does, and the route is not on the allowed list, reject with 403.
+ *
+ * This is a defence-in-depth layer — it runs AFTER the BetterAuth session
+ * check so we know the user is authenticated but has not yet passed 2FA.
+ *
+ * Returns true if the request was blocked (response already sent).
+ */
+export async function checkPending2fa(
+  req: import('express').Request,
+  res: import('express').Response,
+  fullPath: string,
+): Promise<boolean> {
+  const { getChallengeTokenFromRequest, getChallenge } = await import('./pending-2fa.js');
+  const token = getChallengeTokenFromRequest(req);
+  if (!token) return false; // no challenge cookie — not pending
+
+  const challenge = await getChallenge(token);
+  if (!challenge) return false; // expired/invalid — treat as no challenge
+
+  // Challenge is active — only allow 2FA-related routes
+  if (isPending2faAllowed(req.method, fullPath)) return false;
+
+  res.status(403).json({
+    error: 'Two-factor authentication required.',
+    code:  'TWO_FACTOR_REQUIRED',
+  });
+  return true;
+}
+
 // ── Public route whitelist ─────────────────────────────────────────────────────
 
 /**

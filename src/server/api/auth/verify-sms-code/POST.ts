@@ -2,7 +2,10 @@
  * POST /api/auth/verify-sms-code
  * Body: { code: string }
  *
- * Verifies the SMS code and marks the user as email-verified.
+ * Verifies the SMS code sent by /api/auth/send-sms-code.
+ * On success:
+ *   - Sets user.phone_verified = true
+ *   - Does NOT modify emailVerified or verificationMethod
  * Max 5 attempts before the code is invalidated.
  */
 import type { Request, Response } from 'express';
@@ -33,7 +36,7 @@ export default async function handler(req: Request, res: Response) {
 
     const now = new Date();
 
-    // Find active code for this user
+    // Find active code for this user (non-2FA codes — no '2fa:' or 'setup:' prefix)
     const [row] = await db
       .select()
       .from(smsVerificationCodes)
@@ -49,12 +52,16 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No active verification code found. Please request a new code.' });
     }
 
+    // Only process account-recovery codes (not 2FA or setup codes)
+    if (row.phone.startsWith('2fa:') || row.phone.startsWith('setup:')) {
+      return res.status(400).json({ error: 'No active verification code found. Please request a new code.' });
+    }
+
     if (row.verifiedAt) {
       return res.status(400).json({ error: 'This code has already been used.' });
     }
 
     if (row.attempts >= MAX_ATTEMPTS) {
-      // Delete the code so they must request a new one
       await db.delete(smsVerificationCodes).where(eq(smsVerificationCodes.id, row.id));
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
     }
@@ -62,7 +69,6 @@ export default async function handler(req: Request, res: Response) {
     const hashed = hashCode(code.trim());
 
     if (hashed !== row.codeHash) {
-      // Increment attempts
       await db
         .update(smsVerificationCodes)
         .set({ attempts: row.attempts + 1 })
@@ -82,15 +88,15 @@ export default async function handler(req: Request, res: Response) {
       .set({ verifiedAt: now })
       .where(eq(smsVerificationCodes.id, row.id));
 
-    // Mark user as verified
+    // Set phone_verified = true ONLY — do NOT touch emailVerified or verificationMethod
     await db
       .update(user)
-      .set({ emailVerified: true, verificationMethod: 'sms', updatedAt: new Date() })
+      .set({ phoneVerified: true, updatedAt: new Date() })
       .where(eq(user.id, session.user.id));
 
     return res.json({ ok: true, message: 'Phone number verified successfully.' });
   } catch (err) {
-    console.error('POST /api/auth/verify-sms-code error:', err);
+    console.error('POST /api/auth/verify-sms-code error');
     return res.status(500).json({ error: 'Failed to verify code.' });
   }
 }

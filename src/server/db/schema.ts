@@ -18,8 +18,10 @@ export const user = mysqlTable('user', {
   image: text('image'),
   isAdmin: boolean('is_admin').default(false),
   // Account recovery additions
-  phoneNumber: varchar('phone_number', { length: 30 }),
+  phoneNumber:        varchar('phone_number', { length: 30 }),
   verificationMethod: varchar('verification_method', { length: 30 }),
+  // Dedicated phone verification flag — never conflated with emailVerified
+  phoneVerified:      boolean('phone_verified').default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
