@@ -239,7 +239,7 @@ export default function PortalJobDetailPage() {
 
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-20 safe-top">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
             <Link to={`/portal/dashboard?token=${token}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
               <ChevronLeft size={16} /> Dashboard

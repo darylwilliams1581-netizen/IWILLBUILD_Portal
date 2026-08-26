@@ -24,7 +24,7 @@ export default function HubPage() {
         </header>
 
         {/* ── Mobile header — sticks at top (no top dock on mobile) ── */}
-        <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 sticky top-0 z-20">
+        <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 sticky top-0 z-20 safe-top">
           <h1 className="font-heading font-bold text-base text-gray-900">IWILLBUILD Hub</h1>
         </header>
 

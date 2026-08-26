@@ -701,7 +701,7 @@ export default function InvoiceBuilderPage() {
       </Helmet>
 
       {/* Standalone top bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 safe-top">
         <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={16} />
           <span>Home</span>
