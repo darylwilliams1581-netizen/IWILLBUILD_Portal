@@ -137,11 +137,12 @@ export default async function handler(req: Request, res: Response) {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #111; background: #fff; }
   .page { max-width: 800px; margin: 0 auto; padding: 24px; }
-  .header { background: #b91c1c; color: #fff; padding: 20px 24px; border-radius: 8px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
-  .header h1 { font-size: 20px; font-weight: 700; }
-  .header .sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
-  .header .meta { text-align: right; font-size: 12px; opacity: 0.85; }
-  .severity-badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; color: #fff; background: ${sevCol}; margin-top: 6px; }
+  /* Printer-friendly header: 3pt top accent rule + plain dark text on white */
+  .header { border-top: 3px solid #b91c1c; padding: 16px 0 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e5e7eb; }
+  .header h1 { font-size: 20px; font-weight: 700; color: #111; }
+  .header .sub { font-size: 13px; color: #374151; margin-top: 4px; }
+  .header .meta { text-align: right; font-size: 12px; color: #374151; }
+  .severity-badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; color: ${sevCol}; border: 1.5px solid ${sevCol}; margin-top: 6px; background: transparent; }
   .section { margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
   .section h2 { background: #f3f4f6; padding: 8px 14px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #374151; border-bottom: 1px solid #e5e7eb; }
   table { width: 100%; border-collapse: collapse; }
@@ -166,7 +167,6 @@ export default async function handler(req: Request, res: Response) {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none; }
     .page { padding: 0; }
-    .header { border-radius: 0; }
   }
 </style>
 </head>
@@ -184,7 +184,7 @@ export default async function handler(req: Request, res: Response) {
       <div>Status: <strong>${esc(inc.status ?? '')}</strong></div>
       <div>Date: ${fmtDate(inc.incident_date)}</div>
       <div>Time: ${esc(inc.incident_time ?? '—')}</div>
-      <div style="margin-top:8px;font-size:10px;">Printed: ${new Date().toLocaleString('en-AU')}</div>
+      <div style="margin-top:8px;font-size:10px;color:#6b7280;">Printed: ${new Date().toLocaleString('en-AU')}</div>
     </div>
   </div>
 

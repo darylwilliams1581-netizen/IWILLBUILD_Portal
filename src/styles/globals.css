@@ -792,6 +792,19 @@ textarea {
     visibility: hidden !important;
   }
 
+  /* 4b. Document Builder application defaults — ensure printer-friendly output.
+     These only override the application-controlled defaults (H2 left rule, th
+     light grey). User-selected block.backgroundColor values are inline styles
+     and are intentional — they are NOT overridden here. */
+  .studio-doc-page [data-doc-editor] h2 {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+  }
+  .studio-doc-page [data-doc-editor] table th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+  }
+
   /* 5. Page breaks */
   .studio-page-break {
     break-after: page !important;

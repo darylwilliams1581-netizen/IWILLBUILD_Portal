@@ -103,9 +103,10 @@ export default async function handler(req: Request, res: Response) {
     ];
 
     const drawTableHeader = () => {
-      page.drawRectangle({ x: MARGIN, y: y - ROW_H + 4, width: PAGE_W - MARGIN * 2, height: ROW_H, color: rgb(0.1, 0.15, 0.35) });
+      // Light grey header — dark text (printer-friendly)
+      page.drawRectangle({ x: MARGIN, y: y - ROW_H + 4, width: PAGE_W - MARGIN * 2, height: ROW_H, color: rgb(0.88, 0.88, 0.88) });
       for (const col of cols) {
-        drawText(col.label, col.x + 2, y - 10, 6.5, true, rgb(1, 1, 1));
+        drawText(col.label, col.x + 2, y - 10, 6.5, true, rgb(0.1, 0.1, 0.1));
       }
       y -= ROW_H;
     };

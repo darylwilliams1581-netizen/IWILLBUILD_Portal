@@ -121,12 +121,14 @@ export default async function handler(req: Request, res: Response) {
     let page = newPage();
     let y = PAGE_H - MARGIN;
 
-    // Orange header banner
-    rect(page, 0, PAGE_H - 70, PAGE_W, 70, ORANGE);
-    text(page, 'PROGRESS REPORT', MARGIN, PAGE_H - 28, boldFont, 18, WHITE);
-    text(page, `Generated ${new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' })}`, MARGIN, PAGE_H - 46, regularFont, 9, WHITE);
+    // Printer-friendly header: 3pt accent rule + plain dark text on white
+    rect(page, 0, PAGE_H - 3, PAGE_W, 3, ORANGE);
+    text(page, 'PROGRESS REPORT', MARGIN, PAGE_H - 22, boldFont, 16, DARK);
+    text(page, `Generated ${new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' })}`, MARGIN, PAGE_H - 38, regularFont, 9, MUTED);
+    // Thin separator rule
+    page.drawLine({ start: { x: MARGIN, y: PAGE_H - 50 }, end: { x: PAGE_W - MARGIN, y: PAGE_H - 50 }, thickness: 0.5, color: GRAY_HEADER });
 
-    y = PAGE_H - 90;
+    y = PAGE_H - 68;
 
     // Job info
     const jobRows: [string, string][] = [
@@ -230,8 +232,10 @@ export default async function handler(req: Request, res: Response) {
       if (y < 60) {
         page = newPage();
         y = PAGE_H - MARGIN;
-        rect(page, 0, PAGE_H - 30, PAGE_W, 30, ORANGE);
-        text(page, 'PROGRESS REPORT (continued)', MARGIN, PAGE_H - 18, boldFont, 10, WHITE);
+        // Continuation header — 3pt rule + plain text
+        rect(page, 0, PAGE_H - 3, PAGE_W, 3, ORANGE);
+        text(page, 'PROGRESS REPORT (continued)', MARGIN, PAGE_H - 22, boldFont, 10, DARK);
+        page.drawLine({ start: { x: MARGIN, y: PAGE_H - 34 }, end: { x: PAGE_W - MARGIN, y: PAGE_H - 34 }, thickness: 0.5, color: GRAY_HEADER });
         y = PAGE_H - 50;
         rect(page, MARGIN, y - 2, CONTENT_W, 14, GRAY_HEADER);
         text(page, '#',        COL_SEQ,   y + 1, boldFont, 7, DARK);

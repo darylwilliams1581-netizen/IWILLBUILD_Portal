@@ -158,21 +158,24 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
   let y = 0;
 
   function drawHeader(target: PDFPage) {
-    target.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: PURPLE });
+    // Printer-friendly header: 3pt accent rule + plain dark text on white
+    target.drawLine({ start: { x: 0, y: PAGE_H - 3 }, end: { x: PAGE_W, y: PAGE_H - 3 }, thickness: 3, color: PURPLE });
     target.drawText(printable(data.title).slice(0, 72), {
-      x: MARGIN, y: PAGE_H - 35, font: bold, size: 18, color: WHITE,
+      x: MARGIN, y: PAGE_H - 28, font: bold, size: 16, color: DARK,
     });
     if (data.companyName) {
       target.drawText(printable(data.companyName).slice(0, 60), {
-        x: MARGIN, y: PAGE_H - 55, font: regular, size: 8.5, color: rgb(0.92, 0.88, 1),
+        x: MARGIN, y: PAGE_H - 46, font: regular, size: 8.5, color: MUTED,
       });
     }
+    // Status — text prefix, no filled badge
     const status = printable(data.status || 'Completed').toUpperCase();
-    const badgeWidth = Math.max(72, bold.widthOfTextAtSize(status, 9) + 24);
-    target.drawRectangle({ x: PAGE_W - MARGIN - badgeWidth, y: PAGE_H - 48, width: badgeWidth, height: 24, color: GREEN });
+    const statusW = bold.widthOfTextAtSize(status, 9);
     target.drawText(status, {
-      x: PAGE_W - MARGIN - badgeWidth + 12, y: PAGE_H - 40, font: bold, size: 9, color: WHITE,
+      x: PAGE_W - MARGIN - statusW, y: PAGE_H - 28, font: bold, size: 9, color: GREEN,
     });
+    // Thin separator rule
+    target.drawLine({ start: { x: MARGIN, y: PAGE_H - HEADER_H }, end: { x: PAGE_W - MARGIN, y: PAGE_H - HEADER_H }, thickness: 0.5, color: BORDER });
   }
 
   function addPage() {

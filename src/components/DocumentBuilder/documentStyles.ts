@@ -28,10 +28,10 @@ export interface DocumentThemeVars {
 export const DEFAULT_THEME_VARS: DocumentThemeVars = {
   textColor: '#1e293b',
   headingColor: '#0f172a',
-  accentColor: '#1e3a5f',       // dark navy — matches SWMS header bars
-  accentText: '#ffffff',
-  tableHeaderColor: '#1e3a5f',
-  tableHeaderTextColor: '#ffffff',
+  accentColor: '#1e3a5f',       // dark navy — used as thin left rule on H2
+  accentText: '#ffffff',        // kept for API compatibility (not used in H2 fill)
+  tableHeaderColor: '#f1f5f9',  // light grey — printer-friendly
+  tableHeaderTextColor: '#0f172a',
   borderColor: '#cbd5e1',
   mutedColor: '#64748b',
 };
@@ -79,13 +79,14 @@ export function buildDocumentCss(
 [data-doc-editor] h2 {
   font-size: 12pt;
   font-weight: 700;
-  color: ${t.accentText};
-  background: ${t.accentColor};
+  color: ${t.headingColor};
+  background: #f1f5f9;
   margin: 14pt 0 6pt;
   padding: 4pt 8pt;
   line-height: 1.3;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  border-left: 3px solid ${t.accentColor};
 }
 
 /* H3 — Sub-section */
@@ -166,12 +167,12 @@ export function buildDocumentCss(
   page-break-inside: avoid;
 }
 [data-doc-editor] table th {
-  background: ${t.tableHeaderColor};
-  color: ${t.tableHeaderTextColor};
+  background: #f1f5f9;
+  color: ${t.headingColor};
   font-weight: 700;
   font-size: 9pt;
   padding: 5pt 7pt;
-  border: 1px solid ${t.tableHeaderColor};
+  border: 1px solid ${t.borderColor};
   text-align: left;
   vertical-align: middle;
   line-height: 1.3;

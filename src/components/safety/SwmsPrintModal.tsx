@@ -125,12 +125,11 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       padding: 14mm 16mm;
     }
 
-    /* ── Header bar ── */
+    /* ── Header bar — printer-friendly: 3pt top rule + dark text on white ── */
     .header-bar {
-      background: #0f172a;
-      color: #fff;
-      padding: 14px 18px;
-      border-radius: 6px;
+      border-top: 3px solid #7c3aed;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 14px 0 12px;
       margin-bottom: 14px;
       display: flex;
       justify-content: space-between;
@@ -143,7 +142,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      color: #94a3b8;
+      color: #64748b;
       margin-bottom: 5px;
     }
     .header-title {
@@ -152,22 +151,25 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       letter-spacing: -0.3px;
       line-height: 1.2;
       margin-bottom: 5px;
+      color: #0f172a;
     }
     .header-activity {
       font-size: 9.5px;
-      color: #cbd5e1;
+      color: #475569;
       line-height: 1.5;
     }
+    /* Status badge — outline only, no filled background */
     .header-badge {
-      background: #7c3aed;
-      color: #fff;
+      color: #7c3aed;
+      border: 1.5px solid #7c3aed;
       font-size: 8.5px;
       font-weight: 700;
-      padding: 4px 11px;
-      border-radius: 20px;
+      padding: 3px 10px;
+      border-radius: 4px;
       white-space: nowrap;
       flex-shrink: 0;
       align-self: flex-start;
+      background: transparent;
     }
 
     /* ── Meta grid ── */
@@ -229,9 +231,9 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
     ul.bullets li strong { font-weight: 700; }
     ul.bullets li u { text-decoration: underline; }
 
-    /* ── PPE Banner ── */
+    /* ── PPE Banner — outline only, no filled purple label ── */
     .ppe-wrap {
-      border: 2px solid #7c3aed;
+      border: 1.5px solid #7c3aed;
       border-radius: 6px;
       overflow: hidden;
       display: flex;
@@ -239,7 +241,8 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
       margin-bottom: 14px;
     }
     .ppe-label {
-      background: #7c3aed;
+      background: transparent;
+      border-right: 1.5px solid #7c3aed;
       padding: 8px 12px;
       display: flex;
       flex-direction: column;
@@ -252,7 +255,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
     .ppe-label-text {
       font-size: 6.5px;
       font-weight: 900;
-      color: #fff;
+      color: #7c3aed;
       text-align: center;
       letter-spacing: 0.5px;
       margin-top: 4px;

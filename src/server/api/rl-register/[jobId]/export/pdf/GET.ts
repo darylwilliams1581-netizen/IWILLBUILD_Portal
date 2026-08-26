@@ -118,10 +118,10 @@ export default async function handler(req: Request, res: Response) {
       { label: 'By',        x: MARGIN + 722, w: 60 },
     ];
 
-    // Table header row
-    page.drawRectangle({ x: MARGIN, y: y - ROW_H + 4, width: PAGE_W - MARGIN * 2, height: ROW_H, color: rgb(0.15, 0.15, 0.35) });
+    // Table header row — light grey, dark text (printer-friendly)
+    page.drawRectangle({ x: MARGIN, y: y - ROW_H + 4, width: PAGE_W - MARGIN * 2, height: ROW_H, color: rgb(0.88, 0.88, 0.88) });
     for (const col of cols) {
-      drawText(col.label, col.x + 2, y - 10, 7, true, rgb(1, 1, 1));
+      drawText(col.label, col.x + 2, y - 10, 7, true, rgb(0.1, 0.1, 0.1));
     }
     y -= ROW_H;
 
@@ -132,9 +132,9 @@ export default async function handler(req: Request, res: Response) {
         // New page
         page = pdfDoc.addPage([PAGE_W, PAGE_H]);
         y = PAGE_H - MARGIN;
-        page.drawRectangle({ x: MARGIN, y: y - ROW_H + 4, width: PAGE_W - MARGIN * 2, height: ROW_H, color: rgb(0.15, 0.15, 0.35) });
+        page.drawRectangle({ x: MARGIN, y: y - ROW_H + 4, width: PAGE_W - MARGIN * 2, height: ROW_H, color: rgb(0.88, 0.88, 0.88) });
         for (const col of cols) {
-          drawText(col.label, col.x + 2, y - 10, 7, true, rgb(1, 1, 1));
+          drawText(col.label, col.x + 2, y - 10, 7, true, rgb(0.1, 0.1, 0.1));
         }
         y -= ROW_H;
         rowIdx = 0;
