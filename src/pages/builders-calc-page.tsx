@@ -10,27 +10,8 @@ export default function BuildersCalcPage() {
     <div className="portal-page">
       <Helmet>
         <title>Builders Calc — IWILLBUILD</title>
-        <meta name="description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform for Australian tradies." />
-        <link rel="canonical" href="https://iwillbuild.com/builders-calc" />
-        <meta property="og:title" content="Builders Calc — IWILLBUILD" />
-        <meta property="og:description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://iwillbuild.com/builders-calc" />
-        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Builders Calc — IWILLBUILD" />
-        <meta name="twitter:description" content="Construction calculators for areas, volumes, materials and more." />
-        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "@id": "https://iwillbuild.com/builders-calc#webpage",
-          "name": "Builders Calc — IWILLBUILD",
-          "url": "https://iwillbuild.com/builders-calc",
-          "description": "Construction calculators for areas, volumes, materials and more.",
-          "isPartOf": { "@id": "https://iwillbuild.com/#website" },
-          "about": { "@id": "https://iwillbuild.com/#organization" }
-        })}</script>
+        <meta name="description" content="Quick construction calculations — areas, volumes, materials and cost estimates." />
+        <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 
       {/* Shared portal chrome */}

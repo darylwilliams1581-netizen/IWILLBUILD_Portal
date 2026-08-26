@@ -1,14 +1,17 @@
 User-agent: *
-# Public pages — allow crawling
+
+# ── Public marketing pages — allow crawling ──────────────────────────────────
 Allow: /$
-Allow: /login$
-Allow: /signup$
+Allow: /subscribe$
+Allow: /download-app$
 Allow: /privacy$
 Allow: /terms$
-Allow: /forgot-password$
 
-# Block all authenticated portal routes and API
+# ── Block all authenticated portal, tool and internal routes ─────────────────
 Disallow: /api/
+Disallow: /home
+Disallow: /work
+Disallow: /work-field
 Disallow: /dashboard
 Disallow: /jobs
 Disallow: /projects
@@ -16,26 +19,61 @@ Disallow: /scheduler
 Disallow: /fleet
 Disallow: /forms
 Disallow: /files
+Disallow: /finance
 Disallow: /estimating
+Disallow: /timesheets
+Disallow: /invoices
 Disallow: /safety
 Disallow: /customers
 Disallow: /stakeholders
-Disallow: /invoices
-Disallow: /downloads
+Disallow: /library
+Disallow: /studio
+Disallow: /tools
+Disallow: /builders-calc
+Disallow: /takeoff-pad
+Disallow: /sds-register
+Disallow: /rl-register
+Disallow: /electrical-tests
+Disallow: /incidents
+Disallow: /risk-register
+Disallow: /prestart
+Disallow: /site-escape
+Disallow: /job-docs
+Disallow: /plan-manager
+Disallow: /lens
 Disallow: /dazza-ai
 Disallow: /annette
 Disallow: /team
 Disallow: /settings
+Disallow: /profile
 Disallow: /owner-console
+Disallow: /developer-console
 Disallow: /billing
 Disallow: /subscription
-Disallow: /tools
-Disallow: /documents/
+Disallow: /roadmap
+Disallow: /lists
+Disallow: /user-logs
+Disallow: /signin-history
+Disallow: /job-cards
+Disallow: /quick-links
+Disallow: /help
+Disallow: /portal/
 Disallow: /share/
 Disallow: /external/
+Disallow: /documents/
+
+# ── Block auth flows ──────────────────────────────────────────────────────────
+Disallow: /login
+Disallow: /signup
+Disallow: /subscribe
 Disallow: /check-email
 Disallow: /verify-email
 Disallow: /verify-required
+Disallow: /forgot-password
 Disallow: /reset-password
+Disallow: /login-help
+
+# ── Block test/build-only paths ───────────────────────────────────────────────
+Disallow: /__tests__/
 
 Sitemap: https://iwillbuild.com/sitemap.xml

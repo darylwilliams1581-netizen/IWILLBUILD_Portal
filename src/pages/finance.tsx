@@ -85,7 +85,7 @@ export default function FinancePage() {
       <Helmet>
         <title>Finance — IWILLBUILD</title>
         <meta name="description" content="Company-wide estimates, invoices, job cost ledger and finance settings." />
-        <link rel="canonical" href="https://iwillbuild.com/finance" />
+        <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 
       <PortalSidebar />
