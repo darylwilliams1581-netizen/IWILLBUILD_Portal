@@ -627,5 +627,33 @@
     },
     "uploadContentHash": "9889b99c94f0cfe6f060a20887e321b889a43f2d76a8b8e74ae8467b55c458ee",
     "caption": "project management dashboard new job creation form"
+  },
+  "pages/home/mockup-desktop": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-home-mockup-desktop-8c627e06.jpg",
+    "searchQuery": "construction project management dashboard interface",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-26T05:20:58.298Z",
+    "lastUpdated": "2026-08-26T05:20:58.298Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-home-mockup-desktop-8c627e06.jpg": "f38wenbvln_1787721552995_file_aDgLvjM7Vz.jpg"
+    },
+    "uploadContentHash": "1cff9cb37c43f3b4b4aff21e892d784d9e3ae05e32089b161071caa6f565dec2",
+    "caption": "construction project management dashboard interface"
+  },
+  "pages/home/mockup-mobile": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-home-mockup-mobile-50863087.jpg",
+    "searchQuery": "mobile app dashboard with job management tools",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-26T05:20:58.565Z",
+    "lastUpdated": "2026-08-26T05:20:58.565Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-home-mockup-mobile-50863087.jpg": "f38wenbvln_1787721627307_file_YSrn2ppN3W.jpg"
+    },
+    "uploadContentHash": "fdfa066629967d0d657ae5d5afe7e070e46ecb7743f536315f6fb606d0dfdb36",
+    "caption": "mobile app dashboard with job management tools"
   }
 }

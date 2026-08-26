@@ -18,8 +18,10 @@ export const user = mysqlTable('user', {
   image: text('image'),
   isAdmin: boolean('is_admin').default(false),
   // Account recovery additions
-  phoneNumber: varchar('phone_number', { length: 30 }),
+  phoneNumber:        varchar('phone_number', { length: 30 }),
   verificationMethod: varchar('verification_method', { length: 30 }),
+  // Dedicated phone verification flag — never conflated with emailVerified
+  phoneVerified:      boolean('phone_verified').default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
@@ -491,6 +493,22 @@ export const jobTodos = mysqlTable('job_todos', {
 
 // ── Job Progress Lines ────────────────────────────────────────────────────────
 
+// ── Program of Works: sections ─────────────────────────────────────────────
+export const jobProgressSections = mysqlTable('job_progress_sections', {
+  id: int('id').primaryKey().autoincrement(),
+  jobId: int('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const jobProgressLines = mysqlTable('job_progress_lines', {
   id: int('id').primaryKey().autoincrement(),
   jobId: int('job_id')
@@ -499,14 +517,17 @@ export const jobProgressLines = mysqlTable('job_progress_lines', {
   companyId: int('company_id')
     .notNull()
     .references(() => companies.id, { onDelete: 'cascade' }),
+  // Section membership (nullable — null = Unsectioned)
+  sectionId: int('section_id'),
   estimateLineId: int('estimate_line_id'), // source line reference (nullable)
   description: text('description').notNull(),
+  // Financial fields — preserved for historical PO compatibility, not shown in PoW UI
   quantity: varchar('quantity', { length: 30 }).notNull().default('1'),
   unit: varchar('unit', { length: 50 }),
   rate: varchar('rate', { length: 30 }).notNull().default('0'),
   percentComplete: int('percent_complete').notNull().default(0), // 0-100
   progressNote: text('progress_note'),
-  // Program of Works scheduling fields (additive — existing rows default to null/0)
+  // Program of Works scheduling fields
   startDate: date('start_date'),
   endDate: date('end_date'),
   sortOrder: int('sort_order').notNull().default(0),

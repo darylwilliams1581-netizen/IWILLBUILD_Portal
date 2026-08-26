@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { Plugin } from 'vite';
 
 const SIDECAR_DIRNAME = 'format-overrides';
-const FORMAT_OVERRIDES_MODULE_ID = 'virtual:format-overrides';
+export const FORMAT_OVERRIDES_MODULE_ID = 'virtual:format-overrides';
 const RESOLVED_FORMAT_OVERRIDES_MODULE_ID = `\0${FORMAT_OVERRIDES_MODULE_ID}`;
 const EMPTY_SIDECAR = { version: 1, overrides: {} };
 const EMPTY_BUNDLE = { version: 1, scopes: {} };

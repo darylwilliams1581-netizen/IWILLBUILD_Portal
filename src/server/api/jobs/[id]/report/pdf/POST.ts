@@ -157,12 +157,12 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Helper: draw page header ──────────────────────────────────────────────
     function drawHeader(page: ReturnType<typeof pdfDoc.addPage>, pageNum: number, totalPages: number) {
-      // Orange bar
-      page.drawRectangle({ x: 0, y: PAGE_H - MARGIN - HEADER_H, width: PAGE_W, height: HEADER_H + MARGIN, color: COL_ORANGE });
+      // Printer-friendly: 3pt accent rule + plain dark text on white
+      page.drawLine({ start: { x: 0, y: PAGE_H - 3 }, end: { x: PAGE_W, y: PAGE_H - 3 }, thickness: 3, color: COL_ORANGE });
       // Title
       page.drawText(truncate(reportTitle, 60), {
-        x: MARGIN, y: PAGE_H - MARGIN - 26,
-        font: fontBold, size: 14, color: COL_WHITE,
+        x: MARGIN, y: PAGE_H - MARGIN - 18,
+        font: fontBold, size: 13, color: COL_DARK,
       });
       // Subtitle row
       const subtitle = [
@@ -172,21 +172,27 @@ export default async function handler(req: Request, res: Response) {
       ].filter(Boolean).join('  ·  ');
       if (subtitle) {
         page.drawText(truncate(subtitle, 80), {
-          x: MARGIN, y: PAGE_H - MARGIN - 44,
-          font: fontReg, size: 9, color: rgb(1, 0.9, 0.8),
+          x: MARGIN, y: PAGE_H - MARGIN - 32,
+          font: fontReg, size: 8, color: COL_GREY,
         });
       }
       // Page number (right-aligned)
       const pageLabel = `${pageNum} / ${totalPages}`;
-      const pageLabelW = fontReg.widthOfTextAtSize(pageLabel, 9);
+      const pageLabelW = fontReg.widthOfTextAtSize(pageLabel, 8);
       page.drawText(pageLabel, {
-        x: PAGE_W - MARGIN - pageLabelW, y: PAGE_H - MARGIN - 44,
-        font: fontReg, size: 9, color: rgb(1, 0.9, 0.8),
+        x: PAGE_W - MARGIN - pageLabelW, y: PAGE_H - MARGIN - 18,
+        font: fontReg, size: 8, color: COL_GREY,
       });
       // Photo count
       page.drawText(`${orderedRows.length} photo${orderedRows.length !== 1 ? 's' : ''}`, {
-        x: MARGIN, y: PAGE_H - MARGIN - 58,
-        font: fontReg, size: 8, color: rgb(1, 0.85, 0.7),
+        x: MARGIN, y: PAGE_H - MARGIN - 46,
+        font: fontReg, size: 7, color: COL_GREY,
+      });
+      // Thin separator rule
+      page.drawLine({
+        start: { x: MARGIN, y: PAGE_H - MARGIN - HEADER_H },
+        end: { x: PAGE_W - MARGIN, y: PAGE_H - MARGIN - HEADER_H },
+        thickness: 0.5, color: COL_LIGHT,
       });
     }
 
@@ -280,10 +286,8 @@ export default async function handler(req: Request, res: Response) {
         let captionY = CONTENT_BOTTOM + 24;
         if (category) {
           const catLabel = category.toUpperCase();
-          const catW = fontBold.widthOfTextAtSize(catLabel, 8) + 10;
-          page.drawRectangle({ x: MARGIN, y: captionY - 2, width: catW, height: 14, color: COL_ORANGE });
-          page.drawText(catLabel, { x: MARGIN + 5, y: captionY + 2, font: fontBold, size: 8, color: COL_WHITE });
-          captionY -= 18;
+          page.drawText(`[${catLabel}]`, { x: MARGIN, y: captionY + 2, font: fontBold, size: 7.5, color: COL_DARK });
+          captionY -= 14;
         }
         if (caption) {
           page.drawText(truncate(caption, 120), { x: MARGIN, y: captionY, font: fontObliq, size: 9, color: COL_DARK });
@@ -336,11 +340,9 @@ export default async function handler(req: Request, res: Response) {
 
           let textX = cellX + 4;
           if (category) {
-            const catLabel = category.toUpperCase();
-            const catW = fontBold.widthOfTextAtSize(catLabel, 6.5) + 6;
-            page.drawRectangle({ x: textX, y: cellY + 8, width: catW, height: 11, color: COL_ORANGE });
-            page.drawText(catLabel, { x: textX + 3, y: cellY + 11, font: fontBold, size: 6.5, color: COL_WHITE });
-            textX += catW + 4;
+            const catLabel = `[${category.toUpperCase()}]`;
+            page.drawText(catLabel, { x: textX, y: cellY + 10, font: fontBold, size: 6.5, color: COL_DARK });
+            textX += fontBold.widthOfTextAtSize(catLabel, 6.5) + 4;
           }
           if (caption) {
             const maxCaptionW = CELL_W - (textX - cellX) - 4;

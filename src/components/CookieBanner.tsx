@@ -14,21 +14,41 @@ interface CookieConsent {
 declare global {
   interface Window {
     _signalsDataLayer?: unknown[];
+    _trfd?: unknown[];
+    _allowCT?: boolean;
     revokeAnalyticsConsent?: () => void;
     __SCC_INIT__?: boolean;
   }
 }
 
-// Inline C2 tracking - loads script and tracks clicks/pageviews
-function initC2Tracking(): void {
+// Loads the SCC C2 script unconditionally and registers a consent-gated click
+// listener. SCC loads without waiting for consent — C2 manages its own
+// collection behavior; the banner gates what gets collected via _allowCT, not
+// whether the script loads. `ap` is pushed onto `_trfd` once so it appears on
+// all events for this page without repeating it per event.
+function initTracking(): void {
   if (typeof window === 'undefined' || window.__SCC_INIT__) return;
   window.__SCC_INIT__ = true;
   window._signalsDataLayer = window._signalsDataLayer || [];
 
+  window._trfd = window._trfd || [];
+  window._trfd.push({ ap: 'airo-app-builder' });
+
+  const h = location.hostname;
+  const url = h === 'localhost' || h.includes('dev-airoapp')
+    ? 'https://img1.dev-wsimg.com/signals/js/clients/scc-c2/scc-c2.js'
+    : h.includes('test-airoapp')
+      ? 'https://img1.test-wsimg.com/signals/js/clients/scc-c2/scc-c2.min.js'
+      : 'https://img1.wsimg.com/signals/js/clients/scc-c2/scc-c2.min.js';
+  const script = document.createElement('script');
+  script.src = url;
+  script.async = true;
+  document.head.appendChild(script);
+
   const track = (eid: string, type: string, label: string, props?: Record<string, unknown>) => {
     window._signalsDataLayer!.push({
       schema: 'add_event', version: 'v1',
-      data: { eid, type, event_label: label, custom_properties: { ...props, timestamp: new Date().toISOString(), source: 'airo-app-builder' } }
+      data: { eid, type, event_label: label, custom_properties: { ...props } }
     });
   };
 
@@ -40,18 +60,8 @@ function initC2Tracking(): void {
     return 'page';
   };
 
-  const getDevice = (): string => {
-    const w = window.innerWidth;
-    return w < 768 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop';
-  };
-
-  // Initial events
-  track('airo.website.session', 'session', 'start', { page_path: location.pathname, referrer: document.referrer });
-  track('airo.website.pageview', 'pageview', document.title, { page_path: location.pathname, referrer: document.referrer });
-
-  // Click tracking
-  // Capture phase (true) ensures we track clicks even if event.stopPropagation() is called
   document.addEventListener('click', (e) => {
+    if (!window._allowCT) return;
     const el = (e.target as HTMLElement)?.closest('a, button, [role="button"]') as HTMLElement;
     if (!el) return;
     const text = el.textContent?.trim()?.substring(0, 100) || '';
@@ -72,46 +82,19 @@ function initC2Tracking(): void {
       element_text: text,
       element_id: el.id || undefined,
       section: getSection(el),
-      page_path: location.pathname,
       page_title: document.title,
       href: href || undefined,
       is_external: href ? isExternal : undefined,
-      device: getDevice(),
-      viewport_width: window.innerWidth
     });
   }, true);
-
-  // Route tracking
-  let lastUrl = location.href;
-  const trackPage = () => {
-    if (location.href !== lastUrl) {
-      track('airo.website.pageview', 'pageview', document.title, { page_path: location.pathname, referrer: lastUrl });
-      lastUrl = location.href;
-    }
-  };
-  window.addEventListener('popstate', trackPage);
-  const push = history.pushState, replace = history.replaceState;
-  history.pushState = (...args) => { push.apply(history, args); setTimeout(trackPage, 0); };
-  history.replaceState = (...args) => { replace.apply(history, args); setTimeout(trackPage, 0); };
-
-  // Load SCC script
-  const h = location.hostname;
-  const url = h === 'localhost' || h.includes('dev-airoapp')
-    ? 'https://img1.dev-wsimg.com/signals/js/clients/scc-c2/scc-c2.js'
-    : h.includes('test-airoapp')
-      ? 'https://img1.test-wsimg.com/signals/js/clients/scc-c2/scc-c2.min.js'
-      : 'https://img1.wsimg.com/signals/js/clients/scc-c2/scc-c2.min.js';
-  const script = document.createElement('script');
-  script.src = url;
-  script.async = true;
-  document.head.appendChild(script);
 }
 
 /**
  * Cookie banner component for C2 analytics consent
  *
  * Displays a consent banner for C2 analytics tracking. Manages user consent
- * preferences in localStorage and controls whether analytics scripts are loaded.
+ * preferences in localStorage and gates click event collection via window._allowCT.
+ * The SCC script is always loaded; consent only controls what gets collected.
  */
 export default function CookieBanner() {
   const [showBanner, setShowBanner] = useState(false);
@@ -132,6 +115,8 @@ export default function CookieBanner() {
   useEffect(function checkConsent() {
     if (typeof window === 'undefined') return;
 
+    initTracking();
+
     const consentData = localStorage.getItem(COOKIE_CONSENT_KEY);
 
     if (!consentData) {
@@ -147,8 +132,8 @@ export default function CookieBanner() {
       if (daysSinceConsent > COOKIE_CONSENT_EXPIRES_DAYS) {
         localStorage.removeItem(COOKIE_CONSENT_KEY);
         setShowBanner(true);
-      } else if (consent.analytics) {
-        initC2Tracking();
+      } else {
+        window._allowCT = consent.analytics;
       }
     } catch {
       localStorage.removeItem(COOKIE_CONSENT_KEY);
@@ -160,14 +145,15 @@ export default function CookieBanner() {
 
   function saveConsent(analytics: boolean) {
     localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ analytics, timestamp: Date.now() }));
+    window._allowCT = analytics;
     window.dispatchEvent(new CustomEvent('cookie-consent-changed', { detail: { consented: analytics } }));
-    if (analytics) initC2Tracking();
     setShowBanner(false);
   }
 
   function revokeConsent() {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(COOKIE_CONSENT_KEY);
+    window._allowCT = false;
     window.dispatchEvent(new CustomEvent('cookie-consent-changed', { detail: { consented: false } }));
     setShowBanner(true);
   }

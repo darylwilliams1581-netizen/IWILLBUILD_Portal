@@ -37,7 +37,7 @@ export default function JobLaunchTab({
     sameTabUrl: `/forms${jq}`
   }, {
     label: 'Estimates',
-    description: 'Create or review estimates and quotes for this job.',
+    description: 'Create or review estimates for this job.',
     icon: Calculator,
     color: 'bg-emerald-50',
     iconColor: 'text-emerald-600',

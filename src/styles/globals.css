@@ -8,6 +8,11 @@
   :root {
     /* Core Colors */
     --background: 0 0% 100%;
+    /* ── Opening-page group panel backgrounds ─────────────────────────────── */
+    --panel-work:        #F1F6FF;
+    --panel-field-files: #F7F3FF;
+    --panel-finance:     #F1FBF6;
+    --panel-safety:      #FFF8F5;
     --foreground: 0 0% 4%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 4%;
@@ -454,12 +459,6 @@ textarea {
 
 @media (min-width: 768px) {
   .portal-content {
-    padding-top: 112px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .portal-content {
     padding: 1.5rem;
     padding-top: 112px;
     /* Offset the fixed left sidebar — width is kept in sync by PortalSidebar */
@@ -791,6 +790,19 @@ textarea {
   .studio-no-print {
     display: none !important;
     visibility: hidden !important;
+  }
+
+  /* 4b. Document Builder application defaults — ensure printer-friendly output.
+     These only override the application-controlled defaults (H2 left rule, th
+     light grey). User-selected block.backgroundColor values are inline styles
+     and are intentional — they are NOT overridden here. */
+  .studio-doc-page [data-doc-editor] h2 {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+  }
+  .studio-doc-page [data-doc-editor] table th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
   }
 
   /* 5. Page breaks */

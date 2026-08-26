@@ -5,7 +5,7 @@ import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, 
 // Desktop sidebar icons
 Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert,
 // Work section icons
-Plus, CheckSquare, StickyNote, Clock, TrendingUp, Wrench } from 'lucide-react';
+Plus, Briefcase, Clock } from 'lucide-react';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -127,47 +127,11 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     icon: Zap,
     href: '/job-cards'
   }, {
-    id: 'nav-w1',
-    idx: 'w1',
-    label: 'Tasks',
-    icon: CheckSquare,
-    href: '/work?workTab=tasks'
-  }, {
-    id: 'nav-w2',
-    idx: 'w2',
-    label: 'Notes',
-    icon: StickyNote,
-    href: '/work?workTab=notes'
-  }, {
-    id: 'nav-w3',
-    idx: 'w3',
-    label: 'Delays',
-    icon: Clock,
-    href: '/work?workTab=delays'
-  }, {
-    id: 'nav-w4',
-    idx: 'w4',
-    label: 'Progress',
-    icon: TrendingUp,
-    href: '/work?workTab=progress'
-  }, {
-    id: 'nav-w5',
-    idx: 'w5',
-    label: 'Attendance',
-    icon: Users,
-    href: '/work?workTab=attendance'
-  }, {
-    id: 'nav-w6',
-    idx: 'w6',
-    label: 'Builders Calc',
-    icon: Wrench,
-    href: '/builders-calc'
-  }, {
-    id: 'nav-w7',
-    idx: 'w7',
-    label: 'Takeoff Pad',
-    icon: TableProperties,
-    href: '/takeoff-pad'
+    id: 'nav-work',
+    idx: 'work',
+    label: 'Work',
+    icon: Briefcase,
+    href: '/work'
   }]
 }, {
   heading: 'Field & Files',
@@ -195,7 +159,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   items: [{
     id: 'nav-09a',
     idx: '09a',
-    label: 'Assets',
+    label: 'Fleet Assets',
     icon: Truck,
     href: '/fleet?fleetView=assets'
   }, {
@@ -228,9 +192,21 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   }, {
     id: 'nav-11c',
     idx: '11c',
-    label: 'Ledger',
+    label: 'Job Ledger',
     icon: BookOpen,
     href: '/finance?financeTab=ledger'
+  }, {
+    id: 'nav-11e',
+    idx: '11e',
+    label: 'Purchase Orders',
+    icon: ClipboardList,
+    href: '/finance?financeTab=purchase-orders'
+  }, {
+    id: 'nav-11f',
+    idx: '11f',
+    label: 'Timesheets',
+    icon: Clock,
+    href: '/timesheets'
   }, {
     id: 'nav-11d',
     idx: '11d',
@@ -361,6 +337,11 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     href: '/job-cards',
     permKey: 'jobs'
   }, {
+    label: 'Work',
+    icon: Briefcase,
+    href: '/work',
+    permKey: 'jobs'
+  }, {
     label: 'Scheduler',
     icon: CalendarDays,
     href: '/scheduler',
@@ -485,6 +466,14 @@ function DesktopSidebarContent({
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
   const [newJobOpen, setNewJobOpen] = useState(false);
   const isActive = (href: string) => {
+    // Work item: highlight for any /work path AND the tool pages launched from Work
+    if (href === '/work') {
+      return (
+        location.pathname === '/work' ||
+        location.pathname === '/builders-calc' ||
+        location.pathname === '/takeoff-pad'
+      );
+    }
     // For hrefs with query params (e.g. /work?workTab=tasks, /finance?financeTab=estimates),
     // match pathname AND the first query param value — never compare pathname to the full href.
     const [hrefPath, hrefQuery] = href.split('?');
@@ -650,6 +639,14 @@ function SidebarContent({
   const companyLogoUrl = useCompanyLogo();
   const companyName = me?.company?.name ?? 'Portal';
   const isActive = (href: string) => {
+    // Work item: highlight for any /work path AND the tool pages launched from Work
+    if (href === '/work') {
+      return (
+        location.pathname === '/work' ||
+        location.pathname === '/builders-calc' ||
+        location.pathname === '/takeoff-pad'
+      );
+    }
     if (href.includes('?')) {
       const [hPath, hQuery] = href.split('?');
       const hParams = new URLSearchParams(hQuery);
@@ -817,8 +814,8 @@ export default function PortalSidebar() {
       {/* ── Desktop top bar — fixed, full-width, z-1100 ── */}
       <DesktopTopBar />
 
-      {/* ── Desktop sidebar — fixed left rail, below topbar, lg+ only ── */}
-      <aside ref={_sidebarRef} aria-label="Desktop sidebar navigation" className="hidden lg:flex flex-col" style={{
+      {/* ── Desktop sidebar — fixed left rail, below topbar, md+ only ── */}
+      <aside ref={_sidebarRef} aria-label="Desktop sidebar navigation" className="hidden md:flex flex-col" style={{
       position: 'fixed',
       top: 56,
       left: 0,
@@ -843,7 +840,7 @@ export default function PortalSidebar() {
           opacity: 0
         }} transition={{
           duration: 0.2
-        }} onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />
+        }} onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/50 z-40 md:hidden" />
             <motion.aside key="drawer" initial={{
           x: -280
         }} animate={{
@@ -853,7 +850,7 @@ export default function PortalSidebar() {
         }} transition={{
           duration: 0.25,
           ease: 'easeOut' as const
-        }} className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 lg:hidden shadow-2xl border-r border-gray-200" style={{
+        }} className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200" style={{
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}>
               <SidebarContent onClose={() => setMobileOpen(false)} />

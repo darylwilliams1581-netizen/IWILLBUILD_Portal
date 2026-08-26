@@ -1,6 +1,6 @@
 /**
  * /finance — Finance workspace
- * Tabs: Estimates | Invoices | Ledger | Settings
+ * Tabs: Estimates | Invoices | Job Ledger | Settings
  * URL param: financeTab=estimates|invoices|ledger|settings
  * Settings sub-param: settingsTab=accounting|costing|pdf-style
  *
@@ -11,22 +11,26 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { DollarSign, FileText, BookOpen, Settings, Receipt } from 'lucide-react';
+import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, Clock, ArrowLeft } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopDock from '@/components/DesktopDock';
 import FinanceEstimatesTab from '@/components/finance/FinanceEstimatesTab';
+import FinancePurchaseOrdersTab from '@/components/finance/FinancePurchaseOrdersTab';
 import FinanceLedgerTab from '@/components/finance/FinanceLedgerTab';
 import FinanceSettingsTab from '@/components/finance/FinanceSettingsTab';
+import FinanceTimesheetsTab from '@/components/finance/FinanceTimesheetsTab';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type FinanceTab = 'estimates' | 'invoices' | 'ledger' | 'settings';
+type FinanceTab = 'estimates' | 'purchase-orders' | 'timesheets' | 'invoices' | 'ledger' | 'settings';
 
 const TABS: { key: FinanceTab; label: string; icon: React.ElementType }[] = [
-  { key: 'estimates', label: 'Estimates', icon: FileText  },
-  { key: 'invoices',  label: 'Invoices',  icon: Receipt   },
-  { key: 'ledger',    label: 'Ledger',    icon: BookOpen  },
-  { key: 'settings',  label: 'Settings',  icon: Settings  },
+  { key: 'estimates',       label: 'Estimates',       icon: FileText     },
+  { key: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
+  { key: 'timesheets',      label: 'Timesheets',      icon: Clock        },
+  { key: 'invoices',        label: 'Invoices',        icon: Receipt      },
+  { key: 'ledger',          label: 'Ledger',          icon: BookOpen     },
+  { key: 'settings',        label: 'Settings',        icon: Settings     },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -45,6 +49,15 @@ export default function FinancePage() {
       setSearchParams({ financeTab: 'estimates' }, { replace: true });
     }
   }, [rawTab, setSearchParams]);
+
+  // Legacy redirect: /finance?financeTab=timesheets → /timesheets
+  // Workers who land here via an old link or bookmark are sent to the
+  // dedicated employee-facing timesheets page instead.
+  useEffect(() => {
+    if (activeTab === 'timesheets') {
+      navigate('/timesheets', { replace: true });
+    }
+  }, [activeTab, navigate]);
 
   // Invoices tab navigates to the existing /invoices route
   useEffect(() => {
@@ -73,6 +86,7 @@ export default function FinancePage() {
         <title>Finance — IWILLBUILD</title>
         <meta name="description" content="Company-wide estimates, invoices, job cost ledger and finance settings." />
         <link rel="canonical" href="https://iwillbuild.com/finance" />
+        <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 
       <PortalSidebar />
@@ -81,6 +95,13 @@ export default function FinancePage() {
       <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors shrink-0"
+            aria-label="Back"
+          >
+            <ArrowLeft size={18} className="text-foreground" />
+          </button>
           <div className="w-9 h-9 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
             <DollarSign size={18} className="text-primary" />
           </div>
@@ -110,9 +131,11 @@ export default function FinancePage() {
 
         {/* ── Tab content ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-hidden">
-          {activeTab === 'estimates' && <FinanceEstimatesTab />}
-          {activeTab === 'ledger'    && <FinanceLedgerTab />}
-          {activeTab === 'settings'  && (
+          {activeTab === 'estimates'       && <FinanceEstimatesTab />}
+          {activeTab === 'purchase-orders' && <FinancePurchaseOrdersTab />}
+          {activeTab === 'timesheets'      && <FinanceTimesheetsTab />}
+          {activeTab === 'ledger'          && <FinanceLedgerTab />}
+          {activeTab === 'settings'        && (
             <FinanceSettingsTab
               settingsTab={settingsTab}
               key={settingsTab}

@@ -1,24 +1,23 @@
 /**
  * /jobs/:id/costs — Full-screen Job Cost Ledger page.
- * Mirrors the job-delays-page shell pattern with emerald theme.
- * Header has a + Add Entry button that opens the AddEntryModal inside JobCosts.
+ * Path B standalone page — reached via Work & Field launcher.
+ * @seo-exempt
  */
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, BookOpen, Loader2, Plus, Home } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router';
+import { BookOpen, Loader2, Plus } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import JobCosts from '@/components/job/JobCosts';
+import JobFeatureShell from '@/components/job/JobFeatureShell';
+
 interface Job {
   id: number;
   name: string;
   jobNumber?: string | null;
 }
+
 export default function JobCostsPage() {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const jobId = Number(id);
   const [job, setJob] = useState<Job | null>(null);
@@ -26,116 +25,66 @@ export default function JobCostsPage() {
 
   // Ref to trigger the Add Entry modal inside JobCosts
   const addEntryRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    fetch(`/api/jobs/${id}`, {
-      credentials: 'include'
-    }).then(async r => {
-      const ct = r.headers.get('content-type') ?? '';
-      if (!ct.includes('application/json')) {
-        setLoading(false);
-        return;
-      }
-      const data = (await r.json()) as {
-        job?: Job;
-      } | Job;
-      const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
-      setJob(j ?? null);
-    }).catch(() => setJob(null)).finally(() => setLoading(false));
+    if (!id) { setLoading(false); return; }
+    fetch(`/api/jobs/${id}`, { credentials: 'include' })
+      .then(async r => {
+        const ct = r.headers.get('content-type') ?? '';
+        if (!ct.includes('application/json')) { setLoading(false); return; }
+        const data = (await r.json()) as { job?: Job } | Job;
+        const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
+        setJob(j ?? null);
+      })
+      .catch(() => setJob(null))
+      .finally(() => setLoading(false));
   }, [id]);
-  const title = job ? `${job.name} — Job Costs` : 'Job Costs';
-  return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+
+  function handleChangeJob() {
+    navigate('/?picker=costs');
+  }
+
+  return (
+    <div className="portal-page">
       <Helmet>
-        <title>{title} — IWILLBUILD</title>
+        <title>{job ? `Job Ledger — ${job.name}` : 'Job Ledger'} — IWILLBUILD</title>
         <meta name="description" content="View and manage cost ledger entries for this job." />
-        <meta name="robots" content="noindex, nofollow" />
-        <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/costs`} />
+        <meta name="robots" content="noindex" />
+        {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/costs`} />}
       </Helmet>
+      <h1 className="sr-only">{job ? `Job Ledger — ${job.name}` : 'Job Ledger'}</h1>
 
-      {/* ── Desktop top bar ── */}
-      <div className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center gap-3 shrink-0" style={{
-      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
-    }}>
-        <button onClick={() => navigate(`/jobs/${id}`)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0">
-          <ArrowLeft size={18} />
-        </button>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+      <div className="portal-content flex flex-col p-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Loading…</span>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-            {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Costs'}</h1>
-                <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
-                  <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
-                  <span>/</span>
-                  <span className="text-gray-500 font-medium">Costs</span>
-                </div>
-              </>}
-          </div>
-        <button onClick={() => addEntryRef.current?.()} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">
-          <Plus size={13} />
-          Add Entry
-        </button>
+        ) : (
+          <JobFeatureShell
+            Icon={BookOpen}
+            featureLabel="Job Ledger"
+            jobName={job?.name ?? 'Job'}
+            jobNumber={job?.jobNumber}
+            backTo="/"
+            onChangeJob={handleChangeJob}
+          >
+            {/* Add Entry button — floats in the shell content area */}
+            <div className="flex justify-end px-4 pt-3">
+              <button
+                onClick={() => addEntryRef.current?.()}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
+              >
+                <Plus size={13} />
+                Add Entry
+              </button>
+            </div>
+            <div className="px-4 py-4 pb-24 md:pb-6 max-w-5xl mx-auto w-full">
+              <JobCosts jobId={jobId} onRegisterAddEntry={fn => { addEntryRef.current = fn; }} />
+            </div>
+          </JobFeatureShell>
+        )}
       </div>
-
-      {/* ── Mobile safe-area top bar ── */}
-      <div className="md:hidden bg-white border-b border-gray-100 shrink-0" style={{
-      paddingTop: 'max(env(safe-area-inset-top), 12px)',
-      boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
-    }}>
-        <div className="flex items-center justify-center px-4 pb-3">
-          <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center">
-            {loading ? <span className="inline-block h-4 w-32 bg-gray-200 rounded animate-pulse" /> : job?.name ?? 'Job Costs'}
-          </h1>
-        </div>
-      </div>
-
-      {/* ── Mobile: + Add Entry floats top-right ── */}
-      <button onClick={() => addEntryRef.current?.()} className="md:hidden fixed z-20 h-9 px-3 rounded-xl bg-emerald-500 shadow-sm flex items-center gap-1.5 text-xs font-bold text-white active:bg-emerald-600 transition-colors" style={{
-      top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)',
-      right: '12px'
-    }} aria-label="Add Entry">
-        <Plus size={13} />
-        Add Entry
-      </button>
-
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto">
-        {loading ? <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-emerald-400" />
-          </div> : <div className="px-4 py-4 pb-24 md:pb-6 max-w-5xl mx-auto w-full">
-            <JobCosts jobId={jobId} onRegisterAddEntry={fn => {
-          addEntryRef.current = fn;
-        }} />
-          </div>}
-      </div>
-
-      {/* ── Mobile bottom bar ── */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100" style={{
-      boxShadow: '0 -1px 0 rgba(0,0,0,0.05)',
-      paddingBottom: 'env(safe-area-inset-bottom)'
-    }}>
-        <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
-            <ArrowLeft size={16} />
-          </button>
-          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
-            <Home size={16} />
-          </button>
-          <div className="flex-1 min-w-0">
-            {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
-                <p className="text-gray-900 font-bold text-sm leading-tight truncate">
-                  {job?.name ?? 'Job Costs'}
-                </p>
-                {job?.jobNumber && <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>}
-              </>}
-          </div>
-        </div>
-      </div>
-    </div>;
+    </div>
+  );
 }

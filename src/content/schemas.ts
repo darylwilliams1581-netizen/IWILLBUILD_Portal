@@ -148,6 +148,8 @@ export const schemas = {
       "desc": z.string(),
       "id": z.string()
     }))
-  })
+  }),
+  pages: {
+  }
 };
 export type Schemas = typeof schemas;

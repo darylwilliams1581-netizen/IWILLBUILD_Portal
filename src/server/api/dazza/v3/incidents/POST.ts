@@ -22,8 +22,9 @@ import type { V3IncidentInput } from '../../../../lib/dazza-v3-brain.js';
 export default async function handler(req: Request, res: Response) {
   try {
     // Auth — any authenticated user can report an incident
-    const { session } = await getSessionAndProfile(req);
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+    const authResult = await getSessionAndProfile(req, res);
+    if (!authResult) return; // response already sent by getSessionAndProfile
+    const { session } = authResult;
 
     const body = req.body as Partial<V3IncidentInput>;
 

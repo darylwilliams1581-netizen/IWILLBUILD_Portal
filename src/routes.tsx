@@ -59,10 +59,22 @@ const SafetyPage = lazy(() => import('./pages/safety'));
 const FilesPage = lazy(() => import('./pages/files'));
 const EstimatingPage = lazy(() => import('./pages/estimating'));
 const FinancePage = lazy(() => import('./pages/finance'));
+const TimesheetsPage = lazy(() => import('./pages/timesheets'));
 const BuildersCalcPage = lazy(() => import('./pages/builders-calc-page'));
 const TakeoffPadPage = lazy(() => import('./pages/takeoff-pad-page'));
+const SdsRegisterPage = lazy(() => import('./pages/sds-register'));
+const RlRegisterPage = lazy(() => import('./pages/rl-register'));
+const ElectricalTestsPage = lazy(() => import('./pages/electrical-tests'));
 const WorkJobPickerPage = lazy(() => import('./pages/work-job-picker'));
 const WorkPage = lazy(() => import('./pages/work'));
+const WorkFieldPage = lazy(() => import('./pages/work-field'));
+const JobTasksPage = lazy(() => import('./pages/job-tasks-page'));
+const JobAttendancePage = lazy(() => import('./pages/job-attendance-page'));
+const JobFilesPage = lazy(() => import('./pages/job-files-page'));
+const JobEstimatesPage = lazy(() => import('./pages/job-estimates-page'));
+const JobPurchaseOrdersPage = lazy(() => import('./pages/job-purchase-orders-page'));
+const JobInvoicesPage = lazy(() => import('./pages/job-invoices-page'));
+const JobSafetyPage = lazy(() => import('./pages/job-safety-page'));
 const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
 const CustomersPage = lazy(() => import('./pages/customers'));
 const CustomerDetailPage = lazy(() => import('./pages/customer-detail'));
@@ -379,6 +391,35 @@ export const routes: RouteObject[] = [{
   path: '/jobs/:id/costs',
   element: protect(<Suspense fallback={<PageLoader />}><JobCostsPage /></Suspense>),
   errorElement: routeError
+}, {
+  // Path B standalone pages — new routes
+  path: '/jobs/:jobId/tasks',
+  element: protect(<Suspense fallback={<PageLoader />}><JobTasksPage /></Suspense>),
+  errorElement: routeError
+}, {
+  path: '/jobs/:jobId/attendance',
+  element: protect(<Suspense fallback={<PageLoader />}><JobAttendancePage /></Suspense>),
+  errorElement: routeError
+}, {
+  path: '/jobs/:jobId/files',
+  element: protect(<Suspense fallback={<PageLoader />}><JobFilesPage /></Suspense>),
+  errorElement: routeError
+}, {
+  path: '/jobs/:jobId/estimates',
+  element: protect(<Suspense fallback={<PageLoader />}><JobEstimatesPage /></Suspense>),
+  errorElement: routeError
+}, {
+  path: '/jobs/:jobId/purchase-orders',
+  element: protect(<Suspense fallback={<PageLoader />}><JobPurchaseOrdersPage /></Suspense>),
+  errorElement: routeError
+}, {
+  path: '/jobs/:jobId/invoices',
+  element: protect(<Suspense fallback={<PageLoader />}><JobInvoicesPage /></Suspense>),
+  errorElement: routeError
+}, {
+  path: '/jobs/:jobId/safety',
+  element: protect(<Suspense fallback={<PageLoader />}><JobSafetyPage /></Suspense>),
+  errorElement: routeError
 },
 // QR scan landing — unauthenticated allowed (guest check-in form)
 {
@@ -415,6 +456,10 @@ export const routes: RouteObject[] = [{
   element: protect(<FinancePage />),
   errorElement: routeError
 }, {
+  path: '/timesheets',
+  element: protect(<TimesheetsPage />),
+  errorElement: routeError
+}, {
   path: '/estimating',
   element: protect(<EstimatingPage />),
   errorElement: routeError
@@ -427,14 +472,36 @@ export const routes: RouteObject[] = [{
   element: protect(<TakeoffPadPage />),
   errorElement: routeError
 }, {
+  path: '/sds-register',
+  element: protect(<SdsRegisterPage />),
+  errorElement: routeError
+}, {
+  path: '/rl-register',
+  element: protect(<RlRegisterPage />),
+  errorElement: routeError
+}, {
+  path: '/electrical-tests',
+  element: protect(<ElectricalTestsPage />),
+  errorElement: routeError
+}, {
   // Work workspace — company-wide register (/work?workTab=tasks|notes|...)
   path: '/work',
   element: protect(<WorkPage />),
   errorElement: routeError
 }, {
-  // Legacy job-picker launcher — kept for backward compat, redirects to /work
+  // Legacy job-picker launcher — kept for backward compat
   path: '/work/:workTab',
   element: protect(<WorkJobPickerPage />),
+  errorElement: routeError
+}, {
+  // Work & Field launcher (Path B)
+  path: '/work-field',
+  element: protect(<Suspense fallback={<PageLoader />}><WorkFieldPage /></Suspense>),
+  errorElement: routeError
+}, {
+  // Work & Field launcher with pre-selected feature slug
+  path: '/work-field/:featureSlug',
+  element: protect(<Suspense fallback={<PageLoader />}><WorkFieldPage /></Suspense>),
   errorElement: routeError
 }, {
   path: '/estimates/:id',

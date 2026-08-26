@@ -40,7 +40,7 @@ export default function AssetManagerPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
       <PortalSidebar />
-      <div className="portal-main">
+      <div className="portal-main lg-portal">
 
         {selectedAssetId !== null ? <Suspense fallback={<TabFallback />}>
             <EquipmentDetailPanel assetId={selectedAssetId} onBack={() => setSelectedAssetId(null)} />

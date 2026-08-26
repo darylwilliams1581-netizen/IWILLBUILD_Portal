@@ -15,8 +15,9 @@ function esc(s: string): string {
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const { session } = await getSessionAndProfile(req);
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+    const result = await getSessionAndProfile(req, res);
+    if (!result) return; // response already sent by getSessionAndProfile
+    const { session } = result;
 
     const { id } = req.params as { id: string };
     const userId = session.user.id;

@@ -285,8 +285,6 @@ function CustomerFormModal({
 
 // ── Customer card ─────────────────────────────────────────────────────────────
 
-// ── Customer card ─────────────────────────────────────────────────────────────
-
 function CustomerCard({
   customer,
   onEdit,
@@ -301,9 +299,9 @@ function CustomerCard({
   const isArchived = customer.status === 'archived';
   const phone = customer.mobile || customer.phone;
   const email = customer.email;
-  const [expanded, setExpanded] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
   function handleSms(e: React.MouseEvent) {
     e.stopPropagation();
     if (isMobile) {
@@ -312,108 +310,114 @@ function CustomerCard({
       setSmsOpen(true);
     }
   }
+
+  // Avatar colour — deterministic from first char
+  const avatarColors: Record<string, string> = {
+    A: 'bg-rose-100 text-rose-600', B: 'bg-orange-100 text-orange-600',
+    C: 'bg-amber-100 text-amber-600', D: 'bg-teal-100 text-teal-700',
+    E: 'bg-cyan-100 text-cyan-700', F: 'bg-sky-100 text-sky-700',
+    G: 'bg-blue-100 text-blue-700', H: 'bg-indigo-100 text-indigo-700',
+    I: 'bg-violet-100 text-violet-700', J: 'bg-purple-100 text-purple-700',
+    K: 'bg-fuchsia-100 text-fuchsia-700', L: 'bg-pink-100 text-pink-700',
+    M: 'bg-red-100 text-red-600', N: 'bg-emerald-100 text-emerald-700',
+    O: 'bg-green-100 text-green-700', P: 'bg-lime-100 text-lime-700',
+    Q: 'bg-yellow-100 text-yellow-700', R: 'bg-orange-100 text-orange-700',
+    S: 'bg-teal-100 text-teal-600', T: 'bg-rose-100 text-rose-500',
+    U: 'bg-sky-100 text-sky-600', V: 'bg-violet-100 text-violet-600',
+    W: 'bg-indigo-100 text-indigo-600', X: 'bg-purple-100 text-purple-600',
+    Y: 'bg-cyan-100 text-cyan-600', Z: 'bg-emerald-100 text-emerald-600',
+  };
+  const initial = customer.name[0].toUpperCase();
+  const avatarCls = avatarColors[initial] ?? 'bg-primary/10 text-primary';
+
   return <>
-      <div className={`bg-white border rounded-xl overflow-hidden transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
-        {/* Row — always visible */}
-        <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-primary font-black text-xs">{customer.name[0].toUpperCase()}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="font-semibold text-sm text-slate-800 truncate block">{customer.name}</span>
-              {customer.contact_person && <span className="text-[11px] text-slate-400 truncate block">{customer.contact_person}</span>}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {(customer as Customer & {
-            stakeholder_type?: string;
-          }).stakeholder_type && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 hidden sm:inline">
-                {(customer as Customer & {
-              stakeholder_type?: string;
-            }).stakeholder_type}
-              </span>}
-            {isArchived && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">Archived</span>}
-            <ChevronRight size={15} className={`text-slate-300 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
-          </div>
-        </button>
+    <div className={`bg-white border rounded-xl transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
+      {/* ── Main row ── */}
+      <div className="flex items-center gap-3 px-3 py-3">
 
-        {/* Expanded detail */}
-        <AnimatePresence initial={false}>
-          {expanded && <motion.div initial={{
-          height: 0,
-          opacity: 0
-        }} animate={{
-          height: 'auto',
-          opacity: 1
-        }} exit={{
-          height: 0,
-          opacity: 0
-        }} transition={{
-          duration: 0.18,
-          ease: 'easeInOut' as const
-        }} className="overflow-hidden">
-              <div className="border-t border-slate-100 px-4 py-3 flex flex-col gap-3">
-                {/* Detail rows */}
-                <div className="flex flex-col gap-1.5">
-                  {phone && <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Phone size={11} className="text-slate-300 shrink-0" />{phone}
-                    </div>}
-                  {email && <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Mail size={11} className="text-slate-300 shrink-0" />{email}
-                    </div>}
-                  {customer.address && <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <MapPin size={11} className="text-slate-300 shrink-0" />{customer.address}
-                    </div>}
-                  {customer.abn && <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <FileText size={11} className="text-slate-300 shrink-0" />ABN {customer.abn}
-                    </div>}
-                  {typeof customer.job_count === 'number' && customer.job_count > 0 && <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Briefcase size={11} className="text-slate-300 shrink-0" />
-                      {customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
-                    </div>}
-                </div>
+        {/* Avatar */}
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-black text-sm ${avatarCls}`}>
+          {initial}
+        </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-2">
-                  {phone && <a href={`tel:${phone}`} onClick={e => e.stopPropagation()} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold py-2 rounded-xl transition-colors">
-                      <Phone size={12} />Call
-                    </a>}
-                  {phone && <button onClick={handleSms} className="flex-1 flex items-center justify-center gap-1.5 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white text-xs font-bold py-2 rounded-xl transition-colors">
-                      <MessageSquare size={12} />SMS
-                    </button>}
-                  {email && <a href={`mailto:${email}`} onClick={e => e.stopPropagation()} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-xs font-bold py-2 rounded-xl transition-colors">
-                      <Mail size={12} />Email
-                    </a>}
-                  <Link to={`/customers/${customer.id}`} onClick={e => e.stopPropagation()} className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-xl transition-colors">
-                    <Building2 size={12} />View
-                  </Link>
-                </div>
+        {/* Name + subtitle */}
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-sm text-slate-800 truncate block leading-tight">{customer.name}</span>
+          <span className="text-[11px] text-slate-400 truncate block leading-tight">
+            {customer.contact_person || (customer as Customer & { stakeholder_type?: string }).stakeholder_type || '\u00a0'}
+          </span>
+        </div>
 
-                {/* Edit / Archive */}
-                <div className="flex gap-2 pt-1 border-t border-slate-100">
-                  <button onClick={e => {
-                e.stopPropagation();
-                onEdit();
-              }} className="flex-1 text-xs text-slate-400 hover:text-primary font-semibold py-1 transition-colors">
-                    Edit
-                  </button>
-                  <button onClick={e => {
-                e.stopPropagation();
-                onArchive();
-              }} className={`flex-1 text-xs font-semibold py-1 transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600' : 'text-slate-400 hover:text-amber-600'}`}>
-                    {isArchived ? 'Unarchive' : 'Archive'}
-                  </button>
-                </div>
-              </div>
-            </motion.div>}
-        </AnimatePresence>
+        {/* Quick-action buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {phone && (
+            <a
+              href={`tel:${phone}`}
+              onClick={e => e.stopPropagation()}
+              aria-label={`Call ${customer.name}`}
+              className="w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 flex items-center justify-center text-white transition-colors"
+            >
+              <Phone size={15} strokeWidth={2.2} />
+            </a>
+          )}
+          {phone && (
+            <button
+              onClick={handleSms}
+              aria-label={`SMS ${customer.name}`}
+              className="w-9 h-9 rounded-xl bg-violet-500 hover:bg-violet-600 active:bg-violet-700 flex items-center justify-center text-white transition-colors"
+            >
+              <MessageSquare size={15} strokeWidth={2.2} />
+            </button>
+          )}
+          {email && (
+            <a
+              href={`mailto:${email}`}
+              onClick={e => e.stopPropagation()}
+              aria-label={`Email ${customer.name}`}
+              className="w-9 h-9 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 flex items-center justify-center text-white transition-colors"
+            >
+              <Mail size={15} strokeWidth={2.2} />
+            </a>
+          )}
+          {/* Chevron → detail page */}
+          <Link
+            to={`/customers/${customer.id}`}
+            onClick={e => e.stopPropagation()}
+            aria-label={`View ${customer.name}`}
+            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+          >
+            <ChevronRight size={15} strokeWidth={2.2} />
+          </Link>
+        </div>
       </div>
 
-      <AnimatePresence>
-        {smsOpen && phone && <SmsModal to={phone} name={customer.name} onClose={() => setSmsOpen(false)} />}
-      </AnimatePresence>
-    </>;
+      {/* ── Edit / Archive row — subtle, below the main row ── */}
+      <div className="flex gap-0 border-t border-slate-100">
+        <button
+          onClick={e => { e.stopPropagation(); onEdit(); }}
+          className="flex-1 text-[11px] text-slate-400 hover:text-primary font-semibold py-1.5 transition-colors"
+        >
+          Edit
+        </button>
+        {typeof (customer as Customer & { job_count?: number }).job_count === 'number' && (customer as Customer & { job_count?: number }).job_count! > 0 && (
+          <span className="text-[11px] text-slate-300 flex items-center gap-1 px-2">
+            <Briefcase size={10} />
+            {(customer as Customer & { job_count?: number }).job_count} {workPlural}
+          </span>
+        )}
+        <button
+          onClick={e => { e.stopPropagation(); onArchive(); }}
+          className={`flex-1 text-[11px] font-semibold py-1.5 transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600' : 'text-slate-400 hover:text-amber-600'}`}
+        >
+          {isArchived ? 'Unarchive' : 'Archive'}
+        </button>
+      </div>
+    </div>
+
+    <AnimatePresence>
+      {smsOpen && phone && <SmsModal to={phone} name={customer.name} onClose={() => setSmsOpen(false)} />}
+    </AnimatePresence>
+  </>;
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -491,14 +495,15 @@ export default function CustomersPage() {
 
       <div className="portal-content">
         {/* Page header */}
-        <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="op-page-header flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <Link to="/home" className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" aria-label="Back to home">
-              <ArrowLeft size={18} />
+            <Link to="/home" className="flex items-center justify-center w-7 h-7 rounded hover:bg-slate-100 text-slate-500 transition-colors" aria-label="Back to home">
+              <ArrowLeft size={15} />
             </Link>
+            <Users size={14} className="text-primary shrink-0" />
             <div>
-              <h1 className="font-heading font-bold text-base text-foreground">Contacts</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <h1 className="op-page-title">Contacts</h1>
+              <p className="op-page-subtitle hidden sm:block">
                 {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
               </p>
             </div>
@@ -506,9 +511,9 @@ export default function CustomersPage() {
           <button onClick={() => {
           setEditing(null);
           setShowModal(true);
-        }} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            <Plus size={15} />
-            <span className="hidden sm:inline">+ New Contact</span>
+        }} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <Plus size={14} />
+            <span className="hidden sm:inline">New Contact</span>
             <span className="sm:hidden">Add</span>
           </button>
         </div>

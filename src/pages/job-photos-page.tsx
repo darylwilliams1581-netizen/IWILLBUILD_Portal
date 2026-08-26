@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Home, Upload, Share2, CheckSquare, Send, Camera, Trash2 } from 'lucide-react';
+import { Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Upload, Share2, CheckSquare, Send, Camera, Trash2 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
+import JobFeatureShell from '@/components/job/JobFeatureShell';
 // qrcode is loaded lazily (dynamic import) to prevent its module-level
 // constructor code from running on iOS Safari at page parse time, which
 // causes "o is not a constructor" in the minified bundle.
@@ -21,6 +22,7 @@ export default function JobPhotosPage() {
   }>();
   const navigate = useNavigate();
   const openCameraPage = () => navigate(`/jobs/${id}/camera`);
+  const handleChangeJob = () => navigate('/?picker=photos');
   const jobId = Number(id);
   const photosRef = useRef<JobPhotosHandle>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -168,83 +170,65 @@ export default function JobPhotosPage() {
   };
   const atLimit = photoCount >= 200;
   const title = job ? `${job.name} — Photos` : 'Job Photos';
-  return <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
+  return <div className="portal-page">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage photos for this job." />
-        <meta name="robots" content="noindex, nofollow" />
+        <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />
       </Helmet>
+      <h1 className="sr-only">{title}</h1>
 
-      {/* ── Page header — matches op-page-header style ── */}
-      <header className="h-11 bg-white border-b border-gray-200 flex items-center gap-2 px-3 shrink-0 sticky top-0 z-10 safe-top">
-        {/* Back */}
-        <button onClick={() => navigate(`/jobs/${id}?tab=photos`)} className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
-          <ArrowLeft size={15} />
-        </button>
-        {/* Home — mobile/tablet only; desktop uses sidebar */}
-        <button onClick={() => navigate('/home')} className="lg:hidden p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Dashboard">
-          <Home size={15} />
-        </button>
-
-        {/* Title */}
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          {loading ? <div className="h-3.5 w-32 bg-gray-200 rounded animate-pulse" /> : <>
-              <h1 className="font-heading font-bold text-[13px] text-gray-900 truncate">
-                {job?.name ?? 'Job Photos'}
-              </h1>
-              {job?.jobNumber && <span className="text-[11px] font-mono text-gray-400 shrink-0 hidden sm:inline">{job.jobNumber}</span>}
-              <span className="text-[11px] text-gray-400 shrink-0">
-                · {photoCount} photo{photoCount !== 1 ? 's' : ''}
-              </span>
-            </>}
-        </div>
-
-        {/* Desktop toolbar actions */}
-        <div className="hidden md:flex items-center gap-1.5 shrink-0">
-          {/* Upload — icon only, no fill */}
-          <button onClick={() => photosRef.current?.openFilePicker()} disabled={uploading || atLimit} title="Upload photos" className="flex items-center justify-center w-8 h-8 border border-border hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition-colors">
-            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          </button>
-          {/* Camera — icon only, purple */}
-          <button onClick={openCameraPage} disabled={uploading || atLimit} title="Take a photo" className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-            <Camera size={16} />
-          </button>
-          {/* Select */}
-          {!selectMode ? <button onClick={() => handleSetSelectMode(true)} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
-              <CheckSquare size={12} /> Select
-            </button> : <button onClick={() => {
-          handleSetSelectMode(false);
-          photosRef.current?.exitSelectMode();
-        }} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
-              <X size={12} /> Done {selectedCount > 0 && `(${selectedCount})`}
-            </button>}
-          {selectMode && selectedCount > 0 && <>
-              <button onClick={() => photosRef.current?.deleteSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded transition-colors">
-                <Trash2 size={12} /> Delete
+      <div className="portal-content flex flex-col p-0">
+        <JobFeatureShell
+          Icon={Camera}
+          featureLabel="Photos"
+          jobName={job?.name ?? 'Job'}
+          jobNumber={job?.jobNumber}
+          backTo="/"
+          onChangeJob={handleChangeJob}
+          desktopActions={
+            <div className="hidden md:flex items-center gap-1.5">
+              {/* Upload */}
+              <button onClick={() => photosRef.current?.openFilePicker()} disabled={uploading || atLimit} title="Upload photos" className="flex items-center justify-center w-8 h-8 border border-border hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition-colors">
+                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               </button>
-              <button onClick={handleDownloadSelected} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
-                <Download size={12} /> Download
+              {/* Camera */}
+              <button onClick={openCameraPage} disabled={uploading || atLimit} title="Take a photo" className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+                <Camera size={16} />
               </button>
-              <button onClick={() => void handleSendSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
-                <Send size={12} /> Send
+              {/* Select / Done */}
+              {!selectMode
+                ? <button onClick={() => handleSetSelectMode(true)} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                    <CheckSquare size={12} /> Select
+                  </button>
+                : <button onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                    <X size={12} /> Done {selectedCount > 0 && `(${selectedCount})`}
+                  </button>}
+              {selectMode && selectedCount > 0 && <>
+                <button onClick={() => photosRef.current?.deleteSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-semibold rounded transition-colors">
+                  <Trash2 size={12} /> Delete
+                </button>
+                <button onClick={handleDownloadSelected} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                  <Download size={12} /> Download
+                </button>
+                <button onClick={() => void handleSendSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
+                  <Send size={12} /> Send
+                </button>
+              </>}
+              {/* Share */}
+              <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
+                <Share2 size={12} /> Share
               </button>
-            </>}
-          {/* Share */}
-          <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
-            <Share2 size={12} /> Share
-          </button>
-        </div>
-      </header>
-
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto">
+            </div>
+          }
+        >
+        {/* ── Content ── */}
         {loading ? <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-primary" />
           </div> : <div className="px-2 py-2 pb-28 sm:px-4 sm:py-4 md:pb-6">
             <JobPhotos ref={photosRef} jobId={jobId} onShareLink={handleShareLink} onPhotoCount={setPhotoCount} onUploading={setUploading} onSelectionChange={setSelectedCount} />
           </div>}
-      </div>
 
       {/* ── Mobile bottom action bar ── */}
       <div className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 safe-bottom" style={{
@@ -383,5 +367,7 @@ export default function JobPhotosPage() {
             </motion.div>
           </div>}
       </AnimatePresence>
+        </JobFeatureShell>
+      </div>
     </div>;
 }

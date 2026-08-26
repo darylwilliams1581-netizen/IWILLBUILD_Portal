@@ -55,8 +55,6 @@ export class AppErrorBoundary extends Component<Props, State> {
   private _isBenign(msg: string): boolean {
     const lower = msg.toLowerCase();
     return (
-      lower.includes('notfounderror') ||
-      lower.includes('removechild') ||
       lower.includes('resizeobserver loop') ||
       lower.includes('script error') ||
       lower.includes('cancelled') ||

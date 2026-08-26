@@ -51,9 +51,14 @@ export function checkPasswordResetRate(ip: string): boolean {
   return check(ip, 'pwreset', 5, 15 * 60 * 1000);
 }
 
-/** Returns true if the SMS send request is allowed (3 per IP per 10 min) */
+/** Returns true if the SMS send request is allowed (10 per IP per 10 min) */
 export function checkSmsRate(ip: string): boolean {
-  return check(ip, 'sms', 3, 10 * 60 * 1000);
+  return check(ip, 'sms', 10, 10 * 60 * 1000);
+}
+
+/** Clear the SMS rate-limit bucket for an IP (call after a successful send to reset the counter) */
+export function clearSmsRate(ip: string): void {
+  buckets.delete(getKey(ip, 'sms'));
 }
 
 /** Returns true if the PIN attempt is allowed (5 per device per 15 min) */
@@ -80,6 +85,18 @@ export function checkLoginRate(ip: string, email?: string): boolean {
   }
   // Per-IP check (generous to handle shared NAT/proxies)
   return check(ip, 'login', 30, 15 * 60 * 1000);
+}
+
+/**
+ * Returns true if the 2FA verification attempt is allowed.
+ * Per-IP: 10 per 15 min.
+ * Per-account: 5 per 15 min (keyed by userId).
+ */
+export function check2faRate(ip: string, userId?: string): boolean {
+  if (userId) {
+    if (!check(userId, '2fa_user', 5, 15 * 60 * 1000)) return false;
+  }
+  return check(ip, '2fa_ip', 10, 15 * 60 * 1000);
 }
 
 // Prune stale buckets every 30 minutes to avoid unbounded memory growth

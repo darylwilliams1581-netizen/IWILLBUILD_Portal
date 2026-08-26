@@ -45,6 +45,66 @@ vi.mock('@/server/db/config', async () => {
   return import('../test/stubs/db-config.stub');
 });
 
+// po-auth — belt-and-braces for new Finance handlers
+vi.mock('/app/src/server/lib/po-auth.ts', async () => {
+  return import('../test/stubs/po-auth.stub');
+});
+vi.mock('/app/src/server/lib/po-auth.js', async () => {
+  return import('../test/stubs/po-auth.stub');
+});
+
+// po-service — new shared service used by Finance handlers
+vi.mock('/app/src/server/lib/po-service.ts', async () => {
+  return import('../test/stubs/po-service.stub');
+});
+vi.mock('/app/src/server/lib/po-service.js', async () => {
+  return import('../test/stubs/po-service.stub');
+});
+
+// purchase-order-pdf-document — new PDF builder
+vi.mock('/app/src/server/lib/purchase-order-pdf-document.ts', async () => {
+  return import('../test/stubs/purchase-order-pdf-document.stub');
+});
+vi.mock('/app/src/server/lib/purchase-order-pdf-document.js', async () => {
+  return import('../test/stubs/purchase-order-pdf-document.stub');
+});
+
+// Finance PO handlers — stub the entire modules so entry.ts can import them
+// without triggering the po-auth/po-service import chain
+vi.mock('./api/finance/purchase-orders/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/purchase-orders/POST', () => ({ default: async () => {} }));
+vi.mock('./api/finance/purchase-orders/[poId]/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/purchase-orders/[poId]/PUT', () => ({ default: async () => {} }));
+vi.mock('./api/finance/purchase-orders/[poId]/DELETE', () => ({ default: async () => {} }));
+vi.mock('./api/finance/purchase-orders/[poId]/pdf/GET', () => ({ default: async () => {} }));
+vi.mock('./api/purchase-orders/[poId]/compose-defaults/GET', () => ({ default: async () => {} }));
+vi.mock('./api/purchase-orders/[poId]/send-email/POST', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/POST', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/me/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/employees/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/[id]/GET', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/[id]/PUT', () => ({ default: async () => {} }));
+vi.mock('./api/finance/timesheets/[id]/DELETE', () => ({ default: async () => {} }));
+vi.mock('./lib/timesheet-service.ts', () => ({
+  ensureTimesheetSchema: async () => {},
+  listTimesheets: async () => ({ timesheets: [], hasMore: false, nextCursor: null, counts: {} }),
+  getTimesheet: async () => null,
+  createTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  updateTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  transitionTimesheet: async () => ({ ok: true, data: { id: 1, status: 'submitted' } }),
+  deleteTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+}));
+vi.mock('./lib/timesheet-service.js', () => ({
+  ensureTimesheetSchema: async () => {},
+  listTimesheets: async () => ({ timesheets: [], hasMore: false, nextCursor: null, counts: {} }),
+  getTimesheet: async () => null,
+  createTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  updateTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+  transitionTimesheet: async () => ({ ok: true, data: { id: 1, status: 'submitted' } }),
+  deleteTimesheet: async () => ({ ok: true, data: { id: 1 } }),
+}));
+
 // ── Entry import (after mocks are hoisted) ─────────────────────────────────
 import type { Request, Response } from 'express';
 

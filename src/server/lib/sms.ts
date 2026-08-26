@@ -3,14 +3,15 @@
  * Only active when TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER
  * are all set. Returns false if SMS is not configured.
  *
- * Env var: TWILIO_PHONE_NUMBER (E.164 format, e.g. +61400000000)
+ * Secret: TWILIO_PHONE_NUMBER (E.164 format, e.g. +61400000000)
  */
+import { getSecret } from '#airo/secrets';
 
 export function isSmsConfigured(): boolean {
   return !!(
-    process.env.TWILIO_ACCOUNT_SID &&
-    process.env.TWILIO_AUTH_TOKEN &&
-    process.env.TWILIO_PHONE_NUMBER
+    getSecret('TWILIO_ACCOUNT_SID') &&
+    getSecret('TWILIO_AUTH_TOKEN') &&
+    getSecret('TWILIO_PHONE_NUMBER')
   );
 }
 
@@ -24,9 +25,9 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
     return false;
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-  const authToken = process.env.TWILIO_AUTH_TOKEN!;
-  const from = process.env.TWILIO_PHONE_NUMBER!;
+  const accountSid = getSecret('TWILIO_ACCOUNT_SID')!;
+  const authToken  = getSecret('TWILIO_AUTH_TOKEN')!;
+  const from       = getSecret('TWILIO_PHONE_NUMBER')!;
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
   const params = new URLSearchParams({ To: to, From: from, Body: body });

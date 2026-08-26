@@ -2,14 +2,9 @@
  * POST /api/me/2fa/sms/enable
  * Body: { phone: string, code: string }
  *
- * Enables SMS 2FA for the authenticated user.
- * Requires a verified OTP (sent via /api/me/2fa/sms/send-setup) to confirm
- * the phone number is reachable before enabling.
+ * Enables SMS 2FA. Requires a verified OTP (sent via /api/me/2fa/sms/send-setup).
  *
- * Flow:
- *   1. Client calls POST /api/me/2fa/sms/send-setup { phone } → sends OTP
- *   2. User enters OTP
- *   3. Client calls this endpoint { phone, code } → verifies + enables
+ * Security fix: parameterised queries (no sql.raw interpolation).
  */
 import type { Request, Response } from 'express';
 import { createHash } from 'node:crypto';
@@ -41,25 +36,24 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const e164 = normalisePhone(phone.trim().replace(/\s+/g, ''));
-    const now = new Date();
-    const nowStr = now.toISOString().slice(0, 19).replace('T', ' ');
+    const now  = new Date();
 
     // Verify the setup OTP (stored with prefix 'setup:')
-    const rows = (await db.execute(sql.raw(
-      `SELECT id, code_hash, attempts, verified_at
-       FROM sms_verification_codes
-       WHERE user_id = '${userId}'
-         AND phone = 'setup:${e164}'
-         AND expires_at > '${nowStr}'
-       LIMIT 1`
+    const rows = (await db.execute(
+      sql`SELECT id, code_hash, attempts, verified_at
+          FROM sms_verification_codes
+          WHERE user_id = ${userId}
+            AND phone = ${`setup:${e164}`}
+            AND expires_at > ${now}
+          LIMIT 1`,
     )) as unknown as [Array<{
       id: string;
       code_hash: string;
       attempts: number;
       verified_at: string | null;
-    }>, unknown])[0];
+    }>, unknown];
 
-    const row = rows[0];
+    const row = rows[0]?.[0];
     if (!row) {
       return res.status(400).json({ error: 'No active verification code. Please request a new one.' });
     }
@@ -67,15 +61,15 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'This code has already been used.' });
     }
     if (row.attempts >= 5) {
-      await db.execute(sql.raw(`DELETE FROM sms_verification_codes WHERE id = '${row.id}'`));
+      await db.execute(sql`DELETE FROM sms_verification_codes WHERE id = ${row.id}`);
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
     }
 
     const hashed = hashCode(code.trim());
     if (hashed !== row.code_hash) {
-      await db.execute(sql.raw(
-        `UPDATE sms_verification_codes SET attempts = ${row.attempts + 1} WHERE id = '${row.id}'`
-      ));
+      await db.execute(
+        sql`UPDATE sms_verification_codes SET attempts = ${row.attempts + 1} WHERE id = ${row.id}`,
+      );
       const remaining = 5 - row.attempts - 1;
       return res.status(400).json({
         error: remaining > 0
@@ -85,24 +79,28 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Mark code as used
-    await db.execute(sql.raw(
-      `UPDATE sms_verification_codes SET verified_at = '${nowStr}' WHERE id = '${row.id}'`
-    ));
+    await db.execute(
+      sql`UPDATE sms_verification_codes SET verified_at = ${now} WHERE id = ${row.id}`,
+    );
 
     // Enable SMS 2FA — also disable TOTP if it was active (one method at a time)
-    const safePhone = e164.replace(/'/g, '');
-    await db.execute(sql.raw(
-      `UPDATE \`user\`
-       SET sms_2fa_enabled = 1,
-           sms_2fa_phone = '${safePhone}',
-           two_factor_enabled = 0,
-           totp_secret = NULL
-       WHERE id = '${userId}'`
-    ));
+    await db.execute(
+      sql`UPDATE \`user\`
+          SET sms_2fa_enabled = 1,
+              sms_2fa_phone   = ${e164},
+              two_factor_enabled = 0,
+              totp_secret     = NULL,
+              totp_attempts   = 0,
+              totp_locked_until = NULL
+          WHERE id = ${userId}`,
+    );
+
+    // Delete TOTP backup codes (no longer relevant)
+    await db.execute(sql`DELETE FROM totp_backup_codes WHERE user_id = ${userId}`);
 
     return res.json({ ok: true });
   } catch (err) {
-    console.error('[2fa/sms/enable]', err);
+    console.error('[2fa/sms/enable] error (details redacted)');
     return res.status(500).json({ error: 'Failed to enable SMS 2FA.' });
   }
 }

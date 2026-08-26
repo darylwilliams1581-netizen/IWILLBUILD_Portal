@@ -1,6 +1,9 @@
 /**
  * GET /api/me/phone
- * Returns the current user's phone number and whether it's verified.
+ * Returns the current user's phone number and whether it is verified.
+ *
+ * phoneVerified is now driven by the dedicated phone_verified column —
+ * it no longer piggybacks on emailVerified / verificationMethod.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
@@ -19,17 +22,20 @@ export default async function handler(req: Request, res: Response) {
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
     const [row] = await db
-      .select({ phoneNumber: user.phoneNumber, verificationMethod: user.verificationMethod, emailVerified: user.emailVerified })
+      .select({
+        phoneNumber:    user.phoneNumber,
+        phoneVerified:  user.phoneVerified,
+      })
       .from(user)
       .where(eq(user.id, session.user.id))
       .limit(1);
 
     return res.json({
-      phoneNumber: row?.phoneNumber ?? null,
-      phoneVerified: row?.verificationMethod === 'sms' && row?.emailVerified === true,
+      phoneNumber:   row?.phoneNumber   ?? null,
+      phoneVerified: row?.phoneVerified === true,
     });
   } catch (err) {
-    console.error('GET /api/me/phone error:', err);
+    console.error('GET /api/me/phone error');
     return res.status(500).json({ error: 'Failed to fetch phone number.' });
   }
 }

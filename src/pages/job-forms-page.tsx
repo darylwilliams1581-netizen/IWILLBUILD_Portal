@@ -2,12 +2,15 @@
  * /jobs/:id/forms — Job forms list.
  * Cards match the reference design: title, by/date, status badge,
  * action buttons (View/Continue, Print/PDF, Reopen, Share, Delete).
+ * Path B standalone page — reached via Work & Field launcher.
+ * @seo-exempt
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, FileText, Loader2, Plus, CheckCircle2, Clock, Eye, EyeOff, ChevronRight, AlertCircle } from 'lucide-react';
+import JobFeatureShell from '@/components/job/JobFeatureShell';
 interface Job {
   id: number;
   name: string;
@@ -105,63 +108,53 @@ export default function JobFormsPage() {
   const completedCount = submissions.filter(s => s.status === 'completed').length;
   const inProgressCount = submissions.filter(s => s.status === 'in_progress').length;
   const title = job ? `${job.name} — Forms` : 'Job Forms';
-  return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+
+  function handleChangeJob() {
+    navigate('/?picker=forms');
+  }
+
+  return <div className="portal-page">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage form submissions for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/forms`} />
-        <meta name="robots" content="noindex, nofollow" />
+        <meta name="robots" content="noindex" />
       </Helmet>
+      <h1 className="sr-only">{title}</h1>
 
-      {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 sticky top-0 z-10" style={{
-      boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
-      paddingTop: 'max(env(safe-area-inset-top), 0px)'
-    }}>
-        <div className="flex items-center gap-3 w-full px-4 py-3">
-          <button onClick={() => navigate('/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
-            <ArrowLeft size={18} />
-          </button>
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
-            {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Forms'}</h1>
-                <div className="hidden md:flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
-                  <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
-                  <span>/</span>
-                  <span className="text-gray-500 font-medium">Forms</span>
-                </div>
-              </>}
+      <div className="portal-content flex flex-col p-0">
+        <JobFeatureShell
+          Icon={FileText}
+          featureLabel="Forms"
+          jobName={job?.name ?? 'Job'}
+          jobNumber={job?.jobNumber}
+          backTo="/"
+          onChangeJob={handleChangeJob}
+          desktopActions={
+            <div className="hidden md:flex items-center gap-1.5">
+              <button onClick={() => setShowCompleted(v => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs font-semibold rounded-lg transition-colors ${showCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
+                {showCompleted ? 'Showing all' : 'Show completed'}
+              </button>
+              <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                <Plus size={13} /> New Form
+              </button>
+            </div>
+          }
+        >
+        {/* ── Mobile bottom bar ── */}
+        <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-border">
+          <div className="flex items-center gap-2 px-3 py-2 pb-safe">
+            <button onClick={() => setShowCompleted(v => !v)} className={`flex-1 flex items-center justify-center gap-1.5 h-10 border text-xs font-semibold rounded-xl transition-colors ${showCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'}`}>
+              {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
+              {showCompleted ? 'All' : 'Active'}
+            </button>
+            <button onClick={() => setShowTemplates(true)} aria-label="New Form" className="w-10 h-10 rounded-xl bg-primary hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-primary-foreground transition-colors touch-manipulation shrink-0 shadow-sm">
+              <Plus size={18} />
+            </button>
           </div>
-        {/* Toggle completed */}
-        <button onClick={() => setShowCompleted(v => !v)} className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 border text-xs font-semibold rounded-lg transition-colors ${showCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-          {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
-          {showCompleted ? 'Showing all' : 'Show completed'}
-        </button>
         </div>
-      </div>
-
-      {/* ── Mobile bottom bar ── */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100" style={{
-      boxShadow: '0 -1px 0 rgba(0,0,0,0.05)',
-      paddingBottom: 'env(safe-area-inset-bottom)'
-    }}>
-        <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate('/home')} aria-label="Home" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
-            <ArrowLeft size={16} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-gray-900 font-bold text-sm leading-tight truncate">{job?.name ?? 'Job Forms'}</p>
-          </div>
-          <button onClick={() => setShowTemplates(true)} aria-label="New Form" className="w-10 h-10 rounded-xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors touch-manipulation shrink-0 shadow-sm">
-            <Plus size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto">
+        {/* ── Content ── */}
         {loading ? <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-purple-400" />
           </div> : <div className="px-4 py-5 pb-24 max-w-3xl mx-auto w-full space-y-4">
@@ -250,7 +243,6 @@ export default function JobFormsPage() {
                 <span className="text-xs text-gray-400">{inProgressCount} in progress</span>
               </div>}
           </div>}
-      </div>
 
       {/* ── Template picker sheet ── */}
       <AnimatePresence>
@@ -325,5 +317,7 @@ export default function JobFormsPage() {
             </div>
           </>}
       </AnimatePresence>
+        </JobFeatureShell>
+      </div>
     </div>;
 }

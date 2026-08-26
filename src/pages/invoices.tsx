@@ -123,7 +123,7 @@ export default function InvoicesPage() {
             <Receipt size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-bold text-foreground mb-1">No Invoice Access</p>
             <p className="text-sm text-muted-foreground">You don't have permission to view invoices.</p>
-            <Link to="/" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+            <Link to="/?page=2" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
               <ArrowLeft size={14} /> Back to home
             </Link>
           </div>
@@ -153,7 +153,7 @@ export default function InvoicesPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center justify-center w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors shrink-0" title="Back to home">
+            <Link to="/?page=2" className="flex items-center justify-center w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors shrink-0" title="Back to home">
               <ArrowLeft size={15} className="text-muted-foreground" />
             </Link>
             <div>

@@ -3,8 +3,8 @@
  * Body: { phone: string }
  *
  * Sends a verification OTP to a phone number during SMS 2FA setup.
- * The user must be authenticated. The code is stored with prefix 'setup:'
- * so it's distinct from login OTPs.
+ *
+ * Security fix: parameterised queries (no sql.raw interpolation).
  */
 import type { Request, Response } from 'express';
 import { randomBytes, createHash } from 'node:crypto';
@@ -31,10 +31,8 @@ export default async function handler(req: Request, res: Response) {
   }
 
   try {
-    const ip =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      req.socket.remoteAddress ||
-      'unknown';
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+               || req.socket.remoteAddress || 'unknown';
     if (!checkSmsRate(ip)) {
       return res.status(429).json({ error: 'Too many requests. Please wait a few minutes.' });
     }
@@ -50,31 +48,32 @@ export default async function handler(req: Request, res: Response) {
     const { phone } = req.body as { phone?: string };
     if (!phone?.trim()) return res.status(400).json({ error: 'Phone number is required.' });
 
-    const e164 = normalisePhone(phone.trim().replace(/\s+/g, ''));
-    const code = generateCode();
-    const hashed = hashCode(code);
+    const e164      = normalisePhone(phone.trim().replace(/\s+/g, ''));
+    const code      = generateCode();
+    const hashed    = hashCode(code);
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS);
-    const id = randomBytes(18).toString('hex');
+    const id        = randomBytes(18).toString('hex');
 
     // Clear any existing setup codes for this user
-    await db.execute(sql.raw(
-      `DELETE FROM sms_verification_codes WHERE user_id = '${session.user.id}' AND phone LIKE 'setup:%'`
-    ));
+    await db.execute(
+      sql`DELETE FROM sms_verification_codes WHERE user_id = ${session.user.id} AND phone LIKE 'setup:%'`,
+    );
 
-    await db.execute(sql.raw(
-      `INSERT INTO sms_verification_codes (id, user_id, code_hash, phone, expires_at, attempts)
-       VALUES ('${id}', '${session.user.id}', '${hashed}', 'setup:${e164}', '${expiresAt.toISOString().slice(0, 19).replace('T', ' ')}', 0)`
-    ));
+    await db.execute(
+      sql`INSERT INTO sms_verification_codes (id, user_id, code_hash, phone, expires_at, attempts)
+          VALUES (${id}, ${session.user.id}, ${hashed}, ${`setup:${e164}`}, ${expiresAt}, 0)`,
+    );
 
     const sent = await sendSms(e164, `Your IWILLBUILD 2FA setup code is: ${code}. Expires in 10 minutes.`);
     if (!sent) {
       return res.status(500).json({ error: 'Failed to send SMS. Please try again.' });
     }
 
+    // Never log the real phone number
     const masked = e164.replace(/\d(?=\d{4})/g, '*');
     return res.json({ ok: true, maskedPhone: masked });
   } catch (err) {
-    console.error('[2fa/sms/send-setup]', err);
+    console.error('[2fa/sms/send-setup] error (details redacted)');
     return res.status(500).json({ error: 'Failed to send setup code.' });
   }
 }

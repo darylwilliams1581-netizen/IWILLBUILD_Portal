@@ -133,6 +133,22 @@ export function normalizeCollectionItem(filename: string, raw: string): Record<s
   return { slug, ...(JSON.parse(raw) as Record<string, unknown>) };
 }
 
+/**
+ * The identity `item` is addressed by: its `id` when that is a string, else its `slug` when that
+ * is a string, else `undefined`.
+ *
+ * `Collection.anchorFor` (client) and the content editor's directory-item resolver (server) both
+ * derive an item's identity through this single function rather than through parallel
+ * reimplementations, so the two sides can never disagree about which file a `[@id]` key names.
+ */
+export function itemIdentity(item: Readonly<Record<string, unknown>>): string | undefined {
+  const id: unknown = item.id;
+  if (typeof id === 'string') return id;
+  const slug: unknown = item.slug;
+  if (typeof slug === 'string') return slug;
+  return undefined;
+}
+
 /** Inverse of discovery: the on-disk candidates a canonical key may name. */
 export function candidatePathsFor(key: string): { relPaths: string[] } | { error: string } {
   const parsed: ParsedCanonicalKey = parseCanonicalKey(key);
@@ -237,6 +253,163 @@ export function assertSafeContentName(name: string, filename: string): void {
 /** True when `name` is a JS reserved word, so it cannot be a top-level export binding. */
 export function isJsReservedWord(name: string): boolean {
   return JS_RESERVED_WORDS.has(name);
+}
+
+/** One token of a parsed content path: a name, a positional index, or a collection-item id ref. */
+export type ContentPathSegment = string | number | { id: string };
+
+/** The failure shape `parseContentPath` returns for a malformed key. */
+export interface ContentPathError {
+  readonly error: string;
+}
+
+const ID_CHARSET: RegExp = /^[A-Za-z0-9_-]+$/;
+const RESERVED_SEGMENTS: readonly string[] = ['__proto__', 'constructor', 'prototype'];
+
+/** True when `seg` is a collection-item id reference (e.g. the `[@id]` in `services[@id].name`). */
+export function isIdRef(seg: ContentPathSegment): seg is { id: string } {
+  return typeof seg === 'object' && seg !== null && typeof (seg as { id: unknown }).id === 'string';
+}
+
+/**
+ * True when `value` is a `ContentPathError` rather than a successfully parsed segment array or
+ * formatted key string. Distinguishes formatting and parsing errors from success values.
+ */
+export function isContentPathError(
+  value: ContentPathSegment[] | ContentPathError | string,
+): value is ContentPathError {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && 'error' in value;
+}
+
+/**
+ * Tokenizes a dotted content key such as `home.hero.title` or `products[3].image.alt` into
+ * `ContentPathSegment`s, or returns a `ContentPathError` if the key is malformed. Rejects any
+ * segment matching `__proto__`, `constructor`, or `prototype` as a prototype-pollution guard.
+ */
+export function parseContentPath(key: string): ContentPathSegment[] | ContentPathError {
+  if (typeof key !== 'string' || key.length === 0) {
+    return { error: 'content key must be a non-empty string' };
+  }
+  if (key.endsWith('.')) {
+    return { error: `trailing '.' in "${key}"` };
+  }
+
+  const segments: ContentPathSegment[] = [];
+  let i: number = 0;
+  let current: string = '';
+
+  while (i < key.length) {
+    const ch: string = key[i]!;
+    if (ch === '.') {
+      if (current === '') {
+        return { error: `empty segment near position ${i} in "${key}"` };
+      }
+      segments.push(current);
+      current = '';
+      i++;
+    } else if (ch === '[') {
+      if (current !== '') {
+        segments.push(current);
+        current = '';
+      }
+      const end: number = key.indexOf(']', i);
+      if (end === -1) {
+        return { error: `unclosed '[' in "${key}"` };
+      }
+      const inside: string = key.slice(i + 1, end);
+      if (inside.startsWith('@')) {
+        const id: string = inside.slice(1);
+        if (!ID_CHARSET.test(id)) {
+          return { error: `invalid id "[${inside}]" in "${key}"` };
+        }
+        segments.push({ id });
+      } else if (/^\d+$/.test(inside)) {
+        const index: number = Number(inside);
+        if (!Number.isSafeInteger(index)) {
+          return { error: `index "[${inside}]" in "${key}" exceeds the safe integer range` };
+        }
+        segments.push(index);
+      } else {
+        return { error: `invalid index "[${inside}]" in "${key}"` };
+      }
+      i = end + 1;
+      if (key[i] === '.') i++;
+    } else if (/[a-zA-Z0-9_]/.test(ch)) {
+      current += ch;
+      i++;
+    } else {
+      return { error: `invalid character "${ch}" at position ${i} in "${key}"` };
+    }
+  }
+  if (current !== '') segments.push(current);
+
+  for (const seg of segments) {
+    if (typeof seg === 'string' && RESERVED_SEGMENTS.includes(seg)) {
+      return { error: `reserved segment "${seg}" in "${key}"` };
+    }
+  }
+
+  const first: ContentPathSegment | undefined = segments[0];
+  if (segments.length === 0 || typeof first !== 'string') {
+    return { error: `content key must start with a named root: "${key}"` };
+  }
+
+  return segments;
+}
+
+const NAMED_SEGMENT: RegExp = /^[a-zA-Z0-9_]+$/;
+
+/**
+ * True when `id` can appear inside an `[@…]` segment and parse back unchanged. Callers building a
+ * key from live data must check this before emitting an id reference — an id that fails here must
+ * fall back to a positional index rather than producing a key the parser would reject.
+ */
+export function isExpressibleIdSegment(id: string): boolean {
+  return typeof id === 'string' && ID_CHARSET.test(id);
+}
+
+/**
+ * Serializes `segments` into a dotted content key, or returns a `ContentPathError` when any segment
+ * cannot be expressed in the key grammar. Successfully formatted keys always parse back to the
+ * segments they were built from, guaranteeing a round-trip for {@link parseContentPath}.
+ */
+export function formatContentPath(
+  segments: readonly ContentPathSegment[],
+): string | ContentPathError {
+  const first: ContentPathSegment | undefined = segments[0];
+  if (segments.length === 0 || typeof first !== 'string') {
+    return { error: 'content key must start with a named root' };
+  }
+
+  let out: string = '';
+
+  for (const segment of segments) {
+    if (isIdRef(segment)) {
+      if (!isExpressibleIdSegment(segment.id)) {
+        return { error: `id "${segment.id}" is not expressible in a content key` };
+      }
+      out += `[@${segment.id}]`;
+      continue;
+    }
+
+    if (typeof segment === 'number') {
+      if (!Number.isSafeInteger(segment) || segment < 0) {
+        return { error: `index ${segment} is not a non-negative safe integer` };
+      }
+      out += `[${segment}]`;
+      continue;
+    }
+
+    if (!NAMED_SEGMENT.test(segment)) {
+      return { error: `segment "${segment}" is not expressible in a content key` };
+    }
+    if (RESERVED_SEGMENTS.includes(segment)) {
+      return { error: `reserved segment "${segment}"` };
+    }
+    out += out === '' ? segment : `.${segment}`;
+  }
+
+  return out;
 }
 
 /**

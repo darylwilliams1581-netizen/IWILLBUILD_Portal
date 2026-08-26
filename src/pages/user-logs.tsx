@@ -757,11 +757,11 @@ export default function UserLogsPage() {
       {/* ── Breadcrumb ── */}
       <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-1.5 text-[12px] text-gray-400">
         <a
-          href="/home"
+          href="/?page=2"
           className="flex items-center gap-1 text-gray-400 hover:text-primary transition-colors"
         >
           <LayoutDashboard size={12} />
-          Dashboard
+          Home
         </a>
         <ChevronRight size={11} className="text-gray-300" />
         <span className="text-gray-600 font-medium">User Logs</span>

@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from "react-router";
-import { Receipt, Plus, Loader2, AlertCircle, ChevronRight, FileText, Send, Clock, CheckCircle2, AlertTriangle, XCircle, DollarSign, Lock } from 'lucide-react';
+import { Receipt, Plus, Loader2, AlertCircle, ChevronRight, FileText, Send, Clock, CheckCircle2, AlertTriangle, XCircle, DollarSign, Lock, ExternalLink } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchInvoices, fmtMoney, STATUS_LABELS, STATUS_COLORS, type Invoice, type InvoiceStatus } from '@/lib/invoices-api';
 import type { Job } from '@/lib/jobs-api';

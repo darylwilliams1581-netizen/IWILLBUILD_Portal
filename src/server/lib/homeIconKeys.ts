@@ -3,23 +3,24 @@
  * Kept in sync with src/lib/homeIcons.ts — no React imports here.
  */
 export const ALL_HOME_ICON_KEYS: string[] = [
-  // Field
-  'camera', 'sign_in', 'drive', 'prestart', 'forms', 'notes',
-  'log_cost', 'delays', 'progress', 'drawings', 'equipment',
+  // Work (field)
+  'jobs', 'work', 'job_card', 'scheduler', 'progress', 'delays', 'notes', 'log_cost',
+  // Field & Files
+  'lens', 'plan_mgr', 'files',
+  // Fleet
+  'fleet',
+  // Finance
+  'quotes', 'invoices_mgmt', 'ledger', 'purchase_orders',
   // Safety
-  'safety', 'poster', 'policies', 'safety_plan',
-  // Tools
-  'builders_calc', 'takeoff_pad',
-  // Management
-  'jobs', 'quotes', 'estimating', 'invoices_mgmt', 'stakeholders',
-  'ledger', 'scheduler', 'fleet', 'files', 'team', 'billing',
-  'studio', 'settings', 'dazza_ai',
-  // Coming soon (10 placeholders)
+  'forms', 'safety', 'poster', 'incidents', 'risky',
+  // Administration
+  'stakeholders', 'team', 'billing', 'settings', 'help',
+  // Coming soon
   'report', 'timesheet', 'site_diary', 'rainfall', 'checklist',
-  'messages', 'invoices_field', 'whs_docs', 'daily_log', 'weather',
+  'messages', 'invoices_field', 'daily_log', 'weather',
 ];
 
 /** Minimal default set for new invited employees */
 export const DEFAULT_FIELD_KEYS: string[] = [
-  'camera', 'sign_in', 'drive', 'safety', 'prestart',
+  'lens', 'work', 'safety', 'risky',
 ];

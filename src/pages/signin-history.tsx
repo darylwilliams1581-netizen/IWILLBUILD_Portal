@@ -153,7 +153,7 @@ export default function SignInHistoryPage() {
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <Link to="/home" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-800 mb-2">
+            <Link to="/?page=2" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-800 mb-2">
               <ArrowLeft size={14} />
               Home
             </Link>

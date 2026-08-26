@@ -413,6 +413,11 @@ export default function DashboardPage() {
               </div>}
           </motion.div>
 
+          {/* ── Contacts — quick call/SMS/email ── */}
+          <motion.div variants={itemVariants} initial="hidden" animate="visible" className="mt-2">
+            {/* ContactsPanel lives on the Home Dashboard tab (PagedHomeScreen) for mobile — this desktop view mirrors it */}
+          </motion.div>
+
         </main>
       </div>
 

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from "react-router";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router";
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, LogIn, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail } from 'lucide-react';
+import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen, ChevronUp } from 'lucide-react';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import type { JobEmailContext, SendSuccessPayload } from '@/components/SendDocumentEmailModal';
 import { EmailToastContainer } from '@/components/EmailSentToast';
@@ -18,7 +18,7 @@ import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelectorComponent from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
-import JobAttendanceTab from '@/components/job/JobAttendanceTab';
+import JobPurchaseOrders from '@/components/job/JobPurchaseOrders';
 import JobTodos from '@/components/job/JobTodos';
 import AssetSelectorComponent from '@/components/AssetManager/AssetSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
@@ -26,10 +26,11 @@ import { fetchCustomer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 import JobDetailsDashboard, { type JobSummary, type Customer } from '@/components/job/JobDetailsDashboard';
 import JobPhotosTab from '@/components/job/JobPhotosTab';
+import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'purchase-orders' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
 // ── Wrapper components to adapt actual selectors to JobDetailsDashboard interface ──
 
@@ -59,12 +60,38 @@ const NAV_GROUPS: Array<{
   label: string;
   items: NavItem[];
 }> = [{
-  label: 'Site / Daily',
+  label: 'Job',
   items: [{
     key: 'details' as const,
     label: 'Details',
     icon: FileText
+  }]
+}, {
+  label: 'Work',
+  items: [{
+    key: 'tasks' as const,
+    label: 'Tasks',
+    icon: CheckSquare
   }, {
+    key: 'notes' as const,
+    label: 'Notes',
+    icon: StickyNote
+  }, {
+    key: 'delays' as const,
+    label: 'Delays',
+    icon: Clock
+  }, {
+    key: 'progress' as const,
+    label: 'Progress',
+    icon: TrendingUp
+  }, {
+    key: 'attendance' as const,
+    label: 'Attendance',
+    icon: UserCheck
+  }]
+}, {
+  label: 'Field & Files',
+  items: [{
     key: 'photos' as const,
     label: 'Photos',
     icon: Image
@@ -73,29 +100,32 @@ const NAV_GROUPS: Array<{
     label: 'Drawings',
     icon: Layers
   }, {
-    key: 'delays' as const,
-    label: 'Delays',
-    icon: Clock
-  }, {
-    key: 'notes' as const,
-    label: 'Notes',
-    icon: StickyNote
+    key: 'files' as const,
+    label: 'Files',
+    icon: FolderOpen
   }]
 }, {
-  label: 'Work / Compliance',
+  label: 'Finance',
   items: [{
     key: 'estimates' as const,
     label: 'Estimates',
     icon: Calculator
   }, {
-    key: 'tasks' as const,
-    label: 'Tasks',
-    icon: CheckSquare
+    key: 'purchase-orders' as const,
+    label: 'Purchase Orders',
+    icon: Receipt
   }, {
-    key: 'progress' as const,
-    label: 'Progress',
-    icon: TrendingUp
+    key: 'invoices' as const,
+    label: 'Invoices',
+    icon: DollarSign
   }, {
+    key: 'costs' as const,
+    label: 'Job Ledger',
+    icon: BookOpen
+  }]
+}, {
+  label: 'Safety',
+  items: [{
     key: 'forms' as const,
     label: 'Forms',
     icon: ClipboardList
@@ -103,25 +133,6 @@ const NAV_GROUPS: Array<{
     key: 'safety' as const,
     label: 'Safety',
     icon: ShieldAlert
-  }, {
-    key: 'attendance' as const,
-    label: 'Attendance',
-    icon: LogIn
-  }]
-}, {
-  label: 'Money / Records',
-  items: [{
-    key: 'costs' as const,
-    label: 'Costs',
-    icon: Receipt
-  }, {
-    key: 'invoices' as const,
-    label: 'Invoices',
-    icon: DollarSign
-  }, {
-    key: 'files' as const,
-    label: 'Files',
-    icon: FolderOpen
   }]
 }];
 const ALL_NAV_ITEMS = NAV_GROUPS.flatMap(g => g.items);
@@ -149,7 +160,6 @@ export default function JobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [costSummary, setCostSummary] = useState<{
     actual: number;
@@ -237,12 +247,15 @@ export default function JobDetailPage() {
       setDownloadingZip(false);
     }
   };
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
+  // ── Tab state — URL-driven so refresh and deep links work ────────────────
+  const location = useLocation();
+  const resolveTab = useCallback((): Tab => {
     if (formInstanceId) return 'forms';
-    const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
+    const t = new URLSearchParams(location.search).get('tab');
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'purchase-orders' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
     return 'details';
-  });
+  }, [location.search, formInstanceId]);
+  const activeTab = resolveTab();
   const [form, setForm] = useState({
     name: '',
     jobNumber: '',
@@ -461,13 +474,46 @@ export default function JobDetailPage() {
       // silent
     }
   }
+  // ── Mobile section dropdown state ────────────────────────────────────────
+  const [sectionOpen, setSectionOpen] = useState(false);
+  const sectionDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!sectionOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (sectionDropdownRef.current && !sectionDropdownRef.current.contains(e.target as Node)) {
+        setSectionOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [sectionOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!sectionOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSectionOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [sectionOpen]);
+
   function switchTab(tab: Tab) {
-    setActiveTab(tab);
     setStatusOpen(false);
-    setMobileNavOpen(false);
+    setSectionOpen(false);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'details') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    const search = params.toString();
+    navigate(`/jobs/${id}${search ? `?${search}` : ''}`, { replace: false });
   }
+
   const statusStyle = job ? getStatusStyle(job.status) : null;
-  const activeNavItem = ALL_NAV_ITEMS.find((i: NavItem) => i.key === activeTab);
   return <div className="min-h-dvh bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
@@ -550,7 +596,7 @@ export default function JobDetailPage() {
         </header>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
 
           {loading && <div className="flex items-center justify-center py-20">
               <Loader2 size={24} className="animate-spin text-primary" />
@@ -571,165 +617,234 @@ export default function JobDetailPage() {
         }} transition={{
           duration: 0.3,
           ease: 'easeOut' as const
-        }} className="flex flex-col h-full">
-              {/* ── Status bar ── */}
-              <div className="bg-white border-b border-gray-200 px-4 md:px-4 py-2 flex flex-col gap-1.5 shrink-0">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {statusStyle && <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
-                        <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
-                        {job.status}
-                      </span>}
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                    </span>
-                  </div>
+        }} className="flex flex-col min-h-full">
 
-                  <div className="flex items-center gap-2">
-                    {/* Cost mini-summary */}
-                    {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && <button onClick={() => switchTab('costs')} className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
-                        <span className="text-slate-500">Costs</span>
-                        <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0
-                    })}</span>
-                        {costSummary.approved > 0 && <>
-                            <span className="text-slate-300">/</span>
-                            <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {costSummary.actual > costSummary.approved ? '⚠ Over' : `${(costSummary.actual / costSummary.approved * 100).toFixed(0)}%`}
-                            </span>
+              {/* ── Sticky job meta + pill nav ── */}
+              <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shrink-0">
+
+                {/* ── Status bar ── */}
+                <div className="px-4 md:px-4 py-2 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {statusStyle && <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
+                          <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
+                          {job.status}
+                        </span>}
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Cost mini-summary */}
+                      {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && <button onClick={() => switchTab('costs')} className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
+                          <span className="text-slate-500">Costs</span>
+                          <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      })}</span>
+                          {costSummary.approved > 0 && <>
+                              <span className="text-slate-300">/</span>
+                              <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
+                                {costSummary.actual > costSummary.approved ? '⚠ Over' : `${(costSummary.actual / costSummary.approved * 100).toFixed(0)}%`}
+                              </span>
+                            </>}
+                          <Receipt size={11} className="text-slate-400" />
+                        </button>}
+
+                      {/* Quick status change */}
+                      <div className="relative shrink-0">
+                        <button onClick={() => setStatusOpen(!statusOpen)} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+                          Change Status <ChevronDown size={12} />
+                        </button>
+                        {statusOpen && <>
+                            <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                            <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
+                              {JOB_STATUSES.map(s => {
+                          const st = getStatusStyle(s);
+                          return <button key={s} onClick={() => handleStatusChange(s)} className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}>
+                                    <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                    {s}
+                                    {job.status === s && <Check size={12} className="ml-auto text-primary" />}
+                                  </button>;
+                        })}
+                            </div>
                           </>}
-                        <Receipt size={11} className="text-slate-400" />
-                      </button>}
-
-                    {/* Quick status change */}
-                    <div className="relative shrink-0">
-                      <button onClick={() => setStatusOpen(!statusOpen)} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
-                        Change Status <ChevronDown size={12} />
-                      </button>
-                      {statusOpen && <>
-                          <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
-                          <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
-                            {JOB_STATUSES.map(s => {
-                        const st = getStatusStyle(s);
-                        return <button key={s} onClick={() => handleStatusChange(s)} className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}>
-                                  <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                                  {s}
-                                  {job.status === s && <Check size={12} className="ml-auto text-primary" />}
-                                </button>;
-                      })}
-                          </div>
-                        </>}
+                      </div>
                     </div>
                   </div>
+
+                  {/* ── Schedule summary strip ── */}
+                  {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedSupervisorUserId || job.assignedTeamLabel) && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-t border-slate-100 pt-2">
+                      {job.scheduledStartDate && <span className="flex items-center gap-1">
+                          <CalendarClock size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Sched. Start:</span>
+                          <span className="font-medium text-slate-700">
+                            {(() => {
+                      const [y, m, d] = job.scheduledStartDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                            {job.scheduledStartTime && <span className="ml-1 text-violet-700">{fmtJobTime(job.scheduledStartTime)}</span>}
+                          </span>
+                        </span>}
+                      {job.expectedCompletionDate && <span className="flex items-center gap-1">
+                          <CalendarCheck size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Exp. Completion:</span>
+                          <span className="font-medium text-slate-700">
+                            {(() => {
+                      const [y, m, d] = job.expectedCompletionDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                            {job.scheduledEndTime && <span className="ml-1 text-slate-500">{fmtJobTime(job.scheduledEndTime)}</span>}
+                          </span>
+                        </span>}
+                      {job.actualStartDate && <span className="flex items-center gap-1">
+                          <CalendarClock size={11} className="text-emerald-500 shrink-0" />
+                          <span className="text-slate-400">Actual Start:</span>
+                          <span className="font-medium text-emerald-700">
+                            {(() => {
+                      const [y, m, d] = job.actualStartDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                          </span>
+                        </span>}
+                      {job.actualCompletionDate && <span className="flex items-center gap-1">
+                          <CalendarCheck size={11} className="text-emerald-500 shrink-0" />
+                          <span className="text-slate-400">Actual Completion:</span>
+                          <span className="font-medium text-emerald-700">
+                            {(() => {
+                      const [y, m, d] = job.actualCompletionDate!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    })()}
+                          </span>
+                        </span>}
+                      {job.assignedSupervisorUserId && <span className="flex items-center gap-1">
+                          <UserCheck size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Supervisor:</span>
+                          <span className="font-medium text-slate-700">
+                            {teamMembers.find(m => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
+                          </span>
+                        </span>}
+                      {job.assignedTeamLabel && <span className="flex items-center gap-1">
+                          <Users size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Team:</span>
+                          <span className="font-medium text-slate-700">{job.assignedTeamLabel}</span>
+                        </span>}
+                    </div>}
                 </div>
 
-                {/* ── Schedule summary strip ── */}
-                {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedSupervisorUserId || job.assignedTeamLabel) && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-t border-slate-100 pt-2">
-                    {job.scheduledStartDate && <span className="flex items-center gap-1">
-                        <CalendarClock size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Sched. Start:</span>
-                        <span className="font-medium text-slate-700">
-                          {(() => {
-                    const [y, m, d] = job.scheduledStartDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                          {job.scheduledStartTime && <span className="ml-1 text-violet-700">{fmtJobTime(job.scheduledStartTime)}</span>}
-                        </span>
-                      </span>}
-                    {job.expectedCompletionDate && <span className="flex items-center gap-1">
-                        <CalendarCheck size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Exp. Completion:</span>
-                        <span className="font-medium text-slate-700">
-                          {(() => {
-                    const [y, m, d] = job.expectedCompletionDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                          {job.scheduledEndTime && <span className="ml-1 text-slate-500">{fmtJobTime(job.scheduledEndTime)}</span>}
-                        </span>
-                      </span>}
-                    {job.actualStartDate && <span className="flex items-center gap-1">
-                        <CalendarClock size={11} className="text-emerald-500 shrink-0" />
-                        <span className="text-slate-400">Actual Start:</span>
-                        <span className="font-medium text-emerald-700">
-                          {(() => {
-                    const [y, m, d] = job.actualStartDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                        </span>
-                      </span>}
-                    {job.actualCompletionDate && <span className="flex items-center gap-1">
-                        <CalendarCheck size={11} className="text-emerald-500 shrink-0" />
-                        <span className="text-slate-400">Actual Completion:</span>
-                        <span className="font-medium text-emerald-700">
-                          {(() => {
-                    const [y, m, d] = job.actualCompletionDate!.split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    });
-                  })()}
-                        </span>
-                      </span>}
-                    {job.assignedSupervisorUserId && <span className="flex items-center gap-1">
-                        <UserCheck size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Supervisor:</span>
-                        <span className="font-medium text-slate-700">
-                          {teamMembers.find(m => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
-                        </span>
-                      </span>}
-                    {job.assignedTeamLabel && <span className="flex items-center gap-1">
-                        <Users size={11} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Team:</span>
-                        <span className="font-medium text-slate-700">{job.assignedTeamLabel}</span>
-                      </span>}
-                  </div>}
-              </div>
+                {/* ── Section dropdown nav (mobile + tablet — hidden on desktop) ── */}
+                <div
+                  className="md:hidden border-t border-gray-100"
+                  data-testid="job-pill-nav"
+                  ref={sectionDropdownRef}
+                >
+                  {/* Trigger */}
+                  <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={sectionOpen}
+                    aria-label="Select section"
+                    data-testid="job-section-trigger"
+                    onClick={() => setSectionOpen(v => !v)}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white text-sm font-semibold text-slate-800 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+                  >
+                    {(() => {
+                      const active = ALL_NAV_ITEMS.find(i => i.key === activeTab);
+                      const Icon = active?.icon ?? FileText;
+                      return (
+                        <>
+                          <Icon size={15} className="text-primary shrink-0" />
+                          <span className="flex-1 text-left">{active?.label ?? 'Details'}</span>
+                          {sectionOpen
+                            ? <ChevronUp size={15} className="text-slate-400 shrink-0" />
+                            : <ChevronDown size={15} className="text-slate-400 shrink-0" />}
+                        </>
+                      );
+                    })()}
+                  </button>
 
-              {/* ── Mobile section selector ── */}
-              <div className="md:hidden bg-white border-b border-border px-4 py-2 shrink-0">
-                <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 border border-border rounded-xl text-sm font-semibold text-foreground bg-white hover:bg-muted transition-colors">
-                  <span className="flex items-center gap-2">
-                    {activeNavItem && activeNavItem.icon && <activeNavItem.icon size={15} className="text-primary" />}
-                    {activeNavItem?.label ?? 'Select section'}
-                  </span>
-                  <ChevronDown size={15} className={`text-muted-foreground transition-transform ${mobileNavOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {mobileNavOpen && <>
-                    <div className="fixed inset-0 z-40" onClick={() => setMobileNavOpen(false)} />
-                    <div className="absolute left-4 right-4 mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-2 max-h-80 overflow-y-auto">
-                      {NAV_GROUPS.map(group => <div key={group.label}>
-                          <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</p>
-                          {group.items.map(({
-                    key,
-                    label,
-                    icon: Icon
-                  }) => <button key={key} onClick={() => switchTab(key)} className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${activeTab === key ? 'text-primary font-bold bg-violet-50' : 'text-foreground hover:bg-muted'}`}>
-                              <Icon size={14} className={activeTab === key ? 'text-primary' : 'text-muted-foreground'} />
-                              {label}
-                              {activeTab === key && <Check size={12} className="ml-auto text-primary" />}
-                            </button>)}
-                        </div>)}
-                    </div>
-                  </>}
-              </div>
+                  {/* Dropdown panel — fixed position so it escapes the sticky header */}
+                  {sectionOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        aria-hidden="true"
+                        onClick={() => setSectionOpen(false)}
+                      />
+                      {/* Options panel — anchored below the trigger container */}
+                      <div
+                        role="listbox"
+                        aria-label="Job sections"
+                        data-testid="job-section-dropdown"
+                        className="fixed left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-xl overflow-y-auto"
+                        style={(() => {
+                          const rect = sectionDropdownRef.current?.getBoundingClientRect();
+                          const top = rect ? rect.bottom : 156;
+                          const maxH = `calc(100dvh - ${top}px - 16px)`;
+                          return { top, maxHeight: maxH };
+                        })()}
+                      >
+                        {NAV_GROUPS.map(group => (
+                          <div key={group.label}>
+                            <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 select-none">
+                              {group.label}
+                            </p>
+                            {group.items.map(({ key, label, icon: Icon }) => {
+                              const active = activeTab === key;
+                              return (
+                                <button
+                                  key={key}
+                                  role="option"
+                                  aria-selected={active}
+                                  data-testid={`job-pill-${key}`}
+                                  onClick={() => switchTab(key)}
+                                  className={[
+                                    'w-full flex items-center gap-3 px-4 min-h-[44px] text-sm font-medium transition-colors',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+                                    active
+                                      ? 'bg-violet-50 text-violet-700'
+                                      : 'text-slate-700 hover:bg-slate-50 active:bg-slate-100',
+                                  ].join(' ')}
+                                >
+                                  <Icon
+                                    size={15}
+                                    className={active ? 'text-violet-600 shrink-0' : 'text-slate-400 shrink-0'}
+                                  />
+                                  <span className="flex-1 text-left">{label}</span>
+                                  {active && <Check size={14} className="text-violet-600 shrink-0 mr-1" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ))}
+                        <div className="h-3" aria-hidden="true" />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>{/* end sticky wrapper */}
 
               {/* ── Two-column layout: side nav + content ── */}
               <div className="flex flex-1 min-h-0">
@@ -754,8 +869,8 @@ export default function JobDetailPage() {
                 </aside>
 
                 {/* ── Content area ── */}
-                {/* pb-24 on mobile reserves space above MobileTabBar (~64px bar + safe area) */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 min-w-0">
+                {/* pb-24 on mobile reserves space above the bottom safe area */}
+                <div className="flex-1 p-4 md:p-6 pb-24 md:pb-6 min-w-0">
 
                   {/* Save error */}
                   {saveError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700 mb-4">
@@ -808,6 +923,9 @@ export default function JobDetailPage() {
 
                   {/* ── Invoices ── */}
                   {activeTab === 'invoices' && <JobInvoices jobId={job.id} job={job} />}
+
+                  {/* ── Purchase Orders ── */}
+                  {activeTab === 'purchase-orders' && <JobPurchaseOrders jobId={job.id} />}
 
                   {/* ── Files ── */}
                   {activeTab === 'files' && <div className="bg-white rounded-xl border border-border">

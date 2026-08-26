@@ -105,7 +105,7 @@ export default function CustomerDetailPage() {
   }
   return <div className="portal-page">
       <Helmet>
-        <title>{customer ? `${customer.name} — Stakeholders` : 'Stakeholder'} — IWILLBUILD Portal</title>
+        <title>{customer ? `${customer.name} — Contacts` : 'Contact'} — IWILLBUILD Portal</title>
         <meta name="description" content={customer ? `View details, contact info, and linked jobs for ${customer.name}.` : 'Customer details'} />
         <link rel="canonical" href={`https://iwillbuild.com/customers/${id}`} />
         <meta name="robots" content="noindex" />
@@ -118,7 +118,7 @@ export default function CustomerDetailPage() {
         <div className="flex items-center gap-3 mb-5">
           <MobileMenuButton onClick={openMobileMenu} />
           <button onClick={() => navigate('/customers')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft size={14} />Stakeholders
+            <ArrowLeft size={14} />Contacts
           </button>
         </div>
 

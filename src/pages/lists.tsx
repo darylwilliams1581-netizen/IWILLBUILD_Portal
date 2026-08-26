@@ -62,7 +62,7 @@ const CATALOG: ListCatalogEntry[] = [{
   key: 'estimates',
   label: 'Estimates',
   icon: Calculator,
-  description: 'Estimates and quotes across all jobs'
+  description: 'Estimates across all jobs'
 }, {
   key: 'files',
   label: 'Files',
@@ -1849,9 +1849,9 @@ export default function ListsPage() {
 
           {/* ── Breadcrumb ── */}
           <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5 border-b border-gray-100">
-            <button onClick={() => navigate('/dashboard')} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-violet-600 transition-colors group">
+            <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-violet-600 transition-colors group">
               <LayoutDashboard size={12} className="group-hover:text-violet-600 transition-colors" />
-              <span>Dashboard</span>
+              <span>Home</span>
             </button>
             <Crumb size={11} className="text-gray-300" />
             <span className="text-[11px] font-medium text-gray-600">Lists</span>

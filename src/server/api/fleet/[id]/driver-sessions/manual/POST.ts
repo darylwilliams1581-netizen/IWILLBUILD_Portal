@@ -9,8 +9,9 @@ import { getSessionAndProfile } from '../../../../../lib/auth-middleware.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const { session } = await getSessionAndProfile(req);
-    if (!session) return res.status(401).json({ error: 'Unauthorised' });
+    const result = await getSessionAndProfile(req, res);
+    if (!result) return; // response already sent by getSessionAndProfile
+    const { session } = result;
 
     const fleetAssetId = Number(req.params.id);
     if (!fleetAssetId || isNaN(fleetAssetId)) {

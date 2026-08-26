@@ -50,7 +50,7 @@ interface Props {
 
 const SECTION_LABELS: Record<string, string> = {
   project:        'Test Project',
-  stakeholders:   'Stakeholders',
+  stakeholders:   'Contacts',
   form_templates: 'Form Templates',
   swms_library:   'SWMS Library',
   safety_plan:    'Safety Plan',

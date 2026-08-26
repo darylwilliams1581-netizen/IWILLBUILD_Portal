@@ -21,17 +21,13 @@ import { sql } from 'drizzle-orm';
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const { session } = await getSessionAndProfile(req);
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+    const result = await getSessionAndProfile(req, res);
+    if (!result) return; // response already sent by getSessionAndProfile
 
+    const { session, profile } = result;
     const userId = session.user.id;
+    const companyId = profile.companyId;
     const build = String(req.query.build ?? '');
-
-    // Get user's company_id
-    const [companyRows] = await db.execute(sql.raw(`
-      SELECT company_id FROM company_users WHERE user_id = '${userId.replace(/'/g, "''")}' LIMIT 1
-    `)) as unknown as [Array<{ company_id: number }>, unknown];
-    const companyId = companyRows?.[0]?.company_id ?? null;
 
     const now = 'NOW()';
     const buildClause = build ? `OR (ic.target_scope = 'build' AND ic.target_build = '${build.replace(/'/g, "''")}')` : '';
@@ -54,9 +50,9 @@ export default async function handler(req: Request, res: Response) {
         AND (
           ic.target_scope = 'all'
           OR (ic.target_scope = 'affected_users' AND (
-            ic.target_company_id = ${companyId ?? 'NULL'} OR ic.target_user_id = '${userId.replace(/'/g, "''")}'
+            ic.target_company_id = ${companyId} OR ic.target_user_id = '${userId.replace(/'/g, "''")}'
           ))
-          OR (ic.target_scope = 'company' AND ic.target_company_id = ${companyId ?? 'NULL'})
+          OR (ic.target_scope = 'company' AND ic.target_company_id = ${companyId})
           OR (ic.target_scope = 'user' AND ic.target_user_id = '${userId.replace(/'/g, "''")}')
           ${buildClause}
         )

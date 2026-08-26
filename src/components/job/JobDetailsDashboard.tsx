@@ -217,8 +217,9 @@ export default function JobDetailsDashboard({
         <StatCard icon={Camera} label="Photos" value={summary ? summary.photosCount : '—'} sub="tap to view" color="bg-violet-50 text-violet-600" onClick={() => onTabSwitch('photos')} />
       </div>
 
-      {/* ── Schedule strip (only if dates set) ── */}
-      {(schedStart || schedEnd || actualStart || actualEnd) && <div className="bg-white border border-border rounded-xl px-4 py-3 flex flex-wrap gap-x-6 gap-y-2">
+      {/* ── Schedule strip (only if dates set) — full width, above the grid ── */}
+      {(schedStart || schedEnd || actualStart || actualEnd) && (
+        <div className="bg-white border border-border rounded-xl px-4 py-3 flex flex-wrap gap-x-6 gap-y-2">
           {schedStart && <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarClock size={12} className="text-blue-500 shrink-0" />
               <span className="font-semibold">Scheduled start:</span>
@@ -239,13 +240,14 @@ export default function JobDetailsDashboard({
               <span className="font-semibold">Actual completion:</span>
               <span>{actualEnd}</span>
             </div>}
-        </div>}
+        </div>
+      )}
 
-      {/* ── Main content: two-col on desktop ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* ── Main content ── */}
+      <div className="flex flex-col gap-4">
 
-        {/* ── Left: job info / edit form (2/3 width) ── */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        {/* ── Job info / edit form — full width to match schedule strip ── */}
+        <div className="flex flex-col gap-4">
           <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
 
             {/* Card header */}
@@ -409,7 +411,7 @@ export default function JobDetailsDashboard({
           </div>
         </div>
 
-        {/* ── Right: linked customer + quick links (1/3 width) ── */}
+        {/* ── Linked customer + quick links ── */}
         <div className="flex flex-col gap-4">
 
           {/* Linked customer */}

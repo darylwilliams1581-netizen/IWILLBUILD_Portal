@@ -61,24 +61,33 @@ function wrapText(text: string, font: PDFFontType, size: number, maxWidth: numbe
 
 function drawHeader(pdfLib: PdfLib, page: PDFPageType, boldFont: PDFFontType, regularFont: PDFFontType, title: string, subtitle?: string) {
   const { rgb } = pdfLib;
-  const ORANGE = rgb(0.976, 0.451, 0.086);
-  const WHITE  = rgb(1, 1, 1);
-  drawRect(page, 0, PAGE_H - 70, PAGE_W, 70, ORANGE);
-  drawText(page, 'IWILLBUILD', MARGIN, PAGE_H - 30, boldFont, 14, WHITE);
-  drawText(page, title.toUpperCase(), MARGIN, PAGE_H - 50, boldFont, 11, WHITE);
+  // Printer-friendly header: 3pt accent rule + plain dark text on white
+  const ACCENT = rgb(0.486, 0.227, 0.929); // #7c3aed brand violet — thin rule only
+  const BLACK  = rgb(0, 0, 0);
+  const MUTED  = rgb(0.502, 0.533, 0.580);
+  // 3pt accent rule across full width
+  page.drawLine({ start: { x: 0, y: PAGE_H - 3 }, end: { x: PAGE_W, y: PAGE_H - 3 }, thickness: 3, color: ACCENT });
+  // Company name
+  drawText(page, 'IWILLBUILD', MARGIN, PAGE_H - 22, boldFont, 13, BLACK);
+  // Document title
+  drawText(page, title.toUpperCase(), MARGIN, PAGE_H - 38, boldFont, 10, BLACK);
   if (subtitle) {
-    drawText(page, subtitle, MARGIN, PAGE_H - 64, regularFont, 8, rgb(1, 0.9, 0.8));
+    drawText(page, subtitle, MARGIN, PAGE_H - 52, regularFont, 8, MUTED);
   }
   const dateStr = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
   const dw = regularFont.widthOfTextAtSize(dateStr, 8);
-  drawText(page, dateStr, PAGE_W - MARGIN - dw, PAGE_H - 30, regularFont, 8, WHITE);
+  drawText(page, dateStr, PAGE_W - MARGIN - dw, PAGE_H - 22, regularFont, 8, MUTED);
+  // Thin separator rule below header
+  const ruleY = subtitle ? PAGE_H - 62 : PAGE_H - 50;
+  page.drawLine({ start: { x: MARGIN, y: ruleY }, end: { x: PAGE_W - MARGIN, y: ruleY }, thickness: 0.5, color: rgb(0.80, 0.80, 0.80) });
 }
 
 function drawFooter(pdfLib: PdfLib, page: PDFPageType, regularFont: PDFFontType, pageNum: number, _totalPages?: number) {
   const { rgb } = pdfLib;
-  const DARK  = rgb(0.059, 0.067, 0.090);
   const MUTED = rgb(0.502, 0.533, 0.580);
-  drawRect(page, 0, 0, PAGE_W, 28, DARK);
+  const RULE  = rgb(0.80, 0.80, 0.80);
+  // Thin rule above footer text — no filled band
+  page.drawLine({ start: { x: MARGIN, y: 22 }, end: { x: PAGE_W - MARGIN, y: 22 }, thickness: 0.5, color: RULE });
   drawText(page, 'IWILLBUILD Portal — Confidential', MARGIN, 9, regularFont, 7, MUTED);
   const pg = _totalPages ? `Page ${pageNum} of ${_totalPages}` : `Page ${pageNum}`;
   const pw = regularFont.widthOfTextAtSize(pg, 7);
@@ -142,20 +151,21 @@ export async function generateSwmsPdf(swms: SwmsData): Promise<Uint8Array> {
   drawHeader(pdfLib, page, boldFont, regularFont, 'Safe Work Method Statement', swms.company_name);
   drawFooter(pdfLib, page, regularFont, 1);
 
-  let y = PAGE_H - 90;
+  let y = PAGE_H - 80;
 
-  // Title block
-  drawRect(page, MARGIN, y - 30, PAGE_W - MARGIN * 2, 36, rgb(0.059, 0.067, 0.090));
-  drawText(page, swms.title, MARGIN + 8, y - 10, boldFont, 13, WHITE);
+  // Title block — white background, 3pt left accent rule, dark text
+  page.drawLine({ start: { x: MARGIN, y: y - 30 }, end: { x: MARGIN, y: y + 6 }, thickness: 3, color: ORANGE });
+  drawText(page, swms.title, MARGIN + 8, y - 10, boldFont, 13, BLACK);
   if (swms.work_activity) drawText(page, swms.work_activity, MARGIN + 8, y - 24, regularFont, 9, MUTED);
-  y -= 50;
+  y -= 44;
 
-  // Status + ID row
-  const statusColor = swms.status === 'approved' ? rgb(0.133, 0.545, 0.133) : ORANGE;
-  drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
-  drawText(page, (swms.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
+  // Status + ID row — text prefix, no filled pill
+  const statusLabel = (swms.status ?? 'draft').toUpperCase();
+  const statusPrefix = swms.status === 'approved' ? '✓ ' : '● ';
+  const statusTextColor = swms.status === 'approved' ? rgb(0.133, 0.545, 0.133) : rgb(0.502, 0.533, 0.580);
+  drawText(page, statusPrefix + statusLabel, MARGIN, y - 10, boldFont, 8, statusTextColor);
   drawText(page, `SWMS #${swms.id}`, MARGIN + 90, y - 10, regularFont, 8, MUTED);
-  y -= 30;
+  y -= 26;
 
   // Details grid
   y = sectionHeading(pdfLib, page, boldFont, 'Details', y);
@@ -205,10 +215,11 @@ export async function generateSwmsPdf(swms: SwmsData): Promise<Uint8Array> {
       sigY = PAGE_H - 90;
     }
     sigY = sectionHeading(pdfLib, sigPage, boldFont, `Worker Sign-offs (${swms.signoffs.length})`, sigY);
-    drawRect(sigPage, MARGIN, sigY - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-    drawText(sigPage, 'Worker Name', MARGIN + 6, sigY + 1, boldFont, 8, WHITE);
-    drawText(sigPage, 'White Card #', MARGIN + 200, sigY + 1, boldFont, 8, WHITE);
-    drawText(sigPage, 'Signed At', MARGIN + 360, sigY + 1, boldFont, 8, WHITE);
+    // Sign-off table header — light grey, dark text
+    drawRect(sigPage, MARGIN, sigY - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
+    drawText(sigPage, 'Worker Name', MARGIN + 6, sigY + 1, boldFont, 8, SLATE);
+    drawText(sigPage, 'White Card #', MARGIN + 200, sigY + 1, boldFont, 8, SLATE);
+    drawText(sigPage, 'Signed At', MARGIN + 360, sigY + 1, boldFont, 8, SLATE);
     sigY -= 20;
     swms.signoffs.forEach((s, i) => {
       if (i % 2 === 0) drawRect(sigPage, MARGIN, sigY - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
@@ -262,21 +273,23 @@ export async function generateSafetyPlanPdf(plan: SafetyPlanData): Promise<Uint8
   drawHeader(pdfLib, page, boldFont, regularFont, 'Site Safety Plan', plan.company_name);
   drawFooter(pdfLib, page, regularFont, 1);
 
-  let y = PAGE_H - 90;
+  let y = PAGE_H - 80;
 
-  drawRect(page, MARGIN, y - 30, PAGE_W - MARGIN * 2, 36, rgb(0.059, 0.067, 0.090));
-  drawText(page, plan.title, MARGIN + 8, y - 10, boldFont, 13, WHITE);
+  // Title block — white background, 3pt left accent rule, dark text
+  page.drawLine({ start: { x: MARGIN, y: y - 30 }, end: { x: MARGIN, y: y + 6 }, thickness: 3, color: ORANGE });
+  drawText(page, plan.title, MARGIN + 8, y - 10, boldFont, 13, BLACK);
   if (plan.job_name) drawText(page, `Job: ${plan.job_number ? `#${plan.job_number} — ` : ''}${plan.job_name}`, MARGIN + 8, y - 24, regularFont, 9, MUTED);
-  y -= 50;
+  y -= 44;
 
-  const statusColor = plan.status === 'approved' ? rgb(0.133, 0.545, 0.133) : ORANGE;
-  drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
-  drawText(page, (plan.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
+  // Status + principal contractor — text prefix, no filled pill
+  const planStatusLabel = (plan.status ?? 'draft').toUpperCase();
+  const planStatusPrefix = plan.status === 'approved' ? '✓ ' : '● ';
+  const planStatusColor = plan.status === 'approved' ? rgb(0.133, 0.545, 0.133) : rgb(0.502, 0.533, 0.580);
+  drawText(page, planStatusPrefix + planStatusLabel, MARGIN, y - 10, boldFont, 8, planStatusColor);
   if (plan.is_principal_contractor) {
-    drawRect(page, MARGIN + 90, y - 16, 130, 18, SLATE);
-    drawText(page, 'PRINCIPAL CONTRACTOR', MARGIN + 96, y - 10, boldFont, 7, WHITE);
+    drawText(page, 'PRINCIPAL CONTRACTOR', MARGIN + 90, y - 10, boldFont, 7, SLATE);
   }
-  y -= 34;
+  y -= 26;
 
   y = sectionHeading(pdfLib, page, boldFont, 'Project Details', y);
   const col2x = MARGIN + (PAGE_W - MARGIN * 2) / 2;
@@ -366,12 +379,13 @@ export async function generateCostReportPdf(data: CostReportData): Promise<Uint8
   drawHeader(pdfLib, page, boldFont, regularFont, 'Job Cost Report', subtitle);
   drawFooter(pdfLib, page, regularFont, 1);
 
-  let y = PAGE_H - 90;
+  let y = PAGE_H - 80;
 
   const totalCosts = data.costs.reduce((s, c) => s + Number(c.amount ?? 0), 0);
   const totalGst = data.costs.reduce((s, c) => s + Number(c.gst_amount ?? 0), 0);
   const cardW = (PAGE_W - MARGIN * 2 - 20) / 3;
 
+  // Summary cards — light grey background, dark text (no near-black fills)
   const cards = [
     { label: 'Total Costs (inc. GST)', value: `$${totalCosts.toFixed(2)}` },
     { label: 'Total GST', value: `$${totalGst.toFixed(2)}` },
@@ -379,9 +393,9 @@ export async function generateCostReportPdf(data: CostReportData): Promise<Uint8
   ];
   cards.forEach((card, i) => {
     const cx = MARGIN + i * (cardW + 10);
-    drawRect(page, cx, y - 44, cardW, 48, rgb(0.059, 0.067, 0.090));
+    drawRect(page, cx, y - 44, cardW, 48, LIGHT);
     drawText(page, card.label, cx + 8, y - 14, regularFont, 7, MUTED);
-    drawText(page, card.value, cx + 8, y - 32, boldFont, 13, WHITE);
+    drawText(page, card.value, cx + 8, y - 32, boldFont, 13, BLACK);
   });
   y -= 60;
 
@@ -395,8 +409,8 @@ export async function generateCostReportPdf(data: CostReportData): Promise<Uint8
     { label: 'GST', x: MARGIN + 474, w: 40 },
   ];
 
-  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-  cols.forEach(col => drawText(page, col.label, col.x, y + 1, boldFont, 7, WHITE));
+  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
+  cols.forEach(col => drawText(page, col.label, col.x, y + 1, boldFont, 7, SLATE));
   y -= 20;
 
   let currentPage = page;
@@ -408,9 +422,9 @@ export async function generateCostReportPdf(data: CostReportData): Promise<Uint8
       currentPage = addPage(doc);
       drawHeader(pdfLib, currentPage, boldFont, regularFont, 'Job Cost Report (cont.)', subtitle);
       drawFooter(pdfLib, currentPage, regularFont, pageNum);
-      y = PAGE_H - 90;
-      drawRect(currentPage, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-      cols.forEach(col => drawText(currentPage, col.label, col.x, y + 1, boldFont, 7, WHITE));
+      y = PAGE_H - 80;
+      drawRect(currentPage, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
+      cols.forEach(col => drawText(currentPage, col.label, col.x, y + 1, boldFont, 7, SLATE));
       y -= 20;
     }
 
@@ -785,20 +799,20 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   let page = addPage(doc);
   drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice', data.company_name);
   drawFooter(pdfLib, page, regularFont, 1);
-  let y = PAGE_H - 90;
+  let y = PAGE_H - 80;
   let pageNum = 1;
 
-  // Invoice title block
-  drawRect(page, MARGIN, y - 30, PAGE_W - MARGIN * 2, 36, SLATE);
+  // Invoice title block — white bg, 3pt left accent rule, dark text
+  page.drawLine({ start: { x: MARGIN, y: y - 30 }, end: { x: MARGIN, y: y + 6 }, thickness: 3, color: PURPLE });
   const invNum = data.invoice_number ? `Invoice #${data.invoice_number}` : `Invoice #${data.id}`;
-  drawText(page, invNum, MARGIN + 8, y - 10, boldFont, 13, WHITE);
+  drawText(page, invNum, MARGIN + 8, y - 10, boldFont, 13, BLACK);
   if (subtitle) drawText(page, subtitle, MARGIN + 8, y - 24, regularFont, 9, MUTED);
-  y -= 50;
+  y -= 44;
 
-  // Status + dates
-  const statusColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? PURPLE : SLATE));
-  drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
-  drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
+  // Status + dates — text prefix, no filled pill
+  const invStatusLabel = (data.status ?? 'draft').toUpperCase();
+  const invStatusTextColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? PURPLE : SLATE));
+  drawText(page, invStatusLabel, MARGIN, y - 10, boldFont, 8, invStatusTextColor);
   if (data.issue_date) {
     const id2 = `Issued: ${new Date(data.issue_date).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
     drawText(page, id2, MARGIN + 90, y - 10, regularFont, 8, MUTED);
@@ -808,7 +822,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     const dw = regularFont.widthOfTextAtSize(dd, 8);
     drawText(page, dd, PAGE_W - MARGIN - dw, y - 10, regularFont, 8, data.status === 'overdue' ? RED : MUTED);
   }
-  y -= 32;
+  y -= 26;
 
   // Billed by / Billed to
   y = sectionHeading(pdfLib, page, boldFont, 'Billed By / Billed To', y);
@@ -840,12 +854,13 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     amt:  { x: MARGIN + 420, w: 80  },
   };
 
-  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-  drawText(page, 'Description', ICOL.desc.x, y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Qty',         ICOL.qty.x,  y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Unit Price',  ICOL.unit.x, y + 1, boldFont, 7, WHITE);
-  drawText(page, 'GST',         ICOL.gst.x,  y + 1, boldFont, 7, WHITE);
-  drawText(page, 'Amount',      ICOL.amt.x,  y + 1, boldFont, 7, WHITE);
+  // Line items table header — light grey, dark text
+  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
+  drawText(page, 'Description', ICOL.desc.x, y + 1, boldFont, 7, SLATE);
+  drawText(page, 'Qty',         ICOL.qty.x,  y + 1, boldFont, 7, SLATE);
+  drawText(page, 'Unit Price',  ICOL.unit.x, y + 1, boldFont, 7, SLATE);
+  drawText(page, 'GST',         ICOL.gst.x,  y + 1, boldFont, 7, SLATE);
+  drawText(page, 'Amount',      ICOL.amt.x,  y + 1, boldFont, 7, SLATE);
   y -= 20;
 
   for (let i = 0; i < data.lines.length; i++) {
@@ -854,13 +869,13 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
       page = addPage(doc);
       drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice (cont.)', data.company_name);
       drawFooter(pdfLib, page, regularFont, pageNum);
-      y = PAGE_H - 90;
-      drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
-      drawText(page, 'Description', ICOL.desc.x, y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Qty',         ICOL.qty.x,  y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Unit Price',  ICOL.unit.x, y + 1, boldFont, 7, WHITE);
-      drawText(page, 'GST',         ICOL.gst.x,  y + 1, boldFont, 7, WHITE);
-      drawText(page, 'Amount',      ICOL.amt.x,  y + 1, boldFont, 7, WHITE);
+      y = PAGE_H - 80;
+      drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
+      drawText(page, 'Description', ICOL.desc.x, y + 1, boldFont, 7, SLATE);
+      drawText(page, 'Qty',         ICOL.qty.x,  y + 1, boldFont, 7, SLATE);
+      drawText(page, 'Unit Price',  ICOL.unit.x, y + 1, boldFont, 7, SLATE);
+      drawText(page, 'GST',         ICOL.gst.x,  y + 1, boldFont, 7, SLATE);
+      drawText(page, 'Amount',      ICOL.amt.x,  y + 1, boldFont, 7, SLATE);
       y -= 20;
     }
 
@@ -879,14 +894,14 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     y -= rowH;
   }
 
-  // Totals
+  // Totals — right-aligned, rule-separated, no coloured fills
   y -= 8;
   if (y < 140) {
     pageNum++;
     page = addPage(doc);
     drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice — Totals', data.company_name);
     drawFooter(pdfLib, page, regularFont, pageNum);
-    y = PAGE_H - 90;
+    y = PAGE_H - 80;
   }
 
   const totalsX = PAGE_W - MARGIN - 180;
@@ -894,7 +909,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   const amtDue = Number(data.amount_due ?? data.total ?? 0);
   const amtPaid = Number(data.amount_paid ?? 0);
 
-  const tRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; color?: typeof PURPLE }> = [
+  const tRows: Array<{ label: string; value: string; bold?: boolean; isFinal?: boolean; color?: typeof PURPLE }> = [
     { label: 'Subtotal (ex. GST)', value: fmtMoney(Number(data.subtotal ?? 0)) },
     { label: 'GST (10%)',          value: fmtMoney(Number(data.gst_total ?? 0)) },
     { label: 'Total (inc. GST)',   value: fmtMoney(Number(data.total ?? 0)), bold: true },
@@ -902,35 +917,38 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
   if (amtPaid > 0) {
     tRows.push({ label: 'Amount Paid', value: fmtMoney(amtPaid), color: GREEN });
   }
-  tRows.push({ label: 'AMOUNT DUE', value: fmtMoney(amtDue), bold: true, highlight: true });
+  tRows.push({ label: 'AMOUNT DUE', value: fmtMoney(amtDue), bold: true, isFinal: true });
 
+  // Light tint block behind totals
   const blockH2 = tRows.length * 18 + 8;
   drawRect(page, totalsX - 8, y - blockH2 + 8, totalsW + 8, blockH2, LIGHT);
 
   tRows.forEach((row) => {
-    if (row.highlight) drawRect(page, totalsX - 8, y - 14, totalsW + 8, 18, PURPLE);
+    if (row.isFinal) {
+      // Bold rule above final total — no filled background
+      page.drawLine({ start: { x: totalsX - 8, y: y + 4 }, end: { x: PAGE_W - MARGIN, y: y + 4 }, thickness: 1, color: SLATE });
+    }
     const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
-    const textColor = row.highlight ? WHITE : (row.color ?? BLACK);
-    drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
+    const textColor = row.isFinal ? BLACK : (row.color ?? BLACK);
+    drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.isFinal ? BLACK : MUTED);
     drawText(page, row.value, totalsX + totalsW - vw, y, row.bold ? boldFont : regularFont, 9, textColor);
     y -= 18;
   });
 
   y -= 16;
 
-  // Payment link notice
+  // Payment link notice — plain text, no filled background
   if (data.stripe_payment_link) {
     if (y < 80) {
       pageNum++;
       page = addPage(doc);
       drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice — Payment', data.company_name);
       drawFooter(pdfLib, page, regularFont, pageNum);
-      y = PAGE_H - 90;
+      y = PAGE_H - 80;
     }
-    drawRect(page, MARGIN, y - 28, PAGE_W - MARGIN * 2, 32, rgb(0.059, 0.067, 0.090));
-    drawText(page, 'Pay online:', MARGIN + 8, y - 8, boldFont, 8, MUTED);
-    drawText(page, data.stripe_payment_link, MARGIN + 8, y - 22, regularFont, 8, PURPLE);
-    y -= 44;
+    drawText(page, 'Pay online:', MARGIN, y - 8, boldFont, 8, MUTED);
+    drawText(page, data.stripe_payment_link, MARGIN + 60, y - 8, regularFont, 8, PURPLE);
+    y -= 24;
   }
 
   // Notes / payment terms

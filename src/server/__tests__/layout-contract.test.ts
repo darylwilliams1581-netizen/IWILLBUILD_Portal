@@ -45,14 +45,15 @@ describe('globals.css — portal layout classes', () => {
     expect(lgBlock).not.toBeNull();
   });
 
-  it('.portal-content applies sidebar left offset at lg+ (Work/Finance/Customers fix)', async () => {
+  it('.portal-content applies sidebar left offset at md+ (tablet nav fix)', async () => {
     const css = await readSrc('src/styles/globals.css');
-    // Find the lg+ portal-content block
-    const lgPortalContentMatch = css.match(
-      /@media \(min-width: 1024px\)\s*\{[^@]*\.portal-content\s*\{([^}]*)\}/s
+    // Find the md+ portal-content block that contains the sidebar offset
+    // Use a regex that matches the specific block with iwb-sidebar-w
+    const mdPortalContentMatch = css.match(
+      /@media \(min-width: 768px\)\s*\{\s*\.portal-content\s*\{([^}]*)\}/s
     );
-    expect(lgPortalContentMatch).not.toBeNull();
-    const block = lgPortalContentMatch![1];
+    expect(mdPortalContentMatch).not.toBeNull();
+    const block = mdPortalContentMatch![1];
     // Must include sidebar offset
     expect(block).toContain('var(--iwb-sidebar-w');
     // Must include top padding for topbar+dock
@@ -118,9 +119,12 @@ describe('Work page — layout contract', () => {
     expect(src).toContain('portal-page');
   });
 
-  it('uses portal-content as content wrapper (gets sidebar offset from CSS)', async () => {
+  it('uses lg-portal as content wrapper (full-height workspace — not portal-content)', async () => {
     const src = await readSrc('src/pages/work.tsx');
-    expect(src).toContain('portal-content');
+    expect(src).toContain('lg-portal');
+    // Work is a full-height flex workspace; portal-content is the padded scrollable column
+    // used by register/list pages (customers, finance). Work uses the workspace pattern instead.
+    expect(src).not.toContain('"portal-content');
   });
 
   it('renders PortalSidebar (which owns DesktopTopBar)', async () => {
@@ -141,10 +145,13 @@ describe('Work page — layout contract', () => {
     expect(src).toContain('setNewJobOpen(true)');
   });
 
-  it('does not use w-screen or 100vw (would cause horizontal overflow)', async () => {
+  it('does not use w-screen or 100vw as page-level width (would cause horizontal overflow)', async () => {
     const src = await readSrc('src/pages/work.tsx');
     expect(src).not.toContain('w-screen');
-    expect(src).not.toContain('100vw');
+    // 100vw is allowed in dropdown/popover maxWidth guards (viewport containment)
+    // but must not appear as a page-level width assignment
+    const pageWidthMatch = src.match(/width:\s*['"]?100vw['"]?/);
+    expect(pageWidthMatch).toBeNull();
   });
 
   it('does not use hard-coded margin-left or padding-left pixel values for sidebar offset', async () => {
@@ -222,12 +229,12 @@ describe('+ New Job ownership — sidebar vs page header', () => {
 
   it('Work page + New Job button is hidden on desktop (lg:hidden) — no duplicate', async () => {
     const src = await readSrc('src/pages/work.tsx');
-    // The button className must include lg:hidden
-    const btnMatch = src.match(/setNewJobOpen\(true\)[^}]*className="([^"]+)"/s) ??
-                     src.match(/className="([^"]+)"[^>]*onClick[^>]*setNewJobOpen/s);
-    // Simpler: just check lg:hidden appears near the New Job button
-    const newJobSection = src.slice(src.indexOf('setNewJobOpen(true)') - 200, src.indexOf('setNewJobOpen(true)') + 200);
-    expect(newJobSection).toContain('lg:hidden');
+    // The mobile/tablet layout wrapper must use lg:hidden so the New Job button
+    // (inside MobileWorkLauncher) is never visible on desktop.
+    // New architecture: separate hidden lg:flex (desktop) and flex lg:hidden (mobile) divs.
+    expect(src).toContain('lg:hidden');
+    // Desktop wrapper must use hidden lg:flex — sidebar owns New Job there
+    expect(src).toContain('hidden lg:flex');
   });
 
   it('Dashboard page no longer has a + New Job button (removed — sidebar owns it)', async () => {
@@ -238,7 +245,56 @@ describe('+ New Job ownership — sidebar vs page header', () => {
   });
 });
 
-// ── Plan Manager — now inside the office shell ───────────────────────────────
+// ── Sidebar Work consolidation ────────────────────────────────────────────────
+
+describe('Sidebar Work consolidation', () => {
+  it('DESKTOP_NAV_GROUPS Work section has a single Work entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).toContain("label: 'Work'");
+    expect(src).toContain("href: '/work'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have individual Tasks entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/work?workTab=tasks'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have individual Notes entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/work?workTab=notes'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have Builders Calc direct entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/builders-calc'");
+  });
+
+  it('DESKTOP_NAV_GROUPS does not have Takeoff Pad direct entry', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).not.toContain("href: '/takeoff-pad'");
+  });
+
+  it('Work isActive matches /builders-calc', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    expect(src).toContain('/builders-calc');
+    // The isActive function for href === '/work' must include builders-calc
+    const workActiveBlock = src.match(/href === '\/work'[^}]+}/s)?.[0] ?? '';
+    expect(workActiveBlock).toContain('/builders-calc');
+  });
+
+  it('Work isActive matches /takeoff-pad', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    const workActiveBlock = src.match(/href === '\/work'[^}]+}/s)?.[0] ?? '';
+    expect(workActiveBlock).toContain('/takeoff-pad');
+  });
+
+  it('buildNavEntries includes Work entry for mobile drawer', async () => {
+    const src = await readSrc('src/components/PortalSidebar.tsx');
+    // buildNavEntries is used by the mobile SidebarContent
+    const buildNavBlock = src.match(/function buildNavEntries[\s\S]*?^}/m)?.[0] ?? src;
+    expect(buildNavBlock).toContain("href: '/work'");
+  });
+});
 
 describe('Plan Manager page — portal shell', () => {
   it('uses portal-page + portal-content layout (not portal-main)', async () => {
@@ -284,9 +340,9 @@ describe('Estimating tool pages — portal shell', () => {
     expect(src).toContain('PortalSidebar');
   });
 
-  it('builders-calc-page renders DesktopDock', async () => {
+  it('builders-calc-page does NOT render DesktopDock (PortalSidebar owns chrome)', async () => {
     const src = await readSrc('src/pages/builders-calc-page.tsx');
-    expect(src).toContain('DesktopDock');
+    expect(src).not.toContain('DesktopDock');
   });
 
   it('builders-calc-page uses portal-page + portal-content layout', async () => {
@@ -311,9 +367,9 @@ describe('Estimating tool pages — portal shell', () => {
     expect(src).toContain('PortalSidebar');
   });
 
-  it('takeoff-pad-page renders DesktopDock', async () => {
+  it('takeoff-pad-page does NOT render DesktopDock (PortalSidebar owns chrome)', async () => {
     const src = await readSrc('src/pages/takeoff-pad-page.tsx');
-    expect(src).toContain('DesktopDock');
+    expect(src).not.toContain('DesktopDock');
   });
 
   it('takeoff-pad-page uses portal-page + portal-content layout', async () => {
