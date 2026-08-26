@@ -338,7 +338,7 @@ function ManagePage({
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
               <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)' }}>
                 {groupIcons.map(item => (
-                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+                  <IconTile key={item.key} item={item} onNavigate={onNavigate} wide={item.key === 'tools'} />
                 ))}
               </div>
             </div>
