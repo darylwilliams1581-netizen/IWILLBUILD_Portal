@@ -41,7 +41,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
 // Current: 11 (schema-compat camera upload fix; INFORMATION_SCHEMA migration)
-const IOS_BUILD_NUMBER = 11;
+const IOS_BUILD_NUMBER = 12;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
