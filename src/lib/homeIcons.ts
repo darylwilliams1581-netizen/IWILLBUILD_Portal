@@ -55,11 +55,11 @@ export interface HomeIconDef {
 
 // ── FIELD (mirrors desktop sidebar "Work" heading) ────────────────────────────
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
-  { key: 'jobs',        label: 'Jobs',        icon: HardHat,      href: '/jobs',                        bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'tools',       label: 'Tools',       icon: Wrench,       href: '/work?workTab=tools',          bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
+  { key: 'jobs',        label: 'Jobs',        icon: HardHat,      href: '/jobs',                        bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'job_card',    label: 'Job Cards',   icon: Zap,          href: '/job-cards',                   bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
-  { key: 'scheduler',   label: 'Scheduler',   icon: CalendarDays, href: '/scheduler',                   bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
   { key: 'log_cost',    label: 'Log Cost',    icon: DollarSign,   href: '?panel=log-cost',              bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
+  { key: 'scheduler',   label: 'Scheduler',   icon: CalendarDays, href: '/scheduler',                   bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
 ];
 
 // ── FILES (mirrors desktop sidebar "Field & Files" heading) ───────────────────
