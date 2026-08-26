@@ -5,7 +5,9 @@
  * Preserves /estimating and Settings → Costing.
  */
 import { useNavigate } from 'react-router';
-import { Calculator, Ruler, ShieldAlert, ExternalLink } from 'lucide-react';
+import { Calculator, Ruler, ShieldAlert, MapPin, ExternalLink } from 'lucide-react';
+
+const MAPS_TOILET_URL = 'https://www.google.com/maps/search/?api=1&query=public+toilets';
 
 interface ToolCard {
   title: string;
@@ -14,6 +16,7 @@ interface ToolCard {
   iconBg: string;
   iconFg: string;
   href: string;
+  external?: boolean;
   badge?: string;
 }
 
@@ -42,7 +45,24 @@ const TOOLS: ToolCard[] = [
     iconFg: 'text-rose-600',
     href: '/sds-register',
   },
+  {
+    title: 'Public Toilet Finder',
+    description: 'Find nearby public toilets in Google Maps. Opens Google Maps — no location data is collected by IWILLBUILD.',
+    icon: MapPin,
+    iconBg: 'bg-teal-100',
+    iconFg: 'text-teal-600',
+    href: MAPS_TOILET_URL,
+    external: true,
+  },
 ];
+
+function openExternalUrl(url: string) {
+  try {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch {
+    alert('Unable to open Google Maps. Check your internet connection and try again.');
+  }
+}
 
 export default function WorkToolsTab() {
   const navigate = useNavigate();
@@ -57,10 +77,17 @@ export default function WorkToolsTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
           {TOOLS.map((tool) => {
             const Icon = tool.icon;
+            function handleClick() {
+              if (tool.external) {
+                openExternalUrl(tool.href);
+              } else {
+                navigate(tool.href);
+              }
+            }
             return (
               <button
                 key={tool.href}
-                onClick={() => navigate(tool.href)}
+                onClick={handleClick}
                 className="group flex flex-col gap-3 bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/40 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start justify-between">

@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Briefcase, Wrench, ShieldAlert,
+  Briefcase, Wrench, ShieldAlert, MapPin,
   Plus, Calculator, Ruler, ChevronDown, Home, ArrowLeft,
   Search, ChevronRight, HardHat, Loader2,
 } from 'lucide-react';
@@ -28,10 +28,13 @@ import WorkToolsTab from '@/components/work/WorkToolsTab';
 
 // ── Tools sub-items ───────────────────────────────────────────────────────────
 
+const MAPS_TOILET_URL = 'https://www.google.com/maps/search/?api=1&query=public+toilets';
+
 const TOOL_ITEMS = [
-  { label: 'Builders Calculator', icon: Calculator, href: '/builders-calc', iconBg: 'bg-violet-100', iconFg: 'text-violet-600', description: 'Areas, volumes, materials and cost estimates' },
-  { label: 'Takeoff Pad',         icon: Ruler,      href: '/takeoff-pad',   iconBg: 'bg-blue-100',   iconFg: 'text-blue-600',   description: 'Measure and quantify from plans'             },
-  { label: 'SDS / MSDS Register', icon: ShieldAlert, href: '/sds-register', iconBg: 'bg-rose-100',   iconFg: 'text-rose-600',   description: 'Safety data sheets — upload and view on-site' },
+  { label: 'Builders Calculator', icon: Calculator,  href: '/builders-calc',   iconBg: 'bg-violet-100', iconFg: 'text-violet-600', description: 'Areas, volumes, materials and cost estimates',           external: false },
+  { label: 'Takeoff Pad',         icon: Ruler,        href: '/takeoff-pad',     iconBg: 'bg-blue-100',   iconFg: 'text-blue-600',   description: 'Measure and quantify from plans',                       external: false },
+  { label: 'SDS / MSDS Register', icon: ShieldAlert,  href: '/sds-register',   iconBg: 'bg-rose-100',   iconFg: 'text-rose-600',   description: 'Safety data sheets — upload and view on-site',          external: false },
+  { label: 'Public Toilet Finder', icon: MapPin,      href: MAPS_TOILET_URL,   iconBg: 'bg-teal-100',   iconFg: 'text-teal-600',   description: 'Find nearby public toilets in Google Maps',             external: true  },
 ] as const;
 
 // ── Desktop Tools dropdown ────────────────────────────────────────────────────
@@ -107,7 +110,15 @@ function ToolsDropdown() {
               <button
                 key={tool.href}
                 role="menuitem"
-                onClick={() => { setOpen(false); navigate(tool.href); }}
+                onClick={() => {
+                  setOpen(false);
+                  if (tool.external) {
+                    try { window.open(tool.href, '_blank', 'noopener,noreferrer'); }
+                    catch { alert('Unable to open Google Maps. Check your internet connection and try again.'); }
+                  } else {
+                    navigate(tool.href);
+                  }
+                }}
                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors text-left min-h-[44px]"
               >
                 <Icon size={15} className="text-muted-foreground shrink-0" />
@@ -268,7 +279,14 @@ function MobileToolsLauncher({ onBack }: { onBack: () => void }) {
             return (
               <button
                 key={tool.href}
-                onClick={() => navigate(tool.href)}
+                onClick={() => {
+                  if (tool.external) {
+                    try { window.open(tool.href, '_blank', 'noopener,noreferrer'); }
+                    catch { alert('Unable to open Google Maps. Check your internet connection and try again.'); }
+                  } else {
+                    navigate(tool.href);
+                  }
+                }}
                 className="flex items-center gap-4 bg-card border border-border rounded-2xl p-4 text-left hover:border-primary/40 active:scale-[0.98] transition-all min-h-[72px]"
               >
                 <div className={`w-12 h-12 rounded-2xl ${tool.iconBg} flex items-center justify-center shrink-0`}>
