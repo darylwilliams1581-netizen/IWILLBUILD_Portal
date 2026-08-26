@@ -5,7 +5,9 @@ import type { HelmetServerState } from '@dr.pogodin/react-helmet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Outlet, StaticRouterProvider, createStaticHandler, createStaticRouter, type RouteObject } from "react-router";
 import RootLayout from './layouts/RootLayout';
-import { routes } from './routes';export interface RenderResult {
+import { routes } from './routes';
+
+export interface RenderResult {
   html: string;
   head: string;
   status: number;
