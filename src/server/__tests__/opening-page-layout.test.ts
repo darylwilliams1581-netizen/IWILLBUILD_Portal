@@ -257,6 +257,14 @@ describe('Two-row stacked header', () => {
     expect(screenSrc).toContain('justify-between shrink-0 px-3 pt-2 pb-1');
   });
 
+  it('row 1 contains logo image (dark variant)', () => {
+    expect(screenSrc).toContain('/airo-assets/images/logo/horizontal/dark');
+  });
+
+  it('row 1 contains IWILLBUILD wordmark text', () => {
+    expect(screenSrc).toContain('IWILLBUILD');
+  });
+
   it('row 2 contains page tabs (full-width, no overflow-x-auto)', () => {
     expect(screenSrc).toContain('px-2 pb-1.5 gap-1.5');
     // No horizontal scroll on the tab row
@@ -268,7 +276,6 @@ describe('Two-row stacked header', () => {
   });
 
   it('tab pills use rounded-xl (not rounded-full)', () => {
-    // New design uses rounded-xl pills
     expect(screenSrc).toContain('rounded-xl text-[12px] font-semibold');
   });
 

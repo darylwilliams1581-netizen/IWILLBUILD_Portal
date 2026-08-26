@@ -563,11 +563,20 @@ export default function PagedHomeScreen({
   return <>
     <div className="flex flex-col flex-1 min-h-0">
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
-      {/* Row 1: greeting name (left) + utility buttons (right) */}
+      {/* Row 1: logo + name (left) + utility buttons (right) */}
       <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
-        <span className="text-sm font-semibold text-foreground truncate select-none">
-          {/* Greeting slot — kept minimal so it doesn't compete with tabs */}
-        </span>
+        {/* Brand mark + wordmark */}
+        <div className="flex items-center gap-2 min-w-0">
+          <img
+            src="/airo-assets/images/logo/horizontal/dark"
+            alt="IWILLBUILD"
+            className="h-7 w-auto object-contain shrink-0"
+            style={{ maxWidth: 28 }}
+          />
+          <span className="text-[15px] font-black tracking-tight text-foreground select-none truncate">
+            IWILLBUILD
+          </span>
+        </div>
         <div className="flex items-center gap-1.5 ml-auto">
           <div className="shrink-0"><NotificationBell /></div>
           <button
