@@ -64,6 +64,16 @@
  * 56. Dashboard Fleet — 32×32 badge, 16px glyph
  * 57. Dashboard Site Prestart — 32×32 badge, 16px glyph
  * 58. Dashboard Contacts — 32×32 badge, 16px glyph
+ * 59. Administration — uses Collapsible.Root (data-testid="admin-collapsible")
+ * 60. Administration — trigger has data-testid="admin-collapsible-trigger"
+ * 61. Administration — content has data-testid="admin-collapsible-content"
+ * 62. Administration — ChevronDown icon imported
+ * 63. Administration — collapsed by default (sessionStorage key '0' / no '1')
+ * 64. Administration — sessionStorage key constant defined
+ * 65. globals.css — collapsible-down keyframe defined
+ * 66. globals.css — collapsible-up keyframe defined
+ * 67. globals.css — animate-collapsible-down class defined
+ * 68. globals.css — animate-collapsible-up class defined
  */
 
 import { describe, it, expect } from 'vitest';
@@ -372,5 +382,57 @@ describe('Dashboard quick-action buttons — compact spec', () => {
 
   it('Contacts glyph is 16px', () => {
     expect(screenSrc).toContain('<Users size={16}');
+  });
+});
+
+// ── 59–68. Collapsible Administration section ─────────────────────────────────
+
+describe('Administration — collapsible section', () => {
+  it('uses Radix Collapsible.Root with data-testid="admin-collapsible"', () => {
+    expect(screenSrc).toContain('data-testid="admin-collapsible"');
+  });
+
+  it('trigger has data-testid="admin-collapsible-trigger"', () => {
+    expect(screenSrc).toContain('data-testid="admin-collapsible-trigger"');
+  });
+
+  it('content has data-testid="admin-collapsible-content"', () => {
+    expect(screenSrc).toContain('data-testid="admin-collapsible-content"');
+  });
+
+  it('imports ChevronDown from lucide-react', () => {
+    expect(screenSrc).toContain('ChevronDown');
+  });
+
+  it('defaults to collapsed (reads sessionStorage; no default open={true})', () => {
+    // The component reads sessionStorage — default is false (collapsed)
+    // It must NOT have open={true} as a hardcoded default
+    expect(screenSrc).not.toContain('open={true}');
+    expect(screenSrc).toContain(ADMIN_STORAGE_KEY_MARKER);
+  });
+
+  it('sessionStorage key constant is defined', () => {
+    expect(screenSrc).toContain('ADMIN_STORAGE_KEY');
+  });
+});
+
+// Helper — the storage key literal must appear in the source
+const ADMIN_STORAGE_KEY_MARKER = 'manage_admin_open';
+
+describe('globals.css — collapsible animations', () => {
+  it('defines collapsible-down keyframe', () => {
+    expect(globalsCss).toContain('@keyframes collapsible-down');
+  });
+
+  it('defines collapsible-up keyframe', () => {
+    expect(globalsCss).toContain('@keyframes collapsible-up');
+  });
+
+  it('defines animate-collapsible-down utility class', () => {
+    expect(globalsCss).toContain('.animate-collapsible-down');
+  });
+
+  it('defines animate-collapsible-up utility class', () => {
+    expect(globalsCss).toContain('.animate-collapsible-up');
   });
 });

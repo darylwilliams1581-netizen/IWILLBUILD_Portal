@@ -13,7 +13,8 @@
 
 import { useState, useRef, useCallback, useEffect, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
-import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users, ChevronDown } from 'lucide-react';
+import * as Collapsible from '@radix-ui/react-collapsible';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
@@ -323,6 +324,68 @@ const MANAGE_GROUP_ORDER: Array<{ group: HomeIconDef['group']; label: string }> 
   { group: 'management', label: 'Administration' },
 ];
 
+// ── Collapsible Administration section ───────────────────────────────────────
+// Collapsed by default; state persisted in sessionStorage so it survives
+// swipe-away and swipe-back within the same session.
+
+const ADMIN_STORAGE_KEY = 'manage_admin_open';
+
+function AdminSection({
+  icons,
+  onNavigate,
+}: {
+  icons: HomeIconDef[];
+  onNavigate: (href: string) => void;
+}) {
+  const [open, setOpen] = useState<boolean>(() => {
+    try { return sessionStorage.getItem(ADMIN_STORAGE_KEY) === '1'; }
+    catch { return false; }
+  });
+
+  const toggle = () => {
+    setOpen(prev => {
+      const next = !prev;
+      try { sessionStorage.setItem(ADMIN_STORAGE_KEY, next ? '1' : '0'); }
+      catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={toggle} data-testid="admin-collapsible">
+      {/* Heading row — always visible, acts as the toggle trigger */}
+      <Collapsible.Trigger asChild>
+        <button
+          className="w-full flex items-center justify-between mb-2 px-0.5 group"
+          aria-label={open ? 'Collapse Administration' : 'Expand Administration'}
+          data-testid="admin-collapsible-trigger"
+        >
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+            Administration
+          </p>
+          <ChevronDown
+            size={14}
+            className={`text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+      </Collapsible.Trigger>
+
+      {/* Collapsible grid — animated open/close via CSS max-height */}
+      <Collapsible.Content
+        className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
+        data-testid="admin-collapsible-content"
+      >
+        <div className="grid grid-cols-2 gap-2 pb-1">
+          {icons.map(item => (
+            <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+          ))}
+        </div>
+      </Collapsible.Content>
+    </Collapsible.Root>
+  );
+}
+
 function ManagePage({
   icons,
   onNavigate
@@ -338,6 +401,16 @@ function ManagePage({
         {MANAGE_GROUP_ORDER.map(({ group, label }) => {
           const groupIcons = icons.filter(i => i.group === group);
           if (groupIcons.length === 0) return null;
+
+          // Administration gets its own collapsible section
+          if (group === 'management') {
+            return (
+              <div key={group} className="mb-5">
+                <AdminSection icons={groupIcons} onNavigate={onNavigate} />
+              </div>
+            );
+          }
+
           return (
             <div key={group} className="mb-5">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
