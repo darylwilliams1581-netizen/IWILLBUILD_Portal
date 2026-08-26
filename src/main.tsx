@@ -99,6 +99,34 @@ if (rootElement.firstElementChild) {
   createRoot(rootElement).render(tree);
 }
 
+// ── Post-hydration client-only components ────────────────────────────────────
+// These components must NOT be in the hydrateRoot tree because the server never
+// renders them — doing so causes React #418 (hydration tree mismatch).
+// Mount each in its own createRoot() after hydrateRoot() so React's reconciler
+// never sees them during hydration.
+import('@/components/CapacitorInit').then(({ default: CapacitorInit }) => {
+  const host = document.createElement('div');
+  host.id = 'capacitor-init-root';
+  document.body.appendChild(host);
+  createRoot(host).render(<CapacitorInit />);
+});
+
+import('@/components/ImpersonationBanner').then(({ default: ImpersonationBanner }) => {
+  const host = document.createElement('div');
+  host.id = 'impersonation-banner-root';
+  document.body.appendChild(host);
+  createRoot(host).render(<ImpersonationBanner />);
+});
+
+import('@/components/CookieBanner').then(({ default: CookieBanner }) => {
+  const host = document.createElement('div');
+  host.id = 'cookie-banner-root';
+  document.body.appendChild(host);
+  createRoot(host).render(<CookieBanner />);
+}).catch(() => {
+  // CookieBanner is optional — silently skip if it fails to load
+});
+
 // ── Toaster (Sonner) — mounted outside the SSR tree ──────────────────────────
 // Sonner's <Toaster> appends a portal container to document.body via useEffect.
 // When rendered inside the hydrateRoot tree, React's commitDeletionEffects can

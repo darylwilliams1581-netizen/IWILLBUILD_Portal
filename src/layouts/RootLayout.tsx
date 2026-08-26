@@ -10,6 +10,7 @@ import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import { DocumentActionsProvider } from '@/lib/document-actions-context';
 import DocumentActionsWidget from '@/components/DocumentActionsWidget';
 import { useRef } from 'react';
+import { recordRouteChange } from '@/lib/diagnosticCapture';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface RootLayoutProps {
@@ -92,6 +93,12 @@ const DeferredMount = ClientOnly;
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const location = useLocation();
+
+  // Route change tracking — placed here so it has router context on both
+  // client and server (server is a no-op since recordRouteChange is client-only).
+  useEffect(() => {
+    recordRouteChange(location.pathname);
+  }, [location.pathname]);
 
   return (
     <div suppressHydrationWarning className="h-full bg-background text-foreground flex flex-col">
