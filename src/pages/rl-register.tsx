@@ -158,11 +158,11 @@ export default function RlRegisterPage() {
   // ── Export ─────────────────────────────────────────────────────────────────
   function exportCsv() {
     if (!selectedJob) return;
-    window.open(`/api/rl-register/${selectedJob.id}/export/csv`, '_blank');
+    window.open(`/api/rl-register/export/${selectedJob.id}/csv`, '_blank');
   }
   function exportPdf() {
     if (!selectedJob) return;
-    window.open(`/api/rl-register/${selectedJob.id}/export/pdf`, '_blank');
+    window.open(`/api/rl-register/export/${selectedJob.id}/pdf`, '_blank');
   }
 
   // ── Archive point ──────────────────────────────────────────────────────────

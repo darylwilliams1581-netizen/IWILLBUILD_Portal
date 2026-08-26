@@ -3860,11 +3860,12 @@ app.delete("/api/sds-register/:id", sds_register_id_delete);
 app.post("/api/sds-register/:id/replace", sds_register_id_replace_post);
 // ── RL Register ───────────────────────────────────────────────────────────────
 // Static sub-paths before param routes to avoid shadowing
-app.get("/api/rl-register/points/:id", rl_register_point_put);   // GET history (reuse PUT handler shape — separate if needed)
+// Static-prefix routes first — must come before any /:param routes to avoid shadowing
 app.put("/api/rl-register/points/:id", rl_register_point_put);
 app.delete("/api/rl-register/points/:id", rl_register_point_delete);
-app.get("/api/rl-register/:jobId/export/csv", rl_register_export_csv);
-app.get("/api/rl-register/:jobId/export/pdf", rl_register_export_pdf);
+app.get("/api/rl-register/export/:jobId/csv", rl_register_export_csv);
+app.get("/api/rl-register/export/:jobId/pdf", rl_register_export_pdf);
+// Param routes after
 app.get("/api/rl-register/:benchmarkId/points", rl_register_bm_points_get);
 app.post("/api/rl-register/:benchmarkId/points", rl_register_bm_points_post);
 app.get("/api/rl-register", rl_register_get);

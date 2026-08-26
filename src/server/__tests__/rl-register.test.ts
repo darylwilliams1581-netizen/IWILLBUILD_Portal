@@ -360,12 +360,12 @@ describe('RL register — route registration in entry.ts', () => {
     expect(src).toContain('app.delete("/api/rl-register/points/:id"');
   });
 
-  it('registers GET /api/rl-register/:jobId/export/csv', () => {
-    expect(src).toContain('app.get("/api/rl-register/:jobId/export/csv"');
+  it('registers GET /api/rl-register/export/:jobId/csv', () => {
+    expect(src).toContain('app.get("/api/rl-register/export/:jobId/csv"');
   });
 
-  it('registers GET /api/rl-register/:jobId/export/pdf', () => {
-    expect(src).toContain('app.get("/api/rl-register/:jobId/export/pdf"');
+  it('registers GET /api/rl-register/export/:jobId/pdf', () => {
+    expect(src).toContain('app.get("/api/rl-register/export/:jobId/pdf"');
   });
 });
 
