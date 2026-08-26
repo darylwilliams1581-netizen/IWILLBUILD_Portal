@@ -88,14 +88,21 @@ async function getCoords(): Promise<Coords> {
     const { Geolocation } = await import('@capacitor/geolocation');
     const pos = await Geolocation.getCurrentPosition({
       enableHighAccuracy: false,
-      timeout: 8000,
+      timeout: 10000,
     });
     return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-  } catch {
-    // Capacitor not available or permission denied — fall through to browser API
+  } catch (capErr) {
+    // Map Capacitor permission errors to the same sentinel strings the
+    // browser path uses so the state machine handles them correctly.
+    const msg = capErr instanceof Error ? capErr.message.toLowerCase() : '';
+    if (msg.includes('denied') || msg.includes('notdetermined') || msg.includes('restricted')) {
+      throw new Error('denied');
+    }
+    // Any other Capacitor error (location services off, timeout, etc.) —
+    // fall through to the browser geolocation API as a last resort.
   }
 
-  // Browser geolocation
+  // Browser geolocation (web / PWA fallback)
   return new Promise<Coords>((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('unavailable'));
@@ -108,7 +115,7 @@ async function getCoords(): Promise<Coords> {
         else if (err.code === err.POSITION_UNAVAILABLE) reject(new Error('unavailable'));
         else reject(new Error('timeout'));
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: CACHE_MS },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: CACHE_MS },
     );
   });
 }
@@ -117,7 +124,19 @@ async function getCoords(): Promise<Coords> {
 
 async function fetchWeather(coords: Coords): Promise<{ temp: number; condition: string; icon: WeatherIcon }> {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.latitude.toFixed(4)}&longitude=${coords.longitude.toFixed(4)}&current=temperature_2m,weathercode&temperature_unit=celsius&forecast_days=1`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+
+  // AbortSignal.timeout() is not available in WKWebView on older iOS versions.
+  // Use a manual AbortController + setTimeout instead.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
   const data = await res.json() as {
     current: { temperature_2m: number; weathercode: number };
@@ -152,9 +171,12 @@ export function useWeatherWidget() {
       cache = { ts: Date.now(), ...weather };
       setState({ status: 'success', ...weather });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'error';
-      if (msg === 'denied')      setState({ status: 'denied' });
+      const msg = err instanceof Error ? err.message.toLowerCase() : 'error';
+      // AbortError comes from our manual AbortController timeout in fetchWeather
+      const isAbort = err instanceof DOMException && err.name === 'AbortError';
+      if (msg === 'denied')           setState({ status: 'denied' });
       else if (msg === 'unavailable') setState({ status: 'unavailable' });
+      else if (msg === 'timeout' || isAbort) setState({ status: 'error', message: 'timeout' });
       else setState({ status: 'error', message: msg });
     } finally {
       inFlight.current = false;
