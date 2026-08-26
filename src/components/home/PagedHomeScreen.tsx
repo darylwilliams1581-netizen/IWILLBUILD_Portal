@@ -562,26 +562,13 @@ export default function PagedHomeScreen({
 
   return <>
     <div className="flex flex-col flex-1 min-h-0">
-      {/* ── Top bar: page tabs + utility buttons ─────────────────────────────── */}
-      <div className="flex items-center shrink-0 px-2 pt-1.5 pb-1 gap-1.5">
-        {/* Tabs: overflow-x-auto so they never get clipped behind the action buttons */}
-        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-none">
-          {PAGE_LABELS.map((label, i) => {
-            const Icon = PAGE_ICONS[i];
-            const active = page === i;
-            return (
-              <button
-                key={label}
-                onClick={() => setPage(i)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 whitespace-nowrap shrink-0 ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
-              >
-                <Icon size={11} strokeWidth={2.2} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+      {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
+      {/* Row 1: greeting name (left) + utility buttons (right) */}
+      <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
+        <span className="text-sm font-semibold text-foreground truncate select-none">
+          {/* Greeting slot — kept minimal so it doesn't compete with tabs */}
+        </span>
+        <div className="flex items-center gap-1.5 ml-auto">
           <div className="shrink-0"><NotificationBell /></div>
           <button
             onClick={() => navigate('/profile')}
@@ -599,6 +586,23 @@ export default function PagedHomeScreen({
             <LogOut size={13} className="text-slate-200" />
           </button>
         </div>
+      </div>
+      {/* Row 2: page tabs — full width, no scroll, equal-width pills */}
+      <div className="flex items-center shrink-0 px-2 pb-1.5 gap-1.5">
+        {PAGE_LABELS.map((label, i) => {
+          const Icon = PAGE_ICONS[i];
+          const active = page === i;
+          return (
+            <button
+              key={label}
+              onClick={() => setPage(i)}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
+            >
+              <Icon size={13} strokeWidth={2.2} />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Swipe container ──────────────────────────────────────────────────── */}

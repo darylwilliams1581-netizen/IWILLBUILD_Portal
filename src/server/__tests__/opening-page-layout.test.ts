@@ -247,12 +247,33 @@ describe('Accessibility — section aria-label', () => {
 // ── 35–36. Reduced top/bottom chrome padding ─────────────────────────────────
 
 describe('Reduced chrome padding', () => {
-  it('page dots use py-1.5 (reduced from py-2)', () => {
+  it('page dots use py-1.5', () => {
     expect(screenSrc).toContain('py-1.5 shrink-0');
   });
+});
 
-  it('top bar uses pt-1.5 (reduced from pt-2)', () => {
-    expect(screenSrc).toContain('pt-1.5 pb-1');
+describe('Two-row stacked header', () => {
+  it('row 1 contains utility buttons (notification + profile + logout)', () => {
+    expect(screenSrc).toContain('justify-between shrink-0 px-3 pt-2 pb-1');
+  });
+
+  it('row 2 contains page tabs (full-width, no overflow-x-auto)', () => {
+    expect(screenSrc).toContain('px-2 pb-1.5 gap-1.5');
+    // No horizontal scroll on the tab row
+    expect(screenSrc).not.toContain('overflow-x-auto scrollbar-none');
+  });
+
+  it('tab pills use flex-1 (equal-width, fill the row)', () => {
+    expect(screenSrc).toContain('flex-1 flex items-center justify-center');
+  });
+
+  it('tab pills use rounded-xl (not rounded-full)', () => {
+    // New design uses rounded-xl pills
+    expect(screenSrc).toContain('rounded-xl text-[12px] font-semibold');
+  });
+
+  it('tab icon size is 13px (up from 11px)', () => {
+    expect(screenSrc).toContain('<Icon size={13}');
   });
 });
 
