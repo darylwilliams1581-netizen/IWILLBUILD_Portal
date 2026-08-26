@@ -107,8 +107,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta name="description" content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
       </Helmet>
       <ScrollRestoration />
-      <ActivePing />
-      <PortalBanners pathname={location.pathname} />
+      {/*
+        ActivePing, PortalBanners, and DocumentActionsWidget all use auth hooks
+        (useSession, usePermissions, useSubscriptionGate) that read cookies /
+        localStorage on the client but return empty on the server. Wrapping them
+        in ClientOnly means the server renders an empty placeholder div and the
+        client renders the same empty div during hydration — no mismatch.
+        After the first paint, ClientOnly swaps in the real children.
+      */}
+      <ClientOnly>
+        <ActivePing />
+        <PortalBanners pathname={location.pathname} />
+      </ClientOnly>
       <DeferredMount>
         <OfflineBanner />
         <PwaInstallPrompt />
@@ -118,7 +128,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
           {children}
         </div>
         {/* Global Document Actions floating widget — hidden on public/share pages */}
-        <DocumentActionsWidget />
+        <ClientOnly>
+          <DocumentActionsWidget />
+        </ClientOnly>
       </DocumentActionsProvider>
     </div>
   );
