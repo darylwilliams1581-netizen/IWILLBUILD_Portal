@@ -121,6 +121,7 @@ export const GitBranch = NullIcon;
 export const Globe = NullIcon;
 export const GripVertical = NullIcon;
 export const HardDrive = NullIcon;
+export const HardDriveUpload = NullIcon;
 export const HardHat = NullIcon;
 export const Hash = NullIcon;
 export const Heading = NullIcon;
