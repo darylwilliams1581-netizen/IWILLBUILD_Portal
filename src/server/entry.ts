@@ -726,6 +726,14 @@ import sds_register_id_download_get from "./api/sds-register/[id]/download/GET";
 import sds_register_id_put from "./api/sds-register/[id]/PUT";
 import sds_register_id_delete from "./api/sds-register/[id]/DELETE";
 import sds_register_id_replace_post from "./api/sds-register/[id]/replace/POST";
+import rl_register_get from "./api/rl-register/GET";
+import rl_register_post from "./api/rl-register/POST";
+import rl_register_bm_points_get from "./api/rl-register/[benchmarkId]/points/GET";
+import rl_register_bm_points_post from "./api/rl-register/[benchmarkId]/points/POST";
+import rl_register_point_put from "./api/rl-register/points/[id]/PUT";
+import rl_register_point_delete from "./api/rl-register/points/[id]/DELETE";
+import rl_register_export_csv from "./api/rl-register/[jobId]/export/csv/GET";
+import rl_register_export_pdf from "./api/rl-register/[jobId]/export/pdf/GET";
 import safety_generated_posters_get_691 from "./api/safety/generated-posters/GET";
 import safety_generated_posters_post_692 from "./api/safety/generated-posters/POST";
 import safety_generated_posters_id_delete_693 from "./api/safety/generated-posters/[id]/DELETE";
@@ -1864,6 +1872,10 @@ async function runStartupMigrations() {
     { name: 'swms_signoffs', ddl: "CREATE TABLE IF NOT EXISTS swms_signoffs (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, worker_name VARCHAR(255) NOT NULL, white_card_number VARCHAR(100) NULL, signature_data LONGTEXT NULL, signed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_job_swms (job_swms_id), INDEX idx_company (company_id))" },
     { name: 'safety_documents', ddl: "CREATE TABLE IF NOT EXISTS safety_documents (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, doc_type VARCHAR(60) NOT NULL DEFAULT 'policy', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, review_date DATE NULL, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'sds_register', ddl: "CREATE TABLE IF NOT EXISTS sds_register (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, product_name VARCHAR(255) NULL, manufacturer VARCHAR(255) NULL, original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL DEFAULT 'application/pdf', size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, archived_at DATETIME NULL, replaced_by_id INT NULL, replaced_at DATETIME NULL, replaced_by_user_id VARCHAR(36) NULL, uploaded_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_archived (company_id, archived_at))" },
+    // ── Job Site RL Register ──────────────────────────────────────────────────
+    { name: 'rl_benchmarks', ddl: "CREATE TABLE IF NOT EXISTS rl_benchmarks (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, name VARCHAR(255) NOT NULL, rl DECIMAL(12,3) NOT NULL, description TEXT NULL, location VARCHAR(500) NULL, date_established DATE NULL, entered_by VARCHAR(255) NULL, notes TEXT NULL, photo_path VARCHAR(1000) NULL, archived_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_archived (company_id, archived_at))" },
+    { name: 'rl_points', ddl: "CREATE TABLE IF NOT EXISTS rl_points (id INT AUTO_INCREMENT PRIMARY KEY, benchmark_id INT NOT NULL, company_id INT NOT NULL, job_id INT NOT NULL, point_name VARCHAR(255) NOT NULL, location VARCHAR(500) NULL, measured_rl DECIMAL(12,3) NOT NULL, target_rl DECIMAL(12,3) NULL, tolerance_mm INT NULL, rise_fall DECIMAL(12,3) NULL, measurement_date DATETIME NULL, entered_by VARCHAR(255) NULL, method VARCHAR(30) NOT NULL DEFAULT 'other', notes TEXT NULL, photo_path VARCHAR(1000) NULL, signed_off_at DATETIME NULL, signed_off_by VARCHAR(36) NULL, archived_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_benchmark (benchmark_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_archived (company_id, archived_at))" },
+    { name: 'rl_point_history', ddl: "CREATE TABLE IF NOT EXISTS rl_point_history (id INT AUTO_INCREMENT PRIMARY KEY, point_id INT NOT NULL, company_id INT NOT NULL, snapshot_json LONGTEXT NOT NULL, changed_by_user_id VARCHAR(36) NULL, correction_note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_point (point_id), INDEX idx_company (company_id))" },
     { name: 'safety_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, poster_type VARCHAR(60) NOT NULL DEFAULT 'general', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
@@ -3846,6 +3858,17 @@ app.get("/api/sds-register/:id/download", sds_register_id_download_get);
 app.put("/api/sds-register/:id", sds_register_id_put);
 app.delete("/api/sds-register/:id", sds_register_id_delete);
 app.post("/api/sds-register/:id/replace", sds_register_id_replace_post);
+// ── RL Register ───────────────────────────────────────────────────────────────
+// Static sub-paths before param routes to avoid shadowing
+app.get("/api/rl-register/points/:id", rl_register_point_put);   // GET history (reuse PUT handler shape — separate if needed)
+app.put("/api/rl-register/points/:id", rl_register_point_put);
+app.delete("/api/rl-register/points/:id", rl_register_point_delete);
+app.get("/api/rl-register/:jobId/export/csv", rl_register_export_csv);
+app.get("/api/rl-register/:jobId/export/pdf", rl_register_export_pdf);
+app.get("/api/rl-register/:benchmarkId/points", rl_register_bm_points_get);
+app.post("/api/rl-register/:benchmarkId/points", rl_register_bm_points_post);
+app.get("/api/rl-register", rl_register_get);
+app.post("/api/rl-register", rl_register_post);
 app.get("/api/safety/generated-posters", safety_generated_posters_get_691);
 app.post("/api/safety/generated-posters", safety_generated_posters_post_692);
 app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete_693);

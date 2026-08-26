@@ -46,6 +46,14 @@ const TOOLS: ToolCard[] = [
     href: '/sds-register',
   },
   {
+    title: 'RL Register',
+    description: 'Record site levels and calculate rise/fall differences. Export PDF or CSV.',
+    icon: Ruler,
+    iconBg: 'bg-emerald-100',
+    iconFg: 'text-emerald-600',
+    href: '/rl-register',
+  },
+  {
     title: 'Public Toilet Finder',
     description: 'Find nearby public toilets in Google Maps. Opens Google Maps — no location data is collected by IWILLBUILD.',
     icon: MapPin,

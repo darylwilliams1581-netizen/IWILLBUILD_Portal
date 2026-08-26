@@ -31,10 +31,11 @@ import WorkToolsTab from '@/components/work/WorkToolsTab';
 const MAPS_TOILET_URL = 'https://www.google.com/maps/search/?api=1&query=public+toilets';
 
 const TOOL_ITEMS = [
-  { label: 'Builders Calculator', icon: Calculator,  href: '/builders-calc',   iconBg: 'bg-violet-100', iconFg: 'text-violet-600', description: 'Areas, volumes, materials and cost estimates',           external: false },
-  { label: 'Takeoff Pad',         icon: Ruler,        href: '/takeoff-pad',     iconBg: 'bg-blue-100',   iconFg: 'text-blue-600',   description: 'Measure and quantify from plans',                       external: false },
-  { label: 'SDS / MSDS Register', icon: ShieldAlert,  href: '/sds-register',   iconBg: 'bg-rose-100',   iconFg: 'text-rose-600',   description: 'Safety data sheets — upload and view on-site',          external: false },
-  { label: 'Public Toilet Finder', icon: MapPin,      href: MAPS_TOILET_URL,   iconBg: 'bg-teal-100',   iconFg: 'text-teal-600',   description: 'Find nearby public toilets in Google Maps',             external: true  },
+  { label: 'Builders Calculator', icon: Calculator,  href: '/builders-calc',   iconBg: 'bg-violet-100', iconFg: 'text-violet-600',  description: 'Areas, volumes, materials and cost estimates',           external: false },
+  { label: 'Takeoff Pad',         icon: Ruler,        href: '/takeoff-pad',     iconBg: 'bg-blue-100',   iconFg: 'text-blue-600',    description: 'Measure and quantify from plans',                       external: false },
+  { label: 'SDS / MSDS Register', icon: ShieldAlert,  href: '/sds-register',   iconBg: 'bg-rose-100',   iconFg: 'text-rose-600',    description: 'Safety data sheets — upload and view on-site',          external: false },
+  { label: 'RL Register',         icon: Ruler,        href: '/rl-register',    iconBg: 'bg-emerald-100', iconFg: 'text-emerald-600', description: 'Record site levels and calculate rise/fall differences', external: false },
+  { label: 'Public Toilet Finder', icon: MapPin,      href: MAPS_TOILET_URL,   iconBg: 'bg-teal-100',   iconFg: 'text-teal-600',    description: 'Find nearby public toilets in Google Maps',             external: true  },
 ] as const;
 
 // ── Desktop Tools dropdown ────────────────────────────────────────────────────
