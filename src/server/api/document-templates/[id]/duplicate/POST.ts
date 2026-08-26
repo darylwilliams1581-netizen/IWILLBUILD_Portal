@@ -88,7 +88,7 @@ export default async function handler(req: Request, res: Response) {
     const [profile] = await db.select().from(profiles).where(eq(profiles.userId, session.user.id)).limit(1);
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const templateId = parseInt(req.params.id, 10);
+    const templateId = Number(req.params.id);
     if (!templateId || isNaN(templateId)) return res.status(400).json({ error: 'Invalid id' });
 
     // ── Verify the source template exists and belongs to this company ──────────
