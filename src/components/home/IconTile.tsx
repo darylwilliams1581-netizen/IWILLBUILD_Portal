@@ -1,9 +1,12 @@
 /**
- * IconTile — 2-column card tile used on Field and Manage pages.
+ * IconTile — compact card tile used on the Manage page.
  *
- * Matches the height and visual weight of the Dashboard quick-action tiles
- * so the whole home screen feels consistent. Each tile is a full-width card
- * in a 2-col grid: large icon circle on top, bold label below.
+ * Visual spec (matches Work & Field JobFeatureCard):
+ *   Normal tile  — horizontal layout, 32×32 badge, 16px glyph, min-h 52px
+ *   Wide tile    — horizontal banner, 32×32 badge, 16px glyph, min-h 52px
+ *
+ * Touch targets are always ≥ 44px (min-h-[52px] satisfies this).
+ * Labels wrap naturally — no truncation on long text.
  */
 
 import { motion } from 'motion/react';
@@ -21,26 +24,29 @@ export function IconTile({
   const Icon = item.icon;
 
   if (wide) {
-    // Full-width horizontal banner tile — icon left, label + subtitle right
+    // Full-width horizontal banner tile — compact badge left, label right
     return (
       <motion.button
         whileTap={{ scale: 0.97 }}
         whileHover={{ scale: 1.01, y: -1 }}
         transition={{ type: 'spring', stiffness: 440, damping: 22 }}
         onClick={() => onNavigate(item.href)}
+        data-testid={`icon-tile-wide-${item.key}`}
+        aria-label={item.label}
         className={`
-          col-span-2 w-full flex flex-row items-center gap-4
-          px-5 py-4 rounded-2xl shadow-sm min-h-[72px]
+          col-span-2 w-full flex flex-row items-center gap-3
+          px-3 py-2.5 rounded-xl shadow-sm
           active:scale-[0.98] transition-transform
           outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2
           ${item.bg} ${item.fg}
         `}
+        style={{ minHeight: 52 }}
       >
-        {/* Icon circle */}
-        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center relative flex-shrink-0">
-          <Icon size={24} strokeWidth={2} className="relative z-10" />
+        {/* Icon badge — 32×32 */}
+        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center relative flex-shrink-0">
+          <Icon size={16} strokeWidth={2} className="relative z-10" />
           {item.badge != null && item.badge > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
+            <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border border-white/20">
               {item.badge > 9 ? '9+' : item.badge}
             </span>
           )}
@@ -48,53 +54,48 @@ export function IconTile({
 
         {/* Label block */}
         <div className="flex flex-col items-start min-w-0">
-          <span className="text-base font-bold leading-tight">{item.label}</span>
-          <span className="text-xs font-medium opacity-75 mt-0.5">Builders Calc · Takeoff Pad</span>
+          <span className="text-[13px] font-bold leading-tight">{item.label}</span>
+          <span className="text-[11px] font-medium opacity-75 mt-0.5">Builders Calc · Takeoff Pad</span>
         </div>
 
         {/* Chevron hint */}
-        <svg className="ml-auto flex-shrink-0 opacity-60" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg className="ml-auto flex-shrink-0 opacity-60" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 18l6-6-6-6" />
         </svg>
       </motion.button>
     );
   }
 
+  // Normal compact horizontal tile — matches JobFeatureCard in Work & Field
   return (
     <motion.button
       whileTap={{ scale: 0.94 }}
       whileHover={{ scale: 1.02, y: -1 }}
       transition={{ type: 'spring', stiffness: 440, damping: 22 }}
       onClick={() => onNavigate(item.href)}
+      data-testid={`icon-tile-${item.key}`}
+      aria-label={item.label}
       className={`
-        w-full flex flex-col items-center justify-center gap-2
-        px-3 py-4 rounded-2xl shadow-sm min-h-[96px] max-h-[120px]
+        w-full flex flex-row items-center gap-2.5
+        px-3 py-2.5 rounded-xl shadow-sm
         active:scale-95 transition-transform
         outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2
         ${item.bg} ${item.fg}
       `}
+      style={{ minHeight: 52 }}
     >
-      {/* Icon circle */}
-      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center relative flex-shrink-0">
-        <Icon size={20} strokeWidth={2} className="relative z-10" />
+      {/* Icon badge — 32×32 */}
+      <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center relative flex-shrink-0">
+        <Icon size={16} strokeWidth={2} className="relative z-10" />
         {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
+          <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
 
-      {/* Label */}
-      <span
-        className="text-sm font-bold leading-tight text-center"
-        style={{
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          wordBreak: 'break-word',
-        }}
-      >
+      {/* Label — wraps naturally, never truncates */}
+      <span className="text-[13px] font-bold leading-tight text-left">
         {item.label}
       </span>
     </motion.button>

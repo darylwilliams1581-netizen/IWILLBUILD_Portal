@@ -239,62 +239,67 @@ function DashboardPage({
 
       {/* Full-width Lens + Add Job row */}
       <div className="flex items-center gap-3">
-        <button onClick={() => onNavigate('/lens')} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <CameraIcon size={20} strokeWidth={2} />
+        <button onClick={() => onNavigate('/lens')} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <CameraIcon size={16} strokeWidth={2} />
           </div>
           Lens
         </button>
-        <button onClick={onNewJob} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Plus size={20} strokeWidth={2} />
+        <button onClick={onNewJob} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Plus size={16} strokeWidth={2} />
           </div>
           Add Job
         </button>
       </div>
 
       {/* ── Quick-action grid ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => onNavigate('?panel=signin')} className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <LogIn size={20} strokeWidth={2} />
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => onNavigate('?panel=signin')} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <LogIn size={16} strokeWidth={2} />
           </div>
-          <span className="text-sm font-bold leading-tight">Sign In</span>
-          <span className="text-[10px] text-white/60 leading-tight">Record site attendance</span>
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-[13px] font-bold leading-tight">Sign In</span>
+            <span className="text-[10px] text-white/60 leading-tight">Site attendance</span>
+          </div>
         </button>
-        <button onClick={() => onNavigate('/fleet')} className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <Car size={20} strokeWidth={2} />
+        <button onClick={() => onNavigate('/fleet')} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Car size={16} strokeWidth={2} />
           </div>
-          <span className="text-sm font-bold leading-tight">Fleet</span>
-          <span className="text-[10px] text-white/60 leading-tight">Vehicles &amp; equipment</span>
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-[13px] font-bold leading-tight">Fleet</span>
+            <span className="text-[10px] text-white/60 leading-tight">Vehicles &amp; equipment</span>
+          </div>
         </button>
         {/* Site Prestart — col-span-2 */}
-        <button onClick={() => onNavigate('?panel=site-prestart-picker')} className="col-span-2 flex items-center justify-center gap-3 px-3 py-4 rounded-2xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <HardHat size={20} strokeWidth={2} />
+        <button onClick={() => onNavigate('?panel=site-prestart-picker')} className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <HardHat size={16} strokeWidth={2} />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-bold leading-tight">Site Prestart</span>
+            <span className="text-[13px] font-bold leading-tight">Site Prestart</span>
             <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
           </div>
         </button>
-        {/* Contacts — col-span-2, matches Site Prestart exactly */}
+        {/* Contacts — col-span-2 */}
         <button
           onClick={() => onNavigate('/customers')}
-          className="col-span-2 flex items-center justify-center gap-3 px-3 py-4 rounded-2xl bg-teal-600 text-white shadow-sm active:scale-95 transition-transform relative"
+          className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-600 text-white shadow-sm active:scale-95 transition-transform relative"
           data-testid="contacts-launcher-btn"
+          style={{ minHeight: 52 }}
         >
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Users size={20} strokeWidth={2} />
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Users size={16} strokeWidth={2} />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-bold leading-tight">Contacts</span>
+            <span className="text-[13px] font-bold leading-tight">Contacts</span>
             <span className="text-[10px] text-white/60 leading-tight">Call, message or email</span>
           </div>
           {/* Count badge — only shown once loaded and > 0 */}
           {contactCount !== null && contactCount > 0 && (
-            <span className="absolute top-2.5 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center leading-none">
+            <span className="absolute top-2 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center leading-none">
               {contactCount > 99 ? '99+' : contactCount}
             </span>
           )}
@@ -336,7 +341,7 @@ function ManagePage({
           return (
             <div key={group} className="mb-5">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
-              <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)' }}>
+              <div className="grid grid-cols-2 gap-2">
                 {groupIcons.map(item => (
                   <IconTile key={item.key} item={item} onNavigate={onNavigate} wide={item.key === 'tools'} />
                 ))}
