@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Briefcase, Wrench,
+  Briefcase, Wrench, ShieldAlert,
   Plus, Calculator, Ruler, ChevronDown, Home, ArrowLeft,
   Search, ChevronRight, HardHat, Loader2,
 } from 'lucide-react';
@@ -31,6 +31,7 @@ import WorkToolsTab from '@/components/work/WorkToolsTab';
 const TOOL_ITEMS = [
   { label: 'Builders Calculator', icon: Calculator, href: '/builders-calc', iconBg: 'bg-violet-100', iconFg: 'text-violet-600', description: 'Areas, volumes, materials and cost estimates' },
   { label: 'Takeoff Pad',         icon: Ruler,      href: '/takeoff-pad',   iconBg: 'bg-blue-100',   iconFg: 'text-blue-600',   description: 'Measure and quantify from plans'             },
+  { label: 'SDS / MSDS Register', icon: ShieldAlert, href: '/sds-register', iconBg: 'bg-rose-100',   iconFg: 'text-rose-600',   description: 'Safety data sheets — upload and view on-site' },
 ] as const;
 
 // ── Desktop Tools dropdown ────────────────────────────────────────────────────

@@ -62,6 +62,7 @@ const FinancePage = lazy(() => import('./pages/finance'));
 const TimesheetsPage = lazy(() => import('./pages/timesheets'));
 const BuildersCalcPage = lazy(() => import('./pages/builders-calc-page'));
 const TakeoffPadPage = lazy(() => import('./pages/takeoff-pad-page'));
+const SdsRegisterPage = lazy(() => import('./pages/sds-register'));
 const WorkJobPickerPage = lazy(() => import('./pages/work-job-picker'));
 const WorkPage = lazy(() => import('./pages/work'));
 const WorkFieldPage = lazy(() => import('./pages/work-field'));
@@ -467,6 +468,10 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/takeoff-pad',
   element: protect(<TakeoffPadPage />),
+  errorElement: routeError
+}, {
+  path: '/sds-register',
+  element: protect(<SdsRegisterPage />),
   errorElement: routeError
 }, {
   // Work workspace — company-wide register (/work?workTab=tasks|notes|...)

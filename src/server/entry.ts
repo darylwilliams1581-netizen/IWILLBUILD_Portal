@@ -720,6 +720,12 @@ import safety_documents_post_687 from "./api/safety/documents/POST";
 import safety_documents_new_post_688 from "./api/safety/documents/new/POST";
 import safety_documents_id_delete_689 from "./api/safety/documents/[id]/DELETE";
 import safety_documents_id_download_get_690 from "./api/safety/documents/[id]/download/GET";
+import sds_register_get from "./api/sds-register/GET";
+import sds_register_post from "./api/sds-register/POST";
+import sds_register_id_download_get from "./api/sds-register/[id]/download/GET";
+import sds_register_id_put from "./api/sds-register/[id]/PUT";
+import sds_register_id_delete from "./api/sds-register/[id]/DELETE";
+import sds_register_id_replace_post from "./api/sds-register/[id]/replace/POST";
 import safety_generated_posters_get_691 from "./api/safety/generated-posters/GET";
 import safety_generated_posters_post_692 from "./api/safety/generated-posters/POST";
 import safety_generated_posters_id_delete_693 from "./api/safety/generated-posters/[id]/DELETE";
@@ -1857,6 +1863,7 @@ async function runStartupMigrations() {
     { name: 'job_swms', ddl: "CREATE TABLE IF NOT EXISTS job_swms (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, swms_template_id INT NOT NULL, assigned_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (job_id))" },
     { name: 'swms_signoffs', ddl: "CREATE TABLE IF NOT EXISTS swms_signoffs (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, worker_name VARCHAR(255) NOT NULL, white_card_number VARCHAR(100) NULL, signature_data LONGTEXT NULL, signed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_job_swms (job_swms_id), INDEX idx_company (company_id))" },
     { name: 'safety_documents', ddl: "CREATE TABLE IF NOT EXISTS safety_documents (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, doc_type VARCHAR(60) NOT NULL DEFAULT 'policy', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, review_date DATE NULL, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    { name: 'sds_register', ddl: "CREATE TABLE IF NOT EXISTS sds_register (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, product_name VARCHAR(255) NULL, manufacturer VARCHAR(255) NULL, original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL DEFAULT 'application/pdf', size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, archived_at DATETIME NULL, replaced_by_id INT NULL, replaced_at DATETIME NULL, replaced_by_user_id VARCHAR(36) NULL, uploaded_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_archived (company_id, archived_at))" },
     { name: 'safety_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, poster_type VARCHAR(60) NOT NULL DEFAULT 'general', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
@@ -3832,6 +3839,13 @@ app.post("/api/safety/documents", safety_documents_post_687);
 app.post("/api/safety/documents/new", safety_documents_new_post_688);
 app.delete("/api/safety/documents/:id", safety_documents_id_delete_689);
 app.get("/api/safety/documents/:id/download", safety_documents_id_download_get_690);
+// ── SDS / MSDS Register ───────────────────────────────────────────────────────
+app.get("/api/sds-register", sds_register_get);
+app.post("/api/sds-register", sds_register_post);
+app.get("/api/sds-register/:id/download", sds_register_id_download_get);
+app.put("/api/sds-register/:id", sds_register_id_put);
+app.delete("/api/sds-register/:id", sds_register_id_delete);
+app.post("/api/sds-register/:id/replace", sds_register_id_replace_post);
 app.get("/api/safety/generated-posters", safety_generated_posters_get_691);
 app.post("/api/safety/generated-posters", safety_generated_posters_post_692);
 app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete_693);

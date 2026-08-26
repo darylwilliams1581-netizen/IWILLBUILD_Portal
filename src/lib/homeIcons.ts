@@ -94,6 +94,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'poster',      label: 'Safety Posters', icon: Image,      href: '/safety/posters',             bg: 'bg-pink-500',    fg: 'text-white', group: 'safety' },
   { key: 'incidents',   label: 'Incidents',   icon: AlertTriangle, href: '/incidents',                  bg: 'bg-red-700',     fg: 'text-white', group: 'safety' },
   { key: 'risk_register', label: 'Risk Register', icon: TriangleAlert, href: '/risk-register',          bg: 'bg-orange-600',  fg: 'text-white', group: 'safety' },
+  { key: 'sds_register', label: 'SDS Register', icon: ShieldAlert,   href: '/sds-register',             bg: 'bg-rose-700',    fg: 'text-white', group: 'safety' },
   { key: 'risky',       label: 'Risk & Permits', icon: ShieldAlert, href: '?panel=risky-picker',        bg: 'bg-rose-600',    fg: 'text-white', group: 'safety' },
 ];
 

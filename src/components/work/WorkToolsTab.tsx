@@ -5,7 +5,7 @@
  * Preserves /estimating and Settings → Costing.
  */
 import { useNavigate } from 'react-router';
-import { Calculator, Ruler, ExternalLink } from 'lucide-react';
+import { Calculator, Ruler, ShieldAlert, ExternalLink } from 'lucide-react';
 
 interface ToolCard {
   title: string;
@@ -33,6 +33,14 @@ const TOOLS: ToolCard[] = [
     iconBg: 'bg-blue-100',
     iconFg: 'text-blue-600',
     href: '/takeoff-pad',
+  },
+  {
+    title: 'SDS / MSDS Register',
+    description: 'Upload and view safety data sheets on-site. PDF register for your company.',
+    icon: ShieldAlert,
+    iconBg: 'bg-rose-100',
+    iconFg: 'text-rose-600',
+    href: '/sds-register',
   },
 ];
 
