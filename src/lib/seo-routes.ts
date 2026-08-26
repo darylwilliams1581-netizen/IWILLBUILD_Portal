@@ -33,4 +33,17 @@ export const seoRoutes: SeoRoute[] = [
   // ── Legal pages ───────────────────────────────────────────────────────────
   { path: "/privacy",     changefreq: "yearly",  priority: 0.4 },
   { path: "/terms",       changefreq: "yearly",  priority: 0.4 },
+
+  // ── Authenticated portal pages — excluded from sitemap, noindex ───────────
+  // These are registered here so the SEO scanner knows they are intentionally
+  // excluded. They must NOT appear in the sitemap XML (sitemap: false).
+  { path: "/lists",       sitemap: false },
+
+  // ── Test files — not route pages, excluded from sitemap and indexing ──────
+  // src/pages/__tests__/*.test.tsx files are picked up by the page scanner.
+  // Registering them here with sitemap:false suppresses the "not registered"
+  // audit warning. These paths are never served as real routes.
+  { path: "/__tests__/finance.test",        sitemap: false },
+  { path: "/__tests__/library.test",        sitemap: false },
+  { path: "/__tests__/work-behaviour.test", sitemap: false },
 ];
