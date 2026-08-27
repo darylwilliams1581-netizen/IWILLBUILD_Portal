@@ -119,11 +119,11 @@ function TemplateModal({
     formType: initial.formType,
     category: initial.category ?? '',
     description: initial.description ?? '',
-    isActive: initial.isActive,
-    onDashboard: initial.onDashboard,
-    onJobs: initial.onJobs,
-    onFleet: initial.onFleet,
-    sharedInLibrary: initial.sharedInLibrary ?? false,
+    isActive: !!initial.isActive,
+    onDashboard: !!initial.onDashboard,
+    onJobs: !!initial.onJobs,
+    onFleet: !!initial.onFleet,
+    sharedInLibrary: !!initial.sharedInLibrary,
   } : blankForm());
   const set = <K extends keyof typeof form,>(k: K, v: (typeof form)[K]) => setForm(p => ({
     ...p,
