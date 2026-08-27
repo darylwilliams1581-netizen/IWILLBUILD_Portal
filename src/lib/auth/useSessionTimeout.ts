@@ -27,6 +27,7 @@ import {
   readSessionExpiry,
   clearSessionExpiry,
   msUntilExpiry,
+  stampSessionExpiry,
 } from '@/lib/auth/session-timeout';
 import { setExpiryRedirectFlag } from '@/lib/auth/expiry-redirect-flag';
 
@@ -69,8 +70,12 @@ export function useSessionTimeout() {
     if (expiresAt !== null) {
       const ms = msUntilExpiry(expiresAt);
       if (ms <= 0) {
-        // Already expired — fire immediately
-        void expire();
+        // Stamp is expired — but it may be a stale old-format stamp (e.g. from
+        // the previous 14h/06:00 cutoff logic). Clear it and re-stamp with the
+        // current 30-day window rather than immediately logging the user out.
+        // The BetterAuth cookie is still the authoritative auth mechanism.
+        clearSessionExpiry();
+        stampSessionExpiry();
         return;
       }
       // Schedule expiry
