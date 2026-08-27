@@ -118,10 +118,9 @@ export default function JobFormRunnerPage() {
     let dest: string;
     if (explicitReturnTo) {
       dest = explicitReturnTo;
-    } else if (isDone) {
-      dest = '/studio/forms?tab=submissions';
     } else {
-      dest = '/studio/forms?tab=forms';
+      // No explicit returnTo — fall back to the app home dashboard
+      dest = '/home';
     }
     // Hard navigation guarantees the Form Runner unmounts and the destination
     // page renders correctly, regardless of how the router shell is structured.
