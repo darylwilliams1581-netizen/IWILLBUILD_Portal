@@ -481,7 +481,7 @@ export default function LoginPage() {
               <ShieldCheck size={16} className="text-violet-400 mt-0.5 shrink-0" />
               <div>
                 <p className="text-violet-300 text-sm font-semibold">Session expired — please sign in again</p>
-                <p className="text-violet-400/70 text-xs mt-0.5">Your session reached its daily security limit.</p>
+                <p className="text-violet-400/70 text-xs mt-0.5">Your session has expired — please sign in again.</p>
               </div>
             </div>}
 
