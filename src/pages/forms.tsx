@@ -130,8 +130,8 @@ function TemplateModal({
     ...p,
     [k]: v
   }));
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+  return <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div initial={{
       opacity: 0,
       scale: 0.95,
@@ -166,7 +166,7 @@ function TemplateModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+        <div className="px-6 py-5 flex flex-col gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">
               Template Name <span className="text-primary">*</span>
