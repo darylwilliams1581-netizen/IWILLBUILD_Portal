@@ -533,6 +533,7 @@ import library_items_id_download_get_500 from "./api/library/items/[id]/download
 import library_items_id_install_delete_501 from "./api/library/items/[id]/install/DELETE";
 import library_items_id_install_post_502 from "./api/library/items/[id]/install/POST";
 import library_my_installed_get_503 from "./api/library/my-installed/GET";
+import library_my_installed_id_get from "./api/library/my-installed/[id]/GET";
 import library_my_submissions_get_504 from "./api/library/my-submissions/GET";
 import lists_get_505 from "./api/lists/GET";
 import me_get_506 from "./api/me/GET";
@@ -3705,6 +3706,7 @@ app.get("/api/library/items/:id/download", library_items_id_download_get_500);
 app.delete("/api/library/items/:id/install", library_items_id_install_delete_501);
 app.post("/api/library/items/:id/install", library_items_id_install_post_502);
 app.get("/api/library/my-installed", library_my_installed_get_503);
+app.get("/api/library/my-installed/:id", library_my_installed_id_get);
 app.get("/api/library/my-submissions", library_my_submissions_get_504);
 app.get("/api/lists", lists_get_505);
 app.get("/api/me", me_get_506);

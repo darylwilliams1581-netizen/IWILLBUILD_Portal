@@ -267,18 +267,39 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
 
   // ── Edit installed item ───────────────────────────────────────────────────
   const [editItem, setEditItem] = useState<InstalledItem | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  function openEdit(item: InstalledItem) {
+  async function openEdit(item: InstalledItem) {
     setEditItem(item);
     setEditTitle(item.title);
     setEditCategory(item.category ?? '');
     setEditContent('');
     setEditError(null);
+    setEditLoading(true);
+    try {
+      const res = await fetch(`/api/library/my-installed/${item.id}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { ok: boolean; item: Record<string, unknown> };
+      const full = data.item;
+      setEditTitle(String(full.title ?? item.title));
+      setEditCategory(String(full.category ?? item.category ?? ''));
+      // content: if it's JSON, pretty-print it; otherwise plain text
+      const raw = full.content ? String(full.content) : '';
+      try {
+        setEditContent(JSON.stringify(JSON.parse(raw), null, 2));
+      } catch {
+        setEditContent(raw);
+      }
+    } catch {
+      setEditError('Could not load item content. You can still edit the title and category.');
+    } finally {
+      setEditLoading(false);
+    }
   }
 
   async function handleEditSave() {
@@ -286,15 +307,11 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
     setEditSaving(true);
     setEditError(null);
     try {
-      const body: Record<string, string> = {};
-      if (editTitle.trim()) body.title = editTitle.trim();
-      if (editCategory.trim() !== (editItem.category ?? '')) body.category = editCategory.trim();
+      const body: Record<string, string> = {
+        title: editTitle.trim(),
+        category: editCategory.trim(),
+      };
       if (editContent.trim()) body.content = editContent.trim();
-
-      if (Object.keys(body).length === 0) {
-        setEditItem(null);
-        return;
-      }
 
       const res = await fetch(`/api/library/items/${editItem.id}`, {
         method: 'PATCH',
@@ -305,7 +322,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
 
-      // Update local state
+      // Update local list
       setInstalled(prev => prev.map(i =>
         i.id === editItem.id
           ? { ...i, title: editTitle.trim() || i.title, category: editCategory.trim() || i.category }
@@ -318,6 +335,12 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
       setEditSaving(false);
     }
   }
+
+  // Is the content likely JSON (form/SWMS structure)?
+  const contentIsJson = (() => {
+    if (!editContent.trim()) return false;
+    try { JSON.parse(editContent); return true; } catch { return false; }
+  })();
 
   // ── Uninstall handler ─────────────────────────────────────────────────────
   const [uninstalling, setUninstalling] = useState<number | null>(null);
@@ -690,7 +713,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                         </span>
                         <CheckCircle2 size={15} className="text-emerald-500" />
                         <button
-                          onClick={() => openEdit(item)}
+                          onClick={() => void openEdit(item)}
                           title="Edit your copy"
                           className="p-1.5 rounded-md text-slate-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
                         >
@@ -719,88 +742,125 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
 
       {/* ── Edit installed item modal ─────────────────────────────────────── */}
       {editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditItem(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !editSaving && setEditItem(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 my-8">
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Pencil size={16} className="text-violet-500" />
-                <h2 className="text-base font-bold text-slate-800">Edit Installed Item</h2>
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">Edit Your Copy</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Changes apply to your company only — the global library is not affected.</p>
+                </div>
               </div>
-              <button onClick={() => setEditItem(null)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+              <button
+                onClick={() => setEditItem(null)}
+                disabled={editSaving}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-40"
+              >
                 <X size={16} />
               </button>
             </div>
 
             {/* Body */}
             <div className="px-6 py-5 flex flex-col gap-4">
-              <p className="text-xs text-slate-400">
-                Editing your company's copy only — the global library item is not affected.
-              </p>
 
-              {/* Title */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                  placeholder="Item title"
-                />
-              </div>
-
-              {/* Category */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Category</label>
-                <input
-                  type="text"
-                  value={editCategory}
-                  onChange={e => setEditCategory(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                  placeholder="e.g. Electrical, Safety, HR"
-                />
-              </div>
-
-              {/* Content */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Content / Notes</label>
-                <textarea
-                  value={editContent}
-                  onChange={e => setEditContent(e.target.value)}
-                  rows={4}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 resize-none"
-                  placeholder="Leave blank to keep existing content"
-                />
-                <p className="text-[11px] text-slate-400">Leave blank to keep the existing content unchanged.</p>
-              </div>
-
-              {editError && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
-                  <AlertCircle size={13} />
-                  {editError}
+              {/* Loading state */}
+              {editLoading && (
+                <div className="flex items-center justify-center py-8 gap-2 text-slate-400 text-sm">
+                  <Loader2 size={16} className="animate-spin" />
+                  Loading item content…
                 </div>
+              )}
+
+              {!editLoading && (
+                <>
+                  {/* Type badge */}
+                  <div className="flex items-center gap-2">
+                    <TypeBadge type={editItem.type} />
+                    {editItem.update_available ? (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Update available</span>
+                    ) : null}
+                  </div>
+
+                  {/* Title */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-600">Title</label>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={e => setEditTitle(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+                      placeholder="Item title"
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-600">Category</label>
+                    <input
+                      type="text"
+                      value={editCategory}
+                      onChange={e => setEditCategory(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+                      placeholder="e.g. Electrical, Safety, HR"
+                    />
+                  </div>
+
+                  {/* Content — plain text types get a textarea; JSON types get a note */}
+                  {contentIsJson ? (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-600">Content</label>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700">
+                        This item contains structured form data (JSON). Direct editing is not supported here — use the form builder to modify the fields and questions.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-600">Content</label>
+                      <textarea
+                        value={editContent}
+                        onChange={e => setEditContent(e.target.value)}
+                        rows={8}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 resize-y font-mono"
+                        placeholder="Item content…"
+                      />
+                      <p className="text-[11px] text-slate-400">Edit the body text of your company's copy.</p>
+                    </div>
+                  )}
+
+                  {editError && (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
+                      <AlertCircle size={13} />
+                      {editError}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={() => setEditItem(null)}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => void handleEditSave()}
-                disabled={editSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
-              >
-                {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                {editSaving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
+            {!editLoading && (
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+                <button
+                  onClick={() => setEditItem(null)}
+                  disabled={editSaving}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => void handleEditSave()}
+                  disabled={editSaving || contentIsJson}
+                  className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+                >
+                  {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {editSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
