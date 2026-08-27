@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Archive, RotateCcw, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Archive, RotateCcw, AlertTriangle, ShieldAlert, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import { usePermissions } from '@/lib/usePermissions';
