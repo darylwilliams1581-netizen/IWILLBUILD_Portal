@@ -81,7 +81,7 @@ export default function JobDelaysPage() {
             featureLabel="Delays"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4 pb-6 max-w-3xl mx-auto w-full">

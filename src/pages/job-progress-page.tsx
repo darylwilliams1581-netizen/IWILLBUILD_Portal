@@ -255,7 +255,7 @@ export default function JobProgressPage() {
           featureLabel="Progress"
           jobName={job?.name ?? 'Job'}
           jobNumber={job?.jobNumber}
-          backTo="/"
+          backTo="/home"
           onChangeJob={handleChangeJob}
         >
           <div className="flex flex-col gap-6 p-4 pb-safe max-w-6xl mx-auto w-full">

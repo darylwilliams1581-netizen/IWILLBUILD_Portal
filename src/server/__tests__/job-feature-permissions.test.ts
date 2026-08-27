@@ -245,9 +245,9 @@ describe('Standalone pages — deterministic backTo prop', () => {
   ];
 
   pageFiles.forEach(file => {
-    it(`${file} passes backTo="/" to JobFeatureShell`, () => {
+    it(`${file} passes backTo="/home" to JobFeatureShell`, () => {
       const pageSrc = src(`src/pages/${file}`);
-      expect(pageSrc).toContain('backTo="/"');
+      expect(pageSrc).toContain('backTo="/home"');
       expect(pageSrc).not.toMatch(/backTo="\/work-field/);
     });
   });

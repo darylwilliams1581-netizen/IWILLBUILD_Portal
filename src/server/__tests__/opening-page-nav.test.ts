@@ -144,9 +144,9 @@ describe('Registry — standaloneRoute correctness', () => {
   });
 });
 
-// ── 6. Back returns to / (home screen) ───────────────────────────────────────
+// ── 6. Back returns to /home (app home screen) ───────────────────────────────
 
-describe('Standalone pages — backTo="/"', () => {
+describe('Standalone pages — backTo="/home"', () => {
   const pageFiles = [
     'job-tasks-page.tsx', 'job-notes-page.tsx', 'job-delays-page.tsx',
     'job-progress-page.tsx', 'job-attendance-page.tsx', 'job-photos-page.tsx',
@@ -156,9 +156,9 @@ describe('Standalone pages — backTo="/"', () => {
   ];
 
   pageFiles.forEach(file => {
-    it(`${file} has backTo="/"`, () => {
+    it(`${file} has backTo="/home"`, () => {
       const pageSrc = src(`src/pages/${file}`);
-      expect(pageSrc).toContain('backTo="/"');
+      expect(pageSrc).toContain('backTo="/home"');
       expect(pageSrc).not.toMatch(/backTo="\/work-field/);
     });
   });
@@ -268,8 +268,8 @@ describe('JobFeatureShell — safe fallback to /', () => {
     expect(shellSrc).not.toContain("navigate('/work-field')");
   });
 
-  it('back label uses "Home" for backTo="/"', () => {
-    expect(shellSrc).toContain("backTo === '/' ? 'Home'");
+  it('back label uses "Home" for backTo="/" or backTo="/home"', () => {
+    expect(shellSrc).toContain("(backTo === '/' || backTo === '/home') ? 'Home'");
   });
 
   it('still validates backTo starts with /', () => {

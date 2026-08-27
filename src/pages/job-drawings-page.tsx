@@ -59,7 +59,7 @@ export default function JobDrawingsPage() {
             featureLabel="Drawings"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.job_number ?? job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="flex-1 overflow-auto pb-16 md:pb-0">

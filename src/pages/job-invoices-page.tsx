@@ -59,7 +59,7 @@ export default function JobInvoicesPage() {
             featureLabel={FEATURE.label}
             jobName={fullJob.name}
             jobNumber={fullJob.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

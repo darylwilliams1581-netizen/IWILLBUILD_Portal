@@ -238,7 +238,7 @@ export default function EstimateEditorPage() {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
       // No estimate loaded — go back in history, or fall back to jobs list
-      navigate(-1);
+      window.history.length > 1 ? navigate(-1) : navigate('/estimating');
     }
   }
   function updateEstimateField<K extends keyof Estimate>(key: K, value: Estimate[K]) {

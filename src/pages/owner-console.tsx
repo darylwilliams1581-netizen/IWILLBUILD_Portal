@@ -720,7 +720,7 @@ export default function OwnerConsolePage() {
 
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 shrink-0">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
+          <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">

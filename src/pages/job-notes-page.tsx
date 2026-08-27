@@ -82,7 +82,7 @@ export default function JobNotesPage() {
             featureLabel="Notes"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">
