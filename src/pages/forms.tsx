@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Archive, RotateCcw, AlertTriangle, ShieldAlert, Globe } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Archive, RotateCcw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import { usePermissions } from '@/lib/usePermissions';
@@ -197,12 +197,7 @@ function TemplateModal({
             <DarkToggle label="Available on Dashboard" icon={LayoutDashboard} value={form.onDashboard} onChange={() => set('onDashboard', !form.onDashboard)} />
             <DarkToggle label="Available for Jobs" icon={Briefcase} value={form.onJobs} onChange={() => set('onJobs', !form.onJobs)} />
             <DarkToggle label="Available for Fleet" icon={Truck} value={form.onFleet} onChange={() => set('onFleet', !form.onFleet)} />
-            {isPlatformOwner && (
-              <>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 mb-1">Global Library</p>
-                <DarkToggle label="Shared in Global Library" icon={Globe} value={form.sharedInLibrary} onChange={() => set('sharedInLibrary', !form.sharedInLibrary)} />
-              </>
-            )}
+
           </div>
         </div>
 
