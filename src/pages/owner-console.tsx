@@ -25,7 +25,7 @@ import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
-import { LibraryView } from '@/features/library/LibraryView';
+import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
@@ -1094,8 +1094,8 @@ export default function OwnerConsolePage() {
               {tab === 'client-rescue' && <ClientRescueTab />}
               {tab === 'anatomy' && <AnatomyTab />}
               {tab === 'global-library' && (
-                <div className="h-full overflow-y-auto p-6">
-                  <LibraryView />
+                <div className="h-full overflow-hidden flex flex-col">
+                  <LibraryManagerTab />
                 </div>
               )}
 

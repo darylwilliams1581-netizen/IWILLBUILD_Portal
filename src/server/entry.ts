@@ -623,6 +623,7 @@ import owner_console_form_templates_get_587 from "./api/owner-console/form-templ
 import owner_console_form_templates_post_588 from "./api/owner-console/form-templates/POST";
 import owner_console_library_items_get_589 from "./api/owner-console/library/items/GET";
 import owner_console_library_items_post_590 from "./api/owner-console/library/items/POST";
+import owner_console_library_items_from_template_post from "./api/owner-console/library/items/from-template/POST";
 import owner_console_library_items_id_delete_591 from "./api/owner-console/library/items/[id]/DELETE";
 import owner_console_library_items_id_patch_592 from "./api/owner-console/library/items/[id]/PATCH";
 import owner_console_library_items_id_put_593 from "./api/owner-console/library/items/[id]/PUT";
@@ -3818,6 +3819,8 @@ app.get("/api/owner-console/form-templates", owner_console_form_templates_get_58
 app.post("/api/owner-console/form-templates", owner_console_form_templates_post_588);
 app.get("/api/owner-console/library/items", owner_console_library_items_get_589);
 app.post("/api/owner-console/library/items", owner_console_library_items_post_590);
+// Static route must come before the :id param route
+app.post("/api/owner-console/library/items/from-template", owner_console_library_items_from_template_post);
 app.delete("/api/owner-console/library/items/:id", owner_console_library_items_id_delete_591);
 app.patch("/api/owner-console/library/items/:id", owner_console_library_items_id_patch_592);
 app.put("/api/owner-console/library/items/:id", owner_console_library_items_id_put_593);

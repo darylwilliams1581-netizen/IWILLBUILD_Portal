@@ -19,7 +19,7 @@ import {
   Pencil, Trash2, FileText, Upload, X, ChevronDown,
   Shield, ClipboardList, Wrench, Calculator, Package, RefreshCw,
   Eye, EyeOff, Archive, Download, Globe, XCircle,
-  Building2, Send, RotateCcw, Tag, Info,
+  Building2, Send, RotateCcw, Tag, Info, Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -357,6 +357,299 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
   );
 }
 
+// ── Add from My Templates modal ───────────────────────────────────────────────
+
+interface SourceTemplate {
+  id: number;
+  name: string;
+  type: string;
+  category: string | null;
+}
+
+const SOURCE_TYPES = [
+  { value: 'form',     label: 'Forms & Checklists',  endpoint: '/api/form-templates?limit=200' },
+  { value: 'swms',     label: 'SWMS Templates',       endpoint: '/api/safety/swms?limit=200' },
+  { value: 'document', label: 'Document Templates',   endpoint: '/api/document-templates?limit=200' },
+] as const;
+type SourceKind = typeof SOURCE_TYPES[number]['value'];
+
+function FromTemplateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [sourceKind, setSourceKind] = useState<SourceKind>('form');
+  const [templates,  setTemplates]  = useState<SourceTemplate[]>([]);
+  const [loadingTpl, setLoadingTpl] = useState(false);
+  const [selected,   setSelected]   = useState<SourceTemplate | null>(null);
+
+  // Metadata fields
+  const [title,      setTitle]      = useState('');
+  const [type,       setType]       = useState('form');
+  const [category,   setCategory]   = useState('');
+  const [discipline, setDiscipline] = useState('');
+  const [summary,    setSummary]    = useState('');
+  const [tags,       setTags]       = useState('');
+  const [version,    setVersion]    = useState('1.0');
+  const [status,     setStatus]     = useState('active');
+  const [visibility, setVisibility] = useState('public');
+
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+
+  const inp = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-violet-400 transition-colors placeholder-slate-400';
+  const sel = `${inp} appearance-none cursor-pointer`;
+
+  // Load templates when sourceKind changes
+  useEffect(() => {
+    setSelected(null);
+    setTemplates([]);
+    setLoadingTpl(true);
+    const src = SOURCE_TYPES.find(s => s.value === sourceKind)!;
+    fetch(src.endpoint, { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: unknown) => {
+        // Each endpoint returns a different shape
+        let rows: SourceTemplate[] = [];
+        if (sourceKind === 'form') {
+          const data = d as { templates?: Array<{ id: number; name: string; form_type?: string; category?: string | null }> };
+          rows = (data.templates ?? []).map(t => ({ id: t.id, name: t.name, type: t.form_type ?? 'form', category: t.category ?? null }));
+        } else if (sourceKind === 'swms') {
+          const data = d as { swms?: Array<{ id: number; title: string; category?: string | null }> };
+          rows = (data.swms ?? []).map(t => ({ id: t.id, name: t.title, type: 'swms', category: t.category ?? null }));
+        } else {
+          const data = d as { templates?: Array<{ id: number; name: string; template_type?: string; category?: string | null }> };
+          rows = (data.templates ?? []).map(t => ({ id: t.id, name: t.name, type: t.template_type ?? 'document', category: t.category ?? null }));
+        }
+        setTemplates(rows);
+      })
+      .catch(() => setTemplates([]))
+      .finally(() => setLoadingTpl(false));
+  }, [sourceKind]);
+
+  // Pre-fill title when a template is selected
+  function selectTemplate(tpl: SourceTemplate) {
+    setSelected(tpl);
+    setTitle(tpl.name);
+    setType(tpl.type);
+    if (tpl.category) setCategory(tpl.category);
+  }
+
+  async function handleSave() {
+    if (!selected) { setError('Select a source template first'); return; }
+    if (!title.trim()) { setError('Title is required'); return; }
+    setSaving(true); setError('');
+    try {
+      const r = await fetch('/api/owner-console/library/items/from-template', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceKind,
+          sourceId: selected.id,
+          title: title.trim(),
+          type,
+          category: category.trim() || null,
+          discipline: discipline.trim() || null,
+          summary: summary.trim() || null,
+          tags: tags.trim() || null,
+          version: version.trim() || '1.0',
+          status,
+          visibility,
+        }),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string; updated?: boolean };
+      if (!r.ok || d.error) throw new Error(d.error ?? 'Failed');
+      toast.success(d.updated ? 'Global Library item updated from template' : 'Template added to Global Library');
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
+              <Copy size={15} className="text-violet-600" />
+            </div>
+            <p className="text-sm font-bold text-slate-800">Add Global Template from My Templates</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100">
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-6 flex flex-col gap-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700 flex items-start gap-2">
+            <Info size={13} className="flex-shrink-0 mt-0.5 text-blue-500" />
+            <span>
+              Select one of your existing templates as the source. Its content will be copied into the Global Library.
+              If this source has been published before, the existing global record will be updated (install count preserved).
+            </span>
+          </div>
+
+          {/* Source kind */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Source module</label>
+            <div className="flex gap-2">
+              {SOURCE_TYPES.map(s => (
+                <button
+                  key={s.value}
+                  onClick={() => setSourceKind(s.value)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${sourceKind === s.value ? 'bg-violet-50 border-violet-400 text-violet-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Template picker */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Select template <span className="text-red-400">*</span>
+            </label>
+            {loadingTpl ? (
+              <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
+                <Loader2 size={14} className="animate-spin" /> Loading templates…
+              </div>
+            ) : templates.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2">No templates found in this module.</p>
+            ) : (
+              <div className="relative">
+                <select
+                  value={selected?.id ?? ''}
+                  onChange={(e) => {
+                    const tpl = templates.find(t => t.id === Number(e.target.value));
+                    if (tpl) selectTemplate(tpl);
+                  }}
+                  className={sel}
+                >
+                  <option value="">Choose a template…</option>
+                  {templates.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}{t.category ? ` — ${t.category}` : ''}</option>
+                  ))}
+                </select>
+                <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            )}
+          </div>
+
+          {selected && (
+            <>
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Library title <span className="text-red-400">*</span></label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} className={inp} placeholder="e.g. Electrical Safety SWMS" />
+              </div>
+
+              {/* Type + Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
+                  <div className="relative">
+                    <select value={type} onChange={(e) => setType(e.target.value)} className={sel}>
+                      {ITEM_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
+                  <div className="relative">
+                    <select value={category} onChange={(e) => setCategory(e.target.value)} className={sel}>
+                      <option value="">Select…</option>
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Discipline + Version */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Industry / Discipline</label>
+                  <div className="relative">
+                    <select value={discipline} onChange={(e) => setDiscipline(e.target.value)} className={sel}>
+                      <option value="">Select…</option>
+                      {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Version</label>
+                  <input value={version} onChange={(e) => setVersion(e.target.value)} className={inp} placeholder="1.0" />
+                </div>
+              </div>
+
+              {/* Status + Visibility */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+                  <div className="relative">
+                    <select value={status} onChange={(e) => setStatus(e.target.value)} className={sel}>
+                      <option value="active">Active</option>
+                      <option value="draft">Draft</option>
+                    </select>
+                    <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Visibility</label>
+                  <div className="relative">
+                    <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className={sel}>
+                      <option value="public">Public</option>
+                      <option value="private">Private</option>
+                    </select>
+                    <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags + Summary */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tags <span className="font-normal text-slate-400">(comma-separated)</span></label>
+                <input value={tags} onChange={(e) => setTags(e.target.value)} className={inp} placeholder="e.g. electrical, high-voltage, safety" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Summary</label>
+                <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} className={`${inp} resize-none`} placeholder="Brief description…" />
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+              <AlertCircle size={13} className="flex-shrink-0" />
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2.5 px-6 py-4 border-t border-slate-100 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => void handleSave()}
+            disabled={!selected || !title.trim() || saving}
+            className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? <><Loader2 size={13} className="animate-spin" />Saving…</> : 'Add Global Template'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Push-update confirm modal ─────────────────────────────────────────────────
 
 function PushUpdateModal({ item, onClose }: { item: LibItem; onClose: () => void }) {
@@ -473,9 +766,10 @@ export default function LibraryManagerTab() {
   const [filterStatus, setFilterStatus] = useState('');
 
   // Modals
-  const [editItem,   setEditItem]   = useState<LibItem | null | 'new'>('new' as never);
-  const [showEdit,   setShowEdit]   = useState(false);
-  const [pushItem,   setPushItem]   = useState<LibItem | null>(null);
+  const [editItem,        setEditItem]        = useState<LibItem | null | 'new'>('new' as never);
+  const [showEdit,        setShowEdit]        = useState(false);
+  const [showFromTpl,     setShowFromTpl]     = useState(false);
+  const [pushItem,        setPushItem]        = useState<LibItem | null>(null);
 
   // Action states
   const [toggling,  setToggling]  = useState<number | null>(null);
@@ -578,6 +872,13 @@ export default function LibraryManagerTab() {
             <RefreshCw size={14} />
           </button>
           <button
+            onClick={() => setShowFromTpl(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-violet-300 bg-violet-50 text-violet-700 text-sm font-semibold hover:bg-violet-100 transition-colors"
+          >
+            <Copy size={14} />
+            From My Templates
+          </button>
+          <button
             onClick={() => { setEditItem(null); setShowEdit(true); }}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
           >
@@ -634,7 +935,7 @@ export default function LibraryManagerTab() {
           </div>
           <p className="text-sm font-semibold text-slate-600 mb-1">No library items yet</p>
           <p className="text-xs text-slate-400 max-w-xs">
-            Add items directly here, or publish documents from Studio using the "Share to Global Library" action.
+            Use "Add item" to upload a DOCX or PDF, or "From My Templates" to publish one of your existing templates.
           </p>
         </div>
       ) : (
@@ -779,6 +1080,14 @@ export default function LibraryManagerTab() {
           item={editItem === 'new' ? null : editItem as LibItem | null}
           onClose={() => setShowEdit(false)}
           onSaved={load}
+        />
+      )}
+
+      {/* Add from My Templates modal */}
+      {showFromTpl && (
+        <FromTemplateModal
+          onClose={() => setShowFromTpl(false)}
+          onSaved={() => { void load(); }}
         />
       )}
 

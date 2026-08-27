@@ -399,7 +399,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
                         >
                           {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                          {isDownloading ? 'Downloading…' : 'Download'}
+                          {isDownloading ? 'Downloading…' : 'Download to My Templates'}
                         </button>
 
                         {/* Platform-owner delete */}
@@ -429,7 +429,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                             href={msg.redirectTarget}
                             className="flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-900 underline"
                           >
-                            Go to {msg.redirectLabel} <ArrowRight size={11} />
+                            Open in {msg.redirectLabel} <ArrowRight size={11} />
                           </a>
                         )}
                       </div>
