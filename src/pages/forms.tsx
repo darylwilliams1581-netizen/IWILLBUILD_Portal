@@ -1066,7 +1066,7 @@ export function FormsPage() {
         }, {
           key: 'library',
           label: 'Library',
-          icon: Library
+          icon: BookOpen
         }] as const).map(({
           key,
           label,
