@@ -1,4 +1,5 @@
-import { Link, useNavigate } from '../router';
+import { Link } from '../router';
+import { useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 
 /**
