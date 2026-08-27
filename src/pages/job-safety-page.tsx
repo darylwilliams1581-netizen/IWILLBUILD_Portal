@@ -19,7 +19,7 @@ export default function JobSafetyPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=safety');
+    navigate('/home?picker=safety');
   }
 
   return (

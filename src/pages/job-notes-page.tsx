@@ -57,7 +57,7 @@ export default function JobNotesPage() {
   };
 
   function handleChangeJob() {
-    navigate('/?picker=notes');
+    navigate('/home?picker=notes');
   }
 
   return (

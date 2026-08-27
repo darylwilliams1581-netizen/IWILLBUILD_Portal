@@ -19,7 +19,7 @@ export default function JobPurchaseOrdersPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=purchase-orders');
+    navigate('/home?picker=purchase-orders');
   }
 
   return (

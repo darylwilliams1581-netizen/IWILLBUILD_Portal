@@ -215,7 +215,7 @@ export default function JobProgressPage() {
   }
 
   function handleChangeJob() {
-    navigate('/?picker=progress');
+    navigate('/home?picker=progress');
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────

@@ -56,7 +56,7 @@ export default function JobDelaysPage() {
   };
 
   function handleChangeJob() {
-    navigate('/?picker=delays');
+    navigate('/home?picker=delays');
   }
 
   return (

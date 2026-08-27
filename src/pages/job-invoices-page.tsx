@@ -27,7 +27,7 @@ export default function JobInvoicesPage() {
   }, [jobBasic]);
 
   function handleChangeJob() {
-    navigate('/?picker=invoices');
+    navigate('/home?picker=invoices');
   }
 
   return (

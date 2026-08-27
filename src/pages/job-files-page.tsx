@@ -19,7 +19,7 @@ export default function JobFilesPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=files');
+    navigate('/home?picker=files');
   }
 
   return (

@@ -34,7 +34,7 @@ export default function JobDrawingsPage() {
   }, [jobId]);
 
   function handleChangeJob() {
-    navigate('/?picker=drawings');
+    navigate('/home?picker=drawings');
   }
 
   return (

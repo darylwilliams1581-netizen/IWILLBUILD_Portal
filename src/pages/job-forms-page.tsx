@@ -110,7 +110,7 @@ export default function JobFormsPage() {
   const title = job ? `${job.name} — Forms` : 'Job Forms';
 
   function handleChangeJob() {
-    navigate('/?picker=forms');
+    navigate('/home?picker=forms');
   }
 
   return <div className="portal-page">

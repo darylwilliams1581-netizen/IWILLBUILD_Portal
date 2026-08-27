@@ -23,7 +23,7 @@ export default function JobEstimatesPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=estimates');
+    navigate('/home?picker=estimates');
   }
 
   return (

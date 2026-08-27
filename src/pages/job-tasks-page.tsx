@@ -19,7 +19,7 @@ export default function JobTasksPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=tasks');
+    navigate('/home?picker=tasks');
   }
 
   return (

@@ -19,7 +19,7 @@ export default function JobAttendancePage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=attendance');
+    navigate('/home?picker=attendance');
   }
 
   return (

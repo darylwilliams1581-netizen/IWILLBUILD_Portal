@@ -41,7 +41,7 @@ export default function JobCostsPage() {
   }, [id]);
 
   function handleChangeJob() {
-    navigate('/?picker=costs');
+    navigate('/home?picker=costs');
   }
 
   return (
