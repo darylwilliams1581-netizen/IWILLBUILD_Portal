@@ -1314,11 +1314,7 @@ function SignInOutSheet({
         credentials: 'include'
       });
       if (res.status === 401) {
-        // Session expired or not authenticated — clear stale expiry so next
-        // request goes through cleanly after re-login
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
+        // Session expired or not authenticated
         setError('Session expired — please sign in again to continue.');
         return;
       }
@@ -1356,9 +1352,6 @@ function SignInOutSheet({
         })
       });
       if (res.status === 401) {
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
         setError('Session expired — please close this and sign in again.');
         return;
       }
@@ -1397,9 +1390,6 @@ function SignInOutSheet({
         body: JSON.stringify({})
       });
       if (res.status === 401) {
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
         setError('Session expired — please close this and sign in again.');
         return;
       }

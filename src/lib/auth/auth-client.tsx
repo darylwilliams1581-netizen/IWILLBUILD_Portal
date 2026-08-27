@@ -9,7 +9,6 @@ import { createAuthClient } from 'better-auth/react';
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from "react-router";
 import { SESSION_RECOVERY_URL, claimSessionRecovery, clearSessionRecovery } from './session-recovery';
-import { clearSessionExpiry } from './session-timeout';
 import { isNativeApp } from '@/lib/native-routing';
 import { resetDiagnosticBuffer } from '@/lib/diagnosticBuffer';
 
@@ -282,7 +281,6 @@ export function LogoutButton({
   async function handleLogout() {
     setIsLoading(true);
     try {
-      clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
       // Reset diagnostic buffer on logout — clears any buffered events
       try {
         resetDiagnosticBuffer();

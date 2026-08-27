@@ -25,45 +25,6 @@ export interface AuthedRequest extends Request {
   _authProfile?: { id: number; userId: string; companyId: number; role: string; status: string };
 }
 
-// ── Session expiry check ──────────────────────────────────────────────────────
-
-/**
- * IWB_SESSION_EXPIRY_HEADER
- *
- * The client stamps the effective session expiry (Unix ms) into this request
- * header on every API call. The server validates it here so that even if the
- * BetterAuth cookie is still technically valid, we enforce the 14h / 06:00
- * cutoff rules independently.
- *
- * Header name: x-iwb-session-expires (lowercase, as HTTP/2 requires)
- */
-const SESSION_EXPIRY_HEADER = 'x-iwb-session-expires';
-
-/**
- * Check the custom session expiry header. Returns true (and sends 401) if the
- * session has expired according to the client-stamped value. Returns false if
- * the header is absent (older clients / non-portal callers) — we don't block
- * those; the BetterAuth session cookie is still the primary auth mechanism.
- */
-function checkCustomExpiry(req: Request, res: Response): boolean {
-  const raw = req.headers[SESSION_EXPIRY_HEADER];
-  if (!raw) return false; // header absent — skip custom check
-
-  const expiresAt = Number(Array.isArray(raw) ? raw[0] : raw);
-  if (!Number.isFinite(expiresAt) || expiresAt <= 0) return false; // malformed — skip
-
-  if (Date.now() >= expiresAt) {
-    res.status(401).json({
-      error: 'Session expired',
-      code: 'SESSION_EXPIRED',
-      reason: 'Your session has expired. Please sign in again.',
-    });
-    return true; // response sent — caller must return
-  }
-
-  return false;
-}
-
 // ── Core helper ───────────────────────────────────────────────────────────────
 
 /**
@@ -75,9 +36,6 @@ export async function getSessionAndProfile(
   req: Request,
   res: Response,
 ): Promise<{ session: { user: { id: string; email: string; name: string } }; profile: { id: number; userId: string; companyId: number; role: string; status: string } } | null> {
-  // ── Custom expiry check (14h / 06:00 cutoff) ──────────────────────────────
-  if (checkCustomExpiry(req, res)) return null;
-
   const auth = getAuth();
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers)) {

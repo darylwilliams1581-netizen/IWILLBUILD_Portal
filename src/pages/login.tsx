@@ -6,7 +6,7 @@ import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound,
 import { signIn, useSession } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
-import { stampSessionExpiry } from '@/lib/auth/session-timeout';
+
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
@@ -229,8 +229,6 @@ export default function LoginPage() {
         setMustChangePassword(true);
         return;
       }
-      // ── Stamp session expiry (14h / 06:00 AEST cutoff) ───────────────────
-      stampSessionExpiry();
       // Check if 2FA is required
       const tfaRes = await fetch('/api/me/2fa/status', {
         credentials: 'include'

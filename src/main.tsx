@@ -11,6 +11,15 @@ import { initDiagnosticCapture } from '@/lib/diagnosticCapture';
 // Install session expiry header interceptor before any fetch calls are made
 installSessionFetchInterceptor();
 
+// ── One-time silent cleanup of legacy localStorage expiry key ────────────────
+// The old iwb_session_expires_at key was used by the now-removed client-side
+// session timeout mechanism. Silently remove it on every boot so it can never
+// trigger a false expiry. Does NOT sign out, reload, or clear the BetterAuth
+// cookie — a valid server session is completely unaffected.
+try {
+  localStorage.removeItem('iwb_session_expires_at');
+} catch { /* private browsing / storage unavailable — safe to ignore */ }
+
 // Start diagnostic event capture (safe, never blocks, never records sensitive data)
 initDiagnosticCapture();
 
