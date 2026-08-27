@@ -289,7 +289,18 @@ function TemplateCard({
 }) {
   const meta = TYPE_META[t.formType];
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function openMenu() {
+    // Measure available space below the button before opening
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setDropUp(spaceBelow < 220); // dropdown is ~200px tall
+    }
+    setMenuOpen(v => !v);
+  }
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -307,6 +318,7 @@ function TemplateCard({
       document.removeEventListener('keydown', onKey);
     };
   }, [menuOpen]);
+
   function menuAction(fn: () => void) {
     setMenuOpen(false);
     fn();
@@ -353,7 +365,7 @@ function TemplateCard({
       <div className="flex items-center gap-1.5 shrink-0">
         {/* ⋯ More actions */}
         <div ref={menuRef} className="relative">
-          <button onClick={() => setMenuOpen(v => !v)} className="flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" aria-label={`More actions for ${t.name}`} aria-expanded={menuOpen} aria-haspopup="menu">
+          <button onClick={openMenu} className="flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" aria-label={`More actions for ${t.name}`} aria-expanded={menuOpen} aria-haspopup="menu">
             <MoreHorizontal size={15} />
           </button>
 
@@ -361,7 +373,7 @@ function TemplateCard({
             {menuOpen && <motion.div initial={{
             opacity: 0,
             scale: 0.95,
-            y: -4
+            y: dropUp ? 4 : -4
           }} animate={{
             opacity: 1,
             scale: 1,
@@ -369,10 +381,10 @@ function TemplateCard({
           }} exit={{
             opacity: 0,
             scale: 0.95,
-            y: -4
+            y: dropUp ? 4 : -4
           }} transition={{
             duration: 0.12
-          }} role="menu" className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[180px]">
+          }} role="menu" className={`absolute right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[180px] ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                 {/* Build */}
                 <button role="menuitem" onClick={() => menuAction(onBuild)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
                   <Zap size={14} className="text-primary shrink-0" />
