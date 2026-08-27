@@ -15,7 +15,8 @@ import { isMediaReplaceSessionActive } from "../utils/media-replace-session";
 import { isOriginAllowed } from "../utils/postMessage";
 import type { HoveredElement } from "../hooks/useImageHoverDetection";
 import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Image, MousePointerClick, Move, Pencil, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
-import { isClickable, isTextElement, isTextBlockElement, isListElement } from "../utils/element-detection";
+import { isClickable, isTextElement, isTextBlockElement, isListElement, isTextFixSaveable } from "../utils/element-detection";
+import { classifyDeleteStrategy, dispatchElementDelete, type DeleteStrategy } from "../utils/delete-strategy";
 import { followClickableElement, resolveFollowTarget } from "../utils/link-follow";
 import {
   clipBoundsToParent,
@@ -35,6 +36,7 @@ import { TextFixPopover } from "./TextFixPopover";
 import { ImageActionPopover } from "./ImageActionPopover";
 import TextFixButton from "./TextFixButton";
 import { useTextFix } from "../hooks/useTextFix";
+import type { SaveStatus } from "../hooks/useTextEditing";
 import { useSpeechBridge } from "../hooks/useSpeechBridge";
 import { htmlStringToDisplayText } from "../utils/text-fix-helpers";
 import TextAlignButton from "./TextAlignButton";
@@ -129,6 +131,7 @@ interface ElementHoverBarProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onQuickEditModeChange?: (active: boolean) => void;
+  saveStatus: SaveStatus;
 }
 
 export default function ElementHoverBar({
@@ -139,6 +142,7 @@ export default function ElementHoverBar({
   onMouseEnter,
   onMouseLeave,
   onQuickEditModeChange,
+  saveStatus,
 }: ElementHoverBarProps) {
   const { element } = hoveredElement;
   const isImage = hoveredElement.type === "image";
@@ -150,6 +154,12 @@ export default function ElementHoverBar({
   const isUneditableImage = isImage && !element.getAttribute("data-dev-id") && !hoveredElement.isMediaSlot;
   const isCommerceMutationBlocked = isCommerceManagedContent(element) || (isCommerceIntegrated && isUneditableImage);
   const showImageActions = isImage && !isCommerceMutationBlocked;
+  // Delete is available for images (via showImageActions) and, separately,
+  // for any element the strategy classifier recognizes — static leaves,
+  // content-list items, conformable-array items, containers, and the
+  // agent-fallback catch-all (routed to AI rather than direct AST removal).
+  const deleteStrategy: DeleteStrategy | null = classifyDeleteStrategy(element);
+  const showDeleteAction: boolean = showImageActions || (deleteStrategy !== null);
   // AIROBUILD-1556: foreground <img>/<picture>/<svg> only; backdrops excluded.
   const isForegroundImage = isImage && DIRECT_FOREGROUND_IMAGE_TAGS.has(element.tagName.toLowerCase());
   const isBackdrop = isForegroundImage && isBackdropImage(element);
@@ -197,7 +207,7 @@ export default function ElementHoverBar({
   // on Accept the hook emits the standard TEXT_UPDATED payload through the
   // existing AST text-edit pipeline. State + request lifecycle live in the
   // hook; the button render lives in TextFixButton.
-  const fix = useTextFix();
+  const fix = useTextFix(saveStatus);
   const speech = useSpeechBridge();
 
   // Outline overlay + pointer cursor on the hovered element.
@@ -466,17 +476,37 @@ export default function ElementHoverBar({
     setToolbarMode(false);
   }, []);
 
-  // Delete media: mirror handleReplace's capture pattern, then post
-  // DELETE_MEDIA_ELEMENT. The builder opens a confirmation modal; the actual
-  // AST removal happens there.
   const handleDelete = useCallback(() => {
     const el = toolbarElementRef.current;
     const hovered = toolbarHoveredElementRef.current;
-    if (!el || !hovered || hovered.type !== "image") return;
+    if (!el || !hovered) return;
     trackEventBus.click("devtools.toolbar.delete_media");
-    // Read isVideo off the captured element, not the live `isVideo` closure —
-    // hover may have moved since the toolbar opened (same discipline as handleReplace).
-    const capturedIsVideo = !!hovered.isVideo;
+
+    // Always classify the selected element first — even images. An <img>
+    // rendered from a content-backed .map() carries content-list/item-ID
+    // attributes and must route to DELETE_CONTENT_ITEM (removing the single
+    // content record), not direct AST deletion of the shared template, which
+    // would strip the image from every current and future list item.
+    const hoveredIsImage: boolean = hovered.type === "image";
+    const strategy: DeleteStrategy | null = classifyDeleteStrategy(el);
+    // Non-image elements the classifier can't route are not deletable. Images
+    // fall through to direct media deletion below even when unclassified
+    // (e.g. media slots without data-dev-file), preserving existing behavior.
+    if (!strategy && !hoveredIsImage) {
+      setToolbarMode(false);
+      return;
+    }
+
+    // content-item / conformable-item / agent-fallback carry no image data — route
+    // them through the shared dispatcher so this and the text-clear path stay in sync.
+    if (strategy && strategy.type !== "static-leaf" && strategy.type !== "container") {
+      dispatchElementDelete(el, strategy);
+      setToolbarMode(false);
+      return;
+    }
+
+    const capturedIsVideo: boolean = hovered.type === "image" && !!hovered.isVideo;
+    const capturedImageUrl: string | null = hovered.type === "image" ? hovered.imageUrl : null;
     const elRect = el.getBoundingClientRect();
     const devContext = extractDevContext(el);
     const preciseSelector = generatePreciseSelector(el);
@@ -494,15 +524,16 @@ export default function ElementHoverBar({
       devContext,
     };
     send({
-      type: "DELETE_MEDIA_ELEMENT",
+      type: "DELETE_ELEMENT",
       data: {
         selector: preciseSelector,
         preciseSelector,
         devContext,
         elementInfo,
         isVideo: capturedIsVideo,
-        imageUrl: hovered.imageUrl ?? null,
+        imageUrl: capturedImageUrl,
         alt: imgEl?.alt || undefined,
+        ...(strategy?.type === "container" ? { forceContainer: true } : {}),
       },
     });
     setToolbarMode(false);
@@ -860,7 +891,7 @@ export default function ElementHoverBar({
   // agent prompt handles HTML preservation, and the commit always goes
   // through the `newHtml` path, so nested inline elements (`<br>`, `<span>`,
   // `<strong>`, `<a>`, etc.) round-trip without a special-case gate here.
-  const fixEligible = elementIsText && (targetEl.textContent || "").trim().length > 2;
+  const fixEligible = elementIsText && (targetEl.textContent || "").trim().length > 2 && isTextFixSaveable(targetEl);
 
 
   if (quickEditMode) {
@@ -1021,12 +1052,15 @@ export default function ElementHoverBar({
                   title={t("devtools_reposition_title", "Reposition")}
                   icon={<Move width={15} height={15} />}
                 />
-                <HoverBarButton
-                  onClick={handleDelete}
-                  title={t("devtools_delete_media_title", "Delete")}
-                  icon={<Trash2 width={15} height={15} />}
-                />
               </>
+            )}
+            {showDeleteAction && (
+              <HoverBarButton
+                onClick={handleDelete}
+                title={t("devtools_delete_media_title", "Delete")}
+                icon={<Trash2 width={15} height={15} />}
+                testId="element-delete-button"
+              />
             )}
             {isBoundTextFormatEligible && (
               <FormatOverrideControls selectedElement={boundFormatElement} colorMenu={menuController("color")} popoverPlacement={colorPickerPlacement} />

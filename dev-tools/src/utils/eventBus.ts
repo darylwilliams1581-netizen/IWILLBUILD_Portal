@@ -1,5 +1,6 @@
 import { safePostMessage } from "./postMessage";
 import { type ConformTarget } from "./element-detection";
+import { type ContentUpdatePayload } from "./content-edit-payload";
 
 /**
  * Cross-iframe `eventBus` — sender side.
@@ -137,7 +138,7 @@ export interface BusFormatOverrideUpdatePayload {
   marks: BusFormatOverrideMarks;
 }
 
-export interface BusMediaDeletePayload {
+export interface BusElementDeletePayload {
   selector: string;
   preciseSelector: string;
   devContext?: BusDevContext;
@@ -147,6 +148,13 @@ export interface BusMediaDeletePayload {
   /** Current src — shown as a thumbnail in the confirmation modal. */
   imageUrl: string | null;
   alt?: string;
+  /** true when the target is a container element (classified via delete-strategy's
+   *  'container' type) rather than a leaf — drives builder-side confirmation copy. */
+  forceContainer?: boolean;
+  /** true when the element is inside a .map() template (conformable/agent-fallback) and
+   *  direct AST removal would destroy the shared template — server skips AST and delegates
+   *  to the agent instead. */
+  skipAst?: boolean;
 }
 
 export interface BusMediaRepositionPayload {
@@ -238,6 +246,7 @@ export interface BusEventMap {
     properties?: Record<string, string | number | boolean>;
   };
   TEXT_UPDATED: { data: BusTextUpdatePayload };
+  CONTENT_UPDATED: { data: ContentUpdatePayload };
   COMPLIANCE_FIELD_UPDATED: { data: BusComplianceFieldUpdatePayload };
   COMPLIANCE_SECTION_TOGGLED: { data: BusComplianceSectionTogglePayload };
   TEXT_FIX_REQUESTED: { data: { requestId: string; oldText: string } };
@@ -262,9 +271,11 @@ export interface BusEventMap {
     };
   };
   REPLACE_IMAGE: { data?: BusAiEditContextPayload };
-  DELETE_MEDIA_ELEMENT: { data: BusMediaDeletePayload };
+  DELETE_ELEMENT: { data: BusElementDeletePayload };
+  DELETE_CONTENT_ITEM: { data: { collectionKey: string; itemId: string | null; itemIndex: number | null } };
   REPOSITION_MEDIA_ELEMENT: { data: BusMediaRepositionPayload };
   SCROLL_POSITION_UPDATE: { scrollX?: number; scrollY?: number };
+  PREVIEW_TAP: object;
   VISUAL_CONTEXT_RESPONSE: { context: BusVisualContextPayload };
   URL_CHANGE: { url: string };
   MESSAGE_COMPLETE: { source?: "agent" | "websocket" };

@@ -8,6 +8,10 @@ interface CorrelatedEditListenerOptions {
   timeoutMs: number;
   handler: (event: MessageEvent) => void;
   onTimeout?: (event: { commitId: string }) => void;
+  /** Reuse an id minted before the outgoing message is known to need a
+   *  listener (e.g. a save that may fall through to an untracked path).
+   *  Omit to mint a new one, as every existing caller does. */
+  commitId?: string;
 }
 
 export function addCorrelatedEditListener({
@@ -17,8 +21,9 @@ export function addCorrelatedEditListener({
   timeoutMs,
   handler,
   onTimeout,
+  commitId: providedCommitId,
 }: CorrelatedEditListenerOptions): string {
-  const commitId = generateUniqueId();
+  const commitId = providedCommitId ?? generateUniqueId();
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   const handleResult = (event: MessageEvent) => {

@@ -20,6 +20,10 @@ export interface ContentUpdatePayload {
   oldText: string;
   newText: string;
   expectedCurrent?: string;
+  /** Correlates the eventual CONTENT_EDIT_SUCCEEDED/FAILED ack to this save; omit when only one save is ever in flight. */
+  commitId?: string;
+  /** Ask the builder to refresh the preview once this save's own success ack lands. */
+  refreshOnSuccess?: boolean;
 }
 
 export function buildContentUpdatePayload(
@@ -27,6 +31,8 @@ export function buildContentUpdatePayload(
   target: ContentEditTarget,
   originalText: string,
   newText: string,
+  commitId?: string,
+  refreshOnSuccess?: boolean,
 ): ContentUpdatePayload {
   const isDerived: boolean = element.getAttribute("data-dev-content-derived") === "true";
   return {
@@ -35,5 +41,7 @@ export function buildContentUpdatePayload(
     oldText: originalText,
     newText,
     ...(isDerived ? { expectedCurrent: originalText } : {}),
+    ...(commitId !== undefined ? { commitId } : {}),
+    ...(refreshOnSuccess ? { refreshOnSuccess } : {}),
   };
 }

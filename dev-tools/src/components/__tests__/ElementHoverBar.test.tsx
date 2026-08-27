@@ -46,6 +46,7 @@ vi.mock('../../utils/element-detection', () => ({
   isTextElement: vi.fn(() => false),
   isTextBlockElement: vi.fn(() => false),
   isListElement: vi.fn(() => false),
+  isTextFixSaveable: vi.fn(() => true),
 }));
 
 vi.mock('../../utils/selection-overlay', () => ({
@@ -70,7 +71,7 @@ vi.mock('../../hooks/useTextFix', () => ({
 }));
 
 vi.mock('../TextFixPopover', () => ({ default: () => null, TextFixPopover: () => null }));
-vi.mock('../TextFixButton', () => ({ default: () => null }));
+vi.mock('../TextFixButton', () => ({ default: () => <button title="mock-textfix" /> }));
 vi.mock('../QuickEditBar', () => ({ QuickEditBar: () => null }));
 // Text-formatting buttons are stubbed as titled buttons (not null) so their
 // presence/absence is assertable — this is how the loop-rendered gating tests
@@ -133,6 +134,7 @@ function renderHoverBar(hoveredElement: HoveredElement) {
       setToolbarMode: vi.fn(),
       onMouseEnter: vi.fn(),
       onMouseLeave: vi.fn(),
+      saveStatus: 'idle',
     })
   );
 }
@@ -448,6 +450,43 @@ describe('ElementHoverBar - loop-rendered text formatting (AIROBUILD-4419)', () 
   });
 });
 
+describe('ElementHoverBar - Fix button saveability (isTextFixSaveable)', () => {
+  function makeFixCandidate(): HTMLElement {
+    const p = document.createElement('p');
+    p.textContent = 'teh cat sat';
+    p.getBoundingClientRect = vi.fn(() => ({
+      top: 100, left: 100, width: 200, height: 30, right: 300, bottom: 130, x: 100, y: 100, toJSON: () => {},
+    } as DOMRect));
+    document.body.appendChild(p);
+    return p;
+  }
+
+  it('shows the Fix button when isTextFixSaveable returns true', async () => {
+    const detection = await import('../../utils/element-detection');
+    vi.mocked(detection.isTextElement).mockReturnValue(true);
+    vi.mocked(detection.isTextFixSaveable).mockReturnValue(true);
+
+    const p: HTMLElement = makeFixCandidate();
+    renderHoverBar({ type: 'content', element: p });
+    openToolbar(p);
+
+    expect(await screen.findByTitle('mock-textfix')).not.toBeNull();
+  });
+
+  it('hides the Fix button when isTextFixSaveable returns false', async () => {
+    const detection = await import('../../utils/element-detection');
+    vi.mocked(detection.isTextElement).mockReturnValue(true);
+    vi.mocked(detection.isTextFixSaveable).mockReturnValue(false);
+
+    const p: HTMLElement = makeFixCandidate();
+    renderHoverBar({ type: 'content', element: p });
+    openToolbar(p);
+
+    await screen.findByTitle('mock-bold');
+    expect(screen.queryByTitle('mock-textfix')).toBeNull();
+  });
+});
+
 const trackCalls = () =>
   vi.mocked(safePostMessage).mock.calls.filter(
     ([, msg]) => (msg as { type?: string })?.type === 'TRACK_EVENT',
@@ -532,7 +571,7 @@ describe('ElementHoverBar - tracking', () => {
 
 const findDeleteMediaCall = () =>
   vi.mocked(safePostMessage).mock.calls.find(
-    ([, msg]) => (msg as { type?: string })?.type === 'DELETE_MEDIA_ELEMENT',
+    ([, msg]) => (msg as { type?: string })?.type === 'DELETE_ELEMENT',
   );
 
 describe('ElementHoverBar - delete media button', () => {
@@ -544,12 +583,23 @@ describe('ElementHoverBar - delete media button', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).not.toBeNull();
   });
 
-  it('does not render Delete for a non-image element', () => {
-    renderHoverBar(makeTextHover());
+  it('does not render Delete for a non-image element the strategy classifier does not recognize', () => {
+    // A bare <div> with no dev/content/conformable attributes matches none of
+    // classifyDeleteStrategy's branches (not a leaf tag, not a container
+    // without data-dev-id, not agent-fallback without data-dev-file) — unlike
+    // a bare <p>/<li>, which are LEAF_TAGS and are deletable by design.
+    const div: HTMLElement = document.createElement('div');
+    div.textContent = 'Hello world';
+    div.getBoundingClientRect = vi.fn(() => ({
+      top: 100, left: 100, width: 200, height: 30, right: 300, bottom: 130, x: 100, y: 100, toJSON: () => {},
+    } as DOMRect));
+    document.body.appendChild(div);
+
+    renderHoverBar({ type: 'content', element: div });
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
   });
 
-  it('sends DELETE_MEDIA_ELEMENT with elementInfo/devContext when Delete is clicked', () => {
+  it('sends DELETE_ELEMENT with elementInfo/devContext when Delete is clicked', () => {
     vi.stubEnv('VITE_GODADDY_STORE_ID', '');
     const img = makeImageElement({ alt: 'A product photo' });
     renderHoverBar(makeImageHover(img, { imageUrl: 'https://x/y.jpg' }));
@@ -570,7 +620,7 @@ describe('ElementHoverBar - delete media button', () => {
         alt?: string;
       };
     };
-    expect(msg.type).toBe('DELETE_MEDIA_ELEMENT');
+    expect(msg.type).toBe('DELETE_ELEMENT');
     expect(msg.data.preciseSelector).toBe('div > img');
     expect(msg.data.selector).toBe('div > img');
     expect(msg.data.isVideo).toBe(false);
@@ -599,6 +649,232 @@ describe('ElementHoverBar - delete media button', () => {
     openToolbar(img);
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(findTrackCall('devtools.toolbar.delete_media')).toBeTruthy();
+  });
+
+  it('renders Delete for a static-leaf text element (p tag)', () => {
+    const hovered = makeTextHover();
+    hovered.element.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    renderHoverBar(hovered);
+    openToolbar(hovered.element);
+
+    expect(screen.getByRole('button', { name: 'Delete' })).not.toBeNull();
+  });
+
+  it('does not render Delete for a loop-rendered element without data-dev-file', () => {
+    const first: HTMLElement = document.createElement('li');
+    const second: HTMLElement = document.createElement('li');
+    for (const li of [first, second]) {
+      li.textContent = 'Loop item';
+      li.setAttribute('data-dev-id', 'loopid-delete');
+      li.setAttribute('data-dev-line', '11');
+      li.getBoundingClientRect = vi.fn(() => ({
+        top: 100, left: 100, width: 200, height: 30, right: 300, bottom: 130, x: 100, y: 100, toJSON: () => {},
+      } as DOMRect));
+      document.body.appendChild(li);
+    }
+
+    renderHoverBar({ type: 'content', element: first });
+    openToolbar(first);
+
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+  });
+});
+
+const findPostMessageByType = (eventType: string) =>
+  vi.mocked(safePostMessage).mock.calls.find(
+    ([, msg]) => (msg as { type?: string })?.type === eventType,
+  );
+
+describe('ElementHoverBar - delete dispatch routing', () => {
+  function makeContentElement(el: HTMLElement): void {
+    el.getBoundingClientRect = vi.fn(() => ({
+      top: 100, left: 100, width: 200, height: 30, right: 300, bottom: 130, x: 100, y: 100, toJSON: () => {},
+    } as DOMRect));
+    document.body.appendChild(el);
+  }
+
+  it('dispatches DELETE_CONTENT_ITEM for a content-item element', () => {
+    const article: HTMLElement = document.createElement('article');
+    article.setAttribute('data-dev-content-list', 'home.stories');
+    article.setAttribute('data-dev-content-list-index', '2');
+    article.setAttribute('data-dev-item-id', 'abc123');
+    article.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    makeContentElement(article);
+
+    renderHoverBar({ type: 'content', element: article });
+    openToolbar(article);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_CONTENT_ITEM');
+    expect(call).toBeTruthy();
+    const msg = call![1] as { type: string; data: { collectionKey: string; itemId: string; itemIndex: number } };
+    expect(msg.data.collectionKey).toBe('home.stories');
+    expect(msg.data.itemId).toBe('abc123');
+    expect(msg.data.itemIndex).toBe(2);
+  });
+
+  it('dispatches DELETE_ELEMENT with skipAst for a conformable-item element (agent path)', () => {
+    const div: HTMLElement = document.createElement('div');
+    div.setAttribute('data-dev-conformable-array', 'features');
+    div.setAttribute('data-dev-conformable-page', 'home');
+    div.setAttribute('data-dev-conformable-id', 'L42C5');
+    div.setAttribute('data-dev-content-list-index', '1');
+    div.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    makeContentElement(div);
+
+    renderHoverBar({ type: 'content', element: div });
+    openToolbar(div);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+    const msg = call![1] as {
+      type: string;
+      data: { preciseSelector: string; devContext?: unknown; elementInfo: { tagName: string }; skipAst?: boolean };
+    };
+    expect(msg.data.elementInfo.tagName).toBe('div');
+    expect(msg.data.preciseSelector).toBe('div > img');
+    expect(msg.data.devContext).toMatchObject({ devId: 'test-id' });
+    expect(msg.data.skipAst).toBe(true);
+  });
+
+  it('dispatches DELETE_ELEMENT with skipAst for an agent-fallback element (agent path)', () => {
+    const span: HTMLElement = document.createElement('span');
+    span.setAttribute('data-dev-dynamic', 'true');
+    span.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    span.textContent = 'Dynamic counter';
+    makeContentElement(span);
+
+    renderHoverBar({ type: 'content', element: span });
+    openToolbar(span);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+    const msg = call![1] as {
+      type: string;
+      data: { preciseSelector: string; devContext?: unknown; elementInfo: { tagName: string }; skipAst?: boolean };
+    };
+    expect(msg.data.elementInfo.tagName).toBe('span');
+    expect(msg.data.preciseSelector).toBe('div > img');
+    expect(msg.data.devContext).toMatchObject({ devId: 'test-id' });
+    expect(msg.data.skipAst).toBe(true);
+  });
+
+  it('dispatches DELETE_ELEMENT for an agent-fallback element inside a content list', () => {
+    const list: HTMLElement = document.createElement('ul');
+    list.setAttribute('data-dev-content-list', 'home.items');
+    const span: HTMLElement = document.createElement('span');
+    span.setAttribute('data-dev-dynamic', 'true');
+    span.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    span.textContent = 'Looped';
+    list.appendChild(span);
+    document.body.appendChild(list);
+    span.getBoundingClientRect = vi.fn(() => ({
+      top: 100, left: 100, width: 200, height: 30, right: 300, bottom: 130, x: 100, y: 100, toJSON: () => {},
+    } as DOMRect));
+
+    renderHoverBar({ type: 'content', element: span });
+    openToolbar(span);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+  });
+
+  it('dispatches DELETE_ELEMENT with forceContainer for a container element', () => {
+    const section: HTMLElement = document.createElement('section');
+    section.setAttribute('data-dev-id', 'sec-123');
+    section.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    makeContentElement(section);
+
+    renderHoverBar({ type: 'content', element: section });
+    openToolbar(section);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+    const msg = call![1] as { type: string; data: { forceContainer?: boolean } };
+    expect(msg.data.forceContainer).toBe(true);
+  });
+
+  it('dispatches DELETE_ELEMENT without forceContainer for a static-leaf text element', () => {
+    const p: HTMLElement = document.createElement('p');
+    p.setAttribute('data-dev-file', 'src/pages/index.tsx');
+    p.textContent = 'Hello';
+    makeContentElement(p);
+
+    renderHoverBar({ type: 'content', element: p });
+    openToolbar(p);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+    const msg = call![1] as { type: string; data: { forceContainer?: boolean } };
+    expect(msg.data.forceContainer).toBeUndefined();
+  });
+});
+
+// Images must be classified like any other element before deletion. An <img>
+// rendered from a content-backed .map() carries content-list/item-ID
+// attributes and must route to its collection-aware path — not direct AST
+// deletion of the shared <img> template, which would strip the image from
+// every current and future list item.
+describe('ElementHoverBar - image delete routing', () => {
+  it('dispatches DELETE_CONTENT_ITEM for an image carrying content-list/item-ID attributes', () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement({
+      'data-dev-content-list': 'home.products',
+      'data-dev-content-list-index': '3',
+      'data-dev-item-id': 'prod-3',
+      'data-dev-file': 'src/pages/index.tsx',
+    });
+    renderHoverBar(makeImageHover(img));
+    openToolbar(img);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_CONTENT_ITEM');
+    expect(call).toBeTruthy();
+    const msg = call![1] as { type: string; data: { collectionKey: string; itemId: string; itemIndex: number } };
+    expect(msg.data.collectionKey).toBe('home.products');
+    expect(msg.data.itemId).toBe('prod-3');
+    expect(msg.data.itemIndex).toBe(3);
+    // Must NOT fall back to raw media deletion of the shared <img> template.
+    expect(findPostMessageByType('DELETE_ELEMENT')).toBeFalsy();
+  });
+
+  it('dispatches DELETE_ELEMENT for a conformable image root (AST-first path)', () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement({
+      'data-dev-conformable-array': 'gallery',
+      'data-dev-conformable-page': 'home',
+      'data-dev-conformable-id': 'L10C2',
+      'data-dev-content-list-index': '1',
+      'data-dev-file': 'src/pages/index.tsx',
+    });
+    renderHoverBar(makeImageHover(img));
+    openToolbar(img);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+    const msg = call![1] as { type: string; data: { elementInfo: { tagName: string } } };
+    expect(msg.data.elementInfo.tagName).toBe('img');
+  });
+
+  it('still dispatches DELETE_ELEMENT for a normal standalone image', () => {
+    vi.stubEnv('VITE_GODADDY_STORE_ID', '');
+    const img = makeImageElement({ 'data-dev-file': 'src/pages/index.tsx' });
+    renderHoverBar(makeImageHover(img, { imageUrl: 'https://x/y.jpg' }));
+    openToolbar(img);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const call = findPostMessageByType('DELETE_ELEMENT');
+    expect(call).toBeTruthy();
+    const msg = call![1] as { type: string; data: { imageUrl: string | null; forceContainer?: boolean } };
+    expect(msg.data.imageUrl).toBe('https://x/y.jpg');
+    expect(msg.data.forceContainer).toBeUndefined();
+    expect(findPostMessageByType('DELETE_CONTENT_ITEM')).toBeFalsy();
   });
 });
 

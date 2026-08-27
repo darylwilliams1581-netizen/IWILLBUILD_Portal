@@ -72,7 +72,7 @@ export function findEditableContainer(el: HTMLElement, cmsInlineEditEnabled: boo
     if (!cmsInlineEditEnabled && resolveContentKey(current) !== null) return null;
 
     const isInline = INLINE_TAGS.has(current.tagName.toLowerCase());
-    if (isTextEditable(current, cmsInlineEditEnabled) && !current.querySelector("br")) {
+    if (isTextEditable(current, cmsInlineEditEnabled)) {
       if (isInline) {
         best = current;
       } else {
@@ -94,7 +94,6 @@ export function findEditableContainer(el: HTMLElement, cmsInlineEditEnabled: boo
       if (
         outermostInline &&
         outermostInline.textContent?.trim() &&
-        !outermostInline.querySelector("br") &&
         hasOnlyInlineChildren(outermostInline) &&
         !outermostInline.closest("[data-dev-dynamic]") &&
         !hasDynamicContent(outermostInline) &&

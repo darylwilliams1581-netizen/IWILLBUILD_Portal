@@ -7,6 +7,8 @@ import {
   isUnresolvableContentOwned,
   isBodyTextElement,
   resolveContentKey,
+  hasContentBoundary,
+  isTextFixSaveable,
   resolveOwnContentKey,
   resolveConformTarget,
   getMediaSlotPath,
@@ -16,6 +18,7 @@ import {
   isContentElement,
   isClickable,
   isInsideNavSurface,
+  isInteractiveTapTarget,
   isManagedPath,
   hasManagedDocMarkup,
   HEADING_TAGS,
@@ -70,6 +73,57 @@ describe('element-detection', () => {
       for (const tag of [...TEXT_TAGS, ...LIST_TAGS, ...MEDIA_TAGS, ...FORM_TAGS]) {
         expect(CONTENT_TAGS.has(tag)).toBe(true);
       }
+    });
+  });
+
+  describe('isInteractiveTapTarget', () => {
+    it('returns false for plain non-interactive content (bar should re-show on tap)', () => {
+      expect(isInteractiveTapTarget(buildElement('<p>hello</p>'))).toBe(false);
+      expect(isInteractiveTapTarget(buildElement('<div>section</div>'))).toBe(false);
+      expect(isInteractiveTapTarget(buildElement('<img src="x.png" />'))).toBe(false);
+      expect(isInteractiveTapTarget(buildElement('<h2>heading</h2>'))).toBe(false);
+      expect(isInteractiveTapTarget(buildElement('<output for="a b">42</output>'))).toBe(false);
+    });
+
+    it('returns true for links and buttons (customer meant to navigate/act)', () => {
+      expect(isInteractiveTapTarget(buildElement('<a href="/about">about</a>'))).toBe(true);
+      expect(isInteractiveTapTarget(buildElement('<button>go</button>'))).toBe(true);
+      expect(isInteractiveTapTarget(buildElement('<div role="button">go</div>'))).toBe(true);
+    });
+
+    it('returns true when the tap lands on a child inside an anchor', () => {
+      const anchor = buildElement('<a href="/x"><span>deep</span></a>');
+      const span = anchor.querySelector('span') as HTMLElement;
+      expect(isInteractiveTapTarget(span)).toBe(true);
+    });
+
+    it('returns true for form controls', () => {
+      expect(isInteractiveTapTarget(buildElement('<input type="text" />'))).toBe(true);
+      expect(isInteractiveTapTarget(buildElement('<textarea></textarea>'))).toBe(true);
+      expect(isInteractiveTapTarget(buildElement('<select></select>'))).toBe(true);
+    });
+
+    it('returns true for a label and a child tapped inside one (operates its control)', () => {
+      expect(isInteractiveTapTarget(buildElement('<label for="n">Name</label>'))).toBe(true);
+      const label = buildElement('<label><span>toggle</span><input type="checkbox" /></label>');
+      const span = label.querySelector('span') as HTMLElement;
+      expect(isInteractiveTapTarget(span)).toBe(true);
+    });
+
+    it('returns true when the tap lands on a child inside a form control', () => {
+      const select = buildElement('<select><option>a</option></select>');
+      const option = select.querySelector('option') as HTMLElement;
+      expect(isInteractiveTapTarget(option)).toBe(true);
+    });
+
+    it('returns true inside a nav surface', () => {
+      const nav = buildElement('<nav><span>home</span></nav>');
+      const span = nav.querySelector('span') as HTMLElement;
+      expect(isInteractiveTapTarget(span)).toBe(true);
+    });
+
+    it('returns true for dev-tools chrome', () => {
+      expect(isInteractiveTapTarget(buildElement('<div data-airo-non-editable>banner</div>'))).toBe(true);
     });
   });
 
@@ -764,6 +818,39 @@ describe('element-detection', () => {
       `;
       const span = root.querySelector('span') as HTMLElement;
       expect(resolveContentKey(span)).toEqual({ key: 'menu[0].items[@cheeseburger].name', kind: 'copy' });
+    });
+  });
+
+  // ─── isTextFixSaveable ────────────────────────────────────────────────────────
+
+  describe('isTextFixSaveable', () => {
+    it('returns true for a plain element with no content boundary', () => {
+      expect(isTextFixSaveable(buildElement('<p>teh cat</p>'))).toBe(true);
+    });
+
+    it('returns true for an element that resolves its own content key', () => {
+      const element = buildElement('<span data-dev-content-key="site.brand">teh brand</span>');
+      expect(isTextFixSaveable(element)).toBe(true);
+    });
+
+    it('returns true for a wrapper that has no own content key but resolves through a single content-keyed descendant', () => {
+      const doc = new DOMParser().parseFromString(
+        '<div><h2 data-dev-content-key="home.headline">teh headline</h2></div>',
+        'text/html'
+      );
+      const wrapper = doc.body.firstElementChild as HTMLElement;
+      expect(resolveContentKey(wrapper)).toEqual({ key: 'home.headline', kind: 'copy' });
+      expect(hasContentBoundary(wrapper)).toBe(true);
+      expect(isTextFixSaveable(wrapper)).toBe(true);
+    });
+
+    it('returns false for a wrapper around a data-dev-content-list item', () => {
+      const doc = new DOMParser().parseFromString(
+        '<div><div data-dev-content-list="products" data-dev-content-list-index="0">teh item</div></div>',
+        'text/html'
+      );
+      const wrapper = doc.body.firstElementChild as HTMLElement;
+      expect(isTextFixSaveable(wrapper)).toBe(false);
     });
   });
 

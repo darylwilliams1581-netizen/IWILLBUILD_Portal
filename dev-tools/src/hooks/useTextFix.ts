@@ -4,6 +4,9 @@ import { extractDevContext, generatePreciseSelector } from "../utils/element-hel
 import { mergeOriginalClasses } from "../utils/text-editing-helpers";
 import { htmlToJsxStructured } from "../utils/html-to-jsx";
 import { isCommerceManagedContent } from "../utils/commerce-managed-content";
+import { trySaveContentEdit } from "../utils/save-text-edit";
+import { isTextFixSaveable } from "../utils/element-detection";
+import type { SaveStatus } from "./useTextEditing";
 import {
   type FixState,
   htmlStringToDisplayText,
@@ -21,7 +24,8 @@ interface UseTextFixResult {
    *  element has no trimmed text content. */
   request: (el: HTMLElement) => void;
   /** Commit the previewed correction through the standard TEXT_UPDATED → AST
-   *  text-edit pipeline. No-op when not in preview state. */
+   *  text-edit pipeline. No-op when not in preview state, or while a manual
+   *  inline edit's save is already in flight. */
   accept: (el: HTMLElement) => void;
   /** Discard the previewed correction and return to idle. */
   reject: () => void;
@@ -41,7 +45,7 @@ interface UseTextFixResult {
  * change, click-outside, toolbar close) — same shape as the original inline
  * implementation, so the parent's existing cleanup branches stay coherent.
  */
-export function useTextFix(): UseTextFixResult {
+export function useTextFix(saveStatus: SaveStatus = "idle"): UseTextFixResult {
   const [state, setState] = useState<FixState>({ status: "idle" });
   const requestRef = useRef<{ requestId: string; cleanup: () => void } | null>(null);
 
@@ -57,14 +61,18 @@ export function useTextFix(): UseTextFixResult {
     setState({ status: "idle" });
   }, [cancelPending]);
 
-  // Cancel any pending request on unmount so a late reply doesn't fire
-  // setState on a torn-down component.
+  // Cancel any pending request on unmount to avoid a late setState.
   useEffect(() => {
-    return () => cancelPending();
+    return () => {
+      cancelPending();
+    };
   }, [cancelPending]);
 
   const request = useCallback((el: HTMLElement) => {
     if (isCommerceManagedContent(el)) return;
+
+    // Refuse a content-spanning wrapper accept() can't safely save (see below).
+    if (!isTextFixSaveable(el)) return;
 
     // We send the element's innerHTML to the proofreader so it has the full
     // structural picture — text + `<br>` + `<span>`/`<strong>`/`<a>` etc. The
@@ -147,29 +155,17 @@ export function useTextFix(): UseTextFixResult {
   // (callers re-grab from `useTextFix()` each render anyway).
   const accept = useCallback((el: HTMLElement) => {
     if (state.status !== "preview") return;
+    // Refuse a second concurrent save while a manual edit's save is in flight.
+    if (saveStatus === "saving") return;
     if (isCommerceManagedContent(el)) {
       setState({ status: "idle" });
       return;
     }
 
     const { oldHtml, newHtml } = state;
-    const devContext = extractDevContext(el);
-    const preciseSelector = generatePreciseSelector(el);
-    const tag = el.tagName.toLowerCase();
-    const classes = el.getAttribute("class") || "";
-
-    // Always go through the `newHtml` path (same one useTextEditing uses
-    // for mixed-content elements) regardless of whether the element has
-    // inline children — uniform handling means one tested code path. For
-    // pure-text elements the wrapped HTML is just <tag>text</tag>, which
-    // still flows correctly through htmlToJsxStructured.
-    const wrappedHtml = wrapInnerHtml(newHtml, tag, classes);
-    const merged = mergeOriginalClasses(wrappedHtml, classes);
-    const structured = htmlToJsxStructured(merged);
-    const newPlainText = htmlStringToDisplayText(newHtml).replace(/\n/g, " ");
 
     // Telemetry: notify parent so the BFF can log acceptance rate. Sent
-    // before TEXT_UPDATED so the event lands even if the AST commit fails.
+    // before the save so the event lands even if the save itself fails.
     send({
       type: "TEXT_FIX_ACCEPTED",
       data: {
@@ -178,20 +174,50 @@ export function useTextFix(): UseTextFixResult {
       },
     });
 
-    send({
-      type: "TEXT_UPDATED",
-      data: {
-        selector: preciseSelector,
-        preciseSelector,
-        oldText: el.textContent || "",
-        newText: newPlainText,
-        newHtml: structured.childrenJsx,
-        devContext,
-      },
-    });
+    const oldText = el.textContent || "";
+    const newPlainText = htmlStringToDisplayText(newHtml).replace(/\n/g, " ");
+
+    // Same content-vs-AST routing as useTextEditing's manual save. Fix-accept has no
+    // optimistic DOM update of its own, so it asks the builder to refresh on success —
+    // the builder's own CONTENT_UPDATED lifecycle survives an iframe reload, unlike a
+    // local ack listener here.
+    const contentSave = trySaveContentEdit(el, oldText, newPlainText, undefined, true);
+    if (!contentSave) {
+      // A content-spanning wrapper here would self-nest via the AST fallback below — decline instead.
+      if (!isTextFixSaveable(el)) {
+        setState({ status: "idle" });
+        return;
+      }
+
+      const devContext = extractDevContext(el);
+      const preciseSelector = generatePreciseSelector(el);
+      const tag = el.tagName.toLowerCase();
+      const classes = el.getAttribute("class") || "";
+
+      // Always go through the `newHtml` path (same one useTextEditing uses
+      // for mixed-content elements) regardless of whether the element has
+      // inline children — uniform handling means one tested code path. For
+      // pure-text elements the wrapped HTML is just <tag>text</tag>, which
+      // still flows correctly through htmlToJsxStructured.
+      const wrappedHtml = wrapInnerHtml(newHtml, tag, classes);
+      const merged = mergeOriginalClasses(wrappedHtml, classes);
+      const structured = htmlToJsxStructured(merged);
+
+      send({
+        type: "TEXT_UPDATED",
+        data: {
+          selector: preciseSelector,
+          preciseSelector,
+          oldText,
+          newText: newPlainText,
+          newHtml: structured.childrenJsx,
+          devContext,
+        },
+      });
+    }
 
     setState({ status: "idle" });
-  }, [state]);
+  }, [state, saveStatus]);
 
   const reject = useCallback(() => {
     if (state.status === "preview") {

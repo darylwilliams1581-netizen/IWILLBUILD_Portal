@@ -70,11 +70,11 @@ export function isListElement(element: HTMLElement): boolean {
 }
 
 /** Check if an element is interactive (clicks should pass through) */
-export function isClickable(element: HTMLElement): boolean {
+export function isClickable(element: Element): boolean {
   const tag = element.tagName.toLowerCase();
   if (tag === "a" || tag === "button") return true;
   if (element.getAttribute("role") === "button") return true;
-  if (element.onclick || element.hasAttribute("onclick")) return true;
+  if ((element instanceof HTMLElement && element.onclick) || element.hasAttribute("onclick")) return true;
   if (element.closest("a, button, [role='button']")) return true;
   return false;
 }
@@ -92,8 +92,26 @@ export function isClickable(element: HTMLElement): boolean {
  *  role='menu'), or Radix Menubar (role='menubar'). Menu items are
  *  aria-defined as action triggers, never editable text content, so this
  *  broadening is safe. */
-export function isInsideNavSurface(element: HTMLElement): boolean {
+export function isInsideNavSurface(element: Element): boolean {
   return !!element.closest("nav, [role='navigation'], [role='menu'], [role='menubar']");
+}
+
+/** True when a tap on this element was aimed at a link or interactive control
+ *  (anchor, button, role=button, nav/menu surface, form field or its label, or
+ *  dev-tools chrome) rather than at plain page content. The mobile editing
+ *  toolbar re-shows on a tap of inert content but must stand down when the
+ *  customer meant to navigate or operate a control (AIROBUILD-5213).
+ *
+ *  The form/label selector uses `closest` (not just the tapped element's own
+ *  tag) so a tap landing on a child inside a control — or on a `<label>` that
+ *  focuses/toggles its associated field — is also treated as interactive. */
+export function isInteractiveTapTarget(element: Element): boolean {
+  return (
+    isClickable(element) ||
+    isInsideNavSurface(element) ||
+    isDevToolsElement(element) ||
+    !!element.closest("input, textarea, select, label")
+  );
 }
 
 /** True on pages where editing is restricted to the annotated managed fields
@@ -213,7 +231,7 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
 }
 
 type ContentKeyResolution = { key: string; kind: "copy" | "richText" };
-type ContentKeyResolutionWithElement = ContentKeyResolution & { element: HTMLElement };
+export type ContentKeyResolutionWithElement = ContentKeyResolution & { element: HTMLElement };
 
 /**
  * Resolve a concrete content key from an element's own data-dev-content-key
@@ -402,6 +420,22 @@ function resolveTemplateContentKey(
   return { key: result, kind };
 }
 
+const CONTENT_BOUNDARY_SELECTOR =
+  '[data-dev-content-key], [data-dev-content-key-template], [data-dev-content-list]';
+
+// A resolvable element's sole child is always a bare expression (never JSX), so it can never also wrap a keyed descendant.
+/** True when `element` is itself content-backed, or wraps a content-backed descendant. */
+export function hasContentBoundary(element: HTMLElement): boolean {
+  return (
+    element.matches(CONTENT_BOUNDARY_SELECTOR) || element.querySelector(CONTENT_BOUNDARY_SELECTOR) !== null
+  );
+}
+
+/** True when a Fix-typo edit on `element` can be saved without ambiguity — shared by the Fix button and useTextFix's own guards. */
+export function isTextFixSaveable(element: HTMLElement): boolean {
+  return !!resolveContentKey(element) || !hasContentBoundary(element);
+}
+
 /** Check if an element is a leaf content element worth targeting for AI edit */
 export function isContentElement(element: HTMLElement): boolean {
   const tag = element.tagName.toLowerCase();
@@ -421,7 +455,7 @@ export function isContentElement(element: HTMLElement): boolean {
 /** Check whether dev-tools should ignore this element. Covers dev-tools chrome
  *  itself plus any runtime UI that opts out via `data-airo-non-editable` (e.g.
  *  the cookie consent banner, which is consent-state UI, not authored content). */
-export function isDevToolsElement(element: HTMLElement): boolean {
+export function isDevToolsElement(element: Element): boolean {
   return (
     !!element.closest("#dev-mode-overlay") ||
     !!element.closest("[data-dev-tools]") ||

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createRoot, Root } from "react-dom/client";
-import { safePostMessage, isOriginAllowed } from "../utils/postMessage";
+import { isOriginAllowed } from "../utils/postMessage";
 import { type BusTextUpdatePayload, send, TextEditErrorCode } from "../utils/eventBus";
 import { t } from "../utils/translations";
 import { trackInlineEdit } from "../utils/inline-edit-tracking";
@@ -13,12 +13,13 @@ import {
   generateSelector,
   isBodyTextElement,
   resolveContentKey,
-  resolveContentKeyWithElement,
   resolveConformTarget,
   isInsideNavSurface,
   type ConformTarget,
 } from "../utils/element-detection";
-import { buildContentUpdatePayload } from "../utils/content-edit-payload";
+import { trySaveContentEdit } from "../utils/save-text-edit";
+import { generateUniqueId } from "../utils/crypto-utils";
+import { classifyDeleteStrategy, dispatchElementDelete } from "../utils/delete-strategy";
 import { resolveHoverableAnchorAtPoint } from "./useImageHoverDetection";
 import InlineLexicalEditor from "../components/InlineLexicalEditor";
 import { htmlToJsxStructured } from "../utils/html-to-jsx";
@@ -82,15 +83,28 @@ export function handleConformReply(
   return () => {};
 }
 
+/** Guards `handleEditResult` against an unrelated concurrent save's ack settling this one. */
+export function shouldIgnoreContentAck(
+  eventType: string,
+  eventCommitId: string | undefined,
+  pendingCommitId: string,
+): boolean {
+  const isContentAck: boolean = eventType === "CONTENT_EDIT_SUCCEEDED" || eventType === "CONTENT_EDIT_FAILED";
+  return isContentAck && eventCommitId !== pendingCommitId;
+}
+
+export type SaveStatus = "idle" | "saving" | "saved";
+
 interface TextEditingState {
   editingElement: HTMLElement | null;
   originalText: string | null;
-  saveStatus: "idle" | "saving" | "saved";
+  saveStatus: SaveStatus;
 }
 
 interface PendingSave {
   element: HTMLElement;
   originalText: string;
+  commitId: string;
 }
 
 export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: boolean) {
@@ -160,8 +174,8 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
   );
 
   const beginSave = useCallback(
-    (element: HTMLElement, originalText: string) => {
-      pendingSaveRef.current = { element, originalText };
+    (element: HTMLElement, originalText: string, commitId: string) => {
+      pendingSaveRef.current = { element, originalText, commitId };
       updateState({ saveStatus: "saving" });
       showIndicator(element, "saving");
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -199,25 +213,33 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
         return;
       }
 
+      // Clearing all text expresses intent to remove the element, not to keep an
+      // empty box. Route to the existing delete pipeline (direct for leaf/container,
+      // agent-fallback otherwise). If the element can't be classified for deletion,
+      // restore rather than commit an empty edit.
+      if (!newText.trim()) {
+        const deleteStrategy = classifyDeleteStrategy(element);
+        if (deleteStrategy) {
+          dispatchElementDelete(element, deleteStrategy);
+        }
+        silentCleanup(element);
+        return;
+      }
+
       let devContext = extractDevContext(element);
       const selector = generateSelector(element);
       const preciseSelector = generatePreciseSelector(element);
 
-      beginSave(element, originalText);
+      // commitId is minted up front, before either save path, so a concurrent
+      // save's ack can never settle this one (see shouldIgnoreContentAck).
+      const commitId = generateUniqueId();
+      beginSave(element, originalText, commitId);
 
       // Prefer the content-layer path when the element is attributed to a
       // CMS field. Falls back to the JSX-literal AST-edit path otherwise.
-      // Use the element the resolution says actually owns the key — not
-      // necessarily the clicked `element` — since data-dev-content-derived
-      // lives on that same element and buildContentUpdatePayload reads it
-      // from whatever element it's given.
-      const contentTarget = resolveContentKeyWithElement(element);
-      if (contentTarget) {
-        trackInlineEdit("save", contentTarget);
-        safePostMessage(window.parent, {
-          type: "CONTENT_UPDATED",
-          data: buildContentUpdatePayload(contentTarget.element, contentTarget, originalText, newText),
-        });
+      const contentSave = trySaveContentEdit(element, originalText, newText, commitId);
+      if (contentSave) {
+        trackInlineEdit("save", contentSave.contentTarget);
 
         cleanupOverlay();
         // The content edit triggers an HMR re-render that updates this element
@@ -372,7 +394,9 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
       const selector = generateSelector(parent);
       const preciseSelector = generatePreciseSelector(parent);
 
-      beginSave(parent, parentOriginalText);
+      // This path always goes to TEXT_UPDATED, but a commitId is still minted
+      // so pendingSaveRef is never left without one (see shouldIgnoreContentAck).
+      beginSave(parent, parentOriginalText, generateUniqueId());
 
       send({
         type: "TEXT_UPDATED",
@@ -484,6 +508,14 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
         const hasStructureNow = element.querySelector("a, span, em, strong, b, i, code, br") !== null;
         const htmlChanged = element.innerHTML !== originalInnerHtml;
         const newHtml = (originalHasStructure || hasStructureNow) && htmlChanged ? element.outerHTML : null;
+        if (!newText.trim()) {
+          // The browser already emptied the live DOM. handleCommit's/handleSegmentCommit's
+          // empty branch only opens the delete-confirmation flow — it never restores text —
+          // so a cancelled or unclassifiable delete would otherwise leave the element blank.
+          // Restore before routing so cancel leaves content intact; a confirmed delete still
+          // removes the element via HMR regardless of what its innerHTML currently holds.
+          element.innerHTML = originalInnerHtml;
+        }
         if (brParent) {
           handleSegmentCommit(element, brParent, parentOriginalText, newText, newHtml);
         } else {
@@ -648,6 +680,7 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
 
       const pending = pendingSaveRef.current;
       if (!pending) return;
+      if (shouldIgnoreContentAck(event.data.type, event.data.commitId as string | undefined, pending.commitId)) return;
 
       if (event.data.type === "TEXT_EDIT_SUCCEEDED" || event.data.type === "CONTENT_EDIT_SUCCEEDED") {
         if (saveTimeoutRef.current) {

@@ -55,6 +55,19 @@ function lastRequestId(): string {
   return last[1].data.requestId;
 }
 
+/** Reads the data payload of the most recent CONTENT_UPDATED postMessage call. */
+function lastContentUpdatedData(): { commitId?: string; refreshOnSuccess?: boolean } {
+  const calls = (safePostMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+  const contentUpdatedCall = calls
+    .map((c) => c[1] as { type: string; data: { commitId?: string; refreshOnSuccess?: boolean } })
+    .reverse()
+    .find((payload) => payload.type === 'CONTENT_UPDATED');
+  if (!contentUpdatedCall) {
+    throw new Error('No CONTENT_UPDATED call found');
+  }
+  return contentUpdatedCall.data;
+}
+
 describe('useTextFix', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -110,6 +123,34 @@ describe('useTextFix', () => {
 
     expect(result.current.state.status).toBe('idle');
     expect(safePostMessage).not.toHaveBeenCalled();
+  });
+
+  it('skips request for a wrapper spanning content-backed fields without its own resolvable key', () => {
+    const { result } = renderHook(() => useTextFix());
+    const el = makeParagraph('Card text');
+    const child = document.createElement('span');
+    child.setAttribute('data-dev-content-list', 'home.products');
+    el.appendChild(child);
+
+    act(() => {
+      result.current.request(el);
+    });
+
+    expect(result.current.state.status).toBe('idle');
+    expect(safePostMessage).not.toHaveBeenCalled();
+  });
+
+  it('does not skip request when the element itself is a resolvable content key', () => {
+    const { result } = renderHook(() => useTextFix());
+    const el = makeParagraph('teh');
+    el.setAttribute('data-dev-content-key', 'home.ticker[0].text');
+
+    act(() => {
+      result.current.request(el);
+    });
+
+    expect(result.current.state.status).toBe('loading');
+    expect(safePostMessage).toHaveBeenCalledTimes(1);
   });
 
   it('transitions to preview on TEXT_FIX_RESULT with changed:true and a real diff', () => {
@@ -261,6 +302,82 @@ describe('useTextFix', () => {
     expect(types).toContain('TEXT_UPDATED');
   });
 
+  it('accept() emits CONTENT_UPDATED with refreshOnSuccess for content-backed text, and never sends PREVIEW_REFRESH_REQUESTED itself', () => {
+    const { result } = renderHook(() => useTextFix());
+    const el = makeParagraph('teh');
+    el.setAttribute('data-dev-content-key', 'home.ticker[0].text');
+
+    act(() => {
+      result.current.request(el);
+    });
+    act(() => {
+      replyFromParent('TEXT_FIX_RESULT', lastRequestId(), { newText: 'the', changed: true });
+    });
+
+    (safePostMessage as unknown as { mockClear: () => void }).mockClear();
+
+    act(() => {
+      result.current.accept(el);
+    });
+
+    expect(result.current.state.status).toBe('idle');
+    const typesAfterAccept = (safePostMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(typesAfterAccept).toContain('TEXT_FIX_ACCEPTED');
+    expect(typesAfterAccept).toContain('CONTENT_UPDATED');
+    expect(typesAfterAccept).not.toContain('TEXT_UPDATED');
+    expect(typesAfterAccept).not.toContain('PREVIEW_REFRESH_REQUESTED');
+
+    const data = lastContentUpdatedData();
+    expect(data.refreshOnSuccess).toBe(true);
+    expect(data.commitId).toBeUndefined();
+
+    // The refresh is now the builder's responsibility on its own CONTENT_UPDATED
+    // lifecycle — accept() no longer listens for its own ack, so replaying one
+    // here must not trigger any further postMessage call.
+    act(() => {
+      const event = new MessageEvent('message', {
+        data: { type: 'CONTENT_EDIT_SUCCEEDED' },
+        source: window.parent as MessageEventSource,
+      });
+      window.dispatchEvent(event);
+    });
+    const typesAfterAck = (safePostMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(typesAfterAck).not.toContain('PREVIEW_REFRESH_REQUESTED');
+  });
+
+  it('accept() declines rather than emitting TEXT_UPDATED for a wrapper spanning content-backed fields', () => {
+    const { result } = renderHook(() => useTextFix());
+    const el = makeParagraph('teh');
+
+    act(() => {
+      result.current.request(el);
+    });
+    act(() => {
+      replyFromParent('TEXT_FIX_RESULT', lastRequestId(), { newText: 'the', changed: true });
+    });
+
+    // Mutated after request() so only accept()'s own guard is exercised.
+    const child = document.createElement('span');
+    child.setAttribute('data-dev-content-key-template', 'home.products[].title');
+    el.appendChild(child);
+    (safePostMessage as unknown as { mockClear: () => void }).mockClear();
+
+    act(() => {
+      result.current.accept(el);
+    });
+
+    expect(result.current.state.status).toBe('idle');
+    const calls = (safePostMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const types = calls.map((c) => (c[1] as { type: string }).type);
+    expect(types).toContain('TEXT_FIX_ACCEPTED');
+    expect(types).not.toContain('TEXT_UPDATED');
+    expect(types).not.toContain('CONTENT_UPDATED');
+  });
+
   it('accept() does not emit TEXT_UPDATED for Commerce-managed product text', () => {
     const { result } = renderHook(() => useTextFix());
     const el = makeParagraph('teh');
@@ -306,6 +423,30 @@ describe('useTextFix', () => {
     expect(calls.length).toBe(1);
     const [, payload] = calls[0] as [unknown, { type: string }];
     expect(payload.type).toBe('TEXT_FIX_REJECTED');
+  });
+
+  it('accept() no-ops while a manual inline edit is saving', () => {
+    const { result } = renderHook(({ saveStatus }: { saveStatus: 'idle' | 'saving' | 'saved' }) => useTextFix(saveStatus), {
+      initialProps: { saveStatus: 'saving' },
+    });
+    const el = makeParagraph('teh');
+
+    act(() => {
+      result.current.request(el);
+    });
+    act(() => {
+      replyFromParent('TEXT_FIX_RESULT', lastRequestId(), { newText: 'the', changed: true });
+    });
+    expect(result.current.state.status).toBe('preview');
+
+    (safePostMessage as unknown as { mockClear: () => void }).mockClear();
+
+    act(() => {
+      result.current.accept(el);
+    });
+
+    expect(result.current.state.status).toBe('preview');
+    expect(safePostMessage).not.toHaveBeenCalled();
   });
 
   it('reject() does not emit telemetry when not in preview state', () => {

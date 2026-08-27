@@ -29,7 +29,7 @@ import { handleMediaReplaceParentMessage } from "../utils/media-replace-messages
 import { collectMediaSlotDomMatches } from "../utils/media-slot-dom";
 import { discardMediaSlotPreviewStash, revertMediaSlotPreview } from "../utils/media-slot-preview";
 import { resolveExternalNavigationHref } from "../utils/link-follow";
-import { isClickable, isInsideNavSurface, isDevToolsElement, isManagedPath, hasManagedDocMarkup, FORM_TAGS } from "../utils/element-detection";
+import { isInteractiveTapTarget, isManagedPath, hasManagedDocMarkup } from "../utils/element-detection";
 import CarouselSlotEditNav from "./CarouselSlotEditNav";
 import { setCarouselSlotEdit, setCarouselToolbarPause } from "../utils/carousel-slot-edit";
 import { bindCarouselSlotPanelSync } from "../utils/carousel-slot-panel-sync";
@@ -53,7 +53,7 @@ export default function DevelopmentMode() {
   // page without the markup is NOT managed and keeps full inline editing.
   const isManagedDoc = isManagedPath(pathname) && hasManagedMarkup
 
-  const { hoveredElement, toolbarMode, setToolbarMode, handleBarMouseEnter, handleBarMouseLeave } = useEditMode(isEditModeActive && !isManagedDoc, cmsInlineEditEnabled, isMultiSelectActive)
+  const { hoveredElement, toolbarMode, setToolbarMode, handleBarMouseEnter, handleBarMouseLeave, saveStatus } = useEditMode(isEditModeActive && !isManagedDoc, cmsInlineEditEnabled, isMultiSelectActive)
 
   // Compliance docs: highlight + inline-edit field values and toggle boolean
   // sections, gated to edit mode like every other inline-editing affordance.
@@ -1417,9 +1417,18 @@ export default function DevelopmentMode() {
       setupSectionObserver()
     }
 
+    const handlePreviewTap = (e: MouseEvent): void => {
+      if (window.parent === window) return
+      const target = e.target
+      if (!(target instanceof Element)) return
+      if (isInteractiveTapTarget(target)) return
+      send({ type: 'PREVIEW_TAP' })
+    }
+
     // Listen for scroll and resize to keep cache fresh
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('resize', handleResize)
+    document.addEventListener('click', handlePreviewTap, true)
     // Listen for browser back/forward (popstate covers hash changes in modern browsers)
     window.addEventListener('popstate', onNavigate)
 
@@ -1714,6 +1723,7 @@ export default function DevelopmentMode() {
       window.removeEventListener('message', handleMessage)
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', handleResize)
+      document.removeEventListener('click', handlePreviewTap, true)
       window.removeEventListener('popstate', onNavigate)
       document.removeEventListener('DOMContentLoaded', setupSectionObserver)
       if (scrollTimeout) clearTimeout(scrollTimeout)
@@ -1748,10 +1758,7 @@ export default function DevelopmentMode() {
       // Managed compliance docs restrict editing to compliance fields; don't
       // prompt the builder to enter general edit mode from a click here.
       if (isManagedPath() && hasManagedDocMarkup()) return
-      if (isClickable(target)) return
-      if (isInsideNavSurface(target)) return
-      if (isDevToolsElement(target)) return
-      if (FORM_TAGS.has(target.tagName.toLowerCase())) return
+      if (isInteractiveTapTarget(target)) return
       send({ type: 'EDITABLE_ELEMENT_CLICKED_IN_PREVIEW', tagName: target.tagName.toLowerCase() })
     }
 
@@ -1793,6 +1800,7 @@ export default function DevelopmentMode() {
           onMouseEnter={handleBarMouseEnter}
           onMouseLeave={handleBarMouseLeave}
           onQuickEditModeChange={setQuickEditActive}
+          saveStatus={saveStatus}
         />
       )}
       <AnnotationMode isActive={isAnnotationModeActive} />

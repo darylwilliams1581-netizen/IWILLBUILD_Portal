@@ -97,10 +97,10 @@ describe("findEditableContainer", () => {
     expect(findEditableContainer(img as HTMLElement, true)).toBeNull();
   });
 
-  it("rejects elements containing <br>", () => {
+  it("allows editable elements containing <br>", () => {
     const root = html('<h1 data-dev-file="Test.tsx" data-dev-editable="text">Hello<br /><span>World</span></h1>');
     const h1 = root.querySelector("h1")!;
-    expect(findEditableContainer(h1, true)).toBeNull();
+    expect(findEditableContainer(h1, true)).toBe(h1);
   });
 
   it("lifts from <li> to parent <ul> when parent is editable", () => {

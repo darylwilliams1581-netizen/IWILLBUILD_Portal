@@ -12,8 +12,9 @@ vi.mock("../../utils/postMessage", () => ({
   safePostMessage: (...args: unknown[]) => postMessageSpy(...args),
 }));
 
+const sendSpy = vi.fn();
 vi.mock("../../utils/eventBus", () => ({
-  send: vi.fn(),
+  send: (...args: unknown[]) => sendSpy(...args),
   TextEditErrorCode: {},
 }));
 
@@ -60,6 +61,7 @@ import { useTextEditing } from "../useTextEditing";
 beforeEach(() => {
   vi.clearAllMocks();
   postMessageSpy.mockClear();
+  sendSpy.mockClear();
   document.body.replaceChildren();
 });
 
@@ -123,8 +125,8 @@ describe("useTextEditing — content-key save payload uses the resolved element"
       wrapper.dispatchEvent(new Event("blur"));
     });
 
-    expect(postMessageSpy).toHaveBeenCalledTimes(1);
-    const [, message] = postMessageSpy.mock.calls[0] as [unknown, { type: string; data: Record<string, unknown> }];
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const [message] = sendSpy.mock.calls[0] as [{ type: string; data: Record<string, unknown> }];
     expect(message.type).toBe("CONTENT_UPDATED");
     // Only present when isDerived is read off the resolved descendant (span);
     // reading it off the clicked wrapper — the bug this PR fixes — omits it.
