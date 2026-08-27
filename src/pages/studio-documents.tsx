@@ -7,12 +7,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Library, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText } from 'lucide-react';
 import GenerateJobReportModal from '@/components/studio/GenerateJobReportModal';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
-import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -118,13 +117,11 @@ function DocRow({
   index,
   onDelete,
   onShare,
-  showShareBtn
 }: {
   doc: DocTemplate;
   index: number;
   onDelete: (id: number) => void;
   onShare: (id: number) => void;
-  showShareBtn?: boolean;
 }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -209,10 +206,6 @@ function DocRow({
         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
           <ToolBtn icon={Copy} label="Duplicate" onClick={handleDuplicate} />
           <ToolBtn icon={Share2} label="Copy link" onClick={handleShare} />
-          {showShareBtn && <ToolBtn icon={Library} label="Share to Library" onClick={e => {
-          e.stopPropagation();
-          onShare(doc.id);
-        }} />}
           <ToolBtn icon={Pencil} label="Edit" onClick={e => {
           e.stopPropagation();
           openBuilder();
@@ -527,8 +520,6 @@ export default function StudioDocumentsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
-  const [shareDocId, setShareDocId] = useState<number | null>(null);
-  const shareDoc = templates.find(t => t.id === shareDocId);
 
   // ── Import state ─────────────────────────────────────────────────────────────
   const [showImporter, setShowImporter] = useState(false);
@@ -727,7 +718,7 @@ export default function StudioDocumentsPage() {
               }
             }
           }} initial="hidden" animate="visible" className="flex flex-col gap-2">
-                  {filtered.map((doc, i) => <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={id => setShareDocId(id)} showShareBtn={isPlatformOwner} />)}
+                  {filtered.map((doc, i) => <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={() => {}} />)}
                 </motion.div>}
             </div>
           </>}
@@ -740,11 +731,6 @@ export default function StudioDocumentsPage() {
         {/* ── Job Reports tab ── */}
         {pageTab === 'reports' && <JobReportsTab onGenerate={() => setShowReportModal(true)} templates={templates} />}
       </div>
-
-      {/* Share to Library modal */}
-      <AnimatePresence>
-        {shareDocId && shareDoc && <ShareToLibraryModal templateId={shareDocId} templateName={shareDoc.name} isPlatformOwner={isPlatformOwner} onClose={() => setShareDocId(null)} />}
-      </AnimatePresence>
 
       {/* Import modal */}
       {showImporter && importTemplateId !== null && <DocxImporter templateId={importTemplateId} hasExistingBlocks={false} onClose={() => {

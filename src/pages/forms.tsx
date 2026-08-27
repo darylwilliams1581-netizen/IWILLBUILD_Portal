@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Library, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Globe } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
-import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
 import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 
@@ -274,7 +273,6 @@ function TemplateCard({
   onEdit,
   onDelete,
   onShare,
-  onShareToLibrary,
   onComplete,
   isCompleting
 }: {
@@ -283,7 +281,6 @@ function TemplateCard({
   onEdit: () => void;
   onDelete: () => void;
   onShare: () => void;
-  onShareToLibrary?: () => void;
   onComplete?: () => void;
   isCompleting?: boolean;
 }) {
@@ -399,12 +396,6 @@ function TemplateCard({
                   <Link2 size={14} className="text-violet-500 shrink-0" />
                   <span className="font-medium">Public link</span>
                 </button>
-
-                {/* Share to Library */}
-                {onShareToLibrary && <button role="menuitem" onClick={() => menuAction(onShareToLibrary)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
-                    <Library size={14} className="text-violet-500 shrink-0" />
-                    <span className="font-medium">Share to Library</span>
-                  </button>}
 
                 <div className="h-px bg-slate-100 mx-2 my-1" />
 
@@ -814,7 +805,6 @@ export function FormsPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<FormTemplate | null>(null);
-  const [libraryShareTarget, setLibraryShareTarget] = useState<FormTemplate | null>(null);
   const [builderTemplateId, setBuilderTemplateId] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
@@ -1141,7 +1131,7 @@ export function FormsPage() {
                   <button onClick={() => setShowCreate(true)} className="w-full sm:w-auto self-start flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary min-h-[44px]">
                     <Plus size={15} /> New Form Template
                   </button>
-                  {templates.map(t => <TemplateCard key={t.id} t={t} onBuild={() => setBuilderTemplateId(t.id)} onEdit={() => setEditTarget(t)} onDelete={() => setDeleteTarget(t)} onShare={() => setShareTarget(t)} onShareToLibrary={isPlatformOwner ? () => setLibraryShareTarget(t) : undefined} onComplete={() => void handleComplete(t.id)} isCompleting={completingId === t.id} />)}
+                  {templates.map(t => <TemplateCard key={t.id} t={t} onBuild={() => setBuilderTemplateId(t.id)} onEdit={() => setEditTarget(t)} onDelete={() => setDeleteTarget(t)} onShare={() => setShareTarget(t)} onComplete={() => void handleComplete(t.id)} isCompleting={completingId === t.id} />)}
                 </motion.div>}
             </>}
 
@@ -1159,7 +1149,6 @@ export function FormsPage() {
         {editTarget && <TemplateModal mode="edit" initial={editTarget} onClose={() => setEditTarget(null)} onSave={handleEdit} saving={saving} isPlatformOwner={isPlatformOwner} />}
         {deleteTarget && <DeleteConfirm name={deleteTarget.name} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} deleting={deleting} />}
         {shareTarget && <ShareLinkModal templateId={shareTarget.id} templateName={shareTarget.name} onClose={() => setShareTarget(null)} />}
-        {libraryShareTarget && <ShareToLibraryModal templateId={libraryShareTarget.id} templateName={libraryShareTarget.name} isPlatformOwner={isPlatformOwner} sourceType="form" onClose={() => setLibraryShareTarget(null)} />}
 
         {/* ── Fill Form — template picker (step 1 of 2) ── */}
         {fillFormPickerOpen && <motion.div key="fill-form-picker-backdrop" initial={{
