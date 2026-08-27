@@ -273,16 +273,20 @@ function TemplateCard({
   onEdit,
   onDelete,
   onShare,
+  onShareToLibrary,
   onComplete,
-  isCompleting
+  isCompleting,
+  isPlatformOwner,
 }: {
   t: FormTemplate;
   onBuild: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onShareToLibrary?: () => void;
   onComplete?: () => void;
   isCompleting?: boolean;
+  isPlatformOwner?: boolean;
 }) {
   const meta = TYPE_META[t.formType];
   const [menuOpen, setMenuOpen] = useState(false);
@@ -396,6 +400,16 @@ function TemplateCard({
                   <Link2 size={14} className="text-violet-500 shrink-0" />
                   <span className="font-medium">Public link</span>
                 </button>
+
+                {isPlatformOwner && onShareToLibrary && (
+                  <>
+                    <div className="h-px bg-slate-100 mx-2 my-1" />
+                    <button role="menuitem" onClick={() => menuAction(onShareToLibrary)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                      <BookOpen size={14} className="text-emerald-500 shrink-0" />
+                      <span className="font-medium">Share to Library</span>
+                    </button>
+                  </>
+                )}
 
                 <div className="h-px bg-slate-100 mx-2 my-1" />
 
@@ -1316,6 +1330,26 @@ export function FormsPage() {
       setDeleting(false);
     }
   };
+
+  const [shareToLibraryMsg, setShareToLibraryMsg] = useState<{ id: number; msg: string; ok: boolean } | null>(null);
+  const handleShareToLibrary = async (templateId: number) => {
+    setShareToLibraryMsg(null);
+    try {
+      const r = await fetch(`/api/form-templates/${templateId}/publish-to-library`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      const d = await r.json() as { ok?: boolean; updated?: boolean; error?: string };
+      if (!r.ok) throw new Error(d.error ?? 'Failed to share');
+      setShareToLibraryMsg({ id: templateId, msg: d.updated ? 'Library entry updated.' : 'Shared to Global Library!', ok: true });
+    } catch (e) {
+      setShareToLibraryMsg({ id: templateId, msg: e instanceof Error ? e.message : 'Failed', ok: false });
+    }
+    setTimeout(() => setShareToLibraryMsg(null), 3500);
+  };
+
   if (builderTemplateId !== null) {
     return <div className="flex-1 min-h-0 overflow-y-auto">
         <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
@@ -1420,7 +1454,7 @@ export function FormsPage() {
                   <button onClick={() => setShowCreate(true)} className="w-full sm:w-auto self-start flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary min-h-[44px]">
                     <Plus size={15} /> New Form Template
                   </button>
-                  {templates.map(t => <TemplateCard key={t.id} t={t} onBuild={() => setBuilderTemplateId(t.id)} onEdit={() => setEditTarget(t)} onDelete={() => setDeleteTarget(t)} onShare={() => setShareTarget(t)} onComplete={() => void handleComplete(t.id)} isCompleting={completingId === t.id} />)}
+                  {templates.map(t => <TemplateCard key={t.id} t={t} onBuild={() => setBuilderTemplateId(t.id)} onEdit={() => setEditTarget(t)} onDelete={() => setDeleteTarget(t)} onShare={() => setShareTarget(t)} onShareToLibrary={isPlatformOwner ? () => void handleShareToLibrary(t.id) : undefined} isPlatformOwner={isPlatformOwner} onComplete={() => void handleComplete(t.id)} isCompleting={completingId === t.id} />)}
                 </motion.div>}
             </>}
 
@@ -1438,6 +1472,20 @@ export function FormsPage() {
         {editTarget && <TemplateModal mode="edit" initial={editTarget} onClose={() => setEditTarget(null)} onSave={handleEdit} saving={saving} isPlatformOwner={isPlatformOwner} />}
         {deleteTarget && <DeleteConfirm name={deleteTarget.name} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} deleting={deleting} />}
         {shareTarget && <ShareLinkModal templateId={shareTarget.id} templateName={shareTarget.name} onClose={() => setShareTarget(null)} />}
+
+        {/* Share to Library toast */}
+        {shareToLibraryMsg && (
+          <motion.div
+            key="share-to-library-toast"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold ${shareToLibraryMsg.ok ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}
+          >
+            {shareToLibraryMsg.ok ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+            {shareToLibraryMsg.msg}
+          </motion.div>
+        )}
 
         {/* ── Fill Form — template picker (step 1 of 2) ── */}
         {fillFormPickerOpen && <motion.div key="fill-form-picker-backdrop" initial={{

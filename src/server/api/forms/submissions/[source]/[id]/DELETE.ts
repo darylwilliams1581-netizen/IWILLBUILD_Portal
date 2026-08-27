@@ -19,8 +19,8 @@ import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../../lib/auth-middleware.js';
+import { getSecret } from '#airo/secrets';
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 
 const VALID_SOURCES = new Set(['internal', 'public']);
 
@@ -71,8 +71,10 @@ export default async function handler(req: Request, res: Response) {
   if (!result) return;
   const { session, profile } = result;
 
-  // Admin or owner only
-  if (profile.role !== 'admin' && profile.role !== 'owner') {
+  // Admin, owner (company role), or platform owner (by email)
+  const platformOwnerEmail = getSecret('PLATFORM_OWNER_EMAIL') ?? '';
+  const isPlatformOwner = !!platformOwnerEmail && session.user.email === platformOwnerEmail;
+  if (profile.role !== 'admin' && profile.role !== 'owner' && !isPlatformOwner) {
     return res.status(403).json({ error: 'Only admins and owners can permanently delete submissions.' });
   }
 
