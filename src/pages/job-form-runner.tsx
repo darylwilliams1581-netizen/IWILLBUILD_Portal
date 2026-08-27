@@ -19,7 +19,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, XCircle, Printer, Mail } from 'lucide-react';
+import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, XCircle } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
@@ -275,41 +275,15 @@ export default function JobFormRunnerPage() {
       }}>
           <div className="max-w-2xl mx-auto px-4 pt-3 pb-1">
 
-            {isReadOnly ? (/* ── Completed view: status pill + Print + Email + Edit ── */
-          <div className="flex items-center gap-2 h-11">
+            {isReadOnly ? (/* ── Completed view: status pill + Edit ── */
+          <div className="flex items-center justify-between gap-3 h-11">
                 {/* Completed pill */}
                 <span className="inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
                   <CheckCircle2 size={14} /> Completed
                 </span>
 
-                <div className="flex-1" />
-
-                {/* Print */}
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center justify-center gap-1.5 h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-colors shrink-0"
-                  title="Print this form"
-                >
-                  <Printer size={14} />
-                  Print
-                </button>
-
-                {/* Email */}
-                <button
-                  onClick={() => {
-                    const subject = encodeURIComponent(`Form: ${templateName}${job ? ` — ${job.name ?? `Job #${jobId}`}` : ''}`);
-                    const body = encodeURIComponent(`Please find the completed form attached.\n\nForm: ${templateName}\nCompleted: ${submission?.updatedAt ? new Date(submission.updatedAt).toLocaleString() : ''}`);
-                    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-                  }}
-                  className="flex items-center justify-center gap-1.5 h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-colors shrink-0"
-                  title="Email this form"
-                >
-                  <Mail size={14} />
-                  Email
-                </button>
-
                 {/* Edit / Reopen */}
-                <button onClick={() => void handleReopen()} disabled={shellReopening} className="flex items-center justify-center gap-2 h-11 px-4 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-sm font-bold text-amber-700 disabled:opacity-50 transition-colors shrink-0">
+                <button onClick={() => void handleReopen()} disabled={shellReopening} className="flex items-center justify-center gap-2 h-11 px-5 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-sm font-bold text-amber-700 disabled:opacity-50 transition-colors">
                   {shellReopening ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
                   Edit
                 </button>
