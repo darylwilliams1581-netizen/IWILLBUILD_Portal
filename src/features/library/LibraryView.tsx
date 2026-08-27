@@ -24,7 +24,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BookOpen, Search, Download, CheckCircle2, Loader2, Filter,
   ChevronDown, Star, RefreshCw, BookMarked, FileText, Shield,
-  ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2,
+  ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2, Pencil, X, Save,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -262,6 +262,60 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
       setInstallMsg({ id: item.id, msg: 'Install failed. Please try again.', ok: false });
     } finally {
       setInstalling(null);
+    }
+  }
+
+  // ── Edit installed item ───────────────────────────────────────────────────
+  const [editItem, setEditItem] = useState<InstalledItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function openEdit(item: InstalledItem) {
+    setEditItem(item);
+    setEditTitle(item.title);
+    setEditCategory(item.category ?? '');
+    setEditContent('');
+    setEditError(null);
+  }
+
+  async function handleEditSave() {
+    if (!editItem) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const body: Record<string, string> = {};
+      if (editTitle.trim()) body.title = editTitle.trim();
+      if (editCategory.trim() !== (editItem.category ?? '')) body.category = editCategory.trim();
+      if (editContent.trim()) body.content = editContent.trim();
+
+      if (Object.keys(body).length === 0) {
+        setEditItem(null);
+        return;
+      }
+
+      const res = await fetch(`/api/library/items/${editItem.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Save failed');
+
+      // Update local state
+      setInstalled(prev => prev.map(i =>
+        i.id === editItem.id
+          ? { ...i, title: editTitle.trim() || i.title, category: editCategory.trim() || i.category }
+          : i
+      ));
+      setEditItem(null);
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : 'Save failed. Please try again.');
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -636,6 +690,13 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                         </span>
                         <CheckCircle2 size={15} className="text-emerald-500" />
                         <button
+                          onClick={() => openEdit(item)}
+                          title="Edit your copy"
+                          className="p-1.5 rounded-md text-slate-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
                           onClick={() => void handleUninstall(item)}
                           disabled={uninstalling === item.source_item_id}
                           title="Uninstall"
@@ -655,6 +716,94 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
 
         </div>
       </div>
+
+      {/* ── Edit installed item modal ─────────────────────────────────────── */}
+      {editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditItem(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Pencil size={16} className="text-violet-500" />
+                <h2 className="text-base font-bold text-slate-800">Edit Installed Item</h2>
+              </div>
+              <button onClick={() => setEditItem(null)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 flex flex-col gap-4">
+              <p className="text-xs text-slate-400">
+                Editing your company's copy only — the global library item is not affected.
+              </p>
+
+              {/* Title */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-600">Title</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+                  placeholder="Item title"
+                />
+              </div>
+
+              {/* Category */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-600">Category</label>
+                <input
+                  type="text"
+                  value={editCategory}
+                  onChange={e => setEditCategory(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+                  placeholder="e.g. Electrical, Safety, HR"
+                />
+              </div>
+
+              {/* Content */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-600">Content / Notes</label>
+                <textarea
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  rows={4}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 resize-none"
+                  placeholder="Leave blank to keep existing content"
+                />
+                <p className="text-[11px] text-slate-400">Leave blank to keep the existing content unchanged.</p>
+              </div>
+
+              {editError && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
+                  <AlertCircle size={13} />
+                  {editError}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+              <button
+                onClick={() => setEditItem(null)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleEditSave()}
+                disabled={editSaving}
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
