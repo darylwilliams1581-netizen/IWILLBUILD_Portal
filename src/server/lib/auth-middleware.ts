@@ -56,7 +56,7 @@ function checkCustomExpiry(req: Request, res: Response): boolean {
     res.status(401).json({
       error: 'Session expired',
       code: 'SESSION_EXPIRED',
-      reason: 'Daily security cutoff reached. Please sign in again.',
+      reason: 'Your session has expired. Please sign in again.',
     });
     return true; // response sent — caller must return
   }
