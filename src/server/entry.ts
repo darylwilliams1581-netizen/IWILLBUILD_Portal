@@ -527,6 +527,7 @@ import lens_photos_get_494 from "./api/lens/photos/GET";
 import lens_photos_export_zip_post_495 from "./api/lens/photos/export-zip/POST";
 import lens_photos_photoId_download_get_496 from "./api/lens/photos/[photoId]/download/GET";
 import library_items_get_497 from "./api/library/items/GET";
+import library_check_published_get from "./api/library/check-published/GET";
 import library_items_id_get_498 from "./api/library/items/[id]/GET";
 import library_items_id_patch_499 from "./api/library/items/[id]/PATCH";
 import library_items_id_download_get_500 from "./api/library/items/[id]/download/GET";
@@ -1655,6 +1656,8 @@ async function runStartupMigrations() {
     { table: 'library_items', column: 'file_mime',        definition: 'VARCHAR(100) NULL' },
     { table: 'library_items', column: 'builder_json',     definition: 'LONGTEXT NULL' },
     { table: 'library_items', column: 'download_count',   definition: 'INT NOT NULL DEFAULT 0' },
+    // source_template_ref — "type:id" e.g. "form:42" — used for upsert on republish
+    { table: 'library_items', column: 'source_template_ref', definition: "VARCHAR(100) NULL DEFAULT NULL" },
     // ── company_library_items: customised flag ────────────────────────────────
     { table: 'company_library_items', column: 'customised', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── fleet_driver_sessions: analytics summary columns ─────────────────────
@@ -3102,6 +3105,25 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── library_items: unique index on source_template_ref ───────────────────────
+  // Allows upsert (INSERT … ON DUPLICATE KEY UPDATE) when republishing a template.
+  try {
+    const [libIdxRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.STATISTICS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'library_items'
+            AND INDEX_NAME = 'uq_lib_source_template_ref'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(libIdxRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(
+        `ALTER TABLE library_items ADD UNIQUE INDEX uq_lib_source_template_ref (source_template_ref)`
+      ));
+      console.log('[startup-migration] library_items.uq_lib_source_template_ref index added');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] library_items source_template_ref index:', migrationErrMsg(e));
+  }
+
   // ── sms_verification_codes: phone column ──────────────────────────────────────
   // Added after initial table creation — stores the phone number the code was sent to
   try {
@@ -3700,6 +3722,7 @@ app.get("/api/lens/photos", lens_photos_get_494);
 app.post("/api/lens/photos/export-zip", lens_photos_export_zip_post_495);
 app.get("/api/lens/photos/:photoId/download", lens_photos_photoId_download_get_496);
 app.get("/api/library/items", library_items_get_497);
+app.get("/api/library/check-published", library_check_published_get);
 app.get("/api/library/items/:id", library_items_id_get_498);
 app.patch("/api/library/items/:id", library_items_id_patch_499);
 app.get("/api/library/items/:id/download", library_items_id_download_get_500);

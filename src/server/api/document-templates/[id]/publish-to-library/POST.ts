@@ -64,16 +64,19 @@ export default async function handler(req: Request, res: Response) {
   const builderJson = template.builder_json ?? '{"blocks":[]}';
 
   const safe = (s: string) => s.replace(/'/g, "''");
+  const sourceRef = `document:${templateId}`;
 
   try {
     const [result] = await db.execute(sql.raw(
       `INSERT INTO library_items (
+         source_template_ref,
          title, type, category, discipline, summary, tags, builder_json,
          status, visibility, version,
          install_count, download_count, rating_sum, rating_count,
          created_at, updated_at
        )
        VALUES (
+         '${safe(sourceRef)}',
          '${safe(title)}',
          '${safe(type)}',
          ${category   ? `'${safe(category)}'`   : 'NULL'},
@@ -86,11 +89,30 @@ export default async function handler(req: Request, res: Response) {
          '${safe(version)}',
          0, 0, 0, 0,
          NOW(), NOW()
-       )`
+       )
+       ON DUPLICATE KEY UPDATE
+         title        = VALUES(title),
+         type         = VALUES(type),
+         category     = VALUES(category),
+         discipline   = VALUES(discipline),
+         summary      = VALUES(summary),
+         tags         = VALUES(tags),
+         builder_json = VALUES(builder_json),
+         version      = VALUES(version),
+         status       = 'active',
+         visibility   = 'public',
+         updated_at   = NOW()`
     )) as unknown as [{ insertId: number }, unknown];
 
-    const libraryItemId = (result as unknown as { insertId: number }).insertId;
-    return res.json({ ok: true, libraryItemId });
+    let libraryItemId = (result as unknown as { insertId: number }).insertId;
+    if (!libraryItemId) {
+      const [refRows] = await db.execute(sql.raw(
+        `SELECT id FROM library_items WHERE source_template_ref = '${safe(sourceRef)}' LIMIT 1`
+      )) as unknown as [Array<{ id: number }>, unknown];
+      libraryItemId = refRows?.[0]?.id ?? 0;
+    }
+
+    return res.json({ ok: true, libraryItemId, updated: !(result as unknown as { insertId: number }).insertId });
   } catch (err) {
     console.error('publish-to-library error:', err);
     return res.status(500).json({ error: 'Failed to publish to library' });

@@ -87,16 +87,20 @@ export default async function handler(req: Request, res: Response) {
   const tags       = (body.tags ?? '').trim() || null;
 
   const safe = (s: string) => s.replace(/'/g, "''");
+  // Stable ref used for upsert — one library entry per source template
+  const sourceRef = `form:${templateId}`;
 
   try {
     const [result] = await db.execute(sql.raw(
       `INSERT INTO library_items (
+         source_template_ref,
          title, type, category, discipline, summary, tags, builder_json,
          status, visibility, version,
          install_count, download_count, rating_sum, rating_count,
          created_at, updated_at
        )
        VALUES (
+         '${safe(sourceRef)}',
          '${safe(title)}',
          '${safe(type)}',
          ${category   ? `'${safe(category)}'`   : 'NULL'},
@@ -109,11 +113,33 @@ export default async function handler(req: Request, res: Response) {
          '${safe(version)}',
          0, 0, 0, 0,
          NOW(), NOW()
-       )`
-    )) as unknown as [{ insertId: number }, unknown];
+       )
+       ON DUPLICATE KEY UPDATE
+         title        = VALUES(title),
+         type         = VALUES(type),
+         category     = VALUES(category),
+         discipline   = VALUES(discipline),
+         summary      = VALUES(summary),
+         tags         = VALUES(tags),
+         builder_json = VALUES(builder_json),
+         version      = VALUES(version),
+         status       = 'active',
+         visibility   = 'public',
+         updated_at   = NOW()`
+    )) as unknown as [{ insertId: number; affectedRows: number }, unknown];
 
     const libraryItemId = (result as unknown as { insertId: number }).insertId;
-    return res.json({ ok: true, libraryItemId });
+
+    // On UPDATE, insertId is 0 — fetch the real id via the ref
+    let finalId = libraryItemId;
+    if (!finalId) {
+      const [refRows] = await db.execute(sql.raw(
+        `SELECT id FROM library_items WHERE source_template_ref = '${safe(sourceRef)}' LIMIT 1`
+      )) as unknown as [Array<{ id: number }>, unknown];
+      finalId = refRows?.[0]?.id ?? 0;
+    }
+
+    return res.json({ ok: true, libraryItemId: finalId, updated: !libraryItemId });
   } catch (err) {
     console.error('form-templates publish-to-library error:', err);
     return res.status(500).json({ error: 'Failed to publish to library' });
