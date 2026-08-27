@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText, Library } from 'lucide-react';
 import GenerateJobReportModal from '@/components/studio/GenerateJobReportModal';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
