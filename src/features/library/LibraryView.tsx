@@ -2,9 +2,10 @@
  * LibraryView — Reusable Library feature component
  *
  * Contains all reusable Library functionality:
- *   - Browse and Installed tabs
- *   - Search and type filter
- *   - Install / uninstall / delete (platform-owner) handlers
+ *   - Browse tab with search and type filter
+ *   - Download handler — writes directly into the company's real template tables
+ *     (form_templates, swms_templates, document_templates) so the user edits
+ *     the downloaded copy in Forms / Safety / Documents like any other template.
  *   - Loading, error and empty states
  *   - Permission behaviour (isPlatformOwner delete gate)
  *
@@ -23,8 +24,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BookOpen, Search, Download, CheckCircle2, Loader2, Filter,
-  ChevronDown, Star, RefreshCw, BookMarked, FileText, Shield,
-  ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2, Pencil, X, Save,
+  ChevronDown, Star, RefreshCw, FileText, Shield,
+  ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2, ArrowRight,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
@@ -53,20 +54,6 @@ export interface Pagination {
   page: number;
   limit: number;
   pages: number;
-}
-
-export interface InstalledItem {
-  id: number;
-  source_item_id: number;
-  type: string;
-  category: string | null;
-  title: string;
-  source_version: string;
-  update_available: number;
-  installed_at: string;
-  updated_at: string;
-  current_source_version: string | null;
-  source_title: string | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -151,17 +138,13 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(initialTypeFilter ?? '');
   const [page, setPage] = useState(1);
-
-  // ── Installed tab ─────────────────────────────────────────────────────────
-  const [tab, setTab] = useState<'browse' | 'installed'>('browse');
-  const [installed, setInstalled] = useState<InstalledItem[]>([]);
-  const [installedLoading, setInstalledLoading] = useState(false);
-
-  // ── Install state ─────────────────────────────────────────────────────────
-  const [installing, setInstalling] = useState<number | null>(null);
-  const [installedIds, setInstalledIds] = useState<Set<number>>(new Set());
-  const [installMsg, setInstallMsg] = useState<{ id: number; msg: string; ok: boolean } | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Download state ────────────────────────────────────────────────────────
+  const [downloading, setDownloading] = useState<number | null>(null);
+  const [downloadMsg, setDownloadMsg] = useState<{
+    id: number; msg: string; ok: boolean; redirectTarget?: string; redirectLabel?: string;
+  } | null>(null);
 
   // ── Fetch browse items ────────────────────────────────────────────────────
   const fetchItems = useCallback(async (opts: {
@@ -196,26 +179,9 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
     }
   }, []);
 
-  // ── Fetch installed ───────────────────────────────────────────────────────
-  const fetchInstalled = useCallback(async () => {
-    setInstalledLoading(true);
-    try {
-      const res = await fetch('/api/library/my-installed?limit=200', { credentials: 'include' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { ok: boolean; items: InstalledItem[] };
-      setInstalled(data.items ?? []);
-      setInstalledIds(new Set((data.items ?? []).map(i => i.source_item_id)));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setInstalledLoading(false);
-    }
-  }, []);
-
   // Initial load
   useEffect(() => {
     void fetchItems({ search, type: typeFilter, page });
-    void fetchInstalled();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -238,109 +204,31 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // ── Install handler ───────────────────────────────────────────────────────
-  async function handleInstall(item: LibraryItem) {
-    setInstalling(item.id);
-    setInstallMsg(null);
+  // ── Download handler ──────────────────────────────────────────────────────
+  async function handleDownload(item: LibraryItem) {
+    setDownloading(item.id);
+    setDownloadMsg(null);
     try {
       const res = await fetch(`/api/library/items/${item.id}/install`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
-      const data = (await res.json()) as { ok: boolean; message: string; alreadyInstalled?: boolean };
-      setInstallMsg({
-        id: item.id,
-        msg: data.message ?? (res.ok ? 'Installed.' : 'Failed.'),
-        ok: res.ok,
-      });
-      if (res.ok) {
-        setInstalledIds(prev => new Set([...prev, item.id]));
-        void fetchInstalled();
-      }
-    } catch {
-      setInstallMsg({ id: item.id, msg: 'Install failed. Please try again.', ok: false });
-    } finally {
-      setInstalling(null);
-    }
-  }
-
-  // ── Edit installed item ───────────────────────────────────────────────────
-  const [editItem, setEditItem] = useState<InstalledItem | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
-
-  async function openEdit(item: InstalledItem) {
-    setEditItem(item);
-    setEditTitle(item.title);
-    setEditCategory(item.category ?? '');
-    setEditError(null);
-  }
-
-  async function handleEditSave() {
-    if (!editItem) return;
-    if (!editTitle.trim()) {
-      setEditError('Title cannot be empty.');
-      return;
-    }
-    setEditSaving(true);
-    setEditError(null);
-    try {
-      const body: Record<string, string> = {
-        title: editTitle.trim(),
-        category: editCategory.trim(),
+      const data = (await res.json()) as {
+        ok: boolean; message: string;
+        redirectTarget?: string; redirectLabel?: string;
       };
-
-      const res = await fetch(`/api/library/items/${editItem.id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      setDownloadMsg({
+        id: item.id,
+        msg: data.message ?? (res.ok ? 'Downloaded.' : 'Failed.'),
+        ok: res.ok,
+        redirectTarget: data.redirectTarget,
+        redirectLabel: data.redirectLabel,
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Save failed');
-
-      // Update local list
-      setInstalled(prev => prev.map(i =>
-        i.id === editItem.id
-          ? { ...i, title: editTitle.trim(), category: editCategory.trim() || i.category }
-          : i
-      ));
-      setEditItem(null);
-    } catch (e) {
-      setEditError(e instanceof Error ? e.message : 'Save failed. Please try again.');
-    } finally {
-      setEditSaving(false);
-    }
-  }
-
-  // ── Uninstall handler ─────────────────────────────────────────────────────
-  const [uninstalling, setUninstalling] = useState<number | null>(null);
-  async function handleUninstall(item: InstalledItem) {
-    if (!confirm(`Remove "${item.title}" from your installed items? Your edits will be lost.`)) return;
-    setUninstalling(item.source_item_id);
-    try {
-      const res = await fetch(`/api/library/items/${item.source_item_id}/install`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        setInstalled(prev => prev.filter(i => i.source_item_id !== item.source_item_id));
-        setInstalledIds(prev => {
-          const s = new Set(prev);
-          s.delete(item.source_item_id);
-          return s;
-        });
-      } else {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        alert(data.error ?? 'Uninstall failed. Please try again.');
-      }
     } catch {
-      alert('Network error — could not uninstall item.');
+      setDownloadMsg({ id: item.id, msg: 'Download failed. Please try again.', ok: false });
     } finally {
-      setUninstalling(null);
+      setDownloading(null);
     }
   }
 
@@ -354,11 +242,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
       });
       if (res.ok) {
         setItems(prev => prev.filter(i => i.id !== item.id));
-        setInstalledIds(prev => {
-          const s = new Set(prev);
-          s.delete(item.id);
-          return s;
-        });
+        if (downloadMsg?.id === item.id) setDownloadMsg(null);
       } else {
         alert('Delete failed. Please try again.');
       }
@@ -382,281 +266,90 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Content Library</h1>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  Browse and install templates into your company. Your installed copies are fully editable.
+                  Browse templates and download them into your account. Edit and tweak them like any template you created yourself.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* ── Tabs ───────────────────────────────────────────────────── */}
-          <div className="flex gap-1 bg-slate-100 border border-slate-200 rounded-xl p-1 w-fit">
-            {(['browse', 'installed'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => {
-                  setTab(t);
-                  if (t === 'installed') void fetchInstalled();
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  tab === t
-                    ? 'bg-violet-500 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+          {/* ── Filters ────────────────────────────────────────────────── */}
+          <div className="flex flex-wrap gap-3">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search title, summary, tags…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400"
+              />
+            </div>
+
+            {/* Type filter */}
+            <div className="relative">
+              <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <select
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+                className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30"
               >
-                {t === 'browse' ? (
-                  <span className="flex items-center gap-1.5"><BookOpen size={14} />Browse</span>
-                ) : (
-                  <span className="flex items-center gap-1.5">
-                    <BookMarked size={14} />
-                    Installed
-                    {installedIds.size > 0 && (
-                      <span className="bg-violet-100 text-violet-700 text-xs px-1.5 py-0.5 rounded-full">
-                        {installedIds.size}
-                      </span>
-                    )}
-                  </span>
-                )}
-              </button>
-            ))}
+                {ITEM_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Refresh */}
+            <button
+              onClick={() => void fetchItems({ search, type: typeFilter, page })}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            </button>
           </div>
 
-          {/* ── Browse tab ─────────────────────────────────────────────── */}
-          {tab === 'browse' && (
-            <div className="space-y-4">
-              {/* Filters */}
-              <div className="flex flex-wrap gap-3">
-                {/* Search */}
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search title, summary, tags…"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400"
-                  />
-                </div>
-
-                {/* Type filter */}
-                <div className="relative">
-                  <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <select
-                    value={typeFilter}
-                    onChange={e => setTypeFilter(e.target.value)}
-                    className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30"
-                  >
-                    {ITEM_TYPES.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-
-                {/* Refresh */}
-                <button
-                  onClick={() => void fetchItems({ search, type: typeFilter, page })}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                </button>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
-                  <AlertCircle size={15} />
-                  {error}
-                </div>
-              )}
-
-              {/* Results count */}
-              {!loading && !error && (
-                <p className="text-xs text-slate-400">
-                  {pagination.total === 0
-                    ? 'No items found'
-                    : `${pagination.total} item${pagination.total !== 1 ? 's' : ''} — page ${pagination.page} of ${pagination.pages}`}
-                </p>
-              )}
-
-              {/* Loading skeleton */}
-              {loading && (
-                <div className="flex flex-col gap-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 animate-pulse">
-                      <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Items list */}
-              {!loading && items.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {items.map(item => {
-                    const isInstalled = installedIds.has(item.id);
-                    const isInstalling = installing === item.id;
-                    const msg = installMsg?.id === item.id ? installMsg : null;
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-white border border-border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm transition-all duration-150"
-                      >
-                        {/* Type icon */}
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-100 border border-slate-200">
-                          {(() => {
-                            const Icon = TYPE_ICONS[item.type] ?? BookOpen;
-                            return <Icon size={14} className="text-slate-500" />;
-                          })()}
-                        </div>
-
-                        {/* Title + meta */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-slate-800 truncate">{item.title}</span>
-                            <TypeBadge type={item.type} />
-                            {item.category && (
-                              <span className="text-xs text-slate-400 hidden sm:inline">{item.category}</span>
-                            )}
-                          </div>
-                          {item.summary && (
-                            <p className="text-xs text-slate-500 truncate mt-0.5">{item.summary}</p>
-                          )}
-                        </div>
-
-                        {/* Right: rating + install + download */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <StarRating avg={Number(item.avg_rating)} count={item.rating_count} />
-                          <span className="text-xs text-slate-400 hidden md:flex items-center gap-1">
-                            <Download size={10} />{item.install_count}
-                          </span>
-
-                          {/* Download original file if available */}
-                          {!!item.has_file && (
-                            <a
-                              href={`/api/library/items/${item.id}/download`}
-                              download={item.source_file_name ?? undefined}
-                              title={`Download ${item.source_file_name ?? 'original file'}`}
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <Download size={11} />
-                              <span className="hidden sm:inline">Download</span>
-                            </a>
-                          )}
-
-                          {isInstalled ? (
-                            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                              <CheckCircle2 size={13} />
-                              Installed
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => void handleInstall(item)}
-                              disabled={isInstalling}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
-                            >
-                              {isInstalling ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                              {isInstalling ? 'Installing…' : 'Install'}
-                            </button>
-                          )}
-
-                          {/* Developer-only delete */}
-                          {isPlatformOwner && (
-                            <button
-                              onClick={() => void handleDelete(item)}
-                              title="Delete from Global Library"
-                              className="p-1.5 rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Install message */}
-                        {msg && (
-                          <p className={`text-xs px-2 py-1 rounded ${msg.ok ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
-                            {msg.msg}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Empty state */}
-              {!loading && !error && items.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                  <BookOpen size={36} className="text-slate-300" />
-                  <p className="text-slate-500 text-sm">No library items found.</p>
-                  {(search || typeFilter) && (
-                    <button
-                      onClick={() => { setSearch(''); setTypeFilter(''); }}
-                      className="text-xs text-violet-600 hover:text-violet-700 underline"
-                    >
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Pagination */}
-              {pagination.pages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page <= 1 || loading}
-                    className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-xs text-slate-400">
-                    Page {pagination.page} of {pagination.pages}
-                  </span>
-                  <button
-                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-                    disabled={page >= pagination.pages || loading}
-                    className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+          {/* ── Error ──────────────────────────────────────────────────── */}
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+              <AlertCircle size={15} />
+              {error}
             </div>
           )}
 
-          {/* ── Installed tab ───────────────────────────────────────────── */}
-          {tab === 'installed' && (
-            <div className="space-y-4">
-              {installedLoading && (
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <Loader2 size={14} className="animate-spin" />
-                  Loading installed items…
-                </div>
-              )}
+          {/* ── Results count ───────────────────────────────────────────── */}
+          {!loading && !error && (
+            <p className="text-xs text-slate-400">
+              {pagination.total === 0
+                ? 'No items found'
+                : `${pagination.total} item${pagination.total !== 1 ? 's' : ''} — page ${pagination.page} of ${pagination.pages}`}
+            </p>
+          )}
 
-              {!installedLoading && installed.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                  <BookMarked size={36} className="text-slate-300" />
-                  <p className="text-slate-500 text-sm">No items installed yet.</p>
-                  <button
-                    onClick={() => setTab('browse')}
-                    className="text-xs text-violet-600 hover:text-violet-700 underline"
-                  >
-                    Browse the library
-                  </button>
+          {/* ── Loading skeleton ────────────────────────────────────────── */}
+          {loading && (
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 animate-pulse">
+                  <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-slate-100 rounded w-1/2" />
                 </div>
-              )}
+              ))}
+            </div>
+          )}
 
-              {!installedLoading && installed.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {installed.map(item => (
-                    <div
-                      key={item.id}
-                      className="bg-white border border-border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm transition-all duration-150"
-                    >
+          {/* ── Items list ──────────────────────────────────────────────── */}
+          {!loading && items.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {items.map(item => {
+                const isDownloading = downloading === item.id;
+                const msg = downloadMsg?.id === item.id ? downloadMsg : null;
+                return (
+                  <div key={item.id} className="flex flex-col">
+                    <div className="bg-white border border-border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm transition-all duration-150">
+                      {/* Type icon */}
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-100 border border-slate-200">
                         {(() => {
                           const Icon = TYPE_ICONS[item.type] ?? BookOpen;
@@ -664,153 +357,130 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                         })()}
                       </div>
 
+                      {/* Title + meta */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-slate-800 truncate">{item.title}</span>
                           <TypeBadge type={item.type} />
-                          {item.update_available ? (
-                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
-                              Update available
-                            </span>
-                          ) : (
-                            <span className="text-xs text-slate-400">v{item.source_version}</span>
+                          {item.category && (
+                            <span className="text-xs text-slate-400 hidden sm:inline">{item.category}</span>
                           )}
                         </div>
-                        {item.category && (
-                          <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>
+                        {item.summary && (
+                          <p className="text-xs text-slate-500 truncate mt-0.5">{item.summary}</p>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 flex-shrink-0 text-xs text-slate-400">
-                        <span className="hidden sm:block">
-                          Installed {new Date(item.installed_at).toLocaleDateString('en-AU')}
+                      {/* Right: rating + download count + actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <StarRating avg={Number(item.avg_rating)} count={item.rating_count} />
+                        <span className="text-xs text-slate-400 hidden md:flex items-center gap-1">
+                          <Download size={10} />{item.install_count}
                         </span>
-                        <CheckCircle2 size={15} className="text-emerald-500" />
+
+                        {/* Download original file if available */}
+                        {!!item.has_file && (
+                          <a
+                            href={`/api/library/items/${item.id}/download`}
+                            download={item.source_file_name ?? undefined}
+                            title={`Download ${item.source_file_name ?? 'original file'}`}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <Download size={11} />
+                            <span className="hidden sm:inline">File</span>
+                          </a>
+                        )}
+
+                        {/* Download into templates */}
                         <button
-                          onClick={() => void openEdit(item)}
-                          title="Edit your copy"
-                          className="p-1.5 rounded-md text-slate-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                          onClick={() => void handleDownload(item)}
+                          disabled={isDownloading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
                         >
-                          <Pencil size={13} />
+                          {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                          {isDownloading ? 'Downloading…' : 'Download'}
                         </button>
-                        <button
-                          onClick={() => void handleUninstall(item)}
-                          disabled={uninstalling === item.source_item_id}
-                          title="Uninstall"
-                          className="p-1.5 rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
-                        >
-                          {uninstalling === item.source_item_id
-                            ? <Loader2 size={13} className="animate-spin" />
-                            : <Trash2 size={13} />}
-                        </button>
+
+                        {/* Platform-owner delete */}
+                        {isPlatformOwner && (
+                          <button
+                            onClick={() => void handleDelete(item)}
+                            title="Delete from Global Library"
+                            className="p-1.5 rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Download success / error message */}
+                    {msg && (
+                      <div className={`mt-1 mx-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
+                        msg.ok
+                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                          : 'bg-red-50 border border-red-200 text-red-600'
+                      }`}>
+                        {msg.ok ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+                        <span className="flex-1">{msg.msg}</span>
+                        {msg.ok && msg.redirectTarget && (
+                          <a
+                            href={msg.redirectTarget}
+                            className="flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-900 underline"
+                          >
+                            Go to {msg.redirectLabel} <ArrowRight size={11} />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Empty state ─────────────────────────────────────────────── */}
+          {!loading && !error && items.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <BookOpen size={36} className="text-slate-300" />
+              <p className="text-slate-500 text-sm">No library items found.</p>
+              {(search || typeFilter) && (
+                <button
+                  onClick={() => { setSearch(''); setTypeFilter(''); }}
+                  className="text-xs text-violet-600 hover:text-violet-700 underline"
+                >
+                  Clear filters
+                </button>
               )}
+            </div>
+          )}
+
+          {/* ── Pagination ──────────────────────────────────────────────── */}
+          {pagination.pages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+                className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-slate-400">
+                Page {pagination.page} of {pagination.pages}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                disabled={page >= pagination.pages || loading}
+                className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
+              >
+                Next
+              </button>
             </div>
           )}
 
         </div>
       </div>
-
-      {/* ── Edit installed item modal ─────────────────────────────────────── */}
-      {editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !editSaving && setEditItem(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10">
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Pencil size={16} className="text-violet-500" />
-                <div>
-                  <h2 className="text-base font-bold text-slate-800">Edit Installed Item</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Rename or recategorise your company's copy.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditItem(null)}
-                disabled={editSaving}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-40"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-5 flex flex-col gap-4">
-
-              {/* Type badge */}
-              <div className="flex items-center gap-2">
-                <TypeBadge type={editItem.type} />
-                {editItem.update_available ? (
-                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Update available</span>
-                ) : null}
-              </div>
-
-              {/* Title */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                  placeholder="Item title"
-                  autoFocus
-                />
-              </div>
-
-              {/* Category */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Category</label>
-                <input
-                  type="text"
-                  value={editCategory}
-                  onChange={e => setEditCategory(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                  placeholder="e.g. Electrical, Safety, HR"
-                />
-              </div>
-
-              {/* Info callout — content editing */}
-              <div className="flex items-start gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs text-slate-500">
-                <AlertCircle size={13} className="text-slate-400 mt-0.5 shrink-0" />
-                <span>
-                  To fix the form content, <strong className="text-slate-700">uninstall this item</strong> using the trash icon, correct the original in <strong className="text-slate-700">Forms → Share to Library</strong>, then reinstall it from Browse.
-                </span>
-              </div>
-
-              {editError && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
-                  <AlertCircle size={13} />
-                  {editError}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={() => setEditItem(null)}
-                disabled={editSaving}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => void handleEditSave()}
-                disabled={editSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
-              >
-                {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                {editSaving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
