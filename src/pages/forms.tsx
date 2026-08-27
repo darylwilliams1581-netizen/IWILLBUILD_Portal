@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Archive, RotateCcw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import { usePermissions } from '@/lib/usePermissions';
@@ -552,7 +552,76 @@ interface Submission {
   completed_at: string;
   answers_json: string | null;
   form_route: string | null;
+  archived_at: string | null;
+  archived_by: string | null;
+  archive_reason: string | null;
+  legal_hold: number;
 }
+// ── Delete-permanently confirmation modal ─────────────────────────────────────
+function DeletePermanentlyModal({
+  submission,
+  onClose,
+  onDeleted,
+}: {
+  submission: Submission;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const label = submission.template_name + (submission.job_name ? ` — ${submission.job_name}` : '');
+
+  async function confirm() {
+    setBusy(true); setError('');
+    try {
+      const r = await fetch(`/api/forms/submissions/${submission.source}/${submission.id}`, {
+        method: 'DELETE', credentials: 'include',
+      });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok || d.error) throw new Error(d.error ?? 'Delete failed');
+      onDeleted();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">
+            <Trash2 size={18} className="text-red-600" />
+          </div>
+          <div>
+            <p className="font-bold text-slate-800 text-sm">Delete submission permanently?</p>
+            <p className="text-xs text-slate-500 mt-0.5">This cannot be undone.</p>
+          </div>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700">
+          <p className="font-semibold mb-1">You are about to permanently delete:</p>
+          <p className="font-bold">{label}</p>
+          <p className="mt-2">All answers, signatures, photographs, attachments, and audit history for this submission will be removed. This action cannot be recovered.</p>
+        </div>
+        {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+        <div className="flex gap-2.5">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => void confirm()}
+            disabled={busy}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {busy ? <><Loader2 size={13} className="animate-spin" />Deleting…</> : 'Delete permanently'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SubmissionsInbox({
   templates,
   onFillForm
@@ -561,24 +630,79 @@ function SubmissionsInbox({
   onFillForm: () => void;
 }) {
   const navigate = useNavigate();
+  const { isPlatformOwner } = usePermissions();
+
+  // ── View state ────────────────────────────────────────────────────────────
+  type InboxTab = 'active' | 'archived';
+  const [inboxTab, setInboxTab] = useState<InboxTab>('active');
+
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [templateFilter, setTemplateFilter] = useState('');
   const [expandedPublic, setExpandedPublic] = useState<Set<number | string>>(new Set());
-  useEffect(() => {
+
+  // ── Action state ──────────────────────────────────────────────────────────
+  const [archiving, setArchiving] = useState<string | null>(null);   // rowKey
+  const [restoring, setRestoring] = useState<string | null>(null);   // rowKey
+  const [deleteTarget, setDeleteTarget] = useState<Submission | null>(null);
+
+  function load() {
     setLoading(true);
-    const url = templateFilter ? `/api/forms/submissions?templateId=${templateFilter}` : '/api/forms/submissions';
-    fetch(url, {
-      credentials: 'include'
-    }).then(r => r.json()).then((d: {
-      submissions?: Submission[];
-      total?: number;
-    }) => {
-      setSubmissions(d.submissions ?? []);
-      setTotal(d.total ?? 0);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [templateFilter]);
+    const params = new URLSearchParams();
+    if (templateFilter) params.set('templateId', templateFilter);
+    if (inboxTab === 'archived') params.set('archived', '1');
+    const url = `/api/forms/submissions?${params.toString()}`;
+    fetch(url, { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { submissions?: Submission[]; total?: number }) => {
+        setSubmissions(d.submissions ?? []);
+        setTotal(d.total ?? 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [templateFilter, inboxTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleArchive(s: Submission) {
+    const rowKey = `${s.source}-${s.id}`;
+    setArchiving(rowKey);
+    try {
+      const r = await fetch(`/api/forms/submissions/${s.source}/${s.id}/archive`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok || d.error) throw new Error(d.error ?? 'Archive failed');
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Archive failed');
+    } finally {
+      setArchiving(null);
+    }
+  }
+
+  async function handleRestore(s: Submission) {
+    const rowKey = `${s.source}-${s.id}`;
+    setRestoring(rowKey);
+    try {
+      const r = await fetch(`/api/forms/submissions/${s.source}/${s.id}/restore`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok || d.error) throw new Error(d.error ?? 'Restore failed');
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Restore failed');
+    } finally {
+      setRestoring(null);
+    }
+  }
+
   function togglePublicExpand(key: number | string) {
     setExpandedPublic(prev => {
       const next = new Set(prev);
@@ -586,101 +710,153 @@ function SubmissionsInbox({
       return next;
     });
   }
+
   function fmtDate(d: string) {
     const dt = new Date(d);
-    const date = dt.toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-    const time = dt.toLocaleTimeString('en-AU', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).toLowerCase();
+    const date = dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = dt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
     return `${date} · ${time}`;
   }
+
   function openForm(s: Submission, e?: React.MouseEvent) {
     e?.stopPropagation();
     if (s.source === 'internal' && s.form_route) {
-      navigate(s.form_route, {
-        state: {
-          returnTo: '/studio/forms?tab=submissions'
-        }
-      });
+      navigate(s.form_route, { state: { returnTo: '/studio/forms?tab=submissions' } });
     }
   }
+
   function jobLine(s: Submission): string {
     if (!s.job_name) return 'Standalone submission';
     const prefix = s.job_number ? `${s.job_number} — ` : '';
     return `${prefix}${s.job_name}`;
   }
+
   function submitterLine(s: Submission): string {
-    if (s.source === 'public') {
-      return s.submitter_name ? s.submitter_name : 'Public submission';
-    }
+    if (s.source === 'public') return s.submitter_name ? s.submitter_name : 'Public submission';
     return s.submitter_name ? `Submitted by ${s.submitter_name}` : 'Submitted by unknown';
   }
-  return <div className="space-y-4">
+
+  // Can permanently delete: must be admin/owner AND submission is archived
+  const canDelete = isPlatformOwner;
+
+  return (
+    <div className="space-y-4">
       {/* ── Fill Form CTA ── */}
-      <button onClick={onFillForm} disabled={templates.length === 0} title={templates.length === 0 ? 'Create a template first' : 'Fill out a form'} className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]">
-        <ClipboardCheck size={15} /> Fill Form
-      </button>
+      {inboxTab === 'active' && (
+        <button
+          onClick={onFillForm}
+          disabled={templates.length === 0}
+          title={templates.length === 0 ? 'Create a template first' : 'Fill out a form'}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-white px-5 py-3 rounded-xl transition-all hover:brightness-110 bg-primary disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+        >
+          <ClipboardCheck size={15} /> Fill Form
+        </button>
+      )}
+
+      {/* ── Tab bar ── */}
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setInboxTab('active')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${inboxTab === 'active' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <Inbox size={13} />
+          Active
+        </button>
+        <button
+          onClick={() => setInboxTab('archived')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${inboxTab === 'archived' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <Archive size={13} />
+          Archived
+        </button>
+      </div>
 
       {/* ── Filter bar ── */}
       <div className="flex items-center gap-3 flex-wrap">
-        <select value={templateFilter} onChange={e => setTemplateFilter(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <select
+          value={templateFilter}
+          onChange={e => setTemplateFilter(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
           <option value="">All templates</option>
           {templates.map(t => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
         </select>
-        <span className="text-xs text-slate-400">{total} completed form{total !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-slate-400">
+          {total} {inboxTab === 'archived' ? 'archived' : 'completed'} form{total !== 1 ? 's' : ''}
+        </span>
       </div>
 
+      {/* ── Archived banner ── */}
+      {inboxTab === 'archived' && (
+        <div className="flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          <Archive size={13} className="flex-shrink-0 mt-0.5" />
+          <span>
+            Archived submissions are preserved in full. Use <strong>Restore</strong> to return a submission to the active list.
+            {canDelete && <> Admins and owners may <strong>Delete permanently</strong> from this view.</>}
+          </span>
+        </div>
+      )}
+
       {/* ── States ── */}
-      {loading ? <div className="flex items-center justify-center py-16">
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
           <Loader2 size={22} className="animate-spin text-primary" />
-        </div> : submissions.length === 0 ? <div className="flex flex-col items-center justify-center py-16 text-center">
+        </div>
+      ) : submissions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4">
-            <Inbox size={24} className="text-primary" />
+            {inboxTab === 'archived' ? <Archive size={24} className="text-slate-400" /> : <Inbox size={24} className="text-primary" />}
           </div>
-          <p className="font-heading font-bold text-slate-700 mb-1">No completed Forms yet</p>
-          <p className="text-sm text-slate-400 max-w-xs">Completed Job Forms and public Form responses will appear here.</p>
-        </div> : <>
+          <p className="font-heading font-bold text-slate-700 mb-1">
+            {inboxTab === 'archived' ? 'No archived submissions' : 'No completed Forms yet'}
+          </p>
+          <p className="text-sm text-slate-400 max-w-xs">
+            {inboxTab === 'archived'
+              ? 'Submissions you archive will appear here.'
+              : 'Completed Job Forms and public Form responses will appear here.'}
+          </p>
+        </div>
+      ) : (
+        <>
           {/* ══════════════════════════════════════════════════════════════
               MOBILE CARDS  — visible below md breakpoint
            ══════════════════════════════════════════════════════════════ */}
           <div className="md:hidden space-y-2">
             {submissions.map(s => {
-          const rowKey = `${s.source}-${s.id}`;
-          const isInternal = s.source === 'internal';
-          const isPublicExpanded = expandedPublic.has(rowKey);
-          let answers: Record<string, unknown> = {};
-          try {
-            answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {};
-          } catch {/* ignore */}
-          const answerCount = Object.keys(answers).length;
-          const canOpen = isInternal && !!s.form_route;
-          return <div key={rowKey} className={`bg-white border border-slate-200 rounded-xl overflow-hidden transition-colors ${canOpen ? 'cursor-pointer hover:border-primary/40 hover:bg-violet-50/30 active:bg-violet-50' : ''}`} onClick={canOpen ? e => openForm(s, e) : undefined} role={canOpen ? 'button' : undefined} tabIndex={canOpen ? 0 : undefined} onKeyDown={canOpen ? e => {
-            if (e.key === 'Enter' || e.key === ' ') openForm(s);
-          } : undefined} aria-label={canOpen ? `Open form: ${s.template_name}` : undefined}>
-                  {/* Card body */}
-                  <div className="px-4 pt-3 pb-3 space-y-1.5">
+              const rowKey = `${s.source}-${s.id}`;
+              const isInternal = s.source === 'internal';
+              const isPublicExpanded = expandedPublic.has(rowKey);
+              let answers: Record<string, unknown> = {};
+              try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
+              const answerCount = Object.keys(answers).length;
+              const canOpen = isInternal && !!s.form_route && inboxTab === 'active';
+              const isArchivingThis = archiving === rowKey;
+              const isRestoringThis = restoring === rowKey;
 
+              return (
+                <div
+                  key={rowKey}
+                  className={`bg-white border rounded-xl overflow-hidden transition-colors ${s.legal_hold ? 'border-amber-300' : 'border-slate-200'} ${canOpen ? 'cursor-pointer hover:border-primary/40 hover:bg-violet-50/30 active:bg-violet-50' : ''}`}
+                  onClick={canOpen ? e => openForm(s, e) : undefined}
+                  role={canOpen ? 'button' : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                  onKeyDown={canOpen ? e => { if (e.key === 'Enter' || e.key === ' ') openForm(s); } : undefined}
+                  aria-label={canOpen ? `Open form: ${s.template_name}` : undefined}
+                >
+                  <div className="px-4 pt-3 pb-3 space-y-1.5">
+                    {/* Legal hold badge */}
+                    {!!s.legal_hold && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 w-fit">
+                        <ShieldAlert size={10} /> Legal hold
+                      </div>
+                    )}
                     {/* Row 1: Form name + status pill */}
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-bold text-slate-800 leading-snug flex-1 min-w-0">
-                        {s.template_name}
-                      </p>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0 whitespace-nowrap mt-0.5">
-                        {s.status}
-                      </span>
+                      <p className="text-sm font-bold text-slate-800 leading-snug flex-1 min-w-0">{s.template_name}</p>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0 whitespace-nowrap mt-0.5">{s.status}</span>
                     </div>
-
-                    {/* Row 2: Job — single unbreakable line */}
-                    <p className="text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {jobLine(s)}
-                    </p>
-
+                    {/* Row 2: Job */}
+                    <p className="text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{jobLine(s)}</p>
                     {/* Row 3: Submitter + source badge */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs text-slate-500">{submitterLine(s)}</p>
@@ -688,50 +864,98 @@ function SubmissionsInbox({
                         {isInternal ? 'Internal' : 'Public'}
                       </span>
                     </div>
-
-                    {/* Row 4: Date — single line */}
-                    <p className="text-xs text-slate-400 whitespace-nowrap">
-                      {fmtDate(s.completed_at)}
-                    </p>
-
-                    {/* Row 5: public expand toggle only — internal cards are fully tappable */}
-                    {!canOpen && <button onClick={e => {
-                e.stopPropagation();
-                togglePublicExpand(rowKey);
-              }} className="mt-1 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg py-2.5 transition-colors min-h-[44px]" aria-expanded={isPublicExpanded} aria-label={isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}>
-                        {isPublicExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                        {isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
-                      </button>}
+                    {/* Row 4: Date */}
+                    <p className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.completed_at)}</p>
+                    {/* Archived info */}
+                    {inboxTab === 'archived' && s.archived_at && (
+                      <p className="text-[10px] text-slate-400">
+                        Archived {fmtDate(s.archived_at)}{s.archived_by ? ` by ${s.archived_by}` : ''}
+                        {s.archive_reason ? ` — ${s.archive_reason}` : ''}
+                      </p>
+                    )}
+                    {/* Action buttons */}
+                    <div className="flex gap-2 pt-1" onClick={e => e.stopPropagation()}>
+                      {inboxTab === 'active' && (
+                        <button
+                          onClick={() => void handleArchive(s)}
+                          disabled={isArchivingThis || !!s.legal_hold}
+                          title={s.legal_hold ? 'Legal hold — cannot archive' : 'Archive this submission'}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[36px]"
+                        >
+                          {isArchivingThis ? <Loader2 size={11} className="animate-spin" /> : <Archive size={11} />}
+                          Archive
+                        </button>
+                      )}
+                      {inboxTab === 'archived' && (
+                        <>
+                          <button
+                            onClick={() => void handleRestore(s)}
+                            disabled={isRestoringThis}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-lg hover:bg-emerald-100 disabled:opacity-40 transition-colors min-h-[36px]"
+                          >
+                            {isRestoringThis ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
+                            Restore
+                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteTarget(s)}
+                              disabled={!!s.legal_hold}
+                              title={s.legal_hold ? 'Legal hold — cannot delete' : 'Delete permanently'}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[36px]"
+                            >
+                              <Trash2 size={11} /> Delete permanently
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {!canOpen && inboxTab === 'active' && (
+                        <button
+                          onClick={e => { e.stopPropagation(); togglePublicExpand(rowKey); }}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg py-2.5 transition-colors min-h-[44px]"
+                          aria-expanded={isPublicExpanded}
+                          aria-label={isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
+                        >
+                          {isPublicExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          {isPublicExpanded ? 'Hide answers' : `View ${answerCount} answer${answerCount !== 1 ? 's' : ''}`}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Expanded answers — public responses only */}
-                  {!isInternal && <AnimatePresence>
-                      {isPublicExpanded && <motion.div initial={{
-                height: 0,
-                opacity: 0
-              }} animate={{
-                height: 'auto',
-                opacity: 1
-              }} exit={{
-                height: 0,
-                opacity: 0
-              }} transition={{
-                duration: 0.18
-              }} className="overflow-hidden">
+                  {!isInternal && (
+                    <AnimatePresence>
+                      {isPublicExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-hidden"
+                        >
                           <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
-                            {answerCount === 0 ? <p className="text-xs text-slate-400 italic">No answers recorded</p> : <div className="space-y-2">
-                                {Object.entries(answers).map(([fieldId, answer]) => <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
+                            {answerCount === 0 ? (
+                              <p className="text-xs text-slate-400 italic">No answers recorded</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {Object.entries(answers).map(([fieldId, answer]) => (
+                                  <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
                                     <p className="text-xs text-slate-700 break-words">
                                       {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
                                     </p>
-                                  </div>)}
-                              </div>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </motion.div>}
-                    </AnimatePresence>}
-                </div>;
-        })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* ══════════════════════════════════════════════════════════════
@@ -745,19 +969,33 @@ function SubmissionsInbox({
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Job</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Submitted by</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Source</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Completed</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                    {inboxTab === 'archived' ? 'Archived' : 'Completed'}
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {submissions.map(s => {
-              const rowKey = `${s.source}-${s.id}`;
-              const isInternal = s.source === 'internal';
-              const canOpen = isInternal && !!s.form_route;
-              return <tr key={rowKey} className={`bg-white hover:bg-slate-50 transition-colors ${canOpen ? 'cursor-pointer' : ''}`} onClick={canOpen ? e => openForm(s, e) : undefined}>
+                  const rowKey = `${s.source}-${s.id}`;
+                  const isInternal = s.source === 'internal';
+                  const canOpen = isInternal && !!s.form_route && inboxTab === 'active';
+                  const isArchivingThis = archiving === rowKey;
+                  const isRestoringThis = restoring === rowKey;
+
+                  return (
+                    <tr
+                      key={rowKey}
+                      className={`bg-white hover:bg-slate-50 transition-colors ${canOpen ? 'cursor-pointer' : ''} ${s.legal_hold ? 'bg-amber-50/30' : ''}`}
+                      onClick={canOpen ? e => openForm(s, e) : undefined}
+                    >
                       {/* Form name */}
                       <td className="px-4 py-3 font-semibold text-slate-800 max-w-[200px]">
-                        <span className="block truncate">{s.template_name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="block truncate">{s.template_name}</span>
+                          {!!s.legal_hold && <ShieldAlert size={12} className="text-amber-500 flex-shrink-0" title="Legal hold" />}
+                        </div>
                       </td>
                       {/* Job */}
                       <td className="px-4 py-3 text-slate-600 max-w-[180px]">
@@ -775,7 +1013,9 @@ function SubmissionsInbox({
                       </td>
                       {/* Date */}
                       <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">
-                        {fmtDate(s.completed_at)}
+                        {inboxTab === 'archived' && s.archived_at
+                          ? <span title={`Completed: ${fmtDate(s.completed_at)}`}>{fmtDate(s.archived_at)}</span>
+                          : fmtDate(s.completed_at)}
                       </td>
                       {/* Status */}
                       <td className="px-4 py-3">
@@ -783,15 +1023,64 @@ function SubmissionsInbox({
                           {s.status}
                         </span>
                       </td>
-                    </tr>;
-            })}
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {inboxTab === 'active' && (
+                            <button
+                              onClick={() => void handleArchive(s)}
+                              disabled={isArchivingThis || !!s.legal_hold}
+                              title={s.legal_hold ? 'Legal hold — cannot archive' : 'Archive this submission'}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {isArchivingThis ? <Loader2 size={11} className="animate-spin" /> : <Archive size={11} />}
+                              Archive
+                            </button>
+                          )}
+                          {inboxTab === 'archived' && (
+                            <>
+                              <button
+                                onClick={() => void handleRestore(s)}
+                                disabled={isRestoringThis}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-lg hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+                              >
+                                {isRestoringThis ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
+                                Restore
+                              </button>
+                              {canDelete && (
+                                <button
+                                  onClick={() => setDeleteTarget(s)}
+                                  disabled={!!s.legal_hold}
+                                  title={s.legal_hold ? 'Legal hold — cannot delete' : 'Delete permanently'}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <Trash2 size={11} /> Delete
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </>}
-    </div>;
-}
+        </>
+      )}
 
+      {/* ── Delete permanently modal ── */}
+      {deleteTarget && (
+        <DeletePermanentlyModal
+          submission={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => { setDeleteTarget(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function FormsPage() {

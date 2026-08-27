@@ -337,6 +337,9 @@ import forms_skip_audit_get_304 from "./api/forms/skip-audit/GET";
 import forms_skip_audit_post_305 from "./api/forms/skip-audit/POST";
 import forms_start_post_306 from "./api/forms/start/POST";
 import forms_submissions_get_307 from "./api/forms/submissions/GET";
+import forms_submissions_source_id_archive_post from "./api/forms/submissions/[source]/[id]/archive/POST";
+import forms_submissions_source_id_restore_post from "./api/forms/submissions/[source]/[id]/restore/POST";
+import forms_submissions_source_id_delete from "./api/forms/submissions/[source]/[id]/DELETE";
 import forms_templates_id_share_link_delete_308 from "./api/forms/templates/[id]/share-link/DELETE";
 import forms_templates_id_share_link_post_309 from "./api/forms/templates/[id]/share-link/POST";
 import forms_id_fields_get_310 from "./api/forms/[id]/fields/GET";
@@ -1549,6 +1552,16 @@ async function runStartupMigrations() {
     { table: 'job_form_submissions', column: 'submitted_at',              definition: 'DATETIME NULL' },
     { table: 'job_form_submissions', column: 'external_submitter_name',   definition: 'VARCHAR(255) NULL' },
     { table: 'job_form_submissions', column: 'external_submitter_email',  definition: 'VARCHAR(255) NULL' },
+    // ── job_form_submissions: archive / legal-hold lifecycle ─────────────────
+    { table: 'job_form_submissions', column: 'archived_at',     definition: 'DATETIME NULL' },
+    { table: 'job_form_submissions', column: 'archived_by',     definition: 'VARCHAR(255) NULL' },
+    { table: 'job_form_submissions', column: 'archive_reason',  definition: 'TEXT NULL' },
+    { table: 'job_form_submissions', column: 'legal_hold',      definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── form_public_submissions: archive / legal-hold lifecycle ──────────────
+    { table: 'form_public_submissions', column: 'archived_at',    definition: 'DATETIME NULL' },
+    { table: 'form_public_submissions', column: 'archived_by',    definition: 'VARCHAR(255) NULL' },
+    { table: 'form_public_submissions', column: 'archive_reason', definition: 'TEXT NULL' },
+    { table: 'form_public_submissions', column: 'legal_hold',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // notifications table: link column
     { table: 'notifications', column: 'link', definition: 'VARCHAR(500) NULL' },
     // ── swms_signoffs: extended sign-on fields ────────────────────────────────
@@ -1861,6 +1874,8 @@ async function runStartupMigrations() {
     { table: 'job_form_submissions',  indexName: 'idx_jfs_company',          columns: '(company_id)' },
     { table: 'job_form_submissions',  indexName: 'idx_jfs_job',              columns: '(job_id)' },
     { table: 'job_form_submissions',  indexName: 'idx_jfs_company_job',      columns: '(company_id, job_id)' },
+    { table: 'job_form_submissions',  indexName: 'idx_jfs_archived',         columns: '(company_id, archived_at)' },
+    { table: 'form_public_submissions', indexName: 'idx_fps_archived',       columns: '(company_id, archived_at)' },
     // estimate_lines — fetched by estimate_id on every estimate load
     { table: 'estimate_lines',        indexName: 'idx_estlines_estimate',    columns: '(estimate_id)' },
     // job_photo_shares — one share per job (unique), fast token lookup
@@ -2000,6 +2015,8 @@ async function runStartupMigrations() {
     { name: 'swms_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS swms_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_job_swms (job_swms_id))" },
     // ── Public form submissions (template-level, no job required) ─────────────
     { name: 'form_public_submissions', ddl: "CREATE TABLE IF NOT EXISTS form_public_submissions (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL, submitter_name VARCHAR(255) NULL, submitter_email VARCHAR(255) NULL, job_id INT NULL, answers_json LONGTEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'submitted', submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(64) NULL, INDEX idx_company (company_id), INDEX idx_template (template_id), INDEX idx_token (token), INDEX idx_job (company_id, job_id))" },
+    // ── submission_audit_log — records archive / restore / permanent-delete events ──
+    { name: 'submission_audit_log', ddl: "CREATE TABLE IF NOT EXISTS submission_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, submission_source VARCHAR(20) NOT NULL, submission_id INT NOT NULL, action VARCHAR(40) NOT NULL, actor_user_id VARCHAR(36) NOT NULL, actor_name VARCHAR(255) NULL, note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_sal_company (company_id), INDEX idx_sal_submission (submission_source, submission_id), INDEX idx_sal_action (company_id, action))" },
     // ── Form public share tokens ──────────────────────────────────────────────
     { name: 'form_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS form_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_template (template_id))" },
     // ── Plan Manager ─────────────────────────────────────────────────────────
@@ -3533,6 +3550,10 @@ app.get("/api/forms/skip-audit", forms_skip_audit_get_304);
 app.post("/api/forms/skip-audit", forms_skip_audit_post_305);
 app.post("/api/forms/start", forms_start_post_306);
 app.get("/api/forms/submissions", forms_submissions_get_307);
+// Static sub-paths before the :source/:id param routes
+app.post("/api/forms/submissions/:source/:id/archive", forms_submissions_source_id_archive_post);
+app.post("/api/forms/submissions/:source/:id/restore", forms_submissions_source_id_restore_post);
+app.delete("/api/forms/submissions/:source/:id", forms_submissions_source_id_delete);
 app.delete("/api/forms/templates/:id/share-link", forms_templates_id_share_link_delete_308);
 app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_post_309);
 app.get("/api/forms/:id/fields", forms_id_fields_get_310);
