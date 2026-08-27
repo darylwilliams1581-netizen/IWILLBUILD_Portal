@@ -134,6 +134,8 @@ export async function authHandler(req: Request, res: Response) {
       console.info(JSON.stringify({
         event: isSignIn ? 'server.auth.signin.response' : 'server.auth.signout.response',
         status: webResponse.status,
+        referer: req.headers['referer'] ?? req.headers['referrer'] ?? null,
+        userAgent: (req.headers['user-agent'] ?? '').slice(0, 80),
         ts: Date.now(),
       }));
     }
