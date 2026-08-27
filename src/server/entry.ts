@@ -1428,6 +1428,9 @@ async function runStartupMigrations() {
     { table: 'company_settings', column: 'work_label_singular',       definition: "VARCHAR(60) NULL" },
     { table: 'company_settings', column: 'work_label_plural',         definition: "VARCHAR(60) NULL" },
     // Subscription columns
+    // Form templates
+    { table: 'form_templates', column: 'shared_in_library', definition: 'BOOLEAN NOT NULL DEFAULT FALSE' },
+    // Subscription columns
     { table: 'companies', column: 'plan',                   definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'subscription_status',    definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'trial_ends_at',          definition: 'DATETIME NULL' },

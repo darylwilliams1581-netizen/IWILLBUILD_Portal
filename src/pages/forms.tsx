@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Library, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Zap, BookOpen, Loader2, Check, Clock, Link2, Copy, CheckCircle2, Inbox, Library, Mail, ChevronDown, ChevronUp, ExternalLink, Search, XCircle, MoreHorizontal, ClipboardCheck, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
@@ -22,6 +22,7 @@ interface FormTemplate {
   onDashboard: boolean;
   onJobs: boolean;
   onFleet: boolean;
+  sharedInLibrary: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,7 +69,8 @@ const blankForm = () => ({
   isActive: true,
   onDashboard: false,
   onJobs: false,
-  onFleet: false
+  onFleet: false,
+  sharedInLibrary: false,
 });
 
 // ── Toggle row ────────────────────────────────────────────────────────────────
@@ -103,13 +105,15 @@ interface TemplateModalProps {
   onClose: () => void;
   onSave: (data: ReturnType<typeof blankForm>) => Promise<void>;
   saving: boolean;
+  isPlatformOwner?: boolean;
 }
 function TemplateModal({
   mode,
   initial,
   onClose,
   onSave,
-  saving
+  saving,
+  isPlatformOwner = false,
 }: TemplateModalProps) {
   const [form, setForm] = useState(() => initial ? {
     name: initial.name,
@@ -119,7 +123,8 @@ function TemplateModal({
     isActive: initial.isActive,
     onDashboard: initial.onDashboard,
     onJobs: initial.onJobs,
-    onFleet: initial.onFleet
+    onFleet: initial.onFleet,
+    sharedInLibrary: initial.sharedInLibrary ?? false,
   } : blankForm());
   const set = <K extends keyof typeof form,>(k: K, v: (typeof form)[K]) => setForm(p => ({
     ...p,
@@ -193,6 +198,12 @@ function TemplateModal({
             <DarkToggle label="Available on Dashboard" icon={LayoutDashboard} value={form.onDashboard} onChange={() => set('onDashboard', !form.onDashboard)} />
             <DarkToggle label="Available for Jobs" icon={Briefcase} value={form.onJobs} onChange={() => set('onJobs', !form.onJobs)} />
             <DarkToggle label="Available for Fleet" icon={Truck} value={form.onFleet} onChange={() => set('onFleet', !form.onFleet)} />
+            {isPlatformOwner && (
+              <>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 mb-1">Global Library</p>
+                <DarkToggle label="Shared in Global Library" icon={Globe} value={form.sharedInLibrary} onChange={() => set('sharedInLibrary', !form.sharedInLibrary)} />
+              </>
+            )}
           </div>
         </div>
 
@@ -1132,8 +1143,8 @@ export function FormsPage() {
 
       {/* Modals */}
       <AnimatePresence>
-        {showCreate && <TemplateModal mode="create" onClose={() => setShowCreate(false)} onSave={handleCreate} saving={saving} />}
-        {editTarget && <TemplateModal mode="edit" initial={editTarget} onClose={() => setEditTarget(null)} onSave={handleEdit} saving={saving} />}
+        {showCreate && <TemplateModal mode="create" onClose={() => setShowCreate(false)} onSave={handleCreate} saving={saving} isPlatformOwner={isPlatformOwner} />}
+        {editTarget && <TemplateModal mode="edit" initial={editTarget} onClose={() => setEditTarget(null)} onSave={handleEdit} saving={saving} isPlatformOwner={isPlatformOwner} />}
         {deleteTarget && <DeleteConfirm name={deleteTarget.name} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} deleting={deleting} />}
         {shareTarget && <ShareLinkModal templateId={shareTarget.id} templateName={shareTarget.name} onClose={() => setShareTarget(null)} />}
         {libraryShareTarget && <ShareToLibraryModal templateId={libraryShareTarget.id} templateName={libraryShareTarget.name} isPlatformOwner={isPlatformOwner} sourceType="form" onClose={() => setLibraryShareTarget(null)} />}

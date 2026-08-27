@@ -331,6 +331,7 @@ export const formTemplates = mysqlTable('form_templates', {
   onDashboard: boolean('on_dashboard').notNull().default(false),
   onJobs: boolean('on_jobs').notNull().default(false),
   onFleet: boolean('on_fleet').notNull().default(false),
+  sharedInLibrary: boolean('shared_in_library').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
