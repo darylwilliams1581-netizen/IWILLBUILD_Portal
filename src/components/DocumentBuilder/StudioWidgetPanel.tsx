@@ -355,7 +355,6 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   return [
     warningBox('⚠ Review Before Issue — This document must be reviewed and approved before being issued to workers. All workers must be inducted against this SWMS before commencing work.'),
     spacer(4),
-    h(1, docTitle || 'Safe Work Method Statement'),
     p('Safe Work Method Statement (SWMS)', true),
     spacer(4),
     navyBand('1. Document Identity'),
