@@ -8,6 +8,7 @@
  *   - Download original source file
  *   - Replace with a new revision (upload new file)
  *   - View revision history
+ *   - Attach to a job (opens AttachToJobSheet)
  *   - Publish to Shared Library (platform owner only)
  *   - Archive document
  *
@@ -19,9 +20,10 @@ import { createPortal } from 'react-dom';
 import {
   X, Download, RefreshCw, History, Library, Archive,
   FileText, File, Loader2, AlertCircle, CheckCircle,
-  ChevronDown, ChevronUp, Clock,
+  ChevronDown, ChevronUp, Clock, Briefcase,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import AttachToJobSheet from '@/components/studio/AttachToJobSheet';
 
 interface SourceMeta {
   hasSourceDocument: boolean;
@@ -46,6 +48,7 @@ interface SourceMeta {
 interface Props {
   templateId: number;
   templateName: string;
+  templateType?: string;
   isPlatformOwner?: boolean;
   onClose: () => void;
   onArchive?: () => void;
@@ -54,6 +57,7 @@ interface Props {
 export default function SourceDocumentPanel({
   templateId,
   templateName,
+  templateType = 'custom',
   isPlatformOwner = false,
   onClose,
   onArchive,
@@ -69,6 +73,7 @@ export default function SourceDocumentPanel({
   const [publishTitle, setPublishTitle] = useState(templateName);
   const [publishType, setPublishType] = useState('procedure');
   const [publishSummary, setPublishSummary] = useState('');
+  const [showAttachSheet, setShowAttachSheet] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -158,7 +163,7 @@ export default function SourceDocumentPanel({
   const srcBg = meta?.sourceType === 'pdf' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200';
   const srcLabel = meta?.sourceType === 'pdf' ? 'PDF Source' : 'Word Source';
 
-  return createPortal(
+  const panel = createPortal(
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <div className="flex-1 bg-black/40" onClick={onClose} />
@@ -389,11 +394,42 @@ export default function SourceDocumentPanel({
                   Archive document
                 </button>
               )}
+
+              {/* Attach to Job */}
+              <button
+                onClick={() => setShowAttachSheet(true)}
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-sm font-semibold text-emerald-700 transition-colors"
+              >
+                <Briefcase size={14} />
+                Attach to job
+              </button>
             </>
           )}
         </div>
       </div>
     </div>,
     document.body
+  );
+
+  // Render AttachToJobSheet outside the panel portal so it stacks above
+  const attachSheet = showAttachSheet ? (
+    <AttachToJobSheet
+      open={showAttachSheet}
+      studioDocId={templateId}
+      docTitle={templateName}
+      templateType={templateType}
+      onClose={() => setShowAttachSheet(false)}
+      onAttached={() => {
+        setShowAttachSheet(false);
+        toast.success(`"${templateName}" attached to job`);
+      }}
+    />
+  ) : null;
+
+  return (
+    <>
+      {panel}
+      {attachSheet}
+    </>
   );
 }

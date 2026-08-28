@@ -1,7 +1,8 @@
 /**
  * GET /api/document-templates/:id/export/pdf
  * ─────────────────────────────────────────────────────────────────────────────
- * Exports a document template as a print-ready HTML page.
+ * Exports a document template as a print-ready HTML page (blocks-based) or,
+ * when the document has a Word/PDF source file, as a cover-page + source merge.
  *
  * Query params:
  *   job_swms_id  number?  — job_swms.id of a Studio attachment row
@@ -10,12 +11,23 @@
  *                           is used instead of the live master, and job fields
  *                           are injected into the header table.
  *
- * When NO job_swms_id is supplied (printing the master directly from Studio)
- * a "Master Document — Not Job Specific" watermark banner is shown.
+ * Source-document flow (source_type = 'docx' | 'pdf'):
+ *   1. Build a cover-page HTML with job/company metadata and master watermark.
+ *   2. If GOTENBERG_URL is configured:
+ *        a. Render cover HTML → PDF via Gotenberg /forms/chromium/convert/html
+ *        b. Fetch source bytes from R2
+ *        c. Merge cover + source via Gotenberg /forms/pdfengines/merge
+ *        d. Return merged PDF with Content-Disposition: attachment
+ *   3. If Gotenberg is NOT configured:
+ *        Return cover HTML for print-to-PDF with a download link to the
+ *        original source file and an honest note that full merge requires
+ *        the renderer. Returns 200 (not 503) — the cover page is still useful.
  *
- * When job_swms_id IS supplied the job fields captured at attachment time
- * are rendered in a header table:
- *   Job Title, Job Number, Revision, Date Attached.
+ * Blocks-based flow (source_type = 'blocks' or no source):
+ *   Existing behaviour unchanged — returns HTML page with inline JS renderer.
+ *
+ * When NO job_swms_id is supplied a "Master Document — Not Job Specific"
+ * watermark banner is shown.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -23,9 +35,143 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { profiles } from '../../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { getSecret } from '#airo/secrets';
+import { downloadSourceDocument } from '../../../../../lib/source-document-storage.js';
 
 function esc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Gotenberg helpers ─────────────────────────────────────────────────────────
+
+function gotenbergUrl(): string | null {
+  try {
+    const u = getSecret('GOTENBERG_URL');
+    return u && u.trim() ? u.trim().replace(/\/$/, '') : null;
+  } catch {
+    return null;
+  }
+}
+
+async function gotenbergHtmlToPdf(baseUrl: string, html: string): Promise<Buffer | null> {
+  try {
+    const form = new FormData();
+    form.append('files', new Blob([html], { type: 'text/html' }), 'index.html');
+    const res = await fetch(`${baseUrl}/forms/chromium/convert/html`, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+async function gotenbergMergePdfs(baseUrl: string, pdfs: Array<{ name: string; bytes: Buffer }>): Promise<Buffer | null> {
+  try {
+    const form = new FormData();
+    for (const { name, bytes } of pdfs) {
+      form.append('files', new Blob([bytes], { type: 'application/pdf' }), name);
+    }
+    const res = await fetch(`${baseUrl}/forms/pdfengines/merge`, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+// ── Cover page HTML builder ───────────────────────────────────────────────────
+
+function buildCoverHtml(opts: {
+  docName: string;
+  docId: number;
+  jobInfo: JobInfo | null;
+  sourceFileName: string | null;
+  sourceType: string;
+  downloadUrl: string;
+  includeDownloadLink: boolean;
+  companyName?: string;
+}): string {
+  const { docName, docId, jobInfo, sourceFileName, sourceType, downloadUrl, includeDownloadLink, companyName } = opts;
+
+  const masterBanner = !jobInfo ? `
+    <div class="master-banner">
+      ⚠ Master Document — Not Job Specific. Attach this document to a job before issuing to workers.
+    </div>` : '';
+
+  const jobHeader = jobInfo ? `
+    <div class="job-header">
+      <h2 class="section-title">Job Information</h2>
+      <table class="info-table">
+        <tr><th>Job Title</th><td>${esc(jobInfo.jobTitle)}</td><th>Job Number</th><td>${esc(jobInfo.jobNumber)}</td></tr>
+        <tr><th>Site Address</th><td colspan="3">${esc(jobInfo.siteAddress)}</td></tr>
+        <tr><th>Client / Principal Contractor</th><td>${esc(jobInfo.clientName)}</td><th>Supervisor</th><td>${esc(jobInfo.supervisorName)}</td></tr>
+        <tr><th>Document Number</th><td>${esc(jobInfo.docNumber)}</td><th>Revision</th><td>${esc(jobInfo.revision)}</td></tr>
+        <tr><th>Date Attached</th><td colspan="3">${esc(jobInfo.dateAttached)}</td></tr>
+      </table>
+    </div>` : '';
+
+  const downloadNote = includeDownloadLink ? `
+    <div class="download-note">
+      <strong>Source file:</strong> ${esc(sourceFileName ?? `document.${sourceType}`)}
+      &nbsp;—&nbsp;
+      <a href="${esc(downloadUrl)}" target="_blank">Download original ${sourceType.toUpperCase()}</a>
+      <br/>
+      <small>This cover page can be printed separately. The original source file is available via the link above.</small>
+    </div>` : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>${esc(docName)}${jobInfo ? ` — ${esc(jobInfo.jobTitle || jobInfo.jobNumber)}` : ' — Cover'}</title>
+  <style>
+    * { box-sizing: border-box; }
+    @page { size: A4; margin: 20mm; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 32px; color: #1e293b; font-size: 13px; line-height: 1.5; }
+    h1 { font-size: 22px; margin: 0 0 4px; color: #0f172a; }
+    .doc-meta { font-size: 11px; color: #64748b; margin-bottom: 20px; }
+    .company-name { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .master-banner {
+      background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px;
+      padding: 10px 14px; margin-bottom: 20px; font-size: 12px; font-weight: bold; color: #92400e;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .section-title { font-size: 13px; font-weight: bold; margin: 0 0 6px; color: #1e293b; }
+    .job-header { margin-bottom: 20px; }
+    .info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .info-table th { background: #1e293b; color: #fff; padding: 5px 8px; text-align: left; font-weight: 600; width: 22%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .info-table td { border: 1px solid #cbd5e1; padding: 5px 8px; }
+    .info-table tr:nth-child(even) td { background: #f8fafc; }
+    .source-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 16px; }
+    .source-badge.docx { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .source-badge.pdf  { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .download-note { margin-top: 24px; padding: 10px 14px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; font-size: 12px; color: #0369a1; }
+    .download-note a { color: #0369a1; font-weight: 600; }
+    .divider { border: none; border-top: 2px solid #e2e8f0; margin: 20px 0; }
+    @media print {
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  ${companyName ? `<p class="company-name">${esc(companyName)}</p>` : ''}
+  <h1>${esc(docName)}</h1>
+  <p class="doc-meta">Document ID ${docId}${jobInfo ? ` &nbsp;|&nbsp; Attached ${esc(jobInfo.dateAttached)}` : ' &nbsp;|&nbsp; Master'}</p>
+  <span class="source-badge ${esc(sourceType)}">${sourceType.toUpperCase()} Source Document</span>
+  ${masterBanner}
+  ${jobHeader}
+  <hr class="divider" />
+  ${downloadNote}
+</body>
+</html>`;
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -54,7 +200,8 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Load document ─────────────────────────────────────────────────────────
     const [rows] = await db.execute(sql.raw(
-      `SELECT id, name, builder_json, template_type, company_id
+      `SELECT id, name, builder_json, template_type, company_id,
+              source_type, source_file_key, source_file_name, source_mime_type
        FROM document_templates
        WHERE id = ${id} AND company_id = ${companyId}
        LIMIT 1`
@@ -64,6 +211,9 @@ export default async function handler(req: Request, res: Response) {
     if (!doc) return res.status(404).json({ error: 'Document not found' });
 
     const docName = String(doc.name ?? 'Document');
+    const sourceType = doc.source_type ? String(doc.source_type) : 'blocks';
+    const sourceFileKey = doc.source_file_key ? String(doc.source_file_key) : null;
+    const sourceFileName = doc.source_file_name ? String(doc.source_file_name) : null;
 
     // ── Optionally load job attachment snapshot ───────────────────────────────
     type JobInfo = {
@@ -114,6 +264,79 @@ export default async function handler(req: Request, res: Response) {
         // Studio columns may not exist yet (pre-migration) — fall back to master
       }
     }
+
+    // ── SOURCE DOCUMENT FLOW ──────────────────────────────────────────────────
+    // When the document has a Word/PDF source file, build a cover page and
+    // attempt to merge it with the original source bytes via Gotenberg.
+    if ((sourceType === 'docx' || sourceType === 'pdf') && sourceFileKey) {
+      const downloadUrl = `/api/document-templates/${id}/source-document/download`;
+      const gUrl = gotenbergUrl();
+
+      if (gUrl) {
+        // ── Gotenberg path: cover HTML → PDF, fetch source, merge ─────────────
+        const coverHtml = buildCoverHtml({
+          docName, docId: id, jobInfo, sourceFileName, sourceType,
+          downloadUrl, includeDownloadLink: false,
+        });
+
+        // Render cover to PDF
+        const coverPdf = await gotenbergHtmlToPdf(gUrl, coverHtml);
+        if (!coverPdf) {
+          // Gotenberg available but render failed — honest 503
+          return res.status(503).json({
+            error: 'PDF renderer unavailable',
+            message: 'The cover page could not be rendered. Please try again or download the source file directly.',
+            downloadUrl,
+          });
+        }
+
+        // Fetch source bytes from R2
+        let sourceBytes: Buffer | null = null;
+        try {
+          sourceBytes = await downloadSourceDocument(sourceFileKey);
+        } catch {
+          // R2 unavailable — return cover only
+        }
+
+        if (sourceBytes) {
+          // Merge cover + source
+          const merged = await gotenbergMergePdfs(gUrl, [
+            { name: '01-cover.pdf', bytes: coverPdf },
+            { name: `02-source.pdf`, bytes: sourceBytes },
+          ]);
+          if (merged) {
+            const safeName = docName.replace(/[^a-z0-9_\-. ]/gi, '_');
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${safeName}.pdf"`);
+            res.setHeader('Content-Length', merged.length);
+            return res.send(merged);
+          }
+        }
+
+        // Merge failed — return cover PDF only with a note
+        const safeName = docName.replace(/[^a-z0-9_\-. ]/gi, '_');
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${safeName}-cover.pdf"`);
+        res.setHeader('Content-Length', coverPdf.length);
+        res.setHeader('X-Source-Download-Url', downloadUrl);
+        return res.send(coverPdf);
+
+      } else {
+        // ── No Gotenberg: return cover HTML for print-to-PDF ──────────────────
+        // Include a download link so the user can get the original source.
+        const coverHtml = buildCoverHtml({
+          docName, docId: id, jobInfo, sourceFileName, sourceType,
+          downloadUrl, includeDownloadLink: true,
+        });
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Content-Disposition', `inline; filename="${docName.replace(/[^a-z0-9_\-. ]/gi, '_')}-cover.html"`);
+        res.setHeader('X-Source-Download-Url', downloadUrl);
+        res.setHeader('X-Renderer-Status', 'unavailable');
+        return res.send(coverHtml);
+      }
+    }
+
+    // ── BLOCKS-BASED FLOW (unchanged) ─────────────────────────────────────────
 
     // ── Resolve builder_json ──────────────────────────────────────────────────
     // If we have a snapshot, use its builderJson; otherwise use the live master.
@@ -213,7 +436,7 @@ export default async function handler(req: Request, res: Response) {
             return '<h' + lvl + '>' + esc(b.content || b.text || '') + '</h' + lvl + '>';
           }
           if (b.type === 'text') return '<p>' + esc(b.content || '') + '</p>';
-          if (b.type === 'richtext' || b.type === 'html') return '<p>' + esc(b.content || b.html || '') + '</p>';
+          if (b.type === 'rich_text' || b.type === 'richtext' || b.type === 'html') return b.content || b.html || '';
           if (b.type === 'divider') return '<hr/>';
           if (b.type === 'spacer') return '<div style="height:' + (b.height || 8) + 'px"></div>';
           if (b.type === 'banner') {

@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText, File, Library, Briefcase } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText, File, Library, Briefcase } from 'lucide-react';
 import GenerateJobReportModal from '@/components/studio/GenerateJobReportModal';
 import AttachToJobSheet from '@/components/studio/AttachToJobSheet';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
@@ -133,7 +133,7 @@ function DocRow({
   index: number;
   onDelete: (id: number) => void;
   onShare: (id: number) => void;
-  onShowSourcePanel?: (id: number, name: string) => void;
+  onShowSourcePanel?: (id: number, name: string, templateType?: string) => void;
 }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -218,7 +218,7 @@ function DocRow({
           {/* Word / PDF Source badge */}
           {(doc.source_type === 'docx' || doc.source_type === 'pdf') && (
             <button
-              onClick={(e) => { e.stopPropagation(); onShowSourcePanel?.(doc.id, doc.name); }}
+              onClick={(e) => { e.stopPropagation(); onShowSourcePanel?.(doc.id, doc.name, doc.template_type); }}
               className={[
                 'hidden sm:inline-flex flex-shrink-0 items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors',
                 doc.source_type === 'pdf'
@@ -291,7 +291,7 @@ function DocRow({
             )}
             {(doc.source_type === 'docx' || doc.source_type === 'pdf') && (
               <button
-                onClick={(e) => { e.stopPropagation(); onShowSourcePanel?.(doc.id, doc.name); }}
+                onClick={(e) => { e.stopPropagation(); onShowSourcePanel?.(doc.id, doc.name, doc.template_type); }}
                 className={[
                   'flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors',
                   doc.source_type === 'pdf'
@@ -593,7 +593,7 @@ export default function StudioDocumentsPage() {
   // ── New Document modal ────────────────────────────────────────────────────────
   const [showNewDocModal, setShowNewDocModal] = useState(false);
   // ── Source Document panel ─────────────────────────────────────────────────────
-  const [sourcePanel, setSourcePanel] = useState<{ id: number; name: string } | null>(null);
+  const [sourcePanel, setSourcePanel] = useState<{ id: number; name: string; templateType?: string } | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -704,9 +704,6 @@ export default function StudioDocumentsPage() {
         <Layers size={17} className="text-primary shrink-0" />
         <h1 className="font-heading font-bold text-base truncate flex-1">Documents</h1>
         {pageTab === 'documents' && <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => void handleOpenImporter()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors">
-              <FileUp size={14} /><span className="hidden sm:inline">Import</span>
-            </button>
             <button onClick={() => setShowNewDocModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors">
               <Plus size={15} /><span className="hidden sm:inline">New document</span>
             </button>
@@ -798,7 +795,7 @@ export default function StudioDocumentsPage() {
               }
             }
           }} initial="hidden" animate="visible" className="flex flex-col gap-2">
-                  {filtered.map((doc, i) => <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={() => {}} onShowSourcePanel={(id, name) => setSourcePanel({ id, name })} />)}
+                  {filtered.map((doc, i) => <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={() => {}} onShowSourcePanel={(id, name, ttype) => setSourcePanel({ id, name, templateType: ttype })} />)}
                 </motion.div>}
             </div>
           </>}
@@ -837,6 +834,7 @@ export default function StudioDocumentsPage() {
         <SourceDocumentPanel
           templateId={sourcePanel.id}
           templateName={sourcePanel.name}
+          templateType={sourcePanel.templateType}
           onClose={() => setSourcePanel(null)}
         />
       )}
