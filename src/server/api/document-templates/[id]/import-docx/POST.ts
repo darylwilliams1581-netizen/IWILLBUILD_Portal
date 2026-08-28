@@ -383,12 +383,12 @@ function extractPlainText(xml: string): string {
 // ── Table parser ──────────────────────────────────────────────────────────────
 
 function parseTableXml(xml: string): DocumentBlock | null {
-  const rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean }>> = [];
+  const rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean; bgColor: string | null; textColor: string | null; isBold: boolean }>> = [];
 
   const rowRe = /<w:tr[ >]([\s\S]*?)<\/w:tr>/g;
   let rowMatch: RegExpExecArray | null;
   while ((rowMatch = rowRe.exec(xml)) !== null) {
-    const cells: Array<{ text: string; colSpan: number; isVMerge: boolean }> = [];
+    const cells: Array<{ text: string; colSpan: number; isVMerge: boolean; bgColor: string | null; textColor: string | null; isBold: boolean }> = [];
 
     // Include both <w:tc> and <w:sdt> (content controls) inside cells
     const cellRe = /<w:tc[ >]([\s\S]*?)<\/w:tc>/g;
@@ -404,8 +404,23 @@ function parseTableXml(xml: string): DocumentBlock | null {
       const vMergeMatch = /<w:vMerge(?:\s+w:val="([^"]*)")?/.exec(cellXml);
       const isVMerge = !!vMergeMatch && vMergeMatch[1] !== 'restart';
 
+      // Cell background colour from w:shd fill attribute
+      // e.g. <w:shd w:val="clear" w:color="auto" w:fill="1A2744"/>
+      const shdMatch = /<w:shd\s[^>]*w:fill="([0-9A-Fa-f]{6})"/.exec(cellXml);
+      const rawFill = shdMatch ? shdMatch[1].toUpperCase() : null;
+      // Ignore "auto" / "FFFFFF" / "000000" as non-meaningful fills
+      const bgColor = rawFill && rawFill !== 'FFFFFF' && rawFill !== 'AUTO' ? `#${rawFill}` : null;
+
+      // Detect text colour from run properties: <w:color w:val="FFFFFF"/>
+      const colorMatch = /<w:color\s+w:val="([0-9A-Fa-f]{6})"/.exec(cellXml);
+      const rawColor = colorMatch ? colorMatch[1].toUpperCase() : null;
+      const textColor = rawColor && rawColor !== 'AUTO' && rawColor !== '000000' ? `#${rawColor}` : null;
+
+      // Detect bold from run properties
+      const isBold = /<w:b\s*\/>/.test(cellXml) || /<w:b>/.test(cellXml);
+
       const text = extractCellText(cellXml);
-      cells.push({ text, colSpan, isVMerge });
+      cells.push({ text, colSpan, isVMerge, bgColor, textColor, isBold });
     }
     if (cells.length > 0) rows.push(cells);
   }
@@ -424,6 +439,14 @@ function parseTableXml(xml: string): DocumentBlock | null {
   // Data table — first row = headers
   const headerRow = rows[0];
   const dataRows = rows.slice(1);
+
+  // If the header row has coloured cells, render as rich_text to preserve the colours.
+  // The table block type doesn't support per-cell background colours, so we fall back
+  // to the form-table HTML renderer which does.
+  const headerHasColor = headerRow.some((c) => c.bgColor !== null);
+  if (headerHasColor) {
+    return buildFormTableBlock(rows);
+  }
 
   // Build column list from header row, expanding colSpans
   const columns: Array<{ id: string; header: string; cellType: 'text'; width: number }> = [];
@@ -463,7 +486,7 @@ function parseTableXml(xml: string): DocumentBlock | null {
 }
 
 /** Detect whether a table is a form-layout table (label+field pairs) vs a data table */
-function detectFormTable(rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean }>>): boolean {
+function detectFormTable(rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean; bgColor: string | null; textColor: string | null; isBold: boolean }>>): boolean {
   if (rows.length === 0) return false;
   // If first row has a single cell spanning all columns → likely a section header → form table
   if (rows[0].length === 1 && rows[0][0].colSpan > 1) return true;
@@ -482,12 +505,26 @@ function detectFormTable(rows: Array<Array<{ text: string; colSpan: number; isVM
   return false;
 }
 
+/** Determine if a hex colour is dark (luminance < 0.4) — used to pick white vs black text */
+function isDarkColor(hex: string): boolean {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return false;
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  // Relative luminance (sRGB)
+  const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const lum = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return lum < 0.4;
+}
+
 /** Render a form-layout table as a rich_text block with an HTML table */
-function buildFormTableBlock(rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean }>>): DocumentBlock {
+function buildFormTableBlock(rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean; bgColor: string | null; textColor: string | null; isBold: boolean }>>): DocumentBlock {
   const tableStyle = 'width:100%;border-collapse:collapse;font-size:12px;';
-  const labelStyle = 'background:#f1f5f9;font-weight:600;padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;white-space:nowrap;';
-  const valueStyle = 'padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;min-height:24px;';
-  const headerStyle = 'background:#1e293b;color:#fff;font-weight:700;padding:6px 8px;border:1px solid #334155;text-align:left;';
+  // Default styles (used when no DOCX colour is present)
+  const defaultLabelStyle = 'background:#f1f5f9;font-weight:600;padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;white-space:nowrap;';
+  const defaultValueStyle = 'padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;min-height:24px;';
+  const defaultHeaderStyle = 'background:#1e293b;color:#fff;font-weight:700;padding:6px 8px;border:1px solid #334155;text-align:left;';
   const spanStyle = 'padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;';
 
   let html = `<table style="${tableStyle}">`;
@@ -507,14 +544,25 @@ function buildFormTableBlock(rows: Array<Array<{ text: string; colSpan: number; 
       const span = cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '';
       const text = escapeHtml(cell.text);
 
+      // Build inline style from DOCX colours when available
+      const buildCellStyle = (defaultStyle: string, forceHeader = false): string => {
+        if (!cell.bgColor && !cell.textColor) return defaultStyle;
+        const bg = cell.bgColor ?? (forceHeader ? '#1e293b' : '#ffffff');
+        const fg = cell.textColor ?? (isDarkColor(bg) ? '#ffffff' : '#1e293b');
+        const fw = (cell.isBold || forceHeader) ? '700' : '600';
+        return `background:${bg};color:${fg};font-weight:${fw};padding:6px 8px;border:1px solid #334155;vertical-align:top;text-align:left;`;
+      };
+
       if (isSectionHeader) {
-        html += `<th${span} style="${headerStyle}">${text}</th>`;
+        html += `<th${span} style="${buildCellStyle(defaultHeaderStyle, true)}">${text}</th>`;
       } else if (firstIsLabel && cell === visibleCells[0]) {
-        html += `<td${span} style="${labelStyle}">${text}</td>`;
+        html += `<td${span} style="${buildCellStyle(defaultLabelStyle)}">${text}</td>`;
       } else if (allHaveText && !firstIsLabel) {
-        html += `<td${span} style="${spanStyle}">${text}</td>`;
+        // Could be a header row — use cell colour if present, otherwise span style
+        const style = cell.bgColor ? buildCellStyle(defaultHeaderStyle, true) : spanStyle;
+        html += `<td${span} style="${style}">${text}</td>`;
       } else {
-        html += `<td${span} style="${valueStyle}">${text || '&nbsp;'}</td>`;
+        html += `<td${span} style="${buildCellStyle(defaultValueStyle)}">${text || '&nbsp;'}</td>`;
       }
     }
     html += '</tr>';
