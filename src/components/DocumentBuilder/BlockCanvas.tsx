@@ -284,20 +284,29 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
                   </div>
                 )}
 
-                {/* Block controls (edit mode only — always visible) */}
+                {/* Block controls — horizontal row, top-aligned.
+                    Bug fix: the old layout used flex-col + top-1/2 -translate-y-1/2,
+                    which centred the 3×24px button column (72px total) on the
+                    block's height. On single-line blocks (~24–32px tall) all three
+                    buttons overflowed and stacked on top of each other.
+                    Fix: flex-row + top-0 — the strip is always 24px tall and
+                    never overflows regardless of block height. */}
                 {mode === 'edit' && (
-                  <div className="studio-no-print absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 z-20">
+                  <div className="studio-no-print absolute -left-20 top-0 flex flex-row gap-0.5 z-20">
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
                       title="Move up"
                     >↑</button>
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
                       title="Move down"
                     >↓</button>
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-300 transition-colors text-xs"
                       title="Delete block"
@@ -305,10 +314,10 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
                   </div>
                 )}
 
-                {/* Drag handle — always visible in edit mode */}
+                {/* Drag handle — top-aligned to match the controls */}
                 {mode === 'edit' && (
-                  <div className="studio-no-print absolute -right-7 top-1/2 -translate-y-1/2 flex z-20 cursor-grab active:cursor-grabbing">
-                    <div className="w-5 h-8 flex flex-col items-center justify-center gap-0.5">
+                  <div className="studio-no-print absolute -right-7 top-0 flex z-20 cursor-grab active:cursor-grabbing">
+                    <div className="w-5 h-6 flex flex-col items-center justify-center gap-0.5">
                       {[0,1,2].map((i) => (
                         <div key={i} className="w-3 h-0.5 bg-slate-300 rounded-full" />
                       ))}
