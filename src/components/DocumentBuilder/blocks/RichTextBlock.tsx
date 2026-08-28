@@ -59,7 +59,7 @@ export default function RichTextBlockView({ block, columnsBlockId, columnId }: P
           lastSyncedHtml.current = sanitised;
           update({ html: sanitised });
         }}
-        className="outline-none py-2 cursor-text leading-relaxed prose prose-sm max-w-none rounded transition-colors focus:bg-slate-50/60 hover:bg-slate-50/40"
+        className="outline-none py-2 cursor-text leading-relaxed prose prose-sm max-w-none [&_table]:w-full [&_table]:table-fixed rounded transition-colors focus:bg-slate-50/60 hover:bg-slate-50/40"
         style={{ minHeight: block.minHeight ?? '4em' }}
         data-placeholder="Click to type…"
         // ⚠️  NO dangerouslySetInnerHTML — initial content set imperatively via refCallback
@@ -69,7 +69,7 @@ export default function RichTextBlockView({ block, columnsBlockId, columnId }: P
 
   return (
     <div
-      className="py-2 leading-relaxed prose prose-sm max-w-none"
+      className="py-2 leading-relaxed prose prose-sm max-w-none [&_table]:w-full [&_table]:table-fixed"
       style={{ minHeight: block.minHeight ?? undefined }}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
