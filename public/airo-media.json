@@ -501,20 +501,22 @@
   },
   "reference/screenshot-latest": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg",
-    "searchQuery": "photo assignment interface with status indicator",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-7c636c0f.jpg",
+    "searchQuery": "safety guidelines electrical hazard procedures document",
     "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg",
       "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg"
     ],
     "userModified": true,
     "createdAt": "2026-08-07T23:30:34.817Z",
-    "lastUpdated": "2026-08-08T09:46:39.679Z",
+    "lastUpdated": "2026-08-28T03:17:10.520Z",
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg": "f38wenbvln_1786145204557_file_bj40l5fLP-.jpg",
-      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg": "f38wenbvln_1786175987519_file_Qb8jN3r_R1.jpg"
+      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg": "f38wenbvln_1786175987519_file_Qb8jN3r_R1.jpg",
+      "/airo-assets/uploads/reference-screenshot-latest-7c636c0f.jpg": "f38wenbvln_1787886675897_file_d5HE-EEkiH.jpg"
     },
-    "uploadContentHash": "d6002d935f94564ce0bd732463a3005c977c529770ce6dcb93352dbb955f6522",
-    "caption": "photo assignment interface with status indicator"
+    "uploadContentHash": "aa4add459ba58b7f6c2af4af94438f5b7ab13647221ea9feacd0043ad2f128b9",
+    "caption": "safety guidelines electrical hazard procedures document"
   },
   "debug/upload-error-screenshot": {
     "mediaType": "image",
