@@ -354,7 +354,7 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
     spacer(4),
-    { id: bid('swms-title'), type: 'rich_text', html: '<h1 style="text-align:center;font-size:2em;font-weight:700;margin:0;">Safe Work Method Statement (SWMS)</h1>' } as DocumentBlock,
+    { id: bid('swms-title'), type: 'rich_text', html: '<h1 style="text-align:center;font-size:2.5em;font-weight:800;margin:0.5em 0;">Safe Work Method Statement (SWMS)</h1>' } as DocumentBlock,
     spacer(4),
     navyBand('1. Document Identity'),
     infoTable([
