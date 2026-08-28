@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { AnimatePresence } from 'motion/react';
-import { ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search, Loader2, Check, Download, Trash2, Copy, BookOpen, Image, AlertCircle, Calendar, Building2, ChevronDown, Wand2, FileDown, Package, Printer, Share2, Pencil, Eye } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search, Loader2, Check, Download, Trash2, Copy, BookOpen, Image, AlertCircle, Calendar, Building2, ChevronDown, Wand2, FileDown, Package, Printer, Share2, Pencil, Eye, ArrowLeft } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import { usePermissions } from '@/lib/usePermissions';
 import PosterPreviewModal from '@/components/safety-posters/PosterPreviewModal';
@@ -13,6 +13,10 @@ import UploadDocModal from '@/components/safety/UploadDocModal';
 import NewDocModal from '@/components/safety/NewDocModal';
 import { type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster, type GeneratedPoster, POLICY_TYPES, POSTER_TYPES, fmtBytes, fmtDate, statusBadge } from '@/components/safety/safety-types';
 import { useNavigate as _useNavigate } from 'react-router';
+import SafetyContent from '@/components/safety/SafetyContent';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── SWMS Library Tab ──────────────────────────────────────────────────────────
 
@@ -889,12 +893,6 @@ export function SafetyDashboardTab() {
 }
 
 // ── /safety standalone page ───────────────────────────────────────────────────
-import { useNavigate as _useNavigate } from "react-router";
-import { ArrowLeft } from 'lucide-react';
-import SafetyContent from '@/components/safety/SafetyContent';
-import DesktopTopBar from '@/components/DesktopTopBar';
-import DesktopDock from '@/components/DesktopDock';
-import PortalSidebar from '@/components/PortalSidebar';
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return <div className="flex flex-col flex-1 min-h-0 lg-portal">
