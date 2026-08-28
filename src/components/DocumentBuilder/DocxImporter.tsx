@@ -1,12 +1,18 @@
 /**
  * Smart Document Builder — Document Importer
  * ─────────────────────────────────────────────────────────────────────────────
- * Supports importing both .docx (Word) and .pdf files into builder blocks.
+ * Used from within the Studio builder ribbon to import a DOCX or PDF into an
+ * existing document.
  *
- * DOCX → parsed server-side with mammoth → heading/text/table/list blocks
- * PDF  → parsed server-side with zlib text extraction → heading/rich_text blocks
+ * DOCX mode offers two sub-modes:
+ *   keep_word (default) — stores the original DOCX as a Word Source in R2.
+ *                         The document retains a live link to the original file.
+ *   convert_blocks (legacy/beta) — parses DOCX → builder blocks.
+ *                         Marked as Legacy — not recommended for new documents.
  *
- * After a successful parse the user can:
+ * PDF mode always uses convert_blocks (PDF → text blocks).
+ *
+ * After a successful parse (convert_blocks) the user can:
  *   1. Apply to the current canvas (replace / prepend / append)
  *   2. Save directly to the shared template library
  */
@@ -15,12 +21,14 @@ import { useState, useRef } from 'react';
 import {
   FileUp, Loader2, AlertCircle, CheckCircle, X,
   FileText, File, ArrowDownToLine, ArrowUpToLine, RefreshCw,
-  Library, ChevronRight, Save,
+  Library, ChevronRight, Save, Shield,
 } from 'lucide-react';
 import type { DocumentBlock } from './types';
 
 type InsertMode = 'replace' | 'prepend' | 'append';
 type ImportMode = 'docx' | 'pdf';
+/** keep_word = store original; convert_blocks = parse to Studio blocks (legacy) */
+type DocxMode = 'keep_word' | 'convert_blocks';
 type Step = 'upload' | 'preview' | 'save_library';
 
 interface Props {
@@ -60,6 +68,8 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
   const [step, setStep] = useState<Step>('upload');
   const inputRef = useRef<HTMLInputElement>(null);
   const [resolvedId, setResolvedId] = useState<number | null>(templateId);
+  // DOCX sub-mode: keep_word is the default (recommended)
+  const [docxMode, setDocxMode] = useState<DocxMode>('keep_word');
 
   // Save-to-library state
   const [libName, setLibName] = useState('');
@@ -114,6 +124,10 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
         : `/api/document-templates/${id}/import-pdf`;
       const fieldName = mode === 'docx' ? 'docx' : 'pdf';
       formData.append(fieldName, file);
+      // Send docxMode for DOCX; PDF always uses convert_blocks server-side
+      if (mode === 'docx') {
+        formData.append('mode', docxMode);
+      }
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60_000);
@@ -130,16 +144,25 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
       }
 
       const data = await res.json() as {
+        mode?: string;
         blocks?: DocumentBlock[];
         sourceDocxName?: string;
         sourceFileName?: string;
         warnings?: string[];
         pageCount?: number;
+        sha256?: string;
+        revision?: number;
         error?: string;
       };
 
       if (!res.ok || data.error) {
         setError(data.error ?? 'Failed to parse file');
+        return;
+      }
+
+      // keep_word mode: file stored, no blocks to preview — close and show success
+      if (data.mode === 'keep_word') {
+        onClose();
         return;
       }
 
@@ -243,7 +266,7 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
           {/* ── STEP 1: Upload ─────────────────────────────────────────────────── */}
           {step === 'upload' && (
             <>
-              {/* Mode toggle */}
+              {/* File type toggle */}
               <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
                 <button
                   onClick={() => handleModeChange('docx')}
@@ -264,6 +287,75 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
                   PDF (.pdf)
                 </button>
               </div>
+
+              {/* DOCX sub-mode toggle — only shown for Word */}
+              {mode === 'docx' && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs font-semibold text-slate-600">Import method</p>
+                  <div className="flex flex-col gap-1.5">
+                    {/* Keep as Word Source — recommended */}
+                    <button
+                      onClick={() => setDocxMode('keep_word')}
+                      className={[
+                        'flex items-start gap-3 p-3 rounded-xl border text-left transition-all',
+                        docxMode === 'keep_word'
+                          ? 'border-blue-400 bg-blue-50'
+                          : 'border-slate-200 bg-white hover:border-slate-300',
+                      ].join(' ')}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
+                        docxMode === 'keep_word' ? 'border-blue-500' : 'border-slate-300'
+                      }`}>
+                        {docxMode === 'keep_word' && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-800">Keep as Word Source</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                            Recommended
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Stores the original .docx in secure storage. Download, replace, or re-export at any time.
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Convert to Studio Blocks — legacy */}
+                    <button
+                      onClick={() => setDocxMode('convert_blocks')}
+                      className={[
+                        'flex items-start gap-3 p-3 rounded-xl border text-left transition-all',
+                        docxMode === 'convert_blocks'
+                          ? 'border-amber-400 bg-amber-50'
+                          : 'border-slate-200 bg-white hover:border-slate-300',
+                      ].join(' ')}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
+                        docxMode === 'convert_blocks' ? 'border-amber-500' : 'border-slate-300'
+                      }`}>
+                        {docxMode === 'convert_blocks' && (
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-800">Convert to Studio Blocks</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                            Legacy
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Parses Word content into editable blocks. Complex formatting may not convert perfectly.
+                          Not recommended for new documents.
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Drop zone */}
               <div
@@ -309,14 +401,28 @@ export default function DocxImporter({ templateId, hasExistingBlocks, onClose, o
                 className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading
-                  ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing…' : 'Saving & Parsing…'}</>
-                  : `Parse ${mode === 'docx' ? 'DOCX' : 'PDF'}`
+                  ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Uploading…' : 'Saving & Uploading…'}</>
+                  : mode === 'docx' && docxMode === 'keep_word'
+                    ? 'Save as Word Source'
+                    : `Parse ${mode === 'docx' ? 'DOCX' : 'PDF'}`
                 }
               </button>
 
               {/* What gets imported */}
               <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 space-y-1">
-                {mode === 'docx' ? (
+                {mode === 'docx' && docxMode === 'keep_word' ? (
+                  <>
+                    <p className="font-semibold text-slate-600 flex items-center gap-1.5">
+                      <Shield size={11} className="text-blue-500" />
+                      What happens with Keep as Word Source:
+                    </p>
+                    <p>• Original .docx stored securely in R2 storage</p>
+                    <p>• SHA-256 checksum recorded for integrity verification</p>
+                    <p>• Download the original file at any time</p>
+                    <p>• Replace with a new revision — history is preserved</p>
+                    <p>• No conversion — formatting is 100% preserved</p>
+                  </>
+                ) : mode === 'docx' ? (
                   <>
                     <p className="font-semibold text-slate-600">What gets imported from DOCX:</p>
                     <p>• Headings (H1–H4) → Heading blocks</p>

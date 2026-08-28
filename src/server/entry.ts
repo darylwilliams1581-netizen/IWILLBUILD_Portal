@@ -231,6 +231,10 @@ import document_templates_id_export_pdf_get_198 from "./api/document-templates/[
 import document_templates_id_import_blocks_post_199 from "./api/document-templates/[id]/import-blocks/POST";
 import document_templates_id_import_docx_post_200 from "./api/document-templates/[id]/import-docx/POST";
 import document_templates_id_import_pdf_post_201 from "./api/document-templates/[id]/import-pdf/POST";
+import document_templates_id_source_document_get from "./api/document-templates/[id]/source-document/GET";
+import document_templates_id_source_document_download_get from "./api/document-templates/[id]/source-document/download/GET";
+import document_templates_id_source_document_replace_post from "./api/document-templates/[id]/source-document/replace/POST";
+import document_templates_id_source_document_pdf_preview_get from "./api/document-templates/[id]/source-document/pdf-preview/GET";
 import document_templates_id_publish_to_library_post_202 from "./api/document-templates/[id]/publish-to-library/POST";
 import documents_get_203 from "./api/documents/GET";
 import documents_share_token_get_204 from "./api/documents/share/[token]/GET";
@@ -1654,6 +1658,15 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'safety_category',             definition: "VARCHAR(100) NULL DEFAULT NULL COMMENT 'SWMS | WHS Plan'" },
     { table: 'document_templates', column: 'source_widget_type',          definition: "VARCHAR(50) NULL DEFAULT NULL COMMENT 'swms | whs_plan'" },
     { table: 'document_templates', column: 'source_record_id',            definition: 'INT NULL DEFAULT NULL' },
+    // ── document_templates: Phase 2 Word Source Document columns ─────────────
+    { table: 'document_templates', column: 'source_type',         definition: "VARCHAR(20) NOT NULL DEFAULT 'blocks' COMMENT 'blocks|docx|pdf'" },
+    { table: 'document_templates', column: 'source_file_key',     definition: "VARCHAR(1000) NULL COMMENT 'Storage key for original source file'" },
+    { table: 'document_templates', column: 'source_file_name',    definition: "VARCHAR(500) NULL COMMENT 'Original uploaded filename'" },
+    { table: 'document_templates', column: 'source_mime_type',    definition: "VARCHAR(100) NULL COMMENT 'MIME type of source file'" },
+    { table: 'document_templates', column: 'source_sha256',       definition: "VARCHAR(64) NULL COMMENT 'SHA-256 hex of source file bytes'" },
+    { table: 'document_templates', column: 'source_revision',     definition: "INT NOT NULL DEFAULT 0 COMMENT 'Monotonic revision counter'" },
+    { table: 'document_templates', column: 'source_updated_at',   definition: "DATETIME NULL COMMENT 'When source file was last replaced'" },
+    { table: 'document_templates', column: 'rendered_pdf_key',    definition: "VARCHAR(1000) NULL COMMENT 'Storage key for cached PDF render'" },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
@@ -2070,6 +2083,8 @@ async function runStartupMigrations() {
     // ── 2FA security tables ───────────────────────────────────────────────────
     { name: 'pending_2fa_challenges', ddl: "CREATE TABLE IF NOT EXISTS pending_2fa_challenges (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, method ENUM('totp','sms') NOT NULL DEFAULT 'totp', expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_p2fa_user (user_id), INDEX idx_p2fa_token (token_hash), INDEX idx_p2fa_expires (expires_at))" },
     { name: 'totp_backup_codes', ddl: "CREATE TABLE IF NOT EXISTS totp_backup_codes (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_tbc_user (user_id), INDEX idx_tbc_hash (user_id, code_hash))" },
+    // ── Phase 2: Word Source Document revision history ────────────────────────
+    { name: 'document_template_revisions', ddl: "CREATE TABLE IF NOT EXISTS document_template_revisions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, revision INT NOT NULL DEFAULT 1, source_type VARCHAR(20) NOT NULL DEFAULT 'docx', source_file_key VARCHAR(1000) NOT NULL, source_file_name VARCHAR(500) NOT NULL, source_mime_type VARCHAR(100) NOT NULL, source_sha256 VARCHAR(64) NOT NULL, file_size_bytes INT NOT NULL DEFAULT 0, uploaded_by VARCHAR(36) NULL, uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, notes TEXT NULL, INDEX idx_dtr_template (template_id), INDEX idx_dtr_company (company_id), INDEX idx_dtr_revision (template_id, revision))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -3458,6 +3473,11 @@ app.get("/api/document-templates/:id/export/pdf", document_templates_id_export_p
 app.post("/api/document-templates/:id/import-blocks", document_templates_id_import_blocks_post_199);
 app.post("/api/document-templates/:id/import-docx", document_templates_id_import_docx_post_200);
 app.post("/api/document-templates/:id/import-pdf", document_templates_id_import_pdf_post_201);
+// Source document routes — must come before the generic /:id routes to avoid param conflicts
+app.get("/api/document-templates/:id/source-document", document_templates_id_source_document_get);
+app.get("/api/document-templates/:id/source-document/download", document_templates_id_source_document_download_get);
+app.post("/api/document-templates/:id/source-document/replace", document_templates_id_source_document_replace_post);
+app.get("/api/document-templates/:id/source-document/pdf-preview", document_templates_id_source_document_pdf_preview_get);
 app.post("/api/document-templates/:id/publish-to-library", document_templates_id_publish_to_library_post_202);
 app.get("/api/documents", documents_get_203);
 app.get("/api/documents/share/:token", documents_share_token_get_204);

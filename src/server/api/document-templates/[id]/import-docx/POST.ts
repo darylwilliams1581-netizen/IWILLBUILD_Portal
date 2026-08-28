@@ -26,6 +26,9 @@ import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { nanoid } from 'nanoid';
 import type { DocumentBlock } from '../../../../../components/DocumentBuilder/types.js';
 import JSZip from 'jszip';
+import { uploadSourceDocument } from '../../../../lib/source-document-storage.js';
+
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -45,29 +48,91 @@ export default async function handler(req: Request, res: Response) {
 
     // Verify template ownership
     const [rows] = await db.execute(sql.raw(
-      `SELECT id FROM document_templates WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
-    )) as unknown as [Array<{ id: number }>, unknown];
+      `SELECT id, source_revision FROM document_templates
+       WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
+    )) as unknown as [Array<{ id: number; source_revision: number | null }>, unknown];
     if (!rows?.[0]) return res.status(404).json({ error: 'Template not found' });
 
-    // Parse multipart upload
-    const { files } = await parseMultipartForm(req, { maxFileSize: 20 * 1024 * 1024 });
-    const docxFile = files.find((f) => f.fieldname === 'docx' || f.originalname?.endsWith('.docx'));
+    // Parse multipart upload — accept field "docx" or "file"
+    const { files, fields } = await parseMultipartForm(req, { maxFileSize: 50 * 1024 * 1024 });
+    const docxFile = files.find((f) =>
+      f.fieldname === 'docx' || f.fieldname === 'file' || f.originalname?.endsWith('.docx')
+    );
     if (!docxFile?.buffer) {
       return res.status(400).json({ error: 'No DOCX file uploaded. Upload a .docx file in the "docx" field.' });
     }
 
-    // Parse DOCX using JSZip (pure-JS, bundles cleanly) + custom XML→blocks
+    const originalName = docxFile.originalname ?? 'document.docx';
+    // mode: 'keep_word' (default — store original) | 'convert_blocks' (legacy)
+    const mode = (fields.mode as string | undefined) ?? 'keep_word';
+
+    // ── Mode: keep_word — store original DOCX in R2, do not convert ──────────
+    if (mode === 'keep_word') {
+      const currentRevision = Number(rows[0].source_revision ?? 0);
+      const newRevision = currentRevision + 1;
+
+      const upload = await uploadSourceDocument(docxFile.buffer, {
+        companyId: profile.companyId,
+        templateId: id,
+        revision: newRevision,
+        originalName,
+        mimeType: DOCX_MIME,
+      });
+
+      const safe = (s: string) => s.replace(/'/g, "''");
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+      await db.execute(sql.raw(
+        `UPDATE document_templates SET
+           source_type       = 'docx',
+           source_file_key   = '${safe(upload.storageKey)}',
+           source_file_name  = '${safe(originalName)}',
+           source_mime_type  = '${safe(DOCX_MIME)}',
+           source_sha256     = '${safe(upload.sha256)}',
+           source_revision   = ${newRevision},
+           source_updated_at = '${now}',
+           rendered_pdf_key  = NULL,
+           updated_at        = '${now}'
+         WHERE id = ${id}`
+      ));
+
+      // Insert revision history (non-fatal if table not yet created)
+      await db.execute(sql.raw(
+        `INSERT INTO document_template_revisions
+           (template_id, company_id, revision, source_type, source_file_key,
+            source_file_name, source_mime_type, source_sha256, file_size_bytes,
+            uploaded_by, uploaded_at)
+         VALUES
+           (${id}, ${profile.companyId}, ${newRevision}, 'docx',
+            '${safe(upload.storageKey)}', '${safe(originalName)}', '${safe(DOCX_MIME)}',
+            '${safe(upload.sha256)}', ${upload.sizeBytes},
+            '${safe(session.user.id)}', '${now}')`
+      )).catch((e: unknown) => {
+        console.warn('[import-docx] revision history insert failed:', e);
+      });
+
+      return res.json({
+        mode: 'keep_word',
+        sourceDocxName: originalName,
+        sha256: upload.sha256,
+        revision: newRevision,
+        sizeBytes: upload.sizeBytes,
+      });
+    }
+
+    // ── Mode: convert_blocks — legacy DOCX → blocks conversion ───────────────
     const { blocks, warnings } = await parseDocxToBlocks(docxFile.buffer);
 
-    // Store source DOCX reference in the template
-    const storedName = `docx-${nanoid(8)}-${docxFile.originalname ?? 'import.docx'}`;
+    // Store legacy source reference
+    const storedName = `docx-${nanoid(8)}-${originalName}`;
     await db.execute(sql.raw(
-      `UPDATE document_templates SET source_docx_name = ${JSON.stringify(docxFile.originalname ?? 'import.docx')}, source_docx_path = ${JSON.stringify(storedName)} WHERE id = ${id}`
+      `UPDATE document_templates SET source_docx_name = ${JSON.stringify(originalName)}, source_docx_path = ${JSON.stringify(storedName)} WHERE id = ${id}`
     ));
 
     return res.json({
+      mode: 'convert_blocks',
       blocks,
-      sourceDocxName: docxFile.originalname ?? 'import.docx',
+      sourceDocxName: originalName,
       warnings: warnings.slice(0, 10),
     });
   } catch (err) {

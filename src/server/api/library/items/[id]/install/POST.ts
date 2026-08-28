@@ -54,7 +54,8 @@ export default async function handler(req: Request, res: Response) {
     // ── Fetch source item ─────────────────────────────────────────────────────
     const [sourceRows] = await db.execute(
       sql.raw(`
-        SELECT id, type, category, title, builder_json, content, version
+        SELECT id, type, category, title, builder_json, content, version,
+               page_layout_json, theme_json, pdf_settings_json
         FROM library_items
         WHERE id = ${sourceId} AND visibility = 'public' AND status = 'active'
         LIMIT 1
@@ -62,6 +63,7 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{
       id: number; type: string; category: string | null; title: string;
       builder_json: string | null; content: string | null; version: string;
+      page_layout_json: string | null; theme_json: string | null; pdf_settings_json: string | null;
     }>, unknown];
 
     const source = sourceRows?.[0];
@@ -161,13 +163,17 @@ export default async function handler(req: Request, res: Response) {
       const builderJson = source.builder_json ?? '{"blocks":[],"systemFields":[],"sourceAttachments":[]}';
       const safeBuilderJson = safe(builderJson);
       const tType = safe(source.type ?? 'document');
+      // Restore layout/theme/pdf_settings from library item
+      const pageLayoutVal  = source.page_layout_json  ? `'${safe(source.page_layout_json)}'`  : "'{}'";
+      const themeVal       = source.theme_json        ? `'${safe(source.theme_json)}'`        : "'{}'";
+      const pdfSettingsVal = source.pdf_settings_json ? `'${safe(source.pdf_settings_json)}'` : 'NULL';
 
       const [insertResult] = await db.execute(
         sql.raw(`
           INSERT INTO document_templates
-            (company_id, name, template_type, builder_json, page_layout_json, theme_json, doc_status)
+            (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json, doc_status)
           VALUES
-            (${companyId}, '${safeTitle}', '${tType}', '${safeBuilderJson}', '{}', '{}', 'draft')
+            (${companyId}, '${safeTitle}', '${tType}', '${safeBuilderJson}', ${pageLayoutVal}, ${themeVal}, ${pdfSettingsVal}, 'draft')
         `)
       ) as unknown as [ResultSetHeader, unknown];
 
