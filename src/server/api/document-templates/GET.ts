@@ -15,7 +15,8 @@ const FULL_SELECT = (companyId: number) =>
   `SELECT id, company_id, name, template_type, page_layout_json, theme_json,
           source_docx_name, is_active, created_by_user_id, created_at, updated_at,
           doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text,
-          submit_label, requires_signature, doc_status
+          submit_label, requires_signature, doc_status,
+          safety_category, source_widget_type, source_record_id
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;
@@ -30,7 +31,10 @@ const SAFE_SELECT = (companyId: number) =>
           ''      AS acknowledgement_text,
           ''      AS submit_label,
           0       AS requires_signature,
-          'draft' AS doc_status
+          'draft' AS doc_status,
+          NULL    AS safety_category,
+          NULL    AS source_widget_type,
+          NULL    AS source_record_id
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;

@@ -6,7 +6,7 @@ import {
   X, Check, Loader2, AlertCircle, AlertTriangle, ChevronRight, ChevronDown,
   Plus, Trash2, Copy, GripVertical, ChevronLeft, Zap, Settings2,
   ShieldAlert, HardHat, ClipboardList, Wrench, Users, FileText,
-  TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare,
+  TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare, Layers,
 } from 'lucide-react';
 import {
   type SwmsBodyData, type WorkStep, type CriticalControl, type PlantItem,
@@ -87,10 +87,12 @@ interface Props {
   initial?: SwmsTemplate | null;
   onClose: () => void;
   onSaved: (s: SwmsTemplate) => void;
+  /** Called after a Studio document is successfully generated; receives the new doc ID */
+  onGenerateStudio?: (studioDocId: number) => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
+export default function SwmsBodyBuilder({ initial, onClose, onSaved, onGenerateStudio }: Props) {
   const isEdit = !!initial;
 
   // Parse existing swms_body or migrate from legacy fields
@@ -125,6 +127,8 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [savedId, setSavedId] = useState<number | null>(initial?.id ?? null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
 
   const allSections = data.buildMode === 'advanced'
     ? [...QUICK_SECTIONS, ...ADVANCED_SECTIONS]
@@ -181,6 +185,75 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ─── Generate Studio Document ─────────────────────────────────────────────
+  async function handleGenerateStudio() {
+    if (errorCount > 0) {
+      setGenerateError('Fix all validation errors before generating a Studio document.');
+      return;
+    }
+    setGenerating(true); setGenerateError('');
+    try {
+      // 1. Save the SWMS first (ensure we have a saved record ID)
+      let currentSavedId = savedId;
+      if (!currentSavedId) {
+        const body = {
+          title: data.title || data.purpose.slice(0, 80) || 'SWMS',
+          category: data.category,
+          workActivity: data.scope,
+          purposeScope: data.purpose,
+          authorName: data.authorName,
+          approvedByName: data.approvedByName,
+          revisionNumber: data.revisionNumber,
+          reviewDate: data.reviewDate || null,
+          status: data.status,
+          hazards: data.legacyHazards ?? data.criticalControls.map((c) => c.criticalRisk).join('\n'),
+          controls: data.legacyControls ?? data.criticalControls.map((c) => c.mandatoryControls).join('\n'),
+          ppe: data.ppeRows.map((pr) => `${pr.item}: ${pr.requirement}`).join('\n'),
+          plantEquipment: data.plantItems.map((pi) => pi.item).join('\n'),
+          emergencyControls: data.emergencyActions.map((a) => a.action).join('\n'),
+          swms_body: JSON.stringify(data),
+          build_mode: data.buildMode,
+          document_type: data.documentType,
+        };
+        const r = await fetch('/api/safety/swms', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const resp = await r.json();
+        if (!r.ok) throw new Error(resp.error ?? 'Failed to save SWMS');
+        currentSavedId = resp.swms?.id ?? null;
+        if (currentSavedId) setSavedId(currentSavedId);
+        onSaved(resp.swms);
+      }
+
+      // 2. Convert to Studio blocks (dynamic import to keep bundle lean)
+      const { swmsBodyToStudioBlocks } = await import('@/lib/safety-to-studio/swmsBodyToStudioBlocks');
+      const blocks = swmsBodyToStudioBlocks(data, data.title || 'SWMS');
+
+      // 3. Call the generate endpoint
+      const genR = await fetch('/api/studio/generate-from-safety', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetType: 'swms',
+          sourceRecordId: currentSavedId,
+          title: data.title || 'SWMS',
+          blocks,
+          safetyCategory: 'SWMS',
+        }),
+      });
+      const genResp = await genR.json();
+      if (!genR.ok) throw new Error(genResp.error ?? 'Failed to generate Studio document');
+
+      onGenerateStudio?.(genResp.id);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Failed to generate Studio document');
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -1229,6 +1302,12 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
                 <AlertCircle size={13} className="shrink-0" />{saveError}
               </div>
             )}
+            {/* Generate error */}
+            {generateError && (
+              <div className="mx-4 mt-3 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs shrink-0">
+                <AlertCircle size={13} className="shrink-0" />{generateError}
+              </div>
+            )}
 
             {/* Section content */}
             <div className="flex-1 overflow-y-auto p-5">
@@ -1258,15 +1337,29 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
 
               <div className="flex items-center gap-2">
                 {isLast ? (
-                  <button
-                    type="button"
-                    onClick={() => handleSave(true)}
-                    disabled={saving}
-                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
-                  >
-                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    Save & Close
-                  </button>
+                  <>
+                    {onGenerateStudio && (
+                      <button
+                        type="button"
+                        onClick={() => void handleGenerateStudio()}
+                        disabled={generating || saving}
+                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
+                        title={errorCount > 0 ? 'Fix validation errors first' : 'Generate a Studio document from this SWMS'}
+                      >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
+                        Generate Studio Document
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSave(true)}
+                      disabled={saving || generating}
+                      className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                      Save & Close
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"

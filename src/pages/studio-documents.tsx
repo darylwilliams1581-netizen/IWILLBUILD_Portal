@@ -31,6 +31,10 @@ export interface DocTemplate {
   updated_at: string;
   doc_kind: string | null;
   requires_acknowledgement: number | boolean | null;
+  /** Set when the document was generated from a Safety widget */
+  safety_category?: string | null;
+  source_widget_type?: string | null;
+  source_record_id?: number | null;
 }
 interface DocSubmission {
   id: number;
@@ -604,7 +608,12 @@ export default function StudioDocumentsPage() {
     }
   }, [navigate]);
   const filtered = templates.filter(t => {
-    const matchType = typeFilter === 'All' || t.template_type === typeFilter;
+    const isSafetyFilter = typeFilter === 'SWMS' || typeFilter === 'WHS Plan';
+    const matchType = typeFilter === 'All'
+      ? true
+      : isSafetyFilter
+        ? t.safety_category === typeFilter
+        : t.template_type === typeFilter;
     const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase());
     return matchType && matchSearch;
   });
@@ -679,6 +688,10 @@ export default function StudioDocumentsPage() {
               <div className="flex items-center gap-1.5 overflow-x-auto">
                 {studio.ALL_TYPES.map(t => <button key={t} onClick={() => setTypeFilter(t)} className={['flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150', typeFilter === t ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200'].join(' ')}>
                     {t === 'All' ? 'All' : TYPE_LABELS[t] ?? t}
+                  </button>)}
+                <div className="w-px h-4 bg-slate-200 mx-1 flex-shrink-0" />
+                {(['SWMS', 'WHS Plan'] as const).map(cat => <button key={cat} onClick={() => setTypeFilter(cat)} className={['flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150', typeFilter === cat ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'].join(' ')}>
+                    {cat}
                   </button>)}
               </div>
             </div>

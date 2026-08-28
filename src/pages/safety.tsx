@@ -12,10 +12,12 @@ import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
 import UploadDocModal from '@/components/safety/UploadDocModal';
 import NewDocModal from '@/components/safety/NewDocModal';
 import { type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster, type GeneratedPoster, POLICY_TYPES, POSTER_TYPES, fmtBytes, fmtDate, statusBadge } from '@/components/safety/safety-types';
+import { useNavigate as _useNavigate } from 'react-router';
 
 // ── SWMS Library Tab ──────────────────────────────────────────────────────────
 
 export function SwmsLibraryTab() {
+  const navigate = _useNavigate();
   const [swmsList, setSwmsList] = useState<SwmsTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -273,6 +275,10 @@ export function SwmsLibraryTab() {
         setSwmsList(prev => editing ? prev.map(x => x.id === s.id ? s : x) : [s, ...prev]);
         setShowModal(false);
         setEditing(null);
+      }} onGenerateStudio={(docId) => {
+        setShowModal(false);
+        setEditing(null);
+        navigate(`/studio/builder/${docId}`);
       }} />}
         {printing && <SwmsPrintModal swms={printing} onClose={() => setPrinting(null)} />}
       </AnimatePresence>
@@ -283,6 +289,7 @@ export function SwmsLibraryTab() {
 // ── Safety Plans Tab ──────────────────────────────────────────────────────────
 
 export function SafetyPlansTab() {
+  const navigate = _useNavigate();
   const [plans, setPlans] = useState<SafetyPlan[]>([]);
   const [jobs, setJobs] = useState<Array<{
     id: number;
@@ -487,6 +494,12 @@ export function SafetyPlansTab() {
         setBuilderPlanTitle(undefined);
       }} onSaved={(_id, _title) => {
         refreshPlans();
+      }} onGenerateStudio={(docId) => {
+        setShowBuilder(false);
+        setBuilderInitial(null);
+        setBuilderPlanId(null);
+        setBuilderPlanTitle(undefined);
+        navigate(`/studio/builder/${docId}`);
       }} />}
       </AnimatePresence>
 
