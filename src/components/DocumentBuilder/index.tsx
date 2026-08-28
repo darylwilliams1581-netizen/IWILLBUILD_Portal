@@ -259,8 +259,6 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     { id: 'document_tools', label: 'Document Tools', icon: <Layers size={13} /> },
     { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
     { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
-    { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
-    { id: 'advanced',      label: 'Advanced',      icon: <ShieldAlert size={13} /> },
     { id: 'view',          label: 'View',          icon: <Monitor size={13} /> },
   ];
 
