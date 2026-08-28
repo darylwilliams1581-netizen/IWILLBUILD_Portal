@@ -1,18 +1,25 @@
 /**
  * POST /api/migrate-studio-phase2
  * ─────────────────────────────────────────────────────────────────────────────
- * Idempotent migration for Studio Phase 2:
+ * Idempotent migration for Studio Phase 2.
  *
- *   1. Creates job_studio_documents table — links a Studio document_templates
- *      record to a job with an immutable content snapshot.
+ * ARCHITECTURE DECISION:
+ *   Studio-generated SWMS documents attach to jobs via the EXISTING job_swms
+ *   table — no parallel table, no synthetic swms_templates rows.
  *
- *   2. Adds applied_widgets_json column to document_templates — stores
- *      AppliedWidgetMeta[] so duplicate detection survives a page reload.
- *      (The column is also written into builder_json but a dedicated column
- *      makes it queryable without JSON parsing.)
+ *   job_swms gains four nullable columns:
+ *     studio_document_id      — document_templates.id (null for legacy SWMS)
+ *     studio_source_revision  — revision string captured at attachment time
+ *     content_snapshot_json   — immutable builder_json snapshot at attachment time
+ *     studio_attached_at      — timestamp of attachment
  *
- *   3. Adds studio_doc_id column to job_swms — bridges the sign-on workflow
- *      to Studio-generated documents.
+ *   Constraint: exactly one of (swms_template_id, studio_document_id) must be
+ *   non-null per row. Enforced at the application layer.
+ *
+ *   swms_signoffs continues referencing job_swms.id — no changes needed there.
+ *
+ *   document_templates gains applied_widgets_json for queryable widget metadata
+ *   (mirrors builder_json.appliedWidgets without JSON parsing).
  *
  * Platform-owner only. Safe to run multiple times.
  */
@@ -62,55 +69,57 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // ── 1. job_studio_documents ───────────────────────────────────────────────
-    await run('job_studio_documents table', `
-      CREATE TABLE IF NOT EXISTS job_studio_documents (
-        id                      INT AUTO_INCREMENT PRIMARY KEY,
-        company_id              INT NOT NULL,
-        job_id                  INT NOT NULL,
-        studio_doc_id           INT NOT NULL COMMENT 'document_templates.id of the master',
-        -- Immutable snapshot of the master at attachment time.
-        -- Later edits to the master do NOT affect this record.
-        content_snapshot_json   LONGTEXT NOT NULL,
-        -- Denormalised job fields captured at attachment time for PDF merge.
-        job_title               VARCHAR(255) NULL,
-        job_number              VARCHAR(100) NULL,
-        site_address            TEXT NULL,
-        client_name             VARCHAR(255) NULL,
-        supervisor_name         VARCHAR(255) NULL,
-        -- Document identity at attachment time
-        doc_title               VARCHAR(255) NOT NULL,
-        doc_number              VARCHAR(100) NULL,
-        revision                VARCHAR(20) NOT NULL DEFAULT '1',
-        date_attached           DATE NOT NULL,
-        -- Bridge to existing sign-on workflow:
-        -- When a Studio SWMS is attached to a job a synthetic swms_templates row
-        -- is created and its ID is stored here so swms_signoffs can reference it.
-        bridge_swms_template_id INT NULL COMMENT 'swms_templates.id of the synthetic bridge row',
-        -- Lifecycle
-        attached_by_user_id     VARCHAR(36) NOT NULL,
-        created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_company_job (company_id, job_id),
-        INDEX idx_studio_doc (studio_doc_id)
-      )
+    // ── 1. job_swms: studio_document_id ──────────────────────────────────────
+    // References document_templates.id. NULL for legacy SWMS rows.
+    await run('job_swms.studio_document_id', `
+      ALTER TABLE job_swms
+      ADD COLUMN studio_document_id INT NULL
+        COMMENT 'document_templates.id — set for Studio-generated SWMS; null for legacy template SWMS'
     `);
 
-    // ── 2. applied_widgets_json column on document_templates ─────────────────
+    // ── 2. job_swms: studio_source_revision ──────────────────────────────────
+    await run('job_swms.studio_source_revision', `
+      ALTER TABLE job_swms
+      ADD COLUMN studio_source_revision VARCHAR(20) NULL
+        COMMENT 'Revision string captured at attachment time (e.g. "1", "2", "A")'
+    `);
+
+    // ── 3. job_swms: content_snapshot_json ───────────────────────────────────
+    // Immutable snapshot of builder_json at the moment of job attachment.
+    // Later edits to the master document_templates row do NOT affect this.
+    await run('job_swms.content_snapshot_json', `
+      ALTER TABLE job_swms
+      ADD COLUMN content_snapshot_json LONGTEXT NULL
+        COMMENT 'Immutable builder_json snapshot captured at job-attachment time'
+    `);
+
+    // ── 4. job_swms: studio_attached_at ──────────────────────────────────────
+    await run('job_swms.studio_attached_at', `
+      ALTER TABLE job_swms
+      ADD COLUMN studio_attached_at DATETIME NULL
+        COMMENT 'Timestamp when the Studio document was attached to this job'
+    `);
+
+    // ── 5. document_templates: applied_widgets_json ──────────────────────────
+    // Mirrors builder_json.appliedWidgets for queryability without JSON parsing.
+    // The canonical source of truth is builder_json; this column is a cache.
     await run('document_templates.applied_widgets_json', `
       ALTER TABLE document_templates
       ADD COLUMN applied_widgets_json MEDIUMTEXT NULL
-        COMMENT 'JSON array of AppliedWidgetMeta — mirrors builder_json.appliedWidgets for queryability'
+        COMMENT 'JSON array of AppliedWidgetMeta — mirrors builder_json.appliedWidgets'
     `);
 
-    // ── 3. studio_doc_id column on job_swms ──────────────────────────────────
-    await run('job_swms.studio_doc_id', `
-      ALTER TABLE job_swms
-      ADD COLUMN studio_doc_id INT NULL
-        COMMENT 'job_studio_documents.id — set when this row was created as a sign-on bridge for a Studio doc'
-    `);
-
-    return res.json({ ok: true, results });
+    return res.json({
+      ok: true,
+      results,
+      summary: [
+        'No new tables created.',
+        'job_swms extended with 4 nullable Studio columns.',
+        'swms_template_id remains nullable — set for legacy rows, null for Studio rows.',
+        'swms_signoffs unchanged — still references job_swms.id.',
+        'No synthetic swms_templates rows are created.',
+      ],
+    });
   } catch (err) {
     console.error('POST /api/migrate-studio-phase2 error:', err);
     return res.status(500).json({ error: String(err) });

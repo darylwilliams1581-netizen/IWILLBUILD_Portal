@@ -1,30 +1,22 @@
 /**
  * POST /api/jobs/:id/studio-swms
  * ─────────────────────────────────────────────────────────────────────────────
- * Attaches a Studio document (document_templates) to a job.
+ * Attaches a Studio document (document_templates) to a job by inserting a
+ * row into the EXISTING job_swms table.
  *
- * Behaviour:
- *   1. Loads the master document_templates row and its builder_json.
- *   2. Captures an immutable content snapshot (builder_json at this moment).
- *   3. Captures job fields (title, number, site_address, client, supervisor)
- *      from the jobs table for PDF merge.
- *   4. Inserts a job_studio_documents row.
- *   5. If the document templateType is 'swms' or 'safety_plan':
- *      - Creates a synthetic swms_templates row (title = doc title, status = 'active')
- *        so the existing sign-on workflow can reference it.
- *      - Creates a job_swms row linking the job to the synthetic template,
- *        with studio_doc_id pointing back to the job_studio_documents row.
- *   6. Returns the new job_studio_documents row.
+ * ARCHITECTURE:
+ *   - No parallel table. No synthetic swms_templates rows.
+ *   - Studio attachments live in job_swms alongside legacy SWMS attachments.
+ *   - swms_template_id is NULL for Studio rows; studio_document_id is set.
+ *   - content_snapshot_json captures builder_json at attachment time —
+ *     later edits to the master do NOT affect this job's version.
+ *   - swms_signoffs continues referencing job_swms.id unchanged.
  *
  * Body:
  *   studioDocId  number   — document_templates.id
- *   docNumber    string?  — optional document number override
- *   revision     string?  — optional revision override (default '1')
+ *   revision     string?  — revision label (default '1')
  *
- * Idempotency:
- *   A second attachment of the same studioDocId to the same job creates a
- *   new revision row (the snapshot captures the current master state).
- *   This is intentional — each attachment is a point-in-time snapshot.
+ * Returns the new job_swms row.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
@@ -50,9 +42,8 @@ export default async function handler(req: Request, res: Response) {
     const jobId = parseInt(req.params.id, 10);
     if (!jobId) return res.status(400).json({ error: 'Invalid job ID' });
 
-    const { studioDocId, docNumber, revision } = req.body as {
+    const { studioDocId, revision } = req.body as {
       studioDocId: number;
-      docNumber?: string;
       revision?: string;
     };
     if (!studioDocId) return res.status(400).json({ error: 'studioDocId required' });
@@ -70,119 +61,81 @@ export default async function handler(req: Request, res: Response) {
     const doc = Array.isArray(docRows) ? docRows[0] : null;
     if (!doc) return res.status(404).json({ error: 'Studio document not found' });
 
-    // ── 2. Load job fields ────────────────────────────────────────────────────
+    // ── 2. Verify job belongs to company ─────────────────────────────────────
     const [jobRows] = await db.execute(sql.raw(
-      `SELECT id, name, job_number, site_address, client_name, supervisor_name
-       FROM jobs
+      `SELECT id, name, job_number FROM jobs
        WHERE id = ${jobId} AND company_id = ${companyId}
        LIMIT 1`
     )) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    const job = Array.isArray(jobRows) ? jobRows[0] : null;
-    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!Array.isArray(jobRows) || !jobRows[0]) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    const job = jobRows[0];
 
-    // ── 3. Build immutable snapshot ───────────────────────────────────────────
-    const contentSnapshot = JSON.stringify({
-      masterDocId: studioDocId,
-      masterDocName: String(doc.name ?? ''),
-      templateType: String(doc.template_type ?? ''),
-      builderJson: doc.builder_json,
-      snapshotAt: new Date().toISOString(),
-      jobId,
-      jobTitle: String(job.name ?? ''),
-      jobNumber: String(job.job_number ?? ''),
-      siteAddress: String(job.site_address ?? ''),
-      clientName: String(job.client_name ?? ''),
-      supervisorName: String(job.supervisor_name ?? ''),
-      docNumber: docNumber ?? '',
-      revision: revision ?? '1',
-    });
+    // ── 3. Capture immutable snapshot ─────────────────────────────────────────
+    // builder_json is already a JSON string in the DB; store it as-is.
+    const snapshotJson = typeof doc.builder_json === 'string'
+      ? doc.builder_json
+      : JSON.stringify(doc.builder_json ?? {});
 
-    const dateAttached = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const revisionLabel = (revision ?? '1').trim() || '1';
+    const docTitle = String(doc.name ?? 'Studio Document');
+    const attachedAt = new Date().toISOString().slice(0, 19).replace('T', ' '); // DATETIME
 
-    // ── 4. Insert job_studio_documents ────────────────────────────────────────
-    let jsdId: number;
+    // ── 4. Insert into job_swms ───────────────────────────────────────────────
+    // swms_template_id is NULL — this is a Studio-sourced row.
+    // The Studio columns may not exist yet if migration hasn't run.
+    let insertId: number;
     try {
       const [result] = await db.execute(sql.raw(
-        `INSERT INTO job_studio_documents
-           (company_id, job_id, studio_doc_id, content_snapshot_json,
-            job_title, job_number, site_address, client_name, supervisor_name,
-            doc_title, doc_number, revision, date_attached, attached_by_user_id)
+        `INSERT INTO job_swms
+           (company_id, job_id, title, status, assigned_by_user_id,
+            studio_document_id, studio_source_revision,
+            content_snapshot_json, studio_attached_at)
          VALUES
-           (${companyId}, ${jobId}, ${studioDocId}, ${JSON.stringify(contentSnapshot)},
-            ${JSON.stringify(String(job.name ?? ''))},
-            ${JSON.stringify(String(job.job_number ?? ''))},
-            ${JSON.stringify(String(job.site_address ?? ''))},
-            ${JSON.stringify(String(job.client_name ?? ''))},
-            ${JSON.stringify(String(job.supervisor_name ?? ''))},
-            ${JSON.stringify(String(doc.name ?? ''))},
-            ${JSON.stringify(docNumber ?? '')},
-            ${JSON.stringify(revision ?? '1')},
-            ${JSON.stringify(dateAttached)},
-            ${JSON.stringify(session.user.id)})`
+           (${companyId}, ${jobId},
+            ${JSON.stringify(docTitle)}, 'active',
+            ${JSON.stringify(session.user.id)},
+            ${studioDocId},
+            ${JSON.stringify(revisionLabel)},
+            ${JSON.stringify(snapshotJson)},
+            ${JSON.stringify(attachedAt)})`
       )) as unknown as [ResultSetHeader, unknown];
-      jsdId = result.insertId;
+      insertId = result.insertId;
     } catch (insertErr: unknown) {
       const msg = String((insertErr as { message?: string }).message ?? insertErr);
-      // Graceful fallback if job_studio_documents table doesn't exist yet
-      if (msg.includes("doesn't exist") || msg.includes('ER_NO_SUCH_TABLE')) {
+      if (msg.includes("Unknown column") && msg.includes('studio_')) {
         return res.status(503).json({
-          error: 'Migration required. Run POST /api/migrate-studio-phase2 first.',
+          error: 'Migration required. Run POST /api/migrate-studio-phase2 as platform owner first.',
           migrationRequired: true,
         });
       }
       throw insertErr;
     }
 
-    // ── 5. Sign-on bridge for SWMS / Safety Plan ──────────────────────────────
-    const templateType = String(doc.template_type ?? '');
-    let bridgeSwmsTemplateId: number | null = null;
-    let bridgeJobSwmsId: number | null = null;
+    // ── 5. Fetch the created row ──────────────────────────────────────────────
+    const [newRows] = await db.execute(sql.raw(
+      `SELECT js.*,
+              j.name AS job_name, j.job_number AS job_number_display
+       FROM job_swms js
+       LEFT JOIN jobs j ON j.id = js.job_id
+       WHERE js.id = ${insertId}
+       LIMIT 1`
+    )) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    if (templateType === 'swms' || templateType === 'safety_plan') {
-      try {
-        // Create a synthetic swms_templates row so swms_signoffs can reference it
-        const syntheticTitle = `[Studio] ${String(doc.name ?? 'SWMS')}`;
-        const [stResult] = await db.execute(sql.raw(
-          `INSERT INTO swms_templates
-             (company_id, title, status, created_by_user_id)
-           VALUES
-             (${companyId}, ${JSON.stringify(syntheticTitle)}, 'active', ${JSON.stringify(session.user.id)})`
-        )) as unknown as [ResultSetHeader, unknown];
-        bridgeSwmsTemplateId = stResult.insertId;
+    const newRow = Array.isArray(newRows) ? newRows[0] : null;
 
-        // Create a job_swms row linking the job to the synthetic template
-        const [jsResult] = await db.execute(sql.raw(
-          `INSERT INTO job_swms
-             (company_id, job_id, swms_template_id, assigned_by_user_id, studio_doc_id)
-           VALUES
-             (${companyId}, ${jobId}, ${bridgeSwmsTemplateId}, ${JSON.stringify(session.user.id)}, ${jsdId})`
-        )) as unknown as [ResultSetHeader, unknown];
-        bridgeJobSwmsId = jsResult.insertId;
-
-        // Update job_studio_documents with the bridge IDs
-        await db.execute(sql.raw(
-          `UPDATE job_studio_documents
-           SET bridge_swms_template_id = ${bridgeSwmsTemplateId}
-           WHERE id = ${jsdId}`
-        ));
-      } catch (bridgeErr: unknown) {
-        const msg = String((bridgeErr as { message?: string }).message ?? bridgeErr);
-        // studio_doc_id column may not exist yet on job_swms — non-fatal, log and continue
-        console.warn('[studio-swms attach] sign-on bridge failed (non-fatal):', msg);
-      }
-    }
-
-    // ── 6. Return result ──────────────────────────────────────────────────────
     return res.status(201).json({
       ok: true,
-      jobStudioDocumentId: jsdId,
-      bridgeSwmsTemplateId,
-      bridgeJobSwmsId,
+      jobSwmsId: insertId,
+      jobSwms: newRow,
       jobId,
       studioDocId,
-      docTitle: String(doc.name ?? ''),
-      dateAttached,
+      docTitle,
+      revision: revisionLabel,
+      // No synthetic records created — sign-ons use job_swms.id directly
+      syntheticRecordsCreated: false,
     });
   } catch (err) {
     console.error('POST /api/jobs/:id/studio-swms error:', err);

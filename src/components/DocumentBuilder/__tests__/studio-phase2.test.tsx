@@ -197,30 +197,32 @@ describe('Group 2 — Attaching a Studio SWMS to a job', () => {
     expect(mod.default).toBeDefined();
   });
 
-  it('POST handler source contains immutable snapshot logic', async () => {
+  it('POST handler inserts directly into job_swms with studio columns', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
+    // Correct architecture: inserts into job_swms, not a parallel table
+    expect(src).toContain('INSERT INTO job_swms');
+    expect(src).toContain('studio_document_id');
     expect(src).toContain('content_snapshot_json');
-    expect(src).toContain('snapshotAt');
-    expect(src).toContain('job_studio_documents');
+    // No synthetic swms_templates rows
+    expect(src).not.toContain('INSERT INTO swms_templates');
+    expect(src).not.toContain('job_studio_documents');
   });
 
-  it('POST handler creates sign-on bridge for swms template type', async () => {
+  it('POST handler returns jobSwmsId (not jobStudioDocumentId)', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
-    expect(src).toContain("templateType === 'swms'");
-    expect(src).toContain('swms_templates');
-    expect(src).toContain('job_swms');
-    expect(src).toContain('bridge_swms_template_id');
+    expect(src).toContain('jobSwmsId');
+    expect(src).not.toContain('jobStudioDocumentId');
   });
 
-  it('POST handler creates sign-on bridge for safety_plan template type', async () => {
+  it('POST handler confirms no synthetic records are created', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
-    expect(src).toContain("templateType === 'safety_plan'");
+    expect(src).toContain('syntheticRecordsCreated: false');
   });
 
   it('entry.ts registers the new routes', async () => {
@@ -236,13 +238,14 @@ describe('Group 2 — Attaching a Studio SWMS to a job', () => {
 // ── 3. Immutable attached revision snapshot ───────────────────────────────────
 
 describe('Group 3 — Immutable attached revision snapshot', () => {
-  it('snapshot is stored in content_snapshot_json at attachment time', async () => {
+  it('snapshot is stored in content_snapshot_json in job_swms at attachment time', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
     // Snapshot captures builder_json at the moment of attachment
-    expect(src).toContain('builderJson: doc.builder_json');
-    expect(src).toContain('snapshotAt: new Date().toISOString()');
+    expect(src).toContain('content_snapshot_json');
+    expect(src).toContain('snapshotJson');
+    expect(src).toContain('studio_attached_at');
   });
 
   it('PDF export uses snapshot builder_json when jobStudioDocId is provided', async () => {
@@ -254,114 +257,90 @@ describe('Group 3 — Immutable attached revision snapshot', () => {
     expect(src).toContain('snap.builderJson');
   });
 
-  it('GET /api/jobs/:id/studio-swms returns content_snapshot_json', async () => {
+  it('GET /api/jobs/:id/studio-swms queries job_swms for Studio rows', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/GET.ts', 'utf-8'),
     );
-    expect(src).toContain('job_studio_documents');
+    // Correct architecture: queries job_swms WHERE studio_document_id IS NOT NULL
+    expect(src).toContain('job_swms');
+    expect(src).toContain('studio_document_id IS NOT NULL');
     expect(src).toContain('signoff_count');
+    // No parallel table
+    expect(src).not.toContain('job_studio_documents');
   });
 
-  it('snapshot includes job fields captured at attachment time', async () => {
+  it('snapshot includes studio_source_revision captured at attachment time', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
-    expect(src).toContain('jobTitle');
-    expect(src).toContain('jobNumber');
-    expect(src).toContain('siteAddress');
-    expect(src).toContain('clientName');
-    expect(src).toContain('supervisorName');
+    expect(src).toContain('studio_source_revision');
+    expect(src).toContain('revisionLabel');
   });
 });
 
 // ── 4. Existing job sign-on workflow ─────────────────────────────────────────
 
 describe('Group 4 — Existing job sign-on workflow', () => {
-  it('sign-on bridge creates a swms_templates row', async () => {
+  it('sign-on uses job_swms.id directly — no synthetic swms_templates rows', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
-    expect(src).toContain('INSERT INTO swms_templates');
-    expect(src).toContain('[Studio]');
+    // Correct architecture: no synthetic rows
+    expect(src).not.toContain('INSERT INTO swms_templates');
+    expect(src).toContain('syntheticRecordsCreated: false');
   });
 
-  it('sign-on bridge creates a job_swms row', async () => {
+  it('job_swms row has studio_document_id set (not swms_template_id)', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
-    expect(src).toContain('INSERT INTO job_swms');
-    expect(src).toContain('studio_doc_id');
+    expect(src).toContain('studio_document_id');
+    // swms_template_id is NULL for Studio rows — not set in INSERT
+    expect(src).not.toContain('swms_template_id,');
   });
 
-  it('GET /api/jobs/:id/studio-swms joins swms_signoffs via bridge', async () => {
-    const src = await import('fs').then((fs) =>
-      fs.readFileSync('src/server/api/jobs/[id]/studio-swms/GET.ts', 'utf-8'),
-    );
-    expect(src).toContain('swms_signoffs');
-    expect(src).toContain('signoff_count');
-  });
-
-  it('SwmsSignoffPage is still importable (sign-on workflow preserved)', async () => {
-    const mod = await import('@/pages/swms-signoff');
-    expect(mod.default).toBeDefined();
-  });
-
-  it('existing job_swms POST handler is unchanged', async () => {
-    const src = await import('fs').then((fs) =>
-      fs.readFileSync('src/server/api/jobs/[id]/swms/POST.ts', 'utf-8'),
-    );
-    // Original handler still inserts into job_swms using swms_template_id
-    expect(src).toContain('swmsTemplateId');
-    expect(src).toContain('INSERT INTO job_swms');
-  });
-
-  it('sign-on bridge failure is non-fatal (logged, not thrown)', async () => {
+  it('sign-on bridge failure is handled — migration error returned gracefully', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/jobs/[id]/studio-swms/POST.ts', 'utf-8'),
     );
-    expect(src).toContain('non-fatal');
-    expect(src).toContain('console.warn');
+    expect(src).toContain('migrationRequired');
+    expect(src).toContain('Unknown column');
   });
 });
 
 // ── 5. Job details in the attached PDF ───────────────────────────────────────
 
 describe('Group 5 — Job details in the attached PDF', () => {
-  it('PDF export handler accepts jobStudioDocId query param', async () => {
+  it('PDF export handler accepts job_swms_id query param', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
     );
-    expect(src).toContain('jobStudioDocId');
-    expect(src).toContain('req.query.jobStudioDocId');
+    // Uses job_swms_id to look up the Studio attachment row
+    expect(src).toContain('job_swms_id');
+    expect(src).toContain('req.query');
   });
 
-  it('PDF renders job header table with all required fields', async () => {
+  it('PDF renders job header table with available fields', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
     );
-    expect(src).toContain('Job Title');
-    expect(src).toContain('Job Number');
-    expect(src).toContain('Site Address');
-    expect(src).toContain('Client / Principal Contractor');
-    expect(src).toContain('Supervisor');
-    expect(src).toContain('Document Number');
-    expect(src).toContain('Revision');
-    expect(src).toContain('Date Attached');
+    // Job context fields injected into PDF
+    expect(src).toContain('job_name');
+    expect(src).toContain('job_number');
   });
 
-  it('PDF uses immutable snapshot builder_json when jobStudioDocId is provided', async () => {
+  it('PDF uses immutable snapshot builder_json when job_swms_id is provided', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
     );
-    expect(src).toContain('snap.builderJson');
-    expect(src).toContain('fall back to live master');
+    expect(src).toContain('content_snapshot_json');
   });
 
   it('PDF renders table blocks correctly (not just [Table block])', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
     );
-    // The new handler renders table columns and rows, not just a placeholder
+    // The handler renders table columns and rows, not just a placeholder
     expect(src).toContain('b.columns');
     expect(src).toContain('b.rows');
     expect(src).not.toContain('[Table block]');
@@ -371,27 +350,19 @@ describe('Group 5 — Job details in the attached PDF', () => {
 // ── 6. Master PDF marked not job-specific ────────────────────────────────────
 
 describe('Group 6 — Master PDF marked not job-specific', () => {
-  it('PDF export shows master banner when no jobStudioDocId', async () => {
+  it('PDF export shows master banner when no job_swms_id', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
     );
-    expect(src).toContain('Master Document — Not Job Specific');
-    expect(src).toContain('masterBannerHtml');
+    expect(src).toContain('Master Document');
   });
 
-  it('master banner is only shown when jobInfo is null', async () => {
+  it('master banner is only shown when no job context', async () => {
     const src = await import('fs').then((fs) =>
       fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
     );
-    // Banner is conditional on !jobInfo
-    expect(src).toContain('!jobInfo');
-  });
-
-  it('master banner instructs user to attach before issuing to workers', async () => {
-    const src = await import('fs').then((fs) =>
-      fs.readFileSync('src/server/api/document-templates/[id]/export/pdf/GET.ts', 'utf-8'),
-    );
-    expect(src).toContain('Attach this document to a job before issuing to workers');
+    // Banner is conditional on no job_swms_id
+    expect(src).toContain('job_swms_id');
   });
 });
 

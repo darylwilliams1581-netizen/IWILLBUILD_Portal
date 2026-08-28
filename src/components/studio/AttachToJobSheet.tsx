@@ -1,21 +1,18 @@
 /**
  * AttachToJobSheet
  * ─────────────────────────────────────────────────────────────────────────────
- * Allows a Studio SWMS or Safety Plan master to be attached to a selected job.
+ * Attaches a Studio SWMS or Safety Plan master to a selected job.
  *
- * Behaviour:
- *   1. Opens the shared JobPickerSheet to select a job.
- *   2. Optionally lets the user enter a document number and revision.
- *   3. Calls POST /api/jobs/:id/studio-swms with the studioDocId.
- *   4. On success shows a confirmation with the sign-on bridge info.
- *
- * Only shown for documents with templateType 'swms' or 'safety_plan'.
- * Policy documents can be attached to jobs but do not create a sign-on bridge.
+ * Architecture:
+ *   Calls POST /api/jobs/:id/studio-swms which inserts a row into the existing
+ *   job_swms table (studio_document_id set, swms_template_id null).
+ *   No synthetic records are created. Workers sign on via the normal
+ *   job sign-on workflow using the job_swms.id returned here.
  */
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Loader2, CheckCircle2, AlertTriangle, Briefcase, FileText, Hash } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertTriangle, Briefcase, FileText } from 'lucide-react';
 import JobPickerSheet, { type JobOption, jobOptionLabel } from '@/components/shared/JobPickerSheet';
 import { createPortal } from 'react-dom';
 
@@ -31,14 +28,12 @@ export interface AttachToJobSheetProps {
 }
 
 export interface AttachResult {
-  jobStudioDocumentId: number;
+  jobSwmsId: number;
   jobId: number;
   jobTitle: string;
   jobNumber: string;
   docTitle: string;
-  dateAttached: string;
-  bridgeSwmsTemplateId: number | null;
-  bridgeJobSwmsId: number | null;
+  revision: string;
 }
 
 type Step = 'pick-job' | 'confirm' | 'attaching' | 'done' | 'error';
@@ -55,24 +50,12 @@ export default function AttachToJobSheet({
 }: AttachToJobSheetProps) {
   const [step, setStep] = useState<Step>('pick-job');
   const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
-  const [docNumber, setDocNumber] = useState('');
   const [revision, setRevision] = useState('1');
   const [result, setResult] = useState<AttachResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showJobPicker, setShowJobPicker] = useState(false);
 
   const isSafetyDoc = templateType === 'swms' || templateType === 'safety_plan';
-
-  function handleOpen() {
-    if (!open) return;
-    setStep('pick-job');
-    setSelectedJob(null);
-    setDocNumber('');
-    setRevision('1');
-    setResult(null);
-    setErrorMsg('');
-    setShowJobPicker(true);
-  }
 
   // Open job picker on mount when sheet opens
   if (open && step === 'pick-job' && !showJobPicker && !selectedJob) {
@@ -95,7 +78,6 @@ export default function AttachToJobSheet({
         credentials: 'include',
         body: JSON.stringify({
           studioDocId,
-          docNumber: docNumber.trim() || undefined,
           revision: revision.trim() || '1',
         }),
       });
@@ -103,12 +85,8 @@ export default function AttachToJobSheet({
         ok?: boolean;
         error?: string;
         migrationRequired?: boolean;
-        jobStudioDocumentId?: number;
-        jobId?: number;
-        docTitle?: string;
-        dateAttached?: string;
-        bridgeSwmsTemplateId?: number | null;
-        bridgeJobSwmsId?: number | null;
+        jobSwmsId?: number;
+        revision?: string;
       };
       if (!res.ok || data.error) {
         if (data.migrationRequired) {
@@ -120,14 +98,12 @@ export default function AttachToJobSheet({
         return;
       }
       const attachResult: AttachResult = {
-        jobStudioDocumentId: data.jobStudioDocumentId!,
+        jobSwmsId: data.jobSwmsId!,
         jobId: selectedJob.id,
         jobTitle: selectedJob.name,
         jobNumber: selectedJob.jobNumber ?? '',
         docTitle,
-        dateAttached: data.dateAttached ?? new Date().toISOString().slice(0, 10),
-        bridgeSwmsTemplateId: data.bridgeSwmsTemplateId ?? null,
-        bridgeJobSwmsId: data.bridgeJobSwmsId ?? null,
+        revision: data.revision ?? revision,
       };
       setResult(attachResult);
       setStep('done');
@@ -177,7 +153,7 @@ export default function AttachToJobSheet({
 
             {/* Body */}
             <div className="p-5">
-              {/* Step: pick-job — handled by JobPickerSheet below */}
+              {/* Step: pick-job — handled by JobPickerSheet */}
               {step === 'pick-job' && (
                 <div className="text-center py-6">
                   <Loader2 size={20} className="animate-spin text-slate-400 mx-auto mb-2" />
@@ -193,31 +169,17 @@ export default function AttachToJobSheet({
                     <p className="text-sm font-bold text-slate-800">{jobOptionLabel(selectedJob)}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        <Hash size={10} className="inline mr-1" />Document Number
-                      </label>
-                      <input
-                        type="text"
-                        value={docNumber}
-                        onChange={(e) => setDocNumber(e.target.value)}
-                        placeholder="e.g. SWMS-001"
-                        className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        <FileText size={10} className="inline mr-1" />Revision
-                      </label>
-                      <input
-                        type="text"
-                        value={revision}
-                        onChange={(e) => setRevision(e.target.value)}
-                        placeholder="1"
-                        className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      <FileText size={10} className="inline mr-1" />Revision
+                    </label>
+                    <input
+                      type="text"
+                      value={revision}
+                      onChange={(e) => setRevision(e.target.value)}
+                      placeholder="1"
+                      className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    />
                   </div>
 
                   {isSafetyDoc && (
@@ -225,7 +187,7 @@ export default function AttachToJobSheet({
                       <p className="font-semibold mb-0.5">Sign-on workflow</p>
                       <p className="leading-snug">
                         A sign-on record will be created for this job. Workers can sign on using the
-                        existing job sign-on workflow. The content snapshot is locked at attachment time —
+                        existing job sign-on workflow. The content is locked at attachment time —
                         later edits to the master will not affect this job's version.
                       </p>
                     </div>
@@ -254,7 +216,7 @@ export default function AttachToJobSheet({
                 <div className="text-center py-8">
                   <Loader2 size={24} className="animate-spin text-violet-500 mx-auto mb-3" />
                   <p className="text-sm font-semibold text-slate-700">Attaching document…</p>
-                  <p className="text-xs text-slate-400 mt-1">Creating content snapshot and sign-on record</p>
+                  <p className="text-xs text-slate-400 mt-1">Creating content snapshot in job SWMS record</p>
                 </div>
               )}
 
@@ -266,16 +228,17 @@ export default function AttachToJobSheet({
                     <div>
                       <p className="text-sm font-bold text-emerald-800">Document attached</p>
                       <p className="text-xs text-emerald-700 mt-0.5">
-                        {docTitle} attached to {result.jobTitle || `Job #${result.jobNumber}`} on {result.dateAttached}.
+                        {docTitle} attached to {result.jobTitle || `Job #${result.jobNumber}`}.
+                        Revision {result.revision}.
                       </p>
                     </div>
                   </div>
-                  {result.bridgeJobSwmsId && (
+                  {isSafetyDoc && (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
-                      <p className="font-semibold mb-0.5">Sign-on record created</p>
+                      <p className="font-semibold mb-0.5">Ready for sign-on</p>
                       <p className="leading-snug">
                         Workers can now sign on to this SWMS from the job's Safety tab.
-                        Sign-ons are linked to this specific attached version — not the master.
+                        Sign-ons are linked to this specific attached version.
                       </p>
                     </div>
                   )}

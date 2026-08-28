@@ -1,8 +1,13 @@
 /**
  * GET /api/jobs/:id/studio-swms
  * ─────────────────────────────────────────────────────────────────────────────
- * Lists all Studio document attachments for a job, including sign-on counts
- * from the existing swms_signoffs table via the bridge row.
+ * Lists all Studio document attachments for a job.
+ *
+ * Studio attachments are job_swms rows where studio_document_id IS NOT NULL.
+ * Includes sign-off counts from swms_signoffs (unchanged — still references
+ * job_swms.id directly).
+ *
+ * Falls back gracefully if the Studio columns don't exist yet (pre-migration).
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
@@ -33,25 +38,31 @@ export default async function handler(req: Request, res: Response) {
     try {
       const [result] = await db.execute(sql.raw(
         `SELECT
-           jsd.*,
-           dt.name AS master_doc_name,
+           js.id,
+           js.job_id,
+           js.title,
+           js.status,
+           js.studio_document_id,
+           js.studio_source_revision,
+           js.studio_attached_at,
+           js.assigned_by_user_id,
+           js.created_at,
+           dt.name        AS master_doc_name,
            dt.template_type AS master_template_type,
-           dt.doc_status AS master_doc_status,
-           -- Sign-on count via bridge
-           (SELECT COUNT(*) FROM swms_signoffs ss
-            JOIN job_swms js ON js.id = ss.job_swms_id
-            WHERE js.studio_doc_id = jsd.id) AS signoff_count
-         FROM job_studio_documents jsd
-         LEFT JOIN document_templates dt ON dt.id = jsd.studio_doc_id
-         WHERE jsd.job_id = ${jobId} AND jsd.company_id = ${companyId}
-         ORDER BY jsd.created_at DESC`
+           (SELECT COUNT(*) FROM swms_signoffs ss WHERE ss.job_swms_id = js.id) AS signoff_count
+         FROM job_swms js
+         LEFT JOIN document_templates dt ON dt.id = js.studio_document_id
+         WHERE js.job_id = ${jobId}
+           AND js.company_id = ${companyId}
+           AND js.studio_document_id IS NOT NULL
+         ORDER BY js.created_at DESC`
       )) as unknown as [Array<Record<string, unknown>>, unknown];
-      rows = result ?? [];
+      rows = Array.isArray(result) ? result : [];
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
-      if (msg.includes("doesn't exist") || msg.includes('ER_NO_SUCH_TABLE')) {
-        // Table not yet created — return empty list gracefully
-        return res.json({ studioAttachments: [] });
+      if (msg.includes("Unknown column") && msg.includes('studio_')) {
+        // Migration not yet run — return empty list gracefully
+        return res.json({ studioAttachments: [], migrationRequired: true });
       }
       throw e;
     }

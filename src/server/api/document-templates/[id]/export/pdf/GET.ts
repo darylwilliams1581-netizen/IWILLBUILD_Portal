@@ -4,18 +4,18 @@
  * Exports a document template as a print-ready HTML page.
  *
  * Query params:
- *   jobStudioDocId  number?  — job_studio_documents.id
- *                              When provided the immutable snapshot is used
- *                              instead of the live master, and job fields are
- *                              injected into the header table.
+ *   job_swms_id  number?  — job_swms.id of a Studio attachment row
+ *                           (where studio_document_id IS NOT NULL).
+ *                           When provided the immutable content_snapshot_json
+ *                           is used instead of the live master, and job fields
+ *                           are injected into the header table.
  *
- * When NO jobStudioDocId is supplied (printing the master directly from Studio)
+ * When NO job_swms_id is supplied (printing the master directly from Studio)
  * a "Master Document — Not Job Specific" watermark banner is shown.
  *
- * When jobStudioDocId IS supplied the job fields captured at attachment time
+ * When job_swms_id IS supplied the job fields captured at attachment time
  * are rendered in a header table:
- *   Job Title, Job Number, Site Address, Client, Supervisor,
- *   Document Number, Revision, Date Attached.
+ *   Job Title, Job Number, Revision, Date Attached.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -45,7 +45,12 @@ export default async function handler(req: Request, res: Response) {
     if (!id) return res.status(400).json({ error: 'Invalid ID' });
 
     const companyId = profile.companyId;
-    const jobStudioDocId = req.query.jobStudioDocId ? Number(req.query.jobStudioDocId) : null;
+    // Support both old param name (jobStudioDocId) and new (job_swms_id) for compatibility
+    const jobSwmsId = req.query.job_swms_id
+      ? Number(req.query.job_swms_id)
+      : req.query.jobStudioDocId
+        ? Number(req.query.jobStudioDocId)
+        : null;
 
     // ── Load document ─────────────────────────────────────────────────────────
     const [rows] = await db.execute(sql.raw(
@@ -75,32 +80,38 @@ export default async function handler(req: Request, res: Response) {
 
     let jobInfo: JobInfo | null = null;
 
-    if (jobStudioDocId) {
+    if (jobSwmsId) {
       try {
-        const [jsdRows] = await db.execute(sql.raw(
-          `SELECT * FROM job_studio_documents
-           WHERE id = ${jobStudioDocId}
-             AND studio_doc_id = ${id}
-             AND company_id = ${companyId}
+        // Query job_swms for Studio attachment rows (studio_document_id IS NOT NULL)
+        const [jsRows] = await db.execute(sql.raw(
+          `SELECT js.*,
+                  j.name AS job_name, j.job_number, j.address AS site_address,
+                  j.client AS client_name
+           FROM job_swms js
+           LEFT JOIN jobs j ON j.id = js.job_id
+           WHERE js.id = ${jobSwmsId}
+             AND js.studio_document_id = ${id}
+             AND js.company_id = ${companyId}
+             AND js.studio_document_id IS NOT NULL
            LIMIT 1`
         )) as unknown as [Array<Record<string, unknown>>, unknown];
 
-        const jsd = Array.isArray(jsdRows) ? jsdRows[0] : null;
-        if (jsd) {
+        const js = Array.isArray(jsRows) ? jsRows[0] : null;
+        if (js) {
           jobInfo = {
-            jobTitle:      String(jsd.job_title ?? ''),
-            jobNumber:     String(jsd.job_number ?? ''),
-            siteAddress:   String(jsd.site_address ?? ''),
-            clientName:    String(jsd.client_name ?? ''),
-            supervisorName: String(jsd.supervisor_name ?? ''),
-            docNumber:     String(jsd.doc_number ?? ''),
-            revision:      String(jsd.revision ?? '1'),
-            dateAttached:  String(jsd.date_attached ?? ''),
-            contentSnapshot: jsd.content_snapshot_json ? String(jsd.content_snapshot_json) : null,
+            jobTitle:      String(js.job_name ?? ''),
+            jobNumber:     String(js.job_number ?? ''),
+            siteAddress:   String(js.site_address ?? ''),
+            clientName:    String(js.client_name ?? ''),
+            supervisorName: '',
+            docNumber:     '',
+            revision:      String(js.studio_source_revision ?? '1'),
+            dateAttached:  js.studio_attached_at ? String(js.studio_attached_at).slice(0, 10) : '',
+            contentSnapshot: js.content_snapshot_json ? String(js.content_snapshot_json) : null,
           };
         }
       } catch {
-        // job_studio_documents table may not exist yet — fall back to master
+        // Studio columns may not exist yet (pre-migration) — fall back to master
       }
     }
 
