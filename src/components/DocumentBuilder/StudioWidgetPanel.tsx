@@ -382,7 +382,6 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
     spacer(8),
     navyBand('4. Sequence of Work & Risk Controls'),
     p('Complete the table below for each step in the sequence of work.'),
-    riskAssessmentBannerImage(),
     riskTable(),
     spacer(8),
     navyBand('5. Plant & Equipment'),

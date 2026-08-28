@@ -327,12 +327,12 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
 
   // ── Banner presence ────────────────────────────────────────────────────────
 
-  it('contains a risk-assessment-banner image block', async () => {
+  it('does NOT contain a risk-assessment-banner image block', async () => {
     const blocks = await getSwmsBlocks();
     const banner = blocks.find(
       (b) => b.type === 'image' && b.src?.includes('risk-assessment-banner'),
     );
-    expect(banner).toBeDefined();
+    expect(banner).toBeUndefined();
   });
 
   it('contains a ppe-banner-strip image block', async () => {
@@ -400,21 +400,6 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
     expect(section7Idx).toBeGreaterThan(-1);
     expect(riskMatrixImgIdx).toBeGreaterThan(ppeBandIdx);
     expect(riskMatrixImgIdx).toBeLessThan(section7Idx);
-  });
-
-  // ── risk-assessment-banner is before Section 4 risk table ─────────────────
-
-  it('risk-assessment-banner appears before the risk control table (Section 4)', async () => {
-    const blocks = await getSwmsBlocks();
-    const bannerIdx = blocks.findIndex(
-      (b) => b.type === 'image' && b.src?.includes('risk-assessment-banner'),
-    );
-    const riskTableIdx = blocks.findIndex(
-      (b) => b.type === 'rich_text' && b.html?.includes('Control Measures') && b.html?.includes('Sequence of Work'),
-    );
-    expect(bannerIdx).toBeGreaterThan(-1);
-    expect(riskTableIdx).toBeGreaterThan(-1);
-    expect(bannerIdx).toBeLessThan(riskTableIdx);
   });
 
   // ── ppe-banner-strip is before the PPE table ──────────────────────────────
