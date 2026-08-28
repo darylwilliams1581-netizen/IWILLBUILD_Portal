@@ -1849,7 +1849,7 @@ export default function ListsPage() {
 
           {/* ── Breadcrumb ── */}
           <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5 border-b border-gray-100">
-            <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-violet-600 transition-colors group">
+            <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-violet-600 transition-colors group">
               <LayoutDashboard size={12} className="group-hover:text-violet-600 transition-colors" />
               <span>Home</span>
             </button>
