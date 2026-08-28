@@ -252,7 +252,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   items: [{
     id: 'nav-17',
     idx: '17',
-    label: 'App Docs',
+    label: 'Studio',
     icon: FileText,
     href: '/studio/documents'
   }, {

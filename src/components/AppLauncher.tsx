@@ -65,7 +65,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 },
 // Row 3 — Docs & content
 {
-  label: 'App Docs',
+  label: 'Studio',
   icon: FileText,
   href: '/studio/documents',
   color: '#0891b2',

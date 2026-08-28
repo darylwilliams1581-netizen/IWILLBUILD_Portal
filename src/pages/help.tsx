@@ -256,11 +256,11 @@ const GROUPS: GroupDoc[] = [{
     howTo: ['Tap Plan Manager on the dock.', 'Select a job to view its plans.', 'Tap + to upload a new plan set.', 'Tap any plan to open the full-screen viewer.', 'Pinch to zoom, use the annotation tools to mark up the plan.']
   }, {
     key: 'studio_docs',
-    label: 'App Docs',
+    label: 'Studio',
     icon: FileText,
     bg: 'bg-violet-500',
     purpose: 'Create and manage document templates — safety plans, SWMS, induction packs, job reports, and any custom documents. Uses a drag-and-drop block editor.',
-    howTo: ['Tap App Docs on the dock.', 'Browse existing templates in the Documents or Job Reports tabs.', 'Tap + to create a new document.', 'Use the block editor to add headings, text, images, tables, and safety blocks.', 'Save the document — it becomes available to assign to jobs.'],
+    howTo: ['Tap Studio on the dock.', 'Browse existing templates in the Documents or Job Reports tabs.', 'Tap + to create a new document.', 'Use the block editor to add headings, text, images, tables, and safety blocks.', 'Save the document — it becomes available to assign to jobs.'],
     tip: 'Documents with "Requires Acknowledgement" turned on must be signed by workers before they can proceed.'
   }, {
     key: 'studio_forms',

@@ -108,7 +108,7 @@ const ALL_ITEMS: DockItem[] = [
 },
 // ── Studio / Tools ────────────────────────────────────────────────────────
 {
-  label: 'App Docs',
+  label: 'Studio',
   icon: FileText,
   href: '/studio/documents',
   color: '#6366f1'
