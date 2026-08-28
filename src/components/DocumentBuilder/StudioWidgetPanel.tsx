@@ -353,7 +353,6 @@ function safetyIconsImage(): DocumentBlock {
 function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
-    warningBox('⚠ Review Before Issue — This document must be reviewed and approved before being issued to workers. All workers must be inducted against this SWMS before commencing work.'),
     spacer(4),
     { id: bid('swms-title'), type: 'rich_text', html: '<h1 style="text-align:center;font-size:2em;font-weight:700;margin:0;">Safe Work Method Statement (SWMS)</h1>' } as DocumentBlock,
     spacer(4),

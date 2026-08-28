@@ -223,16 +223,15 @@ describe('StudioWidgetPanel — SWMS block structure', () => {
     vi.clearAllMocks();
   });
 
-  it('SWMS blocks include a "Review Before Issue" warning callout', async () => {
+  it('SWMS blocks do NOT include a "Review Before Issue" warning callout', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('SWMS Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
     const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
-    // warningBox() emits a rich_text block whose HTML contains the warning text
     const warnBlock = blocks.find(
       (b) => b.type === 'rich_text' && b.html?.includes('Review Before Issue'),
     );
-    expect(warnBlock).toBeDefined();
+    expect(warnBlock).toBeUndefined();
   });
 
   it('SWMS blocks include a risk control table with correct columns', async () => {
