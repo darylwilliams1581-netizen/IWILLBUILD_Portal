@@ -21,12 +21,13 @@ import {
   Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert, ShieldCheck,
   Image, BarChart2,
   ZoomIn, ZoomOut, Monitor, RotateCcw,
-  Wrench, Briefcase, AlignCenter, AlignRight, PlayCircle,
+  Wrench, Briefcase, AlignCenter, AlignRight, PlayCircle, Wand2,
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
 import StructurePanel from './StructurePanel';
 import DocSidebar from './DocSidebar';
+import StudioWidgetPanel from './StudioWidgetPanel';
 import DocxImporter from './DocxImporter';
 import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
@@ -257,6 +258,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   // Ribbon tab definitions — Layout + Theme first, then insert tabs
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
     { id: 'document_tools', label: 'Document Tools', icon: <Layers size={13} /> },
+    { id: 'apply_widget',   label: 'Apply Widget',   icon: <Wand2 size={13} /> },
     { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
     { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
     { id: 'view',          label: 'View',          icon: <Monitor size={13} /> },
@@ -594,6 +596,11 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                       collapsed={false}
                       onToggleCollapse={() => {}}
                     />
+                  )}
+
+                  {/* APPLY WIDGET panel */}
+                  {activeTab === 'apply_widget' && (
+                    <StudioWidgetPanel />
                   )}
 
                   {/* SYSTEM FIELDS insert strip */}

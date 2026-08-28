@@ -512,6 +512,16 @@ export const routes: RouteObject[] = [{
   element: protect(<SafetyPage />),
   errorElement: routeError
 }, {
+  // Old SWMS builder tab deep-link → Safety documents tab (sign-on workflow preserved)
+  path: '/safety/swms',
+  loader: () => redirect('/safety?safetyTab=documents'),
+}, {
+  // Old Safety Plans builder tab deep-link → Studio with apply_widget hint
+  path: '/safety/plans',
+  loader: () => redirect('/studio/documents'),
+}, {
+  // Any old ?safetyTab=swms or ?safetyTab=plans deep-links are handled client-side
+  // by SafetyContent falling back to DEFAULT_TAB='documents' for unknown tab IDs. {
   path: '/library',
   loader: () => redirect('/studio/library')
 }, {
