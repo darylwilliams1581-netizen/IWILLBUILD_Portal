@@ -279,9 +279,11 @@ describe('StudioWidgetPanel — SWMS block structure', () => {
     renderPanel();
     fireEvent.click(screen.getByText('SWMS Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; content?: string }>;
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; content?: string; html?: string }>;
     const emergency = blocks.find(
-      (b) => b.type === 'heading' && b.content?.includes('Emergency'),
+      (b) =>
+        (b.type === 'heading' && b.content?.includes('Emergency')) ||
+        (b.type === 'rich_text' && b.html?.includes('Emergency')),
     );
     expect(emergency).toBeDefined();
   });
@@ -342,9 +344,11 @@ describe('StudioWidgetPanel — Safety Plan block structure', () => {
     renderPanel();
     fireEvent.click(screen.getByText('Safety Plan Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; content?: string }>;
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; content?: string; html?: string }>;
     const emergency = blocks.find(
-      (b) => b.type === 'heading' && b.content?.includes('Emergency'),
+      (b) =>
+        (b.type === 'heading' && b.content?.includes('Emergency')) ||
+        (b.type === 'rich_text' && b.html?.includes('Emergency')),
     );
     expect(emergency).toBeDefined();
   });
