@@ -179,41 +179,58 @@ function escapeHtml(s: string): string {
  * Convert the raw extracted text string into an array of DocumentBuilder blocks.
  *
  * Heuristics:
- *  - Short lines (< 80 chars) that start with a capital and don't end with
- *    punctuation are treated as headings.
+ *  - Short lines (< 80 chars) that start with a capital/digit and don't end
+ *    with sentence punctuation are treated as headings.
  *  - Everything else is grouped into rich_text paragraphs.
- *  - Blank lines flush the current paragraph.
+ *  - A SINGLE blank line does NOT flush the paragraph — it just continues
+ *    accumulation (PDFs often emit one blank line between every sentence).
+ *  - TWO or more consecutive blank lines flush the current paragraph.
+ *  - A heading candidate always flushes the current paragraph first.
+ *
+ * This prevents the common "10 paragraph boxes for one paragraph" problem
+ * caused by PDFs that insert a blank line after every text object.
  */
 function textToBlocks(text: string): DocumentBlock[] {
   const blocks: DocumentBlock[] = [];
   const lines = text.split(/\r?\n/);
   let paragraphLines: string[] = [];
+  let consecutiveBlanks = 0;
 
   const flushParagraph = () => {
-    const para = paragraphLines.join(' ').trim();
+    // Join with a space — consecutive lines in the same paragraph are
+    // continuations of the same sentence, not separate lines.
+    const para = paragraphLines.join(' ').replace(/\s+/g, ' ').trim();
     paragraphLines = [];
     if (!para) return;
     blocks.push(makeParagraphBlock(para));
   };
 
+  const isHeadingCandidate = (line: string): boolean =>
+    line.length < 80 &&
+    /^[A-Z0-9]/.test(line) &&
+    !line.endsWith('.') &&
+    !line.endsWith(',') &&
+    !line.endsWith(';') &&
+    !line.endsWith(':') &&
+    !line.endsWith('?') &&
+    !line.endsWith(')');
+
   for (const raw of lines) {
     const line = raw.trim();
 
     if (!line) {
-      flushParagraph();
+      consecutiveBlanks++;
+      // Only flush on 2+ consecutive blank lines (true paragraph break)
+      if (consecutiveBlanks >= 2) {
+        flushParagraph();
+      }
       continue;
     }
 
-    // Heading heuristic: short, starts with capital/digit, no trailing punctuation
-    if (
-      line.length < 80 &&
-      /^[A-Z0-9]/.test(line) &&
-      !line.endsWith('.') &&
-      !line.endsWith(',') &&
-      !line.endsWith(';') &&
-      !line.endsWith(':') &&
-      paragraphLines.length === 0
-    ) {
+    consecutiveBlanks = 0;
+
+    // Heading heuristic — only when the paragraph buffer is empty
+    if (isHeadingCandidate(line) && paragraphLines.length === 0) {
       flushParagraph();
       const heading: HeadingBlock = {
         id: newId(),
@@ -224,6 +241,27 @@ function textToBlocks(text: string): DocumentBlock[] {
       };
       blocks.push(heading);
       continue;
+    }
+
+    // If this line looks like a heading but we already have paragraph content,
+    // flush the paragraph first then emit the heading.
+    if (isHeadingCandidate(line) && paragraphLines.length > 0) {
+      // Check: is the accumulated paragraph short enough that this line is
+      // actually a continuation? If the buffer has only 1 short line, treat
+      // both as paragraph content. Otherwise flush and start a heading.
+      const bufferText = paragraphLines.join(' ').trim();
+      if (bufferText.length > 60) {
+        flushParagraph();
+        const heading: HeadingBlock = {
+          id: newId(),
+          type: 'heading',
+          content: line,
+          level: 2,
+          align: 'left',
+        };
+        blocks.push(heading);
+        continue;
+      }
     }
 
     paragraphLines.push(line);

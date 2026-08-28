@@ -185,7 +185,27 @@ function extractTextOperators(stream: string): string {
     if (fallback.trim()) lines.push(fallback.trim());
   }
 
-  return lines.join('\n');
+  // Join BT/ET blocks intelligently:
+  // - If a block ends with sentence-ending punctuation → join with \n\n (paragraph break)
+  // - If a block ends mid-sentence → join with a space (same paragraph continuation)
+  // This prevents every text object becoming its own paragraph block.
+  if (lines.length === 0) return '';
+  let result = lines[0];
+  for (let i = 1; i < lines.length; i++) {
+    const prev = result.trimEnd();
+    const next = lines[i];
+    if (/[.!?]\s*$/.test(prev)) {
+      // Sentence ended — double newline so textToBlocks sees a paragraph break
+      result = result + '\n\n' + next;
+    } else if (/[-,;:]\s*$/.test(prev) || /^[a-z]/.test(next)) {
+      // Mid-sentence continuation — join with space
+      result = result.trimEnd() + ' ' + next;
+    } else {
+      // Default: single newline (textToBlocks will accumulate these)
+      result = result + '\n' + next;
+    }
+  }
+  return result;
 }
 
 function extractFromBlock(block: string): string {
