@@ -77,7 +77,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     (template?.docStatus as 'draft' | 'published' | 'archived') ?? 'draft'
   );
   const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
-  const [activeTab, setActiveTab]                   = useState<BuilderTab>('structure');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>('advanced');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
@@ -257,9 +257,6 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
     { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
     { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
-    { id: 'structure',     label: 'Structure',     icon: <Layers size={13} /> },
-    { id: 'tables',        label: 'Tables',        icon: <Table2 size={13} /> },
-    { id: 'form_fields',   label: 'Form Fields',   icon: <FormInput size={13} /> },
     { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
     { id: 'advanced',      label: 'Advanced',      icon: <ShieldAlert size={13} /> },
     { id: 'view',          label: 'View',          icon: <Monitor size={13} /> },
@@ -425,14 +422,14 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         {/* USE MODE — full-width fill canvas */}
         {appMode === 'use' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} />
+            <StructurePanel zoom={zoomLevel} onImportDocx={() => setShowDocxImporter(true)} />
           </div>
         )}
 
         {/* BUILD MODE — preview sub-mode: full-width canvas, no ribbon panel */}
         {appMode === 'build' && buildSubMode === 'preview' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} />
+            <StructurePanel zoom={zoomLevel} onImportDocx={() => setShowDocxImporter(true)} />
           </div>
         )}
 
@@ -587,58 +584,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
               </div>
             )}
 
-            {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas */}
-            {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
+            {/* SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas (Structure/Tables/Form Fields moved to DocSidebar) */}
+            {(activeTab !== 'layout' && activeTab !== 'theme') && (
               <>
-                {/* ── Desktop ribbon panels (hidden on mobile via RibbonPanel's hidden sm:flex) ── */}
-                {/* STRUCTURE insert strip */}
-                {activeTab === 'structure' && (
-                    <RibbonPanel title="Structure">
-                      <RibbonGroup label="Import">
-                        <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
-                      </RibbonGroup>
-                      <RibbonGroup label="Blocks">
-                        <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
-                        <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
-                        <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
-                        <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
-                        <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Rich Text" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<p>Click to type…</p>' })} />
-                        <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
-                        <RibbonInsertBtn icon={<Image size={12} />} label="Image" onClick={() => appendBlock({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'center', preserveAspectRatio: true })} />
-                        <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
-                        <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
-                      </RibbonGroup>
-                    </RibbonPanel>
-                  )}
-
-                  {/* TABLES insert strip */}
-                  {activeTab === 'tables' && (
-                    <RibbonPanel title="Tables">
-                      <RibbonGroup label="Insert Table">
-                        <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
-                        <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
-                        <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
-                        <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
-                      </RibbonGroup>
-                    </RibbonPanel>
-                  )}
-
-                  {/* FORM FIELDS insert strip */}
-                  {activeTab === 'form_fields' && (
-                    <RibbonPanel title="Form Fields">
-                      <RibbonGroup label="Insert Field">
-                        <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
-                        <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
-                        <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
-                        <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
-                        <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
-                        <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
-                        <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
-                        <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
-                      </RibbonGroup>
-                    </RibbonPanel>
-                  )}
-
                   {/* SYSTEM FIELDS insert strip */}
                   {activeTab === 'system_fields' && (
                     <RibbonPanel title="System Fields">
@@ -719,7 +667,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
                 {/* Canvas — full width on mobile, shares row with ribbon on desktop */}
                 <div className="flex-1 flex min-h-0">
-                  <StructurePanel zoom={zoomLevel} />
+                  <StructurePanel zoom={zoomLevel} onImportDocx={() => setShowDocxImporter(true)} />
                 </div>
               </>
             )}
