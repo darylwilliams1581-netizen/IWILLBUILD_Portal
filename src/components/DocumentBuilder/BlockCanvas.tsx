@@ -6,7 +6,7 @@
  * In fill/preview mode, applies the logic engine to show/hide blocks.
  */
 
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Zap } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
@@ -36,7 +36,32 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragRef = useRef<string | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [actualPageH, setActualPageH] = useState(0);
+
+  // ── Scroll-position guard ──────────────────────────────────────────────────
+  // Capture scrollTop synchronously before React commits the render caused by
+  // a blocks/selection change, then restore it immediately after commit.
+  // This prevents any layout side-effect (including third-party libraries) from
+  // jumping the canvas back to the top when the user is focused on a field.
+  const savedScrollTop = useRef<number>(0);
+
+  // Capture before paint (runs synchronously before the browser paints)
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    savedScrollTop.current = el.scrollTop;
+  });
+
+  // Restore after paint — runs after every commit where blocks or selection changed
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Only restore if something actually moved the scroll (tolerance: 2px)
+    if (Math.abs(el.scrollTop - savedScrollTop.current) > 2) {
+      el.scrollTop = savedScrollTop.current;
+    }
+  }, [blocks, selection]);
 
   // Track actual rendered page height so the sizing shell stays accurate
   useEffect(() => {
@@ -137,7 +162,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
   if (blocks.length === 0 && mode === 'edit') {
     return (
-      <div className="flex-1 min-h-0 overflow-auto bg-slate-100" onClick={deselect}>
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto bg-slate-100" onClick={deselect}>
         <div className="flex justify-center py-10 px-4">
           {/* Sizing shell — gives scroll container the correct scaled dimensions */}
           <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
@@ -168,6 +193,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
   return (
     <div
+      ref={scrollRef}
       className="flex-1 min-h-0 overflow-auto bg-slate-100"
       onClick={(e) => {
         if (e.target === e.currentTarget) deselect();
@@ -198,7 +224,6 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
             return (
               <motion.div
                 key={block.id}
-                layout
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97 }}

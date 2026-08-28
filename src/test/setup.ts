@@ -22,10 +22,11 @@ if (typeof window !== 'undefined') {
 }
 
 // Mock ResizeObserver (available in both environments via global)
+// Must be a proper class (not a plain function) so `new ResizeObserver()` works.
 if (typeof global.ResizeObserver === 'undefined') {
-  global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }));
+  global.ResizeObserver = class ResizeObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+  };
 }
