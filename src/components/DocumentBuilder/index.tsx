@@ -33,6 +33,7 @@ import DocumentPdfTab from './DocumentPdfTab';
 import { usePermissions } from '@/lib/usePermissions';
 import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings, BannerVariant, PaperSize, Orientation, MarginPreset } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
+import HtmlDocumentCanvas from './HtmlDocumentCanvas';
 import JobPhotoPicker from './JobPhotoPicker';
 
 interface Props {
@@ -86,6 +87,14 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   const [zoomLevel, setZoomLevel]                   = useState(100); // percent
   /** Mobile: show the tools bottom sheet */
   const [showMobileTools, setShowMobileTools]       = useState(false);
+
+  // ── HTML canvas state (source_type = 'html') ──────────────────────────────
+  const isHtmlDoc = template?.sourceType === 'html';
+  const [liveHtmlContent, setLiveHtmlContent] = useState<string>(template?.htmlContent ?? '');
+  // Sync if a new template is loaded
+  useEffect(() => {
+    setLiveHtmlContent(template?.htmlContent ?? '');
+  }, [template?.id, template?.htmlContent]);
 
   /** Top-level app mode: build the template or use/fill it */
   const [appMode] = useState<AppMode>(initialMode);
@@ -253,6 +262,28 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   }, [pageLayout.orientation]);
 
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
+
+  /**
+   * Render the correct canvas for this document type.
+   * HTML-canvas documents (source_type='html') use HtmlDocumentCanvas.
+   * Block-canvas documents use the existing StructurePanel / BlockCanvas.
+   */
+  const renderCanvas = (canvasMode: 'build' | 'preview' | 'use') => {
+    if (isHtmlDoc && template?.id) {
+      return (
+        <HtmlDocumentCanvas
+          templateId={template.id}
+          htmlContent={liveHtmlContent}
+          importCss={template.importCss ?? ''}
+          importReport={template.importReport ?? null}
+          mode={canvasMode}
+          zoom={zoomLevel}
+          onSaved={(html) => setLiveHtmlContent(html)}
+        />
+      );
+    }
+    return <StructurePanel zoom={zoomLevel} />;
+  };
 
   // Ribbon tab definitions — Apply Widget retired; import is the primary entry point
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
@@ -422,14 +453,14 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         {/* USE MODE — full-width fill canvas */}
         {appMode === 'use' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} />
+            {renderCanvas('use')}
           </div>
         )}
 
         {/* BUILD MODE — preview sub-mode: full-width canvas, no ribbon panel */}
         {appMode === 'build' && buildSubMode === 'preview' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} />
+            {renderCanvas('preview')}
           </div>
         )}
 
@@ -678,7 +709,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
                 {/* Canvas — full width on mobile, shares row with ribbon on desktop */}
                 <div className="flex-1 flex min-h-0">
-                  <StructurePanel zoom={zoomLevel} />
+                  {renderCanvas('build')}
                 </div>
               </>
             )}

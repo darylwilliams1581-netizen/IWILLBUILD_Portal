@@ -629,10 +629,22 @@ export type StudioDocumentType =
   | 'document'
   | 'pre_start';
 
+// ── Import report (mirrors server lib/docx-to-html.ts ImportReport) ──────────
+
+export interface ImportReport {
+  /** Total number of mammoth warning/info messages */
+  messageCount: number;
+  /** Deduplicated list of human-readable warning strings (max 20) */
+  warnings: string[];
+  /** Number of images found in the document */
+  imageCount: number;
+  /** Number of page-break markers found */
+  pageBreakCount: number;
+  /** Whether any unsupported constructs were silently dropped */
+  hadUnsupported: boolean;
+}
+
 export interface DocumentTemplate {
-  id?: number;
-  companyId?: number;
-  name: string;
   templateType: StudioDocumentType;
   pageLayout: PageLayout;
   theme: DocumentTheme;
@@ -669,6 +681,18 @@ export interface DocumentTemplate {
    * duplicate detection and "Update existing structure" flow.
    */
   appliedWidgets?: AppliedWidgetMeta[];
+
+  // ── HTML canvas fields (source_type = 'html') ────────────────────────────
+  /** 'html' when the document was imported from DOCX and is stored as HTML */
+  sourceType?: string | null;
+  /** Sanitised HTML content for the editable canvas */
+  htmlContent?: string | null;
+  /** Scoped CSS for the canvas — all rules prefixed with .studio-doc[data-doc-id="<id>"] */
+  importCss?: string | null;
+  /** Import report from the DOCX converter */
+  importReport?: ImportReport | null;
+  /** Original source file name (DOCX/PDF) */
+  sourceFileName?: string | null;
 }
 
 // ── Applied Widget Metadata ───────────────────────────────────────────────────
