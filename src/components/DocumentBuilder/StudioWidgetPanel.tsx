@@ -121,6 +121,30 @@ function bid(prefix: string): string {
   return `widget-${prefix}-${_seq}`;
 }
 
+// ── Document colour tokens (print-safe, not brand palette) ───────────────────
+// These are document-content colours used inside rich_text HTML blocks that
+// will be printed / exported as PDF. They are intentionally fixed document
+// colours (navy header bands, light-blue label cells, etc.) and are NOT
+// UI/brand colours — they live inside HTML string content, not in Tailwind
+// class names or CSS variables.
+/* eslint-disable @typescript-eslint/no-inferrable-types */
+const DOC_NAVY        = '#1a2744' as string;
+const DOC_NAVY_TEXT   = '#ffffff' as string;
+const DOC_LABEL_BG    = '#dbeafe' as string;
+const DOC_LABEL_TEXT  = '#1e3a5f' as string;
+const DOC_GUIDE_BG    = '#fefce8' as string;
+const DOC_GUIDE_BDR   = '#fde68a' as string;
+const DOC_GUIDE_TEXT  = '#713f12' as string;
+const DOC_WARN_BG     = '#fef2f2' as string;
+const DOC_WARN_BDR    = '#fecaca' as string;
+const DOC_WARN_TEXT   = '#7f1d1d' as string;
+const DOC_ROW_ALT     = '#f8fafc' as string;
+const DOC_BORDER      = '#cbd5e1' as string;
+const DOC_HDR_BORDER  = '#334155' as string;
+/* eslint-enable @typescript-eslint/no-inferrable-types */
+
+// ── Block helpers ─────────────────────────────────────────────────────────────
+
 function h(level: 1 | 2 | 3 | 4, content: string): DocumentBlock {
   return { id: bid('h'), type: 'heading', content, level, align: 'left' } as DocumentBlock;
 }
@@ -133,83 +157,145 @@ function divider(): DocumentBlock {
 function spacer(height = 8): DocumentBlock {
   return { id: bid('sp'), type: 'spacer', height } as DocumentBlock;
 }
-function banner(title: string, body: string, variant: 'info' | 'warning' | 'success' | 'danger' = 'info'): DocumentBlock {
-  return { id: bid('ban'), type: 'banner', variant, title, body, size: 'compact', align: 'left', showOnExport: true } as DocumentBlock;
+
+/** Navy full-width section band */
+function navyBand(title: string): DocumentBlock {
+  const html = `<table style="width:100%;border-collapse:collapse;margin:0;"><tr><td style="background:${DOC_NAVY};color:${DOC_NAVY_TEXT};font-weight:700;font-size:13px;padding:7px 12px;letter-spacing:0.04em;">${title}</td></tr></table>`;
+  return { id: bid('band'), type: 'rich_text', html } as DocumentBlock;
 }
+
+/** Pale-yellow guidance callout */
+function guidanceBox(text: string): DocumentBlock {
+  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_GUIDE_BG};border:1px solid ${DOC_GUIDE_BDR};color:${DOC_GUIDE_TEXT};font-size:11.5px;padding:8px 12px;border-radius:4px;">${text}</td></tr></table>`;
+  return { id: bid('guide'), type: 'rich_text', html } as DocumentBlock;
+}
+
+/** Pale-red warning callout */
+function warningBox(text: string): DocumentBlock {
+  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_WARN_BG};border:1px solid ${DOC_WARN_BDR};color:${DOC_WARN_TEXT};font-size:11.5px;padding:8px 12px;border-radius:4px;font-weight:600;">${text}</td></tr></table>`;
+  return { id: bid('warn'), type: 'rich_text', html } as DocumentBlock;
+}
+
+/** Two-column form table: light-blue label | white/alt value cell */
+function twoColForm(rows: Array<[string, string]>): DocumentBlock {
+  const rowsHtml = rows.map(([label, value], i) => {
+    const bg = i % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
+    return `<tr>
+      <td style="background:${DOC_LABEL_BG};color:${DOC_LABEL_TEXT};font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:38%;">${label}</td>
+      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:62%;">${value}</td>
+    </tr>`;
+  }).join('');
+  const html = `<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
+  return { id: bid('form'), type: 'rich_text', html } as DocumentBlock;
+}
+
+/** Data table with navy header row */
+function navyTable(headers: string[], rows: string[][]): DocumentBlock {
+  const headerHtml = headers.map(hdr =>
+    `<th style="background:${DOC_NAVY};color:${DOC_NAVY_TEXT};font-weight:700;font-size:11.5px;padding:6px 8px;border:1px solid ${DOC_HDR_BORDER};text-align:left;">${hdr}</th>`
+  ).join('');
+  const rowsHtml = rows.map((cells, ri) => {
+    const bg = ri % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
+    const cellsHtml = cells.map(c =>
+      `<td style="background:${bg};font-size:11.5px;padding:6px 8px;border:1px solid ${DOC_BORDER};">${c}</td>`
+    ).join('');
+    return `<tr>${cellsHtml}</tr>`;
+  }).join('');
+  const html = `<table style="width:100%;border-collapse:collapse;"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+  return { id: bid('ntbl'), type: 'rich_text', html } as DocumentBlock;
+}
+
+/** Sign-off / authorisation table */
+function signoffTable(roles: string[]): DocumentBlock {
+  const rowsHtml = roles.map((role, i) => {
+    const bg = i % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
+    return `<tr>
+      <td style="background:${DOC_LABEL_BG};color:${DOC_LABEL_TEXT};font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:22%;">${role}</td>
+      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Name: ___________________</td>
+      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Signature: _______________</td>
+      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Date: ___________________</td>
+    </tr>`;
+  }).join('');
+  const html = `<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
+  return { id: bid('soff'), type: 'rich_text', html } as DocumentBlock;
+}
+
+/** Revision history table */
+function revisionTable(): DocumentBlock {
+  return navyTable(
+    ['Rev', 'Date', 'Description of Change', 'Prepared By', 'Approved By'],
+    [
+      ['1', '', 'Initial issue', '', ''],
+      ['', '', '', '', ''],
+    ]
+  );
+}
+
+/** Alias kept for backward compat — now renders as twoColForm */
 function infoTable(rows: Array<[string, string]>): DocumentBlock {
-  return {
-    id: bid('tbl'),
-    type: 'table',
-    mode: 'static',
-    columns: [
-      { id: 'field', header: 'Field', cellType: 'text', width: 1 },
-      { id: 'value', header: 'Value', cellType: 'text', width: 2 },
-    ],
-    rows: rows.map(([field, value]) => ({ id: bid('r'), cells: { field, value } })),
-    stripedRows: true,
-  } as DocumentBlock;
+  return twoColForm(rows);
 }
+
 function riskTable(): DocumentBlock {
-  return {
-    id: bid('tbl-risk'),
-    type: 'table',
-    mode: 'static',
-    columns: [
-      { id: 'seq',         header: '#',                  cellType: 'text', width: 0.5 },
-      { id: 'work',        header: 'Sequence of Work',   cellType: 'text', width: 2 },
-      { id: 'hazard',      header: 'Hazard / Risk',      cellType: 'text', width: 2 },
-      { id: 'consequence', header: 'Consequence',        cellType: 'text', width: 1.5 },
-      { id: 'initial',     header: 'Initial Risk',       cellType: 'text', width: 1 },
-      { id: 'controls',    header: 'Control Measures',   cellType: 'text', width: 2.5 },
-      { id: 'residual',    header: 'Residual Risk',      cellType: 'text', width: 1 },
-      { id: 'person',      header: 'Responsible Person', cellType: 'text', width: 1.5 },
-    ],
-    rows: [
-      { id: bid('r'), cells: { seq: '1', work: '', hazard: '', consequence: '', initial: '', controls: '', residual: '', person: '' } },
-      { id: bid('r'), cells: { seq: '2', work: '', hazard: '', consequence: '', initial: '', controls: '', residual: '', person: '' } },
-      { id: bid('r'), cells: { seq: '3', work: '', hazard: '', consequence: '', initial: '', controls: '', residual: '', person: '' } },
-    ],
-    stripedRows: true,
-  } as DocumentBlock;
+  return navyTable(
+    ['#', 'Sequence of Work / Task Step', 'Hazard / Risk', 'Consequence', 'Initial Risk', 'Control Measures (Hierarchy)', 'Residual Risk', 'Responsible Person'],
+    [
+      ['1', '', '', '', '', '', '', ''],
+      ['2', '', '', '', '', '', '', ''],
+      ['3', '', '', '', '', '', '', ''],
+      ['4', '', '', '', '', '', '', ''],
+    ]
+  );
 }
+
 function ppeTable(): DocumentBlock {
-  return {
-    id: bid('tbl-ppe'),
-    type: 'table',
-    mode: 'static',
-    columns: [
-      { id: 'item',        header: 'PPE Item',       cellType: 'text', width: 2 },
-      { id: 'requirement', header: 'Requirement',    cellType: 'text', width: 2 },
-      { id: 'standard',    header: 'Standard / AS',  cellType: 'text', width: 2 },
-    ],
-    rows: [
-      { id: bid('r'), cells: { item: 'Safety Helmet', requirement: 'Mandatory', standard: 'AS/NZS 1801' } },
-      { id: bid('r'), cells: { item: 'Safety Footwear', requirement: 'Mandatory', standard: 'AS/NZS 2210' } },
-      { id: bid('r'), cells: { item: 'High-Visibility Vest', requirement: 'Mandatory', standard: 'AS/NZS 4602' } },
-      { id: bid('r'), cells: { item: '', requirement: '', standard: '' } },
-    ],
-    stripedRows: true,
-  } as DocumentBlock;
+  return navyTable(
+    ['PPE Item', 'Requirement', 'Standard / AS', 'Condition Check'],
+    [
+      ['Safety Helmet', 'Mandatory', 'AS/NZS 1801', ''],
+      ['Safety Footwear', 'Mandatory', 'AS/NZS 2210.3', ''],
+      ['High-Visibility Vest', 'Mandatory', 'AS/NZS 4602.1', ''],
+      ['Safety Glasses / Goggles', 'Task dependent', 'AS/NZS 1337', ''],
+      ['Hearing Protection', 'Task dependent', 'AS/NZS 1270', ''],
+      ['Gloves', 'Task dependent', '', ''],
+      ['Respiratory Protection', 'Task dependent', 'AS/NZS 1716', ''],
+      ['', '', '', ''],
+    ]
+  );
 }
+
 function hazardTable(): DocumentBlock {
-  return {
-    id: bid('tbl-haz'),
-    type: 'table',
-    mode: 'static',
-    columns: [
-      { id: 'ref',      header: 'Ref',           cellType: 'text', width: 0.5 },
-      { id: 'hazard',   header: 'Hazard',         cellType: 'text', width: 2 },
-      { id: 'risk',     header: 'Risk',           cellType: 'text', width: 2 },
-      { id: 'controls', header: 'Controls',       cellType: 'text', width: 3 },
-      { id: 'rating',   header: 'Risk Rating',    cellType: 'text', width: 1 },
-      { id: 'owner',    header: 'Owner',          cellType: 'text', width: 1.5 },
-    ],
-    rows: [
-      { id: bid('r'), cells: { ref: '1', hazard: '', risk: '', controls: '', rating: '', owner: '' } },
-      { id: bid('r'), cells: { ref: '2', hazard: '', risk: '', controls: '', rating: '', owner: '' } },
-    ],
-    stripedRows: true,
-  } as DocumentBlock;
+  return navyTable(
+    ['Ref', 'Hazard / Risk', 'Likelihood', 'Consequence', 'Risk Rating', 'Control Measures', 'Residual Rating', 'Owner'],
+    [
+      ['1', '', '', '', '', '', '', ''],
+      ['2', '', '', '', '', '', '', ''],
+      ['3', '', '', '', '', '', '', ''],
+    ]
+  );
+}
+
+function swmsRegisterTable(): DocumentBlock {
+  return navyTable(
+    ['SWMS Ref', 'Work Activity', 'SWMS Author', 'Rev', 'Date Approved', 'Status', 'Location on Site'],
+    [
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+    ]
+  );
+}
+
+function inductionRegisterTable(): DocumentBlock {
+  return navyTable(
+    ['Name', 'Company / Trade', 'Date Inducted', 'Inducted By', 'Signature'],
+    [
+      ['', '', '', '', ''],
+      ['', '', '', '', ''],
+      ['', '', '', '', ''],
+      ['', '', '', '', ''],
+    ]
+  );
 }
 
 function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
