@@ -179,7 +179,7 @@ export function SwmsLibraryTab() {
           setEditing(null);
           setShowModal(true);
         }} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-            <Plus size={15} /><span className="hidden sm:inline">+ SWMS Builder Widget</span>
+            <Plus size={15} /><span className="hidden sm:inline">SWMS Builder Widget</span>
           </button>
         </div>
       </div>
@@ -411,7 +411,7 @@ export function SafetyPlansTab() {
             <span className="hidden sm:inline">Load Templates</span>
           </button>
           <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-            <Plus size={15} /><span className="hidden sm:inline">+ Safety Plan Widget</span>
+            <Plus size={15} /><span className="hidden sm:inline">Safety Plan Widget</span>
           </button>
         </div>
       </div>
@@ -436,7 +436,7 @@ export function SafetyPlansTab() {
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Create a full WHS Management Plan using the builder.</p>
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-              <Plus size={15} />+ Safety Plan Widget
+              <Plus size={15} />Safety Plan Widget
             </button>
           </div>
         </div>}
