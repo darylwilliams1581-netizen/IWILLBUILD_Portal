@@ -1,54 +1,46 @@
 /**
  * NewDocumentModal
  * ─────────────────────────────────────────────────────────────────────────────
- * Replaces the old "New document" → navigate('/studio/builder/new') shortcut.
- *
  * Four creation paths:
  *   1. Choose Library Template  — opens the Library tab
- *   2. Upload Word (.docx)      — creates a placeholder doc, uploads DOCX as
- *                                 Word Source (keep_word mode), shows success
- *                                 state, calls onSaved so the list refreshes
- *   3. Upload PDF               — same flow for PDF source
- *   4. Blank Studio Canvas      — creates an empty doc and navigates to builder
+ *   2. Upload Word (.docx/.dotx) — creates a placeholder doc, converts DOCX to
+ *                                  an editable HTML canvas (convert_html mode),
+ *                                  then navigates directly to Studio builder.
+ *                                  The original .docx is kept as a silent
+ *                                  recovery copy. No source-preview panel.
+ *   3. Upload PDF               — creates a placeholder doc, stores as PDF
+ *                                 source (keep_word equivalent), calls onSaved
+ *                                 so the list refreshes.
+ *   4. Blank Studio Canvas      — creates an empty doc and navigates to builder.
  *
- * Widget buttons (SWMS / Safety Plan / Policy) are NOT shown here.
- * They remain accessible from within the builder's Apply Widget ribbon tab
- * for backward compatibility with existing widget documents.
- *
- * IMPORTANT: keep_word / PDF upload paths do NOT navigate to the builder.
- * They call onSaved(id) so the parent can refresh the list and open the
- * SourceDocumentPanel for the new document. The user can then choose to
- * open the builder from there.
+ * Word is an import format, not a live editing format. The recommended path
+ * converts the file and opens Studio immediately. There is no intermediate
+ * "source preview" step for Word.
  */
 
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Library, FileText, File, LayoutTemplate,
-  Loader2, AlertCircle, ChevronRight, CheckCircle,
+  Loader2, AlertCircle, ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import type { ImportReport } from './types';
 
 interface Props {
   onClose: () => void;
   /** Called when user picks "Library" — parent should switch to library tab */
   onOpenLibrary: () => void;
   /**
-   * Called after a successful Word/PDF source upload.
+   * Called after a successful PDF source upload (keep_word equivalent).
    * Parent should: close this modal, refresh the document list, and open
    * the SourceDocumentPanel for the new document.
+   * NOT called for Word — Word navigates directly to Studio.
    */
   onSaved?: (id: number, name: string, sourceType: 'docx' | 'pdf') => void;
 }
 
 type Path = 'library' | 'word' | 'pdf' | 'blank';
-
-/** Result of a successful Word/PDF upload — shown in the success step */
-interface SavedResult {
-  id: number;
-  name: string;
-  sourceType: 'docx' | 'pdf';
-}
 
 export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Props) {
   const navigate = useNavigate();
@@ -56,8 +48,6 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
   const [activePath, setActivePath] = useState<Path | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Set after a successful Word/PDF upload — shows the success step */
-  const [saved, setSaved] = useState<SavedResult | null>(null);
 
   // ── Create a blank placeholder document ──────────────────────────────────
   async function createPlaceholder(name: string, templateType = 'custom'): Promise<number | null> {
@@ -72,29 +62,82 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
     return data.id ?? null;
   }
 
-  // ── Handle file selection for Word / PDF upload ───────────────────────────
-  async function handleFileSelected(file: File, mode: 'word' | 'pdf') {
+  // ── Handle Word upload — convert_html → navigate to Studio ───────────────
+  async function handleWordFile(file: File) {
     setLoading(true);
     setError(null);
     try {
-      const docName = file.name.replace(/\.(docx|pdf)$/i, '').trim() || 'Imported Document';
+      const docName = file.name.replace(/\.(docx|dotx)$/i, '').trim() || 'Imported Document';
       const id = await createPlaceholder(docName);
       if (!id) throw new Error('Could not create document placeholder — please try again');
 
       const formData = new FormData();
-      // The import-docx endpoint accepts field name "docx" for Word files
-      formData.append(mode === 'word' ? 'docx' : 'pdf', file);
-      formData.append('mode', 'keep_word');
-
-      const endpoint = mode === 'word'
-        ? `/api/document-templates/${id}/import-docx`
-        : `/api/document-templates/${id}/import-pdf`;
+      formData.append('docx', file);
+      formData.append('mode', 'convert_html');
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 60_000);
       let res: Response;
       try {
-        res = await fetch(endpoint, {
+        res = await fetch(`/api/document-templates/${id}/import-docx`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error ?? `Import failed (HTTP ${res.status})`);
+      }
+
+      const data = await res.json() as {
+        mode?: string;
+        htmlContent?: string;
+        importCss?: string;
+        importReport?: ImportReport | null;
+        error?: string;
+      };
+      if (data.error) throw new Error(data.error);
+      if (data.mode !== 'convert_html') {
+        throw new Error('Server did not convert the document — please try again');
+      }
+
+      // Navigate directly to Studio — import report shown inside the canvas
+      onClose();
+      navigate(`/studio/builder/${id}`);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Upload timed out — the file may be too large. Try a smaller file.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Import failed');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Handle PDF upload — keep as source, call onSaved ─────────────────────
+  async function handlePdfFile(file: File) {
+    setLoading(true);
+    setError(null);
+    try {
+      const docName = file.name.replace(/\.pdf$/i, '').trim() || 'Imported Document';
+      const id = await createPlaceholder(docName);
+      if (!id) throw new Error('Could not create document placeholder — please try again');
+
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('mode', 'keep_word');
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60_000);
+      let res: Response;
+      try {
+        res = await fetch(`/api/document-templates/${id}/import-pdf`, {
           method: 'POST',
           body: formData,
           credentials: 'include',
@@ -110,17 +153,10 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       }
 
       const data = await res.json() as { mode?: string; error?: string };
-      // Verify the server actually persisted it as keep_word
       if (data.error) throw new Error(data.error);
-      if (data.mode !== 'keep_word') {
-        throw new Error('Server did not persist the source document — please try again');
-      }
 
-      const sourceType = mode === 'word' ? 'docx' : 'pdf';
-      const result: SavedResult = { id, name: docName, sourceType };
-      setSaved(result);
-      // Notify parent to refresh list and open SourceDocumentPanel
-      onSaved?.(id, docName, sourceType);
+      onSaved?.(id, docName, 'pdf');
+      onClose();
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('Upload timed out — the file may be too large. Try a smaller file.');
@@ -163,7 +199,7 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
     // word or pdf — trigger file picker
     setActivePath(path);
     if (fileInputRef.current) {
-      fileInputRef.current.accept = path === 'word' ? '.docx' : '.pdf';
+      fileInputRef.current.accept = path === 'word' ? '.docx,.dotx' : '.pdf';
       fileInputRef.current.click();
     }
   }
@@ -191,8 +227,8 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       icon: FileText,
       iconColor: 'text-blue-600',
       iconBg: 'bg-blue-50 border-blue-200',
-      title: 'Upload Word Document',
-      description: 'Upload a .docx file — stored as a live Word source you can re-download and replace',
+      title: 'Import Word Document',
+      description: 'Upload a .docx or .dotx file — converted to an editable Studio canvas immediately',
     },
     {
       id: 'pdf',
@@ -212,48 +248,8 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
     },
   ];
 
-  // ── Success state ─────────────────────────────────────────────────────────
-  if (saved) {
-    return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <p className="text-sm font-bold text-slate-800">Document Saved</p>
-            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors" aria-label="Close">
-              <X size={18} />
-            </button>
-          </div>
-          <div className="p-6 flex flex-col items-center gap-4 text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
-              <CheckCircle size={28} className="text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-slate-800">{saved.name}</p>
-              <p className="text-xs text-slate-500 mt-1">
-                Saved as {saved.sourceType === 'pdf' ? 'PDF' : 'Word'} source document.
-                The original file is stored securely and can be downloaded or replaced at any time.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 w-full">
-              <button
-                onClick={onClose}
-                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
-              >
-                View in documents list
-              </button>
-              <button
-                onClick={() => { onClose(); navigate(`/studio/builder/${saved.id}`); }}
-                className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
-              >
-                Open in builder
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  }
+  // ── Success state removed — Word navigates directly to Studio ─────────────
+  // PDF success is handled by onSaved() + onClose() in handlePdfFile.
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -327,10 +323,13 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
           ref={fileInputRef}
           type="file"
           className="hidden"
+          data-testid="ndm-file-input"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file && activePath) {
-              void handleFileSelected(file, activePath as 'word' | 'pdf');
+            if (file && activePath === 'word') {
+              void handleWordFile(file);
+            } else if (file && activePath === 'pdf') {
+              void handlePdfFile(file);
             }
             // Reset so same file can be re-selected
             e.target.value = '';

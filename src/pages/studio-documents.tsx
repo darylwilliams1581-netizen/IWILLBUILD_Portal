@@ -811,13 +811,24 @@ export default function StudioDocumentsPage() {
       </div>
 
       {/* Import modal (legacy — used from within builder ribbon) */}
-      {showImporter && importTemplateId !== null && <DocxImporter templateId={importTemplateId} hasExistingBlocks={false} onClose={() => {
-      setShowImporter(false);
-      setImportTemplateId(null);
-    }} onImported={(blocks, name) => {
-      setShowImporter(false);
-      void handleStudioImported(blocks, name, importTemplateId);
-    }} onSaveFirst={async () => importTemplateId} />}
+      {showImporter && importTemplateId !== null && <DocxImporter
+        templateId={importTemplateId}
+        hasExistingBlocks={false}
+        onClose={() => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+        }}
+        onImported={(blocks, name) => {
+          setShowImporter(false);
+          void handleStudioImported(blocks, name, importTemplateId);
+        }}
+        onOpenInStudio={(result) => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+          navigate(`/studio/builder/${result.id}`);
+        }}
+        onSaveFirst={async () => importTemplateId}
+      />}
 
       {/* New Document modal */}
       {showNewDocModal && (

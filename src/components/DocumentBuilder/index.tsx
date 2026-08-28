@@ -884,7 +884,21 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showDocxImporter && (
-          <DocxImporter templateId={templateId} hasExistingBlocks={blocks.length > 0} onClose={() => setShowDocxImporter(false)} onImported={handleDocxImported} onSaveFirst={handleSaveFirst} />
+          <DocxImporter
+            templateId={templateId}
+            hasExistingBlocks={blocks.length > 0}
+            onClose={() => setShowDocxImporter(false)}
+            onImported={handleDocxImported}
+            onOpenInStudio={(result) => {
+              // Immediately update the live HTML so the canvas switches without
+              // waiting for the parent re-fetch round-trip
+              setLiveHtmlContent(result.htmlContent);
+              setShowDocxImporter(false);
+              // Notify parent to re-fetch the template (switches isHtmlDoc → true)
+              if (result.id) onSaved?.(result.id);
+            }}
+            onSaveFirst={handleSaveFirst}
+          />
         )}
       </AnimatePresence>
       <AnimatePresence>

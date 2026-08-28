@@ -1,84 +1,71 @@
 /**
- * Word Source upload bug fix — focused integration tests
+ * Word Source upload — updated tests for convert_html-first redesign
  *
- * Verifies:
- *   1. NewDocumentModal has onSaved prop and success state (no silent navigate)
- *   2. NewDocumentModal verifies server returned mode='keep_word' before calling onSaved
- *   3. NewDocumentModal uses filename-without-extension as document name
- *   4. NewDocumentModal does NOT call navigate on keep_word success
+ * NewDocumentModal:
+ *   1. onSaved prop still present (used for PDF path)
+ *   2. Word path sends mode=convert_html and navigates to Studio on success
+ *   3. Word path uses filename-without-extension as document name
+ *   4. Word path does NOT call onSaved (PDF-only)
  *   5. studio-documents passes onSaved to NewDocumentModal and calls load() + setSourcePanel
- *   6. SourceDocumentPanel has PDF viewer (iframe) for PDF source type
- *   7. SourceDocumentPanel calls pdf-preview endpoint for DOCX source type
- *   8. SourceDocumentPanel shows deliberate fallback panel when pdf-preview returns 503
- *   9. SourceDocumentPanel has checkPreview function that branches on sourceType
- *  10. import-docx POST handler persists source_type='docx' and returns mode='keep_word'
- *  11. import-docx POST handler uses filename-without-extension as document name (via createPlaceholder)
- *  12. pdf-preview endpoint returns 503 with honest message when no Gotenberg
- *  13. source-document/download endpoint is registered in entry.ts
- *  14. source-document/pdf-preview endpoint is registered in entry.ts
- *  15. Convert to Studio Blocks is still present as legacy option in DocxImporter
+ *   6–9. SourceDocumentPanel viewer (unchanged)
+ *   10–11. import-docx POST handler (unchanged)
+ *   12. pdf-preview endpoint returns 503 (unchanged)
+ *   13–14. Route registration (unchanged)
+ *   15. DocxImporter: convert_html is the default; keep_word is in Advanced section
  */
 
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs/promises';
 
 // ── 1–4. NewDocumentModal ─────────────────────────────────────────────────────
-describe('NewDocumentModal — success path', () => {
-  it('has onSaved prop in interface', async () => {
+describe('NewDocumentModal — Word path (convert_html)', () => {
+  it('onSaved prop still present in interface (used for PDF path)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
     expect(src).toContain('onSaved?:');
     expect(src).toContain("sourceType: 'docx' | 'pdf'");
   });
 
-  it('has saved state (SavedResult) for success step', async () => {
+  it('Word path sends mode=convert_html', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain('SavedResult');
-    expect(src).toContain('setSaved(');
-    expect(src).toContain('saved.name');
+    expect(src).toContain("formData.append('mode', 'convert_html')");
   });
 
-  it('verifies server returned mode=keep_word before calling onSaved', async () => {
+  it('Word path verifies server returned mode=convert_html', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("data.mode !== 'keep_word'");
-    expect(src).toContain('Server did not persist the source document');
+    expect(src).toContain("data.mode !== 'convert_html'");
+    expect(src).toContain('Server did not convert the document');
   });
 
   it('uses filename without extension as document name', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
     // docName derived from file.name with extension stripped
-    expect(src).toContain("file.name.replace(/\\.(docx|pdf)$/i, '')");
+    expect(src).toContain("file.name.replace(/\\.(docx|dotx)$/i, '')");
     expect(src).toContain('createPlaceholder(docName)');
   });
 
-  it('does NOT navigate to builder on keep_word success', async () => {
+  it('Word path navigates to /studio/builder/:id on success', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    // navigate should only be called in handleBlank and the "Open in builder" success button
-    // It must NOT be called directly after the upload response in handleFileSelected
-    // The upload success path sets setSaved() and calls onSaved() — no navigate() there
-    const handleFileSelectedBlock = src.slice(
-      src.indexOf('async function handleFileSelected'),
-      src.indexOf('async function handleBlank')
+    expect(src).toContain('navigate(`/studio/builder/${id}`)');
+  });
+
+  it('Word path does NOT call onSaved', async () => {
+    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
+    // handleWordFile should not contain onSaved — that is PDF-only
+    const wordFnBlock = src.slice(
+      src.indexOf('async function handleWordFile'),
+      src.indexOf('async function handlePdfFile'),
     );
-    // navigate should not appear in handleFileSelected (only in success button onClick)
-    expect(handleFileSelectedBlock).not.toContain('navigate(');
+    expect(wordFnBlock).not.toContain('onSaved?.(');
   });
 
-  it('calls onSaved with id, name, sourceType', async () => {
+  it('uses correct field name for Word upload (docx)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain('onSaved?.(id, docName, sourceType)');
+    expect(src).toContain("formData.append('docx', file)");
   });
 
-  it('shows success state with View in documents list and Open in builder buttons', async () => {
+  it('accepts .dotx in addition to .docx', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain('View in documents list');
-    expect(src).toContain('Open in builder');
-    expect(src).toContain('saved.sourceType');
-  });
-
-  it('uses correct field name for Word upload (docx not file)', async () => {
-    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    // Word upload must use field name 'docx' to match import-docx POST handler
-    expect(src).toContain("mode === 'word' ? 'docx' : 'pdf'");
+    expect(src).toContain('.docx,.dotx');
   });
 });
 
@@ -224,19 +211,22 @@ describe('Route registration in entry.ts', () => {
   });
 });
 
-// ── 15. Legacy convert_blocks still present ───────────────────────────────────
+// ── 15. DocxImporter — convert_html default ───────────────────────────────────
 describe('DocxImporter — legacy convert_blocks', () => {
-  it('Convert to Studio Blocks option is still present with Legacy badge', async () => {
+  it('convert_html is the default mode (not keep_word)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
-    expect(src).toContain('Convert to Studio Blocks');
-    expect(src).toContain('Legacy');
-    expect(src).toContain("'convert_blocks'");
+    expect(src).toContain("useState<DocxMode>('convert_html')");
   });
 
-  it('Keep as Word Source is the default (recommended) option', async () => {
+  it('keep_word is present as an advanced/recovery option', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
-    expect(src).toContain('Keep as Word Source');
-    expect(src).toContain('Recommended');
     expect(src).toContain("'keep_word'");
+    expect(src).toContain('Recovery copy');
+  });
+
+  it('onOpenInStudio prop is declared', async () => {
+    const src = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
+    expect(src).toContain('onOpenInStudio');
+    expect(src).toContain('ConvertHtmlResult');
   });
 });

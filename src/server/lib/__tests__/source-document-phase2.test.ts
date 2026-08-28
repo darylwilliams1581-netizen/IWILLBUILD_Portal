@@ -143,33 +143,33 @@ describe('NewDocumentModal', () => {
 });
 
 describe('DocxImporter', () => {
-  it('defaults to keep_word mode', async () => {
+  it('defaults to convert_html mode (not keep_word)', async () => {
     const fs = await import('node:fs/promises');
     const src = await fs.readFile(
       'src/components/DocumentBuilder/DocxImporter.tsx',
       'utf-8'
     );
-    expect(src).toContain("useState<DocxMode>('keep_word')");
+    expect(src).toContain("useState<DocxMode>('convert_html')");
   });
 
-  it('shows Legacy badge for convert_blocks', async () => {
+  it('keep_word is present as an advanced/recovery option', async () => {
     const fs = await import('node:fs/promises');
     const src = await fs.readFile(
       'src/components/DocumentBuilder/DocxImporter.tsx',
       'utf-8'
     );
-    expect(src).toContain('Legacy');
-    expect(src).toContain('convert_blocks');
+    expect(src).toContain("'keep_word'");
+    expect(src).toContain('Recovery copy');
   });
 
-  it('shows Recommended badge for keep_word', async () => {
+  it('onOpenInStudio prop declared for convert_html path', async () => {
     const fs = await import('node:fs/promises');
     const src = await fs.readFile(
       'src/components/DocumentBuilder/DocxImporter.tsx',
       'utf-8'
     );
-    expect(src).toContain('Recommended');
-    expect(src).toContain('keep_word');
+    expect(src).toContain('onOpenInStudio');
+    expect(src).toContain('ConvertHtmlResult');
   });
 });
 
