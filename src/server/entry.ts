@@ -614,6 +614,9 @@ import migrate_plan_manager_v3_post_581 from "./api/migrate-plan-manager-v3/POST
 import migrate_safety_post_582 from "./api/migrate-safety/POST";
 import migrate_safety_studio_post from "./api/migrate-safety-studio/POST";
 import studio_generate_from_safety_post from "./api/studio/generate-from-safety/POST";
+import migrate_studio_phase2_post from "./api/migrate-studio-phase2/POST";
+import jobs_id_studio_swms_get from "./api/jobs/[id]/studio-swms/GET";
+import jobs_id_studio_swms_post from "./api/jobs/[id]/studio-swms/POST";
 import migrate_site_prestart_post_583 from "./api/migrate-site-prestart/POST";
 import migrate_sms_verified_at_post_584 from "./api/migrate-sms-verified-at/POST";
 import migrate_starter_pack_post_585 from "./api/migrate-starter-pack/POST";
@@ -1641,6 +1644,7 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'requires_signature',          definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'document_templates', column: 'source_job_id',               definition: 'INT NULL' },
     { table: 'document_templates', column: 'doc_status',                  definition: "VARCHAR(20) NOT NULL DEFAULT 'draft'" },
+    { table: 'document_templates', column: 'applied_widgets_json',        definition: "MEDIUMTEXT NULL COMMENT 'JSON array of AppliedWidgetMeta'" },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
@@ -3828,6 +3832,9 @@ app.post("/api/migrate-plan-manager-v3", migrate_plan_manager_v3_post_581);
 app.post("/api/migrate-safety", migrate_safety_post_582);
 app.post("/api/migrate-safety-studio", migrate_safety_studio_post);
 app.post("/api/studio/generate-from-safety", studio_generate_from_safety_post);
+app.post("/api/migrate-studio-phase2", migrate_studio_phase2_post);
+app.get("/api/jobs/:id/studio-swms", jobs_id_studio_swms_get);
+app.post("/api/jobs/:id/studio-swms", jobs_id_studio_swms_post);
 app.post("/api/migrate-site-prestart", migrate_site_prestart_post_583);
 app.post("/api/migrate-sms-verified-at", migrate_sms_verified_at_post_584);
 app.post("/api/migrate-starter-pack", migrate_starter_pack_post_585);

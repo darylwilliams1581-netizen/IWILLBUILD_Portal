@@ -24,9 +24,12 @@ import { MemoryRouter } from 'react-router';
 const mockStore = {
   blocks: [] as unknown[],
   templateName: '',
+  appliedWidgets: [] as unknown[],
   prependBlocks: vi.fn(),
+  reorderBlocks: vi.fn(),
   setTemplateType: vi.fn(),
   setTemplateName: vi.fn(),
+  recordWidgetApplied: vi.fn(),
 };
 
 vi.mock('../useDocumentStore', () => ({
@@ -51,6 +54,7 @@ function renderPanel() {
 describe('StudioWidgetPanel — widget cards', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = '';
     vi.clearAllMocks();
   });
@@ -95,6 +99,7 @@ describe('StudioWidgetPanel — widget cards', () => {
 describe('StudioWidgetPanel — apply to blank document', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = '';
     vi.clearAllMocks();
   });
@@ -213,6 +218,7 @@ describe('StudioWidgetPanel — apply to document with existing content', () => 
 describe('StudioWidgetPanel — SWMS block structure', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = 'Test SWMS';
     vi.clearAllMocks();
   });
@@ -305,6 +311,7 @@ describe('StudioWidgetPanel — SWMS block structure', () => {
 describe('StudioWidgetPanel — Safety Plan block structure', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = 'Test WHS Plan';
     vi.clearAllMocks();
   });
@@ -367,6 +374,7 @@ describe('StudioWidgetPanel — Safety Plan block structure', () => {
 describe('StudioWidgetPanel — Policy block structure', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = '';
     vi.clearAllMocks();
   });
@@ -406,6 +414,7 @@ describe('StudioWidgetPanel — Policy block structure', () => {
 describe('StudioWidgetPanel — templateType persistence', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = '';
     vi.clearAllMocks();
   });
@@ -434,6 +443,7 @@ describe('StudioWidgetPanel — templateType persistence', () => {
 describe('StudioWidgetPanel — job detail tokens NOT in master blocks', () => {
   beforeEach(() => {
     mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
     mockStore.templateName = '';
     vi.clearAllMocks();
   });

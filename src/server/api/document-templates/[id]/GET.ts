@@ -69,6 +69,15 @@ export default async function handler(req: Request, res: Response) {
         requiresSignature: Boolean(row.requires_signature),
         sourceJobId: row.source_job_id ? Number(row.source_job_id) : null,
         docStatus: (row.doc_status as string) ?? 'draft',
+        // Applied widget metadata — prefer dedicated column, fall back to builder_json
+        appliedWidgets: (() => {
+          // Try dedicated column first (written by PUT/POST after Phase 2 migration)
+          if (row.applied_widgets_json) {
+            try { return JSON.parse(String(row.applied_widgets_json)); } catch { /* ignore */ }
+          }
+          // Fall back to builder_json.appliedWidgets
+          return Array.isArray(builderData.appliedWidgets) ? builderData.appliedWidgets : [];
+        })(),
       },
     });
   } catch (err) {

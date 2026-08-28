@@ -20,9 +20,9 @@
  */
 
 import { useState } from 'react';
-import { HardHat, ClipboardList, BookOpen, ChevronRight, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { HardHat, ClipboardList, BookOpen, ChevronRight, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
-import type { DocumentBlock } from './types';
+import type { DocumentBlock, AppliedWidgetMeta } from './types';
 
 // ── Widget definitions ────────────────────────────────────────────────────────
 
@@ -447,40 +447,61 @@ const TEMPLATE_TYPES: Record<WidgetId, string> = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function StudioWidgetPanel() {
-  const store = useDocumentStore();  const [selected, setSelected] = useState<WidgetId | null>(null);
+  const store = useDocumentStore();
+  const [selected, setSelected] = useState<WidgetId | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [confirmMode, setConfirmMode] = useState<'prepend' | 'update'>('prepend');
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<WidgetId | null>(null);
 
   const hasBlocks = store.blocks.length > 0;
 
+  function getExistingMeta(id: WidgetId): AppliedWidgetMeta | undefined {
+    return (store.appliedWidgets ?? []).find((w) => w.widgetId === id);
+  }
+
   function handleSelect(id: WidgetId) {
     if (applying) return;
     setSelected(id);
     setApplied(null);
-    if (hasBlocks) {
+    const existing = getExistingMeta(id);
+    if (existing) {
+      setConfirmMode('update');
+      setConfirming(true);
+    } else if (hasBlocks) {
+      setConfirmMode('prepend');
       setConfirming(true);
     } else {
-      void applyWidget(id);
+      void applyWidget(id, false);
     }
   }
 
-  async function applyWidget(id: WidgetId) {
+  async function applyWidget(id: WidgetId, isUpdate: boolean) {
     setApplying(true);
     setConfirming(false);
     try {
-      const blocks = BLOCK_BUILDERS[id](store.templateName || '');
       const def = WIDGETS.find((w) => w.id === id)!;
+      const existing = getExistingMeta(id);
 
-      // If blank doc — prepend (which effectively replaces since there's nothing)
-      // If has content — prepend so widget structure leads the document
+      if (isUpdate && existing) {
+        // Remove old widget blocks (identified by "widget-" id prefix) then prepend fresh
+        const filtered = store.blocks.filter((b) => !b.id.startsWith('widget-'));
+        store.reorderBlocks(filtered);
+      }
+
+      const blocks = BLOCK_BUILDERS[id](store.templateName || '');
       store.prependBlocks(blocks);
 
-      // Set template type to match widget
+      const meta: AppliedWidgetMeta = {
+        widgetId: id,
+        version: existing ? existing.version + 1 : 1,
+        appliedAt: new Date().toISOString(),
+        blockCount: blocks.length,
+      };
+      store.recordWidgetApplied(meta);
       store.setTemplateType(TEMPLATE_TYPES[id] as Parameters<typeof store.setTemplateType>[0]);
 
-      // If doc has no name yet, set a sensible default
-      if (!store.templateName || store.templateName === 'Untitled document') {
+      if (!store.templateName || store.templateName === 'Untitled document' || store.templateName === 'Untitled Document') {
         store.setTemplateName(def.label.replace(' Widget', ''));
       }
 
@@ -490,6 +511,8 @@ export default function StudioWidgetPanel() {
       setSelected(null);
     }
   }
+
+  const selectedDef = WIDGETS.find((w) => w.id === selected);
 
   return (
     <div className="w-72 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
@@ -512,21 +535,34 @@ export default function StudioWidgetPanel() {
         </div>
       )}
 
-      {/* Confirm overwrite warning */}
-      {confirming && selected && (
+      {/* Confirm dialog */}
+      {confirming && selected && selectedDef && (
         <div className="mx-3 mt-3 flex-shrink-0 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <div className="flex items-start gap-2 mb-2">
+          <div className="flex items-start gap-2 mb-2.5">
             <AlertTriangle size={13} className="text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 leading-snug">
-              This document already has content. The widget will be <strong>prepended</strong> — your existing blocks are preserved below.
-            </p>
+            {confirmMode === 'update' ? (
+              <p className="text-xs text-amber-800 leading-snug">
+                <span className="font-semibold">{selectedDef.label}</span> has already been applied
+                (v{getExistingMeta(selected)?.version ?? 1}). Updating will remove the old widget
+                structure and prepend a fresh one. Your own content blocks are preserved.
+              </p>
+            ) : (
+              <p className="text-xs text-amber-800 leading-snug">
+                This document already has content. The widget will be{' '}
+                <strong>prepended</strong> — your existing blocks are preserved below.
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => void applyWidget(selected)}
-              className="flex-1 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors"
+              onClick={() => void applyWidget(selected, confirmMode === 'update')}
+              className="flex-1 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
             >
-              Apply Anyway
+              {confirmMode === 'update' ? (
+                <><RefreshCw size={11} /> Update Structure</>
+              ) : (
+                'Apply Anyway'
+              )}
             </button>
             <button
               onClick={() => { setConfirming(false); setSelected(null); }}
@@ -540,38 +576,53 @@ export default function StudioWidgetPanel() {
 
       {/* Widget cards */}
       <div className="flex flex-col gap-2 p-3 flex-1">
-        {WIDGETS.map((w) => (
-          <button
-            key={w.id}
-            onClick={() => handleSelect(w.id)}
-            disabled={applying}
-            className={[
-              'w-full text-left rounded-xl border-2 border-slate-200 p-3 transition-all duration-150',
-              w.borderColour,
-              'hover:shadow-sm disabled:opacity-50',
-              selected === w.id && applying ? 'opacity-60' : '',
-            ].join(' ')}
-          >
-            <div className="flex items-start gap-3">
-              <div className={`w-9 h-9 rounded-lg ${w.colour} ${w.textColour} flex items-center justify-center shrink-0`}>
-                {applying && selected === w.id ? <Loader2 size={16} className="animate-spin" /> : w.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-bold text-slate-800">{w.label}</p>
-                  <ChevronRight size={12} className="text-slate-400 shrink-0" />
+        {WIDGETS.map((w) => {
+          const existingMeta = getExistingMeta(w.id);
+          return (
+            <button
+              key={w.id}
+              onClick={() => handleSelect(w.id)}
+              disabled={applying}
+              data-testid={`widget-card-${w.id}`}
+              className={[
+                'w-full text-left rounded-xl border-2 border-slate-200 p-3 transition-all duration-150',
+                w.borderColour,
+                'hover:shadow-sm disabled:opacity-50',
+                selected === w.id && applying ? 'opacity-60' : '',
+              ].join(' ')}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-9 h-9 rounded-lg ${w.colour} ${w.textColour} flex items-center justify-center shrink-0`}>
+                  {applying && selected === w.id ? <Loader2 size={16} className="animate-spin" /> : w.icon}
                 </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">{w.subtitle}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-xs font-bold text-slate-800">{w.label}</p>
+                    {existingMeta ? (
+                      <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5 shrink-0">
+                        v{existingMeta.version} applied
+                      </span>
+                    ) : (
+                      <ChevronRight size={12} className="text-slate-400 shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{w.subtitle}</p>
+                  {existingMeta && (
+                    <p className="text-[10px] text-emerald-600 mt-0.5 flex items-center gap-1">
+                      <RefreshCw size={9} />
+                      Click to update structure
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-            {/* Section list */}
-            <ul className="mt-2.5 space-y-0.5 pl-12">
-              {w.sections.map((s) => (
-                <li key={s} className="text-[10px] text-slate-400 leading-snug">• {s}</li>
-              ))}
-            </ul>
-          </button>
-        ))}
+              <ul className="mt-2.5 space-y-0.5 pl-12">
+                {w.sections.map((s) => (
+                  <li key={s} className="text-[10px] text-slate-400 leading-snug">• {s}</li>
+                ))}
+              </ul>
+            </button>
+          );
+        })}
       </div>
 
       {/* Footer note */}

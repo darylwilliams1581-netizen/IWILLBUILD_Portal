@@ -662,6 +662,30 @@ export interface DocumentTemplate {
   sourceJobId?: number | null;
   /** Document status: draft, published, or archived */
   docStatus?: 'draft' | 'published' | 'archived';
+  /**
+   * Metadata for widgets applied via the Apply Widget panel.
+   * Stored inside builder_json so no schema change is needed.
+   * Each entry records which widget was applied and when, enabling
+   * duplicate detection and "Update existing structure" flow.
+   */
+  appliedWidgets?: AppliedWidgetMeta[];
+}
+
+// ── Applied Widget Metadata ───────────────────────────────────────────────────
+
+/**
+ * Stored inside builder_json.appliedWidgets[].
+ * Enables duplicate detection and "Update existing structure" flow.
+ */
+export interface AppliedWidgetMeta {
+  /** Widget identifier — matches WidgetId in StudioWidgetPanel */
+  widgetId: 'swms' | 'safety_plan' | 'policy';
+  /** Monotonically increasing version — bump on each "Update" */
+  version: number;
+  /** ISO 8601 timestamp of when this widget was applied/updated */
+  appliedAt: string;
+  /** Number of blocks that were prepended by this widget application */
+  blockCount: number;
 }
 
 // ── PDF Output Settings (per-template overlay) ────────────────────────────────

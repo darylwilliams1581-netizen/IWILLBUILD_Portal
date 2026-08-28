@@ -7,8 +7,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText, Library } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText, Library, Briefcase } from 'lucide-react';
 import GenerateJobReportModal from '@/components/studio/GenerateJobReportModal';
+import AttachToJobSheet from '@/components/studio/AttachToJobSheet';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
@@ -131,11 +132,13 @@ function DocRow({
   const [expanded, setExpanded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const [showAttachSheet, setShowAttachSheet] = useState(false);
   const [jobNumberInput, setJobNumberInput] = useState('');
   const [jobPickerError, setJobPickerError] = useState('');
   const isActive = Boolean(doc.is_active);
   // Doc Studio is always doc kind — no form branching here
   const hasAcknowledgement = Boolean(doc.requires_acknowledgement);
+  const isSafetyDoc = doc.template_type === 'swms' || doc.template_type === 'safety_plan';
   function openBuilder() {
     navigate(`/studio/builder/${doc.id}`);
   }
@@ -252,6 +255,14 @@ function DocRow({
             <button onClick={openUse} className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
               <Eye size={11} /> Open / Review
             </button>
+            {isSafetyDoc && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowAttachSheet(true); }}
+                className="flex items-center gap-1.5 text-xs font-bold text-violet-700 px-3 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors"
+              >
+                <Briefcase size={11} /> Attach to Job
+              </button>
+            )}
           </div>
         </div>}
 
@@ -267,8 +278,7 @@ function DocRow({
 
       <AnimatePresence>
         {showJobPicker && <motion.div initial={{
-        opacity: 0
-      }} animate={{
+        opacity: 0      }} animate={{
         opacity: 1
       }} exit={{
         opacity: 0
@@ -319,6 +329,18 @@ function DocRow({
             </motion.div>
           </motion.div>}
       </AnimatePresence>
+
+      {/* Attach to Job sheet — SWMS and Safety Plan only */}
+      {showAttachSheet && (
+        <AttachToJobSheet
+          open={showAttachSheet}
+          studioDocId={doc.id}
+          docTitle={doc.name}
+          templateType={doc.template_type ?? ''}
+          onClose={() => setShowAttachSheet(false)}
+          onAttached={() => { setShowAttachSheet(false); }}
+        />
+      )}
     </motion.div>;
 }
 
