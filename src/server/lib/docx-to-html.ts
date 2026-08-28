@@ -17,6 +17,7 @@
 
 /* eslint-disable security/detect-unsafe-regex */
 import mammoth from 'mammoth';
+import { parseDocxTableData, enrichTableHtml } from './docx-table-enricher.js';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -355,6 +356,10 @@ export async function convertDocxToHtml(
   );
 
   let html = result.value;
+
+  // Enrich tables with shading, borders, and column widths from raw DOCX XML
+  const tableData = await parseDocxTableData(buffer);
+  html = enrichTableHtml(html, tableData);
 
   // Normalise page breaks
   const { html: htmlAfterBreaks, count: pageBreakCount } = normalisePageBreaks(html);
