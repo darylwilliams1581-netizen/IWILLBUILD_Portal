@@ -196,6 +196,9 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
 
 export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }: Props) {
   const { appendBlocks } = useDocumentStore();
+  const [structureOpen, setStructureOpen]   = useState(true);
+  const [tablesOpen, setTablesOpen]         = useState(true);
+  const [formFieldsOpen, setFormFieldsOpen] = useState(true);
   const [advancedOpen, setAdvancedOpen]     = useState(false);
   const [sysFieldsOpen, setSysFieldsOpen]   = useState(false);
 
@@ -307,131 +310,145 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
         <ToolBtn icon={<FileUp size={12} />} label="Import DOCX / PDF" onClick={onImportDocx} primary />
 
         {/* ── Structure ──────────────────────────────────────────────────── */}
-        <SectionLabel className="mt-2">Structure</SectionLabel>
-        <ToolBtn
-          icon={<Hash size={12} />}
-          label="Document Title (H1)"
-          onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })}
-        />
-        <ToolBtn
-          icon={<Hash size={12} />}
-          label="Section Heading (H2)"
-          onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })}
-        />
-        <ToolBtn
-          icon={<Hash size={12} />}
-          label="Sub-section (H3)"
-          onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })}
-        />
-        <ToolBtn
-          icon={<Type size={12} />}
-          label="Paragraph"
-          onClick={() => insert({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })}
-        />
-        <ToolBtn
-          icon={<List size={12} />}
-          label="Bullet List"
-          onClick={() => insert({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })}
-        />
-        <ToolBtn
-          icon={<Minus size={12} />}
-          label="Section Divider"
-          onClick={() => insert({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })}
-        />
-        <ToolBtn
-          icon={<AlignLeft size={12} />}
-          label="Page Break"
-          onClick={() => insert({ id: nanoid(10), type: 'page_break' })}
-        />
+        <AccordionHeader open={structureOpen} onToggle={() => setStructureOpen((v) => !v)} className="mt-2">
+          Structure
+        </AccordionHeader>
+        {structureOpen && (
+          <div className="flex flex-col gap-0.5">
+            <ToolBtn
+              icon={<Hash size={12} />}
+              label="Document Title (H1)"
+              onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })}
+            />
+            <ToolBtn
+              icon={<Hash size={12} />}
+              label="Section Heading (H2)"
+              onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })}
+            />
+            <ToolBtn
+              icon={<Hash size={12} />}
+              label="Sub-section (H3)"
+              onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })}
+            />
+            <ToolBtn
+              icon={<Type size={12} />}
+              label="Paragraph"
+              onClick={() => insert({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })}
+            />
+            <ToolBtn
+              icon={<List size={12} />}
+              label="Bullet List"
+              onClick={() => insert({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })}
+            />
+            <ToolBtn
+              icon={<Minus size={12} />}
+              label="Section Divider"
+              onClick={() => insert({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })}
+            />
+            <ToolBtn
+              icon={<AlignLeft size={12} />}
+              label="Page Break"
+              onClick={() => insert({ id: nanoid(10), type: 'page_break' })}
+            />
+          </div>
+        )}
 
         {/* ── Tables ─────────────────────────────────────────────────────── */}
-        <SectionLabel className="mt-2">Tables</SectionLabel>
-        <ToolBtn
-          icon={<Table2 size={12} />}
-          label="Blank Table"
-          onClick={() => {
-            const c1 = nanoid(8); const c2 = nanoid(8); const c3 = nanoid(8);
-            insert({
-              id: nanoid(10), type: 'table', mode: 'static',
-              columns: [
-                { id: c1, header: 'Column 1', cellType: 'text', width: 1 },
-                { id: c2, header: 'Column 2', cellType: 'text', width: 1 },
-                { id: c3, header: 'Column 3', cellType: 'text', width: 1 },
-              ],
-              rows: Array.from({ length: 3 }, () => ({
-                id: nanoid(8), cells: { [c1]: '', [c2]: '', [c3]: '' },
-              })),
-              stripedRows: true,
-            });
-          }}
-        />
-        <ToolBtn
-          icon={<LayoutGrid size={12} />}
-          label="Detail Grid"
-          onClick={insertDetailGrid}
-        />
-        <ToolBtn
-          icon={<Zap size={12} />}
-          label="SWMS Risk Table"
-          onClick={insertSwmsTable}
-        />
-        <ToolBtn
-          icon={<PenLine size={12} />}
-          label="Sign-Off Table"
-          onClick={insertSignOffTable}
-        />
+        <AccordionHeader open={tablesOpen} onToggle={() => setTablesOpen((v) => !v)} className="mt-2">
+          Tables
+        </AccordionHeader>
+        {tablesOpen && (
+          <div className="flex flex-col gap-0.5">
+            <ToolBtn
+              icon={<Table2 size={12} />}
+              label="Blank Table"
+              onClick={() => {
+                const c1 = nanoid(8); const c2 = nanoid(8); const c3 = nanoid(8);
+                insert({
+                  id: nanoid(10), type: 'table', mode: 'static',
+                  columns: [
+                    { id: c1, header: 'Column 1', cellType: 'text', width: 1 },
+                    { id: c2, header: 'Column 2', cellType: 'text', width: 1 },
+                    { id: c3, header: 'Column 3', cellType: 'text', width: 1 },
+                  ],
+                  rows: Array.from({ length: 3 }, () => ({
+                    id: nanoid(8), cells: { [c1]: '', [c2]: '', [c3]: '' },
+                  })),
+                  stripedRows: true,
+                });
+              }}
+            />
+            <ToolBtn
+              icon={<LayoutGrid size={12} />}
+              label="Detail Grid"
+              onClick={insertDetailGrid}
+            />
+            <ToolBtn
+              icon={<Zap size={12} />}
+              label="SWMS Risk Table"
+              onClick={insertSwmsTable}
+            />
+            <ToolBtn
+              icon={<PenLine size={12} />}
+              label="Sign-Off Table"
+              onClick={insertSignOffTable}
+            />
+          </div>
+        )}
 
         {/* ── Form Fields ────────────────────────────────────────────────── */}
-        <SectionLabel className="mt-2">Form Fields</SectionLabel>
-        <ToolBtn
-          icon={<FileText size={12} />}
-          label="Short Text"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'short_text', label: 'Text Field', required: false })}
-        />
-        <ToolBtn
-          icon={<FileText size={12} />}
-          label="Long Text"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'long_text', label: 'Long Text', required: false })}
-        />
-        <ToolBtn
-          icon={<CheckSquare size={12} />}
-          label="Yes / No"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'yes_no', label: 'Yes / No', required: false })}
-        />
-        <ToolBtn
-          icon={<Calendar size={12} />}
-          label="Date"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'date', label: 'Date', required: false })}
-        />
-        <ToolBtn
-          icon={<List size={12} />}
-          label="Choice / Dropdown"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'single_choice', label: 'Choice', required: false, options: ['Option A', 'Option B', 'Option C'] })}
-        />
-        <ToolBtn
-          icon={<PenLine size={12} />}
-          label="Signature"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'signature', label: 'Signature', required: false })}
-        />
-        <ToolBtn
-          icon={<Camera size={12} />}
-          label="Photo / Evidence"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'photo', label: 'Photo / Evidence', required: false })}
-        />
-        <ToolBtn
-          icon={<FileText size={12} />}
-          label="File Upload"
-          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'file_upload', label: 'File Upload', required: false })}
-        />
+        <AccordionHeader open={formFieldsOpen} onToggle={() => setFormFieldsOpen((v) => !v)} className="mt-2">
+          Form Fields
+        </AccordionHeader>
+        {formFieldsOpen && (
+          <div className="flex flex-col gap-0.5">
+            <ToolBtn
+              icon={<FileText size={12} />}
+              label="Short Text"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'short_text', label: 'Text Field', required: false })}
+            />
+            <ToolBtn
+              icon={<FileText size={12} />}
+              label="Long Text"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'long_text', label: 'Long Text', required: false })}
+            />
+            <ToolBtn
+              icon={<CheckSquare size={12} />}
+              label="Yes / No"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'yes_no', label: 'Yes / No', required: false })}
+            />
+            <ToolBtn
+              icon={<Calendar size={12} />}
+              label="Date"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'date', label: 'Date', required: false })}
+            />
+            <ToolBtn
+              icon={<List size={12} />}
+              label="Choice / Dropdown"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'single_choice', label: 'Choice', required: false, options: ['Option A', 'Option B', 'Option C'] })}
+            />
+            <ToolBtn
+              icon={<PenLine size={12} />}
+              label="Signature"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'signature', label: 'Signature', required: false })}
+            />
+            <ToolBtn
+              icon={<Camera size={12} />}
+              label="Photo / Evidence"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'photo', label: 'Photo / Evidence', required: false })}
+            />
+            <ToolBtn
+              icon={<FileText size={12} />}
+              label="File Upload"
+              onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'file_upload', label: 'File Upload', required: false })}
+            />
+          </div>
+        )}
 
         {/* ── System Fields ──────────────────────────────────────────────── */}
-        <button
-          onClick={() => setSysFieldsOpen((v) => !v)}
-          className="flex items-center gap-1.5 w-full mt-2 px-2 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-700 transition-colors"
-        >
-          {sysFieldsOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+        <AccordionHeader open={sysFieldsOpen} onToggle={() => setSysFieldsOpen((v) => !v)} className="mt-2">
           System Fields
-        </button>
+        </AccordionHeader>
         {sysFieldsOpen && (
           <div className="flex flex-col gap-0.5">
             <p className="px-2 pb-1 text-[9px] text-slate-400 leading-tight">
@@ -449,13 +466,9 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
         )}
 
         {/* ── Advanced Blocks ────────────────────────────────────────────── */}
-        <button
-          onClick={() => setAdvancedOpen((v) => !v)}
-          className="flex items-center gap-1.5 w-full mt-2 px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
-        >
-          {advancedOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+        <AccordionHeader open={advancedOpen} onToggle={() => setAdvancedOpen((v) => !v)} className="mt-2">
           Advanced
-        </button>
+        </AccordionHeader>
         {advancedOpen && (
           <div className="flex flex-col gap-0.5">
 
@@ -516,6 +529,26 @@ function SectionLabel({ children, className = '' }: { children: React.ReactNode;
     <p className={`px-2 pt-1.5 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest ${className}`}>
       {children}
     </p>
+  );
+}
+
+function AccordionHeader({
+  children, open, onToggle, className = '',
+}: {
+  children: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-700 hover:bg-slate-50 transition-colors ${className}`}
+    >
+      {open ? <ChevronDown size={10} className="flex-shrink-0" /> : <ChevronRight size={10} className="flex-shrink-0" />}
+      <span>{children}</span>
+    </button>
   );
 }
 
