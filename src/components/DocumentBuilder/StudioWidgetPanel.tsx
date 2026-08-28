@@ -160,19 +160,19 @@ function spacer(height = 8): DocumentBlock {
 
 /** Navy full-width section band */
 function navyBand(title: string): DocumentBlock {
-  const html = `<table style="width:100%;border-collapse:collapse;margin:0;"><tr><td style="background:${DOC_NAVY};color:${DOC_NAVY_TEXT};font-weight:700;font-size:13px;padding:7px 12px;letter-spacing:0.04em;">${title}</td></tr></table>`;
+  const html = `<table style="width:100%;border-collapse:collapse;margin:0;"><tr><td style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:700;font-size:13px;padding:7px 12px;letter-spacing:0.04em;">${title}</td></tr></table>`;
   return { id: bid('band'), type: 'rich_text', html } as DocumentBlock;
 }
 
 /** Pale-yellow guidance callout */
 function guidanceBox(text: string): DocumentBlock {
-  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_GUIDE_BG};border:1px solid ${DOC_GUIDE_BDR};color:${DOC_GUIDE_TEXT};font-size:11.5px;padding:8px 12px;border-radius:4px;">${text}</td></tr></table>`;
+  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_GUIDE_BG} !important;border:1px solid ${DOC_GUIDE_BDR};color:${DOC_GUIDE_TEXT} !important;font-size:11.5px;padding:8px 12px;border-radius:4px;">${text}</td></tr></table>`;
   return { id: bid('guide'), type: 'rich_text', html } as DocumentBlock;
 }
 
 /** Pale-red warning callout */
 function warningBox(text: string): DocumentBlock {
-  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_WARN_BG};border:1px solid ${DOC_WARN_BDR};color:${DOC_WARN_TEXT};font-size:11.5px;padding:8px 12px;border-radius:4px;font-weight:600;">${text}</td></tr></table>`;
+  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_WARN_BG} !important;border:1px solid ${DOC_WARN_BDR};color:${DOC_WARN_TEXT} !important;font-size:11.5px;padding:8px 12px;border-radius:4px;font-weight:600;">${text}</td></tr></table>`;
   return { id: bid('warn'), type: 'rich_text', html } as DocumentBlock;
 }
 
@@ -181,8 +181,8 @@ function twoColForm(rows: Array<[string, string]>): DocumentBlock {
   const rowsHtml = rows.map(([label, value], i) => {
     const bg = i % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
     return `<tr>
-      <td style="background:${DOC_LABEL_BG};color:${DOC_LABEL_TEXT};font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:38%;">${label}</td>
-      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:62%;">${value}</td>
+      <td style="background:${DOC_LABEL_BG} !important;color:${DOC_LABEL_TEXT} !important;font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:38%;">${label}</td>
+      <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:62%;">${value}</td>
     </tr>`;
   }).join('');
   const html = `<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
@@ -192,12 +192,12 @@ function twoColForm(rows: Array<[string, string]>): DocumentBlock {
 /** Data table with navy header row */
 function navyTable(headers: string[], rows: string[][]): DocumentBlock {
   const headerHtml = headers.map(hdr =>
-    `<th style="background:${DOC_NAVY};color:${DOC_NAVY_TEXT};font-weight:700;font-size:11.5px;padding:6px 8px;border:1px solid ${DOC_HDR_BORDER};text-align:left;">${hdr}</th>`
+    `<th style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:700;font-size:11.5px;padding:6px 8px;border:1px solid ${DOC_HDR_BORDER};text-align:left;">${hdr}</th>`
   ).join('');
   const rowsHtml = rows.map((cells, ri) => {
     const bg = ri % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
     const cellsHtml = cells.map(c =>
-      `<td style="background:${bg};font-size:11.5px;padding:6px 8px;border:1px solid ${DOC_BORDER};">${c}</td>`
+      `<td style="background:${bg} !important;font-size:11.5px;padding:6px 8px;border:1px solid ${DOC_BORDER};">${c}</td>`
     ).join('');
     return `<tr>${cellsHtml}</tr>`;
   }).join('');
@@ -210,10 +210,10 @@ function signoffTable(roles: string[]): DocumentBlock {
   const rowsHtml = roles.map((role, i) => {
     const bg = i % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
     return `<tr>
-      <td style="background:${DOC_LABEL_BG};color:${DOC_LABEL_TEXT};font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:22%;">${role}</td>
-      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Name: ___________________</td>
-      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Signature: _______________</td>
-      <td style="background:${bg};font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Date: ___________________</td>
+      <td style="background:${DOC_LABEL_BG} !important;color:${DOC_LABEL_TEXT} !important;font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:22%;">${role}</td>
+      <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Name: ___________________</td>
+      <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Signature: _______________</td>
+      <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Date: ___________________</td>
     </tr>`;
   }).join('');
   const html = `<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;

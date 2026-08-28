@@ -19,12 +19,16 @@ export function sanitiseHtml(dirty: string): string {
     'hr', 'sup', 'sub',
   ]);
   const ALLOWED_ATTRS: Record<string, string[]> = {
-    a:    ['href', 'title', 'target', 'rel'],
-    span: ['style', 'class'],
-    div:  ['style', 'class'],
-    p:    ['style', 'class'],
-    td:   ['colspan', 'rowspan', 'style'],
-    th:   ['colspan', 'rowspan', 'style'],
+    a:      ['href', 'title', 'target', 'rel'],
+    span:   ['style', 'class'],
+    div:    ['style', 'class'],
+    p:      ['style', 'class'],
+    table:  ['style'],
+    thead:  ['style'],
+    tbody:  ['style'],
+    tr:     ['style'],
+    td:     ['colspan', 'rowspan', 'style'],
+    th:     ['colspan', 'rowspan', 'style'],
   };
   const SAFE_HREF = /^(https?:|mailto:|#)/i;
 
