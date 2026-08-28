@@ -826,6 +826,12 @@ export default function StudioDocumentsPage() {
             setShowNewDocModal(false);
             switchTab('library');
           }}
+          onSaved={(id, name, sourceType) => {
+            // Refresh the list so the new doc appears with the Word/PDF Source badge
+            void load();
+            // Open the SourceDocumentPanel for the new document
+            setSourcePanel({ id, name, templateType: sourceType === 'pdf' ? 'pdf' : 'docx' });
+          }}
         />
       )}
 

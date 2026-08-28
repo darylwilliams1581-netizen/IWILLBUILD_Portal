@@ -20,7 +20,7 @@ import { createPortal } from 'react-dom';
 import {
   X, Download, RefreshCw, History, Library, Archive,
   FileText, File, Loader2, AlertCircle, CheckCircle,
-  ChevronDown, ChevronUp, Clock, Briefcase,
+  ChevronDown, ChevronUp, Clock, Briefcase, Eye, EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AttachToJobSheet from '@/components/studio/AttachToJobSheet';
@@ -76,6 +76,14 @@ export default function SourceDocumentPanel({
   const [showAttachSheet, setShowAttachSheet] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Preview state ─────────────────────────────────────────────────────────
+  /** null = not yet checked; 'loading' = checking; 'available' = iframe ready;
+   *  'unavailable' = 503 from pdf-preview (DOCX, no Gotenberg); 'error' = other failure */
+  type PreviewStatus = null | 'loading' | 'available' | 'unavailable' | 'error';
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>(null);
+  const [previewUnavailableMsg, setPreviewUnavailableMsg] = useState<string>('');
+  const [showPreview, setShowPreview] = useState(false);
+
   useEffect(() => {
     void loadMeta();
   }, [templateId]);
@@ -90,10 +98,48 @@ export default function SourceDocumentPanel({
       if (!res.ok) throw new Error('Failed to load source document info');
       const data = await res.json() as SourceMeta;
       setMeta(data);
+      // Reset preview state when meta reloads (e.g. after replace)
+      setPreviewStatus(null);
+      setShowPreview(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setLoading(false);
+    }
+  }
+
+  /**
+   * For PDF source: the download endpoint streams the file directly — the
+   * browser PDF viewer handles it natively inside an <iframe>.
+   *
+   * For DOCX source: call pdf-preview. If 200 → iframe. If 503 → show the
+   * deliberate fallback panel. Any other error → show error state.
+   */
+  async function checkPreview(sourceType: 'docx' | 'pdf') {
+    setPreviewStatus('loading');
+    if (sourceType === 'pdf') {
+      // PDF is always viewable directly — no server check needed
+      setPreviewStatus('available');
+      return;
+    }
+    // DOCX — probe pdf-preview endpoint
+    try {
+      const res = await fetch(`/api/document-templates/${templateId}/source-document/pdf-preview`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setPreviewStatus('available');
+      } else if (res.status === 503) {
+        const data = await res.json() as { message?: string };
+        setPreviewUnavailableMsg(
+          data.message ?? 'PDF preview requires a Gotenberg service. The original DOCX is available for download.'
+        );
+        setPreviewStatus('unavailable');
+      } else {
+        setPreviewStatus('error');
+      }
+    } catch {
+      setPreviewStatus('error');
     }
   }
 
@@ -169,7 +215,7 @@ export default function SourceDocumentPanel({
       <div className="flex-1 bg-black/40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="w-full max-w-sm bg-white shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg bg-white shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-2.5">
@@ -241,6 +287,80 @@ export default function SourceDocumentPanel({
               {/* Actions */}
               {meta.hasSourceDocument && (
                 <div className="flex flex-col gap-2">
+                  {/* Preview toggle */}
+                  <button
+                    onClick={() => {
+                      if (!showPreview) {
+                        setShowPreview(true);
+                        if (previewStatus === null) {
+                          void checkPreview(meta.sourceType as 'docx' | 'pdf');
+                        }
+                      } else {
+                        setShowPreview(false);
+                      }
+                    }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-colors"
+                  >
+                    {showPreview ? <EyeOff size={14} className="text-slate-500" /> : <Eye size={14} className="text-slate-500" />}
+                    {showPreview ? 'Hide preview' : 'Preview document'}
+                  </button>
+
+                  {/* Preview area */}
+                  {showPreview && (
+                    <div className="rounded-xl border border-slate-200 overflow-hidden">
+                      {previewStatus === 'loading' && (
+                        <div className="flex items-center justify-center py-10 gap-2 text-slate-400 text-xs">
+                          <Loader2 size={16} className="animate-spin" />
+                          {meta.sourceType === 'docx' ? 'Converting to PDF…' : 'Loading preview…'}
+                        </div>
+                      )}
+
+                      {previewStatus === 'available' && (
+                        <iframe
+                          src={
+                            meta.sourceType === 'pdf'
+                              ? `/api/document-templates/${templateId}/source-document/download`
+                              : `/api/document-templates/${templateId}/source-document/pdf-preview`
+                          }
+                          title={`Preview: ${meta.sourceFileName ?? templateName}`}
+                          className="w-full"
+                          style={{ height: '480px', border: 'none' }}
+                        />
+                      )}
+
+                      {previewStatus === 'unavailable' && (
+                        /* Deliberate fallback panel — no Gotenberg configured for DOCX */
+                        <div className="p-4 flex flex-col gap-3">
+                          <div className="flex items-start gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs">
+                            <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold">Preview unavailable</p>
+                              <p className="mt-0.5 text-amber-600">{previewUnavailableMsg}</p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            You can still download the original file, replace it with a new revision,
+                            attach it to a job, or publish it to the shared library.
+                          </p>
+                          <button
+                            onClick={() => void handleDownload()}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors"
+                          >
+                            <Download size={12} />
+                            Download original {meta.sourceType === 'pdf' ? 'PDF' : 'DOCX'}
+                          </button>
+                        </div>
+                      )}
+
+                      {previewStatus === 'error' && (
+                        <div className="flex items-center gap-2 px-3 py-3 text-xs text-red-600">
+                          <AlertCircle size={13} />
+                          Preview failed — download the original file instead.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Download */}
                   <button
                     onClick={() => void handleDownload()}

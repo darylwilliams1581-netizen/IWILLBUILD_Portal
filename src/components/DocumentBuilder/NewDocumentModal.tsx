@@ -6,40 +6,58 @@
  * Four creation paths:
  *   1. Choose Library Template  — opens the Library tab
  *   2. Upload Word (.docx)      — creates a placeholder doc, uploads DOCX as
- *                                 Word Source (keep_word mode), navigates to builder
+ *                                 Word Source (keep_word mode), shows success
+ *                                 state, calls onSaved so the list refreshes
  *   3. Upload PDF               — same flow for PDF source
  *   4. Blank Studio Canvas      — creates an empty doc and navigates to builder
  *
  * Widget buttons (SWMS / Safety Plan / Policy) are NOT shown here.
  * They remain accessible from within the builder's Apply Widget ribbon tab
  * for backward compatibility with existing widget documents.
+ *
+ * IMPORTANT: keep_word / PDF upload paths do NOT navigate to the builder.
+ * They call onSaved(id) so the parent can refresh the list and open the
+ * SourceDocumentPanel for the new document. The user can then choose to
+ * open the builder from there.
  */
 
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Library, FileText, File, LayoutTemplate,
-  Loader2, AlertCircle, ChevronRight,
+  Loader2, AlertCircle, ChevronRight, CheckCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
 
 interface Props {
   onClose: () => void;
   /** Called when user picks "Library" — parent should switch to library tab */
   onOpenLibrary: () => void;
+  /**
+   * Called after a successful Word/PDF source upload.
+   * Parent should: close this modal, refresh the document list, and open
+   * the SourceDocumentPanel for the new document.
+   */
+  onSaved?: (id: number, name: string, sourceType: 'docx' | 'pdf') => void;
 }
 
 type Path = 'library' | 'word' | 'pdf' | 'blank';
 
-const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+/** Result of a successful Word/PDF upload — shown in the success step */
+interface SavedResult {
+  id: number;
+  name: string;
+  sourceType: 'docx' | 'pdf';
+}
 
-export default function NewDocumentModal({ onClose, onOpenLibrary }: Props) {
+export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Props) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activePath, setActivePath] = useState<Path | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Set after a successful Word/PDF upload — shows the success step */
+  const [saved, setSaved] = useState<SavedResult | null>(null);
 
   // ── Create a blank placeholder document ──────────────────────────────────
   async function createPlaceholder(name: string, templateType = 'custom'): Promise<number | null> {
@@ -59,12 +77,13 @@ export default function NewDocumentModal({ onClose, onOpenLibrary }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const docName = file.name.replace(/\.(docx|pdf)$/i, '') || 'Imported Document';
+      const docName = file.name.replace(/\.(docx|pdf)$/i, '').trim() || 'Imported Document';
       const id = await createPlaceholder(docName);
-      if (!id) throw new Error('Could not create document placeholder');
+      if (!id) throw new Error('Could not create document placeholder — please try again');
 
       const formData = new FormData();
-      formData.append('docx', file);
+      // The import-docx endpoint accepts field name "docx" for Word files
+      formData.append(mode === 'word' ? 'docx' : 'pdf', file);
       formData.append('mode', 'keep_word');
 
       const endpoint = mode === 'word'
@@ -87,18 +106,28 @@ export default function NewDocumentModal({ onClose, onOpenLibrary }: Props) {
 
       if (!res.ok) {
         const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? 'Upload failed');
+        throw new Error(data.error ?? `Upload failed (HTTP ${res.status})`);
       }
 
-      toast.success(`"${docName}" saved as Word source document`);
-      onClose();
-      navigate(`/studio/builder/${id}`);
+      const data = await res.json() as { mode?: string; error?: string };
+      // Verify the server actually persisted it as keep_word
+      if (data.error) throw new Error(data.error);
+      if (data.mode !== 'keep_word') {
+        throw new Error('Server did not persist the source document — please try again');
+      }
+
+      const sourceType = mode === 'word' ? 'docx' : 'pdf';
+      const result: SavedResult = { id, name: docName, sourceType };
+      setSaved(result);
+      // Notify parent to refresh list and open SourceDocumentPanel
+      onSaved?.(id, docName, sourceType);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('Upload timed out — the file may be too large. Try a smaller file.');
       } else {
         setError(err instanceof Error ? err.message : 'Upload failed');
       }
+    } finally {
       setLoading(false);
     }
   }
@@ -182,6 +211,49 @@ export default function NewDocumentModal({ onClose, onOpenLibrary }: Props) {
       description: 'Start from scratch with the block-based Studio editor',
     },
   ];
+
+  // ── Success state ─────────────────────────────────────────────────────────
+  if (saved) {
+    return createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <p className="text-sm font-bold text-slate-800">Document Saved</p>
+            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors" aria-label="Close">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="p-6 flex flex-col items-center gap-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
+              <CheckCircle size={28} className="text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-800">{saved.name}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Saved as {saved.sourceType === 'pdf' ? 'PDF' : 'Word'} source document.
+                The original file is stored securely and can be downloaded or replaced at any time.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 w-full">
+              <button
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+              >
+                View in documents list
+              </button>
+              <button
+                onClick={() => { onClose(); navigate(`/studio/builder/${saved.id}`); }}
+                className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
+              >
+                Open in builder
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
