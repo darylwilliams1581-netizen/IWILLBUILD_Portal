@@ -430,16 +430,20 @@
   },
   "safety-badges/ppe-banner-strip": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/safety-badges-ppe-banner-strip-d9798dfa.jpg",
+    "searchQuery": "personal protective equipment safety icons",
+    "alternatives": [
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png"
+    ],
     "userModified": true,
     "createdAt": "2026-07-21T08:18:43.272Z",
-    "lastUpdated": "2026-07-21T08:18:43.272Z",
+    "lastUpdated": "2026-08-28T09:54:04.317Z",
     "uploadSources": {
-      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png": "f38wenbvln_1784621907364_file_jBjjOx9Zdc.png"
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png": "f38wenbvln_1784621907364_file_jBjjOx9Zdc.png",
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-d9798dfa.jpg": "f38wenbvln_1787910827774_file_ceeKCn1x8F.jpg"
     },
-    "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
+    "uploadContentHash": "3cd92df1970527f49a2539c62231bf71cfb8bfe145eaac4bdf4b4d8ffe842f72",
+    "caption": "personal protective equipment safety icons"
   },
   "safety-badges/risk-assessment-banner": {
     "mediaType": "image",
