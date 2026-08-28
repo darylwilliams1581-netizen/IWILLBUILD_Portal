@@ -59,10 +59,20 @@ export default async function handler(req: Request, res: Response) {
       const [result] = await db.execute(sql.raw(FULL_SELECT(profile.companyId))) as unknown as [Array<Record<string, unknown>>, unknown];
       rows = result ?? [];
     } catch (innerErr: unknown) {
-      const msg = String((innerErr as Error)?.message ?? innerErr);
+      // DrizzleQueryError wraps the MySQL error in .cause — check both levels
+      const errObj = innerErr as { message?: string; cause?: { message?: string; code?: string; sqlMessage?: string } };
+      const topMsg = String(errObj?.message ?? innerErr);
+      const causeMsg = String(errObj?.cause?.message ?? errObj?.cause?.sqlMessage ?? '');
+      const causeCode = String(errObj?.cause?.code ?? '');
+      const isColumnMissing =
+        topMsg.includes('Unknown column') ||
+        topMsg.includes('ER_BAD_FIELD_ERROR') ||
+        causeMsg.includes('Unknown column') ||
+        causeMsg.includes('ER_BAD_FIELD_ERROR') ||
+        causeCode === 'ER_BAD_FIELD_ERROR';
       // ER_BAD_FIELD_ERROR = column doesn't exist yet — fall back to safe query
-      if (msg.includes('ER_BAD_FIELD_ERROR') || msg.includes('Unknown column')) {
-        console.warn('[document-templates GET] Newer columns missing — using safe fallback query. Redeploy to apply migrations.');
+      if (isColumnMissing) {
+        console.warn('[document-templates GET] Newer columns missing — using safe fallback query. Run POST /api/migrate-studio-phase2 to apply migrations.');
         const [result] = await db.execute(sql.raw(SAFE_SELECT(profile.companyId))) as unknown as [Array<Record<string, unknown>>, unknown];
         rows = result ?? [];
       } else {

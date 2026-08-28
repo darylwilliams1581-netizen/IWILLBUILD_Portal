@@ -1513,6 +1513,11 @@ async function runStartupMigrations() {
     // ── job_swms: timestamp columns (created_at was missing on some deploys) ────
     { table: 'job_swms', column: 'created_at',             definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP' },
     { table: 'job_swms', column: 'updated_at',             definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP' },
+    // ── job_swms: Studio document attachment columns (Phase 2) ───────────────
+    { table: 'job_swms', column: 'studio_document_id',     definition: "INT NULL DEFAULT NULL COMMENT 'document_templates.id — set for Studio-sourced rows'" },
+    { table: 'job_swms', column: 'studio_source_revision', definition: "VARCHAR(20) NULL DEFAULT NULL COMMENT 'Revision label at attachment time'" },
+    { table: 'job_swms', column: 'content_snapshot_json',  definition: "LONGTEXT NULL DEFAULT NULL COMMENT 'Immutable builder_json snapshot at attachment time'" },
+    { table: 'job_swms', column: 'studio_attached_at',     definition: "DATETIME NULL DEFAULT NULL COMMENT 'Timestamp of Studio attachment'" },
     // ── jobs: customer link (v2) ──────────────────────────────────────────────
     { table: 'jobs', column: 'customer_id', definition: 'INT NULL' },
     // ── profiles: invoices permission ────────────────────────────────────────
@@ -1645,6 +1650,10 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'source_job_id',               definition: 'INT NULL' },
     { table: 'document_templates', column: 'doc_status',                  definition: "VARCHAR(20) NOT NULL DEFAULT 'draft'" },
     { table: 'document_templates', column: 'applied_widgets_json',        definition: "MEDIUMTEXT NULL COMMENT 'JSON array of AppliedWidgetMeta'" },
+    // ── document_templates: safety-studio integration columns ────────────────
+    { table: 'document_templates', column: 'safety_category',             definition: "VARCHAR(100) NULL DEFAULT NULL COMMENT 'SWMS | WHS Plan'" },
+    { table: 'document_templates', column: 'source_widget_type',          definition: "VARCHAR(50) NULL DEFAULT NULL COMMENT 'swms | whs_plan'" },
+    { table: 'document_templates', column: 'source_record_id',            definition: 'INT NULL DEFAULT NULL' },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },

@@ -657,5 +657,19 @@
     },
     "uploadContentHash": "fdfa066629967d0d657ae5d5afe7e070e46ecb7743f536315f6fb606d0dfdb36",
     "caption": "mobile app dashboard with job management tools"
+  },
+  "reference/screenshot-import-docx": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-import-docx-41ec4c98.jpg",
+    "searchQuery": "document template theme branding settings interface",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-28T06:38:24.341Z",
+    "lastUpdated": "2026-08-28T06:38:24.341Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-import-docx-41ec4c98.jpg": "f38wenbvln_1787887131258_file_H4NigcuB_8.jpg"
+    },
+    "uploadContentHash": "64ead2d4c121a492754716e1fd04199c96dc8011b3bcbb8429534d8ef40c6d0e",
+    "caption": "document template theme branding settings interface"
   }
 }
