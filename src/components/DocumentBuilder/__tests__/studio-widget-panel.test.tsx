@@ -243,7 +243,7 @@ describe('StudioWidgetPanel — SWMS block structure', () => {
     const riskTable = blocks.find(
       (b) => b.type === 'rich_text' &&
         b.html?.includes('Control Measures') &&
-        b.html?.includes('Sequence of Work'),
+        b.html?.includes('Task'),
     );
     expect(riskTable).toBeDefined();
     expect(riskTable?.html).toContain('Hazard');
@@ -365,40 +365,40 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
     expect(imgBlock).toBeUndefined();
   });
 
-  it('Section 2 Scope of Works is a native rich_text band (not an image)', async () => {
+  it('Section 3 Scope of Works is a native rich_text band (not an image)', async () => {
     const blocks = await getSwmsBlocks();
     const band = blocks.find(
-      (b) => b.type === 'rich_text' && b.html?.includes('2. Scope of Works'),
+      (b) => b.type === 'rich_text' && b.html?.includes('3. Scope of Works'),
     );
     expect(band).toBeDefined();
   });
 
-  it('Section 3 HRCW is a native rich_text band (not an image)', async () => {
+  it('Section 4 HRCW is a native rich_text band (not an image)', async () => {
     const blocks = await getSwmsBlocks();
     const band = blocks.find(
-      (b) => b.type === 'rich_text' && b.html?.includes('3. High-Risk Construction Work'),
+      (b) => b.type === 'rich_text' && b.html?.includes('4. High-Risk Construction Work'),
     );
     expect(band).toBeDefined();
   });
 
   // ── risk-matrix image is after PPE content and before Section 7 ───────────
 
-  it('risk-matrix image appears after PPE band and before Section 7 band', async () => {
+  it('risk-matrix image appears after PPE band and before Section 8 band', async () => {
     const blocks = await getSwmsBlocks();
     const ppeBandIdx = blocks.findIndex(
-      (b) => b.type === 'rich_text' && b.html?.includes('6. Personal Protective Equipment'),
+      (b) => b.type === 'rich_text' && b.html?.includes('7. Personal Protective Equipment'),
     );
     const riskMatrixImgIdx = blocks.findIndex(
       (b) => b.type === 'image' && b.src?.includes('risk-matrix') && !b.src?.includes('risk-assessment'),
     );
-    const section7Idx = blocks.findIndex(
-      (b) => b.type === 'rich_text' && b.html?.includes('7. Risk Matrix'),
+    const section8Idx = blocks.findIndex(
+      (b) => b.type === 'rich_text' && b.html?.includes('8. Risk Matrix'),
     );
     expect(ppeBandIdx).toBeGreaterThan(-1);
     expect(riskMatrixImgIdx).toBeGreaterThan(-1);
-    expect(section7Idx).toBeGreaterThan(-1);
+    expect(section8Idx).toBeGreaterThan(-1);
     expect(riskMatrixImgIdx).toBeGreaterThan(ppeBandIdx);
-    expect(riskMatrixImgIdx).toBeLessThan(section7Idx);
+    expect(riskMatrixImgIdx).toBeLessThan(section8Idx);
   });
 
   // ── ppe-banner-strip is before the PPE table ──────────────────────────────
@@ -416,14 +416,14 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
     expect(ppeBannerIdx).toBeLessThan(ppeTableIdx);
   });
 
-  // ── Section 10 sign-off is a native fillable TableBlock ───────────────────
+  // ── Section 13 sign-off is a native fillable TableBlock ──────────────────
 
-  it('Section 10 Worker Sign-Off uses a native fillable table block (not rich_text HTML)', async () => {
+  it('Section 13 Worker Sign-Off uses a native fillable table block (not rich_text HTML)', async () => {
     const blocks = await getSwmsBlocks();
 
-    // Must have the Section 10 navy band
+    // Must have the Section 13 navy band
     const band = blocks.find(
-      (b) => b.type === 'rich_text' && b.html?.includes('10. Worker Sign-Off'),
+      (b) => b.type === 'rich_text' && b.html?.includes('13. Worker Sign-Off'),
     );
     expect(band).toBeDefined();
 
@@ -449,9 +449,9 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
     const tblIdx  = blocks.indexOf(signoffTbl!);
     expect(tblIdx).toBeGreaterThan(bandIdx);
 
-    // Must NOT be a rich_text block with Supervisor/PCBU text (old HTML table)
+    // Must NOT be a rich_text block with old-style Name/Signature/Date HTML table cells
     const oldHtmlSignoff = blocks.find(
-      (b) => b.type === 'rich_text' && b.html?.includes('Supervisor'),
+      (b) => b.type === 'rich_text' && b.html?.includes('Name: ___') && b.html?.includes('Signature: ___'),
     );
     expect(oldHtmlSignoff).toBeUndefined();
   });
