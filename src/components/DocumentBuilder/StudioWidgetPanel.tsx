@@ -311,6 +311,32 @@ function ppeBannerImage(): DocumentBlock {
   } as DocumentBlock;
 }
 
+/** Risk assessment banner — full-width above the risk control table */
+function riskAssessmentBannerImage(): DocumentBlock {
+  return {
+    id: bid('risk-img'),
+    type: 'image',
+    src: '/airo-assets/images/safety-badges/risk-assessment-banner',
+    alt: 'Risk assessment matrix',
+    size: 'full',
+    align: 'center',
+    preserveAspectRatio: true,
+  } as DocumentBlock;
+}
+
+/** Safety icons sheet — full-width above hazard/safety sections */
+function safetyIconsImage(): DocumentBlock {
+  return {
+    id: bid('icons-img'),
+    type: 'image',
+    src: '/airo-assets/images/safety-badges/icons-sheet',
+    alt: 'Safety hazard icons reference',
+    size: 'full',
+    align: 'center',
+    preserveAspectRatio: true,
+  } as DocumentBlock;
+}
+
 function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
@@ -343,6 +369,7 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
     spacer(8),
     h(2, '4. Sequence of Work & Risk Controls'),
     p('Complete the table below for each step in the sequence of work.'),
+    riskAssessmentBannerImage(),
     riskTable(),
     spacer(8),
     h(2, '5. Plant & Equipment'),
@@ -433,6 +460,7 @@ function buildSafetyPlanBlocks(docTitle: string): DocumentBlock[] {
     p('Identify HRCW activities and the SWMS documents that control them.'),
     spacer(8),
     h(2, '7. Hazard Register'),
+    safetyIconsImage(),
     hazardTable(),
     spacer(8),
     h(2, '8. Consultation & Communication'),
