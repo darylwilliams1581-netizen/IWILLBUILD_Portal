@@ -26,6 +26,7 @@ import {
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
 import StructurePanel from './StructurePanel';
+import DocSidebar from './DocSidebar';
 import DocxImporter from './DocxImporter';
 import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
@@ -77,7 +78,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     (template?.docStatus as 'draft' | 'published' | 'archived') ?? 'draft'
   );
   const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
-  const [activeTab, setActiveTab]                   = useState<BuilderTab>('advanced');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>('document_tools');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
@@ -255,6 +256,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
   // Ribbon tab definitions — Layout + Theme first, then insert tabs
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'document_tools', label: 'Document Tools', icon: <Layers size={13} /> },
     { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
     { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
     { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
@@ -422,14 +424,14 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         {/* USE MODE — full-width fill canvas */}
         {appMode === 'use' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} onImportDocx={() => setShowDocxImporter(true)} />
+            <StructurePanel zoom={zoomLevel} />
           </div>
         )}
 
         {/* BUILD MODE — preview sub-mode: full-width canvas, no ribbon panel */}
         {appMode === 'build' && buildSubMode === 'preview' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} onImportDocx={() => setShowDocxImporter(true)} />
+            <StructurePanel zoom={zoomLevel} />
           </div>
         )}
 
@@ -587,6 +589,15 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
             {/* SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas (Structure/Tables/Form Fields moved to DocSidebar) */}
             {(activeTab !== 'layout' && activeTab !== 'theme') && (
               <>
+                  {/* DOCUMENT TOOLS panel — DocSidebar rendered as the left ribbon panel */}
+                  {activeTab === 'document_tools' && (
+                    <DocSidebar
+                      onImportDocx={() => setShowDocxImporter(true)}
+                      collapsed={false}
+                      onToggleCollapse={() => {}}
+                    />
+                  )}
+
                   {/* SYSTEM FIELDS insert strip */}
                   {activeTab === 'system_fields' && (
                     <RibbonPanel title="System Fields">
@@ -667,7 +678,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
                 {/* Canvas — full width on mobile, shares row with ribbon on desktop */}
                 <div className="flex-1 flex min-h-0">
-                  <StructurePanel zoom={zoomLevel} onImportDocx={() => setShowDocxImporter(true)} />
+                  <StructurePanel zoom={zoomLevel} />
                 </div>
               </>
             )}
