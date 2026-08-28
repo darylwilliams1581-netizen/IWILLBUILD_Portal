@@ -450,21 +450,33 @@
     "caption": "personal protective equipment safety icons"
   },
   "safety-badges/risk-assessment-banner": {
+    "requestedSize": {
+      "width": 900,
+      "height": 120,
+      "fit": "cover"
+    },
+    "orientations": "panoramic_horizontal",
+    "graphicalStyles": "vector,illustration",
+    "minimumSize": "medium",
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-risk-assessment-banner-43e39ed0.jpg",
-    "searchQuery": "safe work method statement document template",
+    "currentUrl": "https://img1.wsimg.com/isteam/getty/1358222838",
+    "searchQuery": "workplace safety risk control hierarchy eliminate substitute engineering administrative PPE icons horizontal banner",
     "alternatives": [
-      "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png"
+      "https://img1.wsimg.com/isteam/getty/2222070235",
+      "https://img1.wsimg.com/isteam/getty/2173714140",
+      "https://img1.wsimg.com/isteam/getty/1878169958",
+      "https://img1.wsimg.com/isteam/getty/1155415413"
     ],
     "userModified": true,
     "createdAt": "2026-07-21T08:19:44.639Z",
-    "lastUpdated": "2026-08-28T09:54:56.353Z",
-    "uploadSources": {
-      "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png": "f38wenbvln_1784621937174_file_iqsZE3JojZ.png",
-      "/airo-assets/uploads/safety-badges-risk-assessment-banner-43e39ed0.jpg": "f38wenbvln_1787910488957_file_dkNOBabz13.jpg"
-    },
-    "uploadContentHash": "d9ae9c7cedf8038fc4bfa0703fe55af2881a23193c335ce9da2648469543b546",
-    "caption": "safe work method statement document template"
+    "lastUpdated": "2026-08-28T10:39:33.678Z",
+    "gettyId": "1358222838",
+    "alternativeGettyIds": [
+      "2222070235",
+      "2173714140",
+      "1878169958",
+      "1155415413"
+    ]
   },
   "reference/screenshot-9": {
     "mediaType": "image",

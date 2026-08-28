@@ -307,6 +307,132 @@ describe('StudioWidgetPanel — SWMS block structure', () => {
   });
 });
 
+// ─── SWMS banner placement & native-section integrity ────────────────────────
+describe('StudioWidgetPanel — SWMS banner placement and native section integrity', () => {
+  type Block = { type: string; src?: string; html?: string; content?: string };
+
+  beforeEach(() => {
+    mockStore.blocks = [];
+    mockStore.appliedWidgets = [];
+    mockStore.templateName = 'Test SWMS';
+    vi.clearAllMocks();
+  });
+
+  async function getSwmsBlocks(): Promise<Block[]> {
+    renderPanel();
+    fireEvent.click(screen.getByText('SWMS Widget'));
+    await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
+    return mockStore.prependBlocks.mock.calls[0][0] as Block[];
+  }
+
+  // ── Banner presence ────────────────────────────────────────────────────────
+
+  it('contains a risk-assessment-banner image block', async () => {
+    const blocks = await getSwmsBlocks();
+    const banner = blocks.find(
+      (b) => b.type === 'image' && b.src?.includes('risk-assessment-banner'),
+    );
+    expect(banner).toBeDefined();
+  });
+
+  it('contains a ppe-banner-strip image block', async () => {
+    const blocks = await getSwmsBlocks();
+    const banner = blocks.find(
+      (b) => b.type === 'image' && b.src?.includes('ppe-banner-strip'),
+    );
+    expect(banner).toBeDefined();
+  });
+
+  it('contains a risk-matrix image block', async () => {
+    const blocks = await getSwmsBlocks();
+    const img = blocks.find(
+      (b) => b.type === 'image' && b.src?.includes('risk-matrix') && !b.src?.includes('risk-assessment'),
+    );
+    expect(img).toBeDefined();
+  });
+
+  // ── Sections 1–3 are native editable blocks, NOT images ───────────────────
+
+  it('Section 1 Document Identity is a native rich_text band (not an image)', async () => {
+    const blocks = await getSwmsBlocks();
+    const band = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('1. Document Identity'),
+    );
+    expect(band).toBeDefined();
+    // Must NOT be an image block
+    const imgBlock = blocks.find(
+      (b) => b.type === 'image' && (b.src?.includes('document') || b.src?.includes('section')),
+    );
+    expect(imgBlock).toBeUndefined();
+  });
+
+  it('Section 2 Scope of Works is a native rich_text band (not an image)', async () => {
+    const blocks = await getSwmsBlocks();
+    const band = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('2. Scope of Works'),
+    );
+    expect(band).toBeDefined();
+  });
+
+  it('Section 3 HRCW is a native rich_text band (not an image)', async () => {
+    const blocks = await getSwmsBlocks();
+    const band = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('3. High-Risk Construction Work'),
+    );
+    expect(band).toBeDefined();
+  });
+
+  // ── risk-matrix image is after PPE content and before Section 7 ───────────
+
+  it('risk-matrix image appears after PPE band and before Section 7 band', async () => {
+    const blocks = await getSwmsBlocks();
+    const ppeBandIdx = blocks.findIndex(
+      (b) => b.type === 'rich_text' && b.html?.includes('6. Personal Protective Equipment'),
+    );
+    const riskMatrixImgIdx = blocks.findIndex(
+      (b) => b.type === 'image' && b.src?.includes('risk-matrix') && !b.src?.includes('risk-assessment'),
+    );
+    const section7Idx = blocks.findIndex(
+      (b) => b.type === 'rich_text' && b.html?.includes('7. Risk Matrix'),
+    );
+    expect(ppeBandIdx).toBeGreaterThan(-1);
+    expect(riskMatrixImgIdx).toBeGreaterThan(-1);
+    expect(section7Idx).toBeGreaterThan(-1);
+    expect(riskMatrixImgIdx).toBeGreaterThan(ppeBandIdx);
+    expect(riskMatrixImgIdx).toBeLessThan(section7Idx);
+  });
+
+  // ── risk-assessment-banner is before Section 4 risk table ─────────────────
+
+  it('risk-assessment-banner appears before the risk control table (Section 4)', async () => {
+    const blocks = await getSwmsBlocks();
+    const bannerIdx = blocks.findIndex(
+      (b) => b.type === 'image' && b.src?.includes('risk-assessment-banner'),
+    );
+    const riskTableIdx = blocks.findIndex(
+      (b) => b.type === 'rich_text' && b.html?.includes('Control Measures') && b.html?.includes('Sequence of Work'),
+    );
+    expect(bannerIdx).toBeGreaterThan(-1);
+    expect(riskTableIdx).toBeGreaterThan(-1);
+    expect(bannerIdx).toBeLessThan(riskTableIdx);
+  });
+
+  // ── ppe-banner-strip is before the PPE table ──────────────────────────────
+
+  it('ppe-banner-strip appears before the PPE table', async () => {
+    const blocks = await getSwmsBlocks();
+    const ppeBannerIdx = blocks.findIndex(
+      (b) => b.type === 'image' && b.src?.includes('ppe-banner-strip'),
+    );
+    const ppeTableIdx = blocks.findIndex(
+      (b) => b.type === 'rich_text' && b.html?.includes('PPE Item'),
+    );
+    expect(ppeBannerIdx).toBeGreaterThan(-1);
+    expect(ppeTableIdx).toBeGreaterThan(-1);
+    expect(ppeBannerIdx).toBeLessThan(ppeTableIdx);
+  });
+});
+
 describe('StudioWidgetPanel — Safety Plan block structure', () => {
   beforeEach(() => {
     mockStore.blocks = [];
