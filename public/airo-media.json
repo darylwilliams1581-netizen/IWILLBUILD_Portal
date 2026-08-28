@@ -137,16 +137,20 @@
   },
   "safety-badges/icons-sheet": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/safety-badges-icons-sheet-8365124b.jpg",
+    "searchQuery": "safe work method statement construction template",
+    "alternatives": [
+      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png"
+    ],
     "userModified": true,
     "createdAt": "2026-07-08T04:52:19.912Z",
-    "lastUpdated": "2026-07-08T04:52:19.912Z",
+    "lastUpdated": "2026-08-28T09:54:56.668Z",
     "uploadSources": {
-      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png": "f38wenbvln_1783486300702_file_56AQGF9z5W.png"
+      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png": "f38wenbvln_1783486300702_file_56AQGF9z5W.png",
+      "/airo-assets/uploads/safety-badges-icons-sheet-8365124b.jpg": "f38wenbvln_1787899724347_file_cLVgHiToD2.jpg"
     },
-    "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
+    "uploadContentHash": "1d96ee936f91b50db74bd84c900df57ebf61fbb086acda2c8e982d1d433d9666",
+    "caption": "safe work method statement construction template"
   },
   "reference/screenshot-1": {
     "mediaType": "image",
@@ -447,16 +451,20 @@
   },
   "safety-badges/risk-assessment-banner": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/safety-badges-risk-assessment-banner-43e39ed0.jpg",
+    "searchQuery": "safe work method statement document template",
+    "alternatives": [
+      "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png"
+    ],
     "userModified": true,
     "createdAt": "2026-07-21T08:19:44.639Z",
-    "lastUpdated": "2026-07-21T08:19:44.639Z",
+    "lastUpdated": "2026-08-28T09:54:56.353Z",
     "uploadSources": {
-      "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png": "f38wenbvln_1784621937174_file_iqsZE3JojZ.png"
+      "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png": "f38wenbvln_1784621937174_file_iqsZE3JojZ.png",
+      "/airo-assets/uploads/safety-badges-risk-assessment-banner-43e39ed0.jpg": "f38wenbvln_1787910488957_file_dkNOBabz13.jpg"
     },
-    "uploadContentHash": "29015dcfa2229d1a17196fe9970769821a0d27e57a3d193f5c6d1db1ef63a640"
+    "uploadContentHash": "d9ae9c7cedf8038fc4bfa0703fe55af2881a23193c335ce9da2648469543b546",
+    "caption": "safe work method statement document template"
   },
   "reference/screenshot-9": {
     "mediaType": "image",
