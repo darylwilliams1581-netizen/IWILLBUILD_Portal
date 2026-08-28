@@ -40,28 +40,44 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const [actualPageH, setActualPageH] = useState(0);
 
   // ── Scroll-position guard ──────────────────────────────────────────────────
-  // Capture scrollTop synchronously before React commits the render caused by
-  // a blocks/selection change, then restore it immediately after commit.
-  // This prevents any layout side-effect (including third-party libraries) from
-  // jumping the canvas back to the top when the user is focused on a field.
+  // Restores scrollTop after a React commit that changed blocks/selection, but
+  // ONLY when a contentEditable inside the canvas is currently focused.
+  //
+  // Rationale: the previous fix captured scrollTop before every render and
+  // restored it unconditionally. That fought legitimate keyboard scrolling
+  // (arrow keys, Page Down) when the user was navigating the canvas without
+  // a focused cell. The narrowed guard below only activates when an editable
+  // cell is focused — the only time a re-render can cause an unwanted jump.
   const savedScrollTop = useRef<number>(0);
 
-  // Capture before paint (runs synchronously before the browser paints)
   useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    savedScrollTop.current = el.scrollTop;
-  });
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    // Only capture/restore when a contentEditable inside the canvas is focused.
+    // document.activeElement is synchronously available in useLayoutEffect.
+    const active = document.activeElement;
+    const isEditableFocused =
+      active instanceof HTMLElement &&
+      active.isContentEditable &&
+      scroll.contains(active);
+    if (!isEditableFocused) return;
 
-  // Restore after paint — runs after every commit where blocks or selection changed
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    // Only restore if something actually moved the scroll (tolerance: 2px)
-    if (Math.abs(el.scrollTop - savedScrollTop.current) > 2) {
-      el.scrollTop = savedScrollTop.current;
+    // Capture before this commit's paint
+    const before = savedScrollTop.current;
+    // Restore if the commit moved the scroll container
+    if (Math.abs(scroll.scrollTop - before) > 2) {
+      scroll.scrollTop = before;
     }
   }, [blocks, selection]);
+
+  // Continuously track scrollTop so savedScrollTop is always current
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const onScroll = () => { savedScrollTop.current = scroll.scrollTop; };
+    scroll.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroll.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Track actual rendered page height so the sizing shell stays accurate
   useEffect(() => {
