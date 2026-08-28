@@ -403,6 +403,10 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
     h(2, '9. Legislation & Standards'),
     p('Work Health and Safety Act 2011 (Qld) | Work Health and Safety Regulation 2011 (Qld) | Code of Practice: Construction Work | Relevant Australian Standards'),
     spacer(8),
+    h(2, '10. Worker Sign-Off'),
+    p('All workers must read and understand this SWMS before commencing work. Sign below to confirm.'),
+    signoffTable(['Supervisor / PCBU', 'Worker 1', 'Worker 2', 'Worker 3', 'Worker 4', 'Worker 5']),
+    spacer(8),
     divider(),
     p('Document Control — this document is controlled. Printed copies are uncontrolled. Verify currency before use.', false),
   ];
