@@ -223,46 +223,43 @@ describe('StudioWidgetPanel — SWMS block structure', () => {
     vi.clearAllMocks();
   });
 
-  it('SWMS blocks include a "Review Before Issue" warning banner', async () => {
+  it('SWMS blocks include a "Review Before Issue" warning callout', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('SWMS Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; title?: string; variant?: string }>;
-    const banner = blocks.find((b) => b.type === 'banner' && b.title === 'Review Before Issue');
-    expect(banner).toBeDefined();
-    expect(banner?.variant).toBe('warning');
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
+    // warningBox() emits a rich_text block whose HTML contains the warning text
+    const warnBlock = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('Review Before Issue'),
+    );
+    expect(warnBlock).toBeDefined();
   });
 
   it('SWMS blocks include a risk control table with correct columns', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('SWMS Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{
-      type: string;
-      columns?: Array<{ id: string }>;
-    }>;
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
+    // navyTable() emits a rich_text block — check HTML contains the key column headers
     const riskTable = blocks.find(
-      (b) => b.type === 'table' && b.columns?.some((c) => c.id === 'controls'),
+      (b) => b.type === 'rich_text' &&
+        b.html?.includes('Control Measures') &&
+        b.html?.includes('Sequence of Work'),
     );
     expect(riskTable).toBeDefined();
-    const colIds = riskTable!.columns!.map((c) => c.id);
-    expect(colIds).toContain('work');
-    expect(colIds).toContain('hazard');
-    expect(colIds).toContain('controls');
-    expect(colIds).toContain('residual');
-    expect(colIds).toContain('person');
+    expect(riskTable?.html).toContain('Hazard');
+    expect(riskTable?.html).toContain('Residual Risk');
+    expect(riskTable?.html).toContain('Responsible Person');
   });
 
   it('SWMS blocks include a PPE table', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('SWMS Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{
-      type: string;
-      columns?: Array<{ id: string }>;
-    }>;
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
+    // navyTable() emits a rich_text block — check HTML contains PPE column headers
     const ppeTable = blocks.find(
-      (b) => b.type === 'table' && b.columns?.some((c) => c.id === 'item'),
+      (b) => b.type === 'rich_text' && b.html?.includes('PPE Item'),
     );
     expect(ppeTable).toBeDefined();
   });
@@ -316,25 +313,27 @@ describe('StudioWidgetPanel — Safety Plan block structure', () => {
     vi.clearAllMocks();
   });
 
-  it('Safety Plan blocks include a "Review Before Issue" warning banner', async () => {
+  it('Safety Plan blocks include a "Review Before Issue" warning callout', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('Safety Plan Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; title?: string }>;
-    const banner = blocks.find((b) => b.type === 'banner' && b.title === 'Review Before Issue');
-    expect(banner).toBeDefined();
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
+    const warnBlock = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('Review Before Issue'),
+    );
+    expect(warnBlock).toBeDefined();
   });
 
   it('Safety Plan blocks include a hazard register table', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('Safety Plan Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
-    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{
-      type: string;
-      columns?: Array<{ id: string }>;
-    }>;
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
+    // navyTable() emits rich_text — check HTML contains hazard table column headers
     const hazTable = blocks.find(
-      (b) => b.type === 'table' && b.columns?.some((c) => c.id === 'hazard'),
+      (b) => b.type === 'rich_text' &&
+        b.html?.includes('Hazard') &&
+        b.html?.includes('Risk Rating'),
     );
     expect(hazTable).toBeDefined();
   });

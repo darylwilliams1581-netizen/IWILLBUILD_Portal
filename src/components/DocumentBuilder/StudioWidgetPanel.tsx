@@ -301,7 +301,7 @@ function inductionRegisterTable(): DocumentBlock {
 function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
-    banner('Review Before Issue', 'This document must be reviewed and approved before being issued to workers. All workers must be inducted against this SWMS before commencing work.', 'warning'),
+    warningBox('⚠ Review Before Issue — This document must be reviewed and approved before being issued to workers. All workers must be inducted against this SWMS before commencing work.'),
     spacer(4),
     h(1, docTitle || 'Safe Work Method Statement'),
     p('Safe Work Method Statement (SWMS)', true),
@@ -370,7 +370,7 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
 function buildSafetyPlanBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
-    banner('Review Before Issue', 'This WHS Management Plan must be reviewed and approved before works commence. Keep this document on site at all times.', 'warning'),
+    warningBox('⚠ Review Before Issue — This WHS Management Plan must be reviewed and approved before works commence. Keep this document on site at all times.'),
     spacer(4),
     h(1, docTitle || 'WHS Management Plan'),
     p('Work Health & Safety Management Plan', true),
