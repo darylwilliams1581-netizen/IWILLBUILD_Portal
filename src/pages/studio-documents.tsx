@@ -41,6 +41,7 @@ export interface DocTemplate {
   /** Phase 2: Word/PDF source document */
   source_type?: string | null;
   source_file_name?: string | null;
+  source_revision?: number | null;
 }
 interface DocSubmission {
   id: number;
@@ -841,6 +842,7 @@ export default function StudioDocumentsPage() {
           templateId={sourcePanel.id}
           templateName={sourcePanel.name}
           templateType={sourcePanel.templateType}
+          isPlatformOwner={isPlatformOwner}
           onClose={() => setSourcePanel(null)}
         />
       )}

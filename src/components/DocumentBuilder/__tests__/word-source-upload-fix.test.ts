@@ -138,12 +138,12 @@ describe('SourceDocumentPanel — document viewer', () => {
     expect(src).toContain("previewStatus === 'unavailable'");
     expect(src).toContain('Preview unavailable');
     expect(src).toContain('previewUnavailableMsg');
-    // Fallback panel must include Download action
+    // Fallback panel must NOT have its own Download button — the general Download action below covers it
     const unavailableBlock = src.slice(
       src.indexOf("previewStatus === 'unavailable'"),
       src.indexOf("previewStatus === 'error'")
     );
-    expect(unavailableBlock).toContain('Download original');
+    expect(unavailableBlock).not.toContain('Download original');
   });
 
   it('has Preview document toggle button', async () => {

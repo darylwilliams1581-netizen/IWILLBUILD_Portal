@@ -132,7 +132,7 @@ export default function SourceDocumentPanel({
       } else if (res.status === 503) {
         const data = await res.json() as { message?: string };
         setPreviewUnavailableMsg(
-          data.message ?? 'PDF preview requires a Gotenberg service. The original DOCX is available for download.'
+          data.message ?? 'Word preview requires a document-rendering service. The original DOCX is available for download.'
         );
         setPreviewStatus('unavailable');
       } else {
@@ -329,8 +329,8 @@ export default function SourceDocumentPanel({
                       )}
 
                       {previewStatus === 'unavailable' && (
-                        /* Deliberate fallback panel — no Gotenberg configured for DOCX */
-                        <div className="p-4 flex flex-col gap-3">
+                        /* Deliberate fallback panel — no rendering service configured for DOCX */
+                        <div className="p-4 flex flex-col gap-2">
                           <div className="flex items-start gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs">
                             <AlertCircle size={13} className="shrink-0 mt-0.5" />
                             <div>
@@ -342,13 +342,6 @@ export default function SourceDocumentPanel({
                             You can still download the original file, replace it with a new revision,
                             attach it to a job, or publish it to the shared library.
                           </p>
-                          <button
-                            onClick={() => void handleDownload()}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors"
-                          >
-                            <Download size={12} />
-                            Download original {meta.sourceType === 'pdf' ? 'PDF' : 'DOCX'}
-                          </button>
                         </div>
                       )}
 
@@ -434,95 +427,92 @@ export default function SourceDocumentPanel({
                       )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Divider */}
-              <div className="border-t border-slate-100" />
+                  {/* Attach to Job */}
+                  <button
+                    onClick={() => setShowAttachSheet(true)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-sm font-semibold text-emerald-700 transition-colors"
+                  >
+                    <Briefcase size={14} />
+                    Attach to job
+                  </button>
 
-              {/* Platform owner: Publish to Library */}
-              {isPlatformOwner && (
-                <div>
-                  {!showPublishForm ? (
-                    <button
-                      onClick={() => setShowPublishForm(true)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 text-sm font-semibold text-violet-700 transition-colors w-full"
-                    >
-                      <Library size={14} />
-                      Publish to Shared Library
-                    </button>
-                  ) : (
-                    <div className="border border-violet-200 rounded-xl p-4 flex flex-col gap-3 bg-violet-50/40">
-                      <p className="text-xs font-bold text-violet-700">Publish to Library</p>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-600 font-medium">Title</label>
-                        <input
-                          value={publishTitle}
-                          onChange={(e) => setPublishTitle(e.target.value)}
-                          className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/30"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-600 font-medium">Type</label>
-                        <select
-                          value={publishType}
-                          onChange={(e) => setPublishType(e.target.value)}
-                          className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/30"
-                        >
-                          {['policy', 'procedure', 'swms', 'form', 'checklist', 'induction', 'report', 'toolbox_talk', 'prestart'].map((t) => (
-                            <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-600 font-medium">Summary (optional)</label>
-                        <textarea
-                          value={publishSummary}
-                          onChange={(e) => setPublishSummary(e.target.value)}
-                          rows={2}
-                          className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/30 resize-none"
-                        />
-                      </div>
-                      <div className="flex gap-2">
+                  {/* Platform owner: Publish to Library */}
+                  {isPlatformOwner && (
+                    <div>
+                      {!showPublishForm ? (
                         <button
-                          onClick={() => void handlePublish()}
-                          disabled={publishing || !publishTitle.trim()}
-                          className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          onClick={() => setShowPublishForm(true)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 text-sm font-semibold text-violet-700 transition-colors w-full"
                         >
-                          {publishing ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                          Publish
+                          <Library size={14} />
+                          Publish to Shared Library
                         </button>
-                        <button
-                          onClick={() => setShowPublishForm(false)}
-                          className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                      ) : (
+                        <div className="border border-violet-200 rounded-xl p-4 flex flex-col gap-3 bg-violet-50/40">
+                          <p className="text-xs font-bold text-violet-700">Publish to Library</p>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-slate-600 font-medium">Title</label>
+                            <input
+                              value={publishTitle}
+                              onChange={(e) => setPublishTitle(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/30"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-slate-600 font-medium">Type</label>
+                            <select
+                              value={publishType}
+                              onChange={(e) => setPublishType(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/30"
+                            >
+                              {['policy', 'procedure', 'swms', 'form', 'checklist', 'induction', 'report', 'toolbox_talk', 'prestart'].map((t) => (
+                                <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-slate-600 font-medium">Summary (optional)</label>
+                            <textarea
+                              value={publishSummary}
+                              onChange={(e) => setPublishSummary(e.target.value)}
+                              rows={2}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/30 resize-none"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => void handlePublish()}
+                              disabled={publishing || !publishTitle.trim()}
+                              className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            >
+                              {publishing ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                              Publish
+                            </button>
+                            <button
+                              onClick={() => setShowPublishForm(false)}
+                              className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  )}
+
+                  {/* Archive */}
+                  {onArchive && (
+                    <button
+                      onClick={onArchive}
+                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors"
+                    >
+                      <Archive size={14} />
+                      Archive document
+                    </button>
                   )}
                 </div>
               )}
-
-              {/* Archive */}
-              {onArchive && (
-                <button
-                  onClick={onArchive}
-                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors"
-                >
-                  <Archive size={14} />
-                  Archive document
-                </button>
-              )}
-
-              {/* Attach to Job */}
-              <button
-                onClick={() => setShowAttachSheet(true)}
-                className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-sm font-semibold text-emerald-700 transition-colors"
-              >
-                <Briefcase size={14} />
-                Attach to job
-              </button>
             </>
           )}
         </div>

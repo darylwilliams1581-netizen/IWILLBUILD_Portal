@@ -16,7 +16,8 @@ const FULL_SELECT = (companyId: number) =>
           source_docx_name, is_active, created_by_user_id, created_at, updated_at,
           doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text,
           submit_label, requires_signature, doc_status,
-          safety_category, source_widget_type, source_record_id
+          safety_category, source_widget_type, source_record_id,
+          source_type, source_file_name, source_revision
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;
@@ -34,7 +35,10 @@ const SAFE_SELECT = (companyId: number) =>
           'draft' AS doc_status,
           NULL    AS safety_category,
           NULL    AS source_widget_type,
-          NULL    AS source_record_id
+          NULL    AS source_record_id,
+          NULL    AS source_type,
+          NULL    AS source_file_name,
+          NULL    AS source_revision
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;
