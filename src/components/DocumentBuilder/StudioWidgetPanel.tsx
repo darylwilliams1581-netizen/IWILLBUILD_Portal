@@ -951,7 +951,7 @@ const BLOCK_BUILDERS: Record<WidgetId, (title: string) => DocumentBlock[]> = {
   policy:      buildPolicyBlocks,
 };
 
-export { buildSwmsBlocks, buildSafetyPlanBlocks, buildPolicyBlocks };
+// Block builders are used internally via BLOCK_BUILDERS map — not exported.
 
 const TEMPLATE_TYPES: Record<WidgetId, string> = {
   swms:        'swms',
