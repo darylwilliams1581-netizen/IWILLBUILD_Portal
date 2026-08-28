@@ -298,6 +298,19 @@ function inductionRegisterTable(): DocumentBlock {
   );
 }
 
+/** PPE banner strip image — full-width above the PPE table */
+function ppeBannerImage(): DocumentBlock {
+  return {
+    id: bid('ppe-img'),
+    type: 'image',
+    src: '/airo-assets/images/safety-badges/ppe-banner-strip',
+    alt: 'Required PPE for this work activity',
+    size: 'full',
+    align: 'center',
+    preserveAspectRatio: true,
+  } as DocumentBlock;
+}
+
 function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
@@ -339,6 +352,7 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
     ]),
     spacer(8),
     h(2, '6. Personal Protective Equipment (PPE)'),
+    ppeBannerImage(),
     ppeTable(),
     spacer(8),
     h(2, '7. Risk Matrix'),
