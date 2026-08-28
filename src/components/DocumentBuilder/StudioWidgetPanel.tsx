@@ -160,19 +160,19 @@ function spacer(height = 8): DocumentBlock {
 
 /** Navy full-width section band */
 function navyBand(title: string): DocumentBlock {
-  const html = `<table style="width:100%;border-collapse:collapse;margin:0;"><tr><td style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:700;font-size:13px;padding:7px 12px;letter-spacing:0.04em;">${title}</td></tr></table>`;
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;margin:0;"><tr><td style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:700;font-size:13px;padding:7px 12px;letter-spacing:0.04em;">${title}</td></tr></table>`;
   return { id: bid('band'), type: 'rich_text', html } as DocumentBlock;
 }
 
 /** Pale-yellow guidance callout */
 function guidanceBox(text: string): DocumentBlock {
-  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_GUIDE_BG} !important;border:1px solid ${DOC_GUIDE_BDR};color:${DOC_GUIDE_TEXT} !important;font-size:11.5px;padding:8px 12px;border-radius:4px;">${text}</td></tr></table>`;
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_GUIDE_BG} !important;border:1px solid ${DOC_GUIDE_BDR};color:${DOC_GUIDE_TEXT} !important;font-size:11.5px;padding:8px 12px;border-radius:4px;">${text}</td></tr></table>`;
   return { id: bid('guide'), type: 'rich_text', html } as DocumentBlock;
 }
 
 /** Pale-red warning callout */
 function warningBox(text: string): DocumentBlock {
-  const html = `<table style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_WARN_BG} !important;border:1px solid ${DOC_WARN_BDR};color:${DOC_WARN_TEXT} !important;font-size:11.5px;padding:8px 12px;border-radius:4px;font-weight:600;">${text}</td></tr></table>`;
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_WARN_BG} !important;border:1px solid ${DOC_WARN_BDR};color:${DOC_WARN_TEXT} !important;font-size:11.5px;padding:8px 12px;border-radius:4px;font-weight:600;">${text}</td></tr></table>`;
   return { id: bid('warn'), type: 'rich_text', html } as DocumentBlock;
 }
 
@@ -185,7 +185,7 @@ function twoColForm(rows: Array<[string, string]>): DocumentBlock {
       <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:62%;">${value}</td>
     </tr>`;
   }).join('');
-  const html = `<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
   return { id: bid('form'), type: 'rich_text', html } as DocumentBlock;
 }
 
@@ -201,7 +201,7 @@ function navyTable(headers: string[], rows: string[][]): DocumentBlock {
     ).join('');
     return `<tr>${cellsHtml}</tr>`;
   }).join('');
-  const html = `<table style="width:100%;border-collapse:collapse;"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
   return { id: bid('ntbl'), type: 'rich_text', html } as DocumentBlock;
 }
 
@@ -216,7 +216,7 @@ function signoffTable(roles: string[]): DocumentBlock {
       <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:26%;">Date: ___________________</td>
     </tr>`;
   }).join('');
-  const html = `<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
   return { id: bid('soff'), type: 'rich_text', html } as DocumentBlock;
 }
 

@@ -23,12 +23,12 @@ export function sanitiseHtml(dirty: string): string {
     span:   ['style', 'class'],
     div:    ['style', 'class'],
     p:      ['style', 'class'],
-    table:  ['style'],
-    thead:  ['style'],
-    tbody:  ['style'],
-    tr:     ['style'],
-    td:     ['colspan', 'rowspan', 'style'],
-    th:     ['colspan', 'rowspan', 'style'],
+    table:  ['style', 'class'],
+    thead:  ['style', 'class'],
+    tbody:  ['style', 'class'],
+    tr:     ['style', 'class'],
+    td:     ['colspan', 'rowspan', 'style', 'class'],
+    th:     ['colspan', 'rowspan', 'style', 'class'],
   };
   const SAFE_HREF = /^(https?:|mailto:|#)/i;
 
