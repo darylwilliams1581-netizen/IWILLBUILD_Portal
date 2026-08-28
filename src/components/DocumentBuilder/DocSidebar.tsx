@@ -487,6 +487,17 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
                 accent={bv.accent}
               />
             ))}
+            <ToolBtn
+              icon={<Shield size={12} />}
+              label="PPE Banner"
+              accent="orange"
+              onClick={() => insert({
+                id: nanoid(10), type: 'image',
+                src: '/airo-assets/images/safety-badges/ppe-banner-strip',
+                alt: 'PPE Required — Personal Protective Equipment',
+                size: 'full', align: 'center', preserveAspectRatio: true,
+              } as DocumentBlock)}
+            />
 
             {/* ── Image ──────────────────────────────────────────────────── */}
             <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Image</p>
