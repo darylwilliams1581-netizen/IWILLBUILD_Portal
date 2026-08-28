@@ -522,6 +522,71 @@ describe('StudioWidgetPanel — Safety Plan block structure', () => {
     const ids = blocks.map((b) => b.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it('Safety Plan has no full-page/template image block; Document Control and PCBU/Project Details are native rich_text blocks', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('Safety Plan Widget'));
+    await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
+    const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{
+      id: string;
+      type: string;
+      html?: string;
+      src?: string;
+      url?: string;
+    }>;
+
+    // Known safety-badge slots that are legitimately used as image blocks.
+    const ALLOWED_BADGE_SLOTS = [
+      'safety-badges/icons-sheet',
+      'safety-badges/ppe-banner-strip',
+      'safety-badges/risk-matrix',
+      'safety-badges/risk-assessment-banner',
+    ];
+
+    // Any type:'image' block must point to a known safety-badge slot — not a
+    // screenshot, upload URL, or full-page template raster.
+    const unknownImageBlocks = blocks.filter(
+      (b) =>
+        b.type === 'image' &&
+        !ALLOWED_BADGE_SLOTS.some((slot) => (b.src ?? '').includes(slot)),
+    );
+    expect(unknownImageBlocks).toHaveLength(0);
+
+    // No rich_text block should embed an <img> src pointing at an upload URL or
+    // airo-assets path that is NOT a known safety-badge slot (i.e. no embedded
+    // full-page template screenshots).
+    const suspiciousRichTextImages = blocks.filter((b) => {
+      if (b.type !== 'rich_text' || !b.html) return false;
+      const srcMatches = [...b.html.matchAll(/src="([^"]+)"/g)].map((m) => m[1]);
+      return srcMatches.some(
+        (src) =>
+          (src.includes('/airo-assets/images/') || src.includes('/uploads/')) &&
+          !ALLOWED_BADGE_SLOTS.some((slot) => src.includes(slot)),
+      );
+    });
+    expect(suspiciousRichTextImages).toHaveLength(0);
+
+    // Document Control section must be a native rich_text navyBand block.
+    const docControlBand = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('1. Document Control'),
+    );
+    expect(docControlBand).toBeDefined();
+
+    // PCBU and Project Details section must be a native rich_text navyBand block.
+    const pcbuBand = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('2. PCBU and Project Details'),
+    );
+    expect(pcbuBand).toBeDefined();
+
+    // The PCBU form must contain bracketed placeholders (not empty or screenshot content).
+    const pcbuForm = blocks.find(
+      (b) =>
+        b.type === 'rich_text' &&
+        b.html?.includes('PCBU name') &&
+        b.html?.includes('[Legal name'),
+    );
+    expect(pcbuForm).toBeDefined();
+  });
 });
 
 describe('StudioWidgetPanel — Policy block structure', () => {
