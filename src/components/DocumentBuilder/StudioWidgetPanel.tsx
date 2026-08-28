@@ -205,7 +205,22 @@ function navyTable(headers: string[], rows: string[][]): DocumentBlock {
   return { id: bid('ntbl'), type: 'rich_text', html } as DocumentBlock;
 }
 
-/** Sign-off / authorisation table */
+/** Four-column form table: label | value | label | value (for document control rows) */
+function fourColForm(rows: Array<[string, string, string, string]>): DocumentBlock {
+  const rowsHtml = rows.map(([l1, v1, l2, v2], i) => {
+    const bg = i % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
+    return `<tr>
+      <td style="background:${DOC_LABEL_BG} !important;color:${DOC_LABEL_TEXT} !important;font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:20%;">${l1}</td>
+      <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:30%;">${v1}</td>
+      <td style="background:${DOC_LABEL_BG} !important;color:${DOC_LABEL_TEXT} !important;font-weight:600;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:20%;">${l2}</td>
+      <td style="background:${bg} !important;font-size:11.5px;padding:6px 10px;border:1px solid ${DOC_BORDER};width:30%;">${v2}</td>
+    </tr>`;
+  }).join('');
+  const html = `<table class="not-prose" style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
+  return { id: bid('4col'), type: 'rich_text', html } as DocumentBlock;
+}
+
+
 function signoffTable(roles: string[]): DocumentBlock {
   const rowsHtml = roles.map((role, i) => {
     const bg = i % 2 === 0 ? '#ffffff' : DOC_ROW_ALT;
@@ -355,45 +370,47 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
   return [
     // ── Cover / Title ──────────────────────────────────────────────────────────
     spacer(8),
-    { id: bid('swms-title'), type: 'rich_text', html: '<h1 style="text-align:center;font-size:2.5em;font-weight:800;margin:0.5em 0;">Safe Work Method Statement (SWMS)</h1>' } as DocumentBlock,
+    { id: bid('swms-title'), type: 'rich_text', html: `<table class="not-prose" style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:800;font-size:15px;padding:10px 14px;letter-spacing:0.02em;">SAFE WORK METHOD STATEMENT</td><td style="background:${DOC_NAVY} !important;color:#94a3b8 !important;font-size:11px;padding:10px 14px;text-align:right;white-space:nowrap;">High-risk construction work | WHS Regulation 2011 (Qld) | Template</td></tr></table>` } as DocumentBlock,
+    warningBox('HOW TO USE THIS TEMPLATE — Replace every [bracketed] field with site-specific information. Delete unused rows. Consult workers who will do the work before work starts. A generic SWMS that is not tailored to the site, task and conditions is not compliant. This document is a starting point only and is not legal advice.'),
     spacer(4),
 
-    // ── 1. Document Identity ───────────────────────────────────────────────────
-    navyBand('1. Document Identity'),
-    twoColForm([
-      ['Company Name',           ''],
-      ['ABN',                    ''],
-      ['Document Title',         docTitle || 'Safe Work Method Statement'],
-      ['Document Number',        ''],
-      ['Revision',               '1'],
-      ['Status',                 'Draft'],
-      ['Date Prepared',          ''],
-      ['Prepared By',            ''],
-      ['Reviewed By',            ''],
-      ['Approved By',            ''],
-      ['Next Review Date',       ''],
+    // ── 1. Document Control ───────────────────────────────────────────────────
+    navyBand('1. Document Control'),
+    fourColForm([
+      ['SWMS No.',      '[SWMS-XXX]',          'Revision',     '[00]'],
+      ['Date prepared', '[DD/MM/YYYY]',         'Review date',  '[DD/MM/YYYY]'],
+      ['Prepared by',   '[Name / position]',    'Approved by',  '[Name / position]'],
+      ['Related WHS Management Plan', '[Plan ref / revision if on a construction project]', '', ''],
     ]),
     spacer(8),
 
-    // ── 2. Project & Site Details ──────────────────────────────────────────────
-    navyBand('2. Project & Site Details'),
+    // ── 2. PCBU and Project Details ───────────────────────────────────────────
+    navyBand('2. PCBU and Project Details'),
     twoColForm([
-      ['Project Name',           ''],
-      ['Project Number',         ''],
-      ['Site Address',           ''],
-      ['Client / Principal Contractor', ''],
-      ['Site Supervisor',        ''],
-      ['Supervisor Contact',     ''],
-      ['Work Activity',          ''],
-      ['Planned Start Date',     ''],
-      ['Estimated Duration',     ''],
+      ['PCBU name',                     '[Legal name of the business carrying out the work]'],
+      ['ABN',                           '[XX XXX XXX XXX]'],
+      ['Address',                       '[Business address]'],
+      ['Principal Contractor',          '[Name of principal contractor if applicable]'],
+      ['PC contact name',               '[Name / position]'],
+      ['PC contact phone',              '[Phone number]'],
+      ['Project name',                  '[Project / site name]'],
+      ['Project address',               '[Full site address]'],
+      ['Project number',                '[Project reference]'],
+      ['Site supervisor',               '[Name / position]'],
+      ['Supervisor phone',              '[Phone number]'],
     ]),
     spacer(8),
 
     // ── 3. Scope of Works ─────────────────────────────────────────────────────
     navyBand('3. Scope of Works'),
     guidanceBox('Describe the specific work activity, location on site, and the sequence of tasks covered by this SWMS. Include any limitations or exclusions.'),
-    p(''),
+    twoColForm([
+      ['Work activity',         '[Describe the specific work activity covered by this SWMS]'],
+      ['Location on site',      '[Where on site will this work be performed]'],
+      ['Estimated duration',    '[Duration of this work activity]'],
+      ['Number of workers',     '[Number of workers performing this activity]'],
+      ['Exclusions',            '[Any work NOT covered by this SWMS]'],
+    ]),
     spacer(8),
 
     // ── 4. High-Risk Construction Work (HRCW) ─────────────────────────────────
@@ -582,92 +599,230 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
 function buildSafetyPlanBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
-    warningBox('⚠ Review Before Issue — This WHS Management Plan must be reviewed and approved before works commence. Keep this document on site at all times.'),
+    // ── Header banner ─────────────────────────────────────────────────────────
+    { id: bid('whs-title'), type: 'rich_text', html: `<table class="not-prose" style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:800;font-size:15px;padding:10px 14px;letter-spacing:0.02em;">WHS MANAGEMENT PLAN</td><td style="background:${DOC_NAVY} !important;color:#94a3b8 !important;font-size:11px;padding:10px 14px;text-align:right;white-space:nowrap;">Work Health &amp; Safety | WHS Act 2011 (Qld) | Template</td></tr></table>` } as DocumentBlock,
+    warningBox('HOW TO USE THIS TEMPLATE — Replace every [bracketed] field with site-specific information. Delete unused rows. Consult workers before the plan is finalised. A generic WHS Management Plan that is not tailored to the site and project is not compliant. This document is a starting point only and is not legal advice.'),
     spacer(4),
-    h(1, docTitle || 'WHS Management Plan'),
-    p('Work Health & Safety Management Plan', true),
-    spacer(4),
-    h(2, '1. Document Identity'),
-    infoTable([
-      ['Plan Type', 'Site Safety Plan'],
-      ['Plan Number', ''],
-      ['Revision', '1'],
-      ['Status', 'Draft'],
-      ['Date Prepared', ''],
-      ['Review Date', ''],
-      ['Prepared By', ''],
-      ['Approved By', ''],
+
+    // ── 1. Document Control ───────────────────────────────────────────────────
+    navyBand('1. Document Control'),
+    fourColForm([
+      ['Plan No.',      '[WHS-XXX]',       'Revision',     '[00]'],
+      ['Date prepared', '[DD/MM/YYYY]',    'Review date',  '[DD/MM/YYYY]'],
+      ['Prepared by',   '[Name / position]', 'Approved by', '[Name / position]'],
     ]),
     spacer(8),
-    h(2, '2. Project Details'),
-    infoTable([
-      ['Project Name', ''],
-      ['Project Number', ''],
-      ['Site Address', ''],
-      ['Client', ''],
-      ['Start Date', ''],
-      ['Expected Completion', ''],
-      ['Project Value', ''],
-      ['Principal Contractor', ''],
+
+    // ── 2. PCBU and Project Details ───────────────────────────────────────────
+    navyBand('2. PCBU and Project Details'),
+    twoColForm([
+      ['PCBU name',                     '[Legal name of the business carrying out the work]'],
+      ['ABN',                           '[XX XXX XXX XXX]'],
+      ['Address',                       '[Business address]'],
+      ['Principal Contractor',          '[Name of principal contractor if applicable]'],
+      ['PC contact name',               '[Name / position]'],
+      ['PC contact phone',              '[Phone number]'],
+      ['Project name',                  '[Project / site name]'],
+      ['Project address',               '[Full site address]'],
+      ['Project number',                '[Project reference]'],
+      ['Contract value',                '[$ value]'],
+      ['Planned start date',            '[DD/MM/YYYY]'],
+      ['Planned completion date',       '[DD/MM/YYYY]'],
+      ['Site supervisor',               '[Name / position]'],
+      ['Supervisor phone',              '[Phone number]'],
+      ['Related SWMS documents',        '[List SWMS references applicable to this project]'],
     ]),
     spacer(8),
-    h(2, '3. Scope of Works'),
-    p('Describe the scope of works and activities covered by this plan.'),
-    spacer(8),
-    h(2, '4. Emergency Planning'),
-    infoTable([
-      ['Emergency Services', '000'],
-      ['Site Emergency Contact', ''],
-      ['Assembly Point', ''],
-      ['Nearest Hospital', ''],
-      ['First Aid Officer', ''],
-      ['First Aid Kit Location', ''],
+
+    // ── 3. Scope of Works ─────────────────────────────────────────────────────
+    navyBand('3. Scope of Works'),
+    guidanceBox('Describe the work activities, trades, and construction phases covered by this plan. Include any exclusions or limitations.'),
+    twoColForm([
+      ['Description of works', '[Describe the scope of construction works]'],
+      ['Work activities / trades', '[List all trades and work activities on site]'],
+      ['Exclusions', '[Any work not covered by this plan]'],
     ]),
     spacer(8),
-    h(2, '5. Site Rules & Induction'),
-    p('List site rules and induction requirements applicable to this project.'),
+
+    // ── 4. Emergency Planning ─────────────────────────────────────────────────
+    navyBand('4. Emergency Planning'),
+    twoColForm([
+      ['Emergency services (Police / Fire / Ambulance)', '000'],
+      ['Poison Information Centre',                      '13 11 26'],
+      ['Site emergency contact',                         '[Name]'],
+      ['Site emergency phone',                           '[Phone number]'],
+      ['Nearest hospital',                               '[Hospital name]'],
+      ['Hospital address',                               '[Address]'],
+      ['Assembly point',                                 '[Location on site]'],
+      ['Muster warden',                                  '[Name / position]'],
+      ['First aid officer',                              '[Name]'],
+      ['First aid kit location',                         '[Location on site]'],
+      ['Defibrillator location',                         '[Location or N/A]'],
+      ['Incident reporting procedure',                   'Notify supervisor immediately. Preserve scene. Complete incident report within 24 hours. Notify regulator for serious incidents.'],
+      ['Regulator notification',                         'SafeWork QLD: 1300 362 128 (serious incidents, dangerous incidents, fatalities)'],
+    ]),
     spacer(8),
-    h(2, '6. High-Risk Construction Work (HRCW)'),
-    p('Identify HRCW activities and the SWMS documents that control them.'),
+
+    // ── 5. Site Rules & Induction ─────────────────────────────────────────────
+    navyBand('5. Site Rules & Induction'),
+    guidanceBox('All workers must be inducted before commencing work. Record inductions in the site induction register.'),
+    navyTable(
+      ['Site Rule', 'Requirement'],
+      [
+        ['Site access',             '[Describe access control, sign-in/out procedure]'],
+        ['PPE minimum standard',    'Safety helmet, safety footwear, hi-vis vest at all times on site'],
+        ['Alcohol and drugs',       'Zero tolerance — no alcohol or drugs on site'],
+        ['Smoking',                 '[Designated smoking area only / No smoking on site]'],
+        ['Speed limit',             '[XX km/h on site]'],
+        ['Housekeeping',            'Keep work areas clean and tidy at all times'],
+        ['Reporting hazards',       'Report all hazards, near misses and incidents to the supervisor immediately'],
+        ['Induction requirement',   'All workers must complete site induction before commencing work'],
+        ['Visitor management',      '[Describe visitor sign-in and escort requirements]'],
+      ]
+    ),
     spacer(8),
-    h(2, '7. Hazard Register'),
+
+    // ── 6. High-Risk Construction Work (HRCW) ─────────────────────────────────
+    navyBand('6. High-Risk Construction Work (HRCW)'),
+    guidanceBox('Identify all HRCW activities on this project. A SWMS must be prepared for each HRCW activity before work commences (WHS Regulation 2011, s291).'),
+    navyTable(
+      ['HRCW Activity', 'Applies (Y/N)', 'SWMS Reference', 'Responsible Person'],
+      [
+        ['Risk of a person falling more than 2 metres',                                    '', '[SWMS-XXX]', ''],
+        ['Work on a telecommunication tower',                                               '', '',           ''],
+        ['Demolition of a load-bearing structure',                                          '', '',           ''],
+        ['Disturbance of asbestos',                                                         '', '',           ''],
+        ['Work involving structural alterations requiring temporary support',               '', '',           ''],
+        ['Work in or near a confined space',                                                '', '',           ''],
+        ['Work in or near a shaft or trench deeper than 1.5 m',                            '', '',           ''],
+        ['Work on or near energised electrical installations or services',                  '', '',           ''],
+        ['Work on, in or adjacent to a road, railway or other traffic corridor',           '', '',           ''],
+        ['Work in an area with movement of powered mobile plant',                           '', '',           ''],
+        ['Work in or near water involving risk of drowning',                                '', '',           ''],
+        ['Other HRCW (specify)',                                                            '', '',           ''],
+      ]
+    ),
+    spacer(8),
+
+    // ── 7. Hazard Register ────────────────────────────────────────────────────
+    navyBand('7. Hazard Register'),
     safetyIconsImage(),
-    hazardTable(),
+    guidanceBox('List all foreseeable hazards for this project. Use the risk matrix to rate each hazard before and after controls are applied.'),
+    navyTable(
+      ['Ref', 'Hazard / Risk', 'Who is at Risk', 'Likelihood', 'Consequence', 'Initial Risk Rating', 'Control Measures', 'Residual Risk Rating', 'Responsible Person'],
+      [
+        ['1', '[Describe hazard]', '', 'L / M / H', 'L / M / H', '', '[Describe controls]', '', ''],
+        ['2', '', '', '', '', '', '', '', ''],
+        ['3', '', '', '', '', '', '', '', ''],
+        ['4', '', '', '', '', '', '', '', ''],
+        ['5', '', '', '', '', '', '', '', ''],
+      ]
+    ),
     spacer(8),
-    h(2, '8. Consultation & Communication'),
-    p('Describe how workers will be consulted and how safety information will be communicated.'),
-    spacer(8),
-    h(2, '9. Plant & Equipment Controls'),
-    p('Describe plant inspection, operator competency and maintenance requirements.'),
-    spacer(8),
-    h(2, '10. Electrical Safety'),
-    p('Describe electrical safety controls including RCD protection, isolation and testing.'),
-    spacer(8),
-    h(2, '11. Traffic Management'),
-    p('Describe vehicle and pedestrian separation, speed limits and delivery controls.'),
-    spacer(8),
-    h(2, '12. Hazardous Materials'),
-    p('List hazardous substances, SDS register location and storage/disposal requirements.'),
-    spacer(8),
-    h(2, '13. Environmental Controls'),
-    p('Describe controls for dust, noise, stormwater, waste and heritage protection.'),
-    spacer(8),
-    h(2, '14. Incident Reporting'),
-    p('Describe the incident reporting process, investigation responsibilities and regulator notification requirements.'),
-    spacer(8),
-    h(2, '15. Review & Approval'),
-    infoTable([
-      ['Prepared By', ''],
-      ['Position', ''],
-      ['Date', ''],
-      ['Reviewed By', ''],
-      ['Position', ''],
-      ['Date', ''],
-      ['Approved By', ''],
-      ['Position', ''],
-      ['Date', ''],
+
+    // ── 8. Consultation & Communication ───────────────────────────────────────
+    navyBand('8. Consultation & Communication'),
+    guidanceBox('The PCBU must consult with workers on WHS matters. Record how consultation will be conducted on this project.'),
+    twoColForm([
+      ['Consultation method',         '[Toolbox talks / safety meetings / direct consultation]'],
+      ['Meeting frequency',           '[Weekly / fortnightly / as required]'],
+      ['Safety notice board location','[Location on site]'],
+      ['WHS representative',          '[Name / position or N/A]'],
+      ['Issue resolution process',    '[Describe how WHS issues raised by workers will be resolved]'],
     ]),
     spacer(8),
+
+    // ── 9. Plant & Equipment Controls ─────────────────────────────────────────
+    navyBand('9. Plant & Equipment Controls'),
+    guidanceBox('List all plant and equipment on site. Confirm registration, pre-start checks and operator competency requirements.'),
+    navyTable(
+      ['Plant / Equipment', 'Make / Model', 'Rego / Serial No.', 'Pre-start Check', 'Operator Licence / Competency Required', 'Inspection Current'],
+      [
+        ['[Item]', '', '', 'Yes / No', '', 'Yes / No'],
+        ['', '', '', 'Yes / No', '', 'Yes / No'],
+        ['', '', '', 'Yes / No', '', 'Yes / No'],
+      ]
+    ),
+    spacer(8),
+
+    // ── 10. Electrical Safety ─────────────────────────────────────────────────
+    navyBand('10. Electrical Safety'),
+    twoColForm([
+      ['RCD protection',              '[All portable electrical equipment protected by RCD]'],
+      ['Electrical isolation procedure', '[Describe lockout/tagout procedure]'],
+      ['Testing and tagging',         '[Frequency and responsible person]'],
+      ['Underground services',        '[Dial Before You Dig reference number]'],
+      ['Overhead powerlines',         '[Describe exclusion zone controls or N/A]'],
+      ['Electrical contractor',       '[Name / licence number]'],
+    ]),
+    spacer(8),
+
+    // ── 11. Traffic Management ────────────────────────────────────────────────
+    navyBand('11. Traffic Management'),
+    twoColForm([
+      ['Traffic management plan',     '[Ref / attached / N/A]'],
+      ['Vehicle / pedestrian separation', '[Describe controls]'],
+      ['Speed limit on site',         '[XX km/h]'],
+      ['Delivery management',         '[Describe delivery booking and unloading procedure]'],
+      ['Traffic controller required', 'Yes / No'],
+    ]),
+    spacer(8),
+
+    // ── 12. Hazardous Materials ───────────────────────────────────────────────
+    navyBand('12. Hazardous Materials'),
+    twoColForm([
+      ['SDS register location',       '[Location on site / electronic system]'],
+      ['Hazardous substances on site','[List substances or refer to SDS register]'],
+      ['Storage requirements',        '[Describe storage controls — bunding, segregation, labelling]'],
+      ['Disposal requirements',       '[Describe waste disposal procedure]'],
+      ['Asbestos',                    '[Asbestos register ref / N/A]'],
+    ]),
+    spacer(8),
+
+    // ── 13. Environmental Controls ────────────────────────────────────────────
+    navyBand('13. Environmental Controls'),
+    navyTable(
+      ['Environmental Aspect', 'Control Measure', 'Responsible Person'],
+      [
+        ['Dust',          '[Water cart / dust suppression / hoarding]',         ''],
+        ['Noise',         '[Restricted hours / barriers / community notification]', ''],
+        ['Stormwater',    '[Silt fences / sediment traps / spill kits]',        ''],
+        ['Waste',         '[Segregated bins / licensed waste contractor]',       ''],
+        ['Contamination', '[Describe controls or N/A]',                          ''],
+        ['Heritage',      '[Describe controls or N/A]',                          ''],
+      ]
+    ),
+    spacer(8),
+
+    // ── 14. Incident Reporting ────────────────────────────────────────────────
+    navyBand('14. Incident Reporting'),
+    twoColForm([
+      ['Incident report form location',  '[Location on site / electronic system]'],
+      ['Reporting timeframe',            'Immediate verbal notification to supervisor; written report within 24 hours'],
+      ['Investigation responsibility',   '[Name / position]'],
+      ['Corrective action tracking',     '[Describe how corrective actions are tracked to close-out]'],
+      ['Notifiable incidents',           'Fatality, serious injury/illness, dangerous incident — notify SafeWork QLD immediately: 1300 362 128'],
+      ['Workers compensation insurer',   '[Insurer name and policy number]'],
+    ]),
+    spacer(8),
+
+    // ── 15. Review & Approval ─────────────────────────────────────────────────
+    navyBand('15. Review & Approval'),
+    guidanceBox('This plan must be reviewed and updated whenever there is a change to the work, after an incident, or at least annually.'),
+    navyTable(
+      ['Role', 'Name', 'Position', 'Signature', 'Date'],
+      [
+        ['Prepared by',  '', '[Position]', '', '[DD/MM/YYYY]'],
+        ['Reviewed by',  '', '[Position]', '', '[DD/MM/YYYY]'],
+        ['Approved by',  '', '[Position]', '', '[DD/MM/YYYY]'],
+      ]
+    ),
+    spacer(8),
+
+    // ── Revision History ──────────────────────────────────────────────────────
+    navyBand('Revision History'),
+    revisionTable(),
+    spacer(4),
     divider(),
     p('Document Control — this document is controlled. Printed copies are uncontrolled. Verify currency before use.', false),
   ];
@@ -676,54 +831,115 @@ function buildSafetyPlanBlocks(docTitle: string): DocumentBlock[] {
 function buildPolicyBlocks(docTitle: string): DocumentBlock[] {
   _seq = 0;
   return [
-    h(1, docTitle || 'Company Policy'),
+    // ── Header banner ─────────────────────────────────────────────────────────
+    { id: bid('pol-title'), type: 'rich_text', html: `<table class="not-prose" style="width:100%;border-collapse:collapse;"><tr><td style="background:${DOC_NAVY} !important;color:${DOC_NAVY_TEXT} !important;font-weight:800;font-size:15px;padding:10px 14px;letter-spacing:0.02em;">${(docTitle || 'COMPANY POLICY').toUpperCase()}</td><td style="background:${DOC_NAVY} !important;color:#94a3b8 !important;font-size:11px;padding:10px 14px;text-align:right;white-space:nowrap;">WHS Policy | Template</td></tr></table>` } as DocumentBlock,
     spacer(4),
-    infoTable([
-      ['Policy Number', ''],
-      ['Version', '1.0'],
-      ['Status', 'Draft'],
-      ['Date Issued', ''],
-      ['Review Date', ''],
-      ['Policy Owner', ''],
-      ['Approved By', ''],
+
+    // ── Document Control ──────────────────────────────────────────────────────
+    navyBand('Document Control'),
+    fourColForm([
+      ['Policy No.',    '[POL-XXX]',           'Version',      '[1.0]'],
+      ['Date issued',   '[DD/MM/YYYY]',         'Review date',  '[DD/MM/YYYY]'],
+      ['Policy owner',  '[Name / position]',    'Approved by',  '[Name / position]'],
+      ['Status',        'Draft',                '',             ''],
     ]),
     spacer(8),
-    h(2, '1. Purpose'),
-    p('State the purpose and intent of this policy.'),
+
+    // ── 1. Purpose ────────────────────────────────────────────────────────────
+    navyBand('1. Purpose'),
+    guidanceBox('State the intent of this policy — what it is designed to achieve and why it exists.'),
+    twoColForm([
+      ['Purpose', '[Describe the purpose and intent of this policy]'],
+    ]),
     spacer(8),
-    h(2, '2. Scope'),
-    p('Define who and what this policy applies to.'),
+
+    // ── 2. Scope ──────────────────────────────────────────────────────────────
+    navyBand('2. Scope'),
+    twoColForm([
+      ['This policy applies to', '[All workers / specific roles / specific sites / all operations]'],
+      ['Exclusions',             '[Any persons or activities not covered by this policy, or N/A]'],
+    ]),
     spacer(8),
-    h(2, '3. Definitions'),
-    infoTable([
+
+    // ── 3. Definitions ────────────────────────────────────────────────────────
+    navyBand('3. Definitions'),
+    navyTable(
       ['Term', 'Definition'],
-      ['', ''],
+      [
+        ['PCBU',    'Person Conducting a Business or Undertaking — as defined in the WHS Act 2011'],
+        ['Worker',  'Any person who carries out work for the PCBU, including employees, contractors and subcontractors'],
+        ['[Term]',  '[Definition]'],
+        ['[Term]',  '[Definition]'],
+      ]
+    ),
+    spacer(8),
+
+    // ── 4. Responsibilities ───────────────────────────────────────────────────
+    navyBand('4. Responsibilities'),
+    navyTable(
+      ['Role', 'Responsibilities'],
+      [
+        ['PCBU / Management',  '[Describe management responsibilities under this policy]'],
+        ['Supervisors',        '[Describe supervisor responsibilities]'],
+        ['Workers',            '[Describe worker responsibilities]'],
+        ['[Other role]',       '[Describe responsibilities]'],
+      ]
+    ),
+    spacer(8),
+
+    // ── 5. Requirements & Procedures ─────────────────────────────────────────
+    navyBand('5. Requirements & Procedures'),
+    guidanceBox('Detail the specific requirements, rules and procedures that must be followed. Add rows as needed.'),
+    navyTable(
+      ['Requirement', 'Procedure / Detail', 'Responsible Person'],
+      [
+        ['[Requirement 1]', '[Describe the procedure or rule]', ''],
+        ['[Requirement 2]', '[Describe the procedure or rule]', ''],
+        ['[Requirement 3]', '[Describe the procedure or rule]', ''],
+        ['[Requirement 4]', '[Describe the procedure or rule]', ''],
+      ]
+    ),
+    spacer(8),
+
+    // ── 6. Related Documents ──────────────────────────────────────────────────
+    navyBand('6. Related Documents'),
+    navyTable(
+      ['Document Type', 'Title / Reference'],
+      [
+        ['Legislation',  'Work Health and Safety Act 2011 (Qld)'],
+        ['Regulation',   'Work Health and Safety Regulation 2011 (Qld)'],
+        ['Policy',       '[Related policy reference]'],
+        ['Procedure',    '[Related procedure reference]'],
+        ['Form',         '[Related form reference]'],
+      ]
+    ),
+    spacer(8),
+
+    // ── 7. Review Schedule ────────────────────────────────────────────────────
+    navyBand('7. Review Schedule'),
+    twoColForm([
+      ['Review frequency',    'Annually, or after an incident, regulatory change, or significant organisational change'],
+      ['Next review date',    '[DD/MM/YYYY]'],
+      ['Responsible person',  '[Name / position]'],
     ]),
     spacer(8),
-    h(2, '4. Responsibilities'),
-    p('Describe the responsibilities of management, supervisors and workers under this policy.'),
+
+    // ── 8. Approval ───────────────────────────────────────────────────────────
+    navyBand('8. Approval'),
+    navyTable(
+      ['Role', 'Name', 'Position', 'Signature', 'Date'],
+      [
+        ['Prepared by',  '[Name]', '[Position]', '', '[DD/MM/YYYY]'],
+        ['Reviewed by',  '[Name]', '[Position]', '', '[DD/MM/YYYY]'],
+        ['Approved by',  '[Name]', '[Position]', '', '[DD/MM/YYYY]'],
+      ]
+    ),
     spacer(8),
-    h(2, '5. Requirements & Procedures'),
-    p('Detail the specific requirements, rules or procedures that must be followed.'),
-    spacer(8),
-    h(2, '6. Related Documents'),
-    p('List related policies, procedures, legislation and standards.'),
-    spacer(8),
-    h(2, '7. Review Schedule'),
-    infoTable([
-      ['Review Frequency', 'Annually or after an incident'],
-      ['Next Review Date', ''],
-      ['Responsible Person', ''],
-    ]),
-    spacer(8),
-    h(2, '8. Approval'),
-    infoTable([
-      ['Approved By', ''],
-      ['Position', ''],
-      ['Signature', ''],
-      ['Date', ''],
-    ]),
-    spacer(8),
+
+    // ── Revision History ──────────────────────────────────────────────────────
+    navyBand('Revision History'),
+    revisionTable(),
+    spacer(4),
     divider(),
     p('Document Control — this document is controlled. Printed copies are uncontrolled. Verify currency before use.', false),
   ];

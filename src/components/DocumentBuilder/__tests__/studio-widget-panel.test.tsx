@@ -352,10 +352,10 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
 
   // ── Sections 1–3 are native editable blocks, NOT images ───────────────────
 
-  it('Section 1 Document Identity is a native rich_text band (not an image)', async () => {
+  it('Section 1 Document Control is a native rich_text band (not an image)', async () => {
     const blocks = await getSwmsBlocks();
     const band = blocks.find(
-      (b) => b.type === 'rich_text' && b.html?.includes('1. Document Identity'),
+      (b) => b.type === 'rich_text' && b.html?.includes('1. Document Control'),
     );
     expect(band).toBeDefined();
     // Must NOT be an image block
@@ -465,13 +465,13 @@ describe('StudioWidgetPanel — Safety Plan block structure', () => {
     vi.clearAllMocks();
   });
 
-  it('Safety Plan blocks include a "Review Before Issue" warning callout', async () => {
+  it('Safety Plan blocks include a "HOW TO USE" warning callout', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('Safety Plan Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
     const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; html?: string }>;
     const warnBlock = blocks.find(
-      (b) => b.type === 'rich_text' && b.html?.includes('Review Before Issue'),
+      (b) => b.type === 'rich_text' && b.html?.includes('HOW TO USE'),
     );
     expect(warnBlock).toBeDefined();
   });
@@ -537,7 +537,7 @@ describe('StudioWidgetPanel — Policy block structure', () => {
     fireEvent.click(screen.getByText('Policy Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
     const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; content?: string }>;
-    const headings = blocks.filter((b) => b.type === 'heading').map((b) => b.content ?? '');
+    const headings = blocks.filter((b) => b.type === 'rich_text' && b.html).map((b) => b.html ?? '');
     expect(headings.some((h) => h.includes('Purpose'))).toBe(true);
     expect(headings.some((h) => h.includes('Scope'))).toBe(true);
     expect(headings.some((h) => h.includes('Responsibilities'))).toBe(true);
@@ -548,7 +548,7 @@ describe('StudioWidgetPanel — Policy block structure', () => {
     fireEvent.click(screen.getByText('Policy Widget'));
     await waitFor(() => expect(mockStore.prependBlocks).toHaveBeenCalled());
     const blocks = mockStore.prependBlocks.mock.calls[0][0] as Array<{ type: string; content?: string }>;
-    const approval = blocks.find((b) => b.type === 'heading' && b.content?.includes('Approval'));
+    const approval = blocks.find((b) => b.type === 'rich_text' && b.html?.includes('Approval'));
     expect(approval).toBeDefined();
   });
 
