@@ -20,7 +20,7 @@ import {
   Calendar, CheckSquare, List, LayoutGrid, Briefcase,
   MapPin, User, Building2, ClipboardList, Zap,
   Info, CheckCircle, ShieldAlert, Shield, AlertOctagon,
-  AlignLeft, AlignCenter, AlignRight,
+  AlignLeft, AlignCenter, AlignRight, BarChart2,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import { nanoid } from 'nanoid';
@@ -495,6 +495,17 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
                 id: nanoid(10), type: 'image',
                 src: '/airo-assets/images/safety-badges/ppe-banner-strip',
                 alt: 'PPE Required — Personal Protective Equipment',
+                size: 'full', align: 'center', preserveAspectRatio: true,
+              } as DocumentBlock)}
+            />
+            <ToolBtn
+              icon={<BarChart2 size={12} />}
+              label="Risk Matrix"
+              accent="red"
+              onClick={() => insert({
+                id: nanoid(10), type: 'image',
+                src: '/airo-assets/images/safety-badges/risk-matrix',
+                alt: 'Risk Matrix — consequence, likelihood and degree of control',
                 size: 'full', align: 'center', preserveAspectRatio: true,
               } as DocumentBlock)}
             />

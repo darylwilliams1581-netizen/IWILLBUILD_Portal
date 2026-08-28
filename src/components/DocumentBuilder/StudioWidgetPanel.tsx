@@ -324,6 +324,19 @@ function riskAssessmentBannerImage(): DocumentBlock {
   } as DocumentBlock;
 }
 
+/** Risk Matrix polished image — full-width above the risk matrix section */
+function riskMatrixImage(): DocumentBlock {
+  return {
+    id: bid('risk-matrix-img'),
+    type: 'image',
+    src: '/airo-assets/images/safety-badges/risk-matrix',
+    alt: 'Risk Matrix — consequence, likelihood and degree of control',
+    size: 'full',
+    align: 'center',
+    preserveAspectRatio: true,
+  } as DocumentBlock;
+}
+
 /** Safety icons sheet — full-width above hazard/safety sections */
 function safetyIconsImage(): DocumentBlock {
   return {
@@ -382,6 +395,7 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
     navyBand('6. Personal Protective Equipment (PPE)'),
     ppeTable(),
     spacer(8),
+    riskMatrixImage(),
     navyBand('7. Risk Matrix'),
     infoTable([
       ['Likelihood × Consequence', 'Risk Rating'],

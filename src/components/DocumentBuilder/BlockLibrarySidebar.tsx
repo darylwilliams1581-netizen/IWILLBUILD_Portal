@@ -45,6 +45,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
+        type: 'image', label: 'Risk Matrix', icon: BarChart2, description: 'Risk Matrix reference — consequence, likelihood and degree of control',
+        factory: () => ({
+          id: newId(), type: 'image',
+          src: '/airo-assets/images/safety-badges/risk-matrix',
+          alt: 'Risk Matrix — consequence, likelihood and degree of control',
+          size: 'full', align: 'center', preserveAspectRatio: true,
+        }),
+      },
+      {
         type: 'risk_matrix_banner', label: 'Risk Matrix Banner', icon: BarChart2, description: 'Compact risk level strip — drop at top of any document',
         factory: () => ({ id: newId(), type: 'risk_matrix_banner' }),
       },

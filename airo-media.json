@@ -683,5 +683,19 @@
     },
     "uploadContentHash": "64ead2d4c121a492754716e1fd04199c96dc8011b3bcbb8429534d8ef40c6d0e",
     "caption": "document template theme branding settings interface"
+  },
+  "safety-badges/risk-matrix": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/safety-badges-risk-matrix-96a6a6f7.png",
+    "searchQuery": "risk matrix assessment framework chart",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-28T10:23:33.067Z",
+    "lastUpdated": "2026-08-28T10:23:33.067Z",
+    "uploadSources": {
+      "/airo-assets/uploads/safety-badges-risk-matrix-96a6a6f7.png": "f38wenbvln_1787912601214_file_WuocHIxjvw.png"
+    },
+    "uploadContentHash": "485b51259637e05b13928c20b846605b091e4327d579152bd1a5ef2490d2e2df",
+    "caption": "risk matrix assessment framework chart"
   }
 }
