@@ -26,7 +26,10 @@ import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { nanoid } from 'nanoid';
 import type { DocumentBlock } from '../../../../../components/DocumentBuilder/types.js';
 import JSZip from 'jszip';
-import { uploadSourceDocument } from '../../../../lib/source-document-storage.js';
+import { uploadSourceDocument, deleteSourceDocument } from '../../../../lib/source-document-storage.js';
+import { saveFile, deleteFile } from '../../../../storage/storage-service.js';
+import { runConvertHtml, BUCKET_DOC_ASSETS } from '../../../../lib/import-docx-convert-html.js';
+export { BUCKET_DOC_ASSETS };
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -120,6 +123,19 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
+    // ── Mode: convert_html — DOCX → editable HTML canvas (new intended path) ──
+    if (mode === 'convert_html') {
+      return await handleConvertHtml({
+        req, res,
+        docxBuffer: docxFile.buffer,
+        originalName,
+        templateId: id,
+        companyId: profile.companyId,
+        userId: session.user.id,
+        currentRevision: Number(rows[0].source_revision ?? 0),
+      });
+    }
+
     // ── Mode: convert_blocks — legacy DOCX → blocks conversion ───────────────
     const { blocks, warnings } = await parseDocxToBlocks(docxFile.buffer);
 
@@ -140,6 +156,41 @@ export default async function handler(req: Request, res: Response) {
     const msg = err instanceof Error ? err.message : String(err);
     return res.status(500).json({ error: `Failed to parse DOCX file: ${msg}` });
   }
+}
+
+// ── convert_html handler ──────────────────────────────────────────────────────
+
+/**
+ * Thin wrapper: delegates to runConvertHtml (in lib/import-docx-convert-html.ts)
+ * with the live DB/storage dependencies injected.
+ */
+async function handleConvertHtml(opts: {
+  req: Request;
+  res: Response;
+  docxBuffer: Buffer;
+  originalName: string;
+  templateId: number;
+  companyId: number;
+  userId: string;
+  currentRevision: number;
+}): Promise<Response> {
+  const { res, docxBuffer, originalName, templateId, companyId, userId, currentRevision } = opts;
+
+  const result = await runConvertHtml(
+    { docxBuffer, originalName, templateId, companyId, userId, currentRevision },
+    {
+      dbExecute: (q) => db.execute(sql.raw(q.sql)),
+      uploadSourceDocument,
+      deleteSourceDocument,
+      saveFile,
+      deleteFile,
+    },
+  );
+
+  if (!result.ok) {
+    return res.status(result.status).json({ error: result.error });
+  }
+  return res.json(result.payload);
 }
 
 // ── DOCX → Builder Blocks (pure-JS, no mammoth) ───────────────────────────────
