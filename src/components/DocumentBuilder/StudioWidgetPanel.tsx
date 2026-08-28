@@ -419,7 +419,32 @@ function buildSwmsBlocks(docTitle: string): DocumentBlock[] {
     spacer(8),
     navyBand('10. Worker Sign-Off'),
     p('All workers must read and understand this SWMS before commencing work. Sign below to confirm.'),
-    signoffTable(['Supervisor / PCBU', 'Worker 1', 'Worker 2', 'Worker 3', 'Worker 4', 'Worker 5']),
+    ((): DocumentBlock => {
+      const colName = bid('col-name');
+      const colRole = bid('col-role');
+      const colSig  = bid('col-sig');
+      const colDate = bid('col-date');
+      const presetRoles = ['Supervisor / PCBU', 'Worker 1', 'Worker 2', 'Worker 3', 'Worker 4', 'Worker 5'];
+      return {
+        id: bid('signoff-tbl'),
+        type: 'table',
+        mode: 'fillable',
+        headerBgColor: '#1a2744' as string,
+        headerTextColor: '#ffffff' as string,
+        stripedRows: false,
+        repeatable: true,
+        columns: [
+          { id: colName, header: 'Name',      cellType: 'text',      width: 3 },
+          { id: colRole, header: 'Role',      cellType: 'text',      width: 2 },
+          { id: colSig,  header: 'Signature', cellType: 'signature', width: 3 },
+          { id: colDate, header: 'Date',      cellType: 'date',      width: 2 },
+        ],
+        rows: presetRoles.map((role) => ({
+          id: bid('srow'),
+          cells: { [colName]: '', [colRole]: role, [colSig]: '', [colDate]: '' },
+        })),
+      } as DocumentBlock;
+    })(),
     spacer(8),
     divider(),
     p('Document Control — this document is controlled. Printed copies are uncontrolled. Verify currency before use.', false),

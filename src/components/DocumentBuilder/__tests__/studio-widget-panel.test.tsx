@@ -431,6 +431,46 @@ describe('StudioWidgetPanel — SWMS banner placement and native section integri
     expect(ppeTableIdx).toBeGreaterThan(-1);
     expect(ppeBannerIdx).toBeLessThan(ppeTableIdx);
   });
+
+  // ── Section 10 sign-off is a native fillable TableBlock ───────────────────
+
+  it('Section 10 Worker Sign-Off uses a native fillable table block (not rich_text HTML)', async () => {
+    const blocks = await getSwmsBlocks();
+
+    // Must have the Section 10 navy band
+    const band = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('10. Worker Sign-Off'),
+    );
+    expect(band).toBeDefined();
+
+    // The sign-off block must be a native table, not a rich_text HTML table
+    const signoffTbl = blocks.find(
+      (b) => b.type === 'table',
+    ) as (Block & { mode?: string; columns?: Array<{ header: string }>; rows?: unknown[] }) | undefined;
+    expect(signoffTbl).toBeDefined();
+    expect(signoffTbl?.mode).toBe('fillable');
+
+    // Must have Name, Role, Signature, Date columns
+    const headers = signoffTbl?.columns?.map((c) => c.header) ?? [];
+    expect(headers).toContain('Name');
+    expect(headers).toContain('Role');
+    expect(headers).toContain('Signature');
+    expect(headers).toContain('Date');
+
+    // Must have 6 pre-seeded rows (Supervisor/PCBU + Workers 1–5)
+    expect(signoffTbl?.rows?.length).toBe(6);
+
+    // Must appear after the Section 10 band
+    const bandIdx = blocks.indexOf(band!);
+    const tblIdx  = blocks.indexOf(signoffTbl!);
+    expect(tblIdx).toBeGreaterThan(bandIdx);
+
+    // Must NOT be a rich_text block with Supervisor/PCBU text (old HTML table)
+    const oldHtmlSignoff = blocks.find(
+      (b) => b.type === 'rich_text' && b.html?.includes('Supervisor'),
+    );
+    expect(oldHtmlSignoff).toBeUndefined();
+  });
 });
 
 describe('StudioWidgetPanel — Safety Plan block structure', () => {
