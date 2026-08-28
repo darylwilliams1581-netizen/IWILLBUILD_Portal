@@ -17,7 +17,8 @@ const FULL_SELECT = (companyId: number) =>
           doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text,
           submit_label, requires_signature, doc_status,
           safety_category, source_widget_type, source_record_id,
-          source_type, source_file_name, source_revision
+          source_type, source_file_name, source_revision,
+          html_content, import_css, import_report
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;
@@ -38,7 +39,10 @@ const SAFE_SELECT = (companyId: number) =>
           NULL    AS source_record_id,
           NULL    AS source_type,
           NULL    AS source_file_name,
-          NULL    AS source_revision
+          NULL    AS source_revision,
+          NULL    AS html_content,
+          NULL    AS import_css,
+          NULL    AS import_report
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;

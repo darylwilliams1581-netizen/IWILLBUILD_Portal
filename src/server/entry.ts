@@ -1659,7 +1659,7 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'source_widget_type',          definition: "VARCHAR(50) NULL DEFAULT NULL COMMENT 'swms | whs_plan'" },
     { table: 'document_templates', column: 'source_record_id',            definition: 'INT NULL DEFAULT NULL' },
     // ── document_templates: Phase 2 Word Source Document columns ─────────────
-    { table: 'document_templates', column: 'source_type',         definition: "VARCHAR(20) NOT NULL DEFAULT 'blocks' COMMENT 'blocks|docx|pdf'" },
+    { table: 'document_templates', column: 'source_type',         definition: "VARCHAR(20) NOT NULL DEFAULT 'blocks' COMMENT 'blocks|docx|pdf|html'" },
     { table: 'document_templates', column: 'source_file_key',     definition: "VARCHAR(1000) NULL COMMENT 'Storage key for original source file'" },
     { table: 'document_templates', column: 'source_file_name',    definition: "VARCHAR(500) NULL COMMENT 'Original uploaded filename'" },
     { table: 'document_templates', column: 'source_mime_type',    definition: "VARCHAR(100) NULL COMMENT 'MIME type of source file'" },
@@ -1667,6 +1667,10 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'source_revision',     definition: "INT NOT NULL DEFAULT 0 COMMENT 'Monotonic revision counter'" },
     { table: 'document_templates', column: 'source_updated_at',   definition: "DATETIME NULL COMMENT 'When source file was last replaced'" },
     { table: 'document_templates', column: 'rendered_pdf_key',    definition: "VARCHAR(1000) NULL COMMENT 'Storage key for cached PDF render'" },
+    // ── document_templates: HTML canvas columns (DOCX → editable HTML) ────────
+    { table: 'document_templates', column: 'html_content',        definition: "LONGTEXT NULL COMMENT 'Sanitised HTML body for html-canvas documents'" },
+    { table: 'document_templates', column: 'import_css',          definition: "LONGTEXT NULL COMMENT 'Scoped CSS produced by DOCX converter'" },
+    { table: 'document_templates', column: 'import_report',       definition: "TEXT NULL COMMENT 'JSON: { dropped: string[], approximated: string[] }'" },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
