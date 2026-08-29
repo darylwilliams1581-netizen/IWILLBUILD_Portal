@@ -639,3 +639,44 @@ describe('N6 — Acceptance: Word import writes builder_json blocks, never html_
     expect(formData.get('mode')).not.toBe('convert_html');
   });
 });
+
+// ─── D21: Non-JSON 503 response shows real status, not SyntaxError ────────────
+//
+// Root cause: when the proxy kills a timed-out request it returns a plain-text
+// "Service Unavailable" body. The old code called res.json() unconditionally,
+// which threw a SyntaxError that was caught as a generic "Network error".
+// The fix wraps res.json() in a try/catch and surfaces the real HTTP status.
+
+describe('D21 — non-JSON 503 response shows real status, not SyntaxError', () => {
+  it('shows "Server error (503 ...)" when server returns plain-text body', async () => {
+    fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      // json() throws — simulates a plain-text response body
+      json: async () => { throw new SyntaxError('Unexpected token S'); },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { onOpenInStudio, onClose } = renderImporter();
+    await selectFileAndImport(makeDocxFile());
+    await waitFor(() => {
+      const el = screen.getByTestId('error-message');
+      expect(el.textContent).toContain('503');
+      expect(el.textContent).not.toContain('SyntaxError');
+      expect(el.textContent).not.toContain('Unexpected token');
+    });
+    expect(onOpenInStudio).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('shows "Failed to fetch" message on network rejection', async () => {
+    fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    renderImporter();
+    await selectFileAndImport(makeDocxFile());
+    await waitFor(() => {
+      const el = screen.getByTestId('error-message');
+      expect(el.textContent).toContain('Failed to fetch');
+    });
+  });
+});

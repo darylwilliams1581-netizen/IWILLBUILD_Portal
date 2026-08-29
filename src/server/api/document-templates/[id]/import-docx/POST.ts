@@ -305,13 +305,18 @@ function parseOrderedNumIds(xml: string): Set<string> {
 function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: string[]): DocumentBlock[] {
   const blocks: DocumentBlock[] = [];
 
-  // Extract the body content
-  const bodyMatch = /<w:body>([\s\S]*?)<\/w:body>/.exec(xml);
-  if (!bodyMatch) {
+  // Extract the body content using indexOf/slice — avoids [\s\S]*? on a multi-MB string
+  // which causes catastrophic backtracking and proxy timeouts on large DOCX files.
+  const BODY_OPEN  = '<w:body>';
+  const BODY_CLOSE = '</w:body>';
+  const bodyStart = xml.indexOf(BODY_OPEN);
+  if (bodyStart === -1) {
     warnings.push('Could not find document body');
     return blocks;
   }
-  const body = bodyMatch[1];
+  const contentStart = bodyStart + BODY_OPEN.length;
+  const bodyEnd = xml.lastIndexOf(BODY_CLOSE); // lastIndexOf: safe even if tag appears in comments
+  const body = bodyEnd > contentStart ? xml.slice(contentStart, bodyEnd) : xml.slice(contentStart);
 
   // Expand content controls (w:sdt) at the body level before splitting
   const expandedBody = expandSdtElements(body);
@@ -436,12 +441,90 @@ function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: str
   return blocks;
 }
 
-/** Expand top-level w:sdt content controls into their inner content */
+/** Expand top-level w:sdt content controls into their inner content.
+ *  Uses split-on-close-tag to avoid [\s\S]*? on the full body string.
+ */
 function expandSdtElements(body: string): string {
-  return body.replace(/<w:sdt[ >]([\s\S]*?)<\/w:sdt>/g, (_, inner) => {
-    const contentMatch = /<w:sdtContent>([\s\S]*?)<\/w:sdtContent>/.exec(inner);
-    return contentMatch ? contentMatch[1] : '';
-  });
+  // Fast path: no content controls present
+  if (!body.includes('<w:sdt')) return body;
+
+  const SDT_OPEN    = '<w:sdt>';
+  const SDT_OPEN_SP = '<w:sdt ';
+  const SDT_CLOSE   = '</w:sdt>';
+  const CONTENT_OPEN  = '<w:sdtContent>';
+  const CONTENT_CLOSE = '</w:sdtContent>';
+
+  const parts: string[] = [];
+  let pos = 0;
+
+  while (pos < body.length) {
+    // Find next <w:sdt> or <w:sdt ...>
+    const openA = body.indexOf(SDT_OPEN, pos);
+    const openB = body.indexOf(SDT_OPEN_SP, pos);
+    let sdtStart = -1;
+    if (openA !== -1 && openB !== -1) sdtStart = Math.min(openA, openB);
+    else if (openA !== -1) sdtStart = openA;
+    else if (openB !== -1) sdtStart = openB;
+
+    if (sdtStart === -1) {
+      // No more sdt elements — append remainder
+      parts.push(body.slice(pos));
+      break;
+    }
+
+    // Append everything before this sdt
+    parts.push(body.slice(pos, sdtStart));
+
+    // Find the matching </w:sdt> — must handle nesting
+    let depth = 1;
+    let searchPos = sdtStart + SDT_OPEN.length; // advance past the opening tag chars
+    // Advance past the actual opening tag (may be <w:sdt ...>)
+    const tagEnd = body.indexOf('>', sdtStart);
+    if (tagEnd !== -1) searchPos = tagEnd + 1;
+
+    while (depth > 0 && searchPos < body.length) {
+      // IMPORTANT: search for '<w:sdt>' or '<w:sdt ' only — NOT '<w:sdt' which
+      // would also match '<w:sdtContent>' and '<w:sdtPr>', causing depth overcounting.
+      const nextOpenA = body.indexOf(SDT_OPEN, searchPos);
+      const nextOpenB = body.indexOf(SDT_OPEN_SP, searchPos);
+      let nextOpen = -1;
+      if (nextOpenA !== -1 && nextOpenB !== -1) nextOpen = Math.min(nextOpenA, nextOpenB);
+      else if (nextOpenA !== -1) nextOpen = nextOpenA;
+      else if (nextOpenB !== -1) nextOpen = nextOpenB;
+
+      const nextClose = body.indexOf(SDT_CLOSE, searchPos);
+      if (nextClose === -1) { searchPos = body.length; break; }
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        // Advance past the nested open tag
+        const nestedEnd = body.indexOf('>', nextOpen);
+        searchPos = nestedEnd !== -1 ? nestedEnd + 1 : nextOpen + 6;
+      } else {
+        depth--;
+        if (depth === 0) {
+          // Extract inner content of this sdt
+          const sdtInner = body.slice(sdtStart, nextClose + SDT_CLOSE.length);
+          const cStart = sdtInner.indexOf(CONTENT_OPEN);
+          if (cStart !== -1) {
+            const cEnd = sdtInner.indexOf(CONTENT_CLOSE, cStart + CONTENT_OPEN.length);
+            if (cEnd !== -1) {
+              parts.push(sdtInner.slice(cStart + CONTENT_OPEN.length, cEnd));
+            }
+          }
+          pos = nextClose + SDT_CLOSE.length;
+        } else {
+          searchPos = nextClose + SDT_CLOSE.length;
+        }
+      }
+    }
+
+    if (depth !== 0) {
+      // Malformed — skip to end
+      pos = body.length;
+    }
+  }
+
+  return parts.join('');
 }
 
 // ── Split body into paragraph/table elements ──────────────────────────────────
