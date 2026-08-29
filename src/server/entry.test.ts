@@ -69,6 +69,9 @@ vi.mock('/app/src/server/lib/purchase-order-pdf-document.js', async () => {
   return import('../test/stubs/purchase-order-pdf-document.stub');
 });
 
+// import-pdf handler — stubs out pdf-source-storage and pdf-page-count deps
+vi.mock('./api/document-templates/[id]/import-pdf/POST', () => ({ default: async () => {} }));
+
 // Finance PO handlers — stub the entire modules so entry.ts can import them
 // without triggering the po-auth/po-service import chain
 vi.mock('./api/finance/purchase-orders/GET', () => ({ default: async () => {} }));

@@ -1,14 +1,14 @@
 /**
- * DocxImporter — focused tests for the convert_html-first redesign
- * ─────────────────────────────────────────────────────────────────
- * D1  Default mode — convert_html is the default; import button says "Import and edit in Studio"
+ * DocxImporter — focused tests for the convert_blocks_v2 architecture
+ * ─────────────────────────────────────────────────────────────────────
+ * D1  Default mode — convert_blocks_v2 is the default; import button says "Import and edit in Studio"
  * D2  Default mode — no keep_word radio visible at top level (collapsed in Advanced)
- * D3  convert_html request — POST sends mode=convert_html
- * D4  convert_html success — onOpenInStudio called with htmlContent, importCss, importReport, id
- * D5  convert_html success — onClose NOT called (parent handles close via onOpenInStudio)
- * D6  convert_html success — modal does NOT navigate or show source-preview panel
- * D7  Filename title — sourceFileName from response passed to onOpenInStudio
- * D8  Filename fallback — file.name used when server omits sourceFileName
+ * D3  convert_blocks_v2 request — POST sends mode=convert_blocks_v2
+ * D4  convert_blocks_v2 success — preview step shown; onImported NOT called yet (waits for Apply)
+ * D5  convert_blocks_v2 success — onOpenInStudio NOT called
+ * D6  convert_blocks_v2 success — no navigation
+ * D7  Filename title — sourceDocxName from response shown in preview step
+ * D8  Filename fallback — file.name used when server omits sourceDocxName
  * D9  Advanced section — collapsed by default; keep_word toggle inside
  * D10 Advanced recovery path — toggling keep_word changes button label and sends keep_word mode
  * D11 keep_word success — onClose called; onOpenInStudio NOT called
@@ -24,18 +24,18 @@
  *
  * NewDocumentModal — Word path tests
  * ────────────────────────────────────
- * N1  Word path sends mode=convert_html
+ * N1  Word path sends mode=convert_blocks_v2 (never convert_html)
  * N2  Word path navigates to /studio/builder/:id on success
  * N3  Word path does NOT call onSaved (that is PDF-only)
  * N4  Word path error — modal stays open with error; no navigation
  * N5  .dotx accepted in NewDocumentModal Word path
+ * N6  Acceptance — Word import: no html_content written, builder_json blocks patched, BlockCanvas opened
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import DocxImporter, { type ConvertHtmlResult } from '../DocxImporter';
-import type { ImportReport } from '../types';
+import DocxImporter from '../DocxImporter';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -58,22 +58,6 @@ afterEach(() => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TEMPLATE_ID = 55;
-
-const IMPORT_REPORT: ImportReport = {
-  messageCount: 2,
-  warnings: ['Custom style dropped'],
-  imageCount: 1,
-  pageBreakCount: 0,
-  hadUnsupported: false,
-};
-
-const CONVERT_HTML_RESPONSE = {
-  mode: 'convert_html',
-  htmlContent: '<h1>Title</h1><p>Body text</p>',
-  importCss: '.studio-doc[data-doc-id="55"] p { margin: 0; }',
-  importReport: IMPORT_REPORT,
-  sourceFileName: 'My Safety Plan.docx',
-};
 
 function makeDocxFile(name = 'test.docx') {
   return new File(['PK...'], name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
@@ -381,7 +365,7 @@ describe('D15 — invalid file type rejected without fetch', () => {
 
 describe('D16 — .dotx files accepted', () => {
   it('.dotx does not show a validation error', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'template.dotx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
     const input = getFileInput();
@@ -393,11 +377,11 @@ describe('D16 — .dotx files accepted', () => {
   });
 
   it('.dotx file is sent to the import endpoint', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'template.dotx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
-    const { onOpenInStudio } = renderImporter();
+    renderImporter();
     await selectFileAndImport(makeDotxFile());
-    await waitFor(() => expect(onOpenInStudio).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [url] = fetchMock.mock.calls[0] as [string];
     expect(url).toContain('/import-docx');
   });
@@ -407,7 +391,7 @@ describe('D16 — .dotx files accepted', () => {
 
 describe('D17 — no Gotenberg or preview fetch', () => {
   it('does not call any /gotenberg or /preview endpoint', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
     await selectFileAndImport(makeDocxFile());
@@ -420,13 +404,12 @@ describe('D17 — no Gotenberg or preview fetch', () => {
 // ─── D18: No source-preview panel ────────────────────────────────────────────
 
 describe('D18 — no SourceDocumentPanel rendered after success', () => {
-  it('no source-document-panel element after convert_html success', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+  it('no source-document-panel element after convert_blocks_v2 success', async () => {
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
     await selectFileAndImport(makeDocxFile());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    // SourceDocumentPanel would have a data-testid or a recognisable heading
     expect(document.querySelector('[data-testid="source-document-panel"]')).toBeNull();
   });
 });
@@ -462,26 +445,26 @@ describe('D19 — PDF path goes to block-canvas preview step', () => {
 // ─── D20: onSaveFirst called when templateId is null ─────────────────────────
 
 describe('D20 — onSaveFirst called when templateId is null', () => {
-  it('calls onSaveFirst and uses returned id', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+  it('calls onSaveFirst and uses returned id for the import endpoint', async () => {
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     const onSaveFirst = vi.fn().mockResolvedValue(99);
-    const { onOpenInStudio } = renderImporter({ templateId: null, onSaveFirst });
+    renderImporter({ templateId: null, onSaveFirst });
     await selectFileAndImport(makeDocxFile());
     await waitFor(() => expect(onSaveFirst).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(onOpenInStudio).toHaveBeenCalledTimes(1));
-    const result = onOpenInStudio.mock.calls[0][0] as ConvertHtmlResult;
-    expect(result.id).toBe(99);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain('/99/import-docx');
   });
 
-  it('shows error and does not call onOpenInStudio when onSaveFirst returns null', async () => {
+  it('shows error and does not call fetch when onSaveFirst returns null', async () => {
     const onSaveFirst = vi.fn().mockResolvedValue(null);
-    const { onOpenInStudio } = renderImporter({ templateId: null, onSaveFirst });
+    renderImporter({ templateId: null, onSaveFirst });
     await selectFileAndImport(makeDocxFile());
     await waitFor(() =>
       expect(screen.getByTestId('error-message').textContent).toContain('Could not save'),
     );
-    expect(onOpenInStudio).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -513,24 +496,25 @@ async function ndmSelectWordFile(file: File) {
   });
 }
 
-describe('N1 — NewDocumentModal Word path sends mode=convert_html', () => {
-  it('POST body contains mode=convert_html', async () => {
+describe('N1 — NewDocumentModal Word path sends mode=convert_blocks_v2', () => {
+  it('POST body contains mode=convert_blocks_v2 (never convert_html)', async () => {
     // First fetch: createPlaceholder → returns id
-    // Second fetch: import-docx → returns convert_html response
+    // Second fetch: import-docx → returns convert_blocks_v2 response
+    // Third fetch: PATCH builder_json
     fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_html', htmlContent: '<p>x</p>', importCss: '', importReport: null }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
 
-    // Click the Word card to trigger file picker
     const wordCard = screen.getByText('Import Word Document').closest('button')!;
     await act(async () => { fireEvent.click(wordCard); });
     await ndmSelectWordFile(makeDocxFile());
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     const [, opts] = fetchMock.mock.calls[1] as [string, RequestInit & { body: FormData }];
-    expect((opts.body as FormData).get('mode')).toBe('convert_html');
+    expect((opts.body as FormData).get('mode')).toBe('convert_blocks_v2');
   });
 });
 
@@ -538,7 +522,8 @@ describe('N2 — NewDocumentModal Word path navigates to /studio/builder/:id', (
   it('navigates to /studio/builder/77 on success', async () => {
     fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_html', htmlContent: '<p>x</p>', importCss: '', importReport: null }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
     const wordCard = screen.getByText('Import Word Document').closest('button')!;
@@ -552,7 +537,8 @@ describe('N3 — NewDocumentModal Word path does NOT call onSaved', () => {
   it('onSaved not called for Word path', async () => {
     fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_html', htmlContent: '<p>x</p>', importCss: '', importReport: null }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
     const { onSaved } = renderNDM();
     const wordCard = screen.getByText('Import Word Document').closest('button')!;
@@ -584,7 +570,8 @@ describe('N5 — NewDocumentModal accepts .dotx', () => {
   it('.dotx file is sent to import-docx endpoint', async () => {
     fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 88 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_html', htmlContent: '<p>x</p>', importCss: '', importReport: null }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
     const wordCard = screen.getByText('Import Word Document').closest('button')!;
@@ -593,5 +580,62 @@ describe('N5 — NewDocumentModal accepts .dotx', () => {
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/88'));
     const [url] = fetchMock.mock.calls[1] as [string];
     expect(url).toContain('/import-docx');
+  });
+});
+
+// ─── N6: Acceptance — no html_content, builder_json blocks patched, BlockCanvas ──
+
+describe('N6 — Acceptance: Word import writes builder_json blocks, never html_content', () => {
+  it('PATCH call body contains builderJson.blocks and no html_content key', async () => {
+    const blocks = [
+      { id: 'h1', type: 'heading', content: 'Safety Plan', level: 1, align: 'left' },
+      { id: 'rt1', type: 'rich_text', html: '<p>Body text</p>' },
+    ];
+    fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 42 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks, warnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+    renderNDM();
+
+    const wordCard = screen.getByText('Import Word Document').closest('button')!;
+    await act(async () => { fireEvent.click(wordCard); });
+    await ndmSelectWordFile(makeDocxFile('safety-plan.docx'));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/42'));
+
+    // Verify 3 fetches: createPlaceholder, import-docx, PATCH
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    // Third call must be PATCH with builderJson
+    const [patchUrl, patchOpts] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(patchUrl).toContain('/api/document-templates/42');
+    expect(patchOpts.method).toBe('PATCH');
+    const patchBody = JSON.parse(patchOpts.body as string) as Record<string, unknown>;
+    expect(patchBody).toHaveProperty('builderJson');
+    expect((patchBody.builderJson as { blocks: unknown[] }).blocks).toHaveLength(2);
+
+    // Must NOT contain html_content anywhere in the PATCH body
+    expect(JSON.stringify(patchBody)).not.toContain('html_content');
+    expect(JSON.stringify(patchBody)).not.toContain('htmlContent');
+    expect(JSON.stringify(patchBody)).not.toContain('source_type');
+  });
+
+  it('import-docx call uses mode=convert_blocks_v2, not convert_html', async () => {
+    fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 43 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+    renderNDM();
+
+    const wordCard = screen.getByText('Import Word Document').closest('button')!;
+    await act(async () => { fireEvent.click(wordCard); });
+    await ndmSelectWordFile(makeDocxFile());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+
+    const [, importOpts] = fetchMock.mock.calls[1] as [string, RequestInit & { body: FormData }];
+    const formData = importOpts.body as FormData;
+    expect(formData.get('mode')).toBe('convert_blocks_v2');
+    expect(formData.get('mode')).not.toBe('convert_html');
   });
 });

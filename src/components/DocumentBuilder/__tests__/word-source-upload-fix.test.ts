@@ -1,44 +1,44 @@
 /**
- * Word Source upload — updated tests for convert_html-first redesign
+ * Word Source upload — updated tests for convert_blocks_v2 architecture
  *
  * NewDocumentModal:
  *   1. onSaved prop still present (used for PDF path)
- *   2. Word path sends mode=convert_html and navigates to Studio on success
- *   3. Word path uses filename-without-extension as document name
+ *   2. Word path sends mode=convert_blocks_v2 (never convert_html)
+ *   3. Word path verifies server returned mode=convert_blocks_v2
  *   4. Word path does NOT call onSaved (PDF-only)
  *   5. studio-documents passes onSaved to NewDocumentModal and calls load() + setSourcePanel
  *   6–9. SourceDocumentPanel viewer (unchanged)
  *   10–11. import-docx POST handler (unchanged)
  *   12. pdf-preview endpoint returns 503 (unchanged)
  *   13–14. Route registration (unchanged)
- *   15. DocxImporter: convert_html is the default; keep_word is in Advanced section
+ *   15. DocxImporter: convert_blocks_v2 is the default; keep_word is in Advanced section
  */
 
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs/promises';
 
 // ── 1–4. NewDocumentModal ─────────────────────────────────────────────────────
-describe('NewDocumentModal — Word path (convert_html)', () => {
+describe('NewDocumentModal — Word path (convert_blocks_v2)', () => {
   it('onSaved prop still present in interface (used for PDF path)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
     expect(src).toContain('onSaved?:');
     expect(src).toContain("sourceType: 'docx' | 'pdf'");
   });
 
-  it('Word path sends mode=convert_html', async () => {
+  it('Word path sends mode=convert_blocks_v2 (never convert_html)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("formData.append('mode', 'convert_html')");
+    expect(src).toContain("formData.append('mode', 'convert_blocks_v2')");
+    expect(src).not.toContain("formData.append('mode', 'convert_html')");
   });
 
-  it('Word path verifies server returned mode=convert_html', async () => {
+  it('Word path verifies server returned mode=convert_blocks_v2', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("data.mode !== 'convert_html'");
-    expect(src).toContain('Server did not convert the document');
+    expect(src).toContain("data.mode !== 'convert_blocks_v2'");
+    expect(src).toContain('Server did not convert the document to blocks');
   });
 
   it('uses filename without extension as document name', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    // docName derived from file.name with extension stripped
     expect(src).toContain("file.name.replace(/\\.(docx|dotx)$/i, '')");
     expect(src).toContain('createPlaceholder(docName)');
   });
@@ -50,7 +50,6 @@ describe('NewDocumentModal — Word path (convert_html)', () => {
 
   it('Word path does NOT call onSaved', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    // handleWordFile should not contain onSaved — that is PDF-only
     const wordFnBlock = src.slice(
       src.indexOf('async function handleWordFile'),
       src.indexOf('async function handlePdfFile'),
@@ -66,6 +65,19 @@ describe('NewDocumentModal — Word path (convert_html)', () => {
   it('accepts .dotx in addition to .docx', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
     expect(src).toContain('.docx,.dotx');
+  });
+
+  it('Word path writes blocks via PATCH to builder_json (never html_content)', async () => {
+    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
+    expect(src).toContain('builderJson');
+    expect(src).toContain("method: 'PATCH'");
+    // Must not write html_content in the Word path
+    const wordFnBlock = src.slice(
+      src.indexOf('async function handleWordFile'),
+      src.indexOf('async function handlePdfFile'),
+    );
+    expect(wordFnBlock).not.toContain('html_content');
+    expect(wordFnBlock).not.toContain('htmlContent');
   });
 });
 

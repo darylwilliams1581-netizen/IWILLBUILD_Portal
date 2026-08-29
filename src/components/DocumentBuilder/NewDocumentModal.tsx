@@ -4,18 +4,19 @@
  * Four creation paths:
  *   1. Choose Library Template  — opens the Library tab
  *   2. Upload Word (.docx/.dotx) — creates a placeholder doc, converts DOCX to
- *                                  an editable HTML canvas (convert_html mode),
- *                                  then navigates directly to Studio builder.
- *                                  The original .docx is kept as a silent
- *                                  recovery copy. No source-preview panel.
+ *                                  semantically-grouped builder blocks
+ *                                  (convert_blocks_v2 mode), writes them as
+ *                                  builder_json, then navigates to the standard
+ *                                  block-canvas Studio builder.
+ *                                  Never writes html_content or source_type='html'.
  *   3. Upload PDF               — creates a placeholder doc, stores as PDF
  *                                 source (keep_word equivalent), calls onSaved
  *                                 so the list refreshes.
  *   4. Blank Studio Canvas      — creates an empty doc and navigates to builder.
  *
  * Word is an import format, not a live editing format. The recommended path
- * converts the file and opens Studio immediately. There is no intermediate
- * "source preview" step for Word.
+ * converts the file to blocks and opens the block-canvas Studio immediately.
+ * There is no intermediate "source preview" step for Word.
  */
 
 import { useRef, useState } from 'react';
@@ -25,7 +26,7 @@ import {
   Loader2, AlertCircle, ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import type { ImportReport } from './types';
+import type { DocumentBlock } from './types';
 
 interface Props {
   onClose: () => void;
@@ -62,7 +63,7 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
     return data.id ?? null;
   }
 
-  // ── Handle Word upload — convert_html → navigate to Studio ───────────────
+  // ── Handle Word upload — convert_blocks_v2 → write builder_json → navigate ──
   async function handleWordFile(file: File) {
     setLoading(true);
     setError(null);
@@ -71,9 +72,10 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       const id = await createPlaceholder(docName);
       if (!id) throw new Error('Could not create document placeholder — please try again');
 
+      // Step 1: convert DOCX → semantically-grouped builder blocks
       const formData = new FormData();
       formData.append('docx', file);
-      formData.append('mode', 'convert_html');
+      formData.append('mode', 'convert_blocks_v2');
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 60_000);
@@ -96,17 +98,30 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
 
       const data = await res.json() as {
         mode?: string;
-        htmlContent?: string;
-        importCss?: string;
-        importReport?: ImportReport | null;
+        blocks?: DocumentBlock[];
+        warnings?: string[];
         error?: string;
       };
       if (data.error) throw new Error(data.error);
-      if (data.mode !== 'convert_html') {
-        throw new Error('Server did not convert the document — please try again');
+      if (data.mode !== 'convert_blocks_v2') {
+        throw new Error('Server did not convert the document to blocks — please try again');
       }
 
-      // Navigate directly to Studio — import report shown inside the canvas
+      // Step 2: write the blocks to builder_json via PATCH
+      // (the placeholder already exists; we just update its blocks)
+      const blocks: DocumentBlock[] = data.blocks ?? [];
+      const patchRes = await fetch(`/api/document-templates/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ builderJson: { blocks } }),
+      });
+      if (!patchRes.ok) {
+        const patchData = await patchRes.json() as { error?: string };
+        throw new Error(patchData.error ?? `Could not save blocks (HTTP ${patchRes.status})`);
+      }
+
+      // Navigate to the standard block-canvas builder — no HtmlDocumentCanvas
       onClose();
       navigate(`/studio/builder/${id}`);
     } catch (err) {
@@ -228,7 +243,7 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       iconColor: 'text-blue-600',
       iconBg: 'bg-blue-50 border-blue-200',
       title: 'Import Word Document',
-      description: 'Upload a .docx or .dotx file — converted to an editable Studio canvas immediately',
+      description: 'Upload a .docx or .dotx file — converted to editable Studio blocks immediately',
     },
     {
       id: 'pdf',

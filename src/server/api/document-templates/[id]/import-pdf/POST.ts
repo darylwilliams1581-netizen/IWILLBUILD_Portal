@@ -23,8 +23,8 @@ import { sql } from 'drizzle-orm';
 import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { nanoid } from 'nanoid';
 import type { DocumentBlock, PdfPageBlock } from '../../../../../components/DocumentBuilder/types.js';
-import { savePdfSource, getPdfDownloadUrl } from '../../../../../lib/pdf-source-storage.js';
-import { detectPdfPageCount } from '../../../../../lib/pdf-page-count.js';
+import { savePdfSource, getPdfDownloadUrl } from '../../../../lib/pdf-source-storage.js';
+import { detectPdfPageCount } from '../../../../lib/pdf-page-count.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
