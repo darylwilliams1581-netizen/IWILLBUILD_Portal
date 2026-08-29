@@ -167,8 +167,16 @@ export default async function handler(req: Request, res: Response) {
     });
   } catch (err) {
     console.error('POST /api/document-templates/:id/import-docx error:', err);
-    const msg = err instanceof Error ? err.message : String(err);
-    return res.status(500).json({ error: `Failed to parse DOCX file: ${msg}` });
+    const raw = err instanceof Error ? err.message : String(err);
+    let msg = `Failed to parse DOCX file: ${raw}`;
+    if (/corrupted zip/i.test(raw) || /missing \d+ bytes/i.test(raw)) {
+      msg = 'The file appears to be corrupted or incomplete. Re-save the document in Word and try again.';
+    } else if (/not a valid docx/i.test(raw) || /document\.xml not found/i.test(raw)) {
+      msg = 'This file is not a valid Word document (.docx). Make sure you are uploading a .docx file saved by Microsoft Word or Google Docs.';
+    } else if (/password/i.test(raw) || /encrypted/i.test(raw)) {
+      msg = 'This document is password-protected. Remove the password in Word and try again.';
+    }
+    return res.status(500).json({ error: msg });
   }
 }
 
