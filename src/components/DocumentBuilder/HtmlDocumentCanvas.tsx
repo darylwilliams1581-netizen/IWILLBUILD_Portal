@@ -275,12 +275,19 @@ export default function HtmlDocumentCanvas({
 
       {/* ── Scrollable canvas area ────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto py-8 px-4" data-testid="canvas-scroll">
+        {/*
+         * Canvas page dimensions mirror A4 at 96 dpi (794 × 1123 px).
+         * Padding is reduced to ~7 mm (26 px) so the visible canvas margins
+         * are tight and consistent with the 8 mm print margins.
+         * The .studio-doc root fills the full padded width so imported
+         * content never overflows horizontally.
+         */}
         <div
           className="mx-auto bg-white shadow-lg rounded-sm"
           style={{
             width:     `${Math.round(794  * zoom / 100)}px`,
             minHeight: `${Math.round(1123 * zoom / 100)}px`,
-            padding:   `${Math.round(48   * zoom / 100)}px`,
+            padding:   `${Math.round(26   * zoom / 100)}px`,
           }}
         >
           {/*
@@ -322,14 +329,70 @@ export default function HtmlDocumentCanvas({
  * then append the import_css from the converter.
  * All rules are scoped to .studio-doc[data-doc-id="<id>"] so they never
  * leak into surrounding UI.
+ *
+ * Layout goals
+ * ────────────
+ * • Canvas: ~7 mm visible margins (padding set on the wrapper div).
+ * • Print:  8 mm @page margins; row controls and Studio chrome hidden.
+ * • Tables: fluid width (max-width: 100%), cells word-wrap, no fixed
+ *   widths that cause horizontal clipping.
+ * • Images / banners: max-width: 100%, height: auto.
+ * • box-sizing: border-box on everything inside the scope so padding
+ *   never pushes content outside the printable width.
  */
 function buildScopedStyles(docId: string, importCss: string): string {
   const scope = `.studio-doc[data-doc-id="${docId}"]`;
-  const printRules = `
-@media print {
-  ${scope} .page-break { page-break-after: always; break-after: page; }
-  ${scope} { margin: 0; padding: 0; }
+
+  // ── Base layout rules (canvas + print) ────────────────────────────────────
+  const baseRules = `
+/* ── box-sizing reset inside canvas ─────────────────────────────────────── */
+${scope}, ${scope} * {
+  box-sizing: border-box;
 }
+
+/* ── constrain all block-level and replaced content ─────────────────────── */
+${scope} img,
+${scope} figure,
+${scope} svg,
+${scope} video,
+${scope} canvas,
+${scope} .banner,
+${scope} [class*="banner"],
+${scope} [class*="header-image"],
+${scope} [class*="logo"] {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── tables: fluid, no fixed widths, cells wrap ─────────────────────────── */
+${scope} table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  /* strip any fixed min-width injected by the converter */
+  min-width: 0 !important;
+}
+${scope} table[style*="width"] {
+  /* override inline fixed widths from DOCX converter */
+  width: 100% !important;
+  max-width: 100% !important;
+}
+${scope} col[style*="width"],
+${scope} colgroup col {
+  /* allow columns to flex rather than enforce DOCX pixel widths */
+  width: auto !important;
+}
+${scope} td,
+${scope} th {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  /* remove any min-width that forces horizontal scroll */
+  min-width: 0 !important;
+  max-width: none;
+}
+
+/* ── page-break divs ─────────────────────────────────────────────────────── */
 ${scope} .page-break {
   border: none;
   border-top: 2px dashed #cbd5e1;
@@ -352,7 +415,70 @@ ${scope} .page-break::after {
   pointer-events: none;
 }
 `.trim();
-  return importCss ? `${printRules}\n${importCss}` : printRules;
+
+  // ── Print rules ───────────────────────────────────────────────────────────
+  const printRules = `
+@page {
+  size: A4;
+  margin: 8mm;
+}
+@media print {
+  /* hide Studio chrome */
+  .html-canvas-row-controls,
+  .${ROW_CTRL_CLASS},
+  [data-testid="row-controls"],
+  [data-testid="canvas-scroll"] > *:not(.mx-auto),
+  .studio-doc-toolbar,
+  .document-actions-widget {
+    display: none !important;
+  }
+
+  /* page-break support */
+  ${scope} .page-break {
+    page-break-after: always;
+    break-after: page;
+    border: none;
+    margin: 0;
+  }
+  ${scope} .page-break::after {
+    display: none;
+  }
+
+  /* canvas root: no extra margin/padding — @page handles margins */
+  ${scope} {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* keep tables and images within printable width */
+  ${scope} table {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+  }
+  ${scope} img,
+  ${scope} figure,
+  ${scope} svg,
+  ${scope} .banner,
+  ${scope} [class*="banner"] {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  ${scope} td,
+  ${scope} th {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    min-width: 0 !important;
+  }
+}
+`.trim();
+
+  const parts = [baseRules, printRules];
+  if (importCss) parts.push(importCss);
+  return parts.join('\n');
 }
 
 // ─── Row controls ─────────────────────────────────────────────────────────────
