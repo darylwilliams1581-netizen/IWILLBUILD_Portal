@@ -202,14 +202,14 @@ export default function DocxImporter({
         clearTimeout(timeoutId);
       }
 
-      const data = await res.json() as {
+      // Guard: if the server returned a non-JSON body (e.g. 503 Service Unavailable),
+      // res.json() would throw a SyntaxError. Parse safely and surface the real status.
+      let data: {
         mode?: string;
-        // convert_html response fields
         htmlContent?: string;
         importCss?: string;
         importReport?: ImportReport | null;
         sourceFileName?: string;
-        // block-canvas / keep_word response fields
         blocks?: DocumentBlock[];
         sourceDocxName?: string;
         warnings?: string[];
@@ -218,10 +218,18 @@ export default function DocxImporter({
         revision?: number;
         error?: string;
       };
+      try {
+        data = await res.json() as typeof data;
+      } catch {
+        // Non-JSON response — server is likely overloaded or restarting
+        console.error('[DocxImporter] non-JSON response:', res.status, res.statusText);
+        setError(`Server error (${res.status} ${res.statusText}) — the server may be busy. Please wait a moment and try again.`);
+        return;
+      }
 
       if (!res.ok || data.error) {
         console.error('[DocxImporter] server error:', res.status, data);
-        setError(data.error ?? 'Failed to import file — please try again.');
+        setError(data.error ?? `Import failed (HTTP ${res.status}) — please try again.`);
         return;
       }
 
@@ -272,7 +280,9 @@ export default function DocxImporter({
       if (err instanceof Error && err.name === 'AbortError') {
         setError('Upload timed out — the file may be too large or the server is busy. Try a smaller file.');
       } else {
-        setError('Network error — please check your connection and try again.');
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[DocxImporter] unexpected error:', msg);
+        setError(`Import failed: ${msg}`);
       }
     } finally {
       setLoading(false);
