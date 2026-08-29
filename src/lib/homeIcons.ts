@@ -128,7 +128,7 @@ export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
   { key: 'messages',       label: 'Messages',    icon: MessageSquare,      href: '/messages',    bg: 'bg-green-500',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'invoices_field', label: 'Invoices',    icon: Wallet,             href: '/invoices',    bg: 'bg-teal-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'daily_log',      label: 'Daily Log',   icon: ClipboardList,      href: '/daily-log',   bg: 'bg-violet-500', fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'weather',        label: 'Weather',     icon: CloudRain,          href: '/weather',     bg: 'bg-cyan-400',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
+  // Weather intentionally removed — feature was cancelled
 ];
 
 // ── Flat list of ALL icons (used for permission grid) ─────────────────────────
