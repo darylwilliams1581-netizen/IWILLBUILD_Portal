@@ -707,6 +707,9 @@ export default function StudioDocumentsPage() {
         {pageTab === 'reports' && <button onClick={() => setShowReportModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors shrink-0">
             <FileText size={14} /><span className="hidden sm:inline">Generate Job Report</span>
           </button>}
+        {pageTab === 'documents' && <button onClick={() => setShowNewDocModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors shrink-0">
+            <Plus size={14} /><span className="hidden sm:inline">New document</span>
+          </button>}
       </header>
 
       {/* Tab bar — Documents / Submissions / Library / Reports */}
