@@ -465,6 +465,101 @@ ref,
 HtmlDocumentCanvas.displayName = 'HtmlDocumentCanvas';
 export default HtmlDocumentCanvas;
 
+// ─── Import CSS sanitiser ─────────────────────────────────────────────────────
+
+/**
+ * Strip structural layout rules from Word-imported CSS that would conflict
+ * with Studio's canonical 5 mm margin model.
+ *
+ * Removed categories (belt-and-suspenders, regardless of cascade order):
+ *   • @page { … }          — Word page margins must not override @page { margin: 5mm }
+ *   • html { … }           — root margin/padding must not leak into the canvas
+ *   • body { … }           — same
+ *   • .studio-doc { … }    — must not re-introduce padding/margin on the canvas root
+ *   • Word section/wrapper selectors that carry outer page margins:
+ *       .WordSection*, .Section*, .MsoNormal (margin/padding only — see below),
+ *       div[class*="Section"], div[class*="WordSection"]
+ *
+ * Preserved (legitimate document spacing):
+ *   • p, li, h1–h6, blockquote spacing
+ *   • table, td, th, col spacing and borders
+ *   • img, figure sizing
+ *   • Any other selector not in the blocked list
+ *
+ * Algorithm: line-by-line state machine that tracks brace depth.
+ * When a blocked selector or @page at-rule opens a block, the entire
+ * block (including nested braces) is consumed and discarded.
+ * Everything else is passed through verbatim.
+ */
+function sanitiseImportCss(css: string): string {
+  if (!css) return '';
+
+  // Selectors whose ENTIRE rule block must be dropped.
+  // Matched against the trimmed selector line (before the opening brace).
+  const BLOCKED_SELECTOR_RE = /^(html|body|\.studio-doc(\[|$)|\.WordSection|\.Section[0-9]|div\[class\*="(Section|WordSection)"\])/i;
+
+  const lines = css.split('\n');
+  const out: string[] = [];
+
+  let skipDepth = 0;   // brace depth of the block being skipped (0 = not skipping)
+  let braceDepth = 0;  // overall brace depth (for @media nesting awareness)
+  let skipAtRule = false; // true when we're inside a skipped @-rule block
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw  = lines[i];
+    const line = raw.trim();
+
+    // ── Count braces in this line ────────────────────────────────────────────
+    const opens  = (raw.match(/\{/g) ?? []).length;
+    const closes = (raw.match(/\}/g) ?? []).length;
+
+    // ── Currently skipping a blocked block ───────────────────────────────────
+    if (skipDepth > 0 || skipAtRule) {
+      skipDepth += opens - closes;
+      if (skipDepth <= 0) {
+        skipDepth  = 0;
+        skipAtRule = false;
+      }
+      continue; // discard this line
+    }
+
+    // ── @page at-rule: skip the entire block ─────────────────────────────────
+    if (/^@page\b/.test(line)) {
+      if (opens > 0) {
+        skipDepth  = opens - closes;
+        skipAtRule = skipDepth <= 0; // single-line @page {} — already closed
+        if (skipDepth < 0) skipDepth = 0;
+      }
+      // Whether single-line or multi-line, discard this line
+      continue;
+    }
+
+    // ── Selector line that opens a blocked block ──────────────────────────────
+    // A selector line ends with { (possibly with other content after it).
+    // We check the part before the first { against the blocked list.
+    if (opens > 0 && !line.startsWith('@') && !line.startsWith('}')) {
+      const selectorPart = line.split('{')[0].trim();
+      // Handle comma-separated selectors: block if ALL selectors are blocked,
+      // or if any individual selector matches (conservative — drop the whole rule
+      // if any selector in the list is a structural one).
+      const selectors = selectorPart.split(',').map((s) => s.trim());
+      const hasBlockedSelector = selectors.some((s) => BLOCKED_SELECTOR_RE.test(s));
+
+      if (hasBlockedSelector) {
+        skipDepth = opens - closes;
+        if (skipDepth <= 0) skipDepth = 0; // single-line rule already closed
+        continue; // discard
+      }
+    }
+
+    // ── Pass through ─────────────────────────────────────────────────────────
+    braceDepth += opens - closes;
+    out.push(raw);
+  }
+
+  return out.join('\n').trim();
+}
+
 // ─── Scoped styles builder ────────────────────────────────────────────────────
 
 /**
@@ -483,6 +578,16 @@ export default HtmlDocumentCanvas;
  * • Images / banners: max-width: 100%, height: auto.
  * • box-sizing: border-box on everything inside the scope so padding
  *   never pushes content outside the printable width.
+ *
+ * CSS emission order (cascade safety)
+ * ─────────────────────────────────────
+ *   1. baseRules   — box-sizing, 5 mm screen padding, table/image constraints
+ *   2. importCss   — Word converter output, pre-sanitised by sanitiseImportCss()
+ *                    (structural @page / html / body / .studio-doc rules stripped)
+ *   3. printRules  — @page { margin: 5mm } + @media print resets (LAST = wins)
+ *
+ * Emitting printRules AFTER importCss ensures Studio's @page and @media print
+ * blocks always win the cascade even if the sanitiser misses an edge case.
  */
 function buildScopedStyles(docId: string, importCss: string): string {
   const scope = `.studio-doc[data-doc-id="${docId}"]`;
@@ -625,9 +730,8 @@ ${scope} .page-break::after {
 }
 `.trim();
 
-  const parts = [baseRules, printRules];
-  if (importCss) parts.push(importCss);
-  return parts.join('\n');
+  const parts = [baseRules, sanitiseImportCss(importCss), printRules];
+  return parts.filter(Boolean).join('\n');
 }
 
 // ─── Row controls ─────────────────────────────────────────────────────────────

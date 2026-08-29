@@ -11,10 +11,11 @@
  * P8  Table cells word-break and overflow-wrap set
  * P9  @page size A4 rule present in print CSS
  * P10 Row controls hidden on print
- * P11 importCss is appended after base + print rules
+ * P11 importCss is emitted BETWEEN base rules and print rules (cascade order)
  * P12 buildScopedStyles is pure — no global side-effects
  * P13 .studio-doc has 5 mm internal padding in scoped CSS (on-screen)
  * P14 Print CSS removes .studio-doc padding to prevent double margin
+ * P15 Imported Word CSS structural rules are stripped (double-margin prevention)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -397,10 +398,12 @@ describe('P10 — row controls hidden on print', () => {
   });
 });
 
-// ─── P11: importCss appended after base + print rules ─────────────────────────
+// ─── P11: importCss emitted between base rules and print rules ────────────────
 
-describe('P11 — importCss appended after base and print rules', () => {
-  it('importCss appears after @page and @media print blocks', () => {
+describe('P11 — importCss emitted between base rules and print rules (cascade order)', () => {
+  it('importCss appears BEFORE @page and @media print blocks', () => {
+    // New canonical order: baseRules → importCss → printRules
+    // printRules must come LAST so Studio @page / @media print always wins.
     const customCss = '/* custom-import-marker */';
     renderCanvas('<p>test</p>', customCss);
     const css = getInjectedCss(TEMPLATE_ID);
@@ -409,7 +412,20 @@ describe('P11 — importCss appended after base and print rules', () => {
     const customIdx = css.indexOf(customCss);
     expect(pageIdx).toBeGreaterThanOrEqual(0);
     expect(printIdx).toBeGreaterThanOrEqual(0);
-    expect(customIdx).toBeGreaterThan(printIdx);
+    expect(customIdx).toBeGreaterThanOrEqual(0);
+    // importCss must come BEFORE @page (which is inside printRules)
+    expect(customIdx).toBeLessThan(pageIdx);
+    // importCss must come BEFORE @media print
+    expect(customIdx).toBeLessThan(printIdx);
+  });
+
+  it('printRules appear AFTER importCss (Studio print rules win the cascade)', () => {
+    const customCss = '/* cascade-order-marker */';
+    renderCanvas('<p>test</p>', customCss);
+    const css = getInjectedCss(TEMPLATE_ID);
+    const customIdx = css.indexOf(customCss);
+    const printIdx  = css.lastIndexOf('@media print');
+    expect(customIdx).toBeLessThan(printIdx);
   });
 
   it('when importCss is empty, output still contains base and print rules', () => {
@@ -537,5 +553,140 @@ describe('P14 — print CSS removes .studio-doc padding to prevent double margin
     const printStart = css.indexOf('@media print');
     const afterPrint = css.slice(printStart);
     expect(afterPrint).toMatch(/padding:\s*0\s*!important/);
+  });
+});
+
+// ─── P15: Imported Word CSS structural rules are stripped ─────────────────────
+//
+// Regression test: importCss contains body { margin: 25mm; padding: 10mm },
+// @page { margin: 20mm }, and .studio-doc { padding: 15mm }.
+// The effective/final Studio rules must still provide:
+//   • screen document padding: 5mm  (from baseRules)
+//   • print document padding: 0     (from printRules @media print)
+//   • print page margin: 5mm        (from printRules @page)
+//   • no duplicate imported root/page margin survives
+// Table/cell spacing from importCss must be preserved.
+
+const HOSTILE_IMPORT_CSS = `
+body {
+  margin: 25mm;
+  padding: 10mm;
+}
+@page {
+  margin: 20mm;
+}
+.studio-doc {
+  padding: 15mm;
+}
+html {
+  margin: 30mm;
+}
+p {
+  margin-bottom: 6pt;
+  line-height: 1.4;
+}
+table {
+  border-collapse: collapse;
+}
+td, th {
+  padding: 4pt 6pt;
+  border: 1px solid #ccc;
+}
+h1 {
+  font-size: 18pt;
+  margin-bottom: 8pt;
+}
+`.trim();
+
+describe('P15 — imported Word CSS structural rules stripped (double-margin prevention)', () => {
+  it('body margin/padding from importCss is stripped', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    // The imported body rule must not survive
+    // (Studio has no body rule — any body { margin: 25mm } would be from import)
+    // We check the full CSS does not contain the hostile values
+    expect(css).not.toContain('margin: 25mm');
+    expect(css).not.toContain('padding: 10mm');
+  });
+
+  it('@page from importCss is stripped — only Studio @page { margin: 5mm } survives', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    // The hostile 20mm must not appear anywhere
+    expect(css).not.toContain('margin: 20mm');
+    // Studio 5mm must still be present
+    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*5mm/s);
+  });
+
+  it('.studio-doc padding from importCss is stripped', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    // The hostile 15mm must not appear
+    expect(css).not.toContain('padding: 15mm');
+  });
+
+  it('html margin from importCss is stripped', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).not.toContain('margin: 30mm');
+  });
+
+  it('screen document padding is still 5mm after hostile importCss', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    // baseRules 5mm padding must survive
+    expect(css).toMatch(/\.studio-doc\[data-doc-id[^\]]*\]\s*\{[^}]*padding:\s*5mm/s);
+  });
+
+  it('print document padding is still 0 after hostile importCss', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    const printStart = css.indexOf('@media print');
+    expect(printStart).toBeGreaterThanOrEqual(0);
+    const afterPrint = css.slice(printStart);
+    expect(afterPrint).toMatch(/padding:\s*0\s*!important/);
+  });
+
+  it('print page margin is still 5mm after hostile importCss', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*5mm/s);
+  });
+
+  it('legitimate paragraph spacing from importCss is preserved', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    // p rule with margin-bottom and line-height must survive
+    expect(css).toContain('margin-bottom: 6pt');
+    expect(css).toContain('line-height: 1.4');
+  });
+
+  it('legitimate table border-collapse from importCss is preserved', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).toContain('border-collapse: collapse');
+  });
+
+  it('legitimate td/th cell padding from importCss is preserved', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).toContain('padding: 4pt 6pt');
+    expect(css).toContain('border: 1px solid #ccc');
+  });
+
+  it('legitimate h1 sizing from importCss is preserved', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).toContain('font-size: 18pt');
+  });
+
+  it('Studio printRules appear AFTER the sanitised importCss (cascade wins)', () => {
+    renderCanvas('<p>test</p>', HOSTILE_IMPORT_CSS);
+    const css = getInjectedCss(TEMPLATE_ID);
+    // Find the last occurrence of a preserved import rule
+    const paraIdx  = css.indexOf('margin-bottom: 6pt');
+    const printIdx = css.lastIndexOf('@media print');
+    expect(paraIdx).toBeGreaterThanOrEqual(0);
+    expect(printIdx).toBeGreaterThan(paraIdx);
   });
 });
