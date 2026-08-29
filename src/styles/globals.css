@@ -906,7 +906,39 @@ textarea {
     /* orientation is set dynamically via JS before print — see handlePrint */
   }
 
-  /* 8. Field Docs print view — hide everything except the print overlay */
+  /* 8. PDF page blocks — hide canvas (unreliable in print), show pre-rendered image */
+  .pdf-page-block canvas {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  .pdf-page-block .pdf-print-image {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    /* Each imported PDF page starts on its own print page */
+    break-before: page !important;
+    page-break-before: always !important;
+    /* Prevent cropping */
+    object-fit: contain !important;
+    /* No double margins — the block itself has no extra padding */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* First PDF page in a sequence doesn't need a forced break before it */
+  .pdf-page-block[data-page-index="0"] .pdf-print-image {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+  /* Loading/error states are editor-only — never print */
+  .pdf-page-block [role="status"],
+  .pdf-page-block [role="alert"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 9. Field Docs print view — hide everything except the print overlay */
   .field-docs-print-view {
     position: fixed !important;
     inset: 0 !important;

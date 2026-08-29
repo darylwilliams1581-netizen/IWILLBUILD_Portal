@@ -23,41 +23,12 @@ import TableBlockView from './blocks/TableBlock';
 import ImageBlockView from './blocks/ImageBlock';
 import FieldBlockView from './blocks/FieldBlock';
 import SystemFieldBlockView from './blocks/SystemFieldBlock';
-import { FileText } from 'lucide-react';
+import PdfPageBlockViewReal from './blocks/PdfPageBlock';
+// Keep the old placeholder import for the type — the real renderer replaces it below
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type _PdfPageBlockUnused = PdfPageBlock;
 
-// ── PDF Page Block view ───────────────────────────────────────────────────────
-// Renders a placeholder representing one imported PDF page.
-// No OCR / editable text — shows page metadata and a download link.
-
-function PdfPageBlockView({ block }: { block: PdfPageBlock }) {
-  return (
-    <div
-      className="studio-no-print-bg border border-slate-200 rounded-sm bg-slate-50 flex flex-col items-center justify-center gap-2 py-6 px-4 text-center"
-      style={{ minHeight: 120 }}
-      data-testid="pdf-page-block"
-    >
-      <FileText size={28} className="text-slate-300" />
-      <div>
-        <p className="text-xs font-semibold text-slate-600">
-          {block.sourceFileName} — Page {block.pageNumber} of {block.totalPages}
-        </p>
-        <p className="text-[10px] text-slate-400 mt-0.5">
-          PDF page · move, duplicate or delete with the block controls
-        </p>
-      </div>
-      {block.downloadUrl && (
-        <a
-          href={block.downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[10px] text-primary underline hover:text-violet-700 transition-colors"
-        >
-          Download original PDF
-        </a>
-      )}
-    </div>
-  );
-}
+// ── PDF Page Block view is now in blocks/PdfPageBlock.tsx ────────────────────
 
 export type FillValues = Record<string, string | string[] | boolean | undefined>;
 
@@ -82,7 +53,7 @@ export function BlockRenderer({
   fillValues = {},
   onFillChange,
 }: Props) {
-  const { mode } = useDocumentStore();
+  const { mode, templateId } = useDocumentStore();
 
   const blockStyle: React.CSSProperties = {
     backgroundColor: block.backgroundColor ?? undefined,
@@ -133,7 +104,7 @@ export function BlockRenderer({
         />
       );
       case 'system_field':   return <SystemFieldBlockView block={effectiveBlock} />;
-      case 'pdf_page':       return <PdfPageBlockView block={effectiveBlock} />;
+      case 'pdf_page':       return <PdfPageBlockViewReal block={effectiveBlock} templateId={templateId ?? undefined} />;
       default:               return <div className="text-xs text-slate-400 p-2">Unknown block type</div>;
     }
   })();

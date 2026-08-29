@@ -232,6 +232,7 @@ import document_templates_id_export_pdf_get_198 from "./api/document-templates/[
 import document_templates_id_import_blocks_post_199 from "./api/document-templates/[id]/import-blocks/POST";
 import document_templates_id_import_docx_post_200 from "./api/document-templates/[id]/import-docx/POST";
 import document_templates_id_import_pdf_post_201 from "./api/document-templates/[id]/import-pdf/POST";
+import document_templates_id_pdf_bytes_get from "./api/document-templates/[id]/pdf-bytes/GET";
 import document_templates_id_import_auto_post from "./api/document-templates/[id]/import-auto/POST";
 import document_templates_id_source_document_get from "./api/document-templates/[id]/source-document/GET";
 import document_templates_id_source_document_download_get from "./api/document-templates/[id]/source-document/download/GET";
@@ -3481,6 +3482,7 @@ app.get("/api/document-templates/:id/export/pdf", document_templates_id_export_p
 app.post("/api/document-templates/:id/import-blocks", document_templates_id_import_blocks_post_199);
 app.post("/api/document-templates/:id/import-docx", document_templates_id_import_docx_post_200);
 app.post("/api/document-templates/:id/import-pdf", document_templates_id_import_pdf_post_201);
+app.get("/api/document-templates/:id/pdf-bytes", document_templates_id_pdf_bytes_get);
 app.post("/api/document-templates/:id/import-auto", document_templates_id_import_auto_post);
 // Source document routes — must come before the generic /:id routes to avoid param conflicts
 app.get("/api/document-templates/:id/source-document", document_templates_id_source_document_get);
