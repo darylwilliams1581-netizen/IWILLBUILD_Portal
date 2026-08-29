@@ -124,6 +124,9 @@ export default function StudioBuilderPage() {
 
   // ?mode=use opens directly in Use Mode (fill/complete); default is Build Mode
   const initialMode = searchParams.get('mode') === 'use' ? 'use' : 'build';
+
+  // ?tab=layout (or any BuilderTab) opens that sidebar tab on first load
+  const initialTab = (searchParams.get('tab') ?? undefined) as import('@/components/DocumentBuilder/types').BuilderTab | undefined;
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +231,7 @@ export default function StudioBuilderPage() {
         <link rel="canonical" href="https://iwillbuild.com/studio/builder" />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} />
+      <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} />
       <JobContextTab />
     </>;
 }

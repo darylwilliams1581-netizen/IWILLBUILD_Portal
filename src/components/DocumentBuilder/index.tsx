@@ -43,6 +43,8 @@ interface Props {
   onSaved?: (id: number) => void;
   /** Open directly in 'build' (default) or 'use' mode */
   initialMode?: 'build' | 'use';
+  /** Which sidebar tab to open on first load — passed via ?tab= query param */
+  initialTab?: BuilderTab;
 }
 
 /** Top-level mode: building the template vs using/filling it */
@@ -62,7 +64,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   handover:   'Handover',
 };
 
-export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build' }: Props) {
+export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build', initialTab }: Props) {
   const {
     isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
@@ -80,7 +82,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     (template?.docStatus as 'draft' | 'published' | 'archived') ?? 'draft'
   );
   const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
-  const [activeTab, setActiveTab]                   = useState<BuilderTab>('document_tools');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>(initialTab ?? 'document_tools');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );

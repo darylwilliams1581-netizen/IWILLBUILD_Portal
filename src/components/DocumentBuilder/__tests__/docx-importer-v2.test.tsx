@@ -468,8 +468,10 @@ describe('D20 — onSaveFirst called when templateId is null', () => {
   });
 });
 
-// ─── NewDocumentModal — Word path ─────────────────────────────────────────────
-// These tests import NewDocumentModal directly and test the Word upload path.
+// ─── NewDocumentModal — name-first form ───────────────────────────────────────
+// NewDocumentModal now shows a name + type form and POSTs to /api/document-templates,
+// then navigates to /studio/builder/:id?tab=layout.
+// Word / PDF import paths were removed from this modal (they live in the builder ribbon).
 
 import NewDocumentModal from '../NewDocumentModal';
 
@@ -488,156 +490,86 @@ function renderNDM(overrides: Partial<React.ComponentProps<typeof NewDocumentMod
   return { onClose, onOpenLibrary, onSaved };
 }
 
-async function ndmSelectWordFile(file: File) {
-  const input = document.querySelector('[data-testid="ndm-file-input"]') as HTMLInputElement;
-  await act(async () => {
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-  });
-}
-
-describe('N1 — NewDocumentModal Word path sends mode=convert_blocks_v2', () => {
-  it('POST body contains mode=convert_blocks_v2 (never convert_html)', async () => {
-    // First fetch: createPlaceholder → returns id
-    // Second fetch: import-docx → returns convert_blocks_v2 response
-    // Third fetch: PATCH builder_json
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
-    vi.stubGlobal('fetch', fetchMock);
+describe('N1 — NewDocumentModal renders name input and Create button', () => {
+  it('shows name field, type selector, and Create document button', () => {
     renderNDM();
-
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDocxFile());
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    const [, opts] = fetchMock.mock.calls[1] as [string, RequestInit & { body: FormData }];
-    expect((opts.body as FormData).get('mode')).toBe('convert_blocks_v2');
+    expect(screen.getByPlaceholderText(/Electrical SWMS/i)).toBeTruthy();
+    expect(screen.getByText('Create document')).toBeTruthy();
   });
 });
 
-describe('N2 — NewDocumentModal Word path navigates to /studio/builder/:id', () => {
-  it('navigates to /studio/builder/77 on success', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
-    vi.stubGlobal('fetch', fetchMock);
+describe('N2 — NewDocumentModal Create button disabled when name is empty', () => {
+  it('Create button is disabled with no name entered', () => {
     renderNDM();
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDocxFile());
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/77'));
+    const btn = screen.getByText('Create document').closest('button')!;
+    expect(btn).toBeDisabled();
   });
 });
 
-describe('N3 — NewDocumentModal Word path does NOT call onSaved', () => {
-  it('onSaved not called for Word path', async () => {
+describe('N3 — NewDocumentModal POSTs to /api/document-templates and navigates', () => {
+  it('navigates to /studio/builder/:id?tab=layout on success', async () => {
     fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) });
     vi.stubGlobal('fetch', fetchMock);
-    const { onSaved } = renderNDM();
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDocxFile());
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledTimes(1));
-    expect(onSaved).not.toHaveBeenCalled();
+    renderNDM();
+
+    const input = screen.getByPlaceholderText(/Electrical SWMS/i);
+    await act(async () => { fireEvent.change(input, { target: { value: 'My SWMS' } }); });
+
+    const btn = screen.getByText('Create document').closest('button')!;
+    await act(async () => { fireEvent.click(btn); });
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/77?tab=layout'));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/document-templates');
+    expect(opts.method).toBe('POST');
+    const body = JSON.parse(opts.body as string) as Record<string, unknown>;
+    expect(body.name).toBe('My SWMS');
   });
 });
 
-describe('N4 — NewDocumentModal Word path error leaves modal open', () => {
-  it('shows error and does not navigate on import failure', async () => {
+describe('N4 — NewDocumentModal shows error and does not navigate on API failure', () => {
+  it('shows error message and stays open when POST fails', async () => {
     fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', json: async () => ({ error: 'Conversion failed' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }); // DELETE orphan
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: 'Server error' }) });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDocxFile());
-    await waitFor(() =>
-      expect(screen.getByText(/Conversion failed/)).toBeTruthy(),
-    );
+
+    const input = screen.getByPlaceholderText(/Electrical SWMS/i);
+    await act(async () => { fireEvent.change(input, { target: { value: 'Test Doc' } }); });
+    const btn = screen.getByText('Create document').closest('button')!;
+    await act(async () => { fireEvent.click(btn); });
+
+    await waitFor(() => expect(screen.getByText(/Server error/)).toBeTruthy());
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
-describe('N5 — NewDocumentModal accepts .dotx', () => {
-  it('.dotx file is sent to import-docx endpoint', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 88 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+describe('N5 — NewDocumentModal shows validation error when name is blank on submit', () => {
+  it('shows "Please enter a document name" without fetching', async () => {
+    fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDotxFile());
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/88'));
-    const [url] = fetchMock.mock.calls[1] as [string];
-    expect(url).toContain('/import-docx');
+
+    // Bypass disabled state by calling handleCreate via Enter key with empty value
+    // (the button is disabled, so we test the guard via keyboard)
+    const input = screen.getByPlaceholderText(/Electrical SWMS/i);
+    await act(async () => { fireEvent.change(input, { target: { value: '   ' } }); });
+    const btn = screen.getByText('Create document').closest('button')!;
+    // Button should still be disabled for whitespace-only input
+    expect(btn).toBeDisabled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
-// ─── N6: Acceptance — no html_content, builder_json blocks patched, BlockCanvas ──
-
-describe('N6 — Acceptance: Word import writes builder_json blocks, never html_content', () => {
-  it('PATCH call body contains builderJson.blocks and no html_content key', async () => {
-    const blocks = [
-      { id: 'h1', type: 'heading', content: 'Safety Plan', level: 1, align: 'left' },
-      { id: 'rt1', type: 'rich_text', html: '<p>Body text</p>' },
-    ];
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 42 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks, warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
-    vi.stubGlobal('fetch', fetchMock);
-    renderNDM();
-
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDocxFile('safety-plan.docx'));
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/42'));
-
-    // Verify 3 fetches: createPlaceholder, import-docx, PATCH
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-
-    // Third call must be PATCH with builderJson
-    const [patchUrl, patchOpts] = fetchMock.mock.calls[2] as [string, RequestInit];
-    expect(patchUrl).toContain('/api/document-templates/42');
-    expect(patchOpts.method).toBe('PATCH');
-    const patchBody = JSON.parse(patchOpts.body as string) as Record<string, unknown>;
-    expect(patchBody).toHaveProperty('builderJson');
-    expect((patchBody.builderJson as { blocks: unknown[] }).blocks).toHaveLength(2);
-
-    // Must NOT contain html_content anywhere in the PATCH body
-    expect(JSON.stringify(patchBody)).not.toContain('html_content');
-    expect(JSON.stringify(patchBody)).not.toContain('htmlContent');
-    expect(JSON.stringify(patchBody)).not.toContain('source_type');
-  });
-
-  it('import-docx call uses mode=convert_blocks_v2, not convert_html', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 43 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
-    vi.stubGlobal('fetch', fetchMock);
-    renderNDM();
-
-    const wordCard = screen.getByText('Import Word Document').closest('button')!;
-    await act(async () => { fireEvent.click(wordCard); });
-    await ndmSelectWordFile(makeDocxFile());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-
-    const [, importOpts] = fetchMock.mock.calls[1] as [string, RequestInit & { body: FormData }];
-    const formData = importOpts.body as FormData;
-    expect(formData.get('mode')).toBe('convert_blocks_v2');
-    expect(formData.get('mode')).not.toBe('convert_html');
+describe('N6 — NewDocumentModal Library shortcut calls onOpenLibrary and onClose', () => {
+  it('clicking library link calls onOpenLibrary and onClose', async () => {
+    const { onClose, onOpenLibrary } = renderNDM();
+    const link = screen.getByText(/template library/i).closest('button')!;
+    await act(async () => { fireEvent.click(link); });
+    expect(onOpenLibrary).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 });
 

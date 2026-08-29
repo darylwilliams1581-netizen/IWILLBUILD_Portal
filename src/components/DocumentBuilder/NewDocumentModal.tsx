@@ -1,325 +1,115 @@
 /**
  * NewDocumentModal
  * ─────────────────────────────────────────────────────────────────────────────
- * Four creation paths:
- *   1. Choose Library Template  — opens the Library tab
- *   2. Upload Word (.docx/.dotx) — creates a placeholder doc, converts DOCX to
- *                                  semantically-grouped builder blocks
- *                                  (convert_blocks_v2 mode), writes them as
- *                                  builder_json, then navigates to the standard
- *                                  block-canvas Studio builder.
- *                                  Never writes html_content or source_type='html'.
- *   3. Upload PDF               — creates a placeholder doc, stores as PDF
- *                                 source (keep_word equivalent), calls onSaved
- *                                 so the list refreshes.
- *   4. Blank Studio Canvas      — creates an empty doc and navigates to builder.
+ * Simplified: user names the document, picks a type, hits Create.
+ * Navigates straight to the Studio builder with ?tab=layout open so they
+ * can set page size / margins immediately.
  *
- * Word is an import format, not a live editing format. The recommended path
- * converts the file to blocks and opens the block-canvas Studio immediately.
- * There is no intermediate "source preview" step for Word.
+ * Word / PDF import is available inside the builder ribbon (DocxImporter).
+ * Library template path is still accessible via the Library tab button.
  */
 
-import { useRef, useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  X, Library, FileText, File, LayoutTemplate,
-  Loader2, AlertCircle, ChevronRight,
-} from 'lucide-react';
+import { X, Loader2, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import type { DocumentBlock } from './types';
 
 interface Props {
   onClose: () => void;
   /** Called when user picks "Library" — parent should switch to library tab */
   onOpenLibrary: () => void;
-  /**
-   * Called after a successful PDF source upload (keep_word equivalent).
-   * Parent should: close this modal, refresh the document list, and open
-   * the SourceDocumentPanel for the new document.
-   * NOT called for Word — Word navigates directly to Studio.
-   */
+  /** Kept for API compatibility — not used in this simplified flow */
   onSaved?: (id: number, name: string, sourceType: 'docx' | 'pdf') => void;
 }
 
-type Path = 'library' | 'word' | 'pdf' | 'blank';
+const DOC_TYPES = [
+  { value: 'custom',       label: 'Custom' },
+  { value: 'swms',         label: 'SWMS' },
+  { value: 'safety_plan',  label: 'Safety Plan' },
+  { value: 'policy',       label: 'Policy' },
+  { value: 'procedure',    label: 'Procedure' },
+  { value: 'toolbox_talk', label: 'Toolbox Talk' },
+  { value: 'form',         label: 'Form' },
+  { value: 'contract',     label: 'Contract' },
+  { value: 'quote',        label: 'Quote' },
+  { value: 'report',       label: 'Report' },
+  { value: 'induction',    label: 'Induction' },
+] as const;
 
-export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Props) {
+export default function NewDocumentModal({ onClose, onOpenLibrary }: Props) {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activePath, setActivePath] = useState<Path | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const [name, setName] = useState('');
+  const [docType, setDocType] = useState<string>('custom');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Create a blank placeholder document ──────────────────────────────────
-  async function createPlaceholder(name: string, templateType = 'custom'): Promise<number | null> {
-    const res = await fetch('/api/document-templates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ name, templateType, blocks: [], layout: {}, theme: {} }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { id?: number };
-    return data.id ?? null;
-  }
+  // Auto-focus the name field on mount
+  useEffect(() => {
+    const t = setTimeout(() => nameRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, []);
 
-  // ── Delete an orphan placeholder document (best-effort, non-fatal) ──────────
-  async function deleteOrphan(id: number) {
-    try {
-      await fetch(`/api/document-templates/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-    } catch {
-      // Non-fatal — the user can delete it manually
+  async function handleCreate() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError('Please enter a document name.');
+      nameRef.current?.focus();
+      return;
     }
-  }
-
-  // ── Handle Word upload — convert_blocks_v2 → write builder_json → navigate ──
-  async function handleWordFile(file: File) {
     setLoading(true);
     setError(null);
-    let placeholderId: number | null = null;
     try {
-      const docName = file.name.replace(/\.(docx|dotx)$/i, '').trim() || 'Imported Document';
-      placeholderId = await createPlaceholder(docName);
-      if (!placeholderId) throw new Error('Could not create document placeholder — please try again');
-
-      // Step 1: convert DOCX → semantically-grouped builder blocks
-      const formData = new FormData();
-      formData.append('docx', file);
-      formData.append('mode', 'convert_blocks_v2');
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s — large SWMS DOCX
-      let res: Response;
-      try {
-        res = await fetch(`/api/document-templates/${placeholderId}/import-docx`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      if (!res.ok) {
-        // Guard: 502/503/504 responses from the proxy return plain-text bodies.
-        // Calling res.json() on those throws a SyntaxError — check status first.
-        let errMsg: string;
-        if (res.status >= 502 && res.status <= 504) {
-          errMsg = 'The document service is temporarily unavailable. Please wait a moment and try again.';
-        } else {
-          // Try to parse JSON error body; fall back to HTTP status on failure
-          try {
-            const errData = await res.json() as { error?: string };
-            errMsg = errData.error ?? `Import failed (HTTP ${res.status})`;
-          } catch {
-            errMsg = `Import failed (HTTP ${res.status} ${res.statusText})`.trim();
-          }
-        }
-        // Roll back the orphan placeholder
-        await deleteOrphan(placeholderId);
-        placeholderId = null;
-        throw new Error(errMsg);
-      }
-
-      let data: { mode?: string; blocks?: DocumentBlock[]; warnings?: string[]; error?: string };
-      try {
-        data = await res.json() as typeof data;
-      } catch {
-        await deleteOrphan(placeholderId);
-        placeholderId = null;
-        throw new Error('The server returned an unreadable response — please try again.');
-      }
-      if (data.error) {
-        await deleteOrphan(placeholderId);
-        placeholderId = null;
-        throw new Error(data.error);
-      }
-      if (data.mode !== 'convert_blocks_v2') {
-        await deleteOrphan(placeholderId);
-        placeholderId = null;
-        throw new Error('Server did not convert the document to blocks — please try again');
-      }
-
-      // Step 2: write the blocks to builder_json via PATCH
-      const blocks: DocumentBlock[] = data.blocks ?? [];
-      const patchRes = await fetch(`/api/document-templates/${placeholderId}`, {
-        method: 'PATCH',
+      const res = await fetch('/api/document-templates', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ builderJson: { blocks } }),
+        body: JSON.stringify({
+          name: trimmed,
+          templateType: docType,
+          blocks: [],
+          layout: {},
+          theme: {},
+        }),
       });
-      if (!patchRes.ok) {
-        let patchErr = `Could not save blocks (HTTP ${patchRes.status})`;
-        try {
-          const patchData = await patchRes.json() as { error?: string };
-          if (patchData.error) patchErr = patchData.error;
-        } catch { /* non-JSON */ }
-        await deleteOrphan(placeholderId);
-        placeholderId = null;
-        throw new Error(patchErr);
-      }
-
-      // Navigate to the standard block-canvas builder — no HtmlDocumentCanvas
-      const finalId = placeholderId;
-      placeholderId = null; // prevent deletion in catch
-      onClose();
-      navigate(`/studio/builder/${finalId}`);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        if (placeholderId) { await deleteOrphan(placeholderId); placeholderId = null; }
-        setError('Upload timed out — the file may be too large or the server is busy. Please try again.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Import failed');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── Handle PDF upload — keep as source, call onSaved ─────────────────────
-  async function handlePdfFile(file: File) {
-    setLoading(true);
-    setError(null);
-    try {
-      const docName = file.name.replace(/\.pdf$/i, '').trim() || 'Imported Document';
-      const id = await createPlaceholder(docName);
-      if (!id) throw new Error('Could not create document placeholder — please try again');
-
-      const formData = new FormData();
-      formData.append('pdf', file);
-      formData.append('mode', 'keep_word');
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60_000);
-      let res: Response;
-      try {
-        res = await fetch(`/api/document-templates/${id}/import-pdf`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-
       if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? `Upload failed (HTTP ${res.status})`);
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `Could not create document (HTTP ${res.status})`);
       }
-
-      const data = await res.json() as { mode?: string; error?: string };
-      if (data.error) throw new Error(data.error);
-
-      onSaved?.(id, docName, 'pdf');
+      const data = await res.json() as { id?: number };
+      if (!data.id) throw new Error('No document ID returned — please try again.');
       onClose();
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError('Upload timed out — the file may be too large. Try a smaller file.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Upload failed');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── Handle blank canvas ───────────────────────────────────────────────────
-  async function handleBlank() {
-    setLoading(true);
-    setError(null);
-    try {
-      const id = await createPlaceholder('Untitled Document');
-      if (!id) throw new Error('Could not create document');
-      onClose();
-      navigate(`/studio/builder/${id}`);
+      // Open builder with Layout tab active so user can name/configure immediately
+      navigate(`/studio/builder/${data.id}?tab=layout`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create document');
       setLoading(false);
     }
   }
 
-  // ── Path card click ───────────────────────────────────────────────────────
-  function handlePathClick(path: Path) {
-    setError(null);
-    if (path === 'library') {
-      onClose();
-      onOpenLibrary();
-      return;
-    }
-    if (path === 'blank') {
-      setActivePath('blank');
-      void handleBlank();
-      return;
-    }
-    // word or pdf — trigger file picker
-    setActivePath(path);
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = path === 'word' ? '.docx,.dotx' : '.pdf';
-      fileInputRef.current.click();
-    }
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !loading) void handleCreate();
+    if (e.key === 'Escape') onClose();
   }
 
-  const paths: Array<{
-    id: Path;
-    icon: React.ElementType;
-    iconColor: string;
-    iconBg: string;
-    title: string;
-    description: string;
-    badge?: string;
-    badgeColor?: string;
-  }> = [
-    {
-      id: 'library',
-      icon: Library,
-      iconColor: 'text-violet-600',
-      iconBg: 'bg-violet-50 border-violet-200',
-      title: 'Choose Library Template',
-      description: 'Browse SWMS, policies, procedures and more from the shared library',
-    },
-    {
-      id: 'word',
-      icon: FileText,
-      iconColor: 'text-blue-600',
-      iconBg: 'bg-blue-50 border-blue-200',
-      title: 'Import Word Document',
-      description: 'Upload a .docx or .dotx file — converted to editable Studio blocks immediately',
-    },
-    {
-      id: 'pdf',
-      icon: File,
-      iconColor: 'text-red-500',
-      iconBg: 'bg-red-50 border-red-200',
-      title: 'Upload PDF',
-      description: 'Upload a PDF — stored as a source file with download and replace support',
-    },
-    {
-      id: 'blank',
-      icon: LayoutTemplate,
-      iconColor: 'text-slate-500',
-      iconBg: 'bg-slate-50 border-slate-200',
-      title: 'Blank Studio Canvas',
-      description: 'Start from scratch with the block-based Studio editor',
-    },
-  ];
-
-  // ── Success state removed — Word navigates directly to Studio ─────────────
-  // PDF success is handled by onSaved() + onClose() in handlePdfFile.
-
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <div>
-            <p className="text-sm font-bold text-slate-800">New Document</p>
-            <p className="text-xs text-slate-400 mt-0.5">Choose how you want to create your document</p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
+              <FileText size={15} className="text-violet-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800 leading-tight">New Document</p>
+              <p className="text-xs text-slate-400">Name it, then build it</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -330,71 +120,81 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
           </button>
         </div>
 
-        {/* Path cards */}
-        <div className="p-4 flex flex-col gap-2">
-          {paths.map((p) => {
-            const Icon = p.icon;
-            const isActive = activePath === p.id && loading;
-            return (
-              <button
-                key={p.id}
-                onClick={() => !loading && handlePathClick(p.id)}
-                disabled={loading}
-                className={[
-                  'flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all',
-                  'hover:border-violet-300 hover:bg-violet-50/40 hover:shadow-sm',
-                  loading && activePath !== p.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-                  isActive ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-white',
-                ].join(' ')}
-              >
-                <div className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 ${p.iconBg}`}>
-                  {isActive
-                    ? <Loader2 size={16} className="animate-spin text-violet-500" />
-                    : <Icon size={16} className={p.iconColor} />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800">{p.title}</span>
-                    {p.badge && (
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.badgeColor}`}>
-                        {p.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5 leading-snug">{p.description}</p>
-                </div>
-                <ChevronRight size={14} className="text-slate-300 flex-shrink-0" />
-              </button>
-            );
-          })}
-        </div>
+        {/* Form */}
+        <div className="p-5 flex flex-col gap-4">
 
-        {/* Error */}
-        {error && (
-          <div className="mx-4 mb-4 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-            <AlertCircle size={13} className="shrink-0 mt-0.5" />
-            <span>{error}</span>
+          {/* Document name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-600">
+              Document name <span className="text-red-400">*</span>
+            </label>
+            <input
+              ref={nameRef}
+              type="text"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setError(null); }}
+              onKeyDown={handleKeyDown}
+              placeholder="e.g. Electrical SWMS — High Voltage"
+              maxLength={120}
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-colors"
+            />
           </div>
-        )}
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          data-testid="ndm-file-input"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file && activePath === 'word') {
-              void handleWordFile(file);
-            } else if (file && activePath === 'pdf') {
-              void handlePdfFile(file);
-            }
-            // Reset so same file can be re-selected
-            e.target.value = '';
-          }}
-        />
+          {/* Document type */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-600">Document type</label>
+            <div className="relative">
+              <select
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                className="w-full appearance-none px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-colors pr-8"
+              >
+                {DOC_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+              <AlertCircle size={13} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => void handleCreate()}
+              disabled={loading || !name.trim()}
+              className="flex-1 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading
+                ? <><Loader2 size={14} className="animate-spin" /> Creating…</>
+                : 'Create document'
+              }
+            </button>
+          </div>
+
+          {/* Library shortcut */}
+          <button
+            onClick={() => { onClose(); onOpenLibrary(); }}
+            disabled={loading}
+            className="text-xs text-slate-400 hover:text-violet-600 transition-colors text-center -mt-1"
+          >
+            Or browse the template library →
+          </button>
+        </div>
       </div>
     </div>,
     document.body
