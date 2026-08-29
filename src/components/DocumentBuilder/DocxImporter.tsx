@@ -1,34 +1,37 @@
 /**
  * DocxImporter
  * ─────────────────────────────────────────────────────────────────────────────
- * Used from within the Studio builder ribbon to import a Word or PDF file into
- * an existing document.
+ * Used from within the Studio builder ribbon to import a Word, PDF, or image
+ * file into an existing document.
  *
  * Word (.docx / .dotx) — primary path
  * ─────────────────────────────────────
- * Default: "Import and edit in Studio" (convert_html mode)
- *   • Converts DOCX → sanitised HTML canvas via POST …/import-docx?mode=convert_html
- *   • On success: calls onOpenInStudio({ htmlContent, importCss, importReport })
- *     so the parent can refresh the template and switch to HtmlDocumentCanvas.
- *   • The import report is shown AFTER the canvas opens — it never blocks editing.
- *   • No Gotenberg check, no source-preview panel, no "download Word to edit".
+ * Default: "Import and edit in Studio" (convert_blocks_v2 mode)
+ *   • Converts DOCX → semantically grouped builder blocks via
+ *     POST …/import-docx?mode=convert_blocks_v2
+ *   • On success: calls onImported(blocks, name, insertMode) — stays in the
+ *     standard block canvas. Never switches to HtmlDocumentCanvas.
+ *   • Heading + N body paragraphs → 1 heading block + 1 rich_text block.
+ *   • Tables, lists, page breaks, images each become their own block.
  *
  * Advanced / Recovery copy (keep_word mode) — secondary, clearly labelled
  *   • Stores the original .docx in R2 as a silent recovery copy.
  *   • Calls onClose() on success — no canvas transition.
  *   • Presented as a collapsed "Advanced" section so it is not the default.
  *
- * PDF — unchanged (convert_blocks, goes to preview step)
+ * PDF — one pdf_page block per original page
+ *   • A three-page PDF creates exactly three ordered pdf_page blocks.
+ *   • All blocks reference the same stored source.
  *
  * Failure handling
  * ─────────────────
  * Any error leaves the modal open with a descriptive message. The document is
- * never left in a broken state — the server is atomic (rollback on failure).
+ * never left in a broken state — failed imports create no partial blocks.
  *
  * Accepted file types
  * ────────────────────
- * .docx and .dotx (Word template) — both are ZIP-based OOXML; mammoth handles
- * both without extra architecture. .dotx is accepted only in the Word path.
+ * .docx and .dotx (Word template) — both are ZIP-based OOXML.
+ * .pdf — one pdf_page block per page.
  */
 
 import { useState, useRef } from 'react';
@@ -43,8 +46,8 @@ import type { DocumentBlock, ImportReport } from './types';
 
 type InsertMode = 'replace' | 'prepend' | 'append';
 type ImportMode = 'docx' | 'pdf';
-/** convert_html = default live canvas; keep_word = recovery copy only */
-type DocxMode = 'convert_html' | 'keep_word';
+/** convert_blocks_v2 = default block canvas; keep_word = recovery copy only; convert_html = legacy html canvas */
+type DocxMode = 'convert_blocks_v2' | 'convert_html' | 'keep_word';
 type Step = 'upload' | 'preview' | 'save_library';
 
 /** Payload returned by the server for a successful convert_html import */
@@ -114,8 +117,8 @@ export default function DocxImporter({
   const inputRef = useRef<HTMLInputElement>(null);
   const [resolvedId, setResolvedId] = useState<number | null>(templateId);
 
-  // DOCX sub-mode: convert_html is the default (recommended)
-  const [docxMode, setDocxMode] = useState<DocxMode>('convert_html');
+  // DOCX sub-mode: convert_blocks_v2 is the default (block canvas, recommended)
+  const [docxMode, setDocxMode] = useState<DocxMode>('convert_blocks_v2');
   // Advanced section collapsed by default
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -217,7 +220,20 @@ export default function DocxImporter({
         return;
       }
 
-      // ── convert_html: open directly in Studio ─────────────────────────────
+      // ── convert_blocks_v2: block canvas path (new default) ───────────────
+      if (data.mode === 'convert_blocks_v2') {
+        const parsedName = data.sourceDocxName ?? file.name;
+        setPreview({
+          blocks:    data.blocks ?? [],
+          name:      parsedName,
+          warnings:  data.warnings ?? [],
+        });
+        setLibName(parsedName.replace(/\.(docx|dotx)$/i, ''));
+        setStep('preview');
+        return;
+      }
+
+      // ── convert_html: legacy html canvas path ─────────────────────────────
       if (data.mode === 'convert_html') {
         onOpenInStudio({
           id,
@@ -320,7 +336,7 @@ export default function DocxImporter({
     }
     if (mode === 'docx' && docxMode === 'keep_word') return 'Save as Recovery Copy';
     if (mode === 'docx') return 'Import and edit in Studio';
-    return 'Parse PDF';
+    return 'Import PDF';
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -417,13 +433,14 @@ export default function DocxImporter({
               </div>
 
               {/* What happens info box — context-aware */}
-              {mode === 'docx' && docxMode === 'convert_html' && (
+              {mode === 'docx' && docxMode === 'convert_blocks_v2' && (
                 <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 text-xs text-slate-600 space-y-1">
                   <p className="font-semibold text-violet-700">What happens when you import:</p>
-                  <p>• Word content is converted to an editable HTML canvas in Studio</p>
-                  <p>• Tables, headings, paragraphs, lists, images and page breaks are preserved</p>
+                  <p>• Word content is converted to editable blocks in the Studio block canvas</p>
+                  <p>• Headings become heading blocks; body paragraphs group into rich text blocks</p>
+                  <p>• Tables, lists, page breaks and images each become their own block</p>
+                  <p>• Each block can be moved, duplicated, deleted or edited independently</p>
                   <p>• The original .docx is kept as a silent recovery copy</p>
-                  <p>• An import report is shown after opening — it never blocks editing</p>
                 </div>
               )}
 
@@ -456,7 +473,7 @@ export default function DocxImporter({
                       </p>
                       <button
                         type="button"
-                        onClick={() => setDocxMode(docxMode === 'keep_word' ? 'convert_html' : 'keep_word')}
+                        onClick={() => setDocxMode(docxMode === 'keep_word' ? 'convert_blocks_v2' : 'keep_word')}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
                           docxMode === 'keep_word'
                             ? 'border-amber-400 bg-amber-50 text-amber-800'
@@ -480,9 +497,10 @@ export default function DocxImporter({
               {mode === 'pdf' && (
                 <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 space-y-1">
                   <p className="font-semibold text-slate-600">What gets imported from PDF:</p>
-                  <p>• Text-based PDFs → Heading + paragraph blocks</p>
-                  <p>• Scanned / image PDFs → download link block</p>
-                  <p className="text-amber-600">• Best-effort — complex layouts may vary</p>
+                  <p>• Each page becomes one pdf_page block in the canvas</p>
+                  <p>• A three-page PDF creates exactly three ordered blocks</p>
+                  <p>• Blocks can be moved, duplicated and deleted independently</p>
+                  <p>• The original PDF is stored for download</p>
                 </div>
               )}
 

@@ -143,13 +143,13 @@ describe('NewDocumentModal', () => {
 });
 
 describe('DocxImporter', () => {
-  it('defaults to convert_html mode (not keep_word)', async () => {
+  it('defaults to convert_blocks_v2 mode (not keep_word or convert_html)', async () => {
     const fs = await import('node:fs/promises');
     const src = await fs.readFile(
       'src/components/DocumentBuilder/DocxImporter.tsx',
       'utf-8'
     );
-    expect(src).toContain("useState<DocxMode>('convert_html')");
+    expect(src).toContain("useState<DocxMode>('convert_blocks_v2')");
   });
 
   it('keep_word is present as an advanced/recovery option', async () => {

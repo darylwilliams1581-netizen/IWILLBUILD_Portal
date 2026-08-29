@@ -66,7 +66,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const originalName = docxFile.originalname ?? 'document.docx';
-    // mode: 'keep_word' (default — store original) | 'convert_blocks' (legacy)
+    // mode: 'keep_word' (default — store original) | 'convert_blocks_v2' (new semantic block path) | 'convert_html' (html canvas) | 'convert_blocks' (legacy)
     const mode = (fields.mode as string | undefined) ?? 'keep_word';
 
     // ── Mode: keep_word — store original DOCX in R2, do not convert ──────────
@@ -123,7 +123,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    // ── Mode: convert_html — DOCX → editable HTML canvas (new intended path) ──
+    // ── Mode: convert_html — DOCX → editable HTML canvas (legacy path) ──────
     if (mode === 'convert_html') {
       return await handleConvertHtml({
         req, res,
@@ -133,6 +133,20 @@ export default async function handler(req: Request, res: Response) {
         companyId: profile.companyId,
         userId: session.user.id,
         currentRevision: Number(rows[0].source_revision ?? 0),
+      });
+    }
+
+    // ── Mode: convert_blocks_v2 — DOCX → semantically grouped builder blocks ─
+    // This is the new primary import path. Blocks are written to builder_json
+    // via the existing import-blocks endpoint; the server returns the block
+    // array so the client can apply them to the canvas without a round-trip.
+    if (mode === 'convert_blocks_v2') {
+      const { blocks, warnings } = await parseDocxToBlocks(docxFile.buffer);
+      return res.json({
+        mode: 'convert_blocks_v2',
+        blocks,
+        sourceDocxName: originalName,
+        warnings: warnings.slice(0, 10),
       });
     }
 
@@ -259,7 +273,23 @@ function parseOrderedNumIds(xml: string): Set<string> {
   return orderedNumIds;
 }
 
-// ── Document XML parser ───────────────────────────────────────────────────────
+// ── Document XML parser — semantic grouping ───────────────────────────────────
+//
+// Anti-fragmentation rules (per spec):
+//   • Consecutive normal paragraphs accumulate into ONE rich_text block.
+//   • Flush/start a new rich_text block ONLY at:
+//       1. A heading (H1–H6) → heading block; following body paragraphs accumulate fresh.
+//       2. A meaningful blank gap (2+ consecutive empty paragraphs) → close current block.
+//       3. A table → its own table block.
+//       4. A page/section break → page_break block.
+//       5. A horizontal rule → divider block.
+//   • List items accumulate into one rich_text block per contiguous numId run.
+//     A list run that immediately follows body paragraphs is appended to the
+//     same rich_text accumulator (not a separate block) unless the list starts
+//     a new numId run after a non-list paragraph.
+//   • Word paragraph marks, wrapped display lines, bold/italic/colour changes
+//     are NOT block boundaries.
+//   • Empty paragraphs never create blocks; repeated blanks collapse.
 
 function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: string[]): DocumentBlock[] {
   const blocks: DocumentBlock[] = [];
@@ -278,72 +308,115 @@ function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: str
   // Split into top-level elements: paragraphs and tables
   const elements = splitBodyElements(expandedBody);
 
+  // ── Accumulator for body paragraphs ────────────────────────────────────────
+  // We collect HTML fragments here and flush them as one rich_text block when
+  // a semantic boundary is reached.
+  let richParts: string[] = [];
+  let consecutiveBlanks = 0;
+
+  /** Flush the accumulated rich_text parts as a single block (if non-empty). */
+  function flushRich() {
+    if (richParts.length === 0) return;
+    const html = richParts.join('\n');
+    richParts = [];
+    consecutiveBlanks = 0;
+    blocks.push({ id: newId(), type: 'rich_text', html });
+  }
+
   let i = 0;
   while (i < elements.length) {
     const el = elements[i];
 
-    if (el.type === 'paragraph') {
-      const para = parseParagraph(el.xml);
-
-      // List paragraph — collect consecutive items with same numId
-      if (para.numId) {
-        const numId = para.numId;
-        const isOrdered = orderedNumIds.has(numId);
-        const items: string[] = [para.text];
-
-        while (i + 1 < elements.length) {
-          const next = elements[i + 1];
-          if (next.type !== 'paragraph') break;
-          const nextPara = parseParagraph(next.xml);
-          if (nextPara.numId !== numId) break;
-          items.push(nextPara.text);
-          i++;
-        }
-
-        const tag = isOrdered ? 'ol' : 'ul';
-        const listHtml = `<${tag}>${items.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</${tag}>`;
-        blocks.push({ id: newId(), type: 'rich_text', html: listHtml });
-        i++;
-        continue;
-      }
-
-      // Heading paragraph
-      if (para.headingLevel) {
-        if (para.text) {
-          blocks.push({ id: newId(), type: 'heading', content: para.text, level: para.headingLevel, align: 'left' });
-        }
-        i++;
-        continue;
-      }
-
-      // Horizontal rule
-      if (para.isHr) {
-        blocks.push({ id: newId(), type: 'divider', style: 'solid', thickness: 1 });
-        i++;
-        continue;
-      }
-
-      // Regular paragraph — skip empty
-      if (para.text.trim()) {
-        if (para.hasFormatting) {
-          blocks.push({ id: newId(), type: 'rich_text', html: `<p>${para.innerHtml}</p>` });
-        } else {
-          blocks.push({ id: newId(), type: 'text', content: para.text, align: 'left' });
-        }
-      }
-      i++;
-      continue;
-    }
-
+    // ── Table ───────────────────────────────────────────────────────────────
     if (el.type === 'table') {
+      flushRich();
       const tableBlock = parseTableXml(el.xml);
       if (tableBlock) blocks.push(tableBlock);
       i++;
       continue;
     }
 
+    // ── Paragraph ───────────────────────────────────────────────────────────
+    if (el.type === 'paragraph') {
+      const para = parseParagraph(el.xml);
+
+      // Page / section break → flush and emit page_break
+      if (para.isPageBreak) {
+        flushRich();
+        blocks.push({ id: newId(), type: 'page_break' });
+        i++;
+        continue;
+      }
+
+      // Horizontal rule → flush and emit divider
+      if (para.isHr) {
+        flushRich();
+        blocks.push({ id: newId(), type: 'divider', style: 'solid', thickness: 1 });
+        i++;
+        continue;
+      }
+
+      // Heading → flush current accumulator, emit heading block
+      if (para.headingLevel) {
+        flushRich();
+        if (para.text) {
+          blocks.push({ id: newId(), type: 'heading', content: para.text, level: para.headingLevel, align: 'left' });
+        }
+        consecutiveBlanks = 0;
+        i++;
+        continue;
+      }
+
+      // List paragraph — collect the entire contiguous run for this numId
+      if (para.numId) {
+        // Lists are appended to the current rich accumulator (not a separate block)
+        // so that text → list → text within one section stays one block.
+        const numId = para.numId;
+        const isOrdered = orderedNumIds.has(numId);
+        const items: string[] = [para.innerHtml || escapeHtml(para.text)];
+
+        while (i + 1 < elements.length) {
+          const next = elements[i + 1];
+          if (next.type !== 'paragraph') break;
+          const nextPara = parseParagraph(next.xml);
+          if (nextPara.numId !== numId) break;
+          items.push(nextPara.innerHtml || escapeHtml(nextPara.text));
+          i++;
+        }
+
+        const tag = isOrdered ? 'ol' : 'ul';
+        const listHtml = `<${tag}>${items.map((t) => `<li>${t}</li>`).join('')}</${tag}>`;
+        richParts.push(listHtml);
+        consecutiveBlanks = 0;
+        i++;
+        continue;
+      }
+
+      // Empty paragraph — count consecutive blanks; flush on 2+
+      if (!para.text.trim()) {
+        consecutiveBlanks++;
+        if (consecutiveBlanks >= 2) {
+          flushRich();
+        }
+        i++;
+        continue;
+      }
+
+      // Normal body paragraph — accumulate into rich_text
+      consecutiveBlanks = 0;
+      const paraHtml = para.hasFormatting
+        ? `<p>${para.innerHtml}</p>`
+        : `<p>${escapeHtml(para.text)}</p>`;
+      richParts.push(paraHtml);
+      i++;
+      continue;
+    }
+
     i++;
   }
+
+  // Flush any remaining accumulated content
+  flushRich();
 
   if (blocks.length === 0) {
     warnings.push('No content blocks found in document');
@@ -414,6 +487,7 @@ interface ParsedParagraph {
   headingLevel: number | null;
   numId: string | null;
   isHr: boolean;
+  isPageBreak: boolean;
   hasFormatting: boolean;
 }
 
@@ -436,6 +510,14 @@ function parseParagraph(xml: string): ParsedParagraph {
 
   // Horizontal rule
   const isHr = /<w:pBdr>[\s\S]*?<w:bottom[\s\S]*?\/>/.test(xml) && !/<w:t/.test(xml);
+
+  // Page / section break — <w:lastRenderedPageBreak/>, <w:pageBreakBefore/>,
+  // or a run containing <w:br w:type="page"/> or <w:br w:type="column"/>
+  const isPageBreak =
+    /<w:pageBreakBefore\s*\/>/.test(xml) ||
+    /<w:br\s+w:type="page"/.test(xml) ||
+    /<w:br\s+w:type="column"/.test(xml) ||
+    /<w:lastRenderedPageBreak\s*\/>/.test(xml);
 
   // Extract runs with formatting
   let text = '';
@@ -485,7 +567,7 @@ function parseParagraph(xml: string): ParsedParagraph {
     }
   }
 
-  return { text: text.trim(), innerHtml: innerHtml.trim(), headingLevel, numId, isHr, hasFormatting };
+  return { text: text.trim(), innerHtml: innerHtml.trim(), headingLevel, numId, isHr, isPageBreak, hasFormatting };
 }
 
 function extractPlainText(xml: string): string {

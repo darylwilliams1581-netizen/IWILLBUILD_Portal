@@ -211,11 +211,11 @@ describe('Route registration in entry.ts', () => {
   });
 });
 
-// ── 15. DocxImporter — convert_html default ───────────────────────────────────
+// ── 15. DocxImporter — convert_blocks_v2 default ─────────────────────────────
 describe('DocxImporter — legacy convert_blocks', () => {
-  it('convert_html is the default mode (not keep_word)', async () => {
+  it('convert_blocks_v2 is the default mode (not keep_word or convert_html)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
-    expect(src).toContain("useState<DocxMode>('convert_html')");
+    expect(src).toContain("useState<DocxMode>('convert_blocks_v2')");
   });
 
   it('keep_word is present as an advanced/recovery option', async () => {

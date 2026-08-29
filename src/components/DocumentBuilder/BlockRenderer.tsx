@@ -5,7 +5,7 @@
  * Accepts optional logicState, fillValues, and onFillChange for fill mode.
  */
 
-import type { DocumentBlock, BlockLogicState } from './types';
+import type { DocumentBlock, BlockLogicState, PdfPageBlock } from './types';
 import { useDocumentStore } from './useDocumentStore';
 import { DEFAULT_BLOCK_STATE } from './useLogicEngine';
 import HeadingBlockView from './blocks/HeadingBlock';
@@ -23,6 +23,41 @@ import TableBlockView from './blocks/TableBlock';
 import ImageBlockView from './blocks/ImageBlock';
 import FieldBlockView from './blocks/FieldBlock';
 import SystemFieldBlockView from './blocks/SystemFieldBlock';
+import { FileText } from 'lucide-react';
+
+// ── PDF Page Block view ───────────────────────────────────────────────────────
+// Renders a placeholder representing one imported PDF page.
+// No OCR / editable text — shows page metadata and a download link.
+
+function PdfPageBlockView({ block }: { block: PdfPageBlock }) {
+  return (
+    <div
+      className="studio-no-print-bg border border-slate-200 rounded-sm bg-slate-50 flex flex-col items-center justify-center gap-2 py-6 px-4 text-center"
+      style={{ minHeight: 120 }}
+      data-testid="pdf-page-block"
+    >
+      <FileText size={28} className="text-slate-300" />
+      <div>
+        <p className="text-xs font-semibold text-slate-600">
+          {block.sourceFileName} — Page {block.pageNumber} of {block.totalPages}
+        </p>
+        <p className="text-[10px] text-slate-400 mt-0.5">
+          PDF page · move, duplicate or delete with the block controls
+        </p>
+      </div>
+      {block.downloadUrl && (
+        <a
+          href={block.downloadUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-primary underline hover:text-violet-700 transition-colors"
+        >
+          Download original PDF
+        </a>
+      )}
+    </div>
+  );
+}
 
 export type FillValues = Record<string, string | string[] | boolean | undefined>;
 
@@ -98,6 +133,7 @@ export function BlockRenderer({
         />
       );
       case 'system_field':   return <SystemFieldBlockView block={effectiveBlock} />;
+      case 'pdf_page':       return <PdfPageBlockView block={effectiveBlock} />;
       default:               return <div className="text-xs text-slate-400 p-2">Unknown block type</div>;
     }
   })();

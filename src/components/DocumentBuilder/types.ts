@@ -267,7 +267,8 @@ export type BlockType =
   | 'table'
   | 'image'
   | 'field'
-  | 'system_field';
+  | 'system_field'
+  | 'pdf_page';
 
 // ── Heading Block ─────────────────────────────────────────────────────────────
 
@@ -516,6 +517,27 @@ export interface SystemFieldBlock extends BlockBase {
   showLabel: boolean;
 }
 
+// ── PDF Page Block ────────────────────────────────────────────────────────────
+// Represents one page of an imported PDF. Multiple PdfPageBlocks reference the
+// same stored source (storageKey) and differ only by pageIndex/pageNumber.
+// No OCR / editable text — preview renders the original page at A4 width.
+
+export interface PdfPageBlock extends BlockBase {
+  type: 'pdf_page';
+  /** R2 / persistent-storage key for the original PDF bytes */
+  storageKey: string;
+  /** Authenticated download URL (resolved at render time via /api/…/source-document/download) */
+  downloadUrl?: string;
+  /** 0-based index of this page within the source PDF */
+  pageIndex: number;
+  /** 1-based display number */
+  pageNumber: number;
+  /** Total pages in the source PDF */
+  totalPages: number;
+  /** Original filename for display */
+  sourceFileName: string;
+}
+
 // ── Union ─────────────────────────────────────────────────────────────────────
 
 export type DocumentBlock =
@@ -533,7 +555,8 @@ export type DocumentBlock =
   | TableBlock
   | ImageBlock
   | FieldBlock
-  | SystemFieldBlock;
+  | SystemFieldBlock
+  | PdfPageBlock;
 
 // ── Source Attachment ─────────────────────────────────────────────────────────
 

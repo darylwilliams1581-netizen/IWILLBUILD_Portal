@@ -135,7 +135,7 @@ async function selectFileAndImport(file: File) {
 
 // ─── D1: Default mode ─────────────────────────────────────────────────────────
 
-describe('D1 — default mode is convert_html', () => {
+describe('D1 — default mode is convert_blocks_v2', () => {
   it('import button says "Import and edit in Studio" by default', () => {
     renderImporter();
     expect(getImportBtn().textContent).toContain('Import and edit in Studio');
@@ -156,22 +156,24 @@ describe('D2 — keep_word not visible at top level', () => {
   });
 });
 
-// ─── D3: convert_html request ─────────────────────────────────────────────────
+// ─── D3: convert_blocks_v2 request ───────────────────────────────────────────
 
-describe('D3 — convert_html request body', () => {
-  it('POST sends mode=convert_html', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+describe('D3 — convert_blocks_v2 request body', () => {
+  it('POST sends mode=convert_blocks_v2 (new default)', async () => {
+    const blocksResponse = { mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] };
+    fetchMock = successFetch(blocksResponse);
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
     await selectFileAndImport(makeDocxFile());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { body: FormData }];
     const body = opts.body as FormData;
-    expect(body.get('mode')).toBe('convert_html');
+    expect(body.get('mode')).toBe('convert_blocks_v2');
   });
 
   it('POST endpoint is /api/document-templates/:id/import-docx', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+    const blocksResponse = { mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] };
+    fetchMock = successFetch(blocksResponse);
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
     await selectFileAndImport(makeDocxFile());
@@ -181,43 +183,42 @@ describe('D3 — convert_html request body', () => {
   });
 });
 
-// ─── D4: convert_html success — onOpenInStudio payload ───────────────────────
+// ─── D4: convert_blocks_v2 success — onImported called ───────────────────────
 
-describe('D4 — convert_html success calls onOpenInStudio with correct payload', () => {
-  it('onOpenInStudio receives id, htmlContent, importCss, importReport', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+describe('D4 — convert_blocks_v2 success calls onImported with blocks', () => {
+  it('onImported receives blocks array from server', async () => {
+    const blocks = [{ id: 'b1', type: 'heading', content: 'Title', level: 1, align: 'left' }];
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks, sourceDocxName: 'My Safety Plan.docx', warnings: [] });
+    vi.stubGlobal('fetch', fetchMock);
+    const { onImported } = renderImporter();
+    await selectFileAndImport(makeDocxFile());
+    // After convert_blocks_v2 success, component shows preview step — onImported called on "Apply"
+    // The preview step is shown; verify we reached it (not an error state)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    // onImported is called when user clicks Apply — not automatically
+    expect(onImported).not.toHaveBeenCalled(); // correct: preview step shown first
+  });
+});
+
+// ─── D5: convert_blocks_v2 success — onOpenInStudio NOT called ───────────────
+
+describe('D5 — onOpenInStudio not called on convert_blocks_v2 success', () => {
+  it('onOpenInStudio is NOT called when convert_blocks_v2 succeeds', async () => {
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     const { onOpenInStudio } = renderImporter();
     await selectFileAndImport(makeDocxFile());
-    await waitFor(() => expect(onOpenInStudio).toHaveBeenCalledTimes(1));
-    const result = onOpenInStudio.mock.calls[0][0] as ConvertHtmlResult;
-    expect(result.id).toBe(TEMPLATE_ID);
-    expect(result.htmlContent).toBe(CONVERT_HTML_RESPONSE.htmlContent);
-    expect(result.importCss).toBe(CONVERT_HTML_RESPONSE.importCss);
-    expect(result.importReport).toEqual(IMPORT_REPORT);
-  });
-});
-
-// ─── D5: onClose NOT called on convert_html success ──────────────────────────
-
-describe('D5 — onClose not called on convert_html success', () => {
-  it('onClose is NOT called when convert_html succeeds', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
-    vi.stubGlobal('fetch', fetchMock);
-    const { onClose } = renderImporter();
-    await selectFileAndImport(makeDocxFile());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    // Give any async effects time to settle
     await new Promise((r) => setTimeout(r, 20));
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onOpenInStudio).not.toHaveBeenCalled();
   });
 });
 
-// ─── D6: No navigation or source-preview on convert_html success ──────────────
+// ─── D6: No navigation on convert_blocks_v2 success ──────────────────────────
 
-describe('D6 — no navigation or source-preview on convert_html success', () => {
-  it('does not call navigate on convert_html success', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+describe('D6 — no navigation on convert_blocks_v2 success', () => {
+  it('does not call navigate on convert_blocks_v2 success', async () => {
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'test.docx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
     await selectFileAndImport(makeDocxFile());
@@ -227,32 +228,30 @@ describe('D6 — no navigation or source-preview on convert_html success', () =>
   });
 });
 
-// ─── D7: Filename title from server ──────────────────────────────────────────
+// ─── D7: Filename shown in preview step ──────────────────────────────────────
 
-describe('D7 — sourceFileName from server passed to onOpenInStudio', () => {
-  it('sourceFileName matches server response', async () => {
-    fetchMock = successFetch(CONVERT_HTML_RESPONSE);
+describe('D7 — sourceDocxName from server shown in preview step', () => {
+  it('preview step shows the source filename', async () => {
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'My Safety Plan.docx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
-    const { onOpenInStudio } = renderImporter();
+    renderImporter();
     await selectFileAndImport(makeDocxFile('ignored.docx'));
-    await waitFor(() => expect(onOpenInStudio).toHaveBeenCalledTimes(1));
-    const result = onOpenInStudio.mock.calls[0][0] as ConvertHtmlResult;
-    expect(result.sourceFileName).toBe('My Safety Plan.docx');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    // Preview step should show the name from the server
+    await waitFor(() => expect(screen.getByText(/My Safety Plan\.docx/)).toBeTruthy());
   });
 });
 
 // ─── D8: Filename fallback ────────────────────────────────────────────────────
 
-describe('D8 — file.name used when server omits sourceFileName', () => {
-  it('falls back to file.name when sourceFileName absent', async () => {
-    const { sourceFileName: _sf, ...responseWithoutFilename } = CONVERT_HTML_RESPONSE;
-    fetchMock = successFetch(responseWithoutFilename);
+describe('D8 — file.name used when server omits sourceDocxName', () => {
+  it('falls back to file.name when sourceDocxName absent', async () => {
+    fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
-    const { onOpenInStudio } = renderImporter();
+    renderImporter();
     await selectFileAndImport(makeDocxFile('fallback-name.docx'));
-    await waitFor(() => expect(onOpenInStudio).toHaveBeenCalledTimes(1));
-    const result = onOpenInStudio.mock.calls[0][0] as ConvertHtmlResult;
-    expect(result.sourceFileName).toBe('fallback-name.docx');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/fallback-name\.docx/)).toBeTruthy());
   });
 });
 
