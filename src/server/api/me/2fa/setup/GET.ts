@@ -67,10 +67,10 @@ export default async function handler(req: Request, res: Response) {
       );
     }
 
-    const { generate: generateUri } = await import('otplib');
-    const { default: qrcode }       = await import('qrcode');
+    const { generateURI }     = await import('otplib');
+    const { default: qrcode } = await import('qrcode');
 
-    const otpAuthUrl = generateUri({
+    const otpAuthUrl = generateURI({
       secret:   plaintextSecret,
       label:    email,
       issuer:   'IWILLBUILD',

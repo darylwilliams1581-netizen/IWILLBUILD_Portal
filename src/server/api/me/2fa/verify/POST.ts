@@ -104,7 +104,7 @@ export default async function handler(req: Request, res: Response) {
       }
 
       const { verify } = await import('otplib');
-      const result = await verify({ token, secret: plaintextSecret, strategy: 'totp', window: 1 });
+      const result = await verify({ token, secret: plaintextSecret, strategy: 'totp', epochTolerance: 1 });
 
       if (!result?.valid) {
         // Increment challenge attempts
@@ -143,6 +143,49 @@ export default async function handler(req: Request, res: Response) {
         sql`UPDATE \`user\` SET totp_attempts = 0, totp_locked_until = NULL WHERE id = ${userId}`,
       );
 
+      // Issue a fresh BetterAuth session now that 2FA is complete.
+      // The original session was revoked during the 2FA intercept, so we must
+      // create a new one. We replicate BetterAuth's session cookie format:
+      //   cookie value = "${token}.${base64(HMAC-SHA256(token, secret))}"
+      // This matches BetterAuth's makeSignature() in dist/crypto/index.mjs.
+      try {
+        const { randomBytes } = await import('node:crypto');
+        const { subtle }      = await import('node:crypto');
+        const { getSecret }   = await import('#airo/secrets');
+        const authSecret = getSecret('BETTER_AUTH_SECRET');
+        if (authSecret) {
+          const sessionId    = randomBytes(18).toString('hex');
+          const sessionToken = randomBytes(32).toString('hex');
+          const expiresAt    = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+          // Insert the session row
+          await db.execute(
+            sql`INSERT INTO session (id, token, user_id, expires_at, ip_address, user_agent)
+                VALUES (${sessionId}, ${sessionToken}, ${userId}, ${expiresAt},
+                        ${req.ip ?? null}, ${(req.headers['user-agent'] ?? '').slice(0, 500)})`,
+          );
+
+          // Sign the token using BetterAuth's format: token.base64(HMAC-SHA256(token, secret))
+          const keyMaterial = new TextEncoder().encode(authSecret);
+          const cryptoKey   = await subtle.importKey('raw', keyMaterial, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+          const sigBuf      = await subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(sessionToken));
+          const signature   = Buffer.from(sigBuf).toString('base64');
+          const signedToken = `${sessionToken}.${signature}`;
+
+          const isProd = process.env.NODE_ENV === 'production';
+          res.cookie('better-auth.session_token', signedToken, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure:   isProd,
+            expires:  expiresAt,
+            path:     '/',
+          });
+        }
+      } catch (sessionErr) {
+        // Non-critical — the challenge is cleared; the client can re-authenticate
+        console.error('[2fa/verify] session re-issue failed (non-critical):', sessionErr instanceof Error ? sessionErr.message : String(sessionErr));
+      }
+
       return res.json({ ok: true });
     }
 
@@ -178,7 +221,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { verify } = await import('otplib');
-    const result = await verify({ token, secret: plaintextSecret, strategy: 'totp', window: 1 });
+    const result = await verify({ token, secret: plaintextSecret, strategy: 'totp', epochTolerance: 1 });
     if (!result?.valid) {
       return res.status(400).json({ error: 'Invalid code. Please try again.' });
     }

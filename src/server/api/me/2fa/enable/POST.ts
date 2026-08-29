@@ -68,7 +68,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { verify } = await import('otplib');
-    const result = await verify({ token, secret: plaintextSecret, strategy: 'totp', window: 1 });
+    const result = await verify({ token, secret: plaintextSecret, strategy: 'totp', epochTolerance: 1 });
     if (!result?.valid) {
       return res.status(400).json({ error: 'Invalid code. Please try again.' });
     }

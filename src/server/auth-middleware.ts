@@ -178,22 +178,12 @@ export async function authHandler(req: Request, res: Response) {
             if (totpEnabled || smsEnabled) {
               const method = totpEnabled ? 'totp' : 'sms';
 
-              // Create a server-side pending challenge (expires in 10 min)
-              const { token } = await createChallenge(userId, method);
-
-              // Revoke the BetterAuth session that was just created — we must
-              // not let it persist until 2FA is complete.
-              try {
-                const sessionToken: string | undefined = body?.token as string | undefined;
-                if (sessionToken) {
-                  const auth = getAuth();
-                  // revokeSession expects the raw session token
-                  await auth.api.revokeSession({
-                    body:    { token: sessionToken },
-                    headers: new Headers(),
-                  }).catch(() => null);
-                }
-              } catch { /* non-critical — challenge expiry is the safety net */ }
+              // Create a server-side pending challenge (expires in 10 min).
+              // The BetterAuth session is intentionally NOT revoked here — the
+              // checkPending2fa guard in auth-middleware.ts blocks all protected
+              // routes while the challenge cookie is present. Revoking the session
+              // would prevent useSession() from recovering after successful 2FA.
+              const token = await createChallenge(userId, method);
 
               // Set the challenge cookie and return TWO_FACTOR_REQUIRED
               setChallengeCookie(res, token);

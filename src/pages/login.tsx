@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from "react-router";
 import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink, MessageSquare } from 'lucide-react';
-import { signIn, useSession } from '@/lib/auth/auth-client';
+import { useSession } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 
@@ -190,16 +190,49 @@ export default function LoginPage() {
       emailDomain: email.split('@')[1] ?? 'unknown'
     });
     try {
-      const result = await signIn.email({
-        email,
-        password
+      // Use raw fetch so we can inspect the 403 TWO_FACTOR_REQUIRED response
+      // directly. BetterAuth's signIn.email() SDK wrapper does not surface the
+      // raw HTTP status, so a 403 would appear as a successful result with no
+      // error, causing the client to navigate to /home without a valid session.
+      const rawRes = await fetch('/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
       });
-      if (result.error) {
-        const msg = result.error.message || '';
-        authLog('error', {
-          errorMsg: msg.slice(0, 120),
-          status: result.error.status
-        });
+      const rawBody = await rawRes.json().catch(() => ({})) as Record<string, unknown>;
+
+      // ── 2FA intercept ──────────────────────────────────────────────────────
+      if (rawRes.status === 403 && rawBody.code === 'TWO_FACTOR_REQUIRED') {
+        const method = (rawBody.method as 'totp' | 'sms') ?? 'totp';
+        authLog('2fa_required', { method });
+        setLoading(false);
+        setTfa2Method(method);
+        if (method === 'sms') {
+          // Trigger SMS send immediately
+          const maskedPhone = (rawBody.maskedPhone as string) ?? '';
+          setSmsMaskedPhone(maskedPhone);
+          setSmsResendState('sending');
+          try {
+            const sendRes = await fetch('/api/me/2fa/sms/send', {
+              method: 'POST',
+              credentials: 'include',
+            });
+            const sendData = (await sendRes.json()) as { ok?: boolean; maskedPhone?: string; error?: string };
+            if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
+            setSmsResendState('sent');
+          } catch {
+            setSmsResendState('idle');
+          }
+        }
+        setNeeds2FA(true);
+        return;
+      }
+
+      // ── Standard error handling ────────────────────────────────────────────
+      if (!rawRes.ok) {
+        const msg = (rawBody.message as string) || (rawBody.error as string) || '';
+        authLog('error', { errorMsg: msg.slice(0, 120), status: rawRes.status });
         if (isVerificationError(msg)) {
           setUnverified(true);
         } else {
@@ -208,41 +241,34 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      // Login succeeded — check if the user is unverified
-      const userData = result.data?.user as {
-        emailVerified?: boolean;
-        id?: string;
-      } | undefined;
-      const dataAny = result.data as Record<string, unknown> | undefined;
-      authLog('success', {
-        emailVerified: userData?.emailVerified,
-        userId: userData?.id
-      });
+
+      // ── Login succeeded ────────────────────────────────────────────────────
+      const userData = rawBody.user as { emailVerified?: boolean; id?: string } | undefined;
+      authLog('success', { emailVerified: userData?.emailVerified, userId: userData?.id });
+
       if (userData && userData.emailVerified === false) {
         setUnverified(true);
         setLoading(false);
         return;
       }
+
       // Check if forced password change is required
-      if (dataAny?.mustChangePassword) {
+      if (rawBody.mustChangePassword) {
         setLoading(false);
         setMustChangePassword(true);
         return;
       }
-      // Check if 2FA is required
-      const tfaRes = await fetch('/api/me/2fa/status', {
-        credentials: 'include'
-      });
-      const tfaData = (await tfaRes.json()) as {
-        enabled?: boolean;
-        method?: 'totp' | 'sms' | null;
-        maskedPhone?: string;
-      };
+
+      // ── Legacy SMS 2FA path (status-check fallback, should not be reached) ─
+      // This block is kept as a safety net for any edge case where the server
+      // returns 200 but the user has 2FA enabled (should not happen with the
+      // 403 intercept above, but guards against future regressions).
+      const tfaRes = await fetch('/api/me/2fa/status', { credentials: 'include' });
+      const tfaData = (await tfaRes.json()) as { enabled?: boolean; method?: 'totp' | 'sms' | null; maskedPhone?: string };
       if (tfaData.enabled) {
         setLoading(false);
         setTfa2Method(tfaData.method ?? 'totp');
         if (tfaData.method === 'sms') {
-          // Trigger SMS send immediately
           setSmsMaskedPhone(tfaData.maskedPhone ?? '');
           setSmsResendState('sending');
           try {

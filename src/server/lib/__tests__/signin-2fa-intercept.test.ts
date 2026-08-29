@@ -51,8 +51,17 @@ describe('auth-middleware: 2FA sign-in intercept — source structure', () => {
     expect(block403).toContain('method');
   });
 
-  it('attempts to revoke the BetterAuth session before returning 403', () => {
-    expect(SRC).toContain('revokeSession');
+  it('does NOT revoke the BetterAuth session — checkPending2fa guard handles blocking instead', () => {
+    // The session must NOT be revoked during the 2FA intercept.
+    // Revoking it caused useSession() to return unauthenticated after successful
+    // 2FA verification, breaking the post-verify navigation to /home.
+    // The checkPending2fa guard in auth-middleware.ts blocks all protected API
+    // routes while the challenge cookie is present — that is sufficient.
+    expect(SRC).not.toContain('revokeSession');
+    // The guard must still be present in the middleware
+    const libMiddleware = readFileSync('src/server/lib/auth-middleware.ts', 'utf8');
+    expect(libMiddleware).toContain('checkPending2fa');
+    expect(libMiddleware).toContain('PENDING_2FA_ALLOWED');
   });
 
   it('falls through to normal login when 2FA check throws (fail-open)', () => {
