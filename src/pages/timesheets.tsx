@@ -22,7 +22,7 @@ export default function TimesheetsPage() {
 
   function handleBack() {
     // Return to home screen on the Manage page (page index 2)
-    navigate('/home');
+    navigate('/home?page=2');
   }
 
   return (

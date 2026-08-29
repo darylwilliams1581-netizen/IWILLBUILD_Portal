@@ -103,8 +103,8 @@ describe('/timesheets page', () => {
   });
 
   it('navigates back to home manage page', () => {
-    // Back button should navigate to /?page=2 (Manage page)
-    expect(timesheetsPageSrc).toContain('/?page=2');
+    // Back button should navigate to /home?page=2 (Manage page on the authenticated home screen)
+    expect(timesheetsPageSrc).toContain('/home?page=2');
   });
 
   it('is marked seo-exempt (authenticated-only page)', () => {

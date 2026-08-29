@@ -102,20 +102,20 @@ describe('Work & Field button removed', () => {
   });
 });
 
-// ── 4. Each icon has a pickerRoute pointing to /?picker=<key> ────────────────
+// ── 4. Each icon has a pickerRoute pointing to /home?picker=<key> ────────────
 
 describe('Registry — pickerRoute format', () => {
-  it('all pickerRoutes start with /?picker=', async () => {
+  it('all pickerRoutes start with /home?picker=', async () => {
     const { JOB_FEATURES } = await import('@/lib/jobFeatureRegistry');
     JOB_FEATURES.forEach(f => {
-      expect(f.pickerRoute).toMatch(/^\/\?picker=/);
+      expect(f.pickerRoute).toMatch(/^\/home\?picker=/);
     });
   });
 
   it('pickerRoute key matches feature key', async () => {
     const { JOB_FEATURES } = await import('@/lib/jobFeatureRegistry');
     JOB_FEATURES.forEach(f => {
-      expect(f.pickerRoute).toBe(`/?picker=${f.key}`);
+      expect(f.pickerRoute).toBe(`/home?picker=${f.key}`);
     });
   });
 });
@@ -164,36 +164,36 @@ describe('Standalone pages — backTo="/home"', () => {
   });
 });
 
-// ── 7. Change Job navigates to /?picker=<key> ─────────────────────────────────
+// ── 7. Change Job navigates to /home?picker=<key> ─────────────────────────────
 
-describe('Standalone pages — Change Job navigates to /?picker=<key>', () => {
-  it('job-tasks-page navigates to /?picker=tasks on Change Job', () => {
+describe('Standalone pages — Change Job navigates to /home?picker=<key>', () => {
+  it('job-tasks-page navigates to /home?picker=tasks on Change Job', () => {
     const pageSrc = src('src/pages/job-tasks-page.tsx');
-    expect(pageSrc).toContain("navigate('/?picker=tasks')");
+    expect(pageSrc).toContain("navigate('/home?picker=tasks')");
     expect(pageSrc).not.toContain("navigate('/work-field");
   });
 
-  it('job-photos-page navigates to /?picker=photos on Change Job', () => {
+  it('job-photos-page navigates to /home?picker=photos on Change Job', () => {
     const pageSrc = src('src/pages/job-photos-page.tsx');
-    expect(pageSrc).toContain("navigate('/?picker=photos')");
+    expect(pageSrc).toContain("navigate('/home?picker=photos')");
     expect(pageSrc).not.toContain("navigate('/work-field");
   });
 
-  it('job-costs-page navigates to /?picker=costs on Change Job', () => {
+  it('job-costs-page navigates to /home?picker=costs on Change Job', () => {
     const pageSrc = src('src/pages/job-costs-page.tsx');
-    expect(pageSrc).toContain("navigate('/?picker=costs')");
+    expect(pageSrc).toContain("navigate('/home?picker=costs')");
     expect(pageSrc).not.toContain("navigate('/work-field");
   });
 
-  it('job-safety-page navigates to /?picker=safety on Change Job', () => {
+  it('job-safety-page navigates to /home?picker=safety on Change Job', () => {
     const pageSrc = src('src/pages/job-safety-page.tsx');
-    expect(pageSrc).toContain("navigate('/?picker=safety')");
+    expect(pageSrc).toContain("navigate('/home?picker=safety')");
     expect(pageSrc).not.toContain("navigate('/work-field");
   });
 
-  it('job-progress-page navigates to /?picker=progress on Change Job', () => {
+  it('job-progress-page navigates to /home?picker=progress on Change Job', () => {
     const pageSrc = src('src/pages/job-progress-page.tsx');
-    expect(pageSrc).toContain("navigate('/?picker=progress')");
+    expect(pageSrc).toContain("navigate('/home?picker=progress')");
     expect(pageSrc).not.toContain("navigate('/work-field");
   });
 });
@@ -203,12 +203,12 @@ describe('Standalone pages — Change Job navigates to /?picker=<key>', () => {
 describe('/work-field redirect page', () => {
   const redirectSrc = src('src/pages/work-field.tsx');
 
-  it('redirects /work-field to / (home)', () => {
-    expect(redirectSrc).toContain("navigate('/', { replace: true })");
+  it('redirects /work-field to /home (home)', () => {
+    expect(redirectSrc).toContain("navigate('/home', { replace: true })");
   });
 
-  it('redirects /work-field/:slug to /?picker=<key>', () => {
-    expect(redirectSrc).toContain('navigate(`/?picker=${feature.key}`');
+  it('redirects /work-field/:slug to /home?picker=<key>', () => {
+    expect(redirectSrc).toContain('navigate(`/home?picker=${feature.key}`');
   });
 
   it('uses getFeatureByLauncherSlug to resolve slug', () => {

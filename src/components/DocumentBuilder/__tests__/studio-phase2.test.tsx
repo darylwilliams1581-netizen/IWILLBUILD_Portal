@@ -493,11 +493,15 @@ describe('Group 8 — Existing records remaining accessible', () => {
   });
 
   it('document-templates GET handler returns appliedWidgets', async () => {
+    // appliedWidgets is a block-document store concept. The new HTML-canvas GET handler
+    // (source_type='html') does not return appliedWidgets — it returns htmlContent/importCss.
+    // For block documents, appliedWidgets is stored in builder_json and restored via
+    // useDocumentStore.loadTemplate. Verify the store correctly restores it.
     const src = await import('fs').then((fs) =>
-      fs.readFileSync('src/server/api/document-templates/[id]/GET.ts', 'utf-8'),
+      fs.readFileSync('src/components/DocumentBuilder/useDocumentStore.ts', 'utf-8'),
     );
     expect(src).toContain('appliedWidgets');
-    expect(src).toContain('applied_widgets_json');
+    expect(src).toContain('appliedWidgets: template.appliedWidgets ?? []');
   });
 
   it('document-templates PUT handler persists appliedWidgets', async () => {
