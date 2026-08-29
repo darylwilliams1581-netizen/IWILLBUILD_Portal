@@ -31,6 +31,12 @@ interface Props {
   onImportDocx: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /**
+   * When the active document is an HTML-canvas doc (source_type='html'),
+   * the parent passes this callback instead of using the block store.
+   * All insert buttons call onInsertHtml(htmlFragment) when it is present.
+   */
+  onInsertHtml?: (html: string) => void;
 }
 
 // ── System field tokens ───────────────────────────────────────────────────────
@@ -194,7 +200,81 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
   );
 }
 
-export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }: Props) {
+// ── Block → HTML fragment converter ──────────────────────────────────────────
+/**
+ * Converts a DocumentBlock descriptor into an HTML fragment string suitable
+ * for insertion into the HTML-canvas contentEditable root.
+ *
+ * Only the block types that DocSidebar can insert are handled here.
+ * The output is sanitised by HtmlDocumentCanvas.insertHtml before DOM insertion.
+ */
+function blockToHtml(block: DocumentBlock): string {
+  switch (block.type) {
+    case 'heading': {
+      const tag = `h${block.level ?? 1}`;
+      return `<${tag}>${escHtml(block.content ?? '')}</${tag}>`;
+    }
+    case 'text':
+      return `<p>${escHtml(block.content ?? '')}</p>`;
+    case 'rich_text':
+      // Already HTML — passed through as-is (sanitised on insert)
+      return block.html ?? '<p></p>';
+    case 'divider':
+      return '<hr/>';
+    case 'page_break':
+      return '<div class="page-break"></div>';
+    case 'table': {
+      if (block.mode !== 'static' || !block.columns) return '<p></p>';
+      const cols = block.columns;
+      const headerRow = `<tr>${cols.map((c) => `<th>${escHtml(c.header ?? '')}</th>`).join('')}</tr>`;
+      const bodyRows = (block.rows ?? []).map((row) =>
+        `<tr>${cols.map((c) => `<td>${escHtml(row.cells?.[c.id] ?? '')}</td>`).join('')}</tr>`,
+      ).join('');
+      return `<table><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
+    }
+    case 'field': {
+      // Form fields insert as static printable placeholders — no live form wiring
+      const label = escHtml(block.label ?? 'Field');
+      switch (block.fieldType) {
+        case 'short_text':
+        case 'long_text':
+          return `<p><strong>${label}:</strong> _______________________________________________</p>`;
+        case 'yes_no':
+          return `<p><strong>${label}:</strong> ☐ Yes &nbsp;&nbsp; ☐ No</p>`;
+        case 'date':
+          return `<p><strong>${label}:</strong> ______ / ______ / __________</p>`;
+        case 'single_choice':
+          return `<p><strong>${label}:</strong> ${(block.options ?? []).map((o) => `☐ ${escHtml(o)}`).join(' &nbsp; ')}</p>`;
+        case 'signature':
+          return `<p><strong>${label}:</strong> ___________________________ &nbsp; Date: ___________</p>`;
+        case 'photo':
+          return `<p><strong>${label}:</strong> [Photo / Evidence]</p>`;
+        case 'file_upload':
+          return `<p><strong>${label}:</strong> [File attachment]</p>`;
+        default:
+          return `<p><strong>${label}:</strong> _______________</p>`;
+      }
+    }
+    case 'banner': {
+      const title = escHtml(block.title ?? '');
+      const body  = escHtml(block.body  ?? '');
+      return `<div class="banner banner-${block.variant ?? 'info'}"><strong>${title}</strong><p>${body}</p></div>`;
+    }
+    default:
+      return '<p></p>';
+  }
+}
+
+/** Minimal HTML entity escaper for text content */
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse, onInsertHtml }: Props) {
   const { appendBlocks } = useDocumentStore();
   const [structureOpen, setStructureOpen]   = useState(true);
   const [tablesOpen, setTablesOpen]         = useState(true);
@@ -202,8 +282,17 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
   const [advancedOpen, setAdvancedOpen]     = useState(false);
   const [sysFieldsOpen, setSysFieldsOpen]   = useState(false);
 
+  // ── Insert routing ────────────────────────────────────────────────────────
+  // For HTML-canvas documents, onInsertHtml is provided and we route all
+  // inserts through it as raw HTML fragments.
+  // For block-canvas documents, we fall back to appendBlocks as before.
+
   function insert(block: DocumentBlock) {
-    appendBlocks([block]);
+    if (onInsertHtml) {
+      onInsertHtml(blockToHtml(block));
+    } else {
+      appendBlocks([block]);
+    }
   }
 
   /** Insert a system field token as an inline rich_text block */

@@ -35,13 +35,14 @@
  *   the active cell before the mutation fires.
  */
 
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useImperativeHandle, forwardRef } from 'react';
 import {
   AlertTriangle, ChevronDown, ChevronUp, X,
   FileText, Image as ImageIcon, LayoutGrid, AlertCircle,
   Loader2, CheckCircle,
 } from 'lucide-react';
 import type { ImportReport } from './types';
+import { sanitiseHtml } from './sanitiseHtml';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -58,6 +59,19 @@ export interface HtmlDocumentCanvasProps {
   zoom?: number;
 }
 
+/**
+ * Imperative handle exposed via ref so Document Tools can insert HTML
+ * at the active caret without going through the block-append store.
+ */
+export interface HtmlDocumentCanvasHandle {
+  /**
+   * Insert sanitised HTML at the last known caret position inside the
+   * .studio-doc canvas.  If no caret was saved, appends at the end.
+   * Marks the document dirty and triggers a save.
+   */
+  insertHtml(fragment: string): void;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STYLE_TAG_ID_PREFIX = 'html-canvas-css-';
@@ -66,7 +80,9 @@ const ROW_BTN_CLASS  = 'html-canvas-row-btn';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function HtmlDocumentCanvas({
+const HtmlDocumentCanvas = forwardRef<HtmlDocumentCanvasHandle, HtmlDocumentCanvasProps>(
+function HtmlDocumentCanvas(
+{
   templateId,
   htmlContent,
   importCss,
@@ -74,10 +90,14 @@ export default function HtmlDocumentCanvas({
   mode,
   onSaved,
   zoom = 100,
-}: HtmlDocumentCanvasProps) {
+}: HtmlDocumentCanvasProps,
+ref,
+) {
   const canvasRef  = useRef<HTMLDivElement>(null);
   const isDirtyRef = useRef(false);
   const isSaving   = useRef(false);
+  /** Last saved Selection Range inside the canvas — preserved across toolbar focus loss */
+  const savedRangeRef = useRef<Range | null>(null);
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError,  setSaveError]  = useState('');
@@ -98,6 +118,125 @@ export default function HtmlDocumentCanvas({
     // Prepend print / page-break support inside the scoped selector
     tag.textContent = buildScopedStyles(String(templateId), importCss ?? '');
   }, [templateId, importCss]);
+
+  // ── Preserve selection when focus leaves the canvas ───────────────────────
+  // Saved before a toolbar button click steals focus so insertHtml can
+  // restore the caret to the correct position.
+  useEffect(() => {
+    if (!isEditable) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const saveRange = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        // Only save if the range is inside our canvas
+        if (canvas.contains(range.commonAncestorContainer)) {
+          savedRangeRef.current = range.cloneRange();
+        }
+      }
+    };
+
+    // Save on every selectionchange so we always have the freshest position
+    document.addEventListener('selectionchange', saveRange);
+    return () => document.removeEventListener('selectionchange', saveRange);
+  }, [isEditable]);
+
+  // ── Imperative handle: insertHtml ─────────────────────────────────────────
+  useImperativeHandle(ref, () => ({
+    insertHtml(fragment: string) {
+      if (!isEditable) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Sanitise the incoming fragment through the shared allowlist
+      const clean = sanitiseHtml(fragment);
+
+      // Build a temporary container to parse the fragment into real nodes
+      const tmp = document.createElement('div');
+      tmp.innerHTML = clean;
+
+      // Restore the saved selection, or fall back to end-of-canvas
+      const sel = window.getSelection();
+      let range: Range;
+
+      if (savedRangeRef.current && canvas.contains(savedRangeRef.current.commonAncestorContainer)) {
+        range = savedRangeRef.current.cloneRange();
+      } else {
+        // No valid saved range — append at end
+        range = document.createRange();
+        range.selectNodeContents(canvas);
+        range.collapse(false);
+      }
+
+      // Focus the canvas so the selection is active
+      canvas.focus({ preventScroll: true });
+
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+
+      // Delete any current selection content, then insert
+      range.deleteContents();
+
+      // Insert nodes from the fragment (may be multiple top-level nodes)
+      const frag = document.createDocumentFragment();
+      while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+      range.insertNode(frag);
+
+      // Collapse selection to just after the inserted content
+      range.collapse(false);
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      savedRangeRef.current = range.cloneRange();
+
+      // Attach row controls to any newly inserted tables
+      attachRowControls(canvas, () => { isDirtyRef.current = true; });
+
+      // Mark dirty and trigger save (same path as typing)
+      isDirtyRef.current = true;
+
+      // Dispatch an input event so the dirty flag is picked up by any
+      // external listeners and the save-status indicator updates
+      canvas.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Trigger an immediate save so the toolbar action is persisted
+      // without requiring the user to blur the canvas manually.
+      void (async () => {
+        if (isSaving.current) return;
+        const html = serialiseCanvas(canvas);
+        isDirtyRef.current = false;
+        isSaving.current   = true;
+        setSaveStatus('saving');
+        try {
+          const res = await fetch(`/api/document-templates/${templateId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ htmlContent: html }),
+          });
+          const data = await res.json() as { ok?: boolean; error?: string };
+          if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+          setSaveStatus('saved');
+          setSaveError('');
+          onSaved?.(html);
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Save failed';
+          setSaveError(msg);
+          setSaveStatus('error');
+          isDirtyRef.current = true;
+          setTimeout(() => setSaveStatus('idle'), 4000);
+        } finally {
+          isSaving.current = false;
+        }
+      })();
+    },
+  }), [isEditable, templateId, onSaved]);
 
   // ── Mount: set innerHTML once, wire editability ────────────────────────────
   // Memoised on templateId only — does NOT re-run when htmlContent changes
@@ -321,6 +460,10 @@ export default function HtmlDocumentCanvas({
     </div>
   );
 }
+);
+
+HtmlDocumentCanvas.displayName = 'HtmlDocumentCanvas';
+export default HtmlDocumentCanvas;
 
 // ─── Scoped styles builder ────────────────────────────────────────────────────
 

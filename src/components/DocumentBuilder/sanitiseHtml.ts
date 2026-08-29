@@ -20,7 +20,7 @@ export function sanitiseHtml(dirty: string): string {
   ]);
   const ALLOWED_ATTRS: Record<string, string[]> = {
     a:      ['href', 'title', 'target', 'rel'],
-    span:   ['style', 'class'],
+    span:   ['style', 'class', 'data-sys-field', 'contenteditable'],
     div:    ['style', 'class'],
     p:      ['style', 'class'],
     table:  ['style', 'class'],

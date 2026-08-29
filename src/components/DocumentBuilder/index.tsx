@@ -34,6 +34,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings, BannerVariant, PaperSize, Orientation, MarginPreset } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
 import HtmlDocumentCanvas from './HtmlDocumentCanvas';
+import type { HtmlDocumentCanvasHandle } from './HtmlDocumentCanvas';
 import JobPhotoPicker from './JobPhotoPicker';
 
 interface Props {
@@ -91,6 +92,8 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   // ── HTML canvas state (source_type = 'html') ──────────────────────────────
   const isHtmlDoc = template?.sourceType === 'html';
   const [liveHtmlContent, setLiveHtmlContent] = useState<string>(template?.htmlContent ?? '');
+  /** Ref to the HtmlDocumentCanvas imperative handle — used by Document Tools */
+  const htmlCanvasRef = useRef<HtmlDocumentCanvasHandle>(null);
   // Sync if a new template is loaded
   useEffect(() => {
     setLiveHtmlContent(template?.htmlContent ?? '');
@@ -272,6 +275,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     if (isHtmlDoc && template?.id) {
       return (
         <HtmlDocumentCanvas
+          ref={htmlCanvasRef}
           templateId={template.id}
           htmlContent={liveHtmlContent}
           importCss={template.importCss ?? ''}
@@ -624,6 +628,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                       onImportDocx={() => setShowDocxImporter(true)}
                       collapsed={false}
                       onToggleCollapse={() => {}}
+                      onInsertHtml={isHtmlDoc ? (html) => htmlCanvasRef.current?.insertHtml(html) : undefined}
                     />
                   )}
 
