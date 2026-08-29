@@ -6,6 +6,7 @@
  */
 
 import { createAuthClient } from 'better-auth/react';
+import { twoFactorClient } from 'better-auth/client/plugins';
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from "react-router";
 import { SESSION_RECOVERY_URL, claimSessionRecovery, clearSessionRecovery } from './session-recovery';
@@ -57,8 +58,33 @@ function getAuthBaseURL(): string {
   }
   return origin;
 }
+// ── Two-factor redirect callback ──────────────────────────────────────────────
+// The twoFactorClient plugin intercepts the sign-in response when the server
+// returns twoFactorRedirect:true. We store the redirect context in sessionStorage
+// so the login page can read it synchronously without prop-drilling.
+//
+// The login page reads window.__iwb_2fa_redirect__ immediately after signIn()
+// resolves, then clears it. This avoids a React state race where the callback
+// fires before the login page's useState setter has run.
+function storeTwoFactorRedirect(twoFactorMethods?: string[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    (window as unknown as Record<string, unknown>).__iwb_2fa_redirect__ = {
+      needs2FA: true,
+      methods: twoFactorMethods ?? [],
+    };
+  } catch {/* best-effort */}
+}
+
 const _authClient = createAuthClient({
-  baseURL: getAuthBaseURL()
+  baseURL: getAuthBaseURL(),
+  plugins: [
+    twoFactorClient({
+      onTwoFactorRedirect({ twoFactorMethods }) {
+        storeTwoFactorRedirect(twoFactorMethods);
+      },
+    }),
+  ],
 });
 
 // How long an unsettled session may stay pending before we treat it as a stuck

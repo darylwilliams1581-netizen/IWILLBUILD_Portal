@@ -568,6 +568,7 @@ import me_2fa_disable_post_528 from "./api/me/2fa/disable/POST";
 import me_2fa_enable_post_529 from "./api/me/2fa/enable/POST";
 import me_2fa_recover_post_530 from "./api/me/2fa/recover/POST";
 import me_2fa_setup_get_531 from "./api/me/2fa/setup/GET";
+import me_2fa_qr_get from "./api/me/2fa/qr/GET";
 import me_2fa_sms_disable_post_532 from "./api/me/2fa/sms/disable/POST";
 import me_2fa_sms_enable_post_533 from "./api/me/2fa/sms/enable/POST";
 import me_2fa_sms_send_post_534 from "./api/me/2fa/sms/send/POST";
@@ -919,7 +920,7 @@ import adminFixPhotoRecordFieldsPost from "./api/admin/fix-photo-record-fields/P
 import adminFixAllPhotoFieldsPost from "./api/admin/fix-all-photo-fields/POST.js";
 
 import { seoRoutes } from "../lib/seo-routes";
-import { requireOwner, requireAdmin, isPublicRoute, checkPending2fa } from "./lib/auth-middleware.js";
+import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
 import { applyWriteGate } from "./lib/write-gate-apply.js";
 import {
@@ -1221,14 +1222,11 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ error: 'Unauthorised' });
     }
 
-    // ── Pending-2FA guard ────────────────────────────────────────────────────
-    // If the user has a pending challenge cookie, block all routes except the
-    // 2FA verification endpoints. This enforces server-side 2FA before any
-    // protected API access is granted.
-    const fullPath = req.path.startsWith('/') ? `/api${req.path}` : `/api/${req.path}`;
-    const blocked = await checkPending2fa(req, res, fullPath);
-    if (blocked) return;
-
+    // ── Session guard ────────────────────────────────────────────────────────
+    // The official BetterAuth twoFactor plugin handles 2FA at the sign-in level:
+    // no authenticated session is created until the second factor succeeds.
+    // The custom checkPending2fa guard is no longer needed for TOTP.
+    // SMS 2FA still uses the custom pending_2fa_challenges path separately.
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorised' });
@@ -2091,6 +2089,12 @@ async function runStartupMigrations() {
     // ── 2FA security tables ───────────────────────────────────────────────────
     { name: 'pending_2fa_challenges', ddl: "CREATE TABLE IF NOT EXISTS pending_2fa_challenges (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, method ENUM('totp','sms') NOT NULL DEFAULT 'totp', expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_p2fa_user (user_id), INDEX idx_p2fa_token (token_hash), INDEX idx_p2fa_expires (expires_at))" },
     { name: 'totp_backup_codes', ddl: "CREATE TABLE IF NOT EXISTS totp_backup_codes (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_tbc_user (user_id), INDEX idx_tbc_hash (user_id, code_hash))" },
+    // Official BetterAuth twoFactor plugin table — stores encrypted TOTP secrets,
+    // encrypted backup codes, and per-account lockout state.
+    // The plugin uses BETTER_AUTH_SECRET (via symmetricEncrypt) for encryption —
+    // NOT TOTP_ENCRYPTION_KEY. This table is additive; existing custom columns
+    // (totp_secret, totp_attempts, totp_locked_until) on the user table are preserved.
+    { name: 'twoFactor', ddl: "CREATE TABLE IF NOT EXISTS `twoFactor` (id VARCHAR(36) PRIMARY KEY, secret TEXT NOT NULL, backup_codes TEXT NOT NULL, user_id VARCHAR(36) NOT NULL, verified TINYINT(1) NOT NULL DEFAULT 1, failed_verification_count INT NOT NULL DEFAULT 0, locked_until DATETIME NULL, INDEX idx_tf_user (user_id), INDEX idx_tf_user_id (user_id))" },
     // ── Phase 2: Word Source Document revision history ────────────────────────
     { name: 'document_template_revisions', ddl: "CREATE TABLE IF NOT EXISTS document_template_revisions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, revision INT NOT NULL DEFAULT 1, source_type VARCHAR(20) NOT NULL DEFAULT 'docx', source_file_key VARCHAR(1000) NOT NULL, source_file_name VARCHAR(500) NOT NULL, source_mime_type VARCHAR(100) NOT NULL, source_sha256 VARCHAR(64) NOT NULL, file_size_bytes INT NOT NULL DEFAULT 0, uploaded_by VARCHAR(36) NULL, uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, notes TEXT NULL, INDEX idx_dtr_template (template_id), INDEX idx_dtr_company (company_id), INDEX idx_dtr_revision (template_id, revision))" },
   ];
@@ -3819,6 +3823,7 @@ app.post("/api/me/2fa/disable", me_2fa_disable_post_528);
 app.post("/api/me/2fa/enable", me_2fa_enable_post_529);
 app.post("/api/me/2fa/recover", me_2fa_recover_post_530);
 app.get("/api/me/2fa/setup", me_2fa_setup_get_531);
+app.get("/api/me/2fa/qr", me_2fa_qr_get);
 app.post("/api/me/2fa/sms/disable", me_2fa_sms_disable_post_532);
 app.post("/api/me/2fa/sms/enable", me_2fa_sms_enable_post_533);
 app.post("/api/me/2fa/sms/send", me_2fa_sms_send_post_534);

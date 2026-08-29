@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from "react-router";
 import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink, MessageSquare } from 'lucide-react';
-import { useSession } from '@/lib/auth/auth-client';
+import { useSession, authClient, signIn } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 
@@ -190,28 +190,34 @@ export default function LoginPage() {
       emailDomain: email.split('@')[1] ?? 'unknown'
     });
     try {
-      // Use raw fetch so we can inspect the 403 TWO_FACTOR_REQUIRED response
-      // directly. BetterAuth's signIn.email() SDK wrapper does not surface the
-      // raw HTTP status, so a 403 would appear as a successful result with no
-      // error, causing the client to navigate to /home without a valid session.
-      const rawRes = await fetch('/api/auth/sign-in/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-      const rawBody = await rawRes.json().catch(() => ({})) as Record<string, unknown>;
+      // Use the BetterAuth SDK signIn.email() so the official twoFactor plugin
+      // can intercept the response. The twoFactorClient plugin's onTwoFactorRedirect
+      // callback fires when the server returns twoFactorRedirect:true, storing the
+      // redirect context in window.__iwb_2fa_redirect__ for us to read below.
+      const result = await signIn.email({ email, password });
 
-      // ── 2FA intercept ──────────────────────────────────────────────────────
-      if (rawRes.status === 403 && rawBody.code === 'TWO_FACTOR_REQUIRED') {
-        const method = (rawBody.method as 'totp' | 'sms') ?? 'totp';
-        authLog('2fa_required', { method });
+      // Check if the twoFactor plugin signalled a redirect
+      const twoFaRedirect = (() => {
+        try {
+          const w = window as unknown as Record<string, unknown>;
+          const r = w.__iwb_2fa_redirect__ as { needs2FA?: boolean; methods?: string[] } | undefined;
+          if (r?.needs2FA) {
+            delete w.__iwb_2fa_redirect__;
+            return r;
+          }
+        } catch {/* best-effort */}
+        return null;
+      })();
+
+      if (twoFaRedirect) {
+        const methods = twoFaRedirect.methods ?? [];
+        // Determine method: prefer totp if available, else sms
+        const method: 'totp' | 'sms' = methods.includes('totp') ? 'totp' : 'sms';
+        authLog('2fa_required', { method, methods });
         setLoading(false);
         setTfa2Method(method);
         if (method === 'sms') {
-          // Trigger SMS send immediately
-          const maskedPhone = (rawBody.maskedPhone as string) ?? '';
-          setSmsMaskedPhone(maskedPhone);
+          setSmsMaskedPhone('');
           setSmsResendState('sending');
           try {
             const sendRes = await fetch('/api/me/2fa/sms/send', {
@@ -230,9 +236,9 @@ export default function LoginPage() {
       }
 
       // ── Standard error handling ────────────────────────────────────────────
-      if (!rawRes.ok) {
-        const msg = (rawBody.message as string) || (rawBody.error as string) || '';
-        authLog('error', { errorMsg: msg.slice(0, 120), status: rawRes.status });
+      if (result?.error) {
+        const msg = result.error.message ?? '';
+        authLog('error', { errorMsg: msg.slice(0, 120) });
         if (isVerificationError(msg)) {
           setUnverified(true);
         } else {
@@ -243,7 +249,7 @@ export default function LoginPage() {
       }
 
       // ── Login succeeded ────────────────────────────────────────────────────
-      const userData = rawBody.user as { emailVerified?: boolean; id?: string } | undefined;
+      const userData = result?.data?.user as { emailVerified?: boolean; id?: string } | undefined;
       authLog('success', { emailVerified: userData?.emailVerified, userId: userData?.id });
 
       if (userData && userData.emailVerified === false) {
@@ -252,44 +258,14 @@ export default function LoginPage() {
         return;
       }
 
-      // Check if forced password change is required
-      if (rawBody.mustChangePassword) {
+      // Check if forced password change is required (server injects mustChangePassword)
+      const rawBody = result?.data as Record<string, unknown> | undefined;
+      if (rawBody?.mustChangePassword) {
         setLoading(false);
         setMustChangePassword(true);
         return;
       }
 
-      // ── Legacy SMS 2FA path (status-check fallback, should not be reached) ─
-      // This block is kept as a safety net for any edge case where the server
-      // returns 200 but the user has 2FA enabled (should not happen with the
-      // 403 intercept above, but guards against future regressions).
-      const tfaRes = await fetch('/api/me/2fa/status', { credentials: 'include' });
-      const tfaData = (await tfaRes.json()) as { enabled?: boolean; method?: 'totp' | 'sms' | null; maskedPhone?: string };
-      if (tfaData.enabled) {
-        setLoading(false);
-        setTfa2Method(tfaData.method ?? 'totp');
-        if (tfaData.method === 'sms') {
-          setSmsMaskedPhone(tfaData.maskedPhone ?? '');
-          setSmsResendState('sending');
-          try {
-            const sendRes = await fetch('/api/me/2fa/sms/send', {
-              method: 'POST',
-              credentials: 'include'
-            });
-            const sendData = (await sendRes.json()) as {
-              ok?: boolean;
-              maskedPhone?: string;
-              error?: string;
-            };
-            if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
-            setSmsResendState('sent');
-          } catch {
-            setSmsResendState('idle');
-          }
-        }
-        setNeeds2FA(true);
-        return;
-      }
       // Prefer ?from= query param (set by session-expiry hard redirect) over
       // React Router location state (set by ProtectedRoute soft redirect).
       const params = new URLSearchParams(location.search);
@@ -374,25 +350,27 @@ export default function LoginPage() {
     setError('');
     setTfaLoading(true);
     try {
-      const endpoint = tfa2Method === 'sms' ? '/api/me/2fa/sms/verify' : '/api/me/2fa/verify';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          token: tfaToken,
-          code: tfaToken
-        })
-      });
-      const d = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-      };
-      if (!res.ok || !d.ok) {
-        setError(d.error ?? 'Invalid code. Please try again.');
-        return;
+      if (tfa2Method === 'sms') {
+        // SMS 2FA still uses the custom endpoint (separate from the official TOTP plugin)
+        const res = await fetch('/api/me/2fa/sms/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token: tfaToken, code: tfaToken }),
+        });
+        const d = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || !d.ok) {
+          setError(d.error ?? 'Invalid code. Please try again.');
+          return;
+        }
+      } else {
+        // TOTP: use the official BetterAuth twoFactor plugin endpoint
+        const result = await authClient.twoFactor.verifyTotp({ code: tfaToken });
+        if (result?.error) {
+          const msg = result.error.message ?? 'Invalid code. Please try again.';
+          setError(msg);
+          return;
+        }
       }
       const rawFrom2fa = (location.state as {
         from?: {

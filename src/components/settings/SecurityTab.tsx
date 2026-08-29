@@ -9,6 +9,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, Copy, Check, RefreshCw,
 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { authClient } from '@/lib/auth/auth-client';
 
 type Method = 'totp' | 'sms' | null;
 type Phase =
@@ -31,11 +32,13 @@ export default function SecurityTab() {
   const [maskedPhone, setMaskedPhone] = useState('');
 
   // TOTP state
+  const [totpUri, setTotpUri]     = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [secret, setSecret]       = useState('');
   const [token, setToken]         = useState('');
   const [disableToken, setDisableToken] = useState('');
   const [copied, setCopied]       = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
   // SMS state
   const [smsPhone, setSmsPhone]   = useState('');
@@ -77,12 +80,33 @@ export default function SecurityTab() {
   async function startTotpSetup() {
     setError(''); setBusy(true);
     try {
-      const res = await fetch('/api/me/2fa/setup', { credentials: 'include' });
-      const d = await res.json() as { qrDataUrl?: string; secret?: string; alreadyEnabled?: boolean; error?: string };
-      if (!res.ok || d.error) { setError(d.error ?? 'Setup failed.'); return; }
-      if (d.alreadyEnabled) { setPhase('totp-enabled'); return; }
-      setQrDataUrl(d.qrDataUrl ?? '');
-      setSecret(d.secret ?? '');
+      // Official plugin: POST /api/auth/two-factor/enable
+      // Returns { totpURI, backupCodes }. The secret is embedded in the URI.
+      const result = await authClient.twoFactor.enable({ password: disablePw || undefined });
+      if (result?.error) {
+        setError(result.error.message ?? 'Setup failed.');
+        return;
+      }
+      const uri = result?.data?.totpURI ?? '';
+      const codes = (result?.data?.backupCodes as string[] | undefined) ?? [];
+      setTotpUri(uri);
+      setBackupCodes(codes);
+
+      // Extract the secret from the otpauth URI for manual entry
+      // Format: otpauth://totp/Issuer:email?secret=BASE32SECRET&...
+      const secretMatch = uri.match(/[?&]secret=([^&]+)/i);
+      setSecret(secretMatch?.[1] ?? '');
+
+      // Generate QR code data URL using the browser's canvas API
+      // We use a simple server-side QR endpoint to avoid bundling a QR library
+      const qrRes = await fetch(`/api/me/2fa/qr?uri=${encodeURIComponent(uri)}`, { credentials: 'include' });
+      if (qrRes.ok) {
+        const qrData = await qrRes.json() as { qrDataUrl?: string };
+        setQrDataUrl(qrData.qrDataUrl ?? '');
+      } else {
+        // Fallback: show the URI directly if QR generation fails
+        setQrDataUrl('');
+      }
       setPhase('totp-setup');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
@@ -92,14 +116,13 @@ export default function SecurityTab() {
     if (token.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); return; }
     setError(''); setBusy(true);
     try {
-      const res = await fetch('/api/me/2fa/enable', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ token }),
-      });
-      const d = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok || !d.ok) { setError(d.error ?? 'Invalid code.'); return; }
+      // Official plugin: POST /api/auth/two-factor/verify-totp
+      // During setup (twoFactor.verified=false), verifyTotp also sets twoFactorEnabled=true
+      const result = await authClient.twoFactor.verifyTotp({ code: token });
+      if (result?.error) {
+        setError(result.error.message ?? 'Invalid code.');
+        return;
+      }
       setToken('');
       setActiveMethod('totp');
       setPhase('totp-enabled');
@@ -112,14 +135,12 @@ export default function SecurityTab() {
     if (!disablePw) { setError('Enter your current password.'); return; }
     setError(''); setBusy(true);
     try {
-      const res = await fetch('/api/me/2fa/disable', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ password: disablePw, token: disableToken || undefined }),
-      });
-      const d = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok || !d.ok) { setError(d.error ?? 'Failed to disable 2FA.'); return; }
+      // Official plugin: POST /api/auth/two-factor/disable
+      const result = await authClient.twoFactor.disable({ password: disablePw });
+      if (result?.error) {
+        setError(result.error.message ?? 'Failed to disable 2FA.');
+        return;
+      }
       setDisablePw(''); setDisableToken('');
       setActiveMethod(null);
       setPhase('disabled');

@@ -6,6 +6,7 @@ import {
   timestamp,
   int,
   date,
+  datetime,
 } from 'drizzle-orm/mysql-core';
 
 // ── BetterAuth required tables ──────────────────────────────────────────────
@@ -22,6 +23,8 @@ export const user = mysqlTable('user', {
   verificationMethod: varchar('verification_method', { length: 30 }),
   // Dedicated phone verification flag — never conflated with emailVerified
   phoneVerified:      boolean('phone_verified').default(false),
+  // Official BetterAuth two-factor plugin field (maps to two_factor_enabled column)
+  twoFactorEnabled:   boolean('two_factor_enabled').default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
@@ -64,6 +67,21 @@ export const verification = mysqlTable('verification', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// ── BetterAuth two-factor plugin table ──────────────────────────────────────
+// Required by the official twoFactor() plugin. The plugin stores the TOTP
+// secret (encrypted with BETTER_AUTH_SECRET via symmetricEncrypt), backup codes
+// (encrypted), and per-account lockout state here.
+// Column names use snake_case to match BetterAuth's drizzle adapter mapping.
+export const twoFactor = mysqlTable('twoFactor', {
+  id:                     varchar('id', { length: 36 }).primaryKey(),
+  secret:                 text('secret').notNull(),
+  backupCodes:            text('backup_codes').notNull(),
+  userId:                 varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  verified:               boolean('verified').default(true),
+  failedVerificationCount: int('failed_verification_count').default(0),
+  lockedUntil:            datetime('locked_until'),
 });
 
 // ── IWILLBUILD app tables ────────────────────────────────────────────────────

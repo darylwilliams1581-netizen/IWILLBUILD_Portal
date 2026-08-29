@@ -207,19 +207,18 @@ describe('Phone verification does not alter email verification', () => {
 // ── Idempotent setup ───────────────────────────────────────────────────────────
 
 describe('TOTP setup idempotency', () => {
-  it('setup/GET.ts does not regenerate secret when one already exists', async () => {
+  it('setup/GET.ts is retired (410 Gone) — idempotency now handled by official plugin', async () => {
+    // The official BetterAuth twoFactor plugin handles idempotency internally:
+    // POST /api/auth/two-factor/enable always creates a new twoFactor row
+    // (deletes any existing one first), so the setup is always fresh.
+    // The custom setup/GET.ts endpoint now returns 410 Gone.
     const fs = await import('node:fs/promises');
     const src = await fs.readFile(
       'src/server/api/me/2fa/setup/GET.ts',
       'utf8',
     );
-
-    // Should check for existing secret before generating
-    expect(src).toContain('row?.totp_secret');
-    // Should only generate if no existing secret
-    expect(src).toContain('plaintextSecret = \'\'');
-    // Should reuse existing secret
-    expect(src).toContain('decryptTotpSecret(row.totp_secret)');
+    expect(src).toContain('410');
+    expect(src).toContain('ENDPOINT_RETIRED');
   });
 });
 
