@@ -849,6 +849,27 @@ textarea {
     color: #0f172a !important;
   }
 
+  /* 4c. Contextual formatting — preserve inline styles applied by the
+     FloatingFormatToolbar and TableCellContextMenu at print time.
+     Inline styles have higher specificity than class rules, so these
+     declarations are only needed to prevent any blanket reset from
+     stripping them. We explicitly allow the safe CSS properties. */
+  .studio-doc-page span[style],
+  .studio-doc-page p[style],
+  .studio-doc-page div[style],
+  .studio-doc-page td[style],
+  .studio-doc-page th[style] {
+    /* Inline styles are preserved automatically — this rule exists to
+       document intent and prevent future blanket resets from removing them. */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure text colour and highlight applied via execCommand survive print */
+  .studio-doc-page font[color] {
+    color: attr(color) !important;
+  }
+
   /* 5. Page breaks */
   .studio-page-break {
     break-after: page !important;

@@ -447,6 +447,26 @@ export interface TableRow {
   cells: Record<string, string>; // columnId → default/static value
 }
 
+/**
+ * Per-cell style overrides.
+ * All fields are optional — absence means "use table default".
+ * Stored in TableBlock.cellStyles as a map keyed by `${rowId}:${colId}`.
+ * Existing documents without cellStyles continue to work unchanged.
+ */
+export interface CellStyle {
+  backgroundColor?: string;
+  color?: string;
+  fontWeight?: 'bold';
+  fontStyle?: 'italic';
+  textDecoration?: 'underline';
+  textAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  borderColor?: string;
+  borderWidth?: number; // px
+  colspan?: number;
+  rowspan?: number;
+}
+
 export interface TableBlock extends BlockBase {
   type: 'table';
   mode: TableMode;
@@ -457,6 +477,12 @@ export interface TableBlock extends BlockBase {
   stripedRows?: boolean;
   repeatable?: boolean; // fillable mode: user can add rows
   showRowNumbers?: boolean;
+  /**
+   * Optional per-cell style overrides.
+   * Key format: `${rowId}:${colId}` (or `header:${colId}` for header cells).
+   * Absent key → no override. Existing documents without this field are unaffected.
+   */
+  cellStyles?: Record<string, CellStyle>;
 }
 
 // ── Image Block ───────────────────────────────────────────────────────────────

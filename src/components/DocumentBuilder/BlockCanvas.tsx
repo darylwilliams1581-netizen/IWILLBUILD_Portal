@@ -13,6 +13,7 @@ import { useDocumentStore } from './useDocumentStore';
 import { BlockRenderer } from './BlockRenderer';
 import { useLogicEngine, DEFAULT_BLOCK_STATE } from './useLogicEngine';
 import type { DocumentBlock } from './types';
+import FloatingFormatToolbar from './formatting/FloatingFormatToolbar';
 
 // A4 dimensions at 96dpi: 794 × 1123px — portrait minH = width * 1.414
 const PAGE_WIDTHS: Record<string, number> = {
@@ -371,6 +372,11 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
       </div>{/* end page div */}
         </div>{/* end sizing shell */}
       </div>{/* end centering wrapper */}
+
+      {/* Floating format toolbar — activates on text selection inside the canvas */}
+      {mode === 'edit' && (
+        <FloatingFormatToolbar canvasRef={pageRef as React.RefObject<HTMLElement | null>} />
+      )}
     </div>
   );
 }
