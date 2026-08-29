@@ -212,14 +212,15 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   return (
     <div
       ref={scrollRef}
+      data-print-scroll
       className="flex-1 min-h-0 overflow-auto bg-slate-100"
       onClick={(e) => {
         if (e.target === e.currentTarget) deselect();
       }}
     >
-      <div className="flex justify-center py-10 px-4">
+      <div data-print-center className="flex justify-center py-10 px-4">
         {/* Sizing shell — gives scroll container the correct scaled dimensions */}
-        <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
+        <div data-print-shell style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
         <div
           ref={pageRef}
           data-doc-page
