@@ -4,12 +4,13 @@
  * S1  The page div carries the bg-white Tailwind class (solid white surface)
  * S2  The workspace scroll container carries bg-slate-100 (neutral surround)
  * S3  The empty-state page div also carries bg-white
- * S4  The page surface is white even when theme.backgroundColor is not set
- * S5  Block controls, selection ring and drag handle are not affected by the white class
+ * S4  A non-white theme.backgroundColor does NOT bleed onto the page surface
+ *     (inline style must not set backgroundColor on the page div)
+ * S5  Page shadow and rounded corners are unchanged
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import React from 'react';
 import BlockCanvas from '../BlockCanvas';
 
@@ -26,8 +27,10 @@ vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-const MOCK_THEME = {
-  backgroundColor: '#ffffff',
+// Deliberately non-white theme.backgroundColor — if this bleeds onto the page
+// surface the S4 assertion will catch it.
+const NON_WHITE_THEME = {
+  backgroundColor: '#c7d2fe', // slate-blue tint — the colour the bug would produce
   accentColor: '#7c3aed',
   textColor: '#1e293b',
   tableHeaderColor: '#1e293b',
@@ -41,7 +44,7 @@ vi.mock('../useDocumentStore', () => ({
       selection: { blockId: null },
       mode: 'edit' as const,
       pageLayout: { margins: 'standard', orientation: 'portrait' as const },
-      theme: MOCK_THEME,
+      theme: NON_WHITE_THEME,
       logicRules: [],
       select: vi.fn(),
       deselect: vi.fn(),
@@ -80,7 +83,6 @@ describe('S1 — Page div carries bg-white class (solid white surface)', () => {
 describe('S2 — Workspace scroll container carries bg-slate-100', () => {
   it('the outermost scroll div has bg-slate-100', () => {
     const { container } = render(<BlockCanvas zoom={100} />);
-    // The scroll container is the flex-1 overflow-auto div wrapping the page
     const scrollDiv = container.querySelector('.overflow-auto') as HTMLElement | null;
     expect(scrollDiv).not.toBeNull();
     expect(scrollDiv?.className).toContain('bg-slate-100');
@@ -91,7 +93,6 @@ describe('S2 — Workspace scroll container carries bg-slate-100', () => {
 
 describe('S3 — Empty-state page div carries bg-white', () => {
   it('data-doc-page in empty state has bg-white', () => {
-    // With no blocks, BlockCanvas renders the empty-state branch
     const { container } = render(<BlockCanvas zoom={100} />);
     const page = container.querySelector('[data-doc-page]') as HTMLElement | null;
     expect(page).not.toBeNull();
@@ -99,21 +100,28 @@ describe('S3 — Empty-state page div carries bg-white', () => {
   });
 });
 
-// ─── S4: Page surface white regardless of inline backgroundColor ──────────────
+// ─── S4: Non-white theme.backgroundColor does NOT override the page surface ───
 
-describe('S4 — Page surface is white even when inline style is applied', () => {
-  it('bg-white class is present alongside the inline style', () => {
+describe('S4 — Non-white theme.backgroundColor does not bleed onto page surface', () => {
+  it('page div has no inline backgroundColor set (bg-white class is the sole authority)', () => {
     const { container } = render(<BlockCanvas zoom={100} />);
     const page = container.querySelector('[data-doc-page]') as HTMLElement | null;
     expect(page).not.toBeNull();
-    // Both the class and the inline style should coexist
+    // The inline style must NOT carry backgroundColor — if it did, the non-white
+    // theme value (#c7d2fe) would override the bg-white class and tint the page.
+    expect(page?.style.backgroundColor).toBe('');
+  });
+
+  it('page div className still contains bg-white even with non-white theme', () => {
+    const { container } = render(<BlockCanvas zoom={100} />);
+    const page = container.querySelector('[data-doc-page]') as HTMLElement | null;
     expect(page?.className).toContain('bg-white');
-    // The inline style backgroundColor should be set (from theme)
-    expect(page?.style.backgroundColor).toBeTruthy();
+    // Confirm the tint colour is NOT present anywhere in the class string
+    expect(page?.className).not.toContain('c7d2fe');
   });
 });
 
-// ─── S5: studio-doc-page carries shadow-xl (visual depth unchanged) ───────────
+// ─── S5: Page shadow and rounded corners unchanged ────────────────────────────
 
 describe('S5 — Page shadow and rounded corners unchanged', () => {
   it('studio-doc-page retains shadow-xl and rounded-sm', () => {

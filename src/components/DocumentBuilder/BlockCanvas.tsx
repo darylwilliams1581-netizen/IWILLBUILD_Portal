@@ -115,7 +115,9 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const canvasStyle: React.CSSProperties = {
     width: canvasWidth,
     minHeight: isLandscape ? pageWidth : Math.round(pageWidth * 1.414),
-    backgroundColor: theme.backgroundColor,
+    // backgroundColor intentionally omitted — page paper is always white via bg-white class.
+    // theme.backgroundColor must not override the page surface; theme colours apply to
+    // headings, accents, and individual blocks only.
     paddingLeft: margin.x,
     paddingRight: margin.x,
     paddingTop: margin.y,
