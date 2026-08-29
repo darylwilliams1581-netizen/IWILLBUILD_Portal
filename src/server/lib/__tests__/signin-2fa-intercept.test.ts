@@ -66,8 +66,13 @@ describe('auth-client.tsx: twoFactorClient plugin', () => {
     expect(AUTH_CLIENT).toContain('onTwoFactorRedirect');
   });
 
-  it('stores redirect context in window.__iwb_2fa_redirect__', () => {
-    expect(AUTH_CLIENT).toContain('__iwb_2fa_redirect__');
+  it('uses module-level variable (not window global) for redirect handoff', () => {
+    // The handoff must use the typed module-level _pendingTwoFactorRedirect variable,
+    // not a window global. consumeTwoFactorRedirect() must be exported for login.tsx.
+    expect(AUTH_CLIENT).toContain('_pendingTwoFactorRedirect');
+    expect(AUTH_CLIENT).toContain('consumeTwoFactorRedirect');
+    // Must NOT use window.__iwb_2fa_redirect__ (replaced by module-level variable)
+    expect(AUTH_CLIENT).not.toContain('window.__iwb_2fa_redirect__');
   });
 });
 
@@ -187,8 +192,12 @@ describe('login.tsx: uses official SDK for sign-in and TOTP verify', () => {
     expect(LOGIN).not.toContain("fetch('/api/auth/sign-in/email'");
   });
 
-  it('reads window.__iwb_2fa_redirect__ after signIn', () => {
-    expect(LOGIN).toContain('__iwb_2fa_redirect__');
+  it('calls consumeTwoFactorRedirect() after signIn (not window global)', () => {
+    // Must use the typed module-level consumer, not a window global read
+    expect(LOGIN).toContain('consumeTwoFactorRedirect()');
+    // Must NOT read window.__iwb_2fa_redirect__ directly
+    expect(LOGIN).not.toContain('window.__iwb_2fa_redirect__');
+    expect(LOGIN).not.toContain('__iwb_2fa_redirect__');
   });
 
   it('calls authClient.twoFactor.verifyTotp for TOTP verification', () => {

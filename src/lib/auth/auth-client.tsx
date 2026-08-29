@@ -58,22 +58,41 @@ function getAuthBaseURL(): string {
   }
   return origin;
 }
-// ── Two-factor redirect callback ──────────────────────────────────────────────
-// The twoFactorClient plugin intercepts the sign-in response when the server
-// returns twoFactorRedirect:true. We store the redirect context in sessionStorage
-// so the login page can read it synchronously without prop-drilling.
+// ── Two-factor redirect handoff ───────────────────────────────────────────────
+// The twoFactorClient plugin's onTwoFactorRedirect callback fires *inside* the
+// SDK's onSuccess hook, which is awaited before signIn.email() resolves back to
+// the caller. This means the callback runs synchronously (from the caller's
+// perspective) before the `await signIn.email()` line returns.
 //
-// The login page reads window.__iwb_2fa_redirect__ immediately after signIn()
-// resolves, then clears it. This avoids a React state race where the callback
-// fires before the login page's useState setter has run.
+// We use a module-level variable as the handoff channel — not window globals,
+// not React state, not sessionStorage. React state would be set *after* the
+// await returns (wrong order). sessionStorage is async on some browsers.
+// A module-level variable is synchronous, typed, and scoped to this module.
+//
+// Usage:
+//   After `await signIn.email(...)`, call consumeTwoFactorRedirect().
+//   It returns the pending context and clears it atomically.
+
+interface TwoFactorRedirectContext {
+  needs2FA: true;
+  methods: string[];
+}
+
+let _pendingTwoFactorRedirect: TwoFactorRedirectContext | null = null;
+
+/** Called by the twoFactorClient onTwoFactorRedirect hook. */
 function storeTwoFactorRedirect(twoFactorMethods?: string[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    (window as unknown as Record<string, unknown>).__iwb_2fa_redirect__ = {
-      needs2FA: true,
-      methods: twoFactorMethods ?? [],
-    };
-  } catch {/* best-effort */}
+  _pendingTwoFactorRedirect = {
+    needs2FA: true,
+    methods: twoFactorMethods ?? [],
+  };
+}
+
+/** Reads and clears the pending 2FA redirect context. Returns null if none. */
+export function consumeTwoFactorRedirect(): TwoFactorRedirectContext | null {
+  const ctx = _pendingTwoFactorRedirect;
+  _pendingTwoFactorRedirect = null;
+  return ctx;
 }
 
 const _authClient = createAuthClient({

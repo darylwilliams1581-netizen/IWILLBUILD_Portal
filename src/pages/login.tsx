@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from "react-router";
 import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink, MessageSquare } from 'lucide-react';
-import { useSession, authClient, signIn } from '@/lib/auth/auth-client';
+import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 
@@ -193,21 +193,13 @@ export default function LoginPage() {
       // Use the BetterAuth SDK signIn.email() so the official twoFactor plugin
       // can intercept the response. The twoFactorClient plugin's onTwoFactorRedirect
       // callback fires when the server returns twoFactorRedirect:true, storing the
-      // redirect context in window.__iwb_2fa_redirect__ for us to read below.
+      // redirect context in the module-level handoff variable for us to read below.
       const result = await signIn.email({ email, password });
 
-      // Check if the twoFactor plugin signalled a redirect
-      const twoFaRedirect = (() => {
-        try {
-          const w = window as unknown as Record<string, unknown>;
-          const r = w.__iwb_2fa_redirect__ as { needs2FA?: boolean; methods?: string[] } | undefined;
-          if (r?.needs2FA) {
-            delete w.__iwb_2fa_redirect__;
-            return r;
-          }
-        } catch {/* best-effort */}
-        return null;
-      })();
+      // Check if the twoFactor plugin signalled a redirect.
+      // consumeTwoFactorRedirect() reads and clears the module-level handoff
+      // variable set by the onTwoFactorRedirect callback inside the SDK.
+      const twoFaRedirect = consumeTwoFactorRedirect();
 
       if (twoFaRedirect) {
         const methods = twoFaRedirect.methods ?? [];
