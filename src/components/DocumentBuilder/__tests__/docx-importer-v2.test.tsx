@@ -553,7 +553,8 @@ describe('N4 — NewDocumentModal Word path error leaves modal open', () => {
   it('shows error and does not navigate on import failure', async () => {
     fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 77 }) })
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Conversion failed' }) });
+      .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', json: async () => ({ error: 'Conversion failed' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }); // DELETE orphan
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
     const wordCard = screen.getByText('Import Word Document').closest('button')!;

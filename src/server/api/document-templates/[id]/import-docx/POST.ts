@@ -9,13 +9,10 @@
  * Uses JSZip + custom XML parser — no mammoth dependency.
  * JSZip is pure-JS and bundles cleanly with Rollup/noExternal:true.
  *
- * Security note: several functions below use /[\s\S]*?/ lazy patterns to parse
- * DOCX XML. These are bounded by specific closing XML tags (</w:p>, </w:r>, etc.)
- * in structured Office Open XML content. The input is a company-uploaded DOCX file
- * (not attacker-controlled unbounded text), and all patterns are lazy (not greedy),
- * so catastrophic backtracking is not possible in practice.
+ * All XML parsing uses deterministic indexOf/slice traversal — no [\s\S]*?
+ * patterns on document-wide strings. This prevents catastrophic backtracking
+ * on large SWMS DOCX files with nested content controls and wide risk tables.
  */
-/* eslint-disable security/detect-unsafe-regex */
 import type { Request, Response } from 'express';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { profiles } from '../../../../db/schema.js';
@@ -30,6 +27,8 @@ import { uploadSourceDocument, deleteSourceDocument } from '../../../../lib/sour
 import { saveFile, deleteFile } from '../../../../storage/storage-service.js';
 import { runConvertHtml, BUCKET_DOC_ASSETS } from '../../../../lib/import-docx-convert-html.js';
 export { BUCKET_DOC_ASSETS };
+// Export parser internals for unit testing
+export { parseDocxToBlocks, expandSdtElements, parseDocumentXml, parseTableXml };
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -602,43 +601,77 @@ function parseParagraph(xml: string): ParsedParagraph {
   const numIdMatch = /<w:numId\s+w:val="(\d+)"/.exec(xml);
   if (numIdMatch && numIdMatch[1] !== '0') numId = numIdMatch[1];
 
-  // Horizontal rule
-  const isHr = /<w:pBdr>[\s\S]*?<w:bottom[\s\S]*?\/>/.test(xml) && !/<w:t/.test(xml);
+  // Horizontal rule — uses bounded check on pBdr section only
+  let isHr = false;
+  const pBdrStart = xml.indexOf('<w:pBdr>');
+  if (pBdrStart !== -1) {
+    const pBdrEnd = xml.indexOf('</w:pBdr>', pBdrStart);
+    const pBdrSection = pBdrEnd !== -1 ? xml.slice(pBdrStart, pBdrEnd) : xml.slice(pBdrStart);
+    isHr = pBdrSection.includes('<w:bottom') && !xml.includes('<w:t');
+  }
 
-  // Page / section break — <w:lastRenderedPageBreak/>, <w:pageBreakBefore/>,
-  // or a run containing <w:br w:type="page"/> or <w:br w:type="column"/>
+  // Page / section break
   const isPageBreak =
-    /<w:pageBreakBefore\s*\/>/.test(xml) ||
+    xml.includes('<w:pageBreakBefore/>') ||
+    xml.includes('<w:pageBreakBefore />') ||
     /<w:br\s+w:type="page"/.test(xml) ||
     /<w:br\s+w:type="column"/.test(xml) ||
-    /<w:lastRenderedPageBreak\s*\/>/.test(xml);
+    xml.includes('<w:lastRenderedPageBreak/>') ||
+    xml.includes('<w:lastRenderedPageBreak />');
 
-  // Extract runs with formatting
+  // Extract runs using bounded indexOf/slice — avoids [\s\S]*? on paragraph XML
   let text = '';
   let innerHtml = '';
   let hasFormatting = false;
 
-  const runRe = /<w:r[ >]([\s\S]*?)<\/w:r>/g;
-  let runMatch: RegExpExecArray | null;
-  while ((runMatch = runRe.exec(xml)) !== null) {
-    const runXml = runMatch[1];
+  // Parse all <w:r>...</w:r> runs using indexOf/slice
+  let rPos = 0;
+  while (rPos < xml.length) {
+    // Find next run opening tag: <w:r> or <w:r ...>
+    const rOpenA = xml.indexOf('<w:r>', rPos);
+    const rOpenB = xml.indexOf('<w:r ', rPos);
+    let rStart = -1;
+    if (rOpenA !== -1 && rOpenB !== -1) rStart = Math.min(rOpenA, rOpenB);
+    else if (rOpenA !== -1) rStart = rOpenA;
+    else if (rOpenB !== -1) rStart = rOpenB;
+    if (rStart === -1) break;
 
-    // Get text content (handle xml:space="preserve")
+    const rClose = xml.indexOf('</w:r>', rStart);
+    if (rClose === -1) break;
+    const runXml = xml.slice(rStart, rClose + 6);
+    rPos = rClose + 6;
+
+    // Extract text from <w:t>...</w:t> within this run
     const textParts: string[] = [];
-    const textRe = /<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g;
-    let tMatch: RegExpExecArray | null;
-    while ((tMatch = textRe.exec(runXml)) !== null) {
-      textParts.push(tMatch[1]);
+    let tPos = 0;
+    while (tPos < runXml.length) {
+      const tOpenA = runXml.indexOf('<w:t>', tPos);
+      const tOpenB = runXml.indexOf('<w:t ', tPos);
+      let tStart = -1;
+      if (tOpenA !== -1 && tOpenB !== -1) tStart = Math.min(tOpenA, tOpenB);
+      else if (tOpenA !== -1) tStart = tOpenA;
+      else if (tOpenB !== -1) tStart = tOpenB;
+      if (tStart === -1) break;
+      const tTagEnd = runXml.indexOf('>', tStart);
+      if (tTagEnd === -1) break;
+      const tClose = runXml.indexOf('</w:t>', tTagEnd);
+      if (tClose === -1) break;
+      textParts.push(runXml.slice(tTagEnd + 1, tClose));
+      tPos = tClose + 6;
     }
     const runText = textParts.join('');
     if (!runText) continue;
 
     text += runText;
 
-    // Check formatting
-    const isBold = /<w:b\s*\/>|<w:b>/.test(runXml) && !/<w:bCs\s*\/>/.test(runXml.replace(/<w:b\s*\/>/, ''));
-    const isItalic = /<w:i\s*\/>|<w:i>/.test(runXml) && !/<w:iCs\s*\/>/.test(runXml.replace(/<w:i\s*\/>/, ''));
-    const isUnderline = /<w:u\s+w:val="(?!none)[^"]*"/.test(runXml);
+    // Check formatting — bounded to run properties section (before first <w:t>)
+    const firstT = runXml.indexOf('<w:t');
+    const rPrSection = firstT !== -1 ? runXml.slice(0, firstT) : runXml;
+    const isBold = rPrSection.includes('<w:b/>') || rPrSection.includes('<w:b>') ||
+                   rPrSection.includes('<w:b ');
+    const isItalic = rPrSection.includes('<w:i/>') || rPrSection.includes('<w:i>') ||
+                     rPrSection.includes('<w:i ');
+    const isUnderline = /<w:u\s+w:val="(?!none)[^"]*"/.test(rPrSection);
 
     if (isBold || isItalic || isUnderline) hasFormatting = true;
 
@@ -649,16 +682,23 @@ function parseParagraph(xml: string): ParsedParagraph {
     innerHtml += span;
   }
 
-  // Also handle <w:hyperlink> runs
-  const hyperlinkRe = /<w:hyperlink[^>]*>([\s\S]*?)<\/w:hyperlink>/g;
-  let hlMatch: RegExpExecArray | null;
-  while ((hlMatch = hyperlinkRe.exec(xml)) !== null) {
-    const hlText = extractPlainText(hlMatch[1]);
+  // Also handle <w:hyperlink>...</w:hyperlink> — bounded indexOf/slice
+  let hlPos = 0;
+  while (hlPos < xml.length) {
+    const hlStart = xml.indexOf('<w:hyperlink', hlPos);
+    if (hlStart === -1) break;
+    const hlTagEnd = xml.indexOf('>', hlStart);
+    if (hlTagEnd === -1) break;
+    const hlClose = xml.indexOf('</w:hyperlink>', hlTagEnd);
+    if (hlClose === -1) break;
+    const hlInner = xml.slice(hlTagEnd + 1, hlClose);
+    const hlText = extractPlainText(hlInner);
     if (hlText && !text.includes(hlText)) {
       text += hlText;
       innerHtml += `<u>${escapeHtml(hlText)}</u>`;
       hasFormatting = true;
     }
+    hlPos = hlClose + 14;
   }
 
   return { text: text.trim(), innerHtml: innerHtml.trim(), headingLevel, numId, isHr, isPageBreak, hasFormatting };
@@ -674,42 +714,73 @@ function extractPlainText(xml: string): string {
 
 // ── Table parser ──────────────────────────────────────────────────────────────
 
+/** Extract all <w:tr>...</w:tr> elements from a table XML string using indexOf/slice */
+function extractTableRows(tableXml: string): string[] {
+  const rows: string[] = [];
+  let pos = 0;
+  while (pos < tableXml.length) {
+    const rowOpenA = tableXml.indexOf('<w:tr>', pos);
+    const rowOpenB = tableXml.indexOf('<w:tr ', pos);
+    let rowStart = -1;
+    if (rowOpenA !== -1 && rowOpenB !== -1) rowStart = Math.min(rowOpenA, rowOpenB);
+    else if (rowOpenA !== -1) rowStart = rowOpenA;
+    else if (rowOpenB !== -1) rowStart = rowOpenB;
+    if (rowStart === -1) break;
+    const rowClose = tableXml.indexOf('</w:tr>', rowStart);
+    if (rowClose === -1) break;
+    rows.push(tableXml.slice(rowStart, rowClose + 7));
+    pos = rowClose + 7;
+  }
+  return rows;
+}
+
+/** Extract all <w:tc>...</w:tc> elements from a row XML string using indexOf/slice */
+function extractTableCells(rowXml: string): string[] {
+  const cells: string[] = [];
+  let pos = 0;
+  while (pos < rowXml.length) {
+    const cellOpenA = rowXml.indexOf('<w:tc>', pos);
+    const cellOpenB = rowXml.indexOf('<w:tc ', pos);
+    let cellStart = -1;
+    if (cellOpenA !== -1 && cellOpenB !== -1) cellStart = Math.min(cellOpenA, cellOpenB);
+    else if (cellOpenA !== -1) cellStart = cellOpenA;
+    else if (cellOpenB !== -1) cellStart = cellOpenB;
+    if (cellStart === -1) break;
+    const cellClose = rowXml.indexOf('</w:tc>', cellStart);
+    if (cellClose === -1) break;
+    cells.push(rowXml.slice(cellStart, cellClose + 7));
+    pos = cellClose + 7;
+  }
+  return cells;
+}
+
 function parseTableXml(xml: string): DocumentBlock | null {
   const rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean; bgColor: string | null; textColor: string | null; isBold: boolean }>> = [];
 
-  const rowRe = /<w:tr[ >]([\s\S]*?)<\/w:tr>/g;
-  let rowMatch: RegExpExecArray | null;
-  while ((rowMatch = rowRe.exec(xml)) !== null) {
+  for (const rowXml of extractTableRows(xml)) {
     const cells: Array<{ text: string; colSpan: number; isVMerge: boolean; bgColor: string | null; textColor: string | null; isBold: boolean }> = [];
 
-    // Include both <w:tc> and <w:sdt> (content controls) inside cells
-    const cellRe = /<w:tc[ >]([\s\S]*?)<\/w:tc>/g;
-    let cellMatch: RegExpExecArray | null;
-    while ((cellMatch = cellRe.exec(rowMatch[1])) !== null) {
-      const cellXml = cellMatch[1];
-
+    for (const cellXml of extractTableCells(rowXml)) {
       // Horizontal span
       const gridSpanMatch = /<w:gridSpan\s+w:val="(\d+)"/.exec(cellXml);
       const colSpan = gridSpanMatch ? parseInt(gridSpanMatch[1], 10) : 1;
 
-      // Vertical merge continuation — skip these cells (they are covered by the cell above)
+      // Vertical merge continuation
       const vMergeMatch = /<w:vMerge(?:\s+w:val="([^"]*)")?/.exec(cellXml);
       const isVMerge = !!vMergeMatch && vMergeMatch[1] !== 'restart';
 
       // Cell background colour from w:shd fill attribute
-      // e.g. <w:shd w:val="clear" w:color="auto" w:fill="1A2744"/>
       const shdMatch = /<w:shd\s[^>]*w:fill="([0-9A-Fa-f]{6})"/.exec(cellXml);
       const rawFill = shdMatch ? shdMatch[1].toUpperCase() : null;
-      // Ignore "auto" / "FFFFFF" / "000000" as non-meaningful fills
       const bgColor = rawFill && rawFill !== 'FFFFFF' && rawFill !== 'AUTO' ? `#${rawFill}` : null;
 
-      // Detect text colour from run properties: <w:color w:val="FFFFFF"/>
+      // Text colour
       const colorMatch = /<w:color\s+w:val="([0-9A-Fa-f]{6})"/.exec(cellXml);
       const rawColor = colorMatch ? colorMatch[1].toUpperCase() : null;
       const textColor = rawColor && rawColor !== 'AUTO' && rawColor !== '000000' ? `#${rawColor}` : null;
 
-      // Detect bold from run properties
-      const isBold = /<w:b\s*\/>/.test(cellXml) || /<w:b>/.test(cellXml);
+      // Bold
+      const isBold = cellXml.includes('<w:b/>') || cellXml.includes('<w:b>') || cellXml.includes('<w:b ');
 
       const text = extractCellText(cellXml);
       cells.push({ text, colSpan, isVMerge, bgColor, textColor, isBold });
@@ -872,21 +943,69 @@ function isLabelCell(text: string): boolean {
   return false;
 }
 
-/** Extract all text from a table cell, including content controls and checkboxes */
+/** Extract all text from a table cell, including content controls and checkboxes.
+ *  Uses bounded indexOf/slice — no [\s\S]*? patterns.
+ */
 function extractCellText(cellXml: string): string {
-  // Handle Word content controls (w:sdt) — extract their display text
-  const withSdtExpanded = cellXml.replace(/<w:sdt[ >]([\s\S]*?)<\/w:sdt>/g, (_, inner) => {
-    // Try to get the alias/tag name for the field
-    const aliasMatch = /<w:alias\s+w:val="([^"]+)"/.exec(inner);
-    const alias = aliasMatch ? aliasMatch[1] : '';
-    // Get the actual text content inside w:sdtContent
-    const contentMatch = /<w:sdtContent>([\s\S]*?)<\/w:sdtContent>/.exec(inner);
-    const contentText = contentMatch ? extractPlainText(contentMatch[1]) : '';
-    return contentText || alias;
-  });
+  // Expand w:sdt content controls using bounded indexOf/slice
+  let expanded = '';
+  let pos = 0;
+  while (pos < cellXml.length) {
+    const sdtOpenA = cellXml.indexOf('<w:sdt>', pos);
+    const sdtOpenB = cellXml.indexOf('<w:sdt ', pos);
+    let sdtStart = -1;
+    if (sdtOpenA !== -1 && sdtOpenB !== -1) sdtStart = Math.min(sdtOpenA, sdtOpenB);
+    else if (sdtOpenA !== -1) sdtStart = sdtOpenA;
+    else if (sdtOpenB !== -1) sdtStart = sdtOpenB;
 
-  // Handle checkboxes — w14:checkbox or legacy checkbox SDTs
-  const withCheckboxes = withSdtExpanded.replace(/<w14:checked\s+w14:val="(\d+)"[^/]*\/>/g, (_, val) => {
+    if (sdtStart === -1) {
+      expanded += cellXml.slice(pos);
+      break;
+    }
+    expanded += cellXml.slice(pos, sdtStart);
+
+    // Find matching </w:sdt> with depth tracking
+    const tagEnd = cellXml.indexOf('>', sdtStart);
+    let depth = 1;
+    let searchPos = tagEnd !== -1 ? tagEnd + 1 : sdtStart + 7;
+    while (depth > 0 && searchPos < cellXml.length) {
+      const nextOpenA = cellXml.indexOf('<w:sdt>', searchPos);
+      const nextOpenB = cellXml.indexOf('<w:sdt ', searchPos);
+      let nextOpen = -1;
+      if (nextOpenA !== -1 && nextOpenB !== -1) nextOpen = Math.min(nextOpenA, nextOpenB);
+      else if (nextOpenA !== -1) nextOpen = nextOpenA;
+      else if (nextOpenB !== -1) nextOpen = nextOpenB;
+      const nextClose = cellXml.indexOf('</w:sdt>', searchPos);
+      if (nextClose === -1) { searchPos = cellXml.length; break; }
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        const ne = cellXml.indexOf('>', nextOpen);
+        searchPos = ne !== -1 ? ne + 1 : nextOpen + 7;
+      } else {
+        depth--;
+        if (depth === 0) {
+          const sdtInner = cellXml.slice(sdtStart, nextClose + 8);
+          // Try alias name
+          const aliasMatch = /<w:alias\s+w:val="([^"]+)"/.exec(sdtInner);
+          const alias = aliasMatch ? aliasMatch[1] : '';
+          // Get sdtContent text
+          const cStart = sdtInner.indexOf('<w:sdtContent>');
+          const cEnd = cStart !== -1 ? sdtInner.indexOf('</w:sdtContent>', cStart) : -1;
+          const contentText = (cStart !== -1 && cEnd !== -1)
+            ? extractPlainText(sdtInner.slice(cStart + 14, cEnd))
+            : '';
+          expanded += contentText || alias;
+          pos = nextClose + 8;
+        } else {
+          searchPos = nextClose + 8;
+        }
+      }
+    }
+    if (depth !== 0) pos = cellXml.length;
+  }
+
+  // Handle checkboxes — w14:checked
+  const withCheckboxes = expanded.replace(/<w14:checked\s+w14:val="(\d+)"[^/]*\/>/g, (_, val) => {
     return val === '1' ? '☑ ' : '☐ ';
   });
 

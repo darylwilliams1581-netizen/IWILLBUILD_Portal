@@ -63,14 +63,27 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
     return data.id ?? null;
   }
 
+  // ── Delete an orphan placeholder document (best-effort, non-fatal) ──────────
+  async function deleteOrphan(id: number) {
+    try {
+      await fetch(`/api/document-templates/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch {
+      // Non-fatal — the user can delete it manually
+    }
+  }
+
   // ── Handle Word upload — convert_blocks_v2 → write builder_json → navigate ──
   async function handleWordFile(file: File) {
     setLoading(true);
     setError(null);
+    let placeholderId: number | null = null;
     try {
       const docName = file.name.replace(/\.(docx|dotx)$/i, '').trim() || 'Imported Document';
-      const id = await createPlaceholder(docName);
-      if (!id) throw new Error('Could not create document placeholder — please try again');
+      placeholderId = await createPlaceholder(docName);
+      if (!placeholderId) throw new Error('Could not create document placeholder — please try again');
 
       // Step 1: convert DOCX → semantically-grouped builder blocks
       const formData = new FormData();
@@ -78,10 +91,10 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       formData.append('mode', 'convert_blocks_v2');
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60_000);
+      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s — large SWMS DOCX
       let res: Response;
       try {
-        res = await fetch(`/api/document-templates/${id}/import-docx`, {
+        res = await fetch(`/api/document-templates/${placeholderId}/import-docx`, {
           method: 'POST',
           body: formData,
           credentials: 'include',
@@ -92,11 +105,23 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       }
 
       if (!res.ok) {
-        let errMsg = `Import failed (HTTP ${res.status})`;
-        try {
-          const errData = await res.json() as { error?: string };
-          if (errData.error) errMsg = errData.error;
-        } catch { /* non-JSON error body */ }
+        // Guard: 502/503/504 responses from the proxy return plain-text bodies.
+        // Calling res.json() on those throws a SyntaxError — check status first.
+        let errMsg: string;
+        if (res.status >= 502 && res.status <= 504) {
+          errMsg = 'The document service is temporarily unavailable. Please wait a moment and try again.';
+        } else {
+          // Try to parse JSON error body; fall back to HTTP status on failure
+          try {
+            const errData = await res.json() as { error?: string };
+            errMsg = errData.error ?? `Import failed (HTTP ${res.status})`;
+          } catch {
+            errMsg = `Import failed (HTTP ${res.status} ${res.statusText})`.trim();
+          }
+        }
+        // Roll back the orphan placeholder
+        await deleteOrphan(placeholderId);
+        placeholderId = null;
         throw new Error(errMsg);
       }
 
@@ -104,33 +129,49 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       try {
         data = await res.json() as typeof data;
       } catch {
-        throw new Error('Server returned an unreadable response — please try again.');
+        await deleteOrphan(placeholderId);
+        placeholderId = null;
+        throw new Error('The server returned an unreadable response — please try again.');
       }
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        await deleteOrphan(placeholderId);
+        placeholderId = null;
+        throw new Error(data.error);
+      }
       if (data.mode !== 'convert_blocks_v2') {
+        await deleteOrphan(placeholderId);
+        placeholderId = null;
         throw new Error('Server did not convert the document to blocks — please try again');
       }
 
       // Step 2: write the blocks to builder_json via PATCH
-      // (the placeholder already exists; we just update its blocks)
       const blocks: DocumentBlock[] = data.blocks ?? [];
-      const patchRes = await fetch(`/api/document-templates/${id}`, {
+      const patchRes = await fetch(`/api/document-templates/${placeholderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ builderJson: { blocks } }),
       });
       if (!patchRes.ok) {
-        const patchData = await patchRes.json() as { error?: string };
-        throw new Error(patchData.error ?? `Could not save blocks (HTTP ${patchRes.status})`);
+        let patchErr = `Could not save blocks (HTTP ${patchRes.status})`;
+        try {
+          const patchData = await patchRes.json() as { error?: string };
+          if (patchData.error) patchErr = patchData.error;
+        } catch { /* non-JSON */ }
+        await deleteOrphan(placeholderId);
+        placeholderId = null;
+        throw new Error(patchErr);
       }
 
       // Navigate to the standard block-canvas builder — no HtmlDocumentCanvas
+      const finalId = placeholderId;
+      placeholderId = null; // prevent deletion in catch
       onClose();
-      navigate(`/studio/builder/${id}`);
+      navigate(`/studio/builder/${finalId}`);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setError('Upload timed out — the file may be too large. Try a smaller file.');
+        if (placeholderId) { await deleteOrphan(placeholderId); placeholderId = null; }
+        setError('Upload timed out — the file may be too large or the server is busy. Please try again.');
       } else {
         setError(err instanceof Error ? err.message : 'Import failed');
       }
