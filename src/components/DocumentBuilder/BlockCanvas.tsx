@@ -185,7 +185,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
             <div
               ref={pageRef}
               data-doc-page
-              className="studio-doc-page shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+              className="studio-doc-page bg-white shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
               style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
               onClick={deselect}
             >
@@ -221,7 +221,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
         <div
           ref={pageRef}
           data-doc-page
-          className="studio-doc-page shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+          className="studio-doc-page bg-white shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
           style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
           onClick={(e) => {
             if (e.target === e.currentTarget) deselect();
