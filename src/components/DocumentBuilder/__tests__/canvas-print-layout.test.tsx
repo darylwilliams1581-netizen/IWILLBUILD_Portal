@@ -3,8 +3,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * P1  Wide 8-column SWMS table fits within A4 printable width
  * P2  Images and banners cannot exceed the printable width
- * P3  Canvas padding is reduced (≤ 30 px at 100% zoom)
- * P4  Print margins are small and consistent (8 mm @page rule present)
+ * P3  Canvas wrapper padding is reduced (≤ 30 px at 100% zoom)
+ * P4  Print margins are 5 mm (@page rule present)
  * P5  All CSS is scoped to .studio-doc — app navigation and modal styling unaffected
  * P6  box-sizing: border-box applied inside scope
  * P7  Table min-width override present (prevents horizontal clipping)
@@ -13,6 +13,8 @@
  * P10 Row controls hidden on print
  * P11 importCss is appended after base + print rules
  * P12 buildScopedStyles is pure — no global side-effects
+ * P13 .studio-doc has 5 mm internal padding in scoped CSS (on-screen)
+ * P14 Print CSS removes .studio-doc padding to prevent double margin
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -174,12 +176,12 @@ describe('P2 — images and banners cannot exceed printable width', () => {
   });
 });
 
-// ─── P3: Canvas padding is reduced ────────────────────────────────────────────
+// ─── P3: Canvas wrapper padding is reduced ────────────────────────────────────
 
-describe('P3 — canvas padding is reduced', () => {
+describe('P3 — canvas wrapper padding is reduced', () => {
   it('canvas wrapper padding at 100% zoom is ≤ 30 px', () => {
     const { container } = renderCanvas();
-    // The page wrapper div has inline style padding
+    // The page wrapper div has inline style padding (grey surround around the A4 card)
     const pageDiv = container.querySelector('[data-testid="canvas-scroll"] > div') as HTMLElement | null;
     expect(pageDiv).not.toBeNull();
     const paddingPx = parseInt(pageDiv!.style.padding, 10);
@@ -213,9 +215,9 @@ describe('P3 — canvas padding is reduced', () => {
   });
 });
 
-// ─── P4: Print margins are small and consistent ────────────────────────────────
+// ─── P4: Print margins are 5 mm ───────────────────────────────────────────────
 
-describe('P4 — print margins are small and consistent', () => {
+describe('P4 — print margins are 5 mm', () => {
   it('injected CSS contains @page rule', () => {
     renderCanvas();
     const css = getInjectedCss(TEMPLATE_ID);
@@ -228,10 +230,16 @@ describe('P4 — print margins are small and consistent', () => {
     expect(css).toMatch(/@page\s*\{[^}]*size:\s*A4/s);
   });
 
-  it('@page rule specifies 8 mm margin', () => {
+  it('@page rule specifies 5 mm margin', () => {
     renderCanvas();
     const css = getInjectedCss(TEMPLATE_ID);
-    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*8mm/s);
+    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*5mm/s);
+  });
+
+  it('@page rule does NOT specify 8 mm margin (old value removed)', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).not.toMatch(/@page\s*\{[^}]*margin:\s*8mm/s);
   });
 
   it('@media print rule is present', () => {
@@ -365,10 +373,10 @@ describe('P9 — @page size A4 rule', () => {
     expect(css).toMatch(/@page\s*\{[^}]*size:\s*A4/s);
   });
 
-  it('@page block contains margin: 8mm', () => {
+  it('@page block contains margin: 5mm', () => {
     renderCanvas();
     const css = getInjectedCss(TEMPLATE_ID);
-    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*8mm/s);
+    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*5mm/s);
   });
 });
 
@@ -458,5 +466,76 @@ describe('P12 — buildScopedStyles has no global side-effects', () => {
         s.textContent?.includes('.studio-doc'),
     );
     expect(unscoped).toHaveLength(0);
+  });
+});
+
+// ─── P13: .studio-doc has 5 mm internal padding (on-screen) ──────────────────
+
+describe('P13 — .studio-doc has 5 mm internal padding in scoped CSS', () => {
+  it('scoped CSS contains padding: 5mm on the .studio-doc selector', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    // Must have a rule that sets padding: 5mm on the scoped root
+    expect(css).toMatch(/\.studio-doc\[data-doc-id[^\]]*\]\s*\{[^}]*padding:\s*5mm/s);
+  });
+
+  it('5mm padding rule appears in the base rules (before @media print)', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    const paddingIdx = css.indexOf('padding: 5mm');
+    const printIdx   = css.indexOf('@media print');
+    expect(paddingIdx).toBeGreaterThanOrEqual(0);
+    expect(printIdx).toBeGreaterThanOrEqual(0);
+    // The on-screen padding rule must come before the print block
+    expect(paddingIdx).toBeLessThan(printIdx);
+  });
+
+  it('scoped CSS does NOT contain padding: 6mm or padding: 8mm (old values removed)', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    expect(css).not.toContain('padding: 6mm');
+    expect(css).not.toContain('padding: 8mm');
+  });
+});
+
+// ─── P14: Print CSS removes .studio-doc padding (no double margin) ────────────
+
+describe('P14 — print CSS removes .studio-doc padding to prevent double margin', () => {
+  it('@media print block resets .studio-doc padding to 0 !important', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    // The print block must contain padding: 0 !important on the scoped selector
+    const printStart = css.indexOf('@media print');
+    expect(printStart).toBeGreaterThanOrEqual(0);
+    const afterPrint = css.slice(printStart);
+    expect(afterPrint).toMatch(/padding:\s*0\s*!important/);
+  });
+
+  it('@media print block resets .studio-doc margin to 0 !important', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    const printStart = css.indexOf('@media print');
+    const afterPrint = css.slice(printStart);
+    expect(afterPrint).toMatch(/margin:\s*0\s*!important/);
+  });
+
+  it('padding: 5mm does NOT appear inside the @media print block', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    const printStart = css.indexOf('@media print');
+    const afterPrint = css.slice(printStart);
+    // The print block must not re-introduce the 5mm padding
+    expect(afterPrint).not.toContain('padding: 5mm');
+  });
+
+  it('@page margin (5mm) and .studio-doc print padding (0) are both present — no double margin', () => {
+    renderCanvas();
+    const css = getInjectedCss(TEMPLATE_ID);
+    // @page sets the physical margin
+    expect(css).toMatch(/@page\s*\{[^}]*margin:\s*5mm/s);
+    // @media print removes the canvas padding so only @page margin applies
+    const printStart = css.indexOf('@media print');
+    const afterPrint = css.slice(printStart);
+    expect(afterPrint).toMatch(/padding:\s*0\s*!important/);
   });
 });

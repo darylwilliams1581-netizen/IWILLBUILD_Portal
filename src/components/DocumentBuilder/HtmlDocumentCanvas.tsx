@@ -475,8 +475,9 @@ export default HtmlDocumentCanvas;
  *
  * Layout goals
  * ────────────
- * • Canvas: ~7 mm visible margins (padding set on the wrapper div).
- * • Print:  8 mm @page margins; row controls and Studio chrome hidden.
+ * • Canvas: 5 mm internal padding on .studio-doc (scoped CSS rule).
+ * • Print:  5 mm @page margins; .studio-doc padding reset to 0 in @media print
+ *           so the @page margin is the sole margin — no double-margin.
  * • Tables: fluid width (max-width: 100%), cells word-wrap, no fixed
  *   widths that cause horizontal clipping.
  * • Images / banners: max-width: 100%, height: auto.
@@ -491,6 +492,11 @@ function buildScopedStyles(docId: string, importCss: string): string {
 /* ── box-sizing reset inside canvas ─────────────────────────────────────── */
 ${scope}, ${scope} * {
   box-sizing: border-box;
+}
+
+/* ── 5 mm internal padding on the canvas root (on-screen only) ──────────── */
+${scope} {
+  padding: 5mm;
 }
 
 /* ── constrain all block-level and replaced content ─────────────────────── */
@@ -563,7 +569,7 @@ ${scope} .page-break::after {
   const printRules = `
 @page {
   size: A4;
-  margin: 8mm;
+  margin: 5mm;
 }
 @media print {
   /* hide Studio chrome */
