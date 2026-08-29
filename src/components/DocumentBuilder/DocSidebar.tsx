@@ -93,22 +93,19 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('name', file.name);
-      const res = await fetch('/api/files', { method: 'POST', body: fd });
-      let data: { file?: { id: number }; error?: string; code?: string } = {};
+      // Upload to the Studio image endpoint — stores in doc-assets bucket and
+      // returns a publicUrl embedded directly in builder_json (no auth proxy needed).
+      const res = await fetch('/api/studio/upload-image', { method: 'POST', body: fd, credentials: 'include' });
+      let data: { url?: string; error?: string; code?: string } = {};
       try { data = await res.json() as typeof data; } catch { /* non-JSON body */ }
       if (!res.ok) {
         throw new Error(data.error ?? `Upload failed (${res.status})`);
       }
-      const fileId = data.file?.id;
-      if (!fileId || typeof fileId !== 'number' || fileId <= 0) {
-        throw new Error(data.error ?? 'Upload succeeded but no file ID was returned');
+      const src = data.url;
+      if (!src || typeof src !== 'string' || src.trim() === '') {
+        throw new Error(data.error ?? 'Upload succeeded but no image URL was returned');
       }
-      // Stable same-origin authenticated URL — stored in builder_json.
-      // useAuthImage fetches this with credentials and creates a blob URL for display.
-      // Split to avoid static-analysis false-positive on the path prefix (same pattern as useAuthImage.ts).
-      const src = ['/api/' + 'files', String(fileId), 'download'].join('/') + '?inline=1';
-      onInsert({ id: nanoid(10), type: 'image', src, alt: file.name.replace(/\.[^.]+$/, ''), size, align, preserveAspectRatio: true });
+      onInsert({ id: nanoid(10), type: 'image', src: src.trim(), alt: file.name.replace(/\.[^.]+$/, ''), size, align, preserveAspectRatio: true });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {

@@ -291,11 +291,11 @@ describe('FF-4 — existing legacy Studio field blocks still render (backward co
 // ─── IMG-1: Upload creates stable persisted asset reference ───────────────────
 
 describe('IMG-1 — image upload creates a stable persisted asset reference', () => {
-  it('calls appendBlocks with a src that is a stable API path (not a blob URL)', async () => {
+  it('calls appendBlocks with a src that is a public URL (not a blob URL, not an auth-gated API path)', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 201,
-      json: async () => ({ file: { id: 42, originalName: 'photo.jpg' } }),
+      json: async () => ({ url: '/airo-assets/uploads/doc-assets/company1/abc123.jpg' }),
     });
 
     render(
@@ -324,21 +324,54 @@ describe('IMG-1 — image upload creates a stable persisted asset reference', ()
     const [blocks] = mockAppendBlocks.mock.calls[0] as [Array<{ type: string; src: string }>];
     const imageBlock = blocks[0];
     expect(imageBlock.type).toBe('image');
-    // Must be a stable API path, not a blob URL
+    // Must be a public URL, not a blob URL
     expect(imageBlock.src).not.toMatch(/^blob:/);
-    expect(imageBlock.src).toContain('42');
-    expect(imageBlock.src).toContain('download');
+    // Must not be an auth-gated download path
+    expect(imageBlock.src).not.toContain('/download');
+    // Must be the URL returned by the server
+    expect(imageBlock.src).toContain('doc-assets');
   });
-});
 
-// ─── IMG-2: Invalid upload response (missing file.id) creates no block ─────────
-
-describe('IMG-2 — invalid upload response (missing file.id) creates no block', () => {
-  it('does not call appendBlocks when response has no file.id', async () => {
+  it('posts to /api/studio/upload-image (not /api/files)', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 201,
-      json: async () => ({ file: null }),
+      json: async () => ({ url: '/airo-assets/uploads/doc-assets/company1/abc123.jpg' }),
+    });
+
+    render(
+      <DocSidebar
+        onImportDocx={() => {}}
+        collapsed={false}
+        onToggleCollapse={() => {}}
+      />,
+    );
+
+    const advancedBtn = screen.getByText('Advanced');
+    fireEvent.click(advancedBtn);
+
+    const fileInput = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement;
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+
+    await act(async () => {
+      fireEvent.change(fileInput, { target: { files: [file] } });
+    });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe('/api/studio/upload-image');
+  });
+});
+
+// ─── IMG-2: Invalid upload response (missing url) creates no block ─────────────
+
+describe('IMG-2 — invalid upload response (missing url) creates no block', () => {
+  it('does not call appendBlocks when response has no url', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ url: null }),
     });
 
     render(
@@ -360,7 +393,6 @@ describe('IMG-2 — invalid upload response (missing file.id) creates no block',
     });
 
     await waitFor(() => {
-      // Error message should appear
       const errorEl = document.querySelector('.text-red-500');
       expect(errorEl).not.toBeNull();
     });
@@ -368,11 +400,11 @@ describe('IMG-2 — invalid upload response (missing file.id) creates no block',
     expect(mockAppendBlocks).not.toHaveBeenCalled();
   });
 
-  it('does not call appendBlocks when file.id is 0 (falsy)', async () => {
+  it('does not call appendBlocks when url is an empty string', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 201,
-      json: async () => ({ file: { id: 0 } }),
+      json: async () => ({ url: '   ' }),
     });
 
     render(

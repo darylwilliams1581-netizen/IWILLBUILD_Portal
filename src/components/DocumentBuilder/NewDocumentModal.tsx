@@ -92,16 +92,20 @@ export default function NewDocumentModal({ onClose, onOpenLibrary, onSaved }: Pr
       }
 
       if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? `Import failed (HTTP ${res.status})`);
+        let errMsg = `Import failed (HTTP ${res.status})`;
+        try {
+          const errData = await res.json() as { error?: string };
+          if (errData.error) errMsg = errData.error;
+        } catch { /* non-JSON error body */ }
+        throw new Error(errMsg);
       }
 
-      const data = await res.json() as {
-        mode?: string;
-        blocks?: DocumentBlock[];
-        warnings?: string[];
-        error?: string;
-      };
+      let data: { mode?: string; blocks?: DocumentBlock[]; warnings?: string[]; error?: string };
+      try {
+        data = await res.json() as typeof data;
+      } catch {
+        throw new Error('Server returned an unreadable response — please try again.');
+      }
       if (data.error) throw new Error(data.error);
       if (data.mode !== 'convert_blocks_v2') {
         throw new Error('Server did not convert the document to blocks — please try again');
