@@ -667,7 +667,16 @@ export default defineConfig(({
         // DO NOT change this to 'no-external' or a function — both cause the SSR
         // build to process more module-level code, increasing peak RSS above the
         // heap limit and causing an OOM kill that leaves the bundle incomplete.
-        moduleSideEffects: false,
+        //
+        // EXCEPTION: mammoth + bluebird must be treated as having side effects.
+        // bluebird builds its internal state at module-evaluation time (CJS
+        // self-registration, async-hooks patching, etc.). With moduleSideEffects:false
+        // Rollup drops that initialization, leaving bluebird.promisify undefined
+        // at runtime and crashing the mammoth chunk on startup.
+        moduleSideEffects: (id: string) => {
+          if (id.includes('node_modules/bluebird') || id.includes('node_modules/mammoth')) return true;
+          return false;
+        },
         propertyReadSideEffects: false,
         // Treat unknown globals as side-effect-free so Rollup can eliminate
         // more dead code from large packages like openai, stripe, etc.
@@ -683,7 +692,12 @@ export default defineConfig(({
         // imported statically from entry.ts and bundled as regular chunks.
         entryFileNames: "[name].mjs",
         chunkFileNames: "bin/[name]-[hash].js",
-        banner: "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);",
+        // Use a function so the banner is emitted on EVERY chunk (entry +
+        // splits). A plain string only goes on entry chunks — split chunks
+        // like bin/mammoth-*.js run standalone and need their own `require`
+        // shim, otherwise CJS packages that call require('util') etc. at
+        // module-evaluation time crash with "require is not defined".
+        banner: () => "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);",
         // Split the heaviest deps into separate chunks to reduce peak memory
         // during Rollup's rendering phase. Rules:
         //   - Only split at package boundaries (node_modules/<pkg>) — never
