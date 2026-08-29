@@ -49,6 +49,8 @@ export default async function handler(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid template ID' });
 
+    console.log(`[import-docx] companyId=${profile.companyId} templateId=${id} contentType=${req.headers['content-type']?.slice(0, 60)}`);
+
     // Verify template ownership
     const [rows] = await db.execute(sql.raw(
       `SELECT id, source_revision FROM document_templates
@@ -68,6 +70,7 @@ export default async function handler(req: Request, res: Response) {
     const originalName = docxFile.originalname ?? 'document.docx';
     // mode: 'keep_word' (default — store original) | 'convert_blocks_v2' (new semantic block path) | 'convert_html' (html canvas) | 'convert_blocks' (legacy)
     const mode = (fields.mode as string | undefined) ?? 'keep_word';
+    console.log(`[import-docx] templateId=${id} mode=${mode} file=${originalName} size=${docxFile.buffer.length}`);
 
     // ── Mode: keep_word — store original DOCX in R2, do not convert ──────────
     if (mode === 'keep_word') {

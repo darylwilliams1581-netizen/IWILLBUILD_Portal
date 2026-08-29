@@ -165,8 +165,11 @@ export default function DocxImporter({
     try {
       // Ensure we have a saved template ID before uploading
       let id = resolvedId;
+      console.log('[DocxImporter] handleParse start — resolvedId:', resolvedId, 'templateId prop:', templateId, 'file:', file?.name, 'mode:', mode, 'docxMode:', docxMode);
       if (!id) {
+        console.log('[DocxImporter] no resolvedId — calling onSaveFirst');
         const saved = await onSaveFirst();
+        console.log('[DocxImporter] onSaveFirst returned:', saved);
         if (!saved) {
           setError('Could not save the document first — please try saving manually (Ctrl+S) then retry.');
           return;
@@ -183,6 +186,7 @@ export default function DocxImporter({
       if (mode === 'docx') {
         formData.append('mode', docxMode);
       }
+      console.log('[DocxImporter] fetching', endpoint, 'docxMode:', docxMode, 'file size:', file.size);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60_000);
@@ -216,9 +220,12 @@ export default function DocxImporter({
       };
 
       if (!res.ok || data.error) {
+        console.error('[DocxImporter] server error:', res.status, data);
         setError(data.error ?? 'Failed to import file — please try again.');
         return;
       }
+
+      console.log('[DocxImporter] server response mode:', data.mode, 'blocks:', data.blocks?.length);
 
       // ── convert_blocks_v2: block canvas path (new default) ───────────────
       if (data.mode === 'convert_blocks_v2') {
