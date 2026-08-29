@@ -199,3 +199,26 @@ export const GROUP_LABELS: Record<IconGroup, string> = {
   management:  'Administration',
   comingSoon:  'Coming Soon',
 };
+
+// ── Visible group config ──────────────────────────────────────────────────────
+/**
+ * Pre-built group config for navigation and Help.
+ * Each entry contains only RELEASED (non-comingSoon) icons.
+ * Consumers (Help page, nav grids) must import this — never build their own
+ * hardcoded group list.
+ */
+export interface VisibleGroupConfig {
+  group: IconGroup;
+  label: string;
+  defs: HomeIconDef[];
+}
+
+export const VISIBLE_GROUP_CONFIG: VisibleGroupConfig[] = [
+  { group: 'field',      label: GROUP_LABELS.field,      defs: FIELD_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'files',      label: GROUP_LABELS.files,      defs: FILES_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'fleet',      label: GROUP_LABELS.fleet,      defs: FLEET_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'finance',    label: GROUP_LABELS.finance,    defs: FINANCE_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'safety',     label: GROUP_LABELS.safety,     defs: SAFETY_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'management', label: GROUP_LABELS.management, defs: MANAGEMENT_ICON_DEFS.filter(i => !i.comingSoon) },
+  // comingSoon group intentionally excluded — never rendered in navigation or Help
+].filter(gc => gc.defs.length > 0);

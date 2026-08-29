@@ -1,12 +1,17 @@
 /**
  * /help — IWILLBUILD Portal User Manual
  *
- * SOURCE OF TRUTH: homeIcons.ts
- * Icon groups, labels, colours, and hrefs are read directly from homeIcons.ts.
- * To add or rename an icon, edit homeIcons.ts — this page will update automatically.
+ * SOURCE OF TRUTH: homeIcons.ts → VISIBLE_GROUP_CONFIG
  *
- * Per-icon documentation (purpose, howTo, tip) is maintained in ICON_DOCS below,
- * keyed by the stable `key` field from homeIcons.ts.
+ * Groups, labels, icon tiles (bg/fg/icon component), adminOnly/ownerOnly badges,
+ * and visibility (comingSoon filtering) all come from homeIcons.ts.
+ *
+ * This file owns ONLY the per-icon documentation (purpose, howTo, tip),
+ * keyed by the stable `key` field. To add a new feature to Help:
+ *   1. Add it to homeIcons.ts (it will appear automatically in the group list)
+ *   2. Add a matching ICON_DOCS[key] entry here
+ *
+ * comingSoon icons are NEVER shown here — VISIBLE_GROUP_CONFIG already filters them.
  */
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { useState } from 'react';
@@ -18,20 +23,10 @@ import {
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
-import {
-  FIELD_ICON_DEFS,
-  FILES_ICON_DEFS,
-  FLEET_ICON_DEFS,
-  FINANCE_ICON_DEFS,
-  SAFETY_ICON_DEFS,
-  MANAGEMENT_ICON_DEFS,
-  GROUP_LABELS,
-  type HomeIconDef,
-  type IconGroup,
-} from '@/lib/homeIcons';
+import { VISIBLE_GROUP_CONFIG } from '@/lib/homeIcons';
 
 // ── Per-icon documentation ────────────────────────────────────────────────────
-// Key matches HomeIconDef.key. Add an entry here for every icon in homeIcons.ts.
+// Key matches HomeIconDef.key. Add an entry here for every released icon.
 // Icons without an entry show a generic placeholder.
 interface IconDoc {
   purpose: string;
@@ -246,50 +241,25 @@ const ICON_DOCS: Record<string, IconDoc> = {
   },
 };
 
-// ── Group config ──────────────────────────────────────────────────────────────
-const GROUP_CONFIG: Array<{
-  group: IconGroup;
-  defs: HomeIconDef[];
-  badgeClass: string;
-  description: string;
-}> = [
-  {
-    group: 'field',
-    defs: FIELD_ICON_DEFS,
-    badgeClass: 'bg-violet-100 text-violet-800 border-violet-200',
-    description: 'Day-to-day tools for workers on site. Quick access to the most common field tasks.',
-  },
-  {
-    group: 'files',
-    defs: FILES_ICON_DEFS,
-    badgeClass: 'bg-blue-100 text-blue-800 border-blue-200',
-    description: 'Photo capture, plan viewing, file storage, and asset management.',
-  },
-  {
-    group: 'fleet',
-    defs: FLEET_ICON_DEFS,
-    badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-    description: 'Vehicle and plant fleet management.',
-  },
-  {
-    group: 'finance',
-    defs: FINANCE_ICON_DEFS,
-    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    description: 'Estimates, invoices, purchase orders, job ledger, and financial tools.',
-  },
-  {
-    group: 'safety',
-    defs: SAFETY_ICON_DEFS,
-    badgeClass: 'bg-red-100 text-red-700 border-red-200',
-    description: 'Safety compliance tools — SWMS, risk assessments, permits, incidents, and registers.',
-  },
-  {
-    group: 'management',
-    defs: MANAGEMENT_ICON_DEFS,
-    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
-    description: 'Admin and management tools — team, billing, settings, and platform tools.',
-  },
-];
+// ── Group badge colours — keyed by IconGroup ──────────────────────────────────
+// Only visual styling lives here; group membership comes from VISIBLE_GROUP_CONFIG.
+const GROUP_BADGE_CLASS: Record<string, string> = {
+  field:      'bg-violet-100 text-violet-800 border-violet-200',
+  files:      'bg-blue-100 text-blue-800 border-blue-200',
+  fleet:      'bg-sky-100 text-sky-800 border-sky-200',
+  finance:    'bg-emerald-100 text-emerald-800 border-emerald-200',
+  safety:     'bg-red-100 text-red-700 border-red-200',
+  management: 'bg-slate-100 text-slate-700 border-slate-200',
+};
+
+const GROUP_DESCRIPTION: Record<string, string> = {
+  field:      'Day-to-day tools for workers on site. Quick access to the most common field tasks.',
+  files:      'Photo capture, plan viewing, file storage, and asset management.',
+  fleet:      'Vehicle and plant fleet management.',
+  finance:    'Estimates, invoices, purchase orders, job ledger, and financial tools.',
+  safety:     'Safety compliance tools — SWMS, risk assessments, permits, incidents, and registers.',
+  management: 'Admin and management tools — team, billing, settings, and platform tools.',
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function HelpPage() {
@@ -306,7 +276,9 @@ export default function HelpPage() {
 
   const q = search.toLowerCase().trim();
 
-  const filtered = GROUP_CONFIG.map(gc => ({
+  // Filter groups and icons by search query.
+  // VISIBLE_GROUP_CONFIG already excludes comingSoon — no further filtering needed.
+  const filtered = VISIBLE_GROUP_CONFIG.map(gc => ({
     ...gc,
     defs: gc.defs.filter(icon => {
       if (!q) return true;
@@ -383,7 +355,8 @@ export default function HelpPage() {
 
         {filtered.map(gc => {
           const isOpen = !!openGroups[gc.group];
-          const label = GROUP_LABELS[gc.group];
+          const badgeClass = GROUP_BADGE_CLASS[gc.group] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+          const description = GROUP_DESCRIPTION[gc.group] ?? '';
           return (
             <div key={gc.group} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               {/* Group header */}
@@ -391,10 +364,10 @@ export default function HelpPage() {
                 onClick={() => toggleGroup(gc.group)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors"
               >
-                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${gc.badgeClass}`}>
-                  {label}
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${badgeClass}`}>
+                  {gc.label}
                 </span>
-                <span className="flex-1 text-xs text-slate-500 hidden sm:block">{gc.description}</span>
+                <span className="flex-1 text-xs text-slate-500 hidden sm:block">{description}</span>
                 <span className="text-xs text-slate-400 font-medium">{gc.defs.length} features</span>
                 {isOpen
                   ? <ChevronDown size={16} className="text-slate-400 shrink-0" />

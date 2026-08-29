@@ -9,6 +9,13 @@
  *
  * Safe to hand-edit: priority, changefreq, lastmod.
  * Do NOT add authenticated routes here.
+ *
+ * EXCLUDED PAGES (do not add until conditions are met):
+ *   /download-app — noindex,nofollow until APK_AVAILABLE is true and a signed
+ *                   release is published. Re-add here AND remove the noindex
+ *                   meta tag in pages/download-app.tsx at the same time.
+ *   /subscribe    — noindex,nofollow; auth-gated subscription flow, not a
+ *                   public landing page.
  */
 
 export interface SeoRoute {
@@ -29,9 +36,7 @@ export interface SeoRoute {
 
 export const seoRoutes: SeoRoute[] = [
   // ── Public marketing pages ────────────────────────────────────────────────
-  { path: "/",             changefreq: "weekly",  priority: 1.0, lastmod: "2026-08-30" },
-  { path: "/privacy",      changefreq: "yearly",  priority: 0.4 },
-  { path: "/terms",        changefreq: "yearly",  priority: 0.4 },
-  { path: "/download-app", changefreq: "monthly", priority: 0.6 },
-  { path: "/subscribe",    changefreq: "monthly", priority: 0.6 },
+  { path: "/",        changefreq: "weekly", priority: 1.0, lastmod: "2026-08-30" },
+  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
+  { path: "/terms",   changefreq: "yearly", priority: 0.4 },
 ];
