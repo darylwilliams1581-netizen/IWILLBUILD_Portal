@@ -59,21 +59,36 @@ afterEach(() => {
 
 const TEMPLATE_ID = 55;
 
+// Real magic bytes so the client-side detector accepts the files
+const PDF_MAGIC_BYTES  = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34]); // %PDF-1.4
+const ZIP_MAGIC_BYTES  = new Uint8Array([0x50, 0x4B, 0x03, 0x04]); // PK\x03\x04
+const OLE2_MAGIC_BYTES = new Uint8Array([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]);
+
+function makeDocxBytes(): Uint8Array {
+  const marker  = '[Content_Types].xmlword/document.xml';
+  const payload = new TextEncoder().encode(marker);
+  const buf     = new Uint8Array(ZIP_MAGIC_BYTES.length + payload.length);
+  buf.set(ZIP_MAGIC_BYTES, 0);
+  buf.set(payload, ZIP_MAGIC_BYTES.length);
+  return buf;
+}
+
 function makeDocxFile(name = 'test.docx') {
-  return new File(['PK...'], name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  return new File([makeDocxBytes()], name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
 
 function makeDotxFile(name = 'template.dotx') {
-  return new File(['PK...'], name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.template' });
+  return new File([makeDocxBytes()], name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.template' });
 }
 
 function makePdfFile(name = 'test.pdf') {
-  return new File(['%PDF...'], name, { type: 'application/pdf' });
+  return new File([PDF_MAGIC_BYTES], name, { type: 'application/pdf' });
 }
 
 function successFetch(body: object) {
   return vi.fn().mockResolvedValue({
     ok: true,
+    headers: { get: () => 'application/json' },
     json: async () => body,
   });
 }
@@ -106,36 +121,52 @@ function getImportBtn() {
   return document.querySelector('[data-testid="import-btn"]') as HTMLButtonElement;
 }
 
+/** Select a file and wait for async detection to complete, then click import */
 async function selectFileAndImport(file: File) {
   const input = getFileInput();
   await act(async () => {
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     fireEvent.change(input);
+    // Wait for async detectFileType to resolve
+    await new Promise((r) => setTimeout(r, 80));
   });
   await act(async () => {
     fireEvent.click(getImportBtn());
   });
 }
 
+/** Select a file and wait for detection only (no import click) */
+async function selectFileOnly(file: File) {
+  const input = getFileInput();
+  await act(async () => {
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    fireEvent.change(input);
+    await new Promise((r) => setTimeout(r, 80));
+  });
+}
+
 // ─── D1: Default mode ─────────────────────────────────────────────────────────
 
 describe('D1 — default mode is convert_blocks_v2', () => {
-  it('import button says "Import and edit in Studio" by default', () => {
+  it('import button says "Import into Studio" by default', async () => {
     renderImporter();
-    expect(getImportBtn().textContent).toContain('Import and edit in Studio');
+    await selectFileOnly(makeDocxFile());
+    expect(getImportBtn().textContent).toContain('Import into Studio');
   });
 });
 
 // ─── D2: keep_word not visible at top level ───────────────────────────────────
 
 describe('D2 — keep_word not visible at top level', () => {
-  it('keep_word toggle is NOT visible before opening Advanced section', () => {
+  it('keep_word toggle is NOT visible before opening Advanced section', async () => {
     renderImporter();
+    await selectFileOnly(makeDocxFile());
     expect(screen.queryByTestId('keep-word-toggle')).toBeNull();
   });
 
-  it('Advanced toggle button is present', () => {
+  it('Advanced toggle button is present after DOCX is detected', async () => {
     renderImporter();
+    await selectFileOnly(makeDocxFile());
     expect(screen.getByTestId('advanced-toggle')).toBeTruthy();
   });
 });
@@ -221,8 +252,8 @@ describe('D7 — sourceDocxName from server shown in preview step', () => {
     renderImporter();
     await selectFileAndImport(makeDocxFile('ignored.docx'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    // Preview step should show the name from the server
-    await waitFor(() => expect(screen.getByText(/My Safety Plan\.docx/)).toBeTruthy());
+    // Preview step should show the name from the server (may appear in multiple places)
+    await waitFor(() => expect(screen.getAllByText(/My Safety Plan\.docx/).length).toBeGreaterThan(0));
   });
 });
 
@@ -235,20 +266,22 @@ describe('D8 — file.name used when server omits sourceDocxName', () => {
     renderImporter();
     await selectFileAndImport(makeDocxFile('fallback-name.docx'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByText(/fallback-name\.docx/)).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText(/fallback-name\.docx/).length).toBeGreaterThan(0));
   });
 });
 
 // ─── D9: Advanced section collapsed by default ────────────────────────────────
 
 describe('D9 — Advanced section collapsed by default', () => {
-  it('keep_word toggle not visible until Advanced is opened', () => {
+  it('keep_word toggle not visible until Advanced is opened', async () => {
     renderImporter();
+    await selectFileOnly(makeDocxFile());
     expect(screen.queryByTestId('keep-word-toggle')).toBeNull();
   });
 
   it('clicking Advanced toggle reveals keep_word option', async () => {
     renderImporter();
+    await selectFileOnly(makeDocxFile());
     await act(async () => {
       fireEvent.click(screen.getByTestId('advanced-toggle'));
     });
@@ -261,6 +294,7 @@ describe('D9 — Advanced section collapsed by default', () => {
 describe('D10 — Advanced recovery path changes mode and label', () => {
   it('selecting keep_word changes button label to "Save as Recovery Copy"', async () => {
     renderImporter();
+    await selectFileOnly(makeDocxFile());
     await act(async () => { fireEvent.click(screen.getByTestId('advanced-toggle')); });
     await act(async () => { fireEvent.click(screen.getByTestId('keep-word-toggle')); });
     expect(getImportBtn().textContent).toContain('Save as Recovery Copy');
@@ -270,9 +304,10 @@ describe('D10 — Advanced recovery path changes mode and label', () => {
     fetchMock = successFetch({ mode: 'keep_word' });
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
+    await selectFileOnly(makeDocxFile());
     await act(async () => { fireEvent.click(screen.getByTestId('advanced-toggle')); });
     await act(async () => { fireEvent.click(screen.getByTestId('keep-word-toggle')); });
-    await selectFileAndImport(makeDocxFile());
+    await act(async () => { fireEvent.click(getImportBtn()); });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect(body.get('mode')).toBe('keep_word');
@@ -286,9 +321,10 @@ describe('D11 — keep_word success calls onClose, not onOpenInStudio', () => {
     fetchMock = successFetch({ mode: 'keep_word' });
     vi.stubGlobal('fetch', fetchMock);
     const { onClose, onOpenInStudio } = renderImporter();
+    await selectFileOnly(makeDocxFile());
     await act(async () => { fireEvent.click(screen.getByTestId('advanced-toggle')); });
     await act(async () => { fireEvent.click(screen.getByTestId('keep-word-toggle')); });
-    await selectFileAndImport(makeDocxFile());
+    await act(async () => { fireEvent.click(getImportBtn()); });
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(onOpenInStudio).not.toHaveBeenCalled();
   });
@@ -300,6 +336,7 @@ describe('D12 — non-ok response leaves modal open with error', () => {
   it('shows error message on 500 response', async () => {
     fetchMock = vi.fn().mockResolvedValue({
       ok: false,
+      headers: { get: () => 'application/json' },
       json: async () => ({ error: 'Server error during conversion' }),
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -334,6 +371,7 @@ describe('D14 — server error field in JSON body', () => {
   it('shows error from data.error even when HTTP 200', async () => {
     fetchMock = vi.fn().mockResolvedValue({
       ok: true,
+      headers: { get: () => 'application/json' },
       json: async () => ({ error: 'Mammoth conversion failed: corrupt DOCX' }),
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -350,13 +388,9 @@ describe('D14 — server error field in JSON body', () => {
 describe('D15 — invalid file type rejected without fetch', () => {
   it('.txt file shows validation error and does not call fetch', async () => {
     renderImporter();
-    const input = getFileInput();
     const txtFile = new File(['text'], 'document.txt', { type: 'text/plain' });
-    await act(async () => {
-      Object.defineProperty(input, 'files', { value: [txtFile], configurable: true });
-      fireEvent.change(input);
-    });
-    expect(screen.getByTestId('error-message').textContent).toContain('.docx');
+    await selectFileOnly(txtFile);
+    expect(screen.getByTestId('error-message').textContent).toMatch(/not supported/i);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -368,11 +402,7 @@ describe('D16 — .dotx files accepted', () => {
     fetchMock = successFetch({ mode: 'convert_blocks_v2', blocks: [], sourceDocxName: 'template.dotx', warnings: [] });
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
-    const input = getFileInput();
-    await act(async () => {
-      Object.defineProperty(input, 'files', { value: [makeDotxFile()], configurable: true });
-      fireEvent.change(input);
-    });
+    await selectFileOnly(makeDotxFile());
     expect(screen.queryByTestId('error-message')).toBeNull();
   });
 
@@ -420,6 +450,7 @@ describe('D19 — PDF path goes to block-canvas preview step', () => {
   it('PDF parse response with blocks shows preview step', async () => {
     fetchMock = vi.fn().mockResolvedValue({
       ok: true,
+      headers: { get: () => 'application/json' },
       json: async () => ({
         mode: 'convert_blocks',
         blocks: [{ id: '1', type: 'heading', content: 'Title', level: 1, align: 'left' }],
@@ -431,13 +462,10 @@ describe('D19 — PDF path goes to block-canvas preview step', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderImporter();
 
-    // Switch to PDF mode
-    const pdfBtn = screen.getByRole('button', { name: /PDF/i });
-    await act(async () => { fireEvent.click(pdfBtn); });
-
+    // Drop a PDF — auto-detected, no mode toggle needed
     await selectFileAndImport(makePdfFile());
     await waitFor(() =>
-      expect(screen.getByText(/Parsed/)).toBeTruthy(),
+      expect(screen.getAllByText(/Parsed/).length).toBeGreaterThan(0),
     );
   });
 });
@@ -576,9 +604,7 @@ describe('N6 — NewDocumentModal Library shortcut calls onOpenLibrary and onClo
 // ─── D21: Non-JSON 503 response shows real status, not SyntaxError ────────────
 //
 // Root cause: when the proxy kills a timed-out request it returns a plain-text
-// "Service Unavailable" body. The old code called res.json() unconditionally,
-// which threw a SyntaxError that was caught as a generic "Network error".
-// The fix wraps res.json() in a try/catch and surfaces the real HTTP status.
+// "Service Unavailable" body. The fix checks content-type before calling json().
 
 describe('D21 — non-JSON 503 response shows real status, not SyntaxError', () => {
   it('shows "Server error (503 ...)" when server returns plain-text body', async () => {
@@ -586,8 +612,7 @@ describe('D21 — non-JSON 503 response shows real status, not SyntaxError', () 
       ok: false,
       status: 503,
       statusText: 'Service Unavailable',
-      // json() throws — simulates a plain-text response body
-      json: async () => { throw new SyntaxError('Unexpected token S'); },
+      headers: { get: () => 'text/html' },
     });
     vi.stubGlobal('fetch', fetchMock);
     const { onOpenInStudio, onClose } = renderImporter();
