@@ -704,11 +704,6 @@ export default function StudioDocumentsPage() {
         <span className="text-gray-300">|</span>
         <Layers size={17} className="text-primary shrink-0" />
         <h1 className="font-heading font-bold text-base truncate flex-1">Documents</h1>
-        {pageTab === 'documents' && <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setShowNewDocModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors">
-              <Plus size={15} /><span className="hidden sm:inline">New document</span>
-            </button>
-          </div>}
         {pageTab === 'reports' && <button onClick={() => setShowReportModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors shrink-0">
             <FileText size={14} /><span className="hidden sm:inline">Generate Job Report</span>
           </button>}
