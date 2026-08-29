@@ -624,6 +624,7 @@ ${scope} table {
   max-width: 100%;
   table-layout: auto;
   border-collapse: collapse;
+  border-spacing: 0;
   /* strip any fixed min-width injected by the converter */
   min-width: 0 !important;
 }
@@ -644,6 +645,33 @@ ${scope} th {
   /* remove any min-width that forces horizontal scroll */
   min-width: 0 !important;
   max-width: none;
+  /* default visible grid line — overridden by imported inline borders */
+  border: 1px solid #cbd5e1;
+  padding: 4px 8px;
+}
+
+/* ── layout-only tables must NOT show a grid ─────────────────────────────── */
+/* .doc-columns-grid = two-column layout wrapper; .no-grid = explicit opt-out */
+${scope} table.doc-columns-grid,
+${scope} table.no-grid {
+  border: none;
+}
+${scope} table.doc-columns-grid td,
+${scope} table.doc-columns-grid th,
+${scope} table.no-grid td,
+${scope} table.no-grid th {
+  border: none;
+  padding: 0;
+}
+
+/* ── Risk Matrix / PPE / banner tables keep their own styling ────────────── */
+/* These are div-based, not table-based, so the td/th rule above does not    */
+/* affect them. The .risk-matrix-table IS a real table — give it its own     */
+/* cell border so the colour-coded cells still show their fill correctly.    */
+${scope} .risk-matrix-table td,
+${scope} .risk-matrix-table th {
+  border: 1px solid #94a3b8;
+  padding: 4px 8px;
 }
 
 /* ── page-break divs ─────────────────────────────────────────────────────── */
@@ -712,6 +740,8 @@ ${scope} .page-break::after {
     max-width: 100% !important;
     min-width: 0 !important;
     table-layout: auto !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
   }
   ${scope} img,
   ${scope} figure,
@@ -726,6 +756,16 @@ ${scope} .page-break::after {
     word-break: break-word !important;
     overflow-wrap: break-word !important;
     min-width: 0 !important;
+    /* printer-safe grid line (0.5pt ≈ 0.67px) */
+    border: 0.5pt solid #555 !important;
+  }
+
+  /* layout tables stay borderless in print */
+  ${scope} table.doc-columns-grid td,
+  ${scope} table.doc-columns-grid th,
+  ${scope} table.no-grid td,
+  ${scope} table.no-grid th {
+    border: none !important;
   }
 }
 `.trim();
