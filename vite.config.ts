@@ -556,11 +556,11 @@ export default defineConfig(({
     'html-to-image',
     // drizzle-kit is a CLI migration tool — never needed at SSR runtime.
     'drizzle-kit',
-    // mammoth is a large DOCX parser (~8 MB). The main DOCX import handler
-    // was rewritten to use JSZip, but two other endpoints still import it
-    // dynamically. Externalising prevents OOM during the SSR Rollup build.
-    // Those endpoints will gracefully handle the missing module at runtime.
-    'mammoth'
+    // mammoth was previously externalised to avoid OOM during the SSR Rollup
+    // build, but the publish container has no node_modules so external packages
+    // crash at startup. mammoth is now split into its own Rollup chunk (see
+    // manualChunks below) which keeps peak RSS low during the build while still
+    // bundling it into dist/bin/mammoth-*.js for the runtime container.
     // NOTE: lucide-react and @heroicons are NOT externalized here — they are
     // aliased to a stub in resolve.alias (below) during SSR build so they
     // compile to near-zero bytes rather than their full ~53 MB on disk.
