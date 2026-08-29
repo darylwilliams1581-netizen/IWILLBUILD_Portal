@@ -82,7 +82,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     (template?.docStatus as 'draft' | 'published' | 'archived') ?? 'draft'
   );
   const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
-  const [activeTab, setActiveTab]                   = useState<BuilderTab>(initialTab ?? 'document_tools');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>(initialTab ?? 'layout');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
@@ -293,10 +293,10 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
   // Ribbon tab definitions — Apply Widget retired; import is the primary entry point
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'layout',        label: 'Layout',         icon: <LayoutGrid size={13} /> },
+    { id: 'theme',         label: 'Theme',          icon: <Image size={13} /> },
     { id: 'document_tools', label: 'Document Tools', icon: <Layers size={13} /> },
-    { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
-    { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
-    { id: 'view',          label: 'View',          icon: <Monitor size={13} /> },
+    { id: 'view',          label: 'View',           icon: <Monitor size={13} /> },
   ];
 
   return (
