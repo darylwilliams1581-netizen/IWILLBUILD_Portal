@@ -8,7 +8,7 @@
 
 import { useState, useRef } from 'react';
 import{useAuthImage,isInternalSrc}from'./useAuthImage';
-import { Settings, Zap, X, Plus, Trash2, Upload, Loader2, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { Settings, Zap, X, Plus, Trash2, Upload, Loader2, PanelRightClose, PanelRightOpen, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import { SYSTEM_FIELDS, SYSTEM_FIELD_GROUPS } from './systemFields';
@@ -810,7 +810,7 @@ function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd:
   );
 }
 
-// ── Image Inspector (with file upload) ────────────────────────────────────────
+// ── Image Inspector (with file upload, size + alignment controls) ─────────────
 
 function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<ImageBlock>) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -837,6 +837,22 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
     }
   };
 
+  const SIZE_PRESETS: { value: ImageBlock['size']; label: string }[] = [
+    { value: 'small',  label: 'S' },
+    { value: 'medium', label: 'M' },
+    { value: 'large',  label: 'L' },
+    { value: 'full',   label: 'Full' },
+    { value: 'custom', label: 'Custom' },
+  ];
+
+  const SIZE_HINTS: Record<string, string> = {
+    small:  '200px',
+    medium: '400px',
+    large:  '600px',
+    full:   '100%',
+    custom: '',
+  };
+
   return (
     <Section title="Image">
       {/* Upload button */}
@@ -845,7 +861,7 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
         disabled={uploading}
         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-violet-50 border border-violet-200 text-primary text-xs font-semibold hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
       >
-        {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> Upload Image</>}
+        {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {block.src ? 'Replace Image' : 'Upload Image'}</>}
       </button>
       <input
         ref={fileRef}
@@ -875,20 +891,27 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
         </div>
       )}
 
-      <label className={`${lbl} mt-2`}>Alt Text</label>
-      <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} />
+      <label className={`${lbl} mt-3`}>Alt Text</label>
+      <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} placeholder="Describe the image" />
       <label className={`${lbl} mt-2`}>Caption</label>
-      <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} />
+      <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} placeholder="Optional caption" />
 
-      {/* Size — button pickers */}
-      <label className={`${lbl} mt-2`}>Size</label>
-      <div className="grid grid-cols-2 gap-1">
-        {([['small','Small (200px)'],['medium','Medium (400px)'],['large','Large (600px)'],['full','Full Width']] as const).map(([val, label]) => (
+      {/* ── Size ── */}
+      <label className={`${lbl} mt-3`}>Size</label>
+      <div className="flex gap-1">
+        {SIZE_PRESETS.map(({ value, label }) => (
           <button
-            key={val}
-            onClick={() => upd({ size: val })}
-            className={`py-1.5 rounded text-[10px] font-semibold transition-colors ${
-              block.size === val
+            key={value}
+            onClick={() => {
+              if (value === 'custom') {
+                upd({ size: 'custom', customWidth: block.customWidth ?? 300 });
+              } else {
+                upd({ size: value, customWidth: undefined });
+              }
+            }}
+            title={SIZE_HINTS[value] ? `Max width: ${SIZE_HINTS[value]}` : 'Custom width'}
+            className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${
+              block.size === value
                 ? 'bg-primary text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'
             }`}
@@ -898,9 +921,55 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
         ))}
       </div>
 
-      {/* Align */}
-      <label className={`${lbl} mt-2`}>Align</label>
-      <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
+      {/* Custom width input — shown only when size === 'custom' */}
+      {block.size === 'custom' && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="number"
+            min={40}
+            max={1200}
+            step={10}
+            value={block.customWidth ?? 300}
+            onChange={(e) => upd({ customWidth: Math.max(40, Math.min(1200, Number(e.target.value))) })}
+            className={`${inp} flex-1`}
+          />
+          <span className="text-xs text-slate-400 flex-shrink-0">px</span>
+        </div>
+      )}
+
+      {/* ── Alignment ── */}
+      <label className={`${lbl} mt-3`}>Alignment</label>
+      <div className="flex gap-1">
+        {([
+          { value: 'left',   Icon: AlignLeft   },
+          { value: 'center', Icon: AlignCenter },
+          { value: 'right',  Icon: AlignRight  },
+        ] as const).map(({ value, Icon }) => (
+          <button
+            key={value}
+            onClick={() => upd({ align: value })}
+            title={value.charAt(0).toUpperCase() + value.slice(1)}
+            className={`flex-1 py-1.5 rounded flex items-center justify-center transition-colors ${
+              block.align === value
+                ? 'bg-primary text-white'
+                : 'bg-white border border-slate-200 text-slate-500 hover:border-primary/40 hover:text-primary'
+            }`}
+          >
+            <Icon size={13} />
+          </button>
+        ))}
+      </div>
+
+      {/* Preserve aspect ratio toggle */}
+      <label className="flex items-center gap-2 cursor-pointer mt-3">
+        <input
+          type="checkbox"
+          checked={block.preserveAspectRatio}
+          onChange={(e) => upd({ preserveAspectRatio: e.target.checked })}
+          className="w-3.5 h-3.5 rounded accent-violet-600"
+        />
+        <span className="text-[10px] text-slate-600 font-medium">Preserve aspect ratio</span>
+      </label>
     </Section>
   );
 }

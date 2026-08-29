@@ -15,6 +15,7 @@
  * session because the component is mounted. External URLs print directly.
  */
 import { useState } from 'react';
+import type React from 'react';
 import { Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { useDocumentStore } from '../useDocumentStore';
 import type { ImageBlock } from '../types';
@@ -38,6 +39,14 @@ const AL: Record<string, string> = {
   right:  'ml-auto',
 };
 
+/** Resolve the width class/style for the image wrapper */
+function resolveSize(block: ImageBlock): { className: string; style?: React.CSSProperties } {
+  if (block.size === 'custom' && block.customWidth) {
+    return { className: '', style: { maxWidth: `${block.customWidth}px` } };
+  }
+  return { className: SZ[block.size] ?? SZ.medium };
+}
+
 export default function ImageBlockView({ block, columnsBlockId, columnId }: Props) {
   const { mode, updateBlock, updateBlockInColumn } = useDocumentStore();
   const [nativeError, setNativeError] = useState(false);
@@ -47,8 +56,9 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
       ? updateBlockInColumn(columnsBlockId, columnId, block.id, p)
       : updateBlock(block.id, p);
 
-  const sz = SZ[block.size]  ?? SZ.medium;
+  const { className: szClass, style: szStyle } = resolveSize(block);
   const al = AL[block.align] ?? AL.center;
+  const wrapClass = `my-2 ${szClass} ${al}`.trim();
 
   // Internal API images go through the auth-fetch hook (credentials: include).
   const isInternal = !!block.src && isInternalSrc(block.src);
@@ -63,7 +73,8 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
     return (
       <div
         data-testid="image-block-empty"
-        className={`my-2 ${sz} ${al} border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center gap-2`}
+        className={`my-2 ${szClass || 'max-w-[400px]'} ${al} border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center gap-2`}
+        style={szStyle}
       >
         <ImageIcon size={28} className="text-slate-300" />
         <p className="text-xs font-medium text-slate-500">Image block</p>
@@ -77,7 +88,8 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
     return (
       <div
         data-testid="image-block-loading"
-        className={`my-2 ${sz} ${al} flex items-center justify-center h-20 rounded-lg bg-slate-50 border border-slate-200`}
+        className={`${wrapClass} flex items-center justify-center h-20 rounded-lg bg-slate-50 border border-slate-200`}
+        style={szStyle}
       >
         <div className="w-5 h-5 border-2 border-slate-300 border-t-primary rounded-full animate-spin" />
       </div>
@@ -89,7 +101,8 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
     return (
       <div
         data-testid="image-block-broken"
-        className={`my-2 ${sz} ${al} flex flex-col items-center justify-center h-20 rounded-lg bg-amber-50 border border-amber-200 gap-1.5`}
+        className={`${wrapClass} flex flex-col items-center justify-center h-20 rounded-lg bg-amber-50 border border-amber-200 gap-1.5`}
+        style={szStyle}
       >
         <ImageIcon size={18} className="text-amber-400" />
         <p className="text-[10px] text-amber-600 font-medium">Image unavailable</p>
@@ -108,7 +121,8 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
     return (
       <div
         data-testid="image-block-broken"
-        className={`my-2 ${sz} ${al} flex flex-col items-center justify-center h-20 rounded-lg bg-amber-50 border border-amber-200 gap-1.5`}
+        className={`${wrapClass} flex flex-col items-center justify-center h-20 rounded-lg bg-amber-50 border border-amber-200 gap-1.5`}
+        style={szStyle}
       >
         <ImageIcon size={18} className="text-amber-400" />
         <p className="text-[10px] text-amber-600 font-medium">Image unavailable</p>
@@ -126,7 +140,7 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
 
   // ── Normal render ─────────────────────────────────────────────────────────
   return (
-    <div className={`my-2 ${sz} ${al}`}>
+    <div className={wrapClass} style={szStyle}>
       <img
         src={displaySrc}
         alt={block.alt}

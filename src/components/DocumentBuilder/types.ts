@@ -461,7 +461,7 @@ export interface TableBlock extends BlockBase {
 
 // ── Image Block ───────────────────────────────────────────────────────────────
 
-export type ImageSize = 'small' | 'medium' | 'large' | 'full';
+export type ImageSize = 'small' | 'medium' | 'large' | 'full' | 'custom';
 export type ImageAlign = 'left' | 'center' | 'right';
 
 export interface ImageBlock extends BlockBase {
@@ -470,6 +470,8 @@ export interface ImageBlock extends BlockBase {
   alt: string;
   caption?: string;
   size: ImageSize;
+  /** Custom width in px — only used when size === 'custom' */
+  customWidth?: number;
   align: ImageAlign;
   preserveAspectRatio: boolean;
 }

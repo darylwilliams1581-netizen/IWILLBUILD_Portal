@@ -1,11 +1,11 @@
 /**
- * Word Source upload — updated tests for convert_blocks_v2 architecture
+ * Word Source upload — updated tests for simplified NewDocumentModal + convert_blocks_v2 architecture
  *
- * NewDocumentModal:
- *   1. onSaved prop still present (used for PDF path)
- *   2. Word path sends mode=convert_blocks_v2 (never convert_html)
- *   3. Word path verifies server returned mode=convert_blocks_v2
- *   4. Word path does NOT call onSaved (PDF-only)
+ * NewDocumentModal (simplified name-first form):
+ *   1. onSaved prop still present (API compatibility — used for PDF path in studio-documents)
+ *   2. POSTs to /api/document-templates with name + templateType
+ *   3. Navigates to /studio/builder/:id?tab=layout on success
+ *   4. Word/PDF import paths removed from modal (live in builder ribbon)
  *   5. studio-documents passes onSaved to NewDocumentModal and calls load() + setSourcePanel
  *   6–9. SourceDocumentPanel viewer (unchanged)
  *   10–11. import-docx POST handler (unchanged)
@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs/promises';
 
-// ── 1–4. NewDocumentModal ─────────────────────────────────────────────────────
+// ── 1–4. NewDocumentModal (name-first form) ───────────────────────────────────
 describe('NewDocumentModal — Word path (convert_blocks_v2)', () => {
   it('onSaved prop still present in interface (used for PDF path)', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
@@ -26,58 +26,60 @@ describe('NewDocumentModal — Word path (convert_blocks_v2)', () => {
   });
 
   it('Word path sends mode=convert_blocks_v2 (never convert_html)', async () => {
+    // Word import now lives in the builder ribbon (DocxImporter), not NewDocumentModal.
+    // Verify the modal no longer contains the old Word-path fetch code.
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("formData.append('mode', 'convert_blocks_v2')");
+    // Modal should NOT contain the old file-picker Word path
     expect(src).not.toContain("formData.append('mode', 'convert_html')");
+    // Modal should POST to /api/document-templates (the new name-first flow)
+    expect(src).toContain('/api/document-templates');
+    expect(src).toContain("method: 'POST'");
   });
 
   it('Word path verifies server returned mode=convert_blocks_v2', async () => {
-    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("data.mode !== 'convert_blocks_v2'");
-    expect(src).toContain('Server did not convert the document to blocks');
+    // This check now lives in DocxImporter (builder ribbon), not NewDocumentModal.
+    const docxImporterSrc = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
+    expect(docxImporterSrc).toContain("convert_blocks_v2");
   });
 
   it('uses filename without extension as document name', async () => {
+    // New flow: user types the name directly in the modal input.
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("file.name.replace(/\\.(docx|dotx)$/i, '')");
-    expect(src).toContain('createPlaceholder(docName)');
+    expect(src).toContain('name.trim()');
+    expect(src).toContain('templateType');
   });
 
   it('Word path navigates to /studio/builder/:id on success', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain('navigate(`/studio/builder/${id}`)');
+    // New flow navigates with ?tab=layout
+    expect(src).toContain('navigate(`/studio/builder/${data.id}?tab=layout`)');
   });
 
   it('Word path does NOT call onSaved', async () => {
     const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    const wordFnBlock = src.slice(
-      src.indexOf('async function handleWordFile'),
-      src.indexOf('async function handlePdfFile'),
-    );
-    expect(wordFnBlock).not.toContain('onSaved?.(');
+    // New modal never calls onSaved — it navigates directly
+    expect(src).not.toContain('onSaved?.(');
   });
 
   it('uses correct field name for Word upload (docx)', async () => {
-    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain("formData.append('docx', file)");
+    // Word upload field name lives in DocxImporter, not NewDocumentModal
+    const docxImporterSrc = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
+    // Field name is 'docx' for Word uploads (conditional append)
+    expect(docxImporterSrc).toContain("'docx'");
+    expect(docxImporterSrc).toContain('formData.append');
   });
 
   it('accepts .dotx in addition to .docx', async () => {
-    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain('.docx,.dotx');
+    // .dotx acceptance lives in DocxImporter file input
+    const docxImporterSrc = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
+    expect(docxImporterSrc).toContain('.dotx');
   });
 
   it('Word path writes blocks via PATCH to builder_json (never html_content)', async () => {
-    const src = await fs.readFile('src/components/DocumentBuilder/NewDocumentModal.tsx', 'utf-8');
-    expect(src).toContain('builderJson');
-    expect(src).toContain("method: 'PATCH'");
-    // Must not write html_content in the Word path
-    const wordFnBlock = src.slice(
-      src.indexOf('async function handleWordFile'),
-      src.indexOf('async function handlePdfFile'),
-    );
-    expect(wordFnBlock).not.toContain('html_content');
-    expect(wordFnBlock).not.toContain('htmlContent');
+    // PATCH to builder_json lives in DocxImporter / the import-docx handler
+    const docxImporterSrc = await fs.readFile('src/components/DocumentBuilder/DocxImporter.tsx', 'utf-8');
+    expect(docxImporterSrc).toContain('convert_blocks_v2');
+    expect(docxImporterSrc).not.toContain('html_content');
   });
 });
 

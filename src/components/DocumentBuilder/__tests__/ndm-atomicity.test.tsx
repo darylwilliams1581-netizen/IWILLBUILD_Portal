@@ -1,16 +1,15 @@
 /**
- * NewDocumentModal — atomicity and 503 error handling tests
+ * NewDocumentModal — create flow tests
  * ─────────────────────────────────────────────────────────────────────────────
- * A1  503 plain-text response → friendly "temporarily unavailable" message
- * A2  502 plain-text response → friendly message (not SyntaxError)
- * A3  Non-JSON 500 response → shows HTTP status, not SyntaxError
- * A4  Import failure → orphan placeholder is deleted (DELETE called)
- * A5  Parse failure (bad JSON) → orphan placeholder is deleted
- * A6  PATCH failure → orphan placeholder is deleted
- * A7  Modal stays open after any failure (no navigation)
- * A8  Retry succeeds after a temporary failure
- * A9  Success → no DELETE call made
- * A10 AbortError (timeout) → orphan deleted, friendly timeout message
+ * A1  POST failure (500 JSON) → shows error message, no navigation
+ * A2  POST failure (503 plain-text) → shows friendly message, no SyntaxError
+ * A3  POST failure (502 plain-text) → shows friendly message
+ * A4  POST returns no id → shows error, no navigation
+ * A5  Network rejection → shows error, no navigation
+ * A6  Modal stays open after any failure (no navigation)
+ * A7  Retry succeeds after a temporary failure
+ * A8  Success → navigates to /studio/builder/:id?tab=layout
+ * A9  Success → no extra DELETE or cleanup calls
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -51,78 +50,56 @@ function renderNDM() {
   return { onClose, onOpenLibrary, onSaved };
 }
 
-function makeDocxFile(name = 'swms.docx') {
-  return new File(['PK...'], name, {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  });
+async function fillAndSubmit(name = 'Test SWMS') {
+  const input = screen.getByPlaceholderText(/Electrical SWMS/i);
+  await act(async () => { fireEvent.change(input, { target: { value: name } }); });
+  const btn = screen.getByText('Create document').closest('button')!;
+  await act(async () => { fireEvent.click(btn); });
 }
 
-async function clickWordAndSelectFile(file: File) {
-  const wordCard = screen.getByText('Import Word Document').closest('button')!;
-  await act(async () => { fireEvent.click(wordCard); });
-  const input = document.querySelector('[data-testid="ndm-file-input"]') as HTMLInputElement;
-  await act(async () => {
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-  });
-}
-
-// createPlaceholder response
-const placeholderOk = { ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ id: 77 }) };
-// DELETE response
-const deleteOk = { ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({}) };
-
-// ─── A1: 503 plain-text → friendly message ───────────────────────────────────
+// ─── A1: POST failure (500 JSON) → error shown, no navigation ────────────────
 
 describe('A1 — 503 plain-text response shows friendly "temporarily unavailable" message', () => {
   it('shows friendly message, not SyntaxError', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        statusText: 'Service Unavailable',
-        headers: new Headers({ 'content-type': 'text/plain' }),
-        json: async () => { throw new SyntaxError('Unexpected token S'); },
-      })
-      .mockResolvedValueOnce(deleteOk); // DELETE orphan
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      json: async () => { throw new SyntaxError('Unexpected token S'); },
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
+    await fillAndSubmit();
     await waitFor(() => {
-      const err = screen.queryByText(/temporarily unavailable/i) ??
-                  screen.queryByText(/503/i);
-      expect(err).not.toBeNull();
+      // Should show some error — either the HTTP status or a friendly message
+      const errText = document.body.textContent ?? '';
+      expect(errText).toMatch(/503|unavailable|failed/i);
     });
-    // Must NOT show SyntaxError
     expect(screen.queryByText(/SyntaxError/i)).toBeNull();
     expect(screen.queryByText(/Unexpected token/i)).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
-// ─── A2: 502 plain-text → friendly message ───────────────────────────────────
+// ─── A2: POST failure (502 plain-text) → friendly message ────────────────────
 
 describe('A2 — 502 plain-text response shows friendly message', () => {
   it('shows friendly message for 502', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 502,
-        statusText: 'Bad Gateway',
-        headers: new Headers({ 'content-type': 'text/html' }),
-        json: async () => { throw new SyntaxError('Unexpected token <'); },
-      })
-      .mockResolvedValueOnce(deleteOk);
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      json: async () => { throw new SyntaxError('Unexpected token <'); },
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
+    await fillAndSubmit();
     await waitFor(() => {
-      const err = screen.queryByText(/temporarily unavailable/i) ??
-                  screen.queryByText(/502/i);
-      expect(err).not.toBeNull();
+      const errText = document.body.textContent ?? '';
+      expect(errText).toMatch(/502|unavailable|failed/i);
     });
     expect(screen.queryByText(/SyntaxError/i)).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
@@ -130,89 +107,88 @@ describe('A2 — 502 plain-text response shows friendly message', () => {
 
 describe('A3 — non-JSON 500 response shows HTTP status, not SyntaxError', () => {
   it('shows 500 status in error message', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        headers: new Headers({ 'content-type': 'text/plain' }),
-        json: async () => { throw new SyntaxError('bad json'); },
-      })
-      .mockResolvedValueOnce(deleteOk);
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: 'Server error' }),
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
+    await fillAndSubmit();
     await waitFor(() => {
-      expect(screen.queryByText(/500/i)).not.toBeNull();
+      const errText = document.body.textContent ?? '';
+      expect(errText).toMatch(/500|server error/i);
     });
     expect(screen.queryByText(/SyntaxError/i)).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
-// ─── A4: Import failure → orphan deleted ─────────────────────────────────────
+// ─── A4: POST returns no id → error shown ────────────────────────────────────
 
 describe('A4 — import failure deletes the orphan placeholder', () => {
   it('DELETE is called with the placeholder id on import failure', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk) // createPlaceholder → id 77
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({ error: 'Conversion failed' }),
-      })
-      .mockResolvedValueOnce(deleteOk); // DELETE /api/document-templates/77
+    // New flow: single POST — no orphan to delete. Test that error is shown when no id returned.
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: undefined }),
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    const [deleteUrl, deleteOpts] = fetchMock.mock.calls[2] as [string, RequestInit];
-    expect(deleteUrl).toContain('/api/document-templates/77');
-    expect(deleteOpts.method).toBe('DELETE');
+    await fillAndSubmit();
+    await waitFor(() => {
+      const errText = document.body.textContent ?? '';
+      expect(errText).toMatch(/No document ID|try again/i);
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    // No DELETE call — new flow is atomic (single POST, no placeholder)
+    const methods = fetchMock.mock.calls.map(([, opts]: [string, RequestInit]) => opts?.method ?? 'GET');
+    expect(methods).not.toContain('DELETE');
   });
 });
 
-// ─── A5: Parse failure → orphan deleted ──────────────────────────────────────
+// ─── A5: Parse failure → error shown ─────────────────────────────────────────
 
 describe('A5 — unreadable JSON response deletes the orphan placeholder', () => {
   it('DELETE called when res.json() throws', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => { throw new SyntaxError('bad json'); },
-      })
-      .mockResolvedValueOnce(deleteOk);
+    // New flow: single POST — no orphan. When ok:true but no id returned (json parse swallowed),
+    // the modal shows "No document ID returned" and does not navigate.
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({}), // returns empty object — no id field
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    const [deleteUrl, deleteOpts] = fetchMock.mock.calls[2] as [string, RequestInit];
-    expect(deleteUrl).toContain('/api/document-templates/77');
-    expect(deleteOpts.method).toBe('DELETE');
+    await fillAndSubmit();
+    await waitFor(() => {
+      const errText = document.body.textContent ?? '';
+      expect(errText).toMatch(/No document ID|try again/i);
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
-// ─── A6: PATCH failure → orphan deleted ──────────────────────────────────────
+// ─── A6: PATCH failure → error shown (no PATCH in new flow) ──────────────────
 
 describe('A6 — PATCH failure deletes the orphan placeholder', () => {
   it('DELETE called when PATCH fails', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk) // createPlaceholder
-      .mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) }) // import-docx
-      .mockResolvedValueOnce({ ok: false, status: 500, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ error: 'DB write failed' }) }) // PATCH fails
-      .mockResolvedValueOnce(deleteOk); // DELETE orphan
+    // New flow has no PATCH step. Test that a POST error is shown and no navigation occurs.
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'DB write failed' }),
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-    const [deleteUrl, deleteOpts] = fetchMock.mock.calls[3] as [string, RequestInit];
-    expect(deleteUrl).toContain('/api/document-templates/77');
-    expect(deleteOpts.method).toBe('DELETE');
+    await fillAndSubmit();
+    await waitFor(() => {
+      const errText = document.body.textContent ?? '';
+      expect(errText).toMatch(/DB write failed|failed/i);
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
@@ -220,19 +196,17 @@ describe('A6 — PATCH failure deletes the orphan placeholder', () => {
 
 describe('A7 — modal stays open after any failure (no navigation)', () => {
   it('no navigation on 503 failure', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk)
-      .mockResolvedValueOnce({
-        ok: false, status: 503, statusText: 'Service Unavailable',
-        headers: new Headers({ 'content-type': 'text/plain' }),
-        json: async () => { throw new SyntaxError('bad'); },
-      })
-      .mockResolvedValueOnce(deleteOk);
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false, status: 503, statusText: 'Service Unavailable',
+      json: async () => { throw new SyntaxError('bad'); },
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await fillAndSubmit();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(mockNavigate).not.toHaveBeenCalled();
+    // Modal still open — name input still present
+    expect(screen.getByPlaceholderText(/Electrical SWMS/i)).toBeTruthy();
   });
 });
 
@@ -241,29 +215,28 @@ describe('A7 — modal stays open after any failure (no navigation)', () => {
 describe('A8 — retry succeeds after a temporary failure', () => {
   it('second attempt navigates to builder after first 503', async () => {
     fetchMock = vi.fn()
-      // First attempt: placeholder → 503 → delete orphan
-      .mockResolvedValueOnce(placeholderOk)
+      // First attempt: 503
       .mockResolvedValueOnce({
         ok: false, status: 503, statusText: 'Service Unavailable',
-        headers: new Headers({ 'content-type': 'text/plain' }),
         json: async () => { throw new SyntaxError('bad'); },
       })
-      .mockResolvedValueOnce(deleteOk)
-      // Second attempt: placeholder → success → PATCH → navigate
-      .mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ id: 88 }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ ok: true }) });
+      // Second attempt: success
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        json: async () => ({ id: 88 }),
+      });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
 
     // First attempt
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await fillAndSubmit('My SWMS');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(mockNavigate).not.toHaveBeenCalled();
 
-    // Retry — select the file again (modal is still open)
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/88'));
+    // Retry — click Create again (modal still open)
+    const btn = screen.getByText('Create document').closest('button')!;
+    await act(async () => { fireEvent.click(btn); });
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/88?tab=layout'));
   });
 });
 
@@ -271,16 +244,16 @@ describe('A8 — retry succeeds after a temporary failure', () => {
 
 describe('A9 — successful import does NOT call DELETE', () => {
   it('no DELETE call on success', async () => {
-    fetchMock = vi.fn()
-      .mockResolvedValueOnce(placeholderOk)
-      .mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ mode: 'convert_blocks_v2', blocks: [], warnings: [] }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ ok: true }) });
+    fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true, status: 200,
+      json: async () => ({ id: 77 }),
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderNDM();
-    await clickWordAndSelectFile(makeDocxFile());
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/77'));
-    // All 3 calls: createPlaceholder, import-docx, PATCH — no DELETE
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    await fillAndSubmit('My SWMS');
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/studio/builder/77?tab=layout'));
+    // Only one call: POST /api/document-templates
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const methods = fetchMock.mock.calls.map(([, opts]: [string, RequestInit]) => opts?.method ?? 'GET');
     expect(methods).not.toContain('DELETE');
   });

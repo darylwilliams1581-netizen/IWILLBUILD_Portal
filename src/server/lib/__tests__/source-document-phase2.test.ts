@@ -129,13 +129,17 @@ describe('NewDocumentModal', () => {
       'utf-8'
     );
     expect(src).toContain('export default function NewDocumentModal');
-    // Must have 4 creation paths
-    expect(src).toContain("id: 'library'");
-    expect(src).toContain("id: 'word'");
-    expect(src).toContain("id: 'pdf'");
-    expect(src).toContain("id: 'blank'");
-    // Must NOT have widget buttons (only mentioned in comments, not as UI elements)
-    // The modal has 4 paths: library, word, pdf, blank — no SWMS/Policy/Safety Plan buttons
+    // New simplified form: name input + type selector + Create button
+    expect(src).toContain('name.trim()');
+    expect(src).toContain('templateType');
+    expect(src).toContain('Create document');
+    // Library shortcut still present
+    expect(src).toContain('onOpenLibrary');
+    // Must NOT have the old 4-path picker cards
+    expect(src).not.toContain("id: 'word'");
+    expect(src).not.toContain("id: 'pdf'");
+    expect(src).not.toContain("id: 'blank'");
+    // Must NOT have widget buttons
     expect(src).not.toContain("id: 'swms'");
     expect(src).not.toContain("id: 'safety_plan'");
     expect(src).not.toContain("id: 'policy'");
