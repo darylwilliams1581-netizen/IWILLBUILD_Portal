@@ -16,11 +16,12 @@
  *   navigate to the new template.
  */
 import { db } from '../../db/client.js';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import type { BuilderOperation, BuilderApplyResult } from './types.js';
 import { buildBlock, sanitiseBlockUpdate } from './operations.js';
 import { createBuilderVersion } from './versioning.js';
 import { auditBuilder } from './audit.js';
+import { profiles } from '../../db/schema.js';
 
 export async function applyDocumentOperations(
   templateId: number | null,
@@ -46,13 +47,20 @@ export async function applyDocumentOperations(
     const docKind = String(createOp.docKind ?? 'doc').slice(0, 50);
     newTemplateName = name;
 
+    // Look up the owner's company_id — required NOT NULL on document_templates.
+    const [ownerProfile] = await db.select().from(profiles).where(eq(profiles.userId, ownerUserId)).limit(1);
+    if (!ownerProfile?.companyId) {
+      return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Owner has no company profile — cannot create template.' };
+    }
+    const companyId = ownerProfile.companyId;
+
     const emptyJson = JSON.stringify({ blocks: [], pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' }, theme: { backgroundColor: '#ffffff', accentColor: '#1e3a5f', textColor: '#1a1a1a', tableHeaderColor: '#1e3a5f', tableHeaderTextColor: '#ffffff' }, systemFields: [], sourceAttachments: [], requiresAcknowledgement: false, acknowledgementLabel: '', acknowledgementText: '' });
 
     const insertResult = await db.execute(sql`
       INSERT INTO document_templates
-        (name, template_type, doc_status, doc_kind, builder_json, created_at, updated_at)
+        (company_id, name, template_type, doc_status, doc_kind, builder_json, is_active, created_by_user_id, created_at, updated_at)
       VALUES
-        (${name}, ${templateType}, ${docStatus}, ${docKind}, ${emptyJson}, NOW(), NOW())
+        (${companyId}, ${name}, ${templateType}, ${docStatus}, ${docKind}, ${emptyJson}, 1, ${ownerUserId}, NOW(), NOW())
     `);
 
     const insertId = (insertResult as { insertId?: number | bigint }).insertId;

@@ -15,10 +15,11 @@
  *   all subsequent operations in the same batch.
  */
 import { db } from '../../db/client.js';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import type { BuilderOperation, BuilderApplyResult } from './types.js';
 import { createBuilderVersion } from './versioning.js';
 import { auditBuilder } from './audit.js';
+import { profiles } from '../../db/schema.js';
 
 export async function applyFormOperations(
   templateId: number | null,
@@ -43,11 +44,18 @@ export async function applyFormOperations(
     const category = String(createOp.category ?? 'General').slice(0, 100);
     newTemplateName = name;
 
+    // Look up the owner's company_id — required NOT NULL on form_templates.
+    const [ownerProfile] = await db.select().from(profiles).where(eq(profiles.userId, ownerUserId)).limit(1);
+    if (!ownerProfile?.companyId) {
+      return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Owner has no company profile — cannot create template.' };
+    }
+    const companyId = ownerProfile.companyId;
+
     const insertResult = await db.execute(sql`
       INSERT INTO form_templates
-        (name, form_type, category, is_active, created_at, updated_at)
+        (company_id, name, form_type, category, is_active, created_at, updated_at)
       VALUES
-        (${name}, ${formType}, ${category}, 0, NOW(), NOW())
+        (${companyId}, ${name}, ${formType}, ${category}, 0, NOW(), NOW())
     `);
 
     const insertId = (insertResult as { insertId?: number | bigint }).insertId;
