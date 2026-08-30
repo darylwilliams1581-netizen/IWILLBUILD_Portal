@@ -3238,24 +3238,67 @@ if (!process.env.VITEST) {
       console.error('[recovery-email] migration fatal:', e)
     )
   );
-  // Fix sms_verification_codes.id: live DB was created with INT AUTO_INCREMENT
-  // but the Drizzle schema and insert code use VARCHAR(36). Repair in-place.
+  // ── sms_verification_codes.id column type repair ─────────────────────────────
+  // Root cause: the original CREATE TABLE DDL used INT AUTO_INCREMENT for the id
+  // column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
+  // This one-time migration detects the mismatch, records how many rows are
+  // discarded (they are short-lived verification codes — expiry < 10 min), alters
+  // the column, then verifies the result. It is fully idempotent: once the column
+  // is VARCHAR it exits immediately without touching the table.
   void (async () => {
     try {
-      const [[row]] = await db.execute(sql.raw(
+      // 1. Check current column type
+      const [[colRow]] = await db.execute(sql.raw(
+        "SELECT DATA_TYPE, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+        "WHERE TABLE_SCHEMA = DATABASE() " +
+        "  AND TABLE_NAME  = 'sms_verification_codes' " +
+        "  AND COLUMN_NAME = 'id'"
+      )) as unknown as [[{ DATA_TYPE: string; COLUMN_TYPE: string } | undefined]];
+
+      if (!colRow) {
+        // Table doesn't exist yet — the CREATE TABLE DDL (corrected to VARCHAR) will
+        // handle it on first startup; nothing to do here.
+        return;
+      }
+
+      if (colRow.DATA_TYPE?.toLowerCase() === 'varchar') {
+        // Already correct — migration has already run or was never needed.
+        return;
+      }
+
+      // 2. Count rows that will be lost (codes expire in 10 min; loss is acceptable)
+      const [[countRow]] = await db.execute(sql.raw(
+        "SELECT COUNT(*) AS cnt FROM `sms_verification_codes`"
+      )) as unknown as [[{ cnt: number }]];
+      const rowsDiscarded = Number(countRow?.cnt ?? 0);
+
+      // 3. Truncate (INT primary key values are incompatible with VARCHAR(36))
+      await db.execute(sql.raw("TRUNCATE TABLE `sms_verification_codes`"));
+
+      // 4. Alter column: remove AUTO_INCREMENT, change type to VARCHAR(36)
+      await db.execute(sql.raw(
+        "ALTER TABLE `sms_verification_codes` " +
+        "MODIFY COLUMN `id` VARCHAR(36) NOT NULL"
+      ));
+
+      // 5. Verify the repair succeeded
+      const [[verifyRow]] = await db.execute(sql.raw(
         "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
-        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sms_verification_codes' AND COLUMN_NAME = 'id'"
+        "WHERE TABLE_SCHEMA = DATABASE() " +
+        "  AND TABLE_NAME  = 'sms_verification_codes' " +
+        "  AND COLUMN_NAME = 'id'"
       )) as unknown as [[{ DATA_TYPE: string } | undefined]];
-      if (row && row.DATA_TYPE?.toLowerCase() !== 'varchar') {
-        // Truncate first (INT rows are incompatible with VARCHAR(36) primary key)
-        await db.execute(sql.raw("TRUNCATE TABLE `sms_verification_codes`"));
-        await db.execute(sql.raw(
-          "ALTER TABLE `sms_verification_codes` MODIFY COLUMN `id` VARCHAR(36) NOT NULL"
-        ));
-        console.log('[startup-migration] sms_verification_codes.id repaired: INT → VARCHAR(36)');
+
+      if (verifyRow?.DATA_TYPE?.toLowerCase() !== 'varchar') {
+        console.error('[startup-migration] sms_verification_codes.id repair FAILED — column is still', verifyRow?.DATA_TYPE);
+      } else {
+        console.log(
+          `[startup-migration] sms_verification_codes.id repaired: INT → VARCHAR(36)` +
+          (rowsDiscarded > 0 ? ` (${rowsDiscarded} expired code row(s) discarded)` : ' (table was empty)')
+        );
       }
     } catch (e) {
-      console.warn('[startup-migration] sms_verification_codes.id repair skipped:', (e as Error)?.message?.slice(0, 120));
+      console.warn('[startup-migration] sms_verification_codes.id repair skipped:', (e as Error)?.message?.slice(0, 160));
     }
   })();
 }

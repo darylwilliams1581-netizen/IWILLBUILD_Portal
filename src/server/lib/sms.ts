@@ -45,7 +45,9 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('[sms] Twilio error:', response.status, text);
+      // Mask any phone numbers in the error body before logging (E.164 pattern)
+      const masked = text.replace(/\+\d{7,15}/g, (m) => m.slice(0, 4) + '****' + m.slice(-2));
+      console.error('[sms] Twilio error:', response.status, masked);
       return false;
     }
 
