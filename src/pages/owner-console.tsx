@@ -30,6 +30,7 @@ import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
 import AnatomyTab from '@/components/owner-console/AnatomyTab';
+import TwilioTab from '@/components/owner-console/TwilioTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -347,7 +348,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : 'overview');
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | 'twilio' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : searchParams.get('tab') as 'twilio' | null === 'twilio' ? 'twilio' : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
@@ -918,6 +919,15 @@ export default function OwnerConsolePage() {
               Global Library
             </span>
           </Tab>
+          <Tab active={tab === 'twilio'} onClick={() => {
+          setTab('twilio');
+          setSearchParams({ tab: 'twilio' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <Phone size={12} />
+              Twilio
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
           setTab('support-setup');
           setSearchParams({
@@ -1098,6 +1108,7 @@ export default function OwnerConsolePage() {
                   <LibraryManagerTab />
                 </div>
               )}
+              {tab === 'twilio' && <TwilioTab />}
 
 
               {/* ── Health Check (Annette) ── */}
