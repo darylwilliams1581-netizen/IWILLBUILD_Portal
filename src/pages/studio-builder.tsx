@@ -139,20 +139,18 @@ export default function StudioBuilderPage() {
   const [currentVersion, setCurrentVersion] = useState(0);
 
   // ── Zustand store subscriptions (must be before any early return) ──────────
-  const storeTemplateId = useDocumentStore(s => s.templateId);
-  const storeSnapshot = useDocumentStore(s => ({
-    templateId: s.templateId,
-    templateName: s.templateName,
-    templateType: s.templateType,
-    blocks: s.blocks,
-    logicRules: s.logicRules ?? [],
-    isDirty: s.isDirty,
-    mode: initialMode,
-    pageLayout: s.pageLayout,
-    docKind: s.docKind ?? 'doc',
-    requiresAcknowledgement: s.requiresAcknowledgement ?? false,
-  }));
-  const selectedBlockId = useDocumentStore(s => s.selection?.blockId ?? null);
+  // Use individual primitive selectors — object selectors create a new object
+  // every render and cause an infinite update loop in Zustand.
+  const storeTemplateId   = useDocumentStore(s => s.templateId);
+  const storeTemplateName = useDocumentStore(s => s.templateName);
+  const storeTemplateType = useDocumentStore(s => s.templateType);
+  const storeBlocks       = useDocumentStore(s => s.blocks);
+  const storeLogicRules   = useDocumentStore(s => s.logicRules);
+  const storeIsDirty      = useDocumentStore(s => s.isDirty);
+  const storePageLayout   = useDocumentStore(s => s.pageLayout);
+  const storeDocKind      = useDocumentStore(s => s.docKind);
+  const storeReqAck       = useDocumentStore(s => s.requiresAcknowledgement);
+  const selectedBlockId   = useDocumentStore(s => s.selection?.blockId ?? null);
 
   const handleDazzaApplied = useCallback((versionId: string, versionNumber: number) => {
     setCurrentVersion(versionNumber);
@@ -266,6 +264,18 @@ export default function StudioBuilderPage() {
   // Fall back to the static template snapshot only when the store hasn't
   // loaded yet (templateId is null and we have a real template to load).
   const storeTemplateLoaded = storeTemplateId !== null || isNew;
+  const storeSnapshot = {
+    templateId:               storeTemplateId,
+    templateName:             storeTemplateName,
+    templateType:             storeTemplateType,
+    blocks:                   storeBlocks,
+    logicRules:               storeLogicRules ?? [],
+    isDirty:                  storeIsDirty,
+    mode:                     initialMode,
+    pageLayout:               storePageLayout,
+    docKind:                  storeDocKind ?? 'doc',
+    requiresAcknowledgement:  storeReqAck ?? false,
+  };
   const dazzaContext = storeTemplateLoaded
     ? buildDocumentBuilderContext(storeSnapshot, selectedBlockId, [], currentVersion)
     : buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion);
