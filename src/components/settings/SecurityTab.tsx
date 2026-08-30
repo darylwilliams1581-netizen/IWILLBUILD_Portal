@@ -2,11 +2,21 @@
  * SecurityTab — Two-factor authentication management.
  * Supports both TOTP (authenticator app) and SMS 2FA.
  * Only one method can be active at a time.
+ *
+ * Enable TOTP flow:
+ *   1. User clicks "Set up authenticator app"
+ *   2. Confirmation dialog opens — user enters their current password
+ *   3. On Continue: authClient.twoFactor.enable({ password }) → returns totpURI + backupCodes
+ *   4. QR code, manual key and backup codes are displayed
+ *   5. User enters 6-digit code → authClient.twoFactor.verifyTotp({ code }) → enabled
+ *
+ * The enable-password state (enablePw / showEnablePw) is completely separate from
+ * the disable-password state (disablePw / showPw) — they are never shared.
  */
 import { useState, useEffect } from 'react';
 import {
   ShieldCheck, ShieldOff, Smartphone, MessageSquare,
-  Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, Copy, Check, RefreshCw,
+  Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, Copy, Check, RefreshCw, X,
 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { authClient } from '@/lib/auth/auth-client';
@@ -16,41 +26,47 @@ type Phase =
   | 'loading'
   | 'disabled'
   // TOTP phases
-  | 'totp-setup'
-  | 'totp-verify'
+  | 'totp-confirm'   // NEW: password confirmation dialog before enable
+  | 'totp-setup'     // QR code + verify step
   | 'totp-enabled'
-  | 'totp-disabling'
   // SMS phases
   | 'sms-enter-phone'
   | 'sms-verify-setup'
-  | 'sms-enabled'
-  | 'sms-disabling';
+  | 'sms-enabled';
 
 export default function SecurityTab() {
-  const [phase, setPhase]         = useState<Phase>('loading');
+  const [phase, setPhase]               = useState<Phase>('loading');
   const [activeMethod, setActiveMethod] = useState<Method>(null);
-  const [maskedPhone, setMaskedPhone] = useState('');
+  const [maskedPhone, setMaskedPhone]   = useState('');
 
   // TOTP state
-  const [totpUri, setTotpUri]     = useState('');
-  const [qrDataUrl, setQrDataUrl] = useState('');
-  const [secret, setSecret]       = useState('');
-  const [token, setToken]         = useState('');
+  const [totpUri, setTotpUri]           = useState('');
+  const [qrDataUrl, setQrDataUrl]       = useState('');
+  const [secret, setSecret]             = useState('');
+  const [token, setToken]               = useState('');
   const [disableToken, setDisableToken] = useState('');
-  const [copied, setCopied]       = useState(false);
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [copied, setCopied]             = useState(false);
+  const [backupCodes, setBackupCodes]   = useState<string[]>([]);
+
+  // Enable-TOTP password (separate from disable password — never shared)
+  const [enablePw, setEnablePw]         = useState('');
+  const [showEnablePw, setShowEnablePw] = useState(false);
+  const [enableBusy, setEnableBusy]     = useState(false);
+  const [enableError, setEnableError]   = useState('');
 
   // SMS state
-  const [smsPhone, setSmsPhone]   = useState('');
-  const [smsCode, setSmsCode]     = useState('');
+  const [smsPhone, setSmsPhone]         = useState('');
+  const [smsCode, setSmsCode]           = useState('');
   const [smsSendState, setSmsSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
-  // Shared
-  const [disablePw, setDisablePw] = useState('');
-  const [showPw, setShowPw]       = useState(false);
-  const [error, setError]         = useState('');
-  const [success, setSuccess]     = useState('');
-  const [busy, setBusy]           = useState(false);
+  // Disable-TOTP / disable-SMS password (separate from enable password)
+  const [disablePw, setDisablePw]       = useState('');
+  const [showPw, setShowPw]             = useState(false);
+
+  // Shared feedback
+  const [error, setError]               = useState('');
+  const [success, setSuccess]           = useState('');
+  const [busy, setBusy]                 = useState(false);
 
   // Load current 2FA status
   useEffect(() => {
@@ -77,17 +93,33 @@ export default function SecurityTab() {
 
   // ── TOTP ──────────────────────────────────────────────────────────────────
 
-  async function startTotpSetup() {
-    setError(''); setBusy(true);
+  /** Step 1: open the password-confirmation dialog */
+  function openTotpConfirm() {
+    setEnablePw('');
+    setShowEnablePw(false);
+    setEnableError('');
+    setError('');
+    setPhase('totp-confirm');
+  }
+
+  /** Step 2: user clicked Continue in the dialog — call enable() */
+  async function confirmAndEnable() {
+    if (!enablePw.trim()) {
+      setEnableError('Please enter your current password.');
+      return;
+    }
+    setEnableError('');
+    setEnableBusy(true);
     try {
-      // Official plugin: POST /api/auth/two-factor/enable
+      // Official BetterAuth twoFactor plugin: POST /api/auth/two-factor/enable
       // Returns { totpURI, backupCodes }. The secret is embedded in the URI.
-      const result = await authClient.twoFactor.enable({ password: disablePw || undefined });
+      const result = await authClient.twoFactor.enable({ password: enablePw });
       if (result?.error) {
-        setError(result.error.message ?? 'Setup failed.');
+        // Keep dialog open and show inline error
+        setEnableError(result.error.message ?? 'Incorrect password or setup failed.');
         return;
       }
-      const uri = result?.data?.totpURI ?? '';
+      const uri   = result?.data?.totpURI ?? '';
       const codes = (result?.data?.backupCodes as string[] | undefined) ?? [];
       setTotpUri(uri);
       setBackupCodes(codes);
@@ -97,19 +129,24 @@ export default function SecurityTab() {
       const secretMatch = uri.match(/[?&]secret=([^&]+)/i);
       setSecret(secretMatch?.[1] ?? '');
 
-      // Generate QR code data URL using the browser's canvas API
-      // We use a simple server-side QR endpoint to avoid bundling a QR library
+      // Generate QR code via the auth-gated server endpoint
       const qrRes = await fetch(`/api/me/2fa/qr?uri=${encodeURIComponent(uri)}`, { credentials: 'include' });
       if (qrRes.ok) {
         const qrData = await qrRes.json() as { qrDataUrl?: string };
         setQrDataUrl(qrData.qrDataUrl ?? '');
       } else {
-        // Fallback: show the URI directly if QR generation fails
         setQrDataUrl('');
       }
+
+      // Clear the enable password — it must not persist into the setup screen
+      setEnablePw('');
+      setToken('');
       setPhase('totp-setup');
-    } catch { setError('Network error. Please try again.'); }
-    finally { setBusy(false); }
+    } catch {
+      setEnableError('Network error. Please try again.');
+    } finally {
+      setEnableBusy(false);
+    }
   }
 
   async function verifyTotpEnable() {
@@ -267,7 +304,7 @@ export default function SecurityTab() {
           </div>
         </div>
 
-        {/* Feedback */}
+        {/* Shared feedback */}
         {error && (
           <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 mb-4">
             <AlertCircle size={13} className="shrink-0" />{error}
@@ -297,11 +334,10 @@ export default function SecurityTab() {
                 </div>
               </div>
               <button
-                onClick={startTotpSetup}
-                disabled={busy}
-                className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                onClick={openTotpConfirm}
+                className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
               >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                <ShieldCheck size={14} />
                 Set up authenticator app
               </button>
             </div>
@@ -331,7 +367,87 @@ export default function SecurityTab() {
           </div>
         )}
 
-        {/* ── TOTP SETUP: show QR code ── */}
+        {/* ── TOTP CONFIRM: password dialog before enable ── */}
+        {phase === 'totp-confirm' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5">
+              {/* Dialog header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-violet-50 border border-violet-200 rounded-xl flex items-center justify-center shrink-0">
+                    <ShieldCheck size={18} className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Confirm your password</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Required to set up two-factor authentication.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setPhase('disabled'); setEnablePw(''); setEnableError(''); }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors mt-0.5 shrink-0"
+                  aria-label="Cancel"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Inline error inside dialog */}
+              {enableError && (
+                <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                  <AlertCircle size={13} className="shrink-0" />{enableError}
+                </div>
+              )}
+
+              {/* Password field */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Current Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showEnablePw ? 'text' : 'password'}
+                    value={enablePw}
+                    onChange={e => setEnablePw(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') void confirmAndEnable(); }}
+                    placeholder="Your account password"
+                    autoFocus
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEnablePw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    tabIndex={-1}
+                  >
+                    {showEnablePw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Dialog actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setPhase('disabled'); setEnablePw(''); setEnableError(''); }}
+                  className="flex-1 border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => void confirmAndEnable()}
+                  disabled={enableBusy || !enablePw.trim()}
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {enableBusy
+                    ? <><Loader2 size={14} className="animate-spin" />Setting up…</>
+                    : <><ShieldCheck size={14} />Continue</>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TOTP SETUP: show QR code + backup codes ── */}
         {phase === 'totp-setup' && (
           <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-5">
             <div>
@@ -360,6 +476,27 @@ export default function SecurityTab() {
               </div>
             </div>
 
+            {/* Backup codes — shown immediately after enable */}
+            {backupCodes.length > 0 && (
+              <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+                <p className="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1.5">
+                  <AlertCircle size={13} className="shrink-0" />
+                  Save your backup codes — shown once only
+                </p>
+                <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
+                  If you lose access to your authenticator app, use one of these codes to sign in.
+                  Each code can only be used once.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {backupCodes.map((code, i) => (
+                    <code key={i} className="text-xs font-mono bg-white border border-amber-200 rounded px-2 py-1 text-amber-900 text-center select-all">
+                      {code}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-slate-100 pt-4">
               <p className="text-sm font-bold text-slate-800 mb-1">Step 2 — Enter the 6-digit code</p>
               <p className="text-xs text-slate-500 mb-4">Enter the code shown in your authenticator app to confirm setup.</p>
@@ -370,7 +507,7 @@ export default function SecurityTab() {
                   </InputOTPGroup>
                 </InputOTP>
                 <button
-                  onClick={verifyTotpEnable}
+                  onClick={() => void verifyTotpEnable()}
                   disabled={busy || token.length !== 6}
                   className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
                 >
@@ -403,7 +540,7 @@ export default function SecurityTab() {
                 <ShieldOff size={14} className="text-red-400" />
                 Disable Two-Factor Authentication
               </p>
-              <p className="text-xs text-slate-500 mb-4">Enter your password and an authenticator code to turn off 2FA.</p>
+              <p className="text-xs text-slate-500 mb-4">Enter your password to turn off 2FA.</p>
 
               <div className="flex flex-col gap-3 max-w-sm">
                 <div>
@@ -421,16 +558,9 @@ export default function SecurityTab() {
                     </button>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Authenticator Code</label>
-                  <InputOTP maxLength={6} value={disableToken} onChange={setDisableToken}>
-                    <InputOTPGroup>
-                      {[0,1,2,3,4,5].map(i => <InputOTPSlot key={i} index={i} />)}
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
+                {/* Authenticator code field removed — BetterAuth disable() only requires password */}
                 <button
-                  onClick={disableTotp}
+                  onClick={() => void disableTotp()}
                   disabled={busy || !disablePw}
                   className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 w-fit"
                 >
@@ -461,7 +591,7 @@ export default function SecurityTab() {
                   autoFocus
                 />
                 <button
-                  onClick={sendSmsSetupCode}
+                  onClick={() => void sendSmsSetupCode()}
                   disabled={smsSendState === 'sending' || !smsPhone.trim()}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
@@ -495,7 +625,7 @@ export default function SecurityTab() {
                   </InputOTPGroup>
                 </InputOTP>
                 <button
-                  onClick={verifySmsEnable}
+                  onClick={() => void verifySmsEnable()}
                   disabled={busy || smsCode.length !== 6}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
                 >
@@ -504,7 +634,7 @@ export default function SecurityTab() {
                 </button>
               </div>
               <button
-                onClick={sendSmsSetupCode}
+                onClick={() => void sendSmsSetupCode()}
                 disabled={smsSendState === 'sending'}
                 className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 mt-3 transition-colors disabled:opacity-50"
               >
@@ -554,7 +684,7 @@ export default function SecurityTab() {
                   </div>
                 </div>
                 <button
-                  onClick={disableSms}
+                  onClick={() => void disableSms()}
                   disabled={busy || !disablePw}
                   className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 w-fit"
                 >

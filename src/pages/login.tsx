@@ -58,6 +58,9 @@ export default function LoginPage() {
   const [tfaLoading, setTfaLoading] = useState(false);
   const [smsMaskedPhone, setSmsMaskedPhone] = useState('');
   const [smsResendState, setSmsResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  // Backup-code mode — separate input so the user can switch without clearing the TOTP field
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCodeInput, setBackupCodeInput] = useState('');
 
   // Unverified email state — shown instead of generic error
   const [unverified, setUnverified] = useState(false);
@@ -335,6 +338,34 @@ export default function LoginPage() {
   }
   async function handle2FA(e: React.FormEvent) {
     e.preventDefault();
+
+    // ── Backup-code path ───────────────────────────────────────────────────
+    if (useBackupCode) {
+      const code = backupCodeInput.trim();
+      if (!code) { setError('Enter your backup code.'); return; }
+      setError('');
+      setTfaLoading(true);
+      try {
+        // Official BetterAuth plugin: POST /api/auth/two-factor/verify-backup-code
+        // This is a dedicated endpoint — backup codes must NOT be sent to verifyTotp.
+        const result = await authClient.twoFactor.verifyBackupCode({ code });
+        if (result?.error) {
+          setError(result.error.message ?? 'Invalid backup code. Please try again.');
+          return;
+        }
+        const rawFrom2faBackup = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+        const SAFE_BLOCKLIST_BACKUP = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+        const from2faBackup = isNativeApp ? '/home' : rawFrom2faBackup.startsWith('/') && !SAFE_BLOCKLIST_BACKUP.some(b => rawFrom2faBackup.startsWith(b)) ? rawFrom2faBackup : '/home';
+        navigate(from2faBackup, { replace: true });
+      } catch {
+        setError('Something went wrong. Please try again.');
+      } finally {
+        setTfaLoading(false);
+      }
+      return;
+    }
+
+    // ── TOTP / SMS path ────────────────────────────────────────────────────
     if (tfaToken.length !== 6) {
       setError('Enter the 6-digit code.');
       return;
@@ -514,7 +545,11 @@ export default function LoginPage() {
                 </div>
                 <h2 className="text-white font-bold text-base">Two-Factor Authentication</h2>
                 <p className="text-white/40 text-xs mt-1 text-center">
-                  {tfa2Method === 'sms' ? smsMaskedPhone ? `We sent a code to ${smsMaskedPhone}` : 'We sent a 6-digit code to your phone.' : 'Enter the 6-digit code from your authenticator app.'}
+                  {useBackupCode
+                    ? 'Enter one of your saved backup codes.'
+                    : tfa2Method === 'sms'
+                      ? smsMaskedPhone ? `We sent a code to ${smsMaskedPhone}` : 'We sent a 6-digit code to your phone.'
+                      : 'Enter the 6-digit code from your authenticator app.'}
                 </p>
               </div>
 
@@ -523,29 +558,66 @@ export default function LoginPage() {
                 </div>}
 
               <form onSubmit={handle2FA} className="flex flex-col items-center gap-5">
-                <InputOTP maxLength={6} value={tfaToken} onChange={setTfaToken} autoFocus>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
+                {useBackupCode ? (
+                  /* ── Backup code input ── */
+                  <input
+                    type="text"
+                    value={backupCodeInput}
+                    onChange={e => setBackupCodeInput(e.target.value)}
+                    placeholder="xxxxx-xxxxx"
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white text-sm font-mono text-center tracking-widest placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60"
+                  />
+                ) : (
+                  /* ── TOTP / SMS OTP input ── */
+                  <InputOTP maxLength={6} value={tfaToken} onChange={setTfaToken} autoFocus>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                )}
 
-                <button type="submit" disabled={tfaLoading || tfaToken.length !== 6} className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50">
-                  {tfaLoading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</> : <><ShieldCheck size={15} />Verify Code</>}
+                <button
+                  type="submit"
+                  disabled={tfaLoading || (useBackupCode ? !backupCodeInput.trim() : tfaToken.length !== 6)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {tfaLoading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</> : <><ShieldCheck size={15} />{useBackupCode ? 'Use Backup Code' : 'Verify Code'}</>}
                 </button>
 
                 {/* Resend button for SMS */}
-                {tfa2Method === 'sms' && <button type="button" onClick={() => void handleSmsResend()} disabled={smsResendState === 'sending' || smsResendState === 'sent'} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 disabled:opacity-50 transition-colors">
+                {tfa2Method === 'sms' && !useBackupCode && <button type="button" onClick={() => void handleSmsResend()} disabled={smsResendState === 'sending' || smsResendState === 'sent'} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 disabled:opacity-50 transition-colors">
                     {smsResendState === 'sending' ? <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />Sending…</> : smsResendState === 'sent' ? <><CheckCircle2 size={12} className="text-green-400" />Code sent</> : <><RefreshCw size={12} />Resend code</>}
                   </button>}
+
+                {/* Backup code toggle — only shown for TOTP (not SMS) */}
+                {tfa2Method !== 'sms' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseBackupCode(v => !v);
+                      setError('');
+                      setBackupCodeInput('');
+                      setTfaToken('');
+                    }}
+                    className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                  >
+                    {useBackupCode ? '← Use authenticator app instead' : 'Use a backup code instead'}
+                  </button>
+                )}
 
                 <button type="button" onClick={() => {
               setNeeds2FA(false);
               setTfaToken('');
+              setBackupCodeInput('');
+              setUseBackupCode(false);
               setError('');
               setTfa2Method(null);
             }} className="text-xs text-white/30 hover:text-white/50 transition-colors">

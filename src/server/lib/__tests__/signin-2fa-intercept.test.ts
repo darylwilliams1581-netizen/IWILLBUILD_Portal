@@ -245,6 +245,128 @@ describe('SecurityTab.tsx: uses official plugin for TOTP enrolment', () => {
   it('does NOT call the retired /api/me/2fa/disable endpoint', () => {
     expect(SECURITY_TAB).not.toContain("'/api/me/2fa/disable'");
   });
+
+  // ── Enable-password dialog ────────────────────────────────────────────────
+
+  it('has a dedicated enablePw state separate from disablePw', () => {
+    // Both states must exist and be named differently — they must never be shared
+    expect(SECURITY_TAB).toContain('enablePw');
+    expect(SECURITY_TAB).toContain('disablePw');
+    // Both must appear as useState variable declarations (not just string literals)
+    expect(SECURITY_TAB).toMatch(/\[enablePw,\s*setEnablePw\]/);
+    expect(SECURITY_TAB).toMatch(/\[disablePw,\s*setDisablePw\]/);
+  });
+
+  it('passes enablePw (not disablePw) to twoFactor.enable()', () => {
+    // The enable call must use enablePw, not disablePw
+    expect(SECURITY_TAB).toContain('enable({ password: enablePw');
+    expect(SECURITY_TAB).not.toContain('enable({ password: disablePw');
+  });
+
+  it('has a totp-confirm phase for the password dialog', () => {
+    expect(SECURITY_TAB).toContain("'totp-confirm'");
+    expect(SECURITY_TAB).toContain('totp-confirm');
+  });
+
+  it('shows inline error inside the dialog (enableError state)', () => {
+    expect(SECURITY_TAB).toContain('enableError');
+    expect(SECURITY_TAB).toContain('setEnableError(');
+  });
+
+  it('keeps dialog open on wrong password (does not navigate away)', () => {
+    // On error, setEnableError is called — setPhase('disabled') must NOT be called
+    // inside the error branch of confirmAndEnable
+    const confirmFn = SECURITY_TAB.slice(
+      SECURITY_TAB.indexOf('async function confirmAndEnable'),
+      SECURITY_TAB.indexOf('async function verifyTotpEnable'),
+    );
+    // The error branch sets enableError and returns — it must not call setPhase
+    expect(confirmFn).toContain('setEnableError(');
+    // After setEnableError there should be a return before any setPhase call
+    const errorBranch = confirmFn.slice(
+      confirmFn.indexOf('setEnableError('),
+      confirmFn.indexOf('setPhase('),
+    );
+    expect(errorBranch).toContain('return;');
+  });
+
+  it('clears enablePw after successful enable (before showing QR screen)', () => {
+    // enablePw must be cleared before transitioning to totp-setup
+    const confirmFn = SECURITY_TAB.slice(
+      SECURITY_TAB.indexOf('async function confirmAndEnable'),
+      SECURITY_TAB.indexOf('async function verifyTotpEnable'),
+    );
+    const setupTransition = confirmFn.indexOf("setPhase('totp-setup')");
+    const clearPw = confirmFn.lastIndexOf("setEnablePw('')", setupTransition);
+    expect(clearPw).toBeGreaterThan(-1);
+    expect(clearPw).toBeLessThan(setupTransition);
+  });
+
+  it('displays backup codes after enable (in totp-setup phase)', () => {
+    expect(SECURITY_TAB).toContain('backupCodes');
+    expect(SECURITY_TAB).toContain('backupCodes.length > 0');
+    // Backup codes must be shown in the totp-setup section
+    const setupSection = SECURITY_TAB.slice(
+      SECURITY_TAB.indexOf("phase === 'totp-setup'"),
+      SECURITY_TAB.indexOf("phase === 'totp-enabled'"),
+    );
+    expect(setupSection).toContain('backupCodes');
+  });
+});
+
+// ── login.tsx: backup-code path ───────────────────────────────────────────────
+
+describe('login.tsx: backup-code path uses verifyBackupCode (not verifyTotp)', () => {
+  const LOGIN = readFileSync('src/pages/login.tsx', 'utf8');
+
+  it('calls authClient.twoFactor.verifyBackupCode for backup codes', () => {
+    // Confirmed method name from BetterAuth 1.6.25 source:
+    // POST /two-factor/verify-backup-code → authClient.twoFactor.verifyBackupCode({ code })
+    expect(LOGIN).toContain('authClient.twoFactor.verifyBackupCode(');
+  });
+
+  it('does NOT send backup codes to verifyTotp', () => {
+    // The backup-code branch is guarded by `if (useBackupCode)` and returns early.
+    // Extract only the backup-code branch by finding the `if (useBackupCode)` guard
+    // and slicing up to the TOTP/SMS section that follows it.
+    const backupStart = LOGIN.indexOf('if (useBackupCode)');
+    expect(backupStart).toBeGreaterThan(-1);
+    // The TOTP/SMS section starts with a comment containing "TOTP / SMS path"
+    const totpSmsStart = LOGIN.indexOf('TOTP / SMS path', backupStart);
+    expect(totpSmsStart).toBeGreaterThan(backupStart);
+    const backupBranch = LOGIN.slice(backupStart, totpSmsStart);
+    // The backup branch must call verifyBackupCode
+    expect(backupBranch).toContain('verifyBackupCode(');
+    // The backup branch must NOT CALL verifyTotp (comments mentioning it are fine)
+    // Check for the actual function call pattern, not just the string
+    expect(backupBranch).not.toContain('verifyTotp(');
+  });
+
+  it('has useBackupCode state to toggle between TOTP and backup-code input', () => {
+    expect(LOGIN).toContain('useBackupCode');
+    expect(LOGIN).toContain('setUseBackupCode');
+  });
+
+  it('has backupCodeInput state for the backup code text field', () => {
+    expect(LOGIN).toContain('backupCodeInput');
+    expect(LOGIN).toContain('setBackupCodeInput');
+  });
+
+  it('shows "Use a backup code instead" toggle only for TOTP (not SMS)', () => {
+    // The toggle must be conditional on tfa2Method !== 'sms'
+    expect(LOGIN).toContain("tfa2Method !== 'sms'");
+    expect(LOGIN).toContain('Use a backup code instead');
+  });
+
+  it('resets backup code state when going back to login', () => {
+    // The "Back to login" button must clear backupCodeInput and useBackupCode
+    const backButton = LOGIN.slice(
+      LOGIN.indexOf('Back to login') - 300,
+      LOGIN.indexOf('Back to login') + 50,
+    );
+    expect(backButton).toContain('setBackupCodeInput');
+    expect(backButton).toContain('setUseBackupCode');
+  });
 });
 
 // ── Schema: twoFactor table defined ──────────────────────────────────────────
