@@ -259,7 +259,7 @@ export default function StudioBuilderPage() {
       {/* Flex wrapper so sidebar can resize the builder workspace */}
       <div className="flex h-screen w-screen overflow-hidden">
         <div className={`flex-1 min-w-0 overflow-hidden transition-all duration-200`}>
-          <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} />
+          <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} sidebarWidth={dazzaOpen ? 380 : 0} />
         </div>
         <DazzaBuilderAssistant
           builderContext={dazzaContext}
