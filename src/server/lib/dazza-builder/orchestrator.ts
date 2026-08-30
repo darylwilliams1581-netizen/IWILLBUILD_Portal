@@ -245,10 +245,12 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
     }
   }
 
-  // Persist the raw user message (without the evidence block — that's
-  // ephemeral context, not conversation history).
+  // Persist the effective user message — including the evidence block when
+  // attachments were provided.  This ensures follow-up turns (e.g. "just
+  // insert on this doc") can still reference the attachment content from
+  // history, rather than losing it after the first turn.
   const turnIndex = history.filter((m) => m.role !== 'system').length;
-  await saveMessage(conversationId, ownerContext.userId, 'user', userMessage, turnIndex);
+  await saveMessage(conversationId, ownerContext.userId, 'user', effectiveUserMessage, turnIndex);
 
   onStatus('reading', 'Reading context…');
 
