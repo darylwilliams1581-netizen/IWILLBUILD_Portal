@@ -24,6 +24,11 @@
  *  18.  Token not found — returns NOT_FOUND, not a 500
  *  19.  maskEmail — never returns plain address
  *  20.  Verify token expiry — expired token rejected
+ *  21.  GET cancel/freeze — confirmation step only, no destructive action
+ *  22.  POST cancel/freeze — execution step, performs action
+ *  23.  Generic error codes — NOT_FOUND and ALREADY_USED both map to "invalid"
+ *  24.  Rate limiting — recoveryTokenLimiter exported from api-rate-limiter
+ *  25.  POST cancel/freeze in PUBLIC_API_ROUTES
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -47,8 +52,18 @@ const CANCEL_HANDLER = readFileSync(
   'utf8',
 );
 
+const CANCEL_POST_HANDLER = readFileSync(
+  resolve(__dirname, '../../api/me/recovery-email/cancel/POST.ts'),
+  'utf8',
+);
+
 const FREEZE_HANDLER = readFileSync(
   resolve(__dirname, '../../api/me/recovery-email/freeze/GET.ts'),
+  'utf8',
+);
+
+const FREEZE_POST_HANDLER = readFileSync(
+  resolve(__dirname, '../../api/me/recovery-email/freeze/POST.ts'),
   'utf8',
 );
 
@@ -442,5 +457,153 @@ describe('DB schema — recovery email tables', () => {
     const tableBlock = SCHEMA.slice(SCHEMA.indexOf("'recovery_email_audit'"));
     expect(tableBlock.slice(0, 1000)).toContain('maskedEmail');
     expect(tableBlock.slice(0, 1000)).not.toContain("'email'");
+  });
+});
+
+// ── GET/POST split: confirmation vs execution ─────────────────────────────────
+
+describe('GET cancel/freeze — confirmation step only, no destructive action', () => {
+  it('GET cancel handler does NOT call cancelRecoveryEmailChange', () => {
+    expect(CANCEL_HANDLER).not.toContain('cancelRecoveryEmailChange');
+  });
+
+  it('GET cancel handler redirects to confirmation page, not result page', () => {
+    expect(CANCEL_HANDLER).toContain('recovery_cancel_confirm=1');
+    expect(CANCEL_HANDLER).toContain('token=');
+  });
+
+  it('GET cancel handler validates token before redirecting to confirmation', () => {
+    // Must check expiry and used_at before showing confirmation
+    expect(CANCEL_HANDLER).toContain('cancel_token_expires_at');
+    expect(CANCEL_HANDLER).toContain('cancel_token_used_at');
+  });
+
+  it('GET freeze handler does NOT call freezeAccountViaToken', () => {
+    expect(FREEZE_HANDLER).not.toContain('freezeAccountViaToken');
+  });
+
+  it('GET freeze handler redirects to confirmation page, not result page', () => {
+    expect(FREEZE_HANDLER).toContain('recovery_freeze_confirm=1');
+    expect(FREEZE_HANDLER).toContain('token=');
+  });
+
+  it('GET freeze handler validates token before redirecting to confirmation', () => {
+    expect(FREEZE_HANDLER).toContain('freeze_token_expires_at');
+    expect(FREEZE_HANDLER).toContain('freeze_token_used_at');
+  });
+});
+
+describe('POST cancel/freeze — execution step performs action', () => {
+  it('POST cancel handler calls cancelRecoveryEmailChange', () => {
+    expect(CANCEL_POST_HANDLER).toContain('cancelRecoveryEmailChange');
+  });
+
+  it('POST cancel handler reads token from request body, not query string', () => {
+    expect(CANCEL_POST_HANDLER).toContain('req.body');
+    expect(CANCEL_POST_HANDLER).not.toContain('req.query');
+  });
+
+  it('POST cancel handler returns JSON, not a redirect', () => {
+    expect(CANCEL_POST_HANDLER).toContain('res.json');
+    expect(CANCEL_POST_HANDLER).not.toContain('res.redirect');
+  });
+
+  it('POST freeze handler calls freezeAccountViaToken', () => {
+    expect(FREEZE_POST_HANDLER).toContain('freezeAccountViaToken');
+  });
+
+  it('POST freeze handler reads token from request body, not query string', () => {
+    expect(FREEZE_POST_HANDLER).toContain('req.body');
+    expect(FREEZE_POST_HANDLER).not.toContain('req.query');
+  });
+
+  it('POST freeze handler returns JSON, not a redirect', () => {
+    expect(FREEZE_POST_HANDLER).toContain('res.json');
+    expect(FREEZE_POST_HANDLER).not.toContain('res.redirect');
+  });
+});
+
+// ── Generic error codes — oracle attack prevention ────────────────────────────
+
+describe('Generic error codes — oracle attack prevention', () => {
+  it('verify GET handler maps NOT_FOUND and ALREADY_USED to generic "invalid"', () => {
+    // Must NOT have separate not_found or already_used result codes
+    expect(VERIFY_HANDLER).not.toContain('recovery_email_result=not_found');
+    expect(VERIFY_HANDLER).not.toContain('recovery_email_result=already_used');
+    // Must use generic "invalid" for both
+    expect(VERIFY_HANDLER).toContain('recovery_email_result=invalid');
+  });
+
+  it('verify GET handler maps EXPIRED to "expired" (distinct from invalid)', () => {
+    expect(VERIFY_HANDLER).toContain('recovery_email_result=expired');
+  });
+
+  it('POST cancel handler returns generic 410 for NOT_FOUND and ALREADY_USED', () => {
+    // Must not distinguish between not-found and already-used in the response
+    expect(CANCEL_POST_HANDLER).not.toContain("'NOT_FOUND'");
+    expect(CANCEL_POST_HANDLER).not.toContain("'ALREADY_USED'");
+    // Generic "no longer valid" message
+    expect(CANCEL_POST_HANDLER).toContain('no longer valid');
+  });
+
+  it('POST freeze handler returns generic 410 for NOT_FOUND and ALREADY_USED', () => {
+    expect(FREEZE_POST_HANDLER).not.toContain("'NOT_FOUND'");
+    expect(FREEZE_POST_HANDLER).not.toContain("'ALREADY_USED'");
+    expect(FREEZE_POST_HANDLER).toContain('no longer valid');
+  });
+});
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+describe('Rate limiting — recoveryTokenLimiter', () => {
+  it('recoveryTokenLimiter is exported from api-rate-limiter', () => {
+    const rateLimiter = readFileSync(
+      resolve(__dirname, '../api-rate-limiter.ts'),
+      'utf8',
+    );
+    expect(rateLimiter).toContain('export function recoveryTokenLimiter');
+  });
+
+  it('recoveryTokenLimiter uses a tighter window than globalApiLimiter', () => {
+    const rateLimiter = readFileSync(
+      resolve(__dirname, '../api-rate-limiter.ts'),
+      'utf8',
+    );
+    // recovery-token bucket must be distinct from api bucket
+    expect(rateLimiter).toContain("'recovery-token'");
+  });
+
+  it('entry.ts applies recoveryTokenLimiter to token-link endpoints', () => {
+    const entry = readFileSync(
+      resolve(__dirname, '../../entry.ts'),
+      'utf8',
+    );
+    expect(entry).toContain('recoveryTokenLimiter');
+    // Must be applied to verify, cancel, and freeze
+    expect(entry).toContain("recoveryTokenLimiter, recoveryEmailVerifyGet");
+    expect(entry).toContain("recoveryTokenLimiter, recoveryEmailCancelGet");
+    expect(entry).toContain("recoveryTokenLimiter, recoveryEmailFreezeGet");
+  });
+});
+
+// ── PUBLIC_API_ROUTES — POST cancel and freeze are public ─────────────────────
+
+describe('PUBLIC_API_ROUTES — token-authenticated public endpoints', () => {
+  it('auth-middleware includes POST cancel in PUBLIC_API_ROUTES', () => {
+    const middleware = readFileSync(
+      resolve(__dirname, '../auth-middleware.ts'),
+      'utf8',
+    );
+    // POST cancel must be public (token-authenticated, no session required)
+    expect(middleware).toContain("method: 'POST', pattern: /^\\/api\\/me\\/recovery-email\\/cancel$/");
+  });
+
+  it('auth-middleware includes POST freeze in PUBLIC_API_ROUTES', () => {
+    const middleware = readFileSync(
+      resolve(__dirname, '../auth-middleware.ts'),
+      'utf8',
+    );
+    // POST freeze must be public (token-authenticated, no session required)
+    expect(middleware).toContain("method: 'POST', pattern: /^\\/api\\/me\\/recovery-email\\/freeze$/");
   });
 });

@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { getSecret } from '#airo/secrets';
-import { globalApiLimiter, authApiLimiter } from './lib/api-rate-limiter.js';
+import { globalApiLimiter, authApiLimiter, recoveryTokenLimiter } from './lib/api-rate-limiter.js';
 import { requirePlatformOwner } from './lib/platform-owner-guard.js';
 
 // Route group files — each registers a slice of the API surface.
@@ -3239,49 +3239,47 @@ if (!process.env.VITEST) {
     )
   );
   // ── sms_verification_codes.id column type repair ─────────────────────────────
-  // Root cause: the original CREATE TABLE DDL used INT AUTO_INCREMENT for the id
-  // column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
-  // This one-time migration detects the mismatch, records how many rows are
-  // discarded (they are short-lived verification codes — expiry < 10 min), alters
-  // the column, then verifies the result. It is fully idempotent: once the column
-  // is VARCHAR it exits immediately without touching the table.
+  // Historical context: the original CREATE TABLE DDL used INT AUTO_INCREMENT for
+  // the id column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
+  // This migration detects the mismatch and repairs it WITHOUT truncating data.
+  //
+  // Strategy: if any existing rows have INT-style ids (numeric strings), they are
+  // short-lived verification codes (10-min expiry) that are already expired. We
+  // DELETE only the expired rows, then MODIFY COLUMN. This avoids TRUNCATE which
+  // would discard any unexpired codes (unlikely but possible in a race window).
+  //
+  // Fully idempotent: once the column is VARCHAR it exits immediately.
   void (async () => {
     try {
       // 1. Check current column type
       const [[colRow]] = await db.execute(sql.raw(
-        "SELECT DATA_TYPE, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+        "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
         "WHERE TABLE_SCHEMA = DATABASE() " +
         "  AND TABLE_NAME  = 'sms_verification_codes' " +
         "  AND COLUMN_NAME = 'id'"
-      )) as unknown as [[{ DATA_TYPE: string; COLUMN_TYPE: string } | undefined]];
+      )) as unknown as [[{ DATA_TYPE: string } | undefined]];
 
       if (!colRow) {
-        // Table doesn't exist yet — the CREATE TABLE DDL (corrected to VARCHAR) will
-        // handle it on first startup; nothing to do here.
+        // Table doesn't exist yet — CREATE TABLE DDL (corrected to VARCHAR) handles it.
         return;
       }
 
       if (colRow.DATA_TYPE?.toLowerCase() === 'varchar') {
-        // Already correct — migration has already run or was never needed.
+        // Already correct — no action needed.
         return;
       }
 
-      // 2. Count rows that will be lost (codes expire in 10 min; loss is acceptable)
-      const [[countRow]] = await db.execute(sql.raw(
-        "SELECT COUNT(*) AS cnt FROM `sms_verification_codes`"
-      )) as unknown as [[{ cnt: number }]];
-      const rowsDiscarded = Number(countRow?.cnt ?? 0);
-
-      // 3. Truncate (INT primary key values are incompatible with VARCHAR(36))
-      await db.execute(sql.raw("TRUNCATE TABLE `sms_verification_codes`"));
-
-      // 4. Alter column: remove AUTO_INCREMENT, change type to VARCHAR(36)
+      // 2. Delete only expired rows (INT ids are all expired codes; expiry < 10 min)
       await db.execute(sql.raw(
-        "ALTER TABLE `sms_verification_codes` " +
-        "MODIFY COLUMN `id` VARCHAR(36) NOT NULL"
+        "DELETE FROM `sms_verification_codes` WHERE expires_at < NOW()"
       ));
 
-      // 5. Verify the repair succeeded
+      // 3. Alter column: remove AUTO_INCREMENT, change type to VARCHAR(36)
+      await db.execute(sql.raw(
+        "ALTER TABLE `sms_verification_codes` MODIFY COLUMN `id` VARCHAR(36) NOT NULL"
+      ));
+
+      // 4. Verify the repair succeeded
       const [[verifyRow]] = await db.execute(sql.raw(
         "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
         "WHERE TABLE_SCHEMA = DATABASE() " +
@@ -3292,10 +3290,7 @@ if (!process.env.VITEST) {
       if (verifyRow?.DATA_TYPE?.toLowerCase() !== 'varchar') {
         console.error('[startup-migration] sms_verification_codes.id repair FAILED — column is still', verifyRow?.DATA_TYPE);
       } else {
-        console.log(
-          `[startup-migration] sms_verification_codes.id repaired: INT → VARCHAR(36)` +
-          (rowsDiscarded > 0 ? ` (${rowsDiscarded} expired code row(s) discarded)` : ' (table was empty)')
-        );
+        console.log('[startup-migration] sms_verification_codes.id repaired: INT → VARCHAR(36)');
       }
     } catch (e) {
       console.warn('[startup-migration] sms_verification_codes.id repair skipped:', (e as Error)?.message?.slice(0, 160));
@@ -4219,18 +4214,25 @@ app.get("/api/work/notes", work_notes_get_853);
 app.get("/api/work/progress", work_progress_get_854);
 app.get("/api/work/tasks", work_tasks_get_855);
 // ── Recovery Email — Protected Change Flow ────────────────────────────────────
-import recoveryEmailGet         from './api/me/recovery-email/GET.js';
-import recoveryEmailRequestPost from './api/me/recovery-email/request/POST.js';
-import recoveryEmailVerifyGet   from './api/me/recovery-email/verify/GET.js';
-import recoveryEmailCancelGet   from './api/me/recovery-email/cancel/GET.js';
-import recoveryEmailFreezeGet   from './api/me/recovery-email/freeze/GET.js';
-import adminRecoveryFreezePost  from './api/admin/recovery-email/freeze/POST.js';
+import recoveryEmailGet          from './api/me/recovery-email/GET.js';
+import recoveryEmailRequestPost  from './api/me/recovery-email/request/POST.js';
+import recoveryEmailVerifyGet    from './api/me/recovery-email/verify/GET.js';
+import recoveryEmailCancelGet    from './api/me/recovery-email/cancel/GET.js';
+import recoveryEmailCancelPost   from './api/me/recovery-email/cancel/POST.js';
+import recoveryEmailFreezeGet    from './api/me/recovery-email/freeze/GET.js';
+import recoveryEmailFreezePost   from './api/me/recovery-email/freeze/POST.js';
+import adminRecoveryFreezePost   from './api/admin/recovery-email/freeze/POST.js';
+
+// Token-link endpoints: rate-limit per IP (10 req / 15 min) to slow brute-force
+// even though 48-byte tokens make brute-force infeasible in practice.
 
 app.get('/api/me/recovery-email',                recoveryEmailGet);
 app.post('/api/me/recovery-email/request',       recoveryEmailRequestPost);
-app.get('/api/me/recovery-email/verify',         recoveryEmailVerifyGet);
-app.get('/api/me/recovery-email/cancel',         recoveryEmailCancelGet);
-app.get('/api/me/recovery-email/freeze',         recoveryEmailFreezeGet);
+app.get('/api/me/recovery-email/verify',         recoveryTokenLimiter, recoveryEmailVerifyGet);
+app.get('/api/me/recovery-email/cancel',         recoveryTokenLimiter, recoveryEmailCancelGet);
+app.post('/api/me/recovery-email/cancel',        recoveryTokenLimiter, recoveryEmailCancelPost);
+app.get('/api/me/recovery-email/freeze',         recoveryTokenLimiter, recoveryEmailFreezeGet);
+app.post('/api/me/recovery-email/freeze',        recoveryTokenLimiter, recoveryEmailFreezePost);
 app.post('/api/admin/recovery-email/freeze',     adminRecoveryFreezePost);
 // </api-registrations>
 
@@ -4769,13 +4771,9 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 		// either completed or failed (with a logged warning). No await needed.
 		console.log('[startup] skipping duplicate runStartupMigrations() — already ran at module load');
 
-		// ── Recovery email tables ─────────────────────────────────────────────
-		try {
-			const { runRecoveryEmailMigration } = await import('./db/migrations/recovery-email.js');
-			await runRecoveryEmailMigration();
-		} catch (e) {
-			console.warn('[startup] recovery-email migration skipped:', e instanceof Error ? e.message : String(e));
-		}
+		// NOTE: runRecoveryEmailMigration() is called at module-load level (~line 3236)
+		// and must NOT be called again here — the module-load call is the authoritative
+		// one and a second call would be redundant and could cause lock contention.
 
 		// ── project_drawings (full canonical schema) ──────────────────────────
 		try {

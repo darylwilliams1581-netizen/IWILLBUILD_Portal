@@ -13,6 +13,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { APP_URL } from './app-url.js';
 
 interface BucketEntry {
   count: number;
@@ -82,6 +83,27 @@ export function authApiLimiter(req: Request, res: Response, next: NextFunction) 
   if (!allowed) {
     res.setHeader('Retry-After', String(retryAfter));
     return res.status(429).json({ error: 'Too many authentication attempts. Please wait before trying again.' });
+  }
+  next();
+}
+
+/**
+ * 10 req / 15 min — applied to recovery-email token-link endpoints.
+ * Tokens are 48-byte random (96 hex chars) so brute-force is infeasible,
+ * but rate-limiting adds defence-in-depth and slows automated scanning.
+ * Redirecting endpoints return 429 as a redirect to an error page so
+ * browsers display a useful message rather than a raw JSON error.
+ */
+export function recoveryTokenLimiter(req: Request, res: Response, next: NextFunction) {
+  const ip = getIp(req);
+  const { allowed, retryAfter } = check(makeKey(ip, 'recovery-token'), 10, 15 * 60_000);
+  if (!allowed) {
+    res.setHeader('Retry-After', String(retryAfter));
+    // GET endpoints redirect; POST endpoints return JSON
+    if (req.method === 'GET') {
+      return res.redirect(`${APP_URL}/settings?recovery_email_result=rate_limited`);
+    }
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
   next();
 }
