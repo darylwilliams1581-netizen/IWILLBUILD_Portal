@@ -146,6 +146,9 @@ export default function RecoveryEmailSection({ twoFactorEnabled }: Props) {
           <CheckCircle2 size={14} className="text-green-600 shrink-0" />
           <span className="text-xs text-green-800 font-medium">Active: <span className="font-mono">{state.maskedActive}</span></span>
         </div>
+      ) : state?.hasPending ? (
+        /* Pending change in progress — don't show the "not set" warning, the pending block below covers it */
+        null
       ) : (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
           <AlertTriangle size={13} className="text-amber-600 shrink-0" />

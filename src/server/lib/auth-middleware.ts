@@ -250,6 +250,11 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'POST', pattern: /^\/api\/jobs\/\d+\/signout-qr$/ },
   // Public job photo share — token-validated, view-only
   { method: 'GET',  pattern: /^\/api\/public\/job-photos\/[^/]+$/ },
+  // Recovery email token links — clicked from email, no session available
+  // Token is the only credential; handler validates it cryptographically
+  { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/verify$/ },
+  { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/cancel$/ },
+  { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/freeze$/ },
 ];
 
 /**
