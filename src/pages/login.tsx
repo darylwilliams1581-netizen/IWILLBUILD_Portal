@@ -199,7 +199,29 @@ export default function LoginPage() {
       // can intercept the response. The twoFactorClient plugin's onTwoFactorRedirect
       // callback fires when the server returns twoFactorRedirect:true, storing the
       // redirect context in the module-level handoff variable for us to read below.
-      const result = await signIn.email({ email, password });
+      // signIn.email with an onSuccess hook to capture smsChallengeToken from
+      // the raw response data before the SDK's twoFactorClient plugin processes
+      // it (the plugin only forwards twoFactorMethods to onTwoFactorRedirect,
+      // not the full data object, so we must read it here).
+      const result = await signIn.email(
+        { email, password },
+        {
+          onSuccess(ctx) {
+            const data = ctx.data as Record<string, unknown> | undefined;
+            const token = data?.smsChallengeToken as string | undefined;
+            if (token) smsChallengeTokenRef.current = token;
+          },
+        }
+      );
+
+      // Always extract smsChallengeToken from result.data as a final fallback —
+      // the onSuccess hook above is the primary path, but result.data may also
+      // carry it in some SDK versions.
+      const rawData = result?.data as Record<string, unknown> | undefined;
+      if (!smsChallengeTokenRef.current) {
+        const smsToken = rawData?.smsChallengeToken as string | undefined;
+        if (smsToken) smsChallengeTokenRef.current = smsToken;
+      }
 
       // Check if the twoFactor plugin signalled a redirect.
       // consumeTwoFactorRedirect() reads and clears the module-level handoff
@@ -209,12 +231,8 @@ export default function LoginPage() {
       // BetterAuth SDK should trigger the callback for, but we check both paths
       // to be safe.
       const twoFaRedirect = consumeTwoFactorRedirect() ?? (() => {
-        const d = result?.data as Record<string, unknown> | undefined;
-        if (d?.twoFactorRedirect === true) {
-          const methods = (d.twoFactorMethods as string[] | undefined) ?? [];
-          // Store the challenge token in memory for use by send/verify requests
-          const token = d.smsChallengeToken as string | undefined;
-          if (token) smsChallengeTokenRef.current = token;
+        if (rawData?.twoFactorRedirect === true) {
+          const methods = (rawData.twoFactorMethods as string[] | undefined) ?? [];
           return { needs2FA: true as const, methods };
         }
         return null;
@@ -601,12 +619,12 @@ export default function LoginPage() {
                   /* ── TOTP / SMS OTP input ── */
                   <InputOTP maxLength={6} value={tfaToken} onChange={setTfaToken} autoFocus>
                     <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
+                      <InputOTPSlot index={0} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={1} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={2} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={3} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={4} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={5} className="text-white border-white/20 bg-white/5" />
                     </InputOTPGroup>
                   </InputOTP>
                 )}
