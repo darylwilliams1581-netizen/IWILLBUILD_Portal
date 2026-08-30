@@ -5,12 +5,14 @@
  * document (create). Handles loading state, error state, and navigation
  * back to /studio on close/save.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertCircle } from 'lucide-react';
 import DocumentBuilder from '@/components/DocumentBuilder';
 import JobContextTab from '@/components/JobContextTab';
+import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
+import { buildDocumentBuilderContextFromTemplate } from '@/components/DazzaBuilderAssistant/DocumentBuilderAdapter';
 import type { DocumentTemplate, StudioDocumentType } from '@/components/DocumentBuilder/types';
 import { DOC_KIND_ACKNOWLEDGEMENT_TYPES, DEFAULT_DOC_KIND_SETTINGS } from '@/components/DocumentBuilder/types';
 
@@ -131,6 +133,25 @@ export default function StudioBuilderPage() {
   const [loading, setLoading] = useState(!isNew);
   const [error, setError] = useState<string | null>(null);
 
+  // Dazza Builder Assistant state
+  const [dazzaOpen, setDazzaOpen] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState(0);
+
+  const handleDazzaApplied = useCallback((versionId: string, versionNumber: number) => {
+    setCurrentVersion(versionNumber);
+    // Reload the template from server so builder reflects applied changes
+    if (!isNew && id) {
+      const numId = Number(id);
+      if (numId) {
+        fetch(`/api/document-templates/${numId}`, { credentials: 'include' })
+          .then(r => r.json())
+          .then(data => { if (data.template) setTemplate(data.template); })
+          .catch(() => {});
+      }
+    }
+    void versionId;
+  }, [isNew, id]);
+
   // Load existing template
   useEffect(() => {
     if (isNew) return;
@@ -222,6 +243,10 @@ export default function StudioBuilderPage() {
     // Apply kind defaults based on template type
     ...defaultKindForType(mapped.type)
   } : template;
+
+  // Build Dazza context from current template
+  const dazzaContext = buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion);
+
   return <>
       <Helmet>
         <title>
@@ -231,7 +256,17 @@ export default function StudioBuilderPage() {
         <link rel="canonical" href="https://iwillbuild.com/studio/builder" />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} />
+      {/* Flex wrapper so sidebar can resize the builder workspace */}
+      <div className="flex h-screen w-screen overflow-hidden">
+        <div className={`flex-1 min-w-0 overflow-hidden transition-all duration-200`}>
+          <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} />
+        </div>
+        <DazzaBuilderAssistant
+          builderContext={dazzaContext}
+          onApplied={handleDazzaApplied}
+          onOpenChange={setDazzaOpen}
+        />
+      </div>
       <JobContextTab />
     </>;
 }

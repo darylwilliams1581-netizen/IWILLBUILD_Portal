@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import { usePermissions } from '@/lib/usePermissions';
 import { LibraryView as LibraryPage } from '../features/library/LibraryView';
+import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
+import { buildFormsBuilderContext } from '@/components/DazzaBuilderAssistant/FormsBuilderAdapter';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1346,8 +1348,24 @@ export function FormsPage() {
   };
 
   if (builderTemplateId !== null) {
-    return <div className="flex-1 min-h-0 overflow-y-auto">
-        <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
+    const activeTemplate = templates.find(t => t.id === builderTemplateId) ?? null;
+    const dazzaContext = buildFormsBuilderContext(
+      activeTemplate ? { id: activeTemplate.id, name: activeTemplate.name, formType: activeTemplate.formType, category: activeTemplate.category, description: activeTemplate.description } : null,
+      [], // fields loaded inside FormFieldBuilder — summary will be minimal until template loads
+      null,
+      0,
+    );
+    return <div className="flex h-full min-h-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
+        </div>
+        <DazzaBuilderAssistant
+          builderContext={dazzaContext}
+          onApplied={() => {
+            // Reload template list after Dazza applies changes
+            void fetchTemplates();
+          }}
+        />
       </div>;
   }
 
