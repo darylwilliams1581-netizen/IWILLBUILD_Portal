@@ -314,10 +314,20 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       setTimeout(() => { setPhase('idle'); setPhaseLabel(''); }, 2000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
+      // Make template-not-found errors actionable
+      const friendlyMsg = msg.includes('does not exist or has been deleted')
+        ? `The template this proposal was created for no longer exists. Please re-run your request on the currently open template.`
+        : msg.includes('targets template #')
+        ? `This proposal was created for a different template. Please re-run your request.`
+        : msg;
+      setError(friendlyMsg);
       setPhase('failed');
-      setPhaseLabel(msg);
-      // Retain pendingChange so the user can retry after fixing the issue.
+      setPhaseLabel(friendlyMsg);
+      // Clear the stale proposal so the user can try again cleanly
+      setPendingChange(null);
+      setMessages(prev => prev.map(m =>
+        m.proposedChange ? { ...m, proposedChange: undefined } : m,
+      ));
     } finally {
       setIsApplying(false);
     }

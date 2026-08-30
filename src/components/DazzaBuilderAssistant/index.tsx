@@ -348,9 +348,22 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5">
-            <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-red-700">{error}</p>
+          <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2.5">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700 flex-1">{error}</p>
+            </div>
+            {(error.includes('no longer exists') || error.includes('different template') || error.includes('re-run')) && (
+              <button
+                onClick={() => {
+                  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                  if (lastUserMsg) sendMessage(lastUserMsg.content);
+                }}
+                className="mt-2 text-xs text-red-700 underline hover:text-red-900"
+              >
+                Re-run last request
+              </button>
+            )}
           </div>
         )}
 
