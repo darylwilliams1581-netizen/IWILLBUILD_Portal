@@ -1813,6 +1813,8 @@ export default function ListsPage() {
   const statusOpts: string[] = activeList === 'jobs' ? ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft'] : activeList === 'tasks' ? ['Not Started', 'In Progress', 'Complete', 'Cancelled'] : activeList === 'incidents' ? ['Open', 'Investigating', 'Closed'] : activeList === 'invoices' ? ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'] : activeList === 'estimates' ? ['Draft', 'Sent', 'Accepted', 'Declined', 'Cancelled'] : activeList === 'purchase-orders' ? ['Draft', 'Sent', 'Approved', 'Complete', 'Cancelled'] : activeList === 'customers' ? ['Active', 'Inactive'] : activeList === 'swms' ? ['Draft', 'Active', 'Archived'] : activeList === 'form-submissions' ? ['Draft', 'Submitted', 'Approved'] : activeList === 'fleet-assets' ? ['Active', 'Inactive', 'Archived'] : activeList === 'drawings' ? ['Current', 'Superseded', 'For Review', 'Archived'] : activeList === 'milestones' ? ['Pending', 'In Progress', 'Complete', 'Overdue'] : activeList === 'asset-bookings' ? ['Confirmed', 'Pending', 'Cancelled', 'Complete'] : activeList === 'site-prestarts' ? ['Draft', 'Submitted', 'Approved'] : [];
   return <>
       <Helmet>
+        {/* Authenticated portal page — must not be indexed by search engines */}
+        <meta name="robots" content="noindex,nofollow" />
         <title>Office Lists — Reports &amp; Registers | IWILLBUILD</title>
         <meta name="description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more. Part of the IWILLBUILD job management portal." />
         <link rel="canonical" href="https://iwillbuild.com/lists" />
