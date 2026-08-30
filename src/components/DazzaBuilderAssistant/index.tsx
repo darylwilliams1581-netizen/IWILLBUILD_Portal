@@ -182,11 +182,11 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
     e.target.value = '';
     setUploadError(null);
 
-    // Client-side type guard — mirrors Stage 1 allowlist on the server
-    const allowed = ['.txt', '.md', '.json'];
+    // Client-side type guard — mirrors allowlist on the server
+    const allowed = ['.txt', '.md', '.json', '.docx'];
     const ext = '.' + (file.name.split('.').pop() ?? '').toLowerCase();
     if (!allowed.includes(ext)) {
-      setUploadError(`"${file.name}" isn't supported. Attach a .txt, .md, or .json file.`);
+      setUploadError(`"${file.name}" isn't supported. Attach a .txt, .md, .json, or .docx file.`);
       return;
     }
 
@@ -430,7 +430,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || pendingAttachments.length >= 4}
-              title={isUploading ? 'Uploading…' : pendingAttachments.length >= 4 ? 'Max 4 attachments' : 'Attach reference file (.txt, .md, .json)'}
+              title={isUploading ? 'Uploading…' : pendingAttachments.length >= 4 ? 'Max 4 attachments' : 'Attach reference file (.txt, .md, .json, .docx)'}
               className="w-8 h-8 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors disabled:opacity-40"
             >
               {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Paperclip size={13} />}
@@ -440,7 +440,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
         <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.md,.json"
+          accept=".txt,.md,.json,.docx"
           className="hidden"
           onChange={handleFileChange}
         />
