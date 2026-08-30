@@ -12,7 +12,8 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import DocumentBuilder from '@/components/DocumentBuilder';
 import JobContextTab from '@/components/JobContextTab';
 import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
-import { buildDocumentBuilderContextFromTemplate } from '@/components/DazzaBuilderAssistant/DocumentBuilderAdapter';
+import { buildDocumentBuilderContext, buildDocumentBuilderContextFromTemplate } from '@/components/DazzaBuilderAssistant/DocumentBuilderAdapter';
+import { useDocumentStore } from '@/components/DocumentBuilder/useDocumentStore';
 import type { DocumentTemplate, StudioDocumentType } from '@/components/DocumentBuilder/types';
 import { DOC_KIND_ACKNOWLEDGEMENT_TYPES, DEFAULT_DOC_KIND_SETTINGS } from '@/components/DocumentBuilder/types';
 
@@ -244,8 +245,28 @@ export default function StudioBuilderPage() {
     ...defaultKindForType(mapped.type)
   } : template;
 
-  // Build Dazza context from current template
-  const dazzaContext = buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion);
+  // Build Dazza context from the live Zustand store so Dazza always sees the
+  // current document state (blocks, templateId, isDirty, etc.).
+  // Fall back to the static template snapshot only when the store hasn't
+  // loaded yet (templateId is null and we have a real template to load).
+  const storeTemplateId = useDocumentStore(s => s.templateId);
+  const storeTemplateLoaded = storeTemplateId !== null || isNew;
+  const storeSnapshot = useDocumentStore(s => ({
+    templateId: s.templateId,
+    templateName: s.templateName,
+    templateType: s.templateType,
+    blocks: s.blocks,
+    logicRules: s.logicRules ?? [],
+    isDirty: s.isDirty,
+    mode: initialMode,
+    pageLayout: s.pageLayout,
+    docKind: s.docKind ?? 'doc',
+    requiresAcknowledgement: s.requiresAcknowledgement ?? false,
+  }));
+  const selectedBlockId = useDocumentStore(s => s.selection?.blockId ?? null);
+  const dazzaContext = storeTemplateLoaded
+    ? buildDocumentBuilderContext(storeSnapshot, selectedBlockId, [], currentVersion)
+    : buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion);
 
   return <>
       <Helmet>
