@@ -301,6 +301,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       const data = await resp.json() as {
         ok: boolean;
         error?: string;
+        code?: string;
         versionId?: string;
         versionNumber?: number;
         newTemplateId?: number;
@@ -340,11 +341,15 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       setTimeout(() => { setPhase('idle'); setPhaseLabel(''); }, 2000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Make template-not-found errors actionable
-      const friendlyMsg = msg.includes('does not exist or has been deleted')
-        ? `The template this proposal was created for no longer exists. Please re-run your request on the currently open template.`
-        : msg.includes('targets template #')
-        ? `This proposal was created for a different template. Please re-run your request.`
+      // Only show the "no longer exists" friendly message for a confirmed
+      // TEMPLATE_NOT_FOUND (404) error from the server.  Any other failure
+      // (validation error, 400, network error) shows the raw server message
+      // so the user can see what actually went wrong.
+      const isTemplateGone =
+        msg.includes('TEMPLATE_NOT_FOUND') ||
+        (msg.includes('does not exist') && msg.includes('deleted'));
+      const friendlyMsg = isTemplateGone
+        ? 'The template this proposal was created for no longer exists. Please re-run your request on the currently open template.'
         : msg;
       setError(friendlyMsg);
       setPhase('failed');

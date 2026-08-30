@@ -391,8 +391,11 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
             validationImpact: String(args.validationImpact ?? ''),
             operations: (args.operations as BuilderOperation[]) ?? [],
             conversationId,
-            // Stamp the target from the authenticated builderContext — never from AI args.
-            targetTemplateId: builderContext.templateId,
+            // Stamp the effective template ID server-side — never from AI args.
+            // Prefer canonicalTemplateId (from the URL route param, always
+            // authoritative) over templateId (from the Zustand store, which may
+            // still be null on first render when the store hasn't loaded yet).
+            targetTemplateId: builderContext.canonicalTemplateId ?? builderContext.templateId,
             targetBuilderType: builderContext.builderType,
           };
           onProposedChange(proposed);

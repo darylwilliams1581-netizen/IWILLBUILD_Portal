@@ -532,3 +532,192 @@ describe('Regression: canonicalTemplateId in context', () => {
     expect(ctx.templateId).toBe(71);
   });
 });
+
+// ── New integration tests: canonicalTemplateId stamping via sendMessage ────────
+//
+// These tests cover the full path:
+//   sendMessage → stream request body includes canonicalTemplateId
+//   → server stamps proposal with canonicalTemplateId (not null templateId)
+//   → ProposedChangeCard Apply is enabled
+//   → Re-run does not loop
+
+describe('Integration: canonicalTemplateId stamped on proposal when store is null', () => {
+  beforeEach(() => mockVersionsFetch());
+  afterEach(() => vi.clearAllMocks());
+
+  /**
+   * 11. sendMessage with templateId=null, canonicalTemplateId=71 sends
+   *     canonicalTemplateId=71 in the stream request body.
+   *     The server will use this to stamp targetTemplateId=71 on the proposal.
+   */
+  it('11. sendMessage sends canonicalTemplateId=71 even when store templateId is null', async () => {
+    const ctx = makeCtxStoreNotLoaded(); // templateId: null, canonicalTemplateId: 71
+    const { result } = renderChatHook(ctx);
+
+    const proposalEvent = JSON.stringify({
+      type: 'proposed_change',
+      change: {
+        summary: 'Add heading',
+        affectedSections: [],
+        affectedItems: [],
+        validationImpact: '',
+        operations: [{ op: 'addBlock', blockType: 'heading', content: 'Test' }],
+        conversationId: 'conv-71',
+        // Server stamps this from canonicalTemplateId — simulate correct stamp
+        targetTemplateId: 71,
+        targetBuilderType: 'document',
+      },
+    });
+    const doneEvent = JSON.stringify({ type: 'done', conversationId: 'conv-71' });
+    mockStreamResponse([proposalEvent, doneEvent]);
+
+    await act(async () => {
+      await result.current.sendMessage('Add a heading');
+    });
+
+    // Verify the stream request body sent canonicalTemplateId
+    const streamCall = mockFetch.mock.calls.find(c => String(c[0]).includes('/chat/stream'));
+    expect(streamCall).toBeTruthy();
+    const body = JSON.parse(streamCall![1].body as string);
+    expect(body.builderContext.canonicalTemplateId).toBe(71);
+    // templateId may be null (store not loaded) — that's fine, server uses canonicalTemplateId
+    expect(body.builderContext.templateId).toBeNull();
+  });
+
+  /**
+   * 12. When the server correctly stamps targetTemplateId=71 (from canonicalTemplateId),
+   *     ProposedChangeCard Apply is enabled even though store templateId is null.
+   */
+  it('12. Proposal with targetTemplateId=71 is not blocked when store templateId is null', () => {
+    const ctx = makeCtxStoreNotLoaded(); // templateId: null, canonicalTemplateId: 71
+    // Proposal stamped correctly by server (using canonicalTemplateId)
+    const proposal = makeProposal({ targetTemplateId: 71 });
+
+    const { container } = render(
+      <MemoryRouter>
+        <ProposedChangeCard
+          change={proposal}
+          builderContext={ctx}
+          onApply={vi.fn()}
+          onUndo={vi.fn()}
+          isApplying={false}
+        />
+      </MemoryRouter>,
+    );
+
+    const applyBtn = container.querySelector('button[class*="bg-violet"]') as HTMLButtonElement | null;
+    expect(applyBtn).toBeTruthy();
+    expect(applyBtn!.disabled).toBe(false);
+    // No "Cannot Apply" text
+    expect(applyBtn!.textContent).not.toContain('Cannot Apply');
+    // No block reason warning shown
+    expect(container.querySelector('[class*="amber"]')).toBeNull();
+  });
+
+  /**
+   * 13. Re-run after a stale-proposal error does NOT loop:
+   *     - First sendMessage produces a proposal with targetTemplateId=71
+   *     - Apply succeeds
+   *     - A second sendMessage (re-run) also sends canonicalTemplateId=71
+   *     - No "template no longer exists" error
+   */
+  it('13. Re-run after successful apply sends canonicalTemplateId=71, no loop', async () => {
+    const ctx = makeCtxStoreNotLoaded(); // templateId: null, canonicalTemplateId: 71
+    const { result } = renderChatHook(ctx);
+
+    const encoder = new TextEncoder();
+
+    // First send: produces a proposal stamped with targetTemplateId=71
+    const proposalEvent = JSON.stringify({
+      type: 'proposed_change',
+      change: {
+        summary: 'Add heading',
+        affectedSections: [],
+        affectedItems: [],
+        validationImpact: '',
+        operations: [{ op: 'addBlock', blockType: 'heading', content: 'Test' }],
+        conversationId: 'conv-71',
+        targetTemplateId: 71,
+        targetBuilderType: 'document',
+      },
+    });
+    const doneEvent = JSON.stringify({ type: 'done', conversationId: 'conv-71' });
+    mockStreamResponse([proposalEvent, doneEvent]);
+
+    await act(async () => {
+      await result.current.sendMessage('Add a heading');
+    });
+
+    // Apply the proposal
+    mockApplySuccess();
+    await act(async () => {
+      await result.current.applyChange(makeProposal({ targetTemplateId: 71 }));
+    });
+    expect(result.current.error).toBeNull();
+    expect(['complete', 'idle']).toContain(result.current.phase);
+
+    // Re-run: second sendMessage — must send canonicalTemplateId=71, not loop
+    const prev2 = mockFetch.getMockImplementation();
+    mockFetch.mockImplementation(async (url: string) => {
+      if (String(url).includes('/chat/stream')) {
+        mockFetch.mockImplementation(prev2 ?? (async () => ({ ok: true, json: async () => ({ versions: [] }) })));
+        return {
+          ok: true,
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`data: ${doneEvent}\n\n`));
+              controller.close();
+            },
+          }),
+        };
+      }
+      return prev2 ? prev2(url) : { ok: true, json: async () => ({ versions: [] }) };
+    });
+
+    await act(async () => {
+      await result.current.sendMessage('Add another heading');
+    });
+
+    const allStreamCalls = mockFetch.mock.calls.filter(c => String(c[0]).includes('/chat/stream'));
+    expect(allStreamCalls.length).toBe(2);
+    const rerunBody = JSON.parse(allStreamCalls[1][1].body as string);
+    // Re-run must still send canonicalTemplateId=71
+    expect(rerunBody.builderContext.canonicalTemplateId).toBe(71);
+    // No error — no loop
+    expect(result.current.error).toBeNull();
+  });
+
+  /**
+   * 14. Error mapping: a 400 validation error is shown as-is, NOT as
+   *     "template no longer exists". Only TEMPLATE_NOT_FOUND triggers that message.
+   */
+  it('14. 400 validation error shown as-is, not as "template no longer exists"', async () => {
+    const ctx = makeCtx();
+    mockApplyError(400, { ok: false, error: 'Validation failed: block type "unknown" is not allowed' });
+
+    const { result } = renderChatHook(ctx);
+
+    await act(async () => {
+      await result.current.applyChange(makeProposal());
+    });
+
+    expect(result.current.error).toBe('Validation failed: block type "unknown" is not allowed');
+    expect(result.current.error).not.toContain('no longer exists');
+  });
+
+  /**
+   * 15. TEMPLATE_NOT_FOUND error shows the friendly "no longer exists" message.
+   */
+  it('15. TEMPLATE_NOT_FOUND error shows friendly "no longer exists" message', async () => {
+    const ctx = makeCtx();
+    mockApplyError(404, { ok: false, error: 'TEMPLATE_NOT_FOUND: template 71 does not exist' });
+
+    const { result } = renderChatHook(ctx);
+
+    await act(async () => {
+      await result.current.applyChange(makeProposal());
+    });
+
+    expect(result.current.error).toContain('no longer exists');
+  });
+});

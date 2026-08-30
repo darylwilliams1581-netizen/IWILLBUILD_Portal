@@ -22,6 +22,13 @@ export interface BuilderContext {
   hasUnsavedChanges: boolean;
   validationErrors: string[];
   isPreviewMode: boolean;
+  /**
+   * The canonical template ID from the URL route param (e.g. /studio/builder/71 → 71).
+   * Sent by the client alongside templateId so the server can stamp proposals
+   * correctly even when the Zustand store hasn't populated templateId yet.
+   * Always prefer this over templateId for proposal stamping.
+   */
+  canonicalTemplateId?: number | null;
 }
 
 export interface BuilderOperation {
