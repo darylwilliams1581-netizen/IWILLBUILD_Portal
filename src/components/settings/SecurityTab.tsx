@@ -19,6 +19,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, Copy, Check, RefreshCw, X,
 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import RecoveryEmailSection from './RecoveryEmailSection';
 import { authClient } from '@/lib/auth/auth-client';
 
 type Method = 'totp' | 'sms' | null;
@@ -700,6 +701,11 @@ export default function SecurityTab() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Recovery Email ───────────────────────────────────────────────────── */}
+      <div className="pt-2 border-t border-slate-100">
+        <RecoveryEmailSection twoFactorEnabled={phase === 'totp-enabled'} />
       </div>
     </div>
   );

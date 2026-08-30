@@ -669,6 +669,75 @@ export const starterPackRuns = mysqlTable('starter_pack_runs', {
   createdAt:     timestamp('created_at').defaultNow(),
 });
 
+// ── Recovery Email — Protected Change Flow ────────────────────────────────────
+//
+// Three tables implement the 7-day hold + dual-notification + block system.
+//
+// recovery_email_state   — one row per user; tracks active + proposed address
+// recovery_email_audit   — immutable append-only event log
+// recovery_change_blocks — time-boxed blocks after high-risk events
+
+export const recoveryEmailState = mysqlTable('recovery_email_state', {
+  id:                  varchar('id', { length: 36 }).primaryKey(),
+  userId:              varchar('user_id', { length: 36 }).notNull().unique(),
+
+  // Active verified recovery address (null = none set yet)
+  activeEmail:         varchar('active_email', { length: 255 }),
+  activeVerifiedAt:    timestamp('active_verified_at'),
+
+  // Proposed address waiting for new-owner verification + hold expiry
+  proposedEmail:       varchar('proposed_email', { length: 255 }),
+  proposedAt:          timestamp('proposed_at'),
+  // SHA-256 of the 48-byte random verification token (never stored in plain)
+  verifyTokenHash:     varchar('verify_token_hash', { length: 64 }),
+  verifyTokenExpiresAt: timestamp('verify_token_expires_at'),
+  // Set when new owner clicks the verify link; hold must expire before activation
+  proposedVerifiedAt:  timestamp('proposed_verified_at'),
+  // Hold expires 7 days after proposedAt; activation blocked until then
+  holdExpiresAt:       timestamp('hold_expires_at'),
+
+  // SHA-256 of the 48-byte cancel token sent to the OLD address
+  cancelTokenHash:     varchar('cancel_token_hash', { length: 64 }),
+  cancelTokenExpiresAt: timestamp('cancel_token_expires_at'),
+  cancelTokenUsedAt:   timestamp('cancel_token_used_at'),
+
+  // SHA-256 of the 48-byte freeze token sent to the OLD address
+  freezeTokenHash:     varchar('freeze_token_hash', { length: 64 }),
+  freezeTokenExpiresAt: timestamp('freeze_token_expires_at'),
+  freezeTokenUsedAt:   timestamp('freeze_token_used_at'),
+
+  // Account frozen by old-owner dispute or operator action
+  frozenAt:            timestamp('frozen_at'),
+  frozenReason:        varchar('frozen_reason', { length: 255 }),
+
+  createdAt:           timestamp('created_at').defaultNow(),
+  updatedAt:           timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const recoveryEmailAudit = mysqlTable('recovery_email_audit', {
+  id:          int('id').primaryKey().autoincrement(),
+  userId:      varchar('user_id', { length: 36 }).notNull(),
+  // event: requested | verified | activated | cancelled | frozen |
+  //        freeze_lifted | admin_freeze | admin_case_opened
+  event:       varchar('event', { length: 50 }).notNull(),
+  // Masked email shown in audit (e.g. a***@e***.com) — never plain
+  maskedEmail: varchar('masked_email', { length: 255 }),
+  performedBy: varchar('performed_by', { length: 36 }),  // null = self
+  ipAddress:   varchar('ip_address', { length: 45 }),
+  userAgent:   varchar('user_agent', { length: 500 }),
+  metadata:    text('metadata'),  // JSON blob for extra context
+  createdAt:   timestamp('created_at').defaultNow(),
+});
+
+export const recoveryChangeBlocks = mysqlTable('recovery_change_blocks', {
+  id:         varchar('id', { length: 36 }).primaryKey(),
+  userId:     varchar('user_id', { length: 36 }).notNull(),
+  // reason: password_reset | mfa_reset | suspicious_login | new_device_login
+  reason:     varchar('reason', { length: 50 }).notNull(),
+  blockedUntil: timestamp('blocked_until').notNull(),
+  createdAt:  timestamp('created_at').defaultNow(),
+});
+
 // ── Alias: formFields → formTemplateFields ────────────────────────────────────
 // Several handlers import `formFields` from schema. They target the same
 // form_template_fields table — this alias keeps them compiling without

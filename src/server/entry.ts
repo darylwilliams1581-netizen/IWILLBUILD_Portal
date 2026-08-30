@@ -4149,6 +4149,20 @@ app.get("/api/work/delays", work_delays_get_852);
 app.get("/api/work/notes", work_notes_get_853);
 app.get("/api/work/progress", work_progress_get_854);
 app.get("/api/work/tasks", work_tasks_get_855);
+// ── Recovery Email — Protected Change Flow ────────────────────────────────────
+import recoveryEmailGet         from './api/me/recovery-email/GET.js';
+import recoveryEmailRequestPost from './api/me/recovery-email/request/POST.js';
+import recoveryEmailVerifyGet   from './api/me/recovery-email/verify/GET.js';
+import recoveryEmailCancelGet   from './api/me/recovery-email/cancel/GET.js';
+import recoveryEmailFreezeGet   from './api/me/recovery-email/freeze/GET.js';
+import adminRecoveryFreezePost  from './api/admin/recovery-email/freeze/POST.js';
+
+app.get('/api/me/recovery-email',                recoveryEmailGet);
+app.post('/api/me/recovery-email/request',       recoveryEmailRequestPost);
+app.get('/api/me/recovery-email/verify',         recoveryEmailVerifyGet);
+app.get('/api/me/recovery-email/cancel',         recoveryEmailCancelGet);
+app.get('/api/me/recovery-email/freeze',         recoveryEmailFreezeGet);
+app.post('/api/admin/recovery-email/freeze',     adminRecoveryFreezePost);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
@@ -4685,6 +4699,14 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 		// The module-load call already ran; by the time we reach this point it has
 		// either completed or failed (with a logged warning). No await needed.
 		console.log('[startup] skipping duplicate runStartupMigrations() — already ran at module load');
+
+		// ── Recovery email tables ─────────────────────────────────────────────
+		try {
+			const { runRecoveryEmailMigration } = await import('./db/migrations/recovery-email.js');
+			await runRecoveryEmailMigration();
+		} catch (e) {
+			console.warn('[startup] recovery-email migration skipped:', e instanceof Error ? e.message : String(e));
+		}
 
 		// ── project_drawings (full canonical schema) ──────────────────────────
 		try {
