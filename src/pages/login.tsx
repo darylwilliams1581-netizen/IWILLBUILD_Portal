@@ -224,6 +224,20 @@ export default function LoginPage() {
         return null;
       })();
 
+      // Diagnostic — safe fields only, no credentials
+      console.info(JSON.stringify({
+        event: 'login.2fa.trace',
+        hasRawData: !!rawData,
+        rawDataKeys: rawData ? Object.keys(rawData) : [],
+        rawTwoFactorRedirect: rawData?.twoFactorRedirect,
+        rawTwoFactorMethods: rawData?.twoFactorMethods,
+        hasSmsTokenInRaw: !!(rawData?.smsChallengeToken),
+        twoFaRedirectNull: twoFaRedirect === null,
+        twoFaRedirectMethods: twoFaRedirect?.methods ?? null,
+        tokenInRef: !!smsChallengeTokenRef.current,
+        ts: Date.now(),
+      }));
+
       // Extract smsChallengeToken from the redirect context (primary path)
       if (twoFaRedirect && 'smsChallengeToken' in twoFaRedirect) {
         const t = (twoFaRedirect as { smsChallengeToken?: string }).smsChallengeToken;

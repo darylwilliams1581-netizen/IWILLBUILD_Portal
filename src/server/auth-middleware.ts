@@ -205,6 +205,12 @@ export async function authHandler(req: Request, res: Response) {
               // Do NOT forward the session Set-Cookie — we revoked it.
               // Return the challenge token so the client can authenticate
               // the /send and /verify calls without a session cookie.
+              console.info(JSON.stringify({
+                event: 'sms.intercept.fired',
+                userId: userId.slice(0, 8) + '…',
+                challengeId,
+                ts: Date.now(),
+              }));
               res.status(200).json({
                 twoFactorRedirect: true,
                 twoFactorMethods: ['sms'],
