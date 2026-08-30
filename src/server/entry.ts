@@ -3232,6 +3232,12 @@ if (!process.env.VITEST) {
       console.error('[media-migration] fatal:', e)
     )
   );
+  // Recovery email tables — independent, non-blocking
+  void import('./db/migrations/recovery-email.js').then(m =>
+    m.runRecoveryEmailMigration().catch((e: unknown) =>
+      console.error('[recovery-email] migration fatal:', e)
+    )
+  );
 }
 
 // ── DB connection keep-alive ──────────────────────────────────────────────────
