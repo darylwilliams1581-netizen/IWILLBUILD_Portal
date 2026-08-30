@@ -189,31 +189,34 @@ export function validateAttachmentFile(file: {
   }
 
   // UTF-8 check + NUL byte rejection
-  let textContent: string;
-  try {
-    textContent = file.buffer.toString('utf8');
-    if (textContent.includes('\0')) {
-      return {
-        ok: false,
-        code: 'nul_bytes',
-        error: `"${sanitiseFilename(file.originalname)}" contains NUL bytes and cannot be accepted.`,
-      };
-    }
-    // Verify it round-trips cleanly as UTF-8
-    const reEncoded = Buffer.from(textContent, 'utf8');
-    if (reEncoded.length !== file.buffer.length) {
+  // Skip for .docx — they are binary ZIP containers; mammoth handles extraction
+  let textContent = '';
+  if (ext !== 'docx') {
+    try {
+      textContent = file.buffer.toString('utf8');
+      if (textContent.includes('\0')) {
+        return {
+          ok: false,
+          code: 'nul_bytes',
+          error: `"${sanitiseFilename(file.originalname)}" contains NUL bytes and cannot be accepted.`,
+        };
+      }
+      // Verify it round-trips cleanly as UTF-8
+      const reEncoded = Buffer.from(textContent, 'utf8');
+      if (reEncoded.length !== file.buffer.length) {
+        return {
+          ok: false,
+          code: 'invalid_utf8',
+          error: `"${sanitiseFilename(file.originalname)}" is not valid UTF-8.`,
+        };
+      }
+    } catch {
       return {
         ok: false,
         code: 'invalid_utf8',
         error: `"${sanitiseFilename(file.originalname)}" is not valid UTF-8.`,
       };
     }
-  } catch {
-    return {
-      ok: false,
-      code: 'invalid_utf8',
-      error: `"${sanitiseFilename(file.originalname)}" is not valid UTF-8.`,
-    };
   }
 
   // JSON-specific structural validation
