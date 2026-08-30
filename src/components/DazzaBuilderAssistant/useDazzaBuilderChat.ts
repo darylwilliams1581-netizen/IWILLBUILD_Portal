@@ -46,6 +46,39 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       .catch(() => {});
   }, [builderContext.templateId, builderContext.builderType]);
 
+  // ── Stale-context guard ────────────────────────────────────────────────────
+  // When the target template changes (e.g. user navigates from builder back to
+  // the list page, or opens a different template), clear any pending proposal
+  // and reset the conversation ID so old proposal cards can't be applied against
+  // the wrong template.  Messages are intentionally kept so the user can read
+  // the conversation history — only the actionable pending change is cleared.
+  const prevTemplateIdRef = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    // undefined = first render, skip
+    if (prevTemplateIdRef.current === undefined) {
+      prevTemplateIdRef.current = builderContext.templateId;
+      return;
+    }
+    if (prevTemplateIdRef.current !== builderContext.templateId) {
+      prevTemplateIdRef.current = builderContext.templateId;
+      // Abort any in-flight stream
+      abortRef.current?.abort();
+      // Clear actionable state — stale proposals must not be applied
+      setPendingChange(null);
+      setPhase('idle');
+      setPhaseLabel('');
+      setError(null);
+      // Reset conversation ID so the next message starts a fresh context
+      conversationIdRef.current = null;
+      // Strip proposedChange from all existing messages so stale Apply cards
+      // disappear — the ProposedChangeCard would block them anyway via
+      // getApplyBlockReason, but removing them is cleaner UX.
+      setMessages(prev =>
+        prev.map(m => m.proposedChange ? { ...m, proposedChange: undefined } : m),
+      );
+    }
+  }, [builderContext.templateId]);
+
   const sendMessage = useCallback(async (text: string, attachmentIds?: string[]) => {
     if (!text.trim() || phase === 'reading' || phase === 'planning' || phase === 'applying') return;
 
