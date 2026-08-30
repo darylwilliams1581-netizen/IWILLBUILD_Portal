@@ -68,7 +68,9 @@ export default async function handler(req: Request, res: Response) {
         `);
         const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
         if (!found) {
-          return res.status(404).json({ error: `Template not found: document template #${templateId} does not exist.` });
+          return res.status(404).json({
+            error: `Template not found: document template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
+          });
         }
       } else {
         const rows = await db.execute(sql`
@@ -76,7 +78,9 @@ export default async function handler(req: Request, res: Response) {
         `);
         const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
         if (!found) {
-          return res.status(404).json({ error: `Template not found: form template #${templateId} does not exist.` });
+          return res.status(404).json({
+            error: `Template not found: form template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
+          });
         }
       }
     }
