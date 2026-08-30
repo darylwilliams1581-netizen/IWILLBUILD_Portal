@@ -4,16 +4,22 @@
  *
  * Verifies the SMS OTP sent by /api/me/2fa/sms/send.
  *
- * Security fixes:
+ * Authentication: X-SMS-Challenge-Token header (login flow — no session yet).
+ * Falls back to session auth for the Settings page flow.
+ *
+ * On success (login flow): deletes the pending challenge row and signs the
+ * user in via BetterAuth so a real session cookie is issued.
+ *
+ * Security:
  *   - Parameterised queries
  *   - Rate-limited: 10/IP/15min + 5/account/15min
  *   - Never logs the code or phone number
  */
 import type { Request, Response } from 'express';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { getAuth } from '../../../../../../lib/auth/auth.js';
+import { getAuth } from '../../../../../../lib/auth/auth.js'; // used for session-auth fallback path
 import { check2faRate } from '../../../../../lib/signup-rate-limiter.js';
 
 const MAX_ATTEMPTS = 5;
@@ -27,15 +33,40 @@ export default async function handler(req: Request, res: Response) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
                || req.socket.remoteAddress || 'unknown';
 
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+    let userId: string | null = null;
+    let isLoginFlow = false;
 
-    const userId = session.user.id;
+    // ── Auth path 1: challenge token (login flow — no session yet) ──────────
+    const challengeToken = req.headers['x-sms-challenge-token'] as string | undefined;
+    if (challengeToken?.trim()) {
+      const tokenHash = createHash('sha256').update(challengeToken.trim()).digest('hex');
+      const [challengeRows] = await db.execute(
+        sql`SELECT user_id FROM pending_2fa_challenges
+            WHERE token_hash = ${tokenHash}
+              AND method = 'sms'
+              AND expires_at > NOW()
+            LIMIT 1`
+      ) as unknown as [Array<{ user_id: string }>, unknown];
+      if (challengeRows?.[0]?.user_id) {
+        userId = challengeRows[0].user_id;
+        isLoginFlow = true;
+      }
+    }
+
+    // ── Auth path 2: session (Settings page — user already logged in) ────────
+    if (!userId) {
+      const auth = getAuth();
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+      }
+      const session = await auth.api.getSession({ headers });
+      if (session?.user?.id) {
+        userId = session.user.id;
+      }
+    }
+
+    if (!userId) return res.status(401).json({ error: 'Unauthorised' });
 
     if (!check2faRate(ip, userId)) {
       return res.status(429).json({ error: 'Too many attempts. Please wait before trying again.' });
@@ -46,7 +77,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'A 6-digit code is required.' });
     }
 
-    const now    = new Date();
+    const now = new Date();
 
     const rows = (await db.execute(
       sql`SELECT id, code_hash, attempts, verified_at
@@ -92,15 +123,53 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
+    // ── Code is correct ──────────────────────────────────────────────────────
+
     // Mark code as used
     await db.execute(
       sql`UPDATE sms_verification_codes SET verified_at = ${now} WHERE id = ${row.id}`,
     );
 
-    // Clear the pending SMS 2FA challenge so the auth guard unblocks this session
+    // Clear the pending challenge row
     await db.execute(
       sql`DELETE FROM pending_2fa_challenges WHERE user_id = ${userId} AND method = 'sms'`
     );
+
+    // Login flow: create a fresh BetterAuth session and set the session cookie
+    if (isLoginFlow) {
+      try {
+        // Insert a session row directly — same fields BetterAuth uses
+        const sessionId    = randomBytes(18).toString('hex');
+        const sessionToken = randomBytes(32).toString('hex');
+        const expiresAt    = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days (server-side)
+        const userAgent    = req.headers['user-agent'] ?? null;
+        const ipAddr       = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+                             || req.socket.remoteAddress || null;
+
+        await db.execute(
+          sql`INSERT INTO session (id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at)
+              VALUES (${sessionId}, ${expiresAt}, ${sessionToken}, ${ipAddr}, ${userAgent}, ${userId}, NOW(), NOW())`
+        );
+
+        // Set the session cookie — same attributes as BetterAuth's defaultCookieAttributes
+        const isPreview = process.env.AIRO_PREVIEW === 'true';
+        const maxAge    = 7 * 24 * 60 * 60; // 7-day cookie (matches BetterAuth default)
+        const cookieParts = [
+          `better-auth.session_token=${encodeURIComponent(sessionToken)}`,
+          'Path=/',
+          'HttpOnly',
+          'SameSite=None',
+          'Secure',
+          `Max-Age=${maxAge}`,
+          ...(isPreview ? ['Partitioned'] : []),
+        ];
+        res.setHeader('Set-Cookie', cookieParts.join('; '));
+      } catch (sessionErr) {
+        console.error('[2fa/sms/verify] session creation failed after successful verify');
+        // Still return ok:true — client will redirect to /login and the user
+        // can log in again (code is marked used so no replay is possible).
+      }
+    }
 
     return res.json({ ok: true });
   } catch (err) {

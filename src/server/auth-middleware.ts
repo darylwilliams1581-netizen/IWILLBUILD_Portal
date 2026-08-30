@@ -148,14 +148,15 @@ export async function authHandler(req: Request, res: Response) {
         // ── SMS 2FA intercept ──────────────────────────────────────────────────
         // BetterAuth's twoFactor plugin only handles TOTP. SMS 2FA is a separate
         // custom system stored in user.sms_2fa_enabled. If the user has SMS 2FA
-        // enabled, we must block the session here and return twoFactorRedirect:true
-        // so the client shows the SMS challenge screen — exactly like TOTP does.
-        //
-        // Strategy: insert a pending_2fa_challenges row (method='sms') so the
-        // auth guard can block all protected routes until the challenge is cleared.
-        // We keep the BetterAuth session alive so /api/me/2fa/sms/send and
-        // /api/me/2fa/sms/verify can authenticate via it. The verify endpoint
-        // deletes the pending row on success, unblocking the session.
+        // enabled, we must:
+        //   1. Revoke the just-created BetterAuth session so useSession() returns
+        //      null and the React app cannot auto-navigate past the challenge.
+        //   2. Insert a pending_2fa_challenges row with a short-lived plain token
+        //      (stored hashed) that the client sends as X-SMS-Challenge-Token on
+        //      the /send and /verify requests — replacing session auth for those
+        //      two endpoints only.
+        //   3. Return { twoFactorRedirect: true, twoFactorMethods: ['sms'],
+        //      smsChallengeToken: '<raw>' } so the client can show the challenge UI.
         if (userId) {
           try {
             const [smsRows] = await db.execute(
@@ -163,13 +164,25 @@ export async function authHandler(req: Request, res: Response) {
             ) as unknown as [Array<{ sms_2fa_enabled: number }>, unknown];
 
             if (smsRows?.[0]?.sms_2fa_enabled) {
-              // Clear any stale pending SMS challenges for this user, then insert fresh one
-              const { randomBytes } = await import('node:crypto');
-              const { createHash } = await import('node:crypto');
+              const { randomBytes, createHash } = await import('node:crypto');
+
+              // Revoke the BetterAuth session so the client cannot skip the challenge
+              try {
+                const setCookieHeader = webResponse.headers.get('set-cookie') ?? '';
+                const tokenMatch = setCookieHeader.match(/better-auth\.session_token=([^;]+)/);
+                if (tokenMatch?.[1]) {
+                  const sessionToken = decodeURIComponent(tokenMatch[1]);
+                  const auth = getAuth();
+                  await auth.api.revokeSession({ body: { token: sessionToken } }).catch(() => null);
+                }
+              } catch { /* non-critical */ }
+
+              // Generate a short-lived challenge token (plain → sent to client;
+              // hashed → stored in DB)
               const challengeId = randomBytes(18).toString('hex');
-              const tokenRaw = randomBytes(32).toString('hex');
-              const tokenHash = createHash('sha256').update(tokenRaw).digest('hex');
-              const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+              const tokenRaw    = randomBytes(32).toString('hex');
+              const tokenHash   = createHash('sha256').update(tokenRaw).digest('hex');
+              const expiresAt   = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
               await db.execute(
                 sql`DELETE FROM pending_2fa_challenges WHERE user_id = ${userId} AND method = 'sms'`
@@ -189,15 +202,14 @@ export async function authHandler(req: Request, res: Response) {
                 reason: 'SMS 2FA challenge required',
               });
 
-              // Return the same shape the BetterAuth twoFactor plugin returns
-              // so the client's consumeTwoFactorRedirect() handler fires correctly.
-              // We forward the Set-Cookie headers from BetterAuth so the session
-              // cookie is still set — the client needs it to call /api/me/2fa/sms/send.
-              const setCookies = webResponse.headers.getSetCookie?.() ?? [];
-              if (setCookies.length) {
-                res.setHeader('Set-Cookie', setCookies);
-              }
-              res.status(200).json({ twoFactorRedirect: true, twoFactorMethods: ['sms'] });
+              // Do NOT forward the session Set-Cookie — we revoked it.
+              // Return the challenge token so the client can authenticate
+              // the /send and /verify calls without a session cookie.
+              res.status(200).json({
+                twoFactorRedirect: true,
+                twoFactorMethods: ['sms'],
+                smsChallengeToken: tokenRaw,
+              });
               return;
             }
           } catch {

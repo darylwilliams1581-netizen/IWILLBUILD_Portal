@@ -4,7 +4,11 @@
  * Called after a successful password login when the user has SMS 2FA enabled.
  * Generates a 6-digit OTP, stores a hashed copy, and sends it via Twilio.
  *
- * Security fixes:
+ * Authentication: X-SMS-Challenge-Token header (short-lived token issued by
+ * the sign-in intercept in auth-middleware.ts). Falls back to session auth
+ * for the Settings page "resend" flow where the user is already logged in.
+ *
+ * Security:
  *   - Parameterised queries (no sql.raw interpolation)
  *   - Rate-limited: 3/IP/10min (checkSmsRate)
  *   - Never logs the OTP or phone number
@@ -40,15 +44,38 @@ export default async function handler(req: Request, res: Response) {
       return res.status(429).json({ error: 'Too many requests. Please wait a few minutes.' });
     }
 
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+    let userId: string | null = null;
 
-    const userId = session.user.id;
+    // ── Auth path 1: challenge token (login flow — no session yet) ──────────
+    const challengeToken = req.headers['x-sms-challenge-token'] as string | undefined;
+    if (challengeToken?.trim()) {
+      const tokenHash = createHash('sha256').update(challengeToken.trim()).digest('hex');
+      const [challengeRows] = await db.execute(
+        sql`SELECT user_id FROM pending_2fa_challenges
+            WHERE token_hash = ${tokenHash}
+              AND method = 'sms'
+              AND expires_at > NOW()
+            LIMIT 1`
+      ) as unknown as [Array<{ user_id: string }>, unknown];
+      if (challengeRows?.[0]?.user_id) {
+        userId = challengeRows[0].user_id;
+      }
+    }
+
+    // ── Auth path 2: session (Settings page resend — user already logged in) ─
+    if (!userId) {
+      const auth = getAuth();
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+      }
+      const session = await auth.api.getSession({ headers });
+      if (session?.user?.id) {
+        userId = session.user.id;
+      }
+    }
+
+    if (!userId) return res.status(401).json({ error: 'Unauthorised' });
 
     const rows = (await db.execute(
       sql`SELECT sms_2fa_enabled, sms_2fa_phone FROM \`user\` WHERE id = ${userId} LIMIT 1`,

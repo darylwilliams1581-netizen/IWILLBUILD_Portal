@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from "react-router";
@@ -53,6 +53,8 @@ export default function LoginPage() {
 
   // 2FA challenge state
   const [needs2FA, setNeeds2FA] = useState(false);
+  // In-memory challenge token for SMS 2FA login flow (never persisted to storage)
+  const smsChallengeTokenRef = useRef<string | null>(null);
   const [tfa2Method, setTfa2Method] = useState<'totp' | 'sms' | null>(null);
   const [tfaToken, setTfaToken] = useState('');
   const [tfaLoading, setTfaLoading] = useState(false);
@@ -210,6 +212,9 @@ export default function LoginPage() {
         const d = result?.data as Record<string, unknown> | undefined;
         if (d?.twoFactorRedirect === true) {
           const methods = (d.twoFactorMethods as string[] | undefined) ?? [];
+          // Store the challenge token in memory for use by send/verify requests
+          const token = d.smsChallengeToken as string | undefined;
+          if (token) smsChallengeTokenRef.current = token;
           return { needs2FA: true as const, methods };
         }
         return null;
@@ -229,6 +234,9 @@ export default function LoginPage() {
             const sendRes = await fetch('/api/me/2fa/sms/send', {
               method: 'POST',
               credentials: 'include',
+              headers: smsChallengeTokenRef.current
+                ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+                : {},
             });
             const sendData = (await sendRes.json()) as { ok?: boolean; maskedPhone?: string; error?: string };
             if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
@@ -388,7 +396,12 @@ export default function LoginPage() {
         // SMS 2FA still uses the custom endpoint (separate from the official TOTP plugin)
         const res = await fetch('/api/me/2fa/sms/verify', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(smsChallengeTokenRef.current
+              ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+              : {}),
+          },
           credentials: 'include',
           body: JSON.stringify({ token: tfaToken, code: tfaToken }),
         });
@@ -428,7 +441,10 @@ export default function LoginPage() {
     try {
       const res = await fetch('/api/me/2fa/sms/send', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: smsChallengeTokenRef.current
+          ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+          : {},
       });
       const d = (await res.json()) as {
         ok?: boolean;
