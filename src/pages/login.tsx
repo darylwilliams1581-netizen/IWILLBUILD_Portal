@@ -204,21 +204,27 @@ export default function LoginPage() {
       // plugin fires, so consumeTwoFactorRedirect() returns it alongside methods.
       const result = await signIn.email({ email, password });
 
-      // Always extract smsChallengeToken from result.data as a final fallback —
-      // covers the case where the SDK doesn't fire onSuccess (e.g. network error
-      // path) but still returns data.
-      const rawData = result?.data as Record<string, unknown> | undefined;
+      // The BetterAuth SDK returns { data, error }. When the server intercept
+      // fires (SMS 2FA), the body is { twoFactorRedirect:true, twoFactorMethods,
+      // smsChallengeToken }. The SDK treats HTTP 200 as success so data contains
+      // the full body. We also check result itself (cast) as a belt-and-braces
+      // fallback in case a future SDK version reshapes the return.
+      const rawData = (result?.data ?? result) as Record<string, unknown> | undefined | null;
+      const rawDataSafe = rawData && typeof rawData === 'object' ? rawData : null;
+
+      // Stash the challenge token from the raw response — this is the most
+      // reliable path because it doesn't depend on the fetchPlugin hook order.
       if (!smsChallengeTokenRef.current) {
-        const smsToken = rawData?.smsChallengeToken as string | undefined;
+        const smsToken = rawDataSafe?.smsChallengeToken as string | undefined;
         if (smsToken) smsChallengeTokenRef.current = smsToken;
       }
 
-      // Check if the twoFactor plugin signalled a redirect.
-      // consumeTwoFactorRedirect() returns the context including smsChallengeToken
-      // captured by the smsChallengeCapture fetchPlugin in auth-client.tsx.
+      // Primary path: consumeTwoFactorRedirect() returns the context set by the
+      // smsChallengeCapture + twoFactorClient fetchPlugins in auth-client.tsx.
+      // Fallback: read twoFactorRedirect directly from the raw response body.
       const twoFaRedirect = consumeTwoFactorRedirect() ?? (() => {
-        if (rawData?.twoFactorRedirect === true) {
-          const methods = (rawData.twoFactorMethods as string[] | undefined) ?? [];
+        if (rawDataSafe?.twoFactorRedirect === true) {
+          const methods = (rawDataSafe.twoFactorMethods as string[] | undefined) ?? [];
           return { needs2FA: true as const, methods };
         }
         return null;
@@ -227,11 +233,11 @@ export default function LoginPage() {
       // Diagnostic — safe fields only, no credentials
       console.info(JSON.stringify({
         event: 'login.2fa.trace',
-        hasRawData: !!rawData,
-        rawDataKeys: rawData ? Object.keys(rawData) : [],
-        rawTwoFactorRedirect: rawData?.twoFactorRedirect,
-        rawTwoFactorMethods: rawData?.twoFactorMethods,
-        hasSmsTokenInRaw: !!(rawData?.smsChallengeToken),
+        hasRawData: !!rawDataSafe,
+        rawDataKeys: rawDataSafe ? Object.keys(rawDataSafe) : [],
+        rawTwoFactorRedirect: rawDataSafe?.twoFactorRedirect,
+        rawTwoFactorMethods: rawDataSafe?.twoFactorMethods,
+        hasSmsTokenInRaw: !!(rawDataSafe?.smsChallengeToken),
         twoFaRedirectNull: twoFaRedirect === null,
         twoFaRedirectMethods: twoFaRedirect?.methods ?? null,
         tokenInRef: !!smsChallengeTokenRef.current,
@@ -241,6 +247,11 @@ export default function LoginPage() {
       // Extract smsChallengeToken from the redirect context (primary path)
       if (twoFaRedirect && 'smsChallengeToken' in twoFaRedirect) {
         const t = (twoFaRedirect as { smsChallengeToken?: string }).smsChallengeToken;
+        if (t) smsChallengeTokenRef.current = t;
+      }
+      // Belt-and-braces: also pull directly from raw body if ref still empty
+      if (!smsChallengeTokenRef.current) {
+        const t = rawDataSafe?.smsChallengeToken as string | undefined;
         if (t) smsChallengeTokenRef.current = t;
       }
 
