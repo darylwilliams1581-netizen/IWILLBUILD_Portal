@@ -78,15 +78,16 @@ async function executeBuilderTool(
         if (!id) return ok({ note: 'No template is currently open (list-page context). Use createNewTemplate as the first operation to create one.' });
 
         if (type === 'document') {
-          const rows = await db.execute(sql`
+          // db.execute returns [RowDataPacket[], FieldPacket[]] — rows at index [0].
+          const [docData] = await db.execute(sql`
             SELECT id, name, template_type, doc_status, doc_kind,
                    requires_acknowledgement, submit_label, requires_signature,
                    builder_json, pdf_settings_json, created_at, updated_at
             FROM document_templates
             WHERE id = ${id}
             LIMIT 1
-          `);
-          const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          const row = docData?.[0];
           if (!row) return err('Template not found');
           const builderJson = row.builder_json as string | null;
           const truncated = builderJson && builderJson.length > 8000
@@ -94,26 +95,26 @@ async function executeBuilderTool(
             : builderJson;
           return ok({ ...row, builder_json: truncated });
         } else {
-          const rows = await db.execute(sql`
+          const [formData] = await db.execute(sql`
             SELECT ft.id, ft.name, ft.form_type, ft.category, ft.description,
                    ft.is_active, ft.on_dashboard, ft.on_jobs, ft.on_fleet,
                    ft.created_at, ft.updated_at
             FROM form_templates ft
             WHERE ft.id = ${id}
             LIMIT 1
-          `);
-          const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          const row = formData?.[0];
           if (!row) return err('Form template not found');
 
-          const fieldRows = await db.execute(sql`
+          const [fieldData] = await db.execute(sql`
             SELECT id, label, field_type, required, options_json, settings_json,
                    logic_json, field_order
             FROM form_fields
             WHERE template_id = ${id}
             ORDER BY field_order ASC
             LIMIT 200
-          `);
-          return ok({ template: row, fields: (fieldRows as { rows: unknown[] }).rows ?? [] });
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          return ok({ template: row, fields: fieldData ?? [] });
         }
       }
 
@@ -122,21 +123,21 @@ async function executeBuilderTool(
         const limit = Math.min(Number(args.limit ?? 20), 50);
 
         if (type === 'document') {
-          const rows = await db.execute(sql`
+          const [listData] = await db.execute(sql`
             SELECT id, name, template_type, doc_status, created_at, updated_at
             FROM document_templates
             ORDER BY updated_at DESC
             LIMIT ${limit}
-          `);
-          return ok((rows as { rows: unknown[] }).rows ?? []);
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          return ok(listData ?? []);
         } else {
-          const rows = await db.execute(sql`
+          const [listData] = await db.execute(sql`
             SELECT id, name, form_type, category, is_active, created_at, updated_at
             FROM form_templates
             ORDER BY updated_at DESC
             LIMIT ${limit}
-          `);
-          return ok((rows as { rows: unknown[] }).rows ?? []);
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          return ok(listData ?? []);
         }
       }
 
@@ -146,15 +147,15 @@ async function executeBuilderTool(
         const limit = Math.min(Number(args.limit ?? 10), 50);
         if (!id) return err('templateId required');
 
-        const rows = await db.execute(sql`
+        const [versionList] = await db.execute(sql`
           SELECT id, version_number, instruction_summary, operations_count,
                  validation_result, created_at
           FROM dazza_builder_versions
           WHERE template_id = ${id} AND builder_type = ${type}
           ORDER BY version_number DESC
           LIMIT ${limit}
-        `);
-        return ok((rows as { rows: unknown[] }).rows ?? []);
+        `) as unknown as [Array<Record<string, unknown>>, unknown];
+        return ok(versionList ?? []);
       }
 
       case 'builder_propose_changes': {

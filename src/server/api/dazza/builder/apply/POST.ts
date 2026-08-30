@@ -60,26 +60,45 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // 7. Non-null templateId → verify the template exists and type matches
+    // 7. Non-null templateId → verify the template exists and type matches.
+    //    Use the same company_id tenant filter as the GET endpoint so the
+    //    existence check is authoritative for this owner.
     if (typeof templateId === 'number') {
+      // Resolve the owner's company_id for tenant isolation (mirrors GET path).
+      const profileRows = await db.execute(sql`
+        SELECT company_id FROM profiles WHERE user_id = ${ownerInfo.userId} LIMIT 1
+      `);
+      // db.execute returns [RowDataPacket[], FieldPacket[]] — rows are at index [0].
+      const [profileData] = profileRows as unknown as [Array<Record<string, unknown>>, unknown];
+      const companyId = profileData?.[0]?.company_id ? Number(profileData[0].company_id) : null;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Owner has no company profile.' });
+      }
+
       if (builderType === 'document') {
-        const rows = await db.execute(sql`
-          SELECT id FROM document_templates WHERE id = ${templateId} LIMIT 1
-        `);
-        const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
-        if (!found) {
+        const [docRows] = await db.execute(sql`
+          SELECT id FROM document_templates
+          WHERE id = ${templateId} AND company_id = ${companyId}
+          LIMIT 1
+        `) as unknown as [Array<Record<string, unknown>>, unknown];
+        if (!docRows?.length) {
           return res.status(404).json({
-            error: `Template not found: document template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
+            ok: false,
+            code: 'TEMPLATE_NOT_FOUND',
+            error: `TEMPLATE_NOT_FOUND: document template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
           });
         }
       } else {
-        const rows = await db.execute(sql`
-          SELECT id FROM form_templates WHERE id = ${templateId} LIMIT 1
-        `);
-        const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
-        if (!found) {
+        const [formRows] = await db.execute(sql`
+          SELECT id FROM form_templates
+          WHERE id = ${templateId} AND company_id = ${companyId}
+          LIMIT 1
+        `) as unknown as [Array<Record<string, unknown>>, unknown];
+        if (!formRows?.length) {
           return res.status(404).json({
-            error: `Template not found: form template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
+            ok: false,
+            code: 'TEMPLATE_NOT_FOUND',
+            error: `TEMPLATE_NOT_FOUND: form template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
           });
         }
       }

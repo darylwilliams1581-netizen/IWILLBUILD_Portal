@@ -56,14 +56,14 @@ export async function applyDocumentOperations(
 
     const emptyJson = JSON.stringify({ blocks: [], pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' }, theme: { backgroundColor: '#ffffff', accentColor: '#1e3a5f', textColor: '#1a1a1a', tableHeaderColor: '#1e3a5f', tableHeaderTextColor: '#ffffff' }, systemFields: [], sourceAttachments: [], requiresAcknowledgement: false, acknowledgementLabel: '', acknowledgementText: '' });
 
-    const insertResult = await db.execute(sql`
+    const [insertHeader] = await db.execute(sql`
       INSERT INTO document_templates
         (company_id, name, template_type, doc_status, doc_kind, builder_json, is_active, created_by_user_id, created_at, updated_at)
       VALUES
         (${companyId}, ${name}, ${templateType}, ${docStatus}, ${docKind}, ${emptyJson}, 1, ${ownerUserId}, NOW(), NOW())
-    `);
+    `) as unknown as [{ insertId?: number | bigint }, unknown];
 
-    const insertId = (insertResult as { insertId?: number | bigint }).insertId;
+    const insertId = insertHeader?.insertId;
     if (!insertId) {
       return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Failed to create new template' };
     }
@@ -78,10 +78,11 @@ export async function applyDocumentOperations(
   }
 
   // ── Load current template ──────────────────────────────────────────────────
-  const rows = await db.execute(sql`
+  // db.execute returns [RowDataPacket[], FieldPacket[]] — rows are at index [0].
+  const [templateRows] = await db.execute(sql`
     SELECT builder_json FROM document_templates WHERE id = ${resolvedTemplateId} LIMIT 1
-  `);
-  const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
+  `) as unknown as [Array<Record<string, unknown>>, unknown];
+  const row = templateRows?.[0];
   if (!row) {
     return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Template not found' };
   }

@@ -51,14 +51,14 @@ export async function applyFormOperations(
     }
     const companyId = ownerProfile.companyId;
 
-    const insertResult = await db.execute(sql`
+    const [insertHeader] = await db.execute(sql`
       INSERT INTO form_templates
         (company_id, name, form_type, category, is_active, created_at, updated_at)
       VALUES
         (${companyId}, ${name}, ${formType}, ${category}, 0, NOW(), NOW())
-    `);
+    `) as unknown as [{ insertId?: number | bigint }, unknown];
 
-    const insertId = (insertResult as { insertId?: number | bigint }).insertId;
+    const insertId = insertHeader?.insertId;
     if (!insertId) {
       return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Failed to create new form template' };
     }
@@ -71,20 +71,21 @@ export async function applyFormOperations(
       newTemplateId: resolvedTemplateId, name, formType, category, conversationId,
     });
   }
-  // Load current fields for snapshot — before any mutations
-  const fieldRows = await db.execute(sql`
+  // Load current fields for snapshot — before any mutations.
+  // db.execute returns [RowDataPacket[], FieldPacket[]] — rows are at index [0].
+  const [prevFieldData] = await db.execute(sql`
     SELECT * FROM form_fields WHERE template_id = ${resolvedTemplateId} ORDER BY field_order ASC
-  `);
-  const previousSnapshot = JSON.stringify((fieldRows as { rows: unknown[] }).rows ?? []);
+  `) as unknown as [Array<Record<string, unknown>>, unknown];
+  const previousSnapshot = JSON.stringify(prevFieldData ?? []);
   let applied = 0;
 
   for (const op of operations) {
     switch (op.op) {
       case 'addField': {
-        const maxOrderRows = await db.execute(sql`
+        const [maxOrderData] = await db.execute(sql`
           SELECT COALESCE(MAX(field_order), 0) AS max_o FROM form_fields WHERE template_id = ${resolvedTemplateId}
-        `);
-        const maxOrder = Number(((maxOrderRows as { rows: unknown[] }).rows?.[0] as Record<string, unknown>)?.max_o ?? 0);
+        `) as unknown as [Array<Record<string, unknown>>, unknown];
+        const maxOrder = Number((maxOrderData?.[0] as Record<string, unknown>)?.max_o ?? 0);
         const afterOrder = op.afterFieldId
           ? await getFieldOrder(resolvedTemplateId, op.afterFieldId as string)
           : null;
@@ -172,11 +173,11 @@ export async function applyFormOperations(
     }
   }
 
-  // Load new snapshot after all mutations
-  const newFieldRows = await db.execute(sql`
+  // Load new snapshot after all mutations.
+  const [newFieldData] = await db.execute(sql`
     SELECT * FROM form_fields WHERE template_id = ${resolvedTemplateId} ORDER BY field_order ASC
-  `);
-  const newSnapshot = JSON.stringify((newFieldRows as { rows: unknown[] }).rows ?? []);
+  `) as unknown as [Array<Record<string, unknown>>, unknown];
+  const newSnapshot = JSON.stringify(newFieldData ?? []);
 
   const { versionId, versionNumber } = await createBuilderVersion(
     resolvedTemplateId, 'form', ownerUserId,
@@ -196,10 +197,10 @@ export async function applyFormOperations(
 
 async function getFieldOrder(templateId: number, fieldId: string): Promise<number | null> {
   try {
-    const rows = await db.execute(sql`
+    const [fieldData] = await db.execute(sql`
       SELECT field_order FROM form_fields WHERE id = ${Number(fieldId)} AND template_id = ${templateId} LIMIT 1
-    `);
-    const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
+    const row = fieldData?.[0];
     return row ? Number(row.field_order) : null;
   } catch { return null; }
 }
