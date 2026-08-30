@@ -138,6 +138,22 @@ export default function StudioBuilderPage() {
   const [dazzaOpen, setDazzaOpen] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(0);
 
+  // ── Zustand store subscriptions (must be before any early return) ──────────
+  const storeTemplateId = useDocumentStore(s => s.templateId);
+  const storeSnapshot = useDocumentStore(s => ({
+    templateId: s.templateId,
+    templateName: s.templateName,
+    templateType: s.templateType,
+    blocks: s.blocks,
+    logicRules: s.logicRules ?? [],
+    isDirty: s.isDirty,
+    mode: initialMode,
+    pageLayout: s.pageLayout,
+    docKind: s.docKind ?? 'doc',
+    requiresAcknowledgement: s.requiresAcknowledgement ?? false,
+  }));
+  const selectedBlockId = useDocumentStore(s => s.selection?.blockId ?? null);
+
   const handleDazzaApplied = useCallback((versionId: string, versionNumber: number) => {
     setCurrentVersion(versionNumber);
     // Reload the template from server so builder reflects applied changes
@@ -249,21 +265,7 @@ export default function StudioBuilderPage() {
   // current document state (blocks, templateId, isDirty, etc.).
   // Fall back to the static template snapshot only when the store hasn't
   // loaded yet (templateId is null and we have a real template to load).
-  const storeTemplateId = useDocumentStore(s => s.templateId);
   const storeTemplateLoaded = storeTemplateId !== null || isNew;
-  const storeSnapshot = useDocumentStore(s => ({
-    templateId: s.templateId,
-    templateName: s.templateName,
-    templateType: s.templateType,
-    blocks: s.blocks,
-    logicRules: s.logicRules ?? [],
-    isDirty: s.isDirty,
-    mode: initialMode,
-    pageLayout: s.pageLayout,
-    docKind: s.docKind ?? 'doc',
-    requiresAcknowledgement: s.requiresAcknowledgement ?? false,
-  }));
-  const selectedBlockId = useDocumentStore(s => s.selection?.blockId ?? null);
   const dazzaContext = storeTemplateLoaded
     ? buildDocumentBuilderContext(storeSnapshot, selectedBlockId, [], currentVersion)
     : buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion);
