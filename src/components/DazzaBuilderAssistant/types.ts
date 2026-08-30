@@ -29,6 +29,14 @@ export interface ProposedChange {
   validationImpact: string;
   operations: BuilderOperation[];
   conversationId: string;
+  /**
+   * Stamped server-side from the authenticated builderContext at proposal time.
+   * null = new template (createNewTemplate must be first op).
+   * The client validates this matches the current builderContext before Apply.
+   */
+  targetTemplateId: number | null;
+  /** Stamped server-side — must match builderContext.builderType on Apply. */
+  targetBuilderType: BuilderType;
 }
 
 export type AssistantPhase =

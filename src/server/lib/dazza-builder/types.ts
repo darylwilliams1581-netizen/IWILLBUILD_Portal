@@ -57,6 +57,16 @@ export interface ProposedChange {
   validationImpact: string;
   operations: BuilderOperation[];
   conversationId: string;
+  /**
+   * The template ID this proposal targets, stamped server-side at proposal
+   * time from the authenticated builderContext — never from AI output.
+   * null means a new template will be created (createNewTemplate must be
+   * the first op).  The client validates this matches builderContext before
+   * sending Apply.
+   */
+  targetTemplateId: number | null;
+  /** Builder type stamped server-side — must match builderContext on Apply. */
+  targetBuilderType: BuilderType;
 }
 
 export interface BuilderStreamOptions {

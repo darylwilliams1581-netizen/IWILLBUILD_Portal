@@ -235,12 +235,28 @@ describe('ProposedChangeCard', () => {
     validationImpact: 'None',
     operations: [{ op: 'addBlock', blockType: 'field', fieldType: 'signature', label: 'Signature' }],
     conversationId: 'conv-123',
+    targetTemplateId: 42,
+    targetBuilderType: 'document',
+  };
+
+  const ctx: BuilderContext = {
+    builderType: 'document',
+    templateId: 42,
+    templateName: 'Test SWMS',
+    templateType: 'swms',
+    currentVersion: 1,
+    schemaSummary: '',
+    selectedId: null,
+    hasUnsavedChanges: false,
+    validationErrors: [],
+    isPreviewMode: false,
   };
 
   it('15. Shows summary text', () => {
     render(
       <ProposedChangeCard
         change={change}
+        builderContext={ctx}
         onApply={vi.fn()}
         onUndo={vi.fn()}
         isApplying={false}
@@ -254,12 +270,13 @@ describe('ProposedChangeCard', () => {
     render(
       <ProposedChangeCard
         change={change}
+        builderContext={ctx}
         onApply={onApply}
         onUndo={vi.fn()}
         isApplying={false}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^apply$/i }));
     expect(onApply).toHaveBeenCalledWith(change);
   });
 
@@ -268,6 +285,7 @@ describe('ProposedChangeCard', () => {
     render(
       <ProposedChangeCard
         change={change}
+        builderContext={ctx}
         onApply={vi.fn()}
         onUndo={onUndo}
         isApplying={false}
@@ -281,6 +299,7 @@ describe('ProposedChangeCard', () => {
     render(
       <ProposedChangeCard
         change={change}
+        builderContext={ctx}
         onApply={vi.fn()}
         onUndo={vi.fn()}
         isApplying={true}

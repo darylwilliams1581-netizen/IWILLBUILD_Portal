@@ -184,8 +184,42 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
   }, []);
 
   const applyChange = useCallback(async (change: ProposedChange) => {
-    // Allow apply when templateId is null — the server will create the template.
     if (isApplying) return;
+
+    // ── Pre-flight validation ────────────────────────────────────────────────
+    // Reject if the proposal was stamped for a different builder type.
+    if (change.targetBuilderType !== builderContext.builderType) {
+      setError(`Cannot apply: proposal targets "${change.targetBuilderType}" but current builder is "${builderContext.builderType}".`);
+      setPhase('failed');
+      return;
+    }
+
+    // Reject if the proposal targets a specific template that no longer matches
+    // the currently open template (e.g. user navigated away between propose and apply).
+    if (
+      change.targetTemplateId !== null &&
+      change.targetTemplateId !== undefined &&
+      change.targetTemplateId !== builderContext.templateId
+    ) {
+      setError(
+        `Cannot apply: proposal targets template #${change.targetTemplateId} but ` +
+        `the currently open template is ${builderContext.templateId === null ? 'none' : `#${builderContext.templateId}`}. ` +
+        'Please re-run the request on the correct template.',
+      );
+      setPhase('failed');
+      return;
+    }
+
+    // Reject if no template is open AND the first op is not createNewTemplate.
+    if (
+      change.targetTemplateId === null &&
+      change.operations[0]?.op !== 'createNewTemplate'
+    ) {
+      setError('Cannot apply: no template is open and the proposal does not include a createNewTemplate operation. Open or create a template first.');
+      setPhase('failed');
+      return;
+    }
+
     setIsApplying(true);
     setPhase('applying');
     setPhaseLabel('Applying changes…');
@@ -250,6 +284,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       setError(msg);
       setPhase('failed');
       setPhaseLabel(msg);
+      // Retain pendingChange so the user can retry after fixing the issue.
     } finally {
       setIsApplying(false);
     }

@@ -1,19 +1,39 @@
 /**
  * ProposedChangeCard — shows a proposed change summary with Apply/Undo actions.
  */
-import { CheckCircle2, Undo2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Ban } from 'lucide-react';
 import { useState } from 'react';
-import type { ProposedChange } from './types';
+import type { BuilderContext, ProposedChange } from './types';
 
 interface Props {
   change: ProposedChange;
+  /** The current builder context — used to detect stale/mismatched proposals. */
+  builderContext: BuilderContext;
   onApply: (change: ProposedChange) => void;
   onUndo: () => void;
   isApplying: boolean;
 }
 
-export default function ProposedChangeCard({ change, onApply, onUndo, isApplying }: Props) {
+/**
+ * Returns a human-readable reason why Apply should be blocked, or null if it's safe.
+ */
+function getApplyBlockReason(change: ProposedChange, ctx: BuilderContext): string | null {
+  if (change.targetBuilderType !== ctx.builderType) {
+    return `Proposal targets "${change.targetBuilderType}" builder but current builder is "${ctx.builderType}".`;
+  }
+  if (change.targetTemplateId !== null && change.targetTemplateId !== ctx.templateId) {
+    return `Proposal targets template #${change.targetTemplateId} but template #${ctx.templateId ?? 'none'} is open. Re-run the request.`;
+  }
+  if (change.targetTemplateId === null && change.operations[0]?.op !== 'createNewTemplate') {
+    return 'No template is open and the proposal has no createNewTemplate operation. Open a template first.';
+  }
+  return null;
+}
+
+export default function ProposedChangeCard({ change, builderContext, onApply, onUndo, isApplying }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const blockReason = getApplyBlockReason(change, builderContext);
+  const isBlocked = blockReason !== null;
 
   return (
     <div className="rounded-xl border border-violet-200 bg-violet-50 overflow-hidden">
@@ -34,6 +54,14 @@ export default function ProposedChangeCard({ change, onApply, onUndo, isApplying
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
+
+      {/* Stale/mismatch warning */}
+      {isBlocked && (
+        <div className="mx-3 mb-2 flex items-start gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-2">
+          <Ban size={12} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-800 leading-snug">{blockReason}</p>
+        </div>
+      )}
 
       {/* Expanded details */}
       {expanded && (
@@ -60,6 +88,13 @@ export default function ProposedChangeCard({ change, onApply, onUndo, isApplying
             <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wide">Operations</p>
             <p className="text-xs text-violet-800">{change.operations.length} operation{change.operations.length !== 1 ? 's' : ''}</p>
           </div>
+          <div>
+            <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wide">Target</p>
+            <p className="text-xs text-violet-800">
+              {change.targetTemplateId === null ? 'New template (will be created on Apply)' : `Template #${change.targetTemplateId}`}
+              {' · '}{change.targetBuilderType}
+            </p>
+          </div>
         </div>
       )}
 
@@ -67,11 +102,12 @@ export default function ProposedChangeCard({ change, onApply, onUndo, isApplying
       <div className="px-3 py-2 flex gap-2 border-t border-violet-200">
         <button
           onClick={() => onApply(change)}
-          disabled={isApplying}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+          disabled={isApplying || isBlocked}
+          title={isBlocked ? blockReason ?? undefined : undefined}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
         >
           <CheckCircle2 size={12} />
-          {isApplying ? 'Applying…' : 'Apply'}
+          {isApplying ? 'Applying…' : isBlocked ? 'Cannot Apply' : 'Apply'}
         </button>
         <button
           onClick={onUndo}

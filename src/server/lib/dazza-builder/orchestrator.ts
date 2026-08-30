@@ -389,6 +389,9 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
             validationImpact: String(args.validationImpact ?? ''),
             operations: (args.operations as BuilderOperation[]) ?? [],
             conversationId,
+            // Stamp the target from the authenticated builderContext — never from AI args.
+            targetTemplateId: builderContext.templateId,
+            targetBuilderType: builderContext.builderType,
           };
           onProposedChange(proposed);
         }

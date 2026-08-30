@@ -42,8 +42,9 @@ interface Props {
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({ msg, onApply, onUndo, isApplying }: {
+function MessageBubble({ msg, builderContext, onApply, onUndo, isApplying }: {
   msg: ChatMessage;
+  builderContext: import('./types').BuilderContext;
   onApply: (change: import('./types').ProposedChange) => void;
   onUndo: () => void;
   isApplying: boolean;
@@ -73,6 +74,7 @@ function MessageBubble({ msg, onApply, onUndo, isApplying }: {
           <div className="mt-2">
             <ProposedChangeCard
               change={msg.proposedChange}
+              builderContext={builderContext}
               onApply={onApply}
               onUndo={onUndo}
               isApplying={isApplying}
@@ -337,6 +339,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
           <MessageBubble
             key={msg.id}
             msg={msg}
+            builderContext={builderContext}
             onApply={applyChange}
             onUndo={undoChange}
             isApplying={isApplying}
