@@ -181,6 +181,15 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
     // Reset so the same file can be re-selected
     e.target.value = '';
     setUploadError(null);
+
+    // Client-side type guard — mirrors Stage 1 allowlist on the server
+    const allowed = ['.txt', '.md', '.json'];
+    const ext = '.' + (file.name.split('.').pop() ?? '').toLowerCase();
+    if (!allowed.includes(ext)) {
+      setUploadError(`"${file.name}" isn't supported. Attach a .txt, .md, or .json file.`);
+      return;
+    }
+
     setIsUploading(true);
     try {
       const form = new FormData();
