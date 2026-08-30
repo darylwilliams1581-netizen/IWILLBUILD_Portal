@@ -9,11 +9,10 @@
  *   Right — [Dazza AI] [Dev Console] [Team] [Billing] (owner/admin) | 🔔 | Avatar | Sign out | Help
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from "react-router";
 import { LogOut, Terminal, Bot, UserCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
-import WeatherWidget from '@/components/WeatherWidget';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
 import { useDriverSessionSafe } from '@/lib/useDriverSession';
@@ -22,11 +21,16 @@ export const DESKTOP_TOPBAR_HEIGHT = 56;
 const OWNER_EMAIL = 'darylwilliams1581@gmail.com';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-function getGreeting(name: string): {
+function getGreeting(name: string, now: Date | null): {
   eyebrow: string;
   headline: string;
 } {
-  const now = new Date();
+  if (!now) {
+    return {
+      eyebrow: '',
+      headline: name ? `Welcome, ${name}` : 'Welcome'
+    };
+  }
   const hour = now.getHours();
   const day = DAYS[now.getDay()];
   const date = now.getDate();
@@ -51,10 +55,17 @@ export default function DesktopTopBar() {
   const firstName = me?.user?.name?.trim().split(' ')[0] || me?.user?.email?.split('@')[0] || '';
   const displayName = me?.user?.name?.trim() || me?.user?.email?.split('@')[0] || '';
   const isOwnerEmail = me?.user?.email?.toLowerCase() === OWNER_EMAIL;
+  const [localNow, setLocalNow] = useState<Date | null>(null);
+  useEffect(() => {
+    const updateClock = () => setLocalNow(new Date());
+    updateClock();
+    const timer = window.setInterval(updateClock, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const {
     eyebrow,
     headline
-  } = getGreeting(firstName);
+  } = getGreeting(firstName, localNow);
   async function handleSignOut() {
     try {
       await signOut();
@@ -145,17 +156,6 @@ export default function DesktopTopBar() {
       }}>
           {headline}
         </span>
-      </div>
-
-      {/* ── Centre: weather widget ── */}
-      <div style={{
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      paddingLeft: 16
-    }}>
-        <WeatherWidget variant="desktop" />
       </div>
 
       {/* ── Right ── */}

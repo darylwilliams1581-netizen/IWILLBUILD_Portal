@@ -505,7 +505,7 @@ export default function PagedHomeScreen({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: 'pan-y', overflowX: 'clip', overflowY: 'visible' }}
+        style={{ touchAction: 'pan-y', overflowX: 'hidden', overflowY: 'visible' }}
       >
         <div
           className="flex h-full"

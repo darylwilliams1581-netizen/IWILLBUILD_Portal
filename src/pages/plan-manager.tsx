@@ -129,7 +129,7 @@ export default function PlanManagerPage() {
 
         <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
           {/* Page header */}
-          <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
+          <div className="flex flex-wrap items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
             {/* Mobile back button */}
             <button
               onClick={() => navigate(-1)}
@@ -141,12 +141,10 @@ export default function PlanManagerPage() {
             <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
               <Map size={18} className="text-violet-600" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h1 className="text-base md:text-lg font-bold text-slate-900">Plan Manager</h1>
               <p className="text-xs text-slate-500 hidden sm:block">Browse and manage drawings across all jobs</p>
             </div>
-
-            <div className="flex-1" />
 
             {/* Upload Plan — primary action */}
             <button onClick={() => setUploadOpen(true)} className="flex items-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold transition-colors shrink-0">
@@ -156,7 +154,7 @@ export default function PlanManagerPage() {
             </button>
 
             {/* Tabs */}
-            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
+            <div className="flex w-full sm:w-auto items-center justify-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
               <button onClick={() => setTab('active')} className={['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors', tab === 'active' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
                 <Layers size={12} /> Active
               </button>
