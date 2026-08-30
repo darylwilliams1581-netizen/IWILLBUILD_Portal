@@ -324,14 +324,13 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
 
       messages.push({
         role: 'assistant',
-        content: JSON.stringify({
-          content: assistantContent || null,
-          tool_calls: toolCallsThisRound.map(tc => ({
-            id: tc.id, type: 'function',
-            function: { name: tc.name, arguments: tc.argsRaw },
-          })),
-        }),
-      });
+        content: assistantContent || null,
+        tool_calls: toolCallsThisRound.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.argsRaw },
+        })),
+      } as unknown as { role: string; content: string });
       for (const tr of toolResults) messages.push(tr as { role: string; content: string });
 
       assistantContent = '';
