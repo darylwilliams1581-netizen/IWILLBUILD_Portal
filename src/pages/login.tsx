@@ -251,6 +251,8 @@ export default function LoginPage() {
             const sendData = (await sendRes.json()) as { ok?: boolean; maskedPhone?: string; error?: string };
             if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
             setSmsResendState('sent');
+            // Reset after 30 s so the user can resend if the code doesn't arrive
+            setTimeout(() => setSmsResendState('idle'), 30_000);
           } catch {
             setSmsResendState('idle');
           }
@@ -631,7 +633,7 @@ export default function LoginPage() {
 
                 {/* Resend button for SMS */}
                 {tfa2Method === 'sms' && !useBackupCode && <button type="button" onClick={() => void handleSmsResend()} disabled={smsResendState === 'sending' || smsResendState === 'sent'} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 disabled:opacity-50 transition-colors">
-                    {smsResendState === 'sending' ? <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />Sending…</> : smsResendState === 'sent' ? <><CheckCircle2 size={12} className="text-green-400" />Code sent</> : <><RefreshCw size={12} />Resend code</>}
+                    {smsResendState === 'sending' ? <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />Sending…</> : smsResendState === 'sent' ? <><CheckCircle2 size={12} className="text-green-400" />Code sent — resend available in 30s</> : <><RefreshCw size={12} />Resend code</>}
                   </button>}
 
                 {/* Backup code toggle — only shown for TOTP (not SMS) */}
