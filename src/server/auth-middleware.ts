@@ -144,6 +144,69 @@ export async function authHandler(req: Request, res: Response) {
         const body = await clone.json().catch(() => null);
         const userId: string | undefined = body?.user?.id;
         const email: string | undefined = body?.user?.email;
+
+        // ── SMS 2FA intercept ──────────────────────────────────────────────────
+        // BetterAuth's twoFactor plugin only handles TOTP. SMS 2FA is a separate
+        // custom system stored in user.sms_2fa_enabled. If the user has SMS 2FA
+        // enabled, we must block the session here and return twoFactorRedirect:true
+        // so the client shows the SMS challenge screen — exactly like TOTP does.
+        //
+        // Strategy: insert a pending_2fa_challenges row (method='sms') so the
+        // auth guard can block all protected routes until the challenge is cleared.
+        // We keep the BetterAuth session alive so /api/me/2fa/sms/send and
+        // /api/me/2fa/sms/verify can authenticate via it. The verify endpoint
+        // deletes the pending row on success, unblocking the session.
+        if (userId) {
+          try {
+            const [smsRows] = await db.execute(
+              sql`SELECT sms_2fa_enabled FROM \`user\` WHERE id = ${userId} LIMIT 1`
+            ) as unknown as [Array<{ sms_2fa_enabled: number }>, unknown];
+
+            if (smsRows?.[0]?.sms_2fa_enabled) {
+              // Clear any stale pending SMS challenges for this user, then insert fresh one
+              const { randomBytes } = await import('node:crypto');
+              const { createHash } = await import('node:crypto');
+              const challengeId = randomBytes(18).toString('hex');
+              const tokenRaw = randomBytes(32).toString('hex');
+              const tokenHash = createHash('sha256').update(tokenRaw).digest('hex');
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+              await db.execute(
+                sql`DELETE FROM pending_2fa_challenges WHERE user_id = ${userId} AND method = 'sms'`
+              );
+              await db.execute(
+                sql`INSERT INTO pending_2fa_challenges (id, user_id, token_hash, method, expires_at)
+                    VALUES (${challengeId}, ${userId}, ${tokenHash}, 'sms', ${expiresAt})`
+              );
+
+              void logActivity({
+                eventType: 'login_sms_2fa_required',
+                success: false,
+                userId,
+                email: email ?? null,
+                ipAddress: ip,
+                userAgent: ua,
+                reason: 'SMS 2FA challenge required',
+              });
+
+              // Return the same shape the BetterAuth twoFactor plugin returns
+              // so the client's consumeTwoFactorRedirect() handler fires correctly.
+              // We forward the Set-Cookie headers from BetterAuth so the session
+              // cookie is still set — the client needs it to call /api/me/2fa/sms/send.
+              const setCookies = webResponse.headers.getSetCookie?.() ?? [];
+              if (setCookies.length) {
+                res.setHeader('Set-Cookie', setCookies);
+              }
+              res.status(200).json({ twoFactorRedirect: true, twoFactorMethods: ['sms'] });
+              return;
+            }
+          } catch {
+            // DB error checking SMS 2FA — fail safe: allow login rather than
+            // permanently locking out users if the check itself fails.
+          }
+        }
+        // ── End SMS 2FA intercept ──────────────────────────────────────────────
+
         if (userId) {
           void recordLoginEvent(userId);
           void logActivity({

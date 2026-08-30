@@ -202,7 +202,18 @@ export default function LoginPage() {
       // Check if the twoFactor plugin signalled a redirect.
       // consumeTwoFactorRedirect() reads and clears the module-level handoff
       // variable set by the onTwoFactorRedirect callback inside the SDK.
-      const twoFaRedirect = consumeTwoFactorRedirect();
+      // Also check result.data directly — our SMS 2FA intercept in auth-middleware
+      // returns { twoFactorRedirect: true, twoFactorMethods: ['sms'] } which the
+      // BetterAuth SDK should trigger the callback for, but we check both paths
+      // to be safe.
+      const twoFaRedirect = consumeTwoFactorRedirect() ?? (() => {
+        const d = result?.data as Record<string, unknown> | undefined;
+        if (d?.twoFactorRedirect === true) {
+          const methods = (d.twoFactorMethods as string[] | undefined) ?? [];
+          return { needs2FA: true as const, methods };
+        }
+        return null;
+      })();
 
       if (twoFaRedirect) {
         const methods = twoFaRedirect.methods ?? [];

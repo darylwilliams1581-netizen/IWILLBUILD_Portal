@@ -1225,8 +1225,31 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
     // ── Session guard ────────────────────────────────────────────────────────
     // The official BetterAuth twoFactor plugin handles 2FA at the sign-in level:
     // no authenticated session is created until the second factor succeeds.
-    // The custom checkPending2fa guard is no longer needed for TOTP.
-    // SMS 2FA still uses the custom pending_2fa_challenges path separately.
+    // For SMS 2FA: we keep the session alive but insert a pending_2fa_challenges
+    // row. Block all protected routes until that row is cleared by a successful
+    // SMS verify. Allow /api/me/2fa/sms/* through so the challenge can be completed.
+    if (req.path.startsWith('/me/2fa/sms/') || req.path.startsWith('/me/2fa/status')) {
+      return next();
+    }
+    try {
+      const userId = session.user.id;
+      const [pendingRows] = await db.execute(
+        sql`SELECT id FROM pending_2fa_challenges
+            WHERE user_id = ${userId}
+              AND method = 'sms'
+              AND expires_at > NOW()
+            LIMIT 1`
+      ) as unknown as [Array<{ id: string }>, unknown];
+
+      if (pendingRows?.length) {
+        return res.status(401).json({
+          error: 'SMS 2FA verification required',
+          code: 'SMS_2FA_PENDING',
+        });
+      }
+    } catch {
+      // DB error — fail open (don't block legitimate users due to a DB hiccup)
+    }
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorised' });

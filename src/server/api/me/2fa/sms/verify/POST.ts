@@ -97,6 +97,11 @@ export default async function handler(req: Request, res: Response) {
       sql`UPDATE sms_verification_codes SET verified_at = ${now} WHERE id = ${row.id}`,
     );
 
+    // Clear the pending SMS 2FA challenge so the auth guard unblocks this session
+    await db.execute(
+      sql`DELETE FROM pending_2fa_challenges WHERE user_id = ${userId} AND method = 'sms'`
+    );
+
     return res.json({ ok: true });
   } catch (err) {
     console.error('[2fa/sms/verify] error (details redacted)');
