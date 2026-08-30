@@ -2211,7 +2211,7 @@ async function runStartupMigrations() {
     },
     {
       name: 'sms_verification_codes',
-      ddl: "CREATE TABLE IF NOT EXISTS sms_verification_codes (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
+      ddl: "CREATE TABLE IF NOT EXISTS sms_verification_codes (id VARCHAR(36) NOT NULL PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, phone VARCHAR(30) NOT NULL DEFAULT '', expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, verified_at DATETIME NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
     },
     {
       name: 'bug_reports',
@@ -3238,6 +3238,26 @@ if (!process.env.VITEST) {
       console.error('[recovery-email] migration fatal:', e)
     )
   );
+  // Fix sms_verification_codes.id: live DB was created with INT AUTO_INCREMENT
+  // but the Drizzle schema and insert code use VARCHAR(36). Repair in-place.
+  void (async () => {
+    try {
+      const [[row]] = await db.execute(sql.raw(
+        "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sms_verification_codes' AND COLUMN_NAME = 'id'"
+      )) as unknown as [[{ DATA_TYPE: string } | undefined]];
+      if (row && row.DATA_TYPE?.toLowerCase() !== 'varchar') {
+        // Truncate first (INT rows are incompatible with VARCHAR(36) primary key)
+        await db.execute(sql.raw("TRUNCATE TABLE `sms_verification_codes`"));
+        await db.execute(sql.raw(
+          "ALTER TABLE `sms_verification_codes` MODIFY COLUMN `id` VARCHAR(36) NOT NULL"
+        ));
+        console.log('[startup-migration] sms_verification_codes.id repaired: INT → VARCHAR(36)');
+      }
+    } catch (e) {
+      console.warn('[startup-migration] sms_verification_codes.id repair skipped:', (e as Error)?.message?.slice(0, 120));
+    }
+  })();
 }
 
 // ── DB connection keep-alive ──────────────────────────────────────────────────
