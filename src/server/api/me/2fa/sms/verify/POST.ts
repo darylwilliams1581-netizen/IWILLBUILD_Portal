@@ -28,16 +28,26 @@ function hashCode(code: string): string {
   return createHash('sha256').update(code).digest('hex');
 }
 
+/** Safe diagnostic logger — never logs code, token, hash, or phone. */
+function diagLog(reqId: string, step: string, fields: Record<string, unknown> = {}) {
+  console.info(JSON.stringify({ event: 'sms.verify.diag', reqId, step, ...fields, ts: Date.now() }));
+}
+
 export default async function handler(req: Request, res: Response) {
+  const reqId = randomBytes(6).toString('hex');
   try {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
                || req.socket.remoteAddress || 'unknown';
+
+    diagLog(reqId, 'received', { ip: ip.slice(0, 8) + '…', hasBody: !!req.body });
 
     let userId: string | null = null;
     let isLoginFlow = false;
 
     // ── Auth path 1: challenge token (login flow — no session yet) ──────────
     const challengeToken = req.headers['x-sms-challenge-token'] as string | undefined;
+    const tokenPresent = !!(challengeToken?.trim());
+    diagLog(reqId, 'token_check', { tokenPresent });
     if (challengeToken?.trim()) {
       const tokenHash = createHash('sha256').update(challengeToken.trim()).digest('hex');
       const [challengeRows] = await db.execute(
@@ -50,6 +60,9 @@ export default async function handler(req: Request, res: Response) {
       if (challengeRows?.[0]?.user_id) {
         userId = challengeRows[0].user_id;
         isLoginFlow = true;
+        diagLog(reqId, 'challenge_found', { isLoginFlow });
+      } else {
+        diagLog(reqId, 'challenge_not_found');
       }
     }
 
@@ -66,9 +79,13 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    if (!userId) return res.status(401).json({ error: 'Unauthorised' });
+    if (!userId) {
+      diagLog(reqId, 'auth_failed');
+      return res.status(401).json({ error: 'Unauthorised' });
+    }
 
     if (!check2faRate(ip, userId)) {
+      diagLog(reqId, 'rate_limited');
       return res.status(429).json({ error: 'Too many attempts. Please wait before trying again.' });
     }
 
@@ -164,13 +181,16 @@ export default async function handler(req: Request, res: Response) {
           ...(isPreview ? ['Partitioned'] : []),
         ];
         res.setHeader('Set-Cookie', cookieParts.join('; '));
+        diagLog(reqId, 'session_created', { isPreview, sessionId: sessionId.slice(0, 8) + '…' });
       } catch (sessionErr) {
         console.error('[2fa/sms/verify] session creation failed after successful verify');
+        diagLog(reqId, 'session_creation_failed');
         // Still return ok:true — client will redirect to /login and the user
         // can log in again (code is marked used so no replay is possible).
       }
     }
 
+    diagLog(reqId, 'success', { isLoginFlow });
     return res.json({ ok: true });
   } catch (err) {
     console.error('[2fa/sms/verify] error (details redacted)');

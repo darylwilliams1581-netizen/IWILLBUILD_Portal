@@ -437,6 +437,12 @@ export default function LoginPage() {
     try {
       if (tfa2Method === 'sms') {
         // SMS 2FA still uses the custom endpoint (separate from the official TOTP plugin)
+        console.info(JSON.stringify({
+          event: 'login.sms.verify.attempt',
+          hasToken: !!smsChallengeTokenRef.current,
+          codeLen: tfaToken.length,
+          ts: Date.now(),
+        }));
         const res = await fetch('/api/me/2fa/sms/verify', {
           method: 'POST',
           headers: {
@@ -449,6 +455,13 @@ export default function LoginPage() {
           body: JSON.stringify({ token: tfaToken, code: tfaToken }),
         });
         const d = (await res.json()) as { ok?: boolean; error?: string };
+        console.info(JSON.stringify({
+          event: 'login.sms.verify.response',
+          status: res.status,
+          ok: d.ok,
+          hasError: !!d.error,
+          ts: Date.now(),
+        }));
         if (!res.ok || !d.ok) {
           setTfaToken(''); // clear input so user can type fresh digits
           setError(d.error ?? 'Invalid code. Please try again.');
