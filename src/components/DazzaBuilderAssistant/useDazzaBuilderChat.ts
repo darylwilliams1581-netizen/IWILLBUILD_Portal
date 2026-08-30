@@ -3,6 +3,7 @@
  * Manages SSE streaming, conversation state, proposed changes, and apply/undo.
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { nanoid } from 'nanoid';
 import type {
   BuilderContext,
@@ -20,6 +21,7 @@ interface UseDazzaBuilderChatOptions {
 }
 
 export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuilderChatOptions) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<AssistantPhase>('idle');
   const [phaseLabel, setPhaseLabel] = useState('');
@@ -182,7 +184,8 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
   }, []);
 
   const applyChange = useCallback(async (change: ProposedChange) => {
-    if (!builderContext.templateId || isApplying) return;
+    // Allow apply when templateId is null — the server will create the template.
+    if (isApplying) return;
     setIsApplying(true);
     setPhase('applying');
     setPhaseLabel('Applying changes…');
@@ -194,7 +197,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          templateId: builderContext.templateId,
+          templateId: builderContext.templateId,   // may be null — server handles it
           builderType: builderContext.builderType,
           operations: change.operations,
           instructionSummary: change.summary,
@@ -202,26 +205,45 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         }),
       });
 
-      const data = await resp.json();
+      const data = await resp.json() as {
+        ok: boolean;
+        error?: string;
+        versionId?: string;
+        versionNumber?: number;
+        newTemplateId?: number;
+        newTemplateName?: string;
+      };
       if (!resp.ok || !data.ok) {
         throw new Error(data.error ?? `Apply failed (${resp.status})`);
       }
 
       setPendingChange(null);
       setPhase('complete');
+
+      // If a new template was created, navigate to it.
+      if (data.newTemplateId) {
+        const label = data.newTemplateName ? `"${data.newTemplateName}"` : 'new template';
+        setPhaseLabel(`Created ${label} — opening…`);
+        onApplied?.(data.versionId ?? '', data.versionNumber ?? 1);
+        setTimeout(() => {
+          navigate(`/studio/builder/${data.newTemplateId}`);
+        }, 800);
+        return;
+      }
+
       setPhaseLabel(`Version ${data.versionNumber} saved`);
 
       // Update version list
       setVersions(prev => [{
-        id: data.versionId,
-        versionNumber: data.versionNumber,
+        id: data.versionId ?? '',
+        versionNumber: data.versionNumber ?? 1,
         instructionSummary: change.summary,
         operationsCount: change.operations.length,
         validationResult: 'valid',
         createdAt: new Date().toISOString(),
       }, ...prev]);
 
-      onApplied?.(data.versionId, data.versionNumber);
+      onApplied?.(data.versionId ?? '', data.versionNumber ?? 1);
       setTimeout(() => { setPhase('idle'); setPhaseLabel(''); }, 2000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -231,7 +253,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
     } finally {
       setIsApplying(false);
     }
-  }, [builderContext.templateId, builderContext.builderType, isApplying, onApplied]);
+  }, [builderContext.templateId, builderContext.builderType, isApplying, onApplied, navigate]);
 
   const undoChange = useCallback(() => {
     setPendingChange(null);

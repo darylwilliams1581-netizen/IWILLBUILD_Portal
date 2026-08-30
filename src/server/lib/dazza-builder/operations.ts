@@ -26,12 +26,18 @@ export const VALID_FIELD_TYPES = new Set([
   'conditional',
 ]);
 
+/**
+ * createNewTemplate is valid for BOTH builder types.
+ * It must be the FIRST operation in the batch when templateId is null.
+ * The apply endpoint creates the template row and threads the new ID through
+ * all subsequent operations in the same batch.
+ */
 export const VALID_DOCUMENT_OPS = new Set([
-  'addBlock', 'updateBlock', 'moveBlock', 'removeBlock', 'updateTemplateSettings',
+  'createNewTemplate', 'addBlock', 'updateBlock', 'moveBlock', 'removeBlock', 'updateTemplateSettings',
 ]);
 
 export const VALID_FORM_OPS = new Set([
-  'addField', 'updateField', 'moveField', 'removeField', 'addSection', 'updateTemplateSettings',
+  'createNewTemplate', 'addField', 'updateField', 'moveField', 'removeField', 'addSection', 'updateTemplateSettings',
 ]);
 
 // ── Validation ────────────────────────────────────────────────────────────────

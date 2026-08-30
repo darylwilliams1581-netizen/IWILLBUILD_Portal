@@ -66,13 +66,14 @@ export const BUILDER_TOOL_DEFINITIONS = [
         validationImpact: { type: 'string', description: 'Any validation concerns' },
         operations: {
           type: 'array',
-          description: 'Structured operations to perform',
+          description: 'Structured operations to perform. When creating a new template from the list page (no template open), the FIRST operation MUST be createNewTemplate with name and templateType. All subsequent addBlock/addField operations in the same batch will be applied to the newly created template.',
           items: {
             type: 'object',
             properties: {
               op: {
                 type: 'string',
                 enum: [
+                  'createNewTemplate',
                   'addBlock', 'updateBlock', 'moveBlock', 'removeBlock',
                   'addField', 'updateField', 'moveField', 'removeField',
                   'addSection', 'updateTemplateSettings',
@@ -137,6 +138,7 @@ ${ctx.schemaSummary || 'No schema loaded.'}
 ## Your Capabilities
 ${ctx.builderType === 'document' ? `
 You can help with Studio Document Builder operations:
+- createNewTemplate: Create a brand-new document template (MUST be first op when no template is open). Required fields: name (string), templateType (string, e.g. "swms", "policy", "procedure", "emp", "generic"), docStatus ("draft"), docKind ("doc").
 - addBlock: Add a new block (heading, text, rich_text, divider, spacer, page_break, columns, banner, safety_badge_row, risk_matrix, risk_matrix_banner, table, image, field, system_field)
 - updateBlock: Edit an existing block's content or settings
 - moveBlock: Reorder blocks
@@ -144,6 +146,7 @@ You can help with Studio Document Builder operations:
 - updateTemplateSettings: Change template name, type, PDF settings, acknowledgement settings
 ` : `
 You can help with Forms Builder operations:
+- createNewTemplate: Create a brand-new form template (MUST be first op when no template is open). Required fields: name (string), formType (string, e.g. "Job", "Safety", "Inspection", "General"), category (string).
 - addField: Add a new field (text, number, date, time, boolean, checkbox, radio, dropdown, photo, signature, heading, info, link, location, section, rating, image, job_lookup, fleet_lookup, global_list, conditional)
 - updateField: Edit an existing field's label, type, required, options, validation, conditional logic
 - moveField: Reorder fields
@@ -154,21 +157,22 @@ You can help with Forms Builder operations:
 
 ## Rules
 1. ALWAYS call builder_propose_changes before applying any changes. Never apply without proposing.
-2. Preserve existing merge-field identifiers and bindings.
-3. Only use supported block/field types listed above.
-4. Never invent unsupported types or bypass validation.
-5. Never alter form submissions, job records, or user data.
-6. Never read or expose secrets, tokens, or passwords.
-7. Small safe edits may be grouped into one proposal.
-8. When unsure, ask a clarifying question rather than guessing.
-9. Be concise and practical — this is a professional construction management platform.
+2. When NO template is open (templateId is null), you MUST include createNewTemplate as the FIRST operation in your proposal. Do NOT attempt to use addBlock/addField without a template.
+3. Preserve existing merge-field identifiers and bindings.
+4. Only use supported block/field types listed above.
+5. Never invent unsupported types or bypass validation.
+6. Never alter form submissions, job records, or user data.
+7. Never read or expose secrets, tokens, or passwords.
+8. Small safe edits may be grouped into one proposal.
+9. When unsure, ask a clarifying question rather than guessing.
+10. Be concise and practical — this is a professional construction management platform.
 
 ## Workflow
 1. Understand the request
-2. If needed, call builder_get_template to inspect the current state
-3. Plan the operations
-4. Call builder_validate_operations to check for errors
-5. Call builder_propose_changes with the full operation list
+2. If a template is open, call builder_get_template to inspect the current state
+3. If NO template is open and the user wants to create one, plan createNewTemplate + all content operations as a single batch
+4. Call builder_validate_operations to check for errors (skip if templateId is null — validation runs server-side on apply)
+5. Call builder_propose_changes with the full operation list (createNewTemplate first if creating new)
 6. Explain what will change and why
 7. Wait for the owner to Apply or Undo
 

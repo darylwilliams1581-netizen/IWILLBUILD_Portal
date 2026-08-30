@@ -7,6 +7,8 @@
  * - validateOperations runs before any DB mutation.
  * - Template ID is passed from the authenticated request, not from AI output.
  * - Owner user ID is from the authenticated session, not from the request body.
+ * - When templateId is null, the first op must be createNewTemplate — enforced
+ *   both here and in the POST handler.
  */
 import type { BuilderApplyRequest, BuilderApplyResult } from './types.js';
 import { validateOperations } from './operations.js';
@@ -19,8 +21,14 @@ export async function applyBuilderOperations(
 ): Promise<BuilderApplyResult> {
   const { templateId, builderType, operations, instructionSummary, conversationId } = req;
 
-  // Validate ALL operations before any mutation — partial groups roll back completely
-  const validationErrors = validateOperations(operations, builderType);
+  // Validate ALL operations before any mutation.
+  // Skip createNewTemplate from the type-check — it's valid for both builder types
+  // and is handled by the adapters directly.
+  const opsToValidate = operations.filter(op => op.op !== 'createNewTemplate');
+  const validationErrors = opsToValidate.length > 0
+    ? validateOperations(opsToValidate, builderType)
+    : [];
+
   if (validationErrors.length > 0) {
     return {
       ok: false, versionId: '', versionNumber: 0,

@@ -7,6 +7,13 @@
  * - Only builder_json is mutated; no other columns are touched except name/template_type via updateTemplateSettings.
  * - Existing merge-field identifiers and block IDs are preserved unless explicitly targeted.
  * - Unknown blocks in the existing template are preserved (pass-through).
+ *
+ * CREATE-NEW FLOW:
+ * - When templateId is null, the first operation MUST be createNewTemplate.
+ * - The adapter inserts a new document_templates row and threads the new ID
+ *   through all subsequent operations in the same batch.
+ * - The response includes newTemplateId and newTemplateName so the client can
+ *   navigate to the new template.
  */
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
@@ -16,15 +23,55 @@ import { createBuilderVersion } from './versioning.js';
 import { auditBuilder } from './audit.js';
 
 export async function applyDocumentOperations(
-  templateId: number,
+  templateId: number | null,
   operations: BuilderOperation[],
   ownerUserId: string,
   instructionSummary: string,
   conversationId: string,
 ): Promise<BuilderApplyResult> {
-  // Load current template — server-side resolution, not from AI
+
+  // ── Create-new path ────────────────────────────────────────────────────────
+  let resolvedTemplateId = templateId;
+  let newTemplateName: string | undefined;
+
+  if (resolvedTemplateId === null) {
+    const createOp = operations[0];
+    if (!createOp || createOp.op !== 'createNewTemplate') {
+      return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'createNewTemplate must be the first operation when templateId is null' };
+    }
+
+    const name = String(createOp.name ?? 'Untitled Document').slice(0, 255);
+    const templateType = String(createOp.templateType ?? 'generic').slice(0, 100);
+    const docStatus = String(createOp.docStatus ?? 'draft').slice(0, 50);
+    const docKind = String(createOp.docKind ?? 'doc').slice(0, 50);
+    newTemplateName = name;
+
+    const emptyJson = JSON.stringify({ blocks: [], pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' }, theme: { backgroundColor: '#ffffff', accentColor: '#1e3a5f', textColor: '#1a1a1a', tableHeaderColor: '#1e3a5f', tableHeaderTextColor: '#ffffff' }, systemFields: [], sourceAttachments: [], requiresAcknowledgement: false, acknowledgementLabel: '', acknowledgementText: '' });
+
+    const insertResult = await db.execute(sql`
+      INSERT INTO document_templates
+        (name, template_type, doc_status, doc_kind, builder_json, created_at, updated_at)
+      VALUES
+        (${name}, ${templateType}, ${docStatus}, ${docKind}, ${emptyJson}, NOW(), NOW())
+    `);
+
+    const insertId = (insertResult as { insertId?: number | bigint }).insertId;
+    if (!insertId) {
+      return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Failed to create new template' };
+    }
+    resolvedTemplateId = Number(insertId);
+
+    // Remove the createNewTemplate op — remaining ops are applied to the new template.
+    operations = operations.slice(1);
+
+    void auditBuilder(ownerUserId, 'builder_create_document_template', {
+      newTemplateId: resolvedTemplateId, name, templateType, docStatus, docKind, conversationId,
+    });
+  }
+
+  // ── Load current template ──────────────────────────────────────────────────
   const rows = await db.execute(sql`
-    SELECT builder_json FROM document_templates WHERE id = ${templateId} LIMIT 1
+    SELECT builder_json FROM document_templates WHERE id = ${resolvedTemplateId} LIMIT 1
   `);
   const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
   if (!row) {
@@ -83,7 +130,7 @@ export async function applyDocumentOperations(
       case 'updateTemplateSettings': {
         if (op.name) {
           await db.execute(sql`
-            UPDATE document_templates SET name = ${String(op.name).slice(0, 255)} WHERE id = ${templateId}
+            UPDATE document_templates SET name = ${String(op.name).slice(0, 255)} WHERE id = ${resolvedTemplateId}
           `);
           applied++;
         }
@@ -96,7 +143,7 @@ export async function applyDocumentOperations(
 
   // Create version snapshot BEFORE persisting (so previous_snapshot is accurate)
   const { versionId, versionNumber } = await createBuilderVersion(
-    templateId, 'document', ownerUserId,
+    resolvedTemplateId, 'document', ownerUserId,
     previousSnapshot, newSnapshot,
     instructionSummary, operations, conversationId, 'valid',
   );
@@ -104,12 +151,15 @@ export async function applyDocumentOperations(
   // Persist updated builder_json
   await db.execute(sql`
     UPDATE document_templates SET builder_json = ${newSnapshot}, updated_at = NOW()
-    WHERE id = ${templateId}
+    WHERE id = ${resolvedTemplateId}
   `);
 
   void auditBuilder(ownerUserId, 'builder_apply_document', {
-    templateId, versionId, versionNumber, operationsApplied: applied, instructionSummary,
+    templateId: resolvedTemplateId, versionId, versionNumber, operationsApplied: applied, instructionSummary,
   });
 
-  return { ok: true, versionId, versionNumber, operationsApplied: applied, validationErrors: [] };
+  return {
+    ok: true, versionId, versionNumber, operationsApplied: applied, validationErrors: [],
+    ...(templateId === null ? { newTemplateId: resolvedTemplateId, newTemplateName } : {}),
+  };
 }

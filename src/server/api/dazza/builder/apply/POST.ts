@@ -25,14 +25,25 @@ export default async function handler(req: Request, res: Response) {
 
     const { templateId, builderType, operations, instructionSummary, conversationId } = req.body as Partial<BuilderApplyRequest>;
 
-    if (!templateId || typeof templateId !== 'number') return res.status(400).json({ error: 'templateId (number) required' });
+    // templateId may be null when creating a new template from the list page.
+    // The first operation must be createNewTemplate in that case.
+    if (templateId !== null && templateId !== undefined && typeof templateId !== 'number') {
+      return res.status(400).json({ error: 'templateId must be a number or null' });
+    }
     if (!builderType || !['document', 'form'].includes(builderType)) return res.status(400).json({ error: 'builderType must be "document" or "form"' });
     if (!Array.isArray(operations) || operations.length === 0) return res.status(400).json({ error: 'operations array required' });
     if (!instructionSummary?.trim()) return res.status(400).json({ error: 'instructionSummary required' });
     if (!conversationId?.trim()) return res.status(400).json({ error: 'conversationId required' });
 
+    // When templateId is null, the first op MUST be createNewTemplate.
+    if (templateId === null || templateId === undefined) {
+      if (operations[0]?.op !== 'createNewTemplate') {
+        return res.status(400).json({ error: 'When templateId is null, the first operation must be createNewTemplate' });
+      }
+    }
+
     const result = await applyBuilderOperations(
-      { templateId, builderType, operations, instructionSummary, conversationId },
+      { templateId: templateId ?? null, builderType, operations, instructionSummary, conversationId },
       ownerInfo.userId,
     );
 

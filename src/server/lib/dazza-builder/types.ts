@@ -30,7 +30,8 @@ export interface BuilderOperation {
 }
 
 export interface BuilderApplyRequest {
-  templateId: number;
+  /** Null when creating a brand-new template from the list page. */
+  templateId: number | null;
   builderType: BuilderType;
   operations: BuilderOperation[];
   instructionSummary: string;
@@ -44,6 +45,9 @@ export interface BuilderApplyResult {
   operationsApplied: number;
   validationErrors: string[];
   error?: string;
+  /** Set when a new template was created during apply. Client should navigate to it. */
+  newTemplateId?: number;
+  newTemplateName?: string;
 }
 
 export interface ProposedChange {
