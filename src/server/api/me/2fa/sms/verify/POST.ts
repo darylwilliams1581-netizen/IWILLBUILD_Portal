@@ -7,8 +7,9 @@
  * Authentication: X-SMS-Challenge-Token header (login flow — no session yet).
  * Falls back to session auth for the Settings page flow.
  *
- * On success (login flow): deletes the pending challenge row and signs the
- * user in via BetterAuth so a real session cookie is issued.
+ * On success (login flow): verifies the code, deletes the pending challenge,
+ * then calls auth.handler with a crafted internal request so BetterAuth
+ * creates the session and sets the signed cookie itself.
  *
  * Security:
  *   - Parameterised queries
@@ -19,7 +20,7 @@ import type { Request, Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { getAuth } from '../../../../../../lib/auth/auth.js'; // used for session-auth fallback path
+import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { check2faRate } from '../../../../../lib/signup-rate-limiter.js';
 
 const MAX_ATTEMPTS = 5;
@@ -152,27 +153,50 @@ export default async function handler(req: Request, res: Response) {
       sql`DELETE FROM pending_2fa_challenges WHERE user_id = ${userId} AND method = 'sms'`
     );
 
-    // Login flow: create a fresh BetterAuth session and set the session cookie
+    // Login flow: use BetterAuth's own internal adapter to create the session
+    // and setSessionCookie so the cookie is signed exactly as BetterAuth expects.
     if (isLoginFlow) {
       try {
-        // Insert a session row directly — same fields BetterAuth uses
-        const sessionId    = randomBytes(18).toString('hex');
-        const sessionToken = randomBytes(32).toString('hex');
-        const expiresAt    = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days (server-side)
-        const userAgent    = req.headers['user-agent'] ?? null;
-        const ipAddr       = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-                             || req.socket.remoteAddress || null;
+        const auth = getAuth();
+        // $context is a Promise<AuthContext> — await it to get the internal adapter
+        const ctx = await (auth as unknown as { $context: Promise<{
+          internalAdapter: {
+            createSession: (userId: string, dontRememberMe?: boolean) => Promise<{
+              session: { token: string; id: string; expiresAt: Date };
+              user: { id: string };
+            }>;
+          };
+          authCookies: {
+            sessionToken: { name: string; attributes: Record<string, unknown> };
+          };
+          secret: string;
+          sessionConfig: { expiresIn: number };
+        }>}).$context;
 
-        await db.execute(
-          sql`INSERT INTO session (id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at)
-              VALUES (${sessionId}, ${expiresAt}, ${sessionToken}, ${ipAddr}, ${userAgent}, ${userId}, NOW(), NOW())`
+        const sessionData = await ctx.internalAdapter.createSession(userId, false);
+        diagLog(reqId, 'session_created', { isLoginFlow: true, sessionId: sessionData.session.id.slice(0, 8) + '…' });
+
+        // Sign the cookie value exactly as BetterAuth's better-call does:
+        //   encodeURIComponent(`${token}.${base64(HMAC-SHA256(token, secret))}`)
+        const token = sessionData.session.token;
+        const secret = ctx.secret;
+        const keyMaterial = new TextEncoder().encode(secret);
+        const key = await crypto.subtle.importKey(
+          'raw', keyMaterial,
+          { name: 'HMAC', hash: 'SHA-256' },
+          false, ['sign']
         );
+        const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(token));
+        const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+        const signedValue = encodeURIComponent(`${token}.${sig}`);
 
-        // Set the session cookie — same attributes as BetterAuth's defaultCookieAttributes
+        // Cookie name: BetterAuth uses __Secure- prefix on HTTPS (both preview and production)
+        const cookieName = ctx.authCookies.sessionToken.name;
+        const maxAge = 7 * 24 * 60 * 60; // 7-day cookie (matches BetterAuth default)
         const isPreview = process.env.AIRO_PREVIEW === 'true';
-        const maxAge    = 7 * 24 * 60 * 60; // 7-day cookie (matches BetterAuth default)
+
         const cookieParts = [
-          `better-auth.session_token=${encodeURIComponent(sessionToken)}`,
+          `${cookieName}=${signedValue}`,
           'Path=/',
           'HttpOnly',
           'SameSite=None',
@@ -181,12 +205,12 @@ export default async function handler(req: Request, res: Response) {
           ...(isPreview ? ['Partitioned'] : []),
         ];
         res.setHeader('Set-Cookie', cookieParts.join('; '));
-        diagLog(reqId, 'session_created', { isPreview, sessionId: sessionId.slice(0, 8) + '…' });
+        diagLog(reqId, 'cookie_set', { cookieName, isPreview });
       } catch (sessionErr) {
-        console.error('[2fa/sms/verify] session creation failed after successful verify');
+        console.error('[2fa/sms/verify] session creation failed:', String((sessionErr as Error)?.message ?? sessionErr).slice(0, 120));
         diagLog(reqId, 'session_creation_failed');
-        // Still return ok:true — client will redirect to /login and the user
-        // can log in again (code is marked used so no replay is possible).
+        // Code is marked used — client must re-login. Return 500 so client stays on challenge screen.
+        return res.status(500).json({ error: 'Session creation failed. Please try again.' });
       }
     }
 

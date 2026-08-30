@@ -41,10 +41,24 @@ vi.mock('../lib/signup-rate-limiter.js', () => ({
   check2faRate: mockCheck2faRate,
 }));
 
-// BetterAuth getSession — returns null (no session) for the login flow
+// BetterAuth mock — getSession returns null (login flow); $context provides
+// a minimal internalAdapter so the session-creation path can be exercised.
+const mockCreateSession = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    session: { token: 'mock-token-abc', id: 'mock-session-id', expiresAt: new Date() },
+    user: { id: 'user-xyz' },
+  })
+);
+
 vi.mock('../../lib/auth/auth.js', () => ({
   getAuth: () => ({
     api: { getSession: vi.fn().mockResolvedValue(null) },
+    $context: Promise.resolve({
+      internalAdapter: { createSession: mockCreateSession },
+      authCookies: { sessionToken: { name: '__Secure-better-auth.session_token', attributes: {} } },
+      secret: 'test-secret',
+      sessionConfig: { expiresIn: 604800 },
+    }),
   }),
 }));
 
@@ -220,7 +234,7 @@ describe('POST /api/me/2fa/sms/verify — handler token validation', () => {
     // 2. sms_verification_codes lookup → active row with correct hash
     // 3. UPDATE verified_at
     // 4. DELETE pending_2fa_challenges
-    // 5. INSERT session
+    // (session INSERT is now handled by internalAdapter.createSession mock, not db.execute)
     mockDbExecute
       .mockResolvedValueOnce([[{ user_id: userId }], undefined])  // challenge lookup
       .mockResolvedValueOnce([[{                                   // code row
@@ -230,8 +244,7 @@ describe('POST /api/me/2fa/sms/verify — handler token validation', () => {
         verified_at: null,
       }], undefined])
       .mockResolvedValueOnce([[], undefined])  // UPDATE verified_at
-      .mockResolvedValueOnce([[], undefined])  // DELETE pending challenge
-      .mockResolvedValueOnce([[], undefined]); // INSERT session
+      .mockResolvedValueOnce([[], undefined]); // DELETE pending challenge
 
     const req = makeReq({
       headers: { 'x-sms-challenge-token': token },
