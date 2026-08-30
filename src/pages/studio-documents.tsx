@@ -19,6 +19,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
 import { studio } from 'virtual:content';
 import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 
@@ -858,5 +859,22 @@ export default function StudioDocumentsPage() {
 
       {/* Generate Job Report modal */}
       {showReportModal && <GenerateJobReportModal onClose={() => setShowReportModal(false)} />}
+
+      {/* Dazza Builder Assistant — floating on the documents list */}
+      <DazzaBuilderAssistant
+        builderContext={{
+          builderType: 'document',
+          templateId: null,
+          templateName: 'Documents',
+          templateType: 'list',
+          currentVersion: 0,
+          schemaSummary: 'Viewing the documents list — no template open.',
+          selectedId: null,
+          hasUnsavedChanges: false,
+          validationErrors: [],
+          isPreviewMode: false,
+        }}
+        onApplied={() => { void load(); }}
+      />
     </div>;
 }
