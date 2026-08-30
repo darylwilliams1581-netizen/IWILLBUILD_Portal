@@ -25,6 +25,20 @@ import { sql } from 'drizzle-orm';
 import { sendEmail } from '../email.js';
 import { APP_URL } from './app-url.js';
 
+// ── Safe execute helper ───────────────────────────────────────────────────────
+// Uses the sql tagged template for all parameterised writes. The Drizzle MySQL
+// dialect correctly generates one `?` per interpolation; this wrapper keeps
+// call sites clean and avoids repeating the cast boilerplate.
+async function exec(queryFn: () => ReturnType<typeof sql>): Promise<void> {
+  await db.execute(queryFn());
+}
+
+// SELECT variant — returns the rows array
+async function execRows<T = Record<string, unknown>>(queryFn: () => ReturnType<typeof sql>): Promise<T[]> {
+  const result = await db.execute(queryFn());
+  return ((result as { rows?: T[] }).rows ?? []) as T[];
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Days the old address remains active after a change is requested. */
@@ -100,18 +114,14 @@ export async function auditLog(params: {
   try {
     const masked   = params.email ? maskEmail(params.email) : null;
     const metaJson = params.metadata ? JSON.stringify(params.metadata) : null;
-    await db.execute(sql`
+    await exec(() => sql`
       INSERT INTO recovery_email_audit
         (user_id, event, masked_email, performed_by, ip_address, user_agent, metadata, created_at)
       VALUES (
-        ${params.userId},
-        ${params.event},
-        ${masked},
-        ${params.performedBy ?? null},
-        ${params.ipAddress ?? null},
+        ${params.userId}, ${params.event}, ${masked},
+        ${params.performedBy ?? null}, ${params.ipAddress ?? null},
         ${params.userAgent ? params.userAgent.slice(0, 500) : null},
-        ${metaJson},
-        NOW(3)
+        ${metaJson}, NOW(3)
       )
     `);
   } catch (err) {
@@ -131,7 +141,7 @@ export async function placeChangeBlock(userId: string, reason: BlockReason): Pro
   const id          = randomBytes(18).toString('hex');
   const blockedUntil = new Date(Date.now() + BLOCK_HOURS * 60 * 60 * 1000);
   try {
-    await db.execute(sql`
+    await exec(() => sql`
       INSERT INTO recovery_change_blocks (id, user_id, reason, blocked_until, created_at)
       VALUES (${id}, ${userId}, ${reason}, ${blockedUntil}, NOW(3))
     `);
@@ -144,14 +154,12 @@ export async function placeChangeBlock(userId: string, reason: BlockReason): Pro
  * Returns the earliest block expiry for a user, or null if unblocked.
  */
 export async function getActiveBlock(userId: string): Promise<Date | null> {
-  const rows = await db.execute(sql`
+  const rows = await execRows<{ until: Date | null }>(() => sql`
     SELECT MAX(blocked_until) AS until
     FROM recovery_change_blocks
-    WHERE user_id = ${userId}
-      AND blocked_until > NOW(3)
+    WHERE user_id = ${userId} AND blocked_until > NOW(3)
   `);
-  const row = (rows as { rows?: Array<{ until: Date | null }> }).rows?.[0];
-  return row?.until ?? null;
+  return rows[0]?.until ?? null;
 }
 
 // ── State helpers ─────────────────────────────────────────────────────────────
@@ -178,12 +186,11 @@ interface RecoveryState {
 }
 
 async function getState(userId: string): Promise<RecoveryState | null> {
-  const rows = await db.execute(sql`
+  const rows = await execRows<Record<string, unknown>>(() => sql`
     SELECT * FROM recovery_email_state WHERE user_id = ${userId} LIMIT 1
   `);
-  const raw = (rows as { rows?: unknown[] }).rows?.[0];
-  if (!raw) return null;
-  const r = raw as Record<string, unknown>;
+  const r = rows[0];
+  if (!r) return null;
   return {
     id:                   r['id'] as string,
     userId:               r['user_id'] as string,
@@ -266,7 +273,7 @@ export async function requestRecoveryEmailChange(params: {
   // 4. Upsert state row
   const stateId = existing?.id ?? randomBytes(18).toString('hex');
   if (existing) {
-    await db.execute(sql`
+    await exec(() => sql`
       UPDATE recovery_email_state SET
         proposed_email           = ${normalised},
         proposed_at              = ${now},
@@ -284,7 +291,7 @@ export async function requestRecoveryEmailChange(params: {
       WHERE user_id = ${userId}
     `);
   } else {
-    await db.execute(sql`
+    await exec(() => sql`
       INSERT INTO recovery_email_state (
         id, user_id,
         proposed_email, proposed_at,
@@ -348,15 +355,13 @@ export async function verifyRecoveryEmailToken(params: {
   const { token, ipAddress, userAgent } = params;
   const hash = hashToken(token);
 
-  const rows = await db.execute(sql`
-    SELECT * FROM recovery_email_state
-    WHERE verify_token_hash = ${hash}
-    LIMIT 1
+  const rows = await execRows<Record<string, unknown>>(() => sql`
+    SELECT * FROM recovery_email_state WHERE verify_token_hash = ${hash} LIMIT 1
   `);
-  const raw = (rows as { rows?: unknown[] }).rows?.[0];
+  const raw = rows[0];
   if (!raw) return { ok: false, code: 'NOT_FOUND' };
 
-  const state = raw as Record<string, unknown>;
+  const state = raw;
   const userId = state['user_id'] as string;
 
   if (state['frozen_at']) return { ok: false, code: 'FROZEN' };
@@ -366,7 +371,7 @@ export async function verifyRecoveryEmailToken(params: {
   if (!expiry || new Date() > expiry) return { ok: false, code: 'EXPIRED' };
 
   // Mark as verified — hold still applies
-  await db.execute(sql`
+  await exec(() => sql`
     UPDATE recovery_email_state
     SET proposed_verified_at = NOW(3), updated_at = NOW(3)
     WHERE user_id = ${userId}
@@ -394,21 +399,21 @@ async function activateProposed(userId: string, ipAddress?: string, userAgent?: 
 
   const newEmail = state.proposedEmail;
 
-  await db.execute(sql`
+  await exec(() => sql`
     UPDATE recovery_email_state SET
-      active_email          = ${newEmail},
-      active_verified_at    = NOW(3),
-      proposed_email        = NULL,
-      proposed_at           = NULL,
-      verify_token_hash     = NULL,
-      verify_token_expires_at = NULL,
-      proposed_verified_at  = NULL,
-      hold_expires_at       = NULL,
-      cancel_token_hash     = NULL,
-      cancel_token_expires_at = NULL,
-      freeze_token_hash     = NULL,
-      freeze_token_expires_at = NULL,
-      updated_at            = NOW(3)
+      active_email              = ${newEmail},
+      active_verified_at        = NOW(3),
+      proposed_email            = NULL,
+      proposed_at               = NULL,
+      verify_token_hash         = NULL,
+      verify_token_expires_at   = NULL,
+      proposed_verified_at      = NULL,
+      hold_expires_at           = NULL,
+      cancel_token_hash         = NULL,
+      cancel_token_expires_at   = NULL,
+      freeze_token_hash         = NULL,
+      freeze_token_expires_at   = NULL,
+      updated_at                = NOW(3)
     WHERE user_id = ${userId}
   `);
 
@@ -428,7 +433,7 @@ async function activateProposed(userId: string, ipAddress?: string, userAgent?: 
  * Activates any proposals where hold has expired and new owner has verified.
  */
 export async function activateMatureProposals(): Promise<void> {
-  const rows = await db.execute(sql`
+  const list = await execRows<{ user_id: string }>(() => sql`
     SELECT user_id FROM recovery_email_state
     WHERE proposed_email IS NOT NULL
       AND proposed_verified_at IS NOT NULL
@@ -436,7 +441,6 @@ export async function activateMatureProposals(): Promise<void> {
       AND hold_expires_at <= NOW(3)
       AND frozen_at IS NULL
   `);
-  const list = (rows as { rows?: Array<{ user_id: string }> }).rows ?? [];
   for (const row of list) {
     await activateProposed(row.user_id);
   }
@@ -456,15 +460,13 @@ export async function cancelRecoveryEmailChange(params: {
   const { token, ipAddress, userAgent } = params;
   const hash = hashToken(token);
 
-  const rows = await db.execute(sql`
-    SELECT * FROM recovery_email_state
-    WHERE cancel_token_hash = ${hash}
-    LIMIT 1
+  const rows = await execRows<Record<string, unknown>>(() => sql`
+    SELECT * FROM recovery_email_state WHERE cancel_token_hash = ${hash} LIMIT 1
   `);
-  const raw = (rows as { rows?: unknown[] }).rows?.[0];
+  const raw = rows[0];
   if (!raw) return { ok: false, code: 'NOT_FOUND' };
 
-  const state = raw as Record<string, unknown>;
+  const state = raw;
   const userId = state['user_id'] as string;
 
   if (!state['proposed_email']) return { ok: false, code: 'NO_PENDING' };
@@ -475,7 +477,7 @@ export async function cancelRecoveryEmailChange(params: {
 
   const cancelledEmail = state['proposed_email'] as string;
 
-  await db.execute(sql`
+  await exec(() => sql`
     UPDATE recovery_email_state SET
       proposed_email          = NULL,
       proposed_at             = NULL,
@@ -509,15 +511,13 @@ export async function freezeAccountViaToken(params: {
   const { token, ipAddress, userAgent } = params;
   const hash = hashToken(token);
 
-  const rows = await db.execute(sql`
-    SELECT * FROM recovery_email_state
-    WHERE freeze_token_hash = ${hash}
-    LIMIT 1
+  const rows = await execRows<Record<string, unknown>>(() => sql`
+    SELECT * FROM recovery_email_state WHERE freeze_token_hash = ${hash} LIMIT 1
   `);
-  const raw = (rows as { rows?: unknown[] }).rows?.[0];
+  const raw = rows[0];
   if (!raw) return { ok: false, code: 'NOT_FOUND' };
 
-  const state = raw as Record<string, unknown>;
+  const state = raw;
   const userId = state['user_id'] as string;
 
   if (state['frozen_at']) return { ok: false, code: 'ALREADY_FROZEN' };
@@ -526,18 +526,18 @@ export async function freezeAccountViaToken(params: {
   const expiry = state['freeze_token_expires_at'] as Date | null;
   if (!expiry || new Date() > expiry) return { ok: false, code: 'EXPIRED' };
 
-  await db.execute(sql`
+  await exec(() => sql`
     UPDATE recovery_email_state SET
-      frozen_at             = NOW(3),
-      frozen_reason         = 'old_owner_dispute',
-      freeze_token_used_at  = NOW(3),
-      proposed_email        = NULL,
-      proposed_at           = NULL,
-      verify_token_hash     = NULL,
+      frozen_at               = NOW(3),
+      frozen_reason           = 'old_owner_dispute',
+      freeze_token_used_at    = NOW(3),
+      proposed_email          = NULL,
+      proposed_at             = NULL,
+      verify_token_hash       = NULL,
       verify_token_expires_at = NULL,
-      proposed_verified_at  = NULL,
-      hold_expires_at       = NULL,
-      updated_at            = NOW(3)
+      proposed_verified_at    = NULL,
+      hold_expires_at         = NULL,
+      updated_at              = NOW(3)
     WHERE user_id = ${userId}
   `);
 
@@ -568,7 +568,7 @@ export async function adminFreezeAccount(params: {
   // Upsert state row if it doesn't exist yet
   const existing = await getState(userId);
   if (existing) {
-    await db.execute(sql`
+    await exec(() => sql`
       UPDATE recovery_email_state SET
         frozen_at     = NOW(3),
         frozen_reason = ${reason},
@@ -577,7 +577,7 @@ export async function adminFreezeAccount(params: {
     `);
   } else {
     const id = randomBytes(18).toString('hex');
-    await db.execute(sql`
+    await exec(() => sql`
       INSERT INTO recovery_email_state (id, user_id, frozen_at, frozen_reason, created_at, updated_at)
       VALUES (${id}, ${userId}, NOW(3), ${reason}, NOW(3), NOW(3))
     `);
@@ -598,9 +598,7 @@ export async function adminFreezeAccount(params: {
 
 async function revokeAllSessions(userId: string): Promise<void> {
   try {
-    await db.execute(sql`
-      DELETE FROM session WHERE user_id = ${userId}
-    `);
+    await exec(() => sql`DELETE FROM session WHERE user_id = ${userId}`);
   } catch (err) {
     console.error('[recovery-email] revokeAllSessions failed:', err instanceof Error ? err.message : String(err));
   }

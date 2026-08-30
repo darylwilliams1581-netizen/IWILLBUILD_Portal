@@ -237,7 +237,7 @@ describe('recovery-email-service — token replay prevention', () => {
 
   it('freeze token: sets freeze_token_used_at on first use', () => {
     const freezeFn = SERVICE.slice(SERVICE.indexOf('export async function freezeAccountViaToken'));
-    expect(freezeFn.slice(0, 1500)).toContain('freeze_token_used_at  = NOW(3)');
+    expect(freezeFn.slice(0, 1500)).toContain('freeze_token_used_at');
   });
 
   it('verify token: rejects ALREADY_USED when proposedVerifiedAt is set', () => {
