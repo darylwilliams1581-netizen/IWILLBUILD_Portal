@@ -15,6 +15,13 @@ export interface BuilderContext {
   hasUnsavedChanges: boolean;
   validationErrors: string[];
   isPreviewMode: boolean;
+  /**
+   * The canonical template ID from the URL route param (e.g. /studio/builder/71 → 71).
+   * Always a number when a real template is open; null on the list page or /new.
+   * Used as the authoritative templateId for apply when the Zustand store hasn't
+   * populated yet (storeTemplateId is still null on first render).
+   */
+  canonicalTemplateId: number | null;
 }
 
 export interface BuilderOperation {

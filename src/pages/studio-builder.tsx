@@ -152,20 +152,31 @@ export default function StudioBuilderPage() {
   const storeReqAck       = useDocumentStore(s => s.requiresAcknowledgement);
   const selectedBlockId   = useDocumentStore(s => s.selection?.blockId ?? null);
 
+  const loadTemplate = useDocumentStore(s => s.loadTemplate);
+
   const handleDazzaApplied = useCallback((versionId: string, versionNumber: number) => {
     setCurrentVersion(versionNumber);
-    // Reload the template from server so builder reflects applied changes
+    // Reload the template from server so builder reflects applied changes.
+    // Also call loadTemplate directly so the Zustand store updates immediately
+    // (isDirty → false, blocks updated) without waiting for a second render cycle.
     if (!isNew && id) {
       const numId = Number(id);
       if (numId) {
         fetch(`/api/document-templates/${numId}`, { credentials: 'include' })
           .then(r => r.json())
-          .then(data => { if (data.template) setTemplate(data.template); })
+          .then(data => {
+            if (data.template) {
+              setTemplate(data.template);
+              // Update the store directly so blocks appear immediately and
+              // isDirty/canUndo reflect the new state without a full remount.
+              loadTemplate(data.template);
+            }
+          })
           .catch(() => {});
       }
     }
     void versionId;
-  }, [isNew, id]);
+  }, [isNew, id, loadTemplate]);
 
   // Load existing template
   useEffect(() => {
@@ -263,6 +274,9 @@ export default function StudioBuilderPage() {
   // current document state (blocks, templateId, isDirty, etc.).
   // Fall back to the static template snapshot only when the store hasn't
   // loaded yet (templateId is null and we have a real template to load).
+  // canonicalTemplateId is always derived from the URL param — it is the
+  // authoritative ID used for apply when the store hasn't populated yet.
+  const canonicalTemplateId = isNew ? null : (Number(id) || null);
   const storeTemplateLoaded = storeTemplateId !== null || isNew;
   const storeSnapshot = {
     templateId:               storeTemplateId,
@@ -277,8 +291,8 @@ export default function StudioBuilderPage() {
     requiresAcknowledgement:  storeReqAck ?? false,
   };
   const dazzaContext = storeTemplateLoaded
-    ? buildDocumentBuilderContext(storeSnapshot, selectedBlockId, [], currentVersion)
-    : buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion);
+    ? buildDocumentBuilderContext(storeSnapshot, selectedBlockId, [], currentVersion, canonicalTemplateId)
+    : buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion, canonicalTemplateId);
 
   return <>
       <Helmet>

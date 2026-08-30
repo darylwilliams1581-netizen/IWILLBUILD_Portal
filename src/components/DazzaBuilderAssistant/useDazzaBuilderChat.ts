@@ -33,6 +33,10 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
   const conversationIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
+  // Guards against double-send (button click + Enter on same frame)
+  const sendingRef = useRef(false);
+  // Guards against double-apply (button click + keyboard on same frame)
+  const applyingRef = useRef(false);
 
   // Load version history when template changes
   useEffect(() => {
@@ -81,6 +85,9 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
 
   const sendMessage = useCallback(async (text: string, attachmentIds?: string[]) => {
     if (!text.trim() || phase === 'reading' || phase === 'planning' || phase === 'applying') return;
+    // Prevent double-send from simultaneous button click + Enter keydown
+    if (sendingRef.current) return;
+    sendingRef.current = true;
 
     setError(null);
     setPendingChange(null);
@@ -209,6 +216,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
     } finally {
       abortRef.current = null;
       streamingMsgIdRef.current = null;
+      sendingRef.current = false;
     }
   }, [phase, builderContext]);
 
@@ -218,28 +226,44 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
 
   const applyChange = useCallback(async (change: ProposedChange) => {
     if (isApplying) return;
+    // Prevent double-apply from simultaneous button click + keyboard activation
+    if (applyingRef.current) return;
+    applyingRef.current = true;
+
+    // ── Resolve the authoritative template ID ────────────────────────────────
+    // Use canonicalTemplateId (from the URL route param) as the ground truth
+    // when the Zustand store hasn't populated yet (templateId still null on
+    // first render). This prevents a null templateId being sent to the server
+    // when the user clicks Apply before the store's loadTemplate has run.
+    const effectiveTemplateId =
+      builderContext.templateId ??
+      builderContext.canonicalTemplateId ??
+      null;
 
     // ── Pre-flight validation ────────────────────────────────────────────────
     // Reject if the proposal was stamped for a different builder type.
     if (change.targetBuilderType !== builderContext.builderType) {
       setError(`Cannot apply: proposal targets "${change.targetBuilderType}" but current builder is "${builderContext.builderType}".`);
       setPhase('failed');
+      applyingRef.current = false;
       return;
     }
 
     // Reject if the proposal targets a specific template that no longer matches
     // the currently open template (e.g. user navigated away between propose and apply).
+    // Compare against effectiveTemplateId so a null store ID doesn't falsely block.
     if (
       change.targetTemplateId !== null &&
       change.targetTemplateId !== undefined &&
-      change.targetTemplateId !== builderContext.templateId
+      change.targetTemplateId !== effectiveTemplateId
     ) {
       setError(
         `Cannot apply: proposal targets template #${change.targetTemplateId} but ` +
-        `the currently open template is ${builderContext.templateId === null ? 'none' : `#${builderContext.templateId}`}. ` +
+        `the currently open template is ${effectiveTemplateId === null ? 'none' : `#${effectiveTemplateId}`}. ` +
         'Please re-run the request on the correct template.',
       );
       setPhase('failed');
+      applyingRef.current = false;
       return;
     }
 
@@ -250,6 +274,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
     ) {
       setError('Cannot apply: no template is open and the proposal does not include a createNewTemplate operation. Open or create a template first.');
       setPhase('failed');
+      applyingRef.current = false;
       return;
     }
 
@@ -264,7 +289,8 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          templateId: builderContext.templateId,   // may be null — server handles it
+          // Use effectiveTemplateId — never null when a real template is open
+          templateId: effectiveTemplateId,
           builderType: builderContext.builderType,
           operations: change.operations,
           instructionSummary: change.summary,
@@ -330,8 +356,9 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       ));
     } finally {
       setIsApplying(false);
+      applyingRef.current = false;
     }
-  }, [builderContext.templateId, builderContext.builderType, isApplying, onApplied, navigate]);
+  }, [builderContext.templateId, builderContext.canonicalTemplateId, builderContext.builderType, isApplying, onApplied, navigate]);
 
   const undoChange = useCallback(() => {
     setPendingChange(null);

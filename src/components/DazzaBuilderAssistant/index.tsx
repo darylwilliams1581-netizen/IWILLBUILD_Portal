@@ -170,6 +170,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
 
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
+    // Prevent double-send from simultaneous button click + Enter keydown on same frame
     const ids = pendingAttachments.map(a => a.id);
     sendMessage(inputText, ids.length ? ids : undefined);
     setInputText('');
@@ -427,6 +428,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
           <div className="flex flex-col gap-1.5 shrink-0">
             {isStreaming ? (
               <button
+                type="button"
                 onClick={stopStreaming}
                 title="Stop"
                 className="w-8 h-8 rounded-xl bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
@@ -435,8 +437,9 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleSend}
-                disabled={!inputText.trim() || isApplying}
+                disabled={!inputText.trim() || isApplying || isStreaming}
                 title="Send"
                 className="w-8 h-8 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white flex items-center justify-center transition-colors"
               >
@@ -444,6 +447,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
               </button>
             )}
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || pendingAttachments.length >= 4}
               title={isUploading ? 'Uploading…' : pendingAttachments.length >= 4 ? 'Max 4 attachments' : 'Attach reference file (.txt, .md, .json, .docx)'}
@@ -472,11 +476,17 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
         animate={{ width: 380, opacity: 1 }}
         exit={{ width: 0, opacity: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="h-full border-l border-border overflow-hidden shrink-0 z-[60] relative"
-        style={{ width: 380 }}
+        // Do NOT use overflow-hidden on the motion wrapper — it clips buttons
+        // during the width animation and makes them unclickable (pointer events
+        // are blocked by the clipping rect even though z-index is correct).
+        // The inner fixed-width div handles visual clipping instead.
+        className="h-full border-l border-border shrink-0 z-[60] relative"
+        style={{ minWidth: 0 }}
         data-testid="dazza-builder-sidebar"
       >
-        {panelContent}
+        <div className="h-full w-[380px] overflow-hidden">
+          {panelContent}
+        </div>
       </motion.div>
     );
   }

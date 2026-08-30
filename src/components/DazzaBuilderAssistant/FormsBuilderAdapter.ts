@@ -52,6 +52,7 @@ export function buildFormsBuilderContext(
   currentVersion: number,
   hasUnsavedChanges = false,
   validationErrors: string[] = [],
+  canonicalTemplateId: number | null = null,
 ): BuilderContext {
   return {
     builderType: 'form',
@@ -64,5 +65,6 @@ export function buildFormsBuilderContext(
     hasUnsavedChanges,
     validationErrors,
     isPreviewMode: false,
+    canonicalTemplateId: canonicalTemplateId ?? template?.id ?? null,
   };
 }

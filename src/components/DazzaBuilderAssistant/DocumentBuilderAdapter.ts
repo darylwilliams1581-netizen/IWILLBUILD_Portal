@@ -55,6 +55,7 @@ export function buildDocumentBuilderContext(
   selectedBlockId: string | null,
   validationErrors: string[],
   currentVersion: number,
+  canonicalTemplateId: number | null = null,
 ): BuilderContext {
   return {
     builderType: 'document',
@@ -67,6 +68,8 @@ export function buildDocumentBuilderContext(
     hasUnsavedChanges: snapshot.isDirty,
     validationErrors,
     isPreviewMode: snapshot.mode === 'use',
+    // Canonical ID from the URL route — authoritative when store templateId is null
+    canonicalTemplateId: canonicalTemplateId ?? snapshot.templateId,
   };
 }
 
@@ -77,6 +80,7 @@ export function buildDocumentBuilderContext(
 export function buildDocumentBuilderContextFromTemplate(
   template: DocumentTemplate | null,
   currentVersion: number,
+  canonicalTemplateId: number | null = null,
 ): BuilderContext {
   if (!template) {
     return {
@@ -90,6 +94,7 @@ export function buildDocumentBuilderContextFromTemplate(
       hasUnsavedChanges: false,
       validationErrors: [],
       isPreviewMode: false,
+      canonicalTemplateId: null,
     };
   }
 
@@ -116,5 +121,6 @@ export function buildDocumentBuilderContextFromTemplate(
     hasUnsavedChanges: false,
     validationErrors: [],
     isPreviewMode: false,
+    canonicalTemplateId: canonicalTemplateId ?? template.id ?? null,
   };
 }

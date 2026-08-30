@@ -16,13 +16,17 @@ interface Props {
 
 /**
  * Returns a human-readable reason why Apply should be blocked, or null if it's safe.
+ * Uses canonicalTemplateId (from URL route) as the authoritative open-template ID
+ * so a null store templateId doesn't falsely block a valid proposal.
  */
 function getApplyBlockReason(change: ProposedChange, ctx: BuilderContext): string | null {
   if (change.targetBuilderType !== ctx.builderType) {
     return `Proposal targets "${change.targetBuilderType}" builder but current builder is "${ctx.builderType}".`;
   }
-  if (change.targetTemplateId !== null && change.targetTemplateId !== ctx.templateId) {
-    return `Proposal targets template #${change.targetTemplateId} but template #${ctx.templateId ?? 'none'} is open. Re-run the request.`;
+  // Effective open template ID: prefer store value, fall back to canonical route ID
+  const effectiveId = ctx.templateId ?? ctx.canonicalTemplateId ?? null;
+  if (change.targetTemplateId !== null && change.targetTemplateId !== effectiveId) {
+    return `Proposal targets template #${change.targetTemplateId} but template #${effectiveId ?? 'none'} is open. Re-run the request.`;
   }
   if (change.targetTemplateId === null && change.operations[0]?.op !== 'createNewTemplate') {
     return 'No template is open and the proposal has no createNewTemplate operation. Open a template first.';
@@ -101,6 +105,7 @@ export default function ProposedChangeCard({ change, builderContext, onApply, on
       {/* Actions */}
       <div className="px-3 py-2 flex gap-2 border-t border-violet-200">
         <button
+          type="button"
           onClick={() => onApply(change)}
           disabled={isApplying || isBlocked}
           title={isBlocked ? blockReason ?? undefined : undefined}
@@ -110,6 +115,7 @@ export default function ProposedChangeCard({ change, builderContext, onApply, on
           {isApplying ? 'Applying…' : isBlocked ? 'Cannot Apply' : 'Apply'}
         </button>
         <button
+          type="button"
           onClick={onUndo}
           disabled={isApplying}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-violet-200 hover:bg-violet-50 disabled:opacity-50 text-violet-700 text-xs font-semibold transition-colors"
