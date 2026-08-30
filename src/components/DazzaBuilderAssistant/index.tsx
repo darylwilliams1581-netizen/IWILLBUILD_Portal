@@ -106,7 +106,7 @@ function ContextLabel({ ctx }: { ctx: BuilderContext }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpenChange }: Props) {
-  const { isOwner, loading: permLoading } = usePermissions();
+  const { isPlatformOwner, loading: permLoading } = usePermissions();
 
   // Panel state
   const [isOpen, setIsOpen] = useState(() => {
@@ -177,7 +177,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
   const isStreaming = phase === 'reading' || phase === 'planning';
 
   // Don't render for non-owners
-  if (permLoading || !isOwner) return null;
+  if (permLoading || !isPlatformOwner) return null;
 
   // ── FAB (when closed) ──────────────────────────────────────────────────────
   if (!isOpen) {
