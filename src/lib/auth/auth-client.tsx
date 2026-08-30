@@ -76,6 +76,7 @@ function getAuthBaseURL(): string {
 interface TwoFactorRedirectContext {
   needs2FA: true;
   methods: string[];
+  smsChallengeToken?: string;
 }
 
 let _pendingTwoFactorRedirect: TwoFactorRedirectContext | null = null;
@@ -85,6 +86,9 @@ function storeTwoFactorRedirect(twoFactorMethods?: string[]): void {
   _pendingTwoFactorRedirect = {
     needs2FA: true,
     methods: twoFactorMethods ?? [],
+    // smsChallengeToken is patched in by the smsChallengeCapture fetchPlugin
+    // which runs its onSuccess hook before the twoFactorClient plugin does.
+    smsChallengeToken: _pendingTwoFactorRedirect?.smsChallengeToken,
   };
 }
 
@@ -98,6 +102,31 @@ export function consumeTwoFactorRedirect(): TwoFactorRedirectContext | null {
 const _authClient = createAuthClient({
   baseURL: getAuthBaseURL(),
   plugins: [
+    // ── SMS challenge token capture ──────────────────────────────────────────
+    // The twoFactorClient plugin's onTwoFactorRedirect callback only forwards
+    // twoFactorMethods — not the full context.data. This custom plugin uses the
+    // same fetchPlugins shape as twoFactorClient and runs first (plugins are
+    // processed in order), stashing smsChallengeToken so storeTwoFactorRedirect()
+    // can pick it up when the twoFactorClient plugin fires next.
+    {
+      id: 'sms-challenge-capture',
+      fetchPlugins: [{
+        id: 'sms-challenge-capture',
+        name: 'SMS Challenge Token Capture',
+        hooks: {
+          async onSuccess(context: { data?: Record<string, unknown> }) {
+            const token = context.data?.smsChallengeToken as string | undefined;
+            if (token) {
+              _pendingTwoFactorRedirect = {
+                needs2FA: true,
+                methods: [],
+                smsChallengeToken: token,
+              };
+            }
+          },
+        },
+      }],
+    },
     twoFactorClient({
       onTwoFactorRedirect({ twoFactorMethods }) {
         storeTwoFactorRedirect(twoFactorMethods);

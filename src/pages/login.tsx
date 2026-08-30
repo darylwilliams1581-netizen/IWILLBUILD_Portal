@@ -199,24 +199,14 @@ export default function LoginPage() {
       // can intercept the response. The twoFactorClient plugin's onTwoFactorRedirect
       // callback fires when the server returns twoFactorRedirect:true, storing the
       // redirect context in the module-level handoff variable for us to read below.
-      // signIn.email with an onSuccess hook to capture smsChallengeToken from
-      // the raw response data before the SDK's twoFactorClient plugin processes
-      // it (the plugin only forwards twoFactorMethods to onTwoFactorRedirect,
-      // not the full data object, so we must read it here).
-      const result = await signIn.email(
-        { email, password },
-        {
-          onSuccess(ctx) {
-            const data = ctx.data as Record<string, unknown> | undefined;
-            const token = data?.smsChallengeToken as string | undefined;
-            if (token) smsChallengeTokenRef.current = token;
-          },
-        }
-      );
+      // signIn.email — the smsChallengeCapture fetchPlugin in auth-client.tsx
+      // captures smsChallengeToken from context.data before the twoFactorClient
+      // plugin fires, so consumeTwoFactorRedirect() returns it alongside methods.
+      const result = await signIn.email({ email, password });
 
       // Always extract smsChallengeToken from result.data as a final fallback —
-      // the onSuccess hook above is the primary path, but result.data may also
-      // carry it in some SDK versions.
+      // covers the case where the SDK doesn't fire onSuccess (e.g. network error
+      // path) but still returns data.
       const rawData = result?.data as Record<string, unknown> | undefined;
       if (!smsChallengeTokenRef.current) {
         const smsToken = rawData?.smsChallengeToken as string | undefined;
@@ -224,12 +214,8 @@ export default function LoginPage() {
       }
 
       // Check if the twoFactor plugin signalled a redirect.
-      // consumeTwoFactorRedirect() reads and clears the module-level handoff
-      // variable set by the onTwoFactorRedirect callback inside the SDK.
-      // Also check result.data directly — our SMS 2FA intercept in auth-middleware
-      // returns { twoFactorRedirect: true, twoFactorMethods: ['sms'] } which the
-      // BetterAuth SDK should trigger the callback for, but we check both paths
-      // to be safe.
+      // consumeTwoFactorRedirect() returns the context including smsChallengeToken
+      // captured by the smsChallengeCapture fetchPlugin in auth-client.tsx.
       const twoFaRedirect = consumeTwoFactorRedirect() ?? (() => {
         if (rawData?.twoFactorRedirect === true) {
           const methods = (rawData.twoFactorMethods as string[] | undefined) ?? [];
@@ -237,6 +223,12 @@ export default function LoginPage() {
         }
         return null;
       })();
+
+      // Extract smsChallengeToken from the redirect context (primary path)
+      if (twoFaRedirect && 'smsChallengeToken' in twoFaRedirect) {
+        const t = (twoFaRedirect as { smsChallengeToken?: string }).smsChallengeToken;
+        if (t) smsChallengeTokenRef.current = t;
+      }
 
       if (twoFaRedirect) {
         const methods = twoFaRedirect.methods ?? [];
