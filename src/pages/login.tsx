@@ -63,6 +63,8 @@ export default function LoginPage() {
   // Backup-code mode — separate input so the user can switch without clearing the TOTP field
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [backupCodeInput, setBackupCodeInput] = useState('');
+  // Guard against duplicate submissions (InputOTP auto-submits on 6th digit)
+  const submittingRef = useRef(false);
 
   // Unverified email state — shown instead of generic error
   const [unverified, setUnverified] = useState(false);
@@ -398,6 +400,65 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
+  // ── Extracted async verification — called only from handle2FA ───────────────
+  async function verifyTwoFactorCode(code: string): Promise<void> {
+    if (tfa2Method === 'sms') {
+      console.info(JSON.stringify({ event: 'login.2fa.fetch_start', method: 'sms', hasToken: !!smsChallengeTokenRef.current, ts: Date.now() }));
+      const res = await fetch('/api/me/2fa/sms/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(smsChallengeTokenRef.current
+            ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+            : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ code }),
+      });
+      console.info(JSON.stringify({ event: 'login.2fa.fetch_response', status: res.status, ts: Date.now() }));
+      const d = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) {
+        setTfaToken('');
+        setError(d.error ?? 'Invalid code. Please try again.');
+        return;
+      }
+      console.info(JSON.stringify({ event: 'login.2fa.verify_success', method: 'sms', ts: Date.now() }));
+      const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+      const BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+      const dest = isNativeApp
+        ? '/home'
+        : rawFrom.startsWith('/') && !BLOCKLIST.some(b => rawFrom.startsWith(b))
+          ? rawFrom
+          : '/home';
+      console.info(JSON.stringify({ event: 'login.2fa.redirect', dest, native: isNativeApp, ts: Date.now() }));
+      if (isNativeApp) {
+        navigate(dest, { replace: true });
+      } else {
+        window.location.replace(dest);
+      }
+      return;
+    }
+
+    // TOTP path
+    console.info(JSON.stringify({ event: 'login.2fa.fetch_start', method: 'totp', ts: Date.now() }));
+    const result = await authClient.twoFactor.verifyTotp({ code });
+    console.info(JSON.stringify({ event: 'login.2fa.fetch_response', hasError: !!result?.error, ts: Date.now() }));
+    if (result?.error) {
+      setError(result.error.message ?? 'Invalid code. Please try again.');
+      return;
+    }
+    console.info(JSON.stringify({ event: 'login.2fa.verify_success', method: 'totp', ts: Date.now() }));
+    const rawFrom2fa = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+    const BLOCKLIST_TOTP = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+    const dest2fa = isNativeApp
+      ? '/home'
+      : rawFrom2fa.startsWith('/') && !BLOCKLIST_TOTP.some(b => rawFrom2fa.startsWith(b))
+        ? rawFrom2fa
+        : '/home';
+    console.info(JSON.stringify({ event: 'login.2fa.redirect', dest: dest2fa, native: isNativeApp, ts: Date.now() }));
+    navigate(dest2fa, { replace: true });
+  }
+
   async function handle2FA(e: React.FormEvent) {
     e.preventDefault();
 
@@ -408,8 +469,6 @@ export default function LoginPage() {
       setError('');
       setTfaLoading(true);
       try {
-        // Official BetterAuth plugin: POST /api/auth/two-factor/verify-backup-code
-        // This is a dedicated endpoint — backup codes must NOT be sent to verifyTotp.
         const result = await authClient.twoFactor.verifyBackupCode({ code });
         if (result?.error) {
           setError(result.error.message ?? 'Invalid backup code. Please try again.');
@@ -428,86 +487,32 @@ export default function LoginPage() {
     }
 
     // ── TOTP / SMS path ────────────────────────────────────────────────────
-    if (tfaToken.length !== 6) {
+    const code = tfaToken;
+    console.info(JSON.stringify({ event: 'login.2fa.submit_entered', codeLen: code.length, ts: Date.now() }));
+
+    if (code.length !== 6) {
       setError('Enter the 6-digit code.');
       return;
     }
+
+    // Prevent duplicate submissions — InputOTP can fire both onComplete and form submit
+    if (submittingRef.current) {
+      console.info(JSON.stringify({ event: 'login.2fa.duplicate_blocked', ts: Date.now() }));
+      return;
+    }
+    submittingRef.current = true;
+
+    console.info(JSON.stringify({ event: 'login.2fa.token_state', hasToken: !!smsChallengeTokenRef.current, method: tfa2Method, ts: Date.now() }));
+
     setError('');
     setTfaLoading(true);
     try {
-      if (tfa2Method === 'sms') {
-        // SMS 2FA still uses the custom endpoint (separate from the official TOTP plugin)
-        console.info(JSON.stringify({
-          event: 'login.sms.verify.attempt',
-          hasToken: !!smsChallengeTokenRef.current,
-          codeLen: tfaToken.length,
-          ts: Date.now(),
-        }));
-        const res = await fetch('/api/me/2fa/sms/verify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(smsChallengeTokenRef.current
-              ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
-              : {}),
-          },
-          credentials: 'include',
-          body: JSON.stringify({ token: tfaToken, code: tfaToken }),
-        });
-        const d = (await res.json()) as { ok?: boolean; error?: string };
-        console.info(JSON.stringify({
-          event: 'login.sms.verify.response',
-          status: res.status,
-          ok: d.ok,
-          hasError: !!d.error,
-          ts: Date.now(),
-        }));
-        if (!res.ok || !d.ok) {
-          setTfaToken(''); // clear input so user can type fresh digits
-          setError(d.error ?? 'Invalid code. Please try again.');
-          return;
-        }
-        // SMS verify sets a Set-Cookie header on the response.
-        // React Router's navigate() is a client-side transition and does NOT
-        // trigger a full page reload, so the auth context never picks up the
-        // new session cookie — the app sees no session and bounces back to /login.
-        // window.location.replace() forces a full reload that reads the cookie.
-        const rawFrom2faSms = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
-        const SAFE_BLOCKLIST_SMS = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-        const from2faSms = isNativeApp
-          ? '/home'
-          : rawFrom2faSms.startsWith('/') && !SAFE_BLOCKLIST_SMS.some(b => rawFrom2faSms.startsWith(b))
-            ? rawFrom2faSms
-            : '/home';
-        if (isNativeApp) {
-          navigate(from2faSms, { replace: true });
-        } else {
-          window.location.replace(from2faSms);
-        }
-        return;
-      } else {
-        // TOTP: use the official BetterAuth twoFactor plugin endpoint
-        const result = await authClient.twoFactor.verifyTotp({ code: tfaToken });
-        if (result?.error) {
-          const msg = result.error.message ?? 'Invalid code. Please try again.';
-          setError(msg);
-          return;
-        }
-      }
-      const rawFrom2fa = (location.state as {
-        from?: {
-          pathname: string;
-        };
-      })?.from?.pathname || '/home';
-      const SAFE_BLOCKLIST_2FA = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from2fa = isNativeApp ? '/home' : rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some(b => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/home';
-      navigate(from2fa, {
-        replace: true
-      });
+      await verifyTwoFactorCode(code);
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
       setTfaLoading(false);
+      submittingRef.current = false;
     }
   }
   async function handleSmsResend() {
@@ -681,7 +686,22 @@ export default function LoginPage() {
                   />
                 ) : (
                   /* ── TOTP / SMS OTP input ── */
-                  <InputOTP maxLength={6} value={tfaToken} onChange={setTfaToken} autoFocus>
+                  <InputOTP
+                    maxLength={6}
+                    value={tfaToken}
+                    onChange={setTfaToken}
+                    autoFocus
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      // Prevent InputOTP from triggering a native form submission
+                      // on Enter — let the form's onSubmit handle it instead.
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (tfaToken.length === 6 && !submittingRef.current) {
+                          void handle2FA(e as unknown as React.FormEvent);
+                        }
+                      }
+                    }}
+                  >
                     <InputOTPGroup>
                       <InputOTPSlot index={0} className="text-white border-white/20 bg-white/5" />
                       <InputOTPSlot index={1} className="text-white border-white/20 bg-white/5" />
