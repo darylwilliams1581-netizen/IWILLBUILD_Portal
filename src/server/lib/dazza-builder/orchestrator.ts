@@ -1,5 +1,6 @@
 /**
  * dazza-builder/orchestrator.ts
+ * ─────────────────────────────────────────────────────────────────────────────
  * Main streaming orchestrator for the Dazza Builder Assistant.
  *
  * SECURITY GUARANTEES:
@@ -11,6 +12,16 @@
  * 5. Tool results never include secrets, tokens, or passwords.
  * 6. Full audit trail via auditBuilder on every request and error.
  * 7. Conversation scoped by owner_user_id — no cross-user history leakage.
+ *
+ * TOOL-MESSAGE SEQUENCING GUARANTEE:
+ * - The in-memory messages array uses OAIMessage (the full OpenAI shape).
+ * - Assistant tool_calls messages are pushed with tool_calls as a top-level
+ *   field (not serialised into content).
+ * - Tool result messages are pushed immediately after their assistant message.
+ * - sanitiseHistory() removes any orphaned tool messages from persisted
+ *   history before the first request, preventing cross-request sequencing
+ *   errors.
+ * - Only plain user/assistant text turns are persisted to the DB.
  */
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
@@ -19,13 +30,35 @@ import { getSecret } from '#airo/secrets';
 import type { BuilderStreamOptions, BuilderOwnerContext, BuilderOperation, ProposedChange } from './types.js';
 import { BUILDER_TOOL_DEFINITIONS, TOOL_LABELS, buildSystemPrompt } from './context.js';
 import { validateOperations } from './operations.js';
-import { loadHistory, saveMessage } from './conversation.js';
+import type { OAIMessage, OAIToolCall } from './conversation.js';
+import { loadHistory, saveMessage, sanitiseHistory, CONTEXT_RECENT_TURNS } from './conversation.js';
 import { auditBuilder } from './audit.js';
 import { resolveAndExtractEvidence, buildUntrustedEvidenceBlock } from '../../lib/dazza-attachment-service.js';
 
 const TOOL_ROUNDS_MAX = 6;
 const MAX_TOKENS = 8000;
-const CONTEXT_RECENT_TURNS = 16;
+
+// ── Friendly error formatting ─────────────────────────────────────────────────
+
+/**
+ * Convert a raw OpenAI error response body into a single friendly message.
+ * Extracts the error.message field if present; otherwise returns a generic
+ * message with the HTTP status code.  Never exposes raw JSON to the client.
+ */
+function friendlyOpenAIError(status: number, rawText: string, requestId: string): string {
+  try {
+    const parsed = JSON.parse(rawText) as { error?: { message?: string; code?: string } };
+    const msg = parsed?.error?.message;
+    if (msg) {
+      // Sanitise: strip any internal IDs or stack traces from the message.
+      const safe = msg.replace(/org-[A-Za-z0-9]+/g, '[org]').slice(0, 300);
+      return `AI service error (ref: ${requestId}): ${safe}`;
+    }
+  } catch {
+    // Not JSON — fall through.
+  }
+  return `AI service returned an unexpected response (HTTP ${status}, ref: ${requestId}). Please try again.`;
+}
 
 // ── Tool executor ─────────────────────────────────────────────────────────────
 
@@ -55,7 +88,6 @@ async function executeBuilderTool(
           `);
           const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
           if (!row) return err('Template not found');
-          // Truncate builder_json for context — full JSON can be huge
           const builderJson = row.builder_json as string | null;
           const truncated = builderJson && builderJson.length > 8000
             ? builderJson.slice(0, 8000) + '…[truncated]'
@@ -151,7 +183,17 @@ async function executeBuilderTool(
 // ── Main stream function ──────────────────────────────────────────────────────
 
 export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promise<void> {
-  const { ownerContext, userMessage, builderContext, onToken, onToolCall, onStatus, onProposedChange, onDone, onError } = opts;
+  const {
+    ownerContext,
+    userMessage,
+    builderContext,
+    onToken,
+    onToolCall,
+    onStatus,
+    onProposedChange,
+    onDone,
+    onError,
+  } = opts;
 
   if (!ownerContext.isPlatformOwner) {
     onError('Owner access required.');
@@ -167,35 +209,52 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
 
   const conversationId = opts.conversationId ?? randomUUID();
   const isNew = !opts.conversationId;
-  const history = isNew ? [] : await loadHistory(conversationId, ownerContext.userId);
+
+  // Load persisted history (plain user/assistant text only) and sanitise it
+  // before use.  sanitiseHistory removes any orphaned tool messages that could
+  // have been introduced by legacy data or partial writes.
+  const rawHistory = isNew ? [] : await loadHistory(conversationId, ownerContext.userId);
+  const history = sanitiseHistory(rawHistory as OAIMessage[]);
 
   void auditBuilder(ownerContext.userId, 'builder_chat_request', {
-    conversationId, builderType: builderContext.builderType,
-    templateId: builderContext.templateId, messageLength: userMessage.length,
+    conversationId,
+    builderType: builderContext.builderType,
+    templateId: builderContext.templateId,
+    messageLength: userMessage.length,
   });
 
-  // ── Resolve attachments ──────────────────────────────────────────────────────
+  // ── Resolve attachments ──────────────────────────────────────────────────
   let effectiveUserMessage = userMessage;
   if (opts.attachmentIds?.length) {
     onStatus('reading', 'Reading attachments…');
-    const { evidence, errors } = await resolveAndExtractEvidence(opts.attachmentIds, ownerContext.userId);
+    const { evidence, errors } = await resolveAndExtractEvidence(
+      opts.attachmentIds,
+      ownerContext.userId,
+    );
     const evidenceBlock = buildUntrustedEvidenceBlock(evidence);
     if (evidenceBlock) {
       effectiveUserMessage = `${userMessage}\n\n${evidenceBlock}`;
     }
     if (errors.length) {
-      // Non-fatal — log but continue
-      void auditBuilder(ownerContext.userId, 'builder_attachment_errors', { conversationId, errors });
+      void auditBuilder(ownerContext.userId, 'builder_attachment_errors', {
+        conversationId,
+        errors,
+      });
     }
   }
 
-  const turnIndex = history.length;
+  // Persist the raw user message (without the evidence block — that's
+  // ephemeral context, not conversation history).
+  const turnIndex = history.filter((m) => m.role !== 'system').length;
   await saveMessage(conversationId, ownerContext.userId, 'user', userMessage, turnIndex);
 
   onStatus('reading', 'Reading context…');
 
   const systemPrompt = buildSystemPrompt(builderContext);
-  const messages: Array<{ role: string; content: string }> = [
+
+  // Build the messages array with the full OAIMessage type so tool_calls
+  // and tool result messages can be pushed without casts.
+  const messages: OAIMessage[] = [
     { role: 'system', content: systemPrompt },
     ...history.slice(-CONTEXT_RECENT_TURNS * 2),
     { role: 'user', content: effectiveUserMessage },
@@ -210,6 +269,8 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
     for (let round = 0; round < TOOL_ROUNDS_MAX; round++) {
       onStatus('planning', round === 0 ? 'Thinking…' : 'Continuing…');
 
+      const requestId = randomUUID().slice(0, 8);
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -219,7 +280,7 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
         body: JSON.stringify({
           model: 'gpt-4o',
           messages,
-          tools: BUILDER_TOOL_DEFINITIONS.map(t => ({
+          tools: BUILDER_TOOL_DEFINITIONS.map((t) => ({
             type: 'function',
             function: { name: t.name, description: t.description, parameters: t.parameters },
           })),
@@ -231,13 +292,17 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
 
       if (!response.ok) {
         const errText = await response.text();
-        onError(`OpenAI error: ${response.status} ${errText.slice(0, 200)}`);
+        onError(friendlyOpenAIError(response.status, errText, requestId), conversationId);
         return;
       }
 
       const reader = response.body?.getReader();
-      if (!reader) { onError('No response body'); return; }
+      if (!reader) {
+        onError(`No response body from AI service (ref: ${requestId}).`, conversationId);
+        return;
+      }
 
+      // ── Stream parsing ─────────────────────────────────────────────────
       let toolCallsThisRound: Array<{ id: string; name: string; argsRaw: string }> = [];
       let finishReason = '';
       const decoder = new TextDecoder();
@@ -254,7 +319,10 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
-          if (data === '[DONE]') { finishReason = finishReason || 'stop'; break; }
+          if (data === '[DONE]') {
+            finishReason = finishReason || 'stop';
+            break;
+          }
 
           let chunk: Record<string, unknown>;
           try { chunk = JSON.parse(data); } catch { continue; }
@@ -280,7 +348,9 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
             if (toolCallDeltas) {
               for (const tc of toolCallDeltas) {
                 const idx = Number(tc.index ?? 0);
-                if (!toolCallsThisRound[idx]) toolCallsThisRound[idx] = { id: '', name: '', argsRaw: '' };
+                if (!toolCallsThisRound[idx]) {
+                  toolCallsThisRound[idx] = { id: '', name: '', argsRaw: '' };
+                }
                 const fn = tc.function as Record<string, string> | undefined;
                 if (tc.id) toolCallsThisRound[idx].id = String(tc.id);
                 if (fn?.name) toolCallsThisRound[idx].name += fn.name;
@@ -291,12 +361,16 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
         }
       }
 
+      // No tool calls this round — we're done.
       if (toolCallsThisRound.length === 0 || finishReason === 'stop') break;
 
-      const toolResults: Array<{ role: string; tool_call_id: string; content: string }> = [];
+      // ── Execute tools ──────────────────────────────────────────────────
+      // Collect all results before pushing to messages so the assistant
+      // message and all its tool results are pushed atomically.
+      const toolResults: Array<{ role: 'tool'; tool_call_id: string; content: string }> = [];
 
       for (const tc of toolCallsThisRound) {
-        if (!tc.name) continue;
+        if (!tc.name || !tc.id) continue;
         toolsUsed.push(tc.name);
         onToolCall(tc.name, 'running');
         onStatus('applying', TOOL_LABELS[tc.name] ?? `Running ${tc.name}…`);
@@ -304,7 +378,7 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
         let args: Record<string, unknown> = {};
         try { args = JSON.parse(tc.argsRaw || '{}'); } catch { args = {}; }
 
-        // Special handling for propose_changes — emit to client
+        // Special handling for propose_changes — emit to client.
         if (tc.name === 'builder_propose_changes') {
           const proposed: ProposedChange = {
             summary: String(args.summary ?? ''),
@@ -322,23 +396,39 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
         toolResults.push({ role: 'tool', tool_call_id: tc.id, content: result });
       }
 
-      messages.push({
+      // ── Push assistant + tool results as an indivisible group ──────────
+      // The assistant message MUST have tool_calls as a top-level field
+      // (not serialised into content) so OpenAI can match the tool results.
+      const assistantMsg: OAIMessage = {
         role: 'assistant',
         content: assistantContent || null,
-        tool_calls: toolCallsThisRound.map(tc => ({
-          id: tc.id,
-          type: 'function',
-          function: { name: tc.name, arguments: tc.argsRaw },
-        })),
-      } as unknown as { role: string; content: string });
-      for (const tr of toolResults) messages.push(tr as { role: string; content: string });
+        tool_calls: toolCallsThisRound
+          .filter((tc) => tc.id && tc.name)
+          .map((tc): OAIToolCall => ({
+            id: tc.id,
+            type: 'function',
+            function: { name: tc.name, arguments: tc.argsRaw },
+          })),
+      };
+      messages.push(assistantMsg);
+      for (const tr of toolResults) {
+        messages.push(tr);
+      }
 
+      // Reset for next round.
       assistantContent = '';
       toolCallsThisRound = [];
     }
 
+    // Persist the final assistant text response (if any).
     if (assistantContent) {
-      await saveMessage(conversationId, ownerContext.userId, 'assistant', assistantContent, turnIndex + 1);
+      await saveMessage(
+        conversationId,
+        ownerContext.userId,
+        'assistant',
+        assistantContent,
+        turnIndex + 1,
+      );
     }
 
     onStatus('complete', 'Done');
@@ -347,6 +437,9 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     onError(msg, conversationId);
-    void auditBuilder(ownerContext.userId, 'builder_chat_error', { conversationId, error: msg });
+    void auditBuilder(ownerContext.userId, 'builder_chat_error', {
+      conversationId,
+      error: msg,
+    });
   }
 }
