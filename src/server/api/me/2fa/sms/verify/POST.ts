@@ -158,27 +158,29 @@ export default async function handler(req: Request, res: Response) {
     if (isLoginFlow) {
       try {
         const auth = getAuth();
-        // $context is a Promise<AuthContext> — await it to get the internal adapter
+        // $context is a Promise<AuthContext> — await it to get the internal adapter.
+        // createSession returns the session row directly: { id, token, userId, expiresAt, ... }
         const ctx = await (auth as unknown as { $context: Promise<{
           internalAdapter: {
-            createSession: (userId: string, dontRememberMe?: boolean) => Promise<{
-              session: { token: string; id: string; expiresAt: Date };
-              user: { id: string };
-            }>;
+            createSession: (userId: string, dontRememberMe?: boolean) => Promise<
+              Record<string, unknown>
+            >;
           };
           authCookies: {
             sessionToken: { name: string; attributes: Record<string, unknown> };
           };
           secret: string;
-          sessionConfig: { expiresIn: number };
         }>}).$context;
 
-        const sessionData = await ctx.internalAdapter.createSession(userId, false);
-        diagLog(reqId, 'session_created', { isLoginFlow: true, sessionId: sessionData.session.id.slice(0, 8) + '…' });
+        const sessionRow = await ctx.internalAdapter.createSession(userId, false);
+        if (!sessionRow?.token) {
+          throw new Error(`createSession returned no token (keys: ${Object.keys(sessionRow ?? {}).join(',')})`);
+        }
+        diagLog(reqId, 'session_created', { isLoginFlow: true, sessionId: String(sessionRow.id).slice(0, 8) + '…' });
 
         // Sign the cookie value exactly as BetterAuth's better-call does:
         //   encodeURIComponent(`${token}.${base64(HMAC-SHA256(token, secret))}`)
-        const token = sessionData.session.token;
+        const token = sessionRow.token as string;
         const secret = ctx.secret;
         const keyMaterial = new TextEncoder().encode(secret);
         const key = await crypto.subtle.importKey(

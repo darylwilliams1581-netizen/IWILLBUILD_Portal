@@ -43,10 +43,15 @@ vi.mock('../lib/signup-rate-limiter.js', () => ({
 
 // BetterAuth mock — getSession returns null (login flow); $context provides
 // a minimal internalAdapter so the session-creation path can be exercised.
+// createSession returns the session row directly (flat object), not { session, user }
 const mockCreateSession = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
-    session: { token: 'mock-token-abc', id: 'mock-session-id', expiresAt: new Date() },
-    user: { id: 'user-xyz' },
+    token: 'mock-token-abc',
+    id: 'mock-session-id',
+    userId: 'user-xyz',
+    expiresAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   })
 );
 
