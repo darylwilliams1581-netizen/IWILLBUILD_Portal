@@ -115,8 +115,13 @@ export default function SecurityTab() {
       // Returns { totpURI, backupCodes }. The secret is embedded in the URI.
       const result = await authClient.twoFactor.enable({ password: enablePw });
       if (result?.error) {
-        // Keep dialog open and show inline error
-        setEnableError(result.error.message ?? 'Incorrect password or setup failed.');
+        // Sanitise raw BetterAuth/Zod validation messages — never expose
+        // internal field paths like "[body.password] Invalid input: ..."
+        const raw = result.error.message ?? '';
+        const friendly = raw.startsWith('[body.')
+          ? 'Incorrect password. Please try again.'
+          : (raw || 'Incorrect password or setup failed.');
+        setEnableError(friendly);
         return;
       }
       const uri   = result?.data?.totpURI ?? '';
@@ -369,80 +374,80 @@ export default function SecurityTab() {
 
         {/* ── TOTP CONFIRM: password dialog before enable ── */}
         {phase === 'totp-confirm' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5">
-              {/* Dialog header */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-violet-50 border border-violet-200 rounded-xl flex items-center justify-center shrink-0">
-                    <ShieldCheck size={18} className="text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">Confirm your password</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Required to set up two-factor authentication.</p>
-                  </div>
+          /* Inline card — same flow as all other phases; avoids fixed-position
+             clipping inside the Settings sheet's overflow/stacking context. */
+          <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-50 border border-violet-200 rounded-xl flex items-center justify-center shrink-0">
+                  <ShieldCheck size={18} className="text-primary" />
                 </div>
-                <button
-                  onClick={() => { setPhase('disabled'); setEnablePw(''); setEnableError(''); }}
-                  className="text-slate-400 hover:text-slate-600 transition-colors mt-0.5 shrink-0"
-                  aria-label="Cancel"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Inline error inside dialog */}
-              {enableError && (
-                <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
-                  <AlertCircle size={13} className="shrink-0" />{enableError}
-                </div>
-              )}
-
-              {/* Password field */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Current Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showEnablePw ? 'text' : 'password'}
-                    value={enablePw}
-                    onChange={e => setEnablePw(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') void confirmAndEnable(); }}
-                    placeholder="Your account password"
-                    autoFocus
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowEnablePw(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    tabIndex={-1}
-                  >
-                    {showEnablePw ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">Confirm your password</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Required to set up two-factor authentication.</p>
                 </div>
               </div>
+              <button
+                onClick={() => { setPhase('disabled'); setEnablePw(''); setEnableError(''); }}
+                className="text-slate-400 hover:text-slate-600 transition-colors mt-0.5 shrink-0"
+                aria-label="Cancel"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-              {/* Dialog actions */}
-              <div className="flex gap-3">
+            {/* Inline error */}
+            {enableError && (
+              <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                <AlertCircle size={13} className="shrink-0" />{enableError}
+              </div>
+            )}
+
+            {/* Password field */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showEnablePw ? 'text' : 'password'}
+                  value={enablePw}
+                  onChange={e => setEnablePw(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') void confirmAndEnable(); }}
+                  placeholder="Your account password"
+                  autoFocus
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
                 <button
-                  onClick={() => { setPhase('disabled'); setEnablePw(''); setEnableError(''); }}
-                  className="flex-1 border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                  type="button"
+                  onClick={() => setShowEnablePw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  tabIndex={-1}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => void confirmAndEnable()}
-                  disabled={enableBusy || !enablePw.trim()}
-                  className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {enableBusy
-                    ? <><Loader2 size={14} className="animate-spin" />Setting up…</>
-                    : <><ShieldCheck size={14} />Continue</>
-                  }
+                  {showEnablePw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setPhase('disabled'); setEnablePw(''); setEnableError(''); }}
+                className="flex-1 border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void confirmAndEnable()}
+                disabled={enableBusy || !enablePw.trim()}
+                className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {enableBusy
+                  ? <><Loader2 size={14} className="animate-spin" />Setting up…</>
+                  : <><ShieldCheck size={14} />Continue</>
+                }
+              </button>
             </div>
           </div>
         )}

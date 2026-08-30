@@ -73,7 +73,7 @@ export default async function handler(req: Request, res: Response) {
     const masked = e164.replace(/\d(?=\d{4})/g, '*');
     return res.json({ ok: true, maskedPhone: masked });
   } catch (err) {
-    console.error('[2fa/sms/send-setup] error (details redacted)');
+    console.error('[2fa/sms/send-setup] error:', err instanceof Error ? err.message : String(err));
     return res.status(500).json({ error: 'Failed to send setup code.' });
   }
 }
