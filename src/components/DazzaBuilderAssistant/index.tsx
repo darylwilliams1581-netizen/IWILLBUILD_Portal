@@ -12,13 +12,13 @@
  * usePermissions). All API calls enforce server-side owner auth.
  */
 import {
-  useState, useRef, useEffect, useCallback, KeyboardEvent,
+  useState, useRef, useEffect, useCallback, KeyboardEvent, ChangeEvent,
 } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bot, X, ChevronRight, ChevronLeft, Send, Square,
   Paperclip, Trash2, AlertCircle, ChevronUp, ChevronDown,
-  FileText, ClipboardList,
+  FileText, ClipboardList, Loader2,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useDazzaBuilderChat } from './useDazzaBuilderChat';
@@ -121,6 +121,11 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pending attachments (uploaded but not yet sent)
+  const [pendingAttachments, setPendingAttachments] = useState<Array<{ id: string; name: string }>>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const {
     messages, phase, phaseLabel, pendingChange, isApplying,
     versions, error, sendMessage, stopStreaming, applyChange,
@@ -163,9 +168,40 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
 
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
-    sendMessage(inputText);
+    const ids = pendingAttachments.map(a => a.id);
+    sendMessage(inputText, ids.length ? ids : undefined);
     setInputText('');
-  }, [inputText, sendMessage]);
+    setPendingAttachments([]);
+    setUploadError(null);
+  }, [inputText, pendingAttachments, sendMessage]);
+
+  const handleFileChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so the same file can be re-selected
+    e.target.value = '';
+    setUploadError(null);
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const resp = await fetch('/api/dazza/attachments/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setUploadError(data.message ?? 'Upload failed');
+        return;
+      }
+      setPendingAttachments(prev => [...prev, { id: data.attachmentId, name: data.safeFilename }]);
+    } catch {
+      setUploadError('Upload failed — please try again');
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -325,6 +361,31 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
 
       {/* Input area */}
       <div className="px-3 py-2.5 border-t border-border shrink-0">
+        {/* Pending attachment chips */}
+        {pendingAttachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {pendingAttachments.map(att => (
+              <div key={att.id} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 text-xs text-violet-700 max-w-[180px]">
+                <Paperclip size={10} className="shrink-0" />
+                <span className="truncate">{att.name}</span>
+                <button
+                  onClick={() => setPendingAttachments(prev => prev.filter(a => a.id !== att.id))}
+                  className="shrink-0 hover:text-red-500 transition-colors ml-0.5"
+                  title="Remove attachment"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Upload error */}
+        {uploadError && (
+          <div className="flex items-center gap-1.5 mb-2 text-xs text-red-600">
+            <AlertCircle size={11} />
+            <span>{uploadError}</span>
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
@@ -359,22 +420,20 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
             )}
             <button
               onClick={() => fileInputRef.current?.click()}
-              title="Attach reference file"
-              className="w-8 h-8 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
+              disabled={isUploading || pendingAttachments.length >= 4}
+              title={isUploading ? 'Uploading…' : pendingAttachments.length >= 4 ? 'Max 4 attachments' : 'Attach reference file (.txt, .md, .json)'}
+              className="w-8 h-8 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors disabled:opacity-40"
             >
-              <Paperclip size={13} />
+              {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Paperclip size={13} />}
             </button>
           </div>
         </div>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
+          accept=".txt,.md,.json"
           className="hidden"
-          onChange={() => {
-            // Attachment upload handled via existing /api/dazza/attachments/upload
-            // TODO: wire up in follow-up
-          }}
+          onChange={handleFileChange}
         />
       </div>
     </div>

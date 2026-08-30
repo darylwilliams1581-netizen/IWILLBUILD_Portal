@@ -33,10 +33,11 @@ export default async function handler(req: Request, res: Response) {
     if (!ownerInfo) return res.status(401).json({ error: 'Unauthorised' });
     if (!ownerInfo.isPlatformOwner) return res.status(403).json({ error: 'Owner access required.' });
 
-    const { message, conversationId, builderContext } = req.body as {
+    const { message, conversationId, builderContext, attachmentIds } = req.body as {
       message?: string;
       conversationId?: string;
       builderContext?: BuilderContext;
+      attachmentIds?: string[];
     };
 
     if (!message?.trim()) return res.status(400).json({ error: 'message is required' });
@@ -62,6 +63,7 @@ export default async function handler(req: Request, res: Response) {
       conversationId: conversationId ?? null,
       userMessage: message.trim(),
       builderContext,
+      attachmentIds: Array.isArray(attachmentIds) ? attachmentIds.slice(0, 4) : undefined,
       onToken: (token) => sseWrite(res, { type: 'token', content: token }),
       onToolCall: (name, status) => sseWrite(res, { type: 'tool_call', name, status }),
       onStatus: (phase, label) => sseWrite(res, { type: 'status', phase, label }),

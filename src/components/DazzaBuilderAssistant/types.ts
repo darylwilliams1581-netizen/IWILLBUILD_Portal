@@ -47,6 +47,8 @@ export interface ChatMessage {
   timestamp: number;
   proposedChange?: ProposedChange;
   appliedVersionId?: string;
+  attachmentIds?: string[];
+  attachmentNames?: string[];
 }
 
 export interface AssistantVersion {

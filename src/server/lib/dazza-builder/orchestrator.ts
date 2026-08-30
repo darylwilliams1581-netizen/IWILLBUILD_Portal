@@ -21,6 +21,7 @@ import { BUILDER_TOOL_DEFINITIONS, TOOL_LABELS, buildSystemPrompt } from './cont
 import { validateOperations } from './operations.js';
 import { loadHistory, saveMessage } from './conversation.js';
 import { auditBuilder } from './audit.js';
+import { resolveAndExtractEvidence, buildUntrustedEvidenceBlock } from '../../lib/dazza-attachment-service.js';
 
 const TOOL_ROUNDS_MAX = 6;
 const MAX_TOKENS = 8000;
@@ -173,6 +174,21 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
     templateId: builderContext.templateId, messageLength: userMessage.length,
   });
 
+  // ── Resolve attachments ──────────────────────────────────────────────────────
+  let effectiveUserMessage = userMessage;
+  if (opts.attachmentIds?.length) {
+    onStatus('reading', 'Reading attachments…');
+    const { evidence, errors } = await resolveAndExtractEvidence(opts.attachmentIds, ownerContext.userId);
+    const evidenceBlock = buildUntrustedEvidenceBlock(evidence);
+    if (evidenceBlock) {
+      effectiveUserMessage = `${userMessage}\n\n${evidenceBlock}`;
+    }
+    if (errors.length) {
+      // Non-fatal — log but continue
+      void auditBuilder(ownerContext.userId, 'builder_attachment_errors', { conversationId, errors });
+    }
+  }
+
   const turnIndex = history.length;
   await saveMessage(conversationId, ownerContext.userId, 'user', userMessage, turnIndex);
 
@@ -182,7 +198,7 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
   const messages: Array<{ role: string; content: string }> = [
     { role: 'system', content: systemPrompt },
     ...history.slice(-CONTEXT_RECENT_TURNS * 2),
-    { role: 'user', content: userMessage },
+    { role: 'user', content: effectiveUserMessage },
   ];
 
   let toolsUsed: string[] = [];

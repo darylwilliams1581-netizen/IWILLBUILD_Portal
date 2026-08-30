@@ -44,7 +44,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       .catch(() => {});
   }, [builderContext.templateId, builderContext.builderType]);
 
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, attachmentIds?: string[]) => {
     if (!text.trim() || phase === 'reading' || phase === 'planning' || phase === 'applying') return;
 
     setError(null);
@@ -55,6 +55,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       role: 'user',
       content: text.trim(),
       timestamp: Date.now(),
+      attachmentIds: attachmentIds?.length ? attachmentIds : undefined,
     };
     setMessages(prev => [...prev, userMsg]);
 
@@ -84,6 +85,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
           message: text.trim(),
           conversationId: conversationIdRef.current,
           builderContext,
+          attachmentIds: attachmentIds?.length ? attachmentIds : undefined,
         }),
       });
 

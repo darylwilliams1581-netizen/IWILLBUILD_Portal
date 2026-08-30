@@ -60,7 +60,7 @@ export interface BuilderStreamOptions {
   conversationId: string | null;
   userMessage: string;
   builderContext: BuilderContext;
-  attachmentId?: string;
+  attachmentIds?: string[];
   onToken: (token: string) => void;
   onToolCall: (name: string, status: 'running' | 'done') => void;
   onStatus: (phase: string, label: string) => void;
