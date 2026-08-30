@@ -185,7 +185,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
       return (
         <button
           onClick={handleOpen}
-          className="fixed bottom-20 right-4 z-40 w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-blue-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center safe-bottom"
+          className="fixed bottom-20 right-4 z-[60] w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-blue-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center safe-bottom"
           aria-label="Open Dazza Builder Assistant"
         >
           <Bot size={20} className="text-white" />
@@ -197,7 +197,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
     return (
       <button
         onClick={handleOpen}
-        className="fixed top-1/2 -translate-y-1/2 right-0 z-40 flex flex-col items-center gap-1.5 px-1.5 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-l-xl shadow-lg transition-colors"
+        className="fixed top-1/2 -translate-y-1/2 right-0 z-[60] flex flex-col items-center gap-1.5 px-1.5 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-l-xl shadow-lg transition-colors"
         aria-label="Open Dazza Builder Assistant"
         style={{ writingMode: 'vertical-rl' }}
       >
@@ -402,7 +402,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
       <>
         {/* Backdrop */}
         <div
-          className="fixed inset-0 z-40 bg-black/20"
+          className="fixed inset-0 z-[59] bg-black/20"
           onClick={handleClose}
           aria-hidden="true"
         />
@@ -411,7 +411,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ duration: 0.25, ease: 'easeOut' as const }}
-          className="fixed top-0 right-0 bottom-0 z-50 w-[380px] max-w-[90vw] shadow-2xl"
+          className="fixed top-0 right-0 bottom-0 z-[60] w-[380px] max-w-[90vw] shadow-2xl"
           data-testid="dazza-builder-slide-over"
         >
           {panelContent}
@@ -431,7 +431,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
     <>
       {bottomSheetState !== 'collapsed' && (
         <div
-          className="fixed inset-0 z-40 bg-black/20"
+          className="fixed inset-0 z-[59] bg-black/20"
           onClick={handleClose}
           aria-hidden="true"
         />
@@ -439,7 +439,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
       <motion.div
         animate={{ height: sheetHeights[bottomSheetState] }}
         transition={{ duration: 0.25, ease: 'easeOut' as const }}
-        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl shadow-2xl overflow-hidden safe-bottom"
+        className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-2xl shadow-2xl overflow-hidden safe-bottom"
         style={{ maxHeight: '90vh' }}
         data-testid="dazza-builder-bottom-sheet"
       >
