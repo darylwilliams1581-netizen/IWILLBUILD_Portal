@@ -191,14 +191,14 @@ export async function loadHistory(
   ownerUserId: string,
 ): Promise<PersistedMessage[]> {
   try {
-    const [convData] = await db.execute(sql`
+    const rows = await db.execute(sql`
       SELECT role, content FROM dazza_v3_conversations
       WHERE conversation_id = ${conversationId}
         AND owner_user_id = ${ownerUserId}
       ORDER BY turn_index ASC
       LIMIT ${CONTEXT_RECENT_TURNS * 2}
-    `) as unknown as [Array<{ role: string; content: string }>, unknown];
-    const raw = (convData ?? []) as Array<{
+    `);
+    const raw = ((rows as { rows: unknown[] }).rows ?? []) as Array<{
       role: string;
       content: string;
     }>;

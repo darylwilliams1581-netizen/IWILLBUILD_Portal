@@ -24,13 +24,12 @@ export async function createBuilderVersion(
   conversationId: string,
   validationResult: string,
 ): Promise<{ versionId: string; versionNumber: number }> {
-  // db.execute returns [RowDataPacket[], FieldPacket[]] — rows are at index [0].
-  const [countData] = await db.execute(sql`
+  const countRows = await db.execute(sql`
     SELECT COALESCE(MAX(version_number), 0) AS max_v
     FROM dazza_builder_versions
     WHERE template_id = ${templateId} AND builder_type = ${builderType}
-  `) as unknown as [Array<Record<string, unknown>>, unknown];
-  const maxV = Number((countData?.[0] as Record<string, unknown>)?.max_v ?? 0);
+  `);
+  const maxV = Number(((countRows as { rows: unknown[] }).rows?.[0] as Record<string, unknown>)?.max_v ?? 0);
   const versionNumber = maxV + 1;
   const versionId = randomUUID();
 
@@ -55,10 +54,10 @@ export async function restoreBuilderVersion(
   ownerUserId: string,
 ): Promise<{ ok: boolean; newVersionId: string; newVersionNumber: number; error?: string }> {
   try {
-    const [versionData] = await db.execute(sql`
+    const rows = await db.execute(sql`
       SELECT * FROM dazza_builder_versions WHERE id = ${versionId} LIMIT 1
-    `) as unknown as [Array<Record<string, unknown>>, unknown];
-    const version = versionData?.[0];
+    `);
+    const version = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
     if (!version) return { ok: false, newVersionId: '', newVersionNumber: 0, error: 'Version not found' };
 
     const templateId = Number(version.template_id);

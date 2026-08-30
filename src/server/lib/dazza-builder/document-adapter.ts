@@ -56,14 +56,14 @@ export async function applyDocumentOperations(
 
     const emptyJson = JSON.stringify({ blocks: [], pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' }, theme: { backgroundColor: '#ffffff', accentColor: '#1e3a5f', textColor: '#1a1a1a', tableHeaderColor: '#1e3a5f', tableHeaderTextColor: '#ffffff' }, systemFields: [], sourceAttachments: [], requiresAcknowledgement: false, acknowledgementLabel: '', acknowledgementText: '' });
 
-    const [insertHeader] = await db.execute(sql`
+    const insertResult = await db.execute(sql`
       INSERT INTO document_templates
         (company_id, name, template_type, doc_status, doc_kind, builder_json, is_active, created_by_user_id, created_at, updated_at)
       VALUES
         (${companyId}, ${name}, ${templateType}, ${docStatus}, ${docKind}, ${emptyJson}, 1, ${ownerUserId}, NOW(), NOW())
-    `) as unknown as [{ insertId?: number | bigint }, unknown];
+    `);
 
-    const insertId = insertHeader?.insertId;
+    const insertId = (insertResult as { insertId?: number | bigint }).insertId;
     if (!insertId) {
       return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Failed to create new template' };
     }
@@ -78,11 +78,10 @@ export async function applyDocumentOperations(
   }
 
   // ── Load current template ──────────────────────────────────────────────────
-  // db.execute returns [RowDataPacket[], FieldPacket[]] — rows are at index [0].
-  const [templateRows] = await db.execute(sql`
+  const rows = await db.execute(sql`
     SELECT builder_json FROM document_templates WHERE id = ${resolvedTemplateId} LIMIT 1
-  `) as unknown as [Array<Record<string, unknown>>, unknown];
-  const row = templateRows?.[0];
+  `);
+  const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
   if (!row) {
     return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Template not found' };
   }
@@ -99,12 +98,6 @@ export async function applyDocumentOperations(
   const blocks = (parsed.blocks as Array<Record<string, unknown>>) ?? [];
   let applied = 0;
 
-  // Cursor for insertPosition:'top' — tracks how many blocks have already been
-  // prepended in this batch so each successive top-insertion lands after the
-  // previous one, preserving proposal order.
-  // Without this, repeated unshift() reverses the batch (last op ends up first).
-  let topInsertCursor = 0;
-
   for (const op of operations) {
     switch (op.op) {
       case 'addBlock': {
@@ -120,13 +113,7 @@ export async function applyDocumentOperations(
           const idx = blocks.findIndex(b => b.id === beforeId);
           blocks.splice(idx >= 0 ? idx : 0, 0, newBlock);
         } else if (insertPosition === 'top') {
-          // Insert at the cursor position (not always 0) so that a batch of
-          // top-insertions lands in the same order as the proposal:
-          //   op[0] → position 0, op[1] → position 1, op[2] → position 2 …
-          // Naive unshift() would reverse the batch because each call pushes
-          // the new block to the very front, displacing the previous one.
-          blocks.splice(topInsertCursor, 0, newBlock);
-          topInsertCursor++;
+          blocks.unshift(newBlock);
         } else {
           // Default: append to end
           blocks.push(newBlock);
