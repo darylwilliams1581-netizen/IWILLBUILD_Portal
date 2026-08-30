@@ -273,11 +273,17 @@ export default function LoginPage() {
                 ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
                 : {},
             });
-            const sendData = (await sendRes.json()) as { ok?: boolean; maskedPhone?: string; error?: string };
+            const sendData = (await sendRes.json()) as { ok?: boolean; maskedPhone?: string; error?: string; errorCode?: string };
             if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
-            setSmsResendState('sent');
-            // Reset after 30 s so the user can resend if the code doesn't arrive
-            setTimeout(() => setSmsResendState('idle'), 30_000);
+            if (!sendRes.ok || !sendData.ok) {
+              // 21608 compliance error — show friendly message, leave resend available
+              setSmsResendState('idle');
+              setError(sendData.error ?? 'Failed to send SMS. Please try again.');
+            } else {
+              setSmsResendState('sent');
+              // Reset after 30 s so the user can resend if the code doesn't arrive
+              setTimeout(() => setSmsResendState('idle'), 30_000);
+            }
           } catch {
             setSmsResendState('idle');
           }
@@ -487,10 +493,17 @@ export default function LoginPage() {
         ok?: boolean;
         maskedPhone?: string;
         error?: string;
+        errorCode?: string;
       };
       if (d.maskedPhone) setSmsMaskedPhone(d.maskedPhone);
-      setSmsResendState('sent');
-      setTimeout(() => setSmsResendState('idle'), 30_000);
+      if (!res.ok || !d.ok) {
+        // Leave resend available so the user can retry once compliance is resolved
+        setSmsResendState('idle');
+        setError(d.error ?? 'Failed to resend. Please try again.');
+      } else {
+        setSmsResendState('sent');
+        setTimeout(() => setSmsResendState('idle'), 30_000);
+      }
     } catch {
       setSmsResendState('idle');
       setError('Failed to resend. Please try again.');

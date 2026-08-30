@@ -257,6 +257,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'POST', pattern: /^\/api\/me\/recovery-email\/cancel$/ },
   { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/freeze$/ },
   { method: 'POST', pattern: /^\/api\/me\/recovery-email\/freeze$/ },
+  // Feature flags — non-sensitive boolean capability signals, no auth required
+  { method: 'GET',  pattern: /^\/api\/features$/ },
 ];
 
 /**

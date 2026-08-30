@@ -128,14 +128,21 @@ export default async function handler(req: Request, res: Response) {
     );
     diagLog(reqId, 'db_record_created', { recordId: id });
 
-    // Mask phone for display — never log the real number
     const masked = phone.replace(/\d(?=\d{4})/g, '*');
 
     diagLog(reqId, 'provider_call_start');
-    const sent = await sendSms(phone, `Your IWILLBUILD login code is: ${code}. Expires in 10 minutes. Do not share this code.`);
-    diagLog(reqId, 'provider_call_end', { sent });
+    const result = await sendSms(phone, `Your IWILLBUILD login code is: ${code}. Expires in 10 minutes. Do not share this code.`);
+    diagLog(reqId, 'provider_call_end', { ok: result.ok, twilioCode: result.twilioCode });
 
-    if (!sent) {
+    if (!result.ok) {
+      // 21608 — Twilio trial/compliance restriction: account needs an approved
+      // Primary Customer Profile before it can send to unverified numbers.
+      if (result.twilioCode === 21608) {
+        return res.status(503).json({
+          error: 'SMS delivery is not yet enabled for this number. Please use an approved test number or contact the administrator.',
+          errorCode: 'SMS_COMPLIANCE_REQUIRED',
+        });
+      }
       return res.status(500).json({ error: 'Failed to send SMS. Please try again.' });
     }
 

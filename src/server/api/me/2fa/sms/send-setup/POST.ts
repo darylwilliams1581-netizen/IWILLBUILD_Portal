@@ -64,8 +64,14 @@ export default async function handler(req: Request, res: Response) {
           VALUES (${id}, ${session.user.id}, ${hashed}, ${`setup:${e164}`}, ${expiresAt}, 0)`,
     );
 
-    const sent = await sendSms(e164, `Your IWILLBUILD 2FA setup code is: ${code}. Expires in 10 minutes.`);
-    if (!sent) {
+    const result = await sendSms(e164, `Your IWILLBUILD 2FA setup code is: ${code}. Expires in 10 minutes.`);
+    if (!result.ok) {
+      if (result.twilioCode === 21608) {
+        return res.status(503).json({
+          error: 'SMS delivery is not yet enabled for this number. Please use an approved test number or contact the administrator.',
+          errorCode: 'SMS_COMPLIANCE_REQUIRED',
+        });
+      }
       return res.status(500).json({ error: 'Failed to send SMS. Please try again.' });
     }
 

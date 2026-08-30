@@ -69,7 +69,10 @@ export default function SecurityTab() {
   const [success, setSuccess]           = useState('');
   const [busy, setBusy]                 = useState(false);
 
-  // Load current 2FA status
+  // SMS 2FA enrolment gate — hidden until Twilio compliance is approved
+  const [sms2faEnrolmentEnabled, setSms2faEnrolmentEnabled] = useState(false);
+
+  // Load current 2FA status + feature flags in parallel
   useEffect(() => {
     fetch('/api/me/2fa/status', { credentials: 'include' })
       .then(r => r.json())
@@ -85,6 +88,13 @@ export default function SecurityTab() {
         }
       })
       .catch(() => setPhase('disabled'));
+
+    fetch('/api/features')
+      .then(r => r.json())
+      .then((f: { sms2faEnrolmentEnabled?: boolean }) => {
+        setSms2faEnrolmentEnabled(f.sms2faEnrolmentEnabled ?? false);
+      })
+      .catch(() => { /* non-critical — default stays false */ });
   }, []);
 
   function showSuccess(msg: string) {
@@ -348,7 +358,8 @@ export default function SecurityTab() {
               </button>
             </div>
 
-            {/* SMS option */}
+            {/* SMS option — only shown once Twilio compliance is approved */}
+            {sms2faEnrolmentEnabled && (
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <div className="flex items-start gap-4 mb-4">
                 <div className="w-10 h-10 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-center shrink-0">
@@ -370,6 +381,7 @@ export default function SecurityTab() {
                 Set up SMS 2FA
               </button>
             </div>
+            )}
           </div>
         )}
 
