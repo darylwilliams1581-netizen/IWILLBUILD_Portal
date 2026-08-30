@@ -45,11 +45,34 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
 
     if (!response.ok) {
       const text = await response.text();
-      // Mask any phone numbers in the error body before logging (E.164 pattern)
-      const masked = text.replace(/\+\d{7,15}/g, (m) => m.slice(0, 4) + '****' + m.slice(-2));
-      console.error('[sms] Twilio error:', response.status, masked);
+      // Extract safe fields only — code and message, never phone/credentials
+      let safeCode: number | null = null;
+      let safeMessage: string | null = null;
+      try {
+        const parsed = JSON.parse(text) as Record<string, unknown>;
+        safeCode    = typeof parsed.code    === 'number' ? parsed.code    : null;
+        safeMessage = typeof parsed.message === 'string' ? parsed.message.slice(0, 200) : null;
+      } catch { /* not JSON */ }
+      console.error(JSON.stringify({
+        event: 'sms.twilio_error',
+        httpStatus: response.status,
+        twilioCode: safeCode,
+        twilioMessage: safeMessage,
+        ts: Date.now(),
+      }));
       return false;
     }
+
+    // Log message SID on success (safe — not a secret)
+    try {
+      const body = await response.clone().json() as Record<string, unknown>;
+      console.info(JSON.stringify({
+        event: 'sms.twilio_success',
+        messageSid: body.sid ?? null,
+        status: body.status ?? null,
+        ts: Date.now(),
+      }));
+    } catch { /* non-critical */ }
 
     return true;
   } catch (err) {
