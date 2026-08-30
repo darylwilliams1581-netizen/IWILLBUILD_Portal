@@ -450,9 +450,28 @@ export default function LoginPage() {
         });
         const d = (await res.json()) as { ok?: boolean; error?: string };
         if (!res.ok || !d.ok) {
+          setTfaToken(''); // clear input so user can type fresh digits
           setError(d.error ?? 'Invalid code. Please try again.');
           return;
         }
+        // SMS verify sets a Set-Cookie header on the response.
+        // React Router's navigate() is a client-side transition and does NOT
+        // trigger a full page reload, so the auth context never picks up the
+        // new session cookie — the app sees no session and bounces back to /login.
+        // window.location.replace() forces a full reload that reads the cookie.
+        const rawFrom2faSms = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+        const SAFE_BLOCKLIST_SMS = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+        const from2faSms = isNativeApp
+          ? '/home'
+          : rawFrom2faSms.startsWith('/') && !SAFE_BLOCKLIST_SMS.some(b => rawFrom2faSms.startsWith(b))
+            ? rawFrom2faSms
+            : '/home';
+        if (isNativeApp) {
+          navigate(from2faSms, { replace: true });
+        } else {
+          window.location.replace(from2faSms);
+        }
+        return;
       } else {
         // TOTP: use the official BetterAuth twoFactor plugin endpoint
         const result = await authClient.twoFactor.verifyTotp({ code: tfaToken });
