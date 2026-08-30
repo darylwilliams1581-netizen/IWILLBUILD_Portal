@@ -259,6 +259,11 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'POST', pattern: /^\/api\/me\/recovery-email\/freeze$/ },
   // Feature flags — non-sensitive boolean capability signals, no auth required
   { method: 'GET',  pattern: /^\/api\/features$/ },
+  // Pre-login SMS 2FA — no authenticated session exists yet; handlers validate
+  // X-SMS-Challenge-Token internally and return 401 if it is missing/invalid/expired.
+  // send-setup, enable, disable, status and all other /api/me routes remain protected.
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/send$/ },
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/verify$/ },
 ];
 
 /**
