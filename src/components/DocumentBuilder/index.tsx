@@ -45,6 +45,8 @@ interface Props {
   initialMode?: 'build' | 'use';
   /** Which sidebar tab to open on first load — passed via ?tab= query param */
   initialTab?: BuilderTab;
+  /** Width in px of the Dazza sidebar — builder right edge is inset by this amount */
+  sidebarWidth?: number;
 }
 
 /** Top-level mode: building the template vs using/filling it */
@@ -64,7 +66,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   handover:   'Handover',
 };
 
-export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build', initialTab }: Props) {
+export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build', initialTab, sidebarWidth = 0 }: Props) {
   const {
     isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
@@ -301,7 +303,8 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-white"
+      className="fixed inset-0 z-50 flex flex-col bg-white transition-[right] duration-200"
+      style={{ right: sidebarWidth }}
       onClick={() => setShowDocTypeMenu(false)}
     >
       {/* ── Row 1: Title bar ─────────────────────────────────────────────────── */}

@@ -472,7 +472,7 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
         animate={{ width: 380, opacity: 1 }}
         exit={{ width: 0, opacity: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="h-full border-l border-border overflow-hidden shrink-0"
+        className="h-full border-l border-border overflow-hidden shrink-0 z-[60] relative"
         style={{ width: 380 }}
         data-testid="dazza-builder-sidebar"
       >

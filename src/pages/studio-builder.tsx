@@ -294,11 +294,13 @@ export default function StudioBuilderPage() {
         <div className={`flex-1 min-w-0 overflow-hidden transition-all duration-200`}>
           <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} sidebarWidth={dazzaOpen ? 380 : 0} />
         </div>
-        <DazzaBuilderAssistant
-          builderContext={dazzaContext}
-          onApplied={handleDazzaApplied}
-          onOpenChange={setDazzaOpen}
-        />
+        <div className="relative z-[60] shrink-0">
+          <DazzaBuilderAssistant
+            builderContext={dazzaContext}
+            onApplied={handleDazzaApplied}
+            onOpenChange={setDazzaOpen}
+          />
+        </div>
       </div>
       <JobContextTab />
     </>;
