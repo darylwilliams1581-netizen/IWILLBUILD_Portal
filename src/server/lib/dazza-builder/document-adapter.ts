@@ -103,10 +103,19 @@ export async function applyDocumentOperations(
       case 'addBlock': {
         const newBlock = buildBlock(op);
         const afterId = op.afterBlockId as string | undefined;
+        const beforeId = op.beforeBlockId as string | undefined;
+        const insertPosition = op.insertPosition as string | undefined; // 'top' | 'bottom' (default)
+
         if (afterId) {
           const idx = blocks.findIndex(b => b.id === afterId);
           blocks.splice(idx >= 0 ? idx + 1 : blocks.length, 0, newBlock);
+        } else if (beforeId) {
+          const idx = blocks.findIndex(b => b.id === beforeId);
+          blocks.splice(idx >= 0 ? idx : 0, 0, newBlock);
+        } else if (insertPosition === 'top') {
+          blocks.unshift(newBlock);
         } else {
+          // Default: append to end
           blocks.push(newBlock);
         }
         applied++;

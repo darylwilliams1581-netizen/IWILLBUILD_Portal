@@ -79,6 +79,19 @@ export const BUILDER_TOOL_DEFINITIONS = [
                   'addSection', 'updateTemplateSettings',
                 ],
               },
+              insertPosition: {
+                type: 'string',
+                enum: ['top', 'bottom'],
+                description: 'For addBlock: "top" prepends before all blocks; omit or "bottom" appends to end.',
+              },
+              afterBlockId: {
+                type: 'string',
+                description: 'For addBlock: insert immediately after this block ID.',
+              },
+              beforeBlockId: {
+                type: 'string',
+                description: 'For addBlock: insert immediately before this block ID.',
+              },
             },
             required: ['op'],
           },
@@ -139,7 +152,14 @@ ${ctx.schemaSummary || 'No schema loaded.'}
 ${ctx.builderType === 'document' ? `
 You can help with Studio Document Builder operations:
 - createNewTemplate: Create a brand-new document template (MUST be first op when no template is open). Required fields: name (string), templateType (string, e.g. "swms", "policy", "procedure", "emp", "generic"), docStatus ("draft"), docKind ("doc").
-- addBlock: Add a new block (heading, text, rich_text, divider, spacer, page_break, columns, banner, safety_badge_row, risk_matrix, risk_matrix_banner, table, image, field, system_field)
+- addBlock: Add a new block (heading, text, rich_text, divider, spacer, page_break, columns, banner, safety_badge_row, risk_matrix, risk_matrix_banner, table, image, field, system_field).
+  Insertion position (choose one — omit for append-to-end):
+    • insertPosition: "top"  → prepend before all existing blocks
+    • afterBlockId: "<id>"   → insert immediately after the block with that ID
+    • beforeBlockId: "<id>"  → insert immediately before the block with that ID
+  When the user says "insert at top" or "add to the beginning", use insertPosition: "top" on every addBlock in the batch.
+  When the user says "insert at end" or "append", omit insertPosition (default behaviour).
+  When the user asks to insert content but does NOT specify a position AND no block is selected (selectedId is null), ask: "Where would you like to insert the content — at the top of the document or at the end?" — do NOT guess and do NOT propose without an answer.
 - updateBlock: Edit an existing block's content or settings
 - moveBlock: Reorder blocks
 - removeBlock: Remove a block
