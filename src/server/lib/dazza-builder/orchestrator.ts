@@ -73,9 +73,9 @@ async function executeBuilderTool(
   try {
     switch (name) {
       case 'builder_get_template': {
-        const id = Number(args.templateId);
+        const id = Number(args.templateId) || null;
         const type = String(args.builderType);
-        if (!id) return err('templateId required');
+        if (!id) return ok({ note: 'No template is currently open (list-page context). Use createNewTemplate as the first operation to create one.' });
 
         if (type === 'document') {
           const rows = await db.execute(sql`
@@ -163,13 +163,15 @@ async function executeBuilderTool(
       }
 
       case 'builder_validate_operations': {
-        const id = Number(args.templateId);
+        const id = Number(args.templateId) || null;
         const type = String(args.builderType);
         const ops = (args.operations as BuilderOperation[]) ?? [];
-        if (!id) return err('templateId required');
 
-        const errors = validateOperations(ops, type as 'document' | 'form');
-        return ok({ valid: errors.length === 0, errors });
+        // When templateId is null (creating a new template), skip the ID check.
+        // The createNewTemplate op is always valid as the first op; validate the rest.
+        const opsToCheck = ops.filter(op => (op as { op?: string }).op !== 'createNewTemplate');
+        const errors = validateOperations(opsToCheck, type as 'document' | 'form');
+        return ok({ valid: errors.length === 0, errors, note: id ? undefined : 'templateId is null — createNewTemplate path, server-side validation will run on apply' });
       }
 
       default:
