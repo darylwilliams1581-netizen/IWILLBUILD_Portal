@@ -99,6 +99,12 @@ export async function applyDocumentOperations(
   const blocks = (parsed.blocks as Array<Record<string, unknown>>) ?? [];
   let applied = 0;
 
+  // Cursor for insertPosition:'top' — tracks how many blocks have already been
+  // prepended in this batch so each successive top-insertion lands after the
+  // previous one, preserving proposal order.
+  // Without this, repeated unshift() reverses the batch (last op ends up first).
+  let topInsertCursor = 0;
+
   for (const op of operations) {
     switch (op.op) {
       case 'addBlock': {
@@ -114,7 +120,13 @@ export async function applyDocumentOperations(
           const idx = blocks.findIndex(b => b.id === beforeId);
           blocks.splice(idx >= 0 ? idx : 0, 0, newBlock);
         } else if (insertPosition === 'top') {
-          blocks.unshift(newBlock);
+          // Insert at the cursor position (not always 0) so that a batch of
+          // top-insertions lands in the same order as the proposal:
+          //   op[0] → position 0, op[1] → position 1, op[2] → position 2 …
+          // Naive unshift() would reverse the batch because each call pushes
+          // the new block to the very front, displacing the previous one.
+          blocks.splice(topInsertCursor, 0, newBlock);
+          topInsertCursor++;
         } else {
           // Default: append to end
           blocks.push(newBlock);
