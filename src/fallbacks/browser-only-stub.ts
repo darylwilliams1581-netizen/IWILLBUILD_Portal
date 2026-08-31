@@ -21,12 +21,19 @@
 export default {};
 
 // ── jsdom ─────────────────────────────────────────────────────────────────────
-// jsdom is stubbed during the client/SSR build. sanitiseHtmlServer.ts imports
-// JSDOM from jsdom — it is a server-only module called only from API handlers.
-// This no-op class satisfies the static import so the build resolves; it is
-// never instantiated in the browser or SSR render path.
+// jsdom is NOT stubbed during the SSR build — the real jsdom is bundled into
+// server.bundle.mjs so sanitiseHtmlServer works in production. This stub is
+// only reached if client-side code somehow imports jsdom (which it must not).
+// It throws a clear error rather than silently returning unsanitised content
+// (fail-closed per security policy).
 export class JSDOM {
-  constructor() {}
+  constructor() {
+    throw new Error(
+      '[JSDOM stub] jsdom is a server-only module. ' +
+      'It must not be imported in browser or client-side code. ' +
+      'If you see this error, a server-only import has leaked into the client bundle.',
+    );
+  }
   window = { document: null, Node: null };
 }
 

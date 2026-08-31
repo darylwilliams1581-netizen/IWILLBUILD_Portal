@@ -266,9 +266,10 @@ export default defineConfig(({
         return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts');
       }
     },
-    // jsdom is a 11.2 MB test/DOM-emulation library. It is a direct dep
-    // but is only used in test files — never imported by any server handler.
-    // Stubbing it during SSR build saves ~11.2 MB of AST.
+    // jsdom is a devDependency used only by tests. sanitiseHtmlServer now uses
+    // parse5 directly (not jsdom), so jsdom is never imported by any server
+    // handler. Stubbing it during the SSR build saves ~11.2 MB of AST and
+    // prevents OOM during the Rollup render phase.
     {
       find: /^jsdom(\/.*)?$/,
       replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
@@ -277,7 +278,6 @@ export default defineConfig(({
       }
     },
     // @babel/* is used only by the source-mapper Vite plugin (build-time).
-    // It is never imported by any server handler. Stubbing it saves ~11 MB.
     {
       find: /^@babel(\/.*)?$/,
       replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),

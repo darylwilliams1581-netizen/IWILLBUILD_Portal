@@ -44,7 +44,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { sanitiseHtmlServer } from '../sanitiseHtmlServer';
+import { sanitiseHtmlServer } from '../../server/lib/sanitiseHtmlServer';
 
 // ── SS1 — Script tag and content removed ─────────────────────────────────────
 describe('SS1 — script tag and content removed', () => {

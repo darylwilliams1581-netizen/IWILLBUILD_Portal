@@ -28,7 +28,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { sanitiseHtmlServer } from '../../../../../../../lib/sanitiseHtmlServer';
+import { sanitiseHtmlServer } from '../../../../../../../server/lib/sanitiseHtmlServer';
 
 // ── Inline copy of renderBlocksToSafeHtml for unit testing ───────────────────
 // We test the function's logic directly without importing the full Express

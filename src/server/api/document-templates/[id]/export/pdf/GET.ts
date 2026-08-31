@@ -37,7 +37,7 @@ import { profiles } from '../../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getSecret } from '#airo/secrets';
 import { downloadSourceDocument } from '../../../../../lib/source-document-storage.js';
-import { sanitiseHtmlServer } from '../../../../../../lib/sanitiseHtmlServer.js';
+import { sanitiseHtmlServer } from '../../../../../lib/sanitiseHtmlServer.js';
 
 function esc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
