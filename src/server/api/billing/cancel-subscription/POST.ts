@@ -34,8 +34,24 @@ export default async function handler(req: Request, res: Response) {
 
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
     if (!company) return res.status(404).json({ error: 'Company not found.' });
+
+    // If there's no Stripe subscription (e.g. webhook write-back failed), cancel
+    // the DB record directly so the user isn't stuck in an unresolvable state.
     if (!company.stripeSubscriptionId) {
-      return res.status(400).json({ error: 'No active subscription found for this company.' });
+      await db.execute(sql`
+        UPDATE companies
+        SET
+          subscription_status = 'cancelled',
+          cancel_at_period_end = 1,
+          cancelled_at = NOW()
+        WHERE id = ${company.id}
+      `);
+      return res.json({
+        ok: true,
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: null,
+        message: 'Your subscription has been cancelled. Your account will remain in view-only mode.',
+      });
     }
 
     const stripe = await getStripe();

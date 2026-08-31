@@ -158,12 +158,14 @@ function CancelConfirmModal({
   periodEnd,
   onConfirm,
   onClose,
-  loading
+  loading,
+  error: modalError
 }: {
   periodEnd: string | null;
   onConfirm: (reason: string | null, comment: string | null) => void;
   onClose: () => void;
   loading: boolean;
+  error?: string;
 }) {
   const REASONS = ['Too expensive', 'Not using it enough', 'Missing features', 'Too hard to use', 'Changed business / no longer needed', 'Moving to another system', 'Technical issues', 'Prefer not to say', 'Other'] as const;
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
@@ -237,6 +239,9 @@ function CancelConfirmModal({
             Continue to cancel
           </button>
         </div>
+        {modalError && (
+          <p className="mt-3 text-sm text-red-600 text-center">{modalError}</p>
+        )}
       </motion.div>
     </div>;
 }
@@ -333,6 +338,7 @@ export default function BillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState('');
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -457,6 +463,7 @@ export default function BillingPage() {
   }
   async function handleCancelConfirm(reason: string | null, comment: string | null) {
     setCancelLoading(true);
+    setCancelError('');
     setError('');
     try {
       // Save feedback first (fire-and-forget — don't block cancellation on failure)
@@ -488,14 +495,15 @@ export default function BillingPage() {
         currentPeriodEnd?: string;
       };
       if (!res.ok) {
-        setError(data.error ?? 'Could not cancel subscription. Please try again.');
+        setCancelError(data.error ?? 'Could not cancel subscription. Please try again.');
         return;
       }
       setActionMsg(data.message ?? 'Subscription set to cancel at period end.');
       setShowCancelModal(false);
+      setCancelError('');
       await fetchStatus();
     } catch {
-      setError('Something went wrong. Please try again.');
+      setCancelError('Something went wrong. Please try again.');
     } finally {
       setCancelLoading(false);
     }
@@ -755,7 +763,7 @@ export default function BillingPage() {
                 </button>
 
                 {/* Cancel — only show if active and not already cancelling */}
-                {isActive && !isCancelPending && <button onClick={() => setShowCancelModal(true)} className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
+                {isActive && !isCancelPending && <button onClick={() => { setCancelError(''); setShowCancelModal(true); }} className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
                     <Ban size={14} />
                     Cancel Subscription
                   </button>}
@@ -876,7 +884,7 @@ export default function BillingPage() {
 
       {/* Cancel confirmation modal */}
       <AnimatePresence>
-        {showCancelModal && <CancelConfirmModal periodEnd={subInfo?.currentPeriodEnd ?? null} onConfirm={handleCancelConfirm} onClose={() => setShowCancelModal(false)} loading={cancelLoading} />}
+        {showCancelModal && <CancelConfirmModal periodEnd={subInfo?.currentPeriodEnd ?? null} onConfirm={handleCancelConfirm} onClose={() => { setShowCancelModal(false); setCancelError(''); }} loading={cancelLoading} error={cancelError} />}
       </AnimatePresence>
 
       {/* Upgrade / downgrade confirmation modal */}
