@@ -485,7 +485,7 @@ export type ZipContainerType = 'docx' | 'xlsx' | 'zip';
 
 export interface ZipValidationResult {
   ok: boolean;
-  code?: 'zip_bomb' | 'too_many_entries' | 'missing_required_entry' | 'invalid_zip' | 'parse_error';
+  code?: 'zip_bomb' | 'too_many_entries' | 'missing_required_entry' | 'invalid_zip' | 'parse_error' | 'unsupported_zip64';
   error?: string;
 }
 
@@ -528,16 +528,66 @@ export function validateZipContainer(buffer: Buffer, type: ZipContainerType): Zi
   }
 
   // Parse EOCD fields
-  const totalEntries = buffer.readUInt16LE(eocdOffset + 10);
-  const centralDirSize = buffer.readUInt32LE(eocdOffset + 12);
+  const totalEntries    = buffer.readUInt16LE(eocdOffset + 10);
+  const centralDirSize  = buffer.readUInt32LE(eocdOffset + 12);
   const centralDirOffset = buffer.readUInt32LE(eocdOffset + 16);
 
-  // ZIP64 check: if values are 0xFFFF/0xFFFFFFFF, this is a ZIP64 archive.
-  // We accept ZIP64 but skip deep inspection (real Office files are not ZIP64).
-  const isZip64 = totalEntries === 0xFFFF || centralDirOffset === 0xFFFFFFFF;
+  // ── ZIP64 detection ────────────────────────────────────────────────────────
+  //
+  // ZIP64 archives use sentinel values in the standard EOCD to signal that the
+  // real values are in the ZIP64 EOCD record.  We detect ZIP64 via four
+  // independent signals and reject it — our bounded parser does not apply
+  // entry-count, expanded-size or compression-ratio limits to ZIP64 data, so
+  // accepting it would silently bypass all ZIP bomb protections.
+  //
+  // Signal 1: EOCD entry-count sentinel (0xFFFF)
+  const zip64BySentinelEntryCount = totalEntries === 0xFFFF;
+
+  // Signal 2: EOCD central-directory offset sentinel (0xFFFFFFFF)
+  const zip64BySentinelCdOffset = centralDirOffset === 0xFFFFFFFF;
+
+  // Signal 3: EOCD central-directory size sentinel (0xFFFFFFFF)
+  const zip64BySentinelCdSize = centralDirSize === 0xFFFFFFFF;
+
+  // Signal 4: ZIP64 End of Central Directory Locator (signature 0x07064b50)
+  // Located immediately before the EOCD record (20 bytes before eocdOffset).
+  // We scan a small window rather than trusting a fixed offset so that a
+  // comment-padded EOCD does not defeat detection.
+  const ZIP64_EOCD_LOCATOR_SIG = 0x07064b50;
+  let zip64ByLocator = false;
+  const locatorSearchStart = Math.max(0, eocdOffset - 20);
+  for (let i = eocdOffset - 4; i >= locatorSearchStart; i--) {
+    if (i + 4 <= buffer.length && buffer.readUInt32LE(i) === ZIP64_EOCD_LOCATOR_SIG) {
+      zip64ByLocator = true;
+      break;
+    }
+  }
+
+  // Signal 5: ZIP64 End of Central Directory record (signature 0x06064b50)
+  // Appears before the ZIP64 EOCD locator.  Scan the same region.
+  const ZIP64_EOCD_SIG = 0x06064b50;
+  let zip64ByEocdRecord = false;
+  const eocdRecordSearchStart = Math.max(0, eocdOffset - 56 - 20); // ZIP64 EOCD is 56 bytes
+  for (let i = eocdOffset - 4; i >= eocdRecordSearchStart; i--) {
+    if (i + 4 <= buffer.length && buffer.readUInt32LE(i) === ZIP64_EOCD_SIG) {
+      zip64ByEocdRecord = true;
+      break;
+    }
+  }
+
+  const isZip64 =
+    zip64BySentinelEntryCount ||
+    zip64BySentinelCdOffset   ||
+    zip64BySentinelCdSize     ||
+    zip64ByLocator            ||
+    zip64ByEocdRecord;
+
   if (isZip64) {
-    // Accept ZIP64 without deep inspection — too large for typical Office files
-    return { ok: true };
+    return {
+      ok: false,
+      code: 'unsupported_zip64',
+      error: 'ZIP64 archives are not supported. Please use a standard ZIP archive.',
+    };
   }
 
   if (totalEntries > ZIP_MAX_ENTRIES) {

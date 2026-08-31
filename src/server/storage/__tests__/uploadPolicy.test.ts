@@ -777,3 +777,265 @@ describe('UP12 validateZipContainer — ZIP structure validation', () => {
     expect(zipContainerTypeFromMime('application/pdf')).toBeNull();
   });
 });
+
+// ── UP13: ZIP64 rejection ─────────────────────────────────────────────────────
+//
+// ZIP64 archives use sentinel values (0xFFFF, 0xFFFFFFFF) in the standard EOCD
+// and/or prepend a ZIP64 EOCD locator (0x07064b50) and ZIP64 EOCD record
+// (0x06064b50).  Our bounded parser cannot safely apply entry-count, expanded-
+// size or compression-ratio limits to ZIP64 data, so all ZIP64 signals must
+// produce unsupported_zip64 — never ok:true.
+//
+// Tests do NOT allocate attacker-declared sizes: all buffers are small and
+// fixed-size; sentinel values are written into header fields only.
+
+/**
+ * Build a standard ZIP with one entry, then patch specific EOCD fields to
+ * inject ZIP64 sentinel values without changing the buffer size.
+ */
+function buildZipWithEocdSentinels(opts: {
+  sentinelEntryCount?: boolean;
+  sentinelCdOffset?: boolean;
+  sentinelCdSize?: boolean;
+}): Buffer {
+  // Build a valid minimal ZIP first
+  const buf = buildMinimalZip(['file.txt']);
+
+  // Find the EOCD signature from the end
+  const EOCD_SIG = 0x06054b50;
+  let eocdOffset = -1;
+  for (let i = buf.length - 22; i >= 0; i--) {
+    if (buf.readUInt32LE(i) === EOCD_SIG) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('buildZipWithEocdSentinels: no EOCD found');
+
+  const patched = Buffer.from(buf); // copy
+
+  if (opts.sentinelEntryCount) {
+    patched.writeUInt16LE(0xFFFF, eocdOffset + 8);  // entries on disk
+    patched.writeUInt16LE(0xFFFF, eocdOffset + 10); // total entries
+  }
+  if (opts.sentinelCdOffset) {
+    patched.writeUInt32LE(0xFFFFFFFF, eocdOffset + 16);
+  }
+  if (opts.sentinelCdSize) {
+    patched.writeUInt32LE(0xFFFFFFFF, eocdOffset + 12);
+  }
+
+  return patched;
+}
+
+/**
+ * Build a buffer that contains a ZIP64 EOCD Locator signature (0x07064b50)
+ * immediately before the standard EOCD record, as a real ZIP64 tool would
+ * produce.  The locator is 20 bytes; we prepend it to a valid minimal ZIP.
+ */
+function buildZipWithZip64Locator(): Buffer {
+  const base = buildMinimalZip(['file.txt']);
+
+  // Find EOCD offset in base
+  const EOCD_SIG = 0x06054b50;
+  let eocdOffset = -1;
+  for (let i = base.length - 22; i >= 0; i--) {
+    if (base.readUInt32LE(i) === EOCD_SIG) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('buildZipWithZip64Locator: no EOCD found');
+
+  // ZIP64 EOCD Locator: 20 bytes
+  //   sig (4) | disk with ZIP64 EOCD (4) | offset of ZIP64 EOCD (8) | total disks (4)
+  const locator = Buffer.alloc(20, 0);
+  locator.writeUInt32LE(0x07064b50, 0); // ZIP64 EOCD locator sig
+  locator.writeUInt32LE(0, 4);           // disk with ZIP64 EOCD
+  // offset of ZIP64 EOCD record — points before the locator (doesn't matter for detection)
+  locator.writeBigUInt64LE(BigInt(eocdOffset - 56), 8);
+  locator.writeUInt32LE(1, 16);          // total disks
+
+  // Insert locator just before the EOCD
+  return Buffer.concat([
+    base.subarray(0, eocdOffset),
+    locator,
+    base.subarray(eocdOffset),
+  ]);
+}
+
+/**
+ * Build a buffer that contains a ZIP64 EOCD record (0x06064b50) followed by
+ * the ZIP64 EOCD locator, followed by the standard EOCD — the structure a
+ * real ZIP64 archiver produces.
+ */
+function buildZipWithZip64EocdRecord(): Buffer {
+  const base = buildMinimalZip(['file.txt']);
+
+  const EOCD_SIG = 0x06054b50;
+  let eocdOffset = -1;
+  for (let i = base.length - 22; i >= 0; i--) {
+    if (base.readUInt32LE(i) === EOCD_SIG) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('buildZipWithZip64EocdRecord: no EOCD found');
+
+  // ZIP64 EOCD record: 56 bytes minimum
+  //   sig (4) | size of ZIP64 EOCD (8) | version made by (2) | version needed (2) |
+  //   disk number (4) | disk with CD (4) | entries on disk (8) | total entries (8) |
+  //   CD size (8) | CD offset (8)
+  const zip64Eocd = Buffer.alloc(56, 0);
+  zip64Eocd.writeUInt32LE(0x06064b50, 0);          // ZIP64 EOCD sig
+  zip64Eocd.writeBigUInt64LE(BigInt(44), 4);        // size of remaining record (56 - 12)
+  zip64Eocd.writeUInt16LE(45, 12);                  // version made by
+  zip64Eocd.writeUInt16LE(45, 14);                  // version needed
+  zip64Eocd.writeBigUInt64LE(BigInt(1), 24);        // entries on disk
+  zip64Eocd.writeBigUInt64LE(BigInt(1), 32);        // total entries
+  zip64Eocd.writeBigUInt64LE(BigInt(0), 40);        // CD size (placeholder)
+  zip64Eocd.writeBigUInt64LE(BigInt(0), 48);        // CD offset (placeholder)
+
+  // ZIP64 EOCD locator: 20 bytes
+  const locator = Buffer.alloc(20, 0);
+  locator.writeUInt32LE(0x07064b50, 0);
+  locator.writeUInt32LE(0, 4);
+  locator.writeBigUInt64LE(BigInt(eocdOffset), 8);
+  locator.writeUInt32LE(1, 16);
+
+  return Buffer.concat([
+    base.subarray(0, eocdOffset),
+    zip64Eocd,
+    locator,
+    base.subarray(eocdOffset),
+  ]);
+}
+
+/**
+ * Build a truncated/malformed ZIP64 buffer: has the ZIP64 EOCD locator
+ * signature but the buffer is cut short before the standard EOCD.
+ * Verifies detection does not allocate attacker-declared sizes.
+ */
+function buildTruncatedZip64(): Buffer {
+  // Start with a valid ZIP, inject the ZIP64 locator sig, then truncate
+  const base = buildMinimalZip(['file.txt']);
+
+  const EOCD_SIG = 0x06054b50;
+  let eocdOffset = -1;
+  for (let i = base.length - 22; i >= 0; i--) {
+    if (base.readUInt32LE(i) === EOCD_SIG) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('buildTruncatedZip64: no EOCD found');
+
+  const locator = Buffer.alloc(20, 0);
+  locator.writeUInt32LE(0x07064b50, 0);
+
+  // Inject locator before EOCD, then truncate 10 bytes into the EOCD
+  const full = Buffer.concat([
+    base.subarray(0, eocdOffset),
+    locator,
+    base.subarray(eocdOffset),
+  ]);
+  // Truncate: remove last 10 bytes so the EOCD is incomplete
+  return full.subarray(0, full.length - 10);
+}
+
+describe('UP13 validateZipContainer — ZIP64 rejection', () => {
+  // ── Signal 1: sentinel entry count (0xFFFF) ────────────────────────────────
+
+  it('EOCD entry-count sentinel 0xFFFF → unsupported_zip64', () => {
+    const buf = buildZipWithEocdSentinels({ sentinelEntryCount: true });
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  it('EOCD entry-count sentinel on DOCX → unsupported_zip64 (not missing_required_entry)', () => {
+    const buf = buildZipWithEocdSentinels({ sentinelEntryCount: true });
+    const r = validateZipContainer(buf, 'docx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  // ── Signal 2: sentinel CD offset (0xFFFFFFFF) ──────────────────────────────
+
+  it('EOCD CD-offset sentinel 0xFFFFFFFF → unsupported_zip64', () => {
+    const buf = buildZipWithEocdSentinels({ sentinelCdOffset: true });
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  // ── Signal 3: sentinel CD size (0xFFFFFFFF) ────────────────────────────────
+
+  it('EOCD CD-size sentinel 0xFFFFFFFF → unsupported_zip64', () => {
+    const buf = buildZipWithEocdSentinels({ sentinelCdSize: true });
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  // ── Signal 4: ZIP64 EOCD Locator (0x07064b50) ─────────────────────────────
+
+  it('ZIP64 EOCD Locator present → unsupported_zip64', () => {
+    const buf = buildZipWithZip64Locator();
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  it('ZIP64 EOCD Locator on XLSX → unsupported_zip64 (not missing_required_entry)', () => {
+    const buf = buildZipWithZip64Locator();
+    const r = validateZipContainer(buf, 'xlsx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  // ── Signal 5: ZIP64 EOCD Record (0x06064b50) ──────────────────────────────
+
+  it('ZIP64 EOCD Record present → unsupported_zip64', () => {
+    const buf = buildZipWithZip64EocdRecord();
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  it('ZIP64 EOCD Record on DOCX → unsupported_zip64', () => {
+    const buf = buildZipWithZip64EocdRecord();
+    const r = validateZipContainer(buf, 'docx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  // ── Malformed / truncated ZIP64 ────────────────────────────────────────────
+
+  it('truncated ZIP64 (locator present, EOCD incomplete) → unsupported_zip64 not ok', () => {
+    const buf = buildTruncatedZip64();
+    const r = validateZipContainer(buf, 'zip');
+    // Must not return ok:true — either unsupported_zip64 or invalid_zip
+    expect(r.ok).toBe(false);
+    expect(['unsupported_zip64', 'invalid_zip']).toContain(r.code);
+  });
+
+  // ── No allocation of attacker-declared sizes ───────────────────────────────
+
+  it('ZIP64 sentinel values do not cause large allocation (no RangeError)', () => {
+    // Patch a valid ZIP to have 0xFFFF entries and 0xFFFFFFFF CD offset/size.
+    // If the parser naively allocated based on these values it would OOM or throw.
+    const buf = buildZipWithEocdSentinels({
+      sentinelEntryCount: true,
+      sentinelCdOffset: true,
+      sentinelCdSize: true,
+    });
+    // Must reject cleanly without throwing
+    expect(() => validateZipContainer(buf, 'zip')).not.toThrow();
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('unsupported_zip64');
+  });
+
+  // ── Ordinary archives still pass ──────────────────────────────────────────
+
+  it('ordinary DOCX (no ZIP64 signals) still passes', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', 'word/document.xml']);
+    const r = validateZipContainer(buf, 'docx');
+    expect(r.ok).toBe(true);
+  });
+
+  it('ordinary XLSX (no ZIP64 signals) still passes', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', 'xl/workbook.xml']);
+    const r = validateZipContainer(buf, 'xlsx');
+    expect(r.ok).toBe(true);
+  });
+});
