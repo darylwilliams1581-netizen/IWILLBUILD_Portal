@@ -37,7 +37,7 @@ import { profiles } from '../../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getSecret } from '#airo/secrets';
 import { downloadSourceDocument } from '../../../../../lib/source-document-storage.js';
-import { sanitiseHtmlServer } from '../../../../../lib/sanitiseHtmlServer.js';
+import { sanitiseHtmlServer } from '../../../../../../lib/sanitiseHtmlServer.js';
 
 function esc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -173,6 +173,88 @@ function buildCoverHtml(opts: {
   ${downloadNote}
 </body>
 </html>`;
+}
+
+
+// ── Block renderer ────────────────────────────────────────────────────────────
+// Renders builder_json blocks to a static, sanitised HTML string in Node.
+// All rich_text/html block content is sanitised by sanitiseHtmlServer (jsdom
+// DOM-walk) before being included. All other block types use esc() — plain
+// text only, never raw HTML. The result is a static string baked into the
+// HTML template; no inline script renderer, no runtime innerHTML assignment
+// of unsanitised content in Gotenberg.
+
+type Block = {
+  type?: string;
+  level?: number;
+  content?: string;
+  text?: string;
+  html?: string;
+  height?: number;
+  variant?: string;
+  title?: string;
+  body?: string;
+  columns?: Array<{ id: string; header?: string }>;
+  rows?: Array<{ cells?: Record<string, string> }>;
+};
+
+function renderBlocksToSafeHtml(
+  builderJsonStr: string,
+  escFn: (s: unknown) => string,
+  sanitiseFn: (html: string) => string,
+): string {
+  let blocks: Block[] = [];
+  try {
+    const raw = JSON.parse(builderJsonStr);
+    blocks = Array.isArray(raw) ? raw : (Array.isArray(raw?.blocks) ? raw.blocks : []);
+  } catch {
+    return '<p>Error: could not parse document content.</p>';
+  }
+
+  if (blocks.length === 0) return '<p>No content blocks found.</p>';
+
+  return blocks.map((b) => {
+    if (!b || !b.type) return '';
+
+    if (b.type === 'heading') {
+      const lvl = Math.min(Math.max(Number(b.level) || 2, 1), 6);
+      return `<h${lvl}>${escFn(b.content || b.text || '')}</h${lvl}>`;
+    }
+
+    if (b.type === 'text') {
+      return `<p>${escFn(b.content || '')}</p>`;
+    }
+
+    if (b.type === 'rich_text' || b.type === 'richtext' || b.type === 'html') {
+      // sanitiseFn performs a full jsdom DOM-walk with a strict allowlist.
+      // The result is a safe static HTML string — no scripts, no event
+      // handlers, no external URLs.
+      return sanitiseFn(String(b.content || b.html || ''));
+    }
+
+    if (b.type === 'divider') return '<hr>';
+
+    if (b.type === 'spacer') {
+      const h = Math.min(Math.max(Number(b.height) || 8, 0), 200);
+      return `<div style="height:${h}px"></div>`;
+    }
+
+    if (b.type === 'banner') {
+      const variant = /^[a-z]+$/.test(b.variant || '') ? (b.variant || 'info') : 'info';
+      return `<div class="banner-${variant}"><strong>${escFn(b.title || '')}</strong>${b.body ? ` — ${escFn(b.body)}` : ''}</div>`;
+    }
+
+    if (b.type === 'table' && Array.isArray(b.columns) && Array.isArray(b.rows)) {
+      const cols = b.columns;
+      const thead = `<tr>${cols.map((c) => `<th>${escFn(c.header || c.id || '')}</th>`).join('')}</tr>`;
+      const tbody = b.rows.map((r) =>
+        `<tr>${cols.map((c) => `<td>${escFn((r.cells || {})[c.id] || '')}</td>`).join('')}</tr>`,
+      ).join('');
+      return `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+    }
+
+    return '';
+  }).join('');
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -337,7 +419,7 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // ── BLOCKS-BASED FLOW (unchanged) ─────────────────────────────────────────
+    // ── BLOCKS-BASED FLOW ─────────────────────────────────────────────────────
 
     // ── Resolve builder_json ──────────────────────────────────────────────────
     // If we have a snapshot, use its builderJson; otherwise use the live master.
@@ -354,6 +436,16 @@ export default async function handler(req: Request, res: Response) {
         // malformed snapshot — fall back to live master
       }
     }
+
+    // ── Pre-render blocks to sanitised static HTML (server-side) ─────────────
+    // All block content is rendered and sanitised here in Node before the HTML
+    // template is assembled. The resulting string is a static, safe HTML
+    // fragment — no inline script renderer, no runtime innerHTML assignment of
+    // unsanitised content in Gotenberg.
+    //
+    // rich_text / richtext / html blocks: sanitiseHtmlServer (jsdom DOM-walk)
+    // All other block types: esc() — plain text, never raw HTML.
+    const preRenderedContent = renderBlocksToSafeHtml(builderJsonStr, esc, sanitiseHtmlServer);
 
     // ── Build job-info header table HTML ──────────────────────────────────────
     const jobHeaderHtml = jobInfo ? `
@@ -419,47 +511,8 @@ export default async function handler(req: Request, res: Response) {
   <p class="doc-meta">Document ID ${id}${jobInfo ? ` &nbsp;|&nbsp; Attached ${esc(jobInfo.dateAttached)}` : ' &nbsp;|&nbsp; Master'}</p>
   ${masterBannerHtml}
   ${jobHeaderHtml}
-  <div class="content" id="doc-content">Loading…</div>
-  <script>
-    (function() {
-      try {
-        var raw = ${builderJsonStr};
-        var parsed = (typeof raw === 'string') ? JSON.parse(raw) : raw;
-        var blocks = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.blocks) ? parsed.blocks : []);
-        var el = document.getElementById('doc-content');
-        function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-        if (blocks.length === 0) { el.textContent = 'No content blocks found.'; return; }
-        // rich_text/html blocks are sanitised by sanitiseHtmlServer before insertion.
-        el.innerHTML = blocks.map(function(b) {
-          if (!b || !b.type) return '';
-          if (b.type === 'heading') {
-            var lvl = b.level || 2;
-            return '<h' + lvl + '>' + esc(b.content || b.text || '') + '</h' + lvl + '>';
-          }
-          if (b.type === 'text') return '<p>' + esc(b.content || '') + '</p>';
-          if (b.type === 'rich_text' || b.type === 'richtext' || b.type === 'html') return sanitiseHtmlServer(String(b.content || b.html || ''));
-          if (b.type === 'divider') return '<hr/>';
-          if (b.type === 'spacer') return '<div style="height:' + (b.height || 8) + 'px"></div>';
-          if (b.type === 'banner') {
-            var cls = 'banner-' + (b.variant || 'info');
-            return '<div class="' + cls + '"><strong>' + esc(b.title || '') + '</strong>' + (b.body ? ' — ' + esc(b.body) : '') + '</div>';
-          }
-          if (b.type === 'table' && Array.isArray(b.columns) && Array.isArray(b.rows)) {
-            var cols = b.columns;
-            var thead = '<tr>' + cols.map(function(c) { return '<th>' + esc(c.header || c.id || '') + '</th>'; }).join('') + '</tr>';
-            var tbody = b.rows.map(function(r) {
-              return '<tr>' + cols.map(function(c) { return '<td>' + esc((r.cells || {})[c.id] || '') + '</td>'; }).join('') + '</tr>';
-            }).join('');
-            return '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
-          }
-          return '';
-        }).join('');
-      } catch(e) {
-        document.getElementById('doc-content').textContent = 'Error rendering document: ' + e.message;
-      }
-      window.onload = function() { window.print(); };
-    })();
-  </script>
+  <div class="content">${preRenderedContent}</div>
+  <script>window.onload = function() { window.print(); };</script>
 </body>
 </html>`;
 

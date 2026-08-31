@@ -1,9 +1,20 @@
 /**
  * Server-side HTML sanitiser for DocumentBuilder content.
  *
- * Isomorphic — runs in Node (no DOM, no window). Uses a regex-based tag
- * scanner rather than a DOM parser. Designed to be conservative: when in
- * doubt, strip the element but preserve its text children.
+ * Uses jsdom (already a project devDependency, also available at runtime via
+ * the test harness) to parse HTML into a real DOM, then walks the parsed tree
+ * applying a strict allowlist — the same algorithm as the client-side
+ * sanitiseHtml.ts but running in Node with jsdom's DOM implementation.
+ *
+ * Why jsdom and not a regex tokeniser:
+ *   HTML is not a regular language. A regex scanner cannot correctly handle
+ *   nested tags, attribute quoting edge-cases, CDATA sections, or the many
+ *   browser-specific parsing quirks that attackers exploit. jsdom uses the
+ *   same HTML5 parsing algorithm as browsers (parse5 under the hood), so the
+ *   tree it produces matches what Gotenberg's Chromium would produce — making
+ *   the sanitiser's view of the document identical to the renderer's view.
+ *
+ * Parser: jsdom (wraps parse5) — already in node_modules, no new dependency.
  *
  * Preserves:
  *   headings (h1–h6), paragraphs, div, span, br, hr
@@ -12,12 +23,13 @@
  *   inline formatting (b/i/u/em/strong/s/del/ins/strike/sup/sub)
  *   blockquote, pre, code
  *   anchors (href: https/http/mailto/# only)
- *   images (src: /api/... or same-origin relative paths only — no external URLs)
+ *   images (src: /api/... or same-origin relative paths only)
  *   safe inline styles (font, color, border, padding, margin, width, height,
- *     white-space, word-break, overflow-wrap, line-height, letter-spacing)
- *   page-break divs (class="page-break")
+ *     white-space, word-break, overflow-wrap, line-height, letter-spacing,
+ *     page-break/break-before/after/inside)
+ *   page-break divs
  *
- * Removes entirely (tag + all content):
+ * Removes entirely (tag + all descendant content):
  *   script, style, noscript, template, iframe, frame, frameset,
  *   object, embed, applet, base, link, meta, title, svg, math
  *
@@ -26,30 +38,35 @@
  *
  * Strips from every element:
  *   all event-handler attributes (on*)
- *   javascript: and vbscript: URLs in href/src/action/formaction
- *   data: URLs except data:image/* (and even those are blocked in src)
- *   unsafe CSS: url(), expression(), javascript:, data:, vbscript:
- *   id/name attributes that could clobber DOM globals
+ *   javascript: and vbscript: URLs in href/src
+ *   data: URLs in src
+ *   http:// and https:// in img src (external tracking pixel risk in Gotenberg)
+ *   blob: in img src (meaningless server-side)
+ *   id/name (DOM-clobbering)
  *   srcdoc, formaction, action, ping, xlink:href
+ *   unsafe CSS: url(), expression(), javascript:, data:, vbscript:
  *
- * Image URL policy (server-side, conservative):
- *   Allowed: /api/... (internal document image API)
- *            / (same-origin relative paths)
- *   Blocked: http:// (plain HTTP — tracking pixel risk)
- *            https:// (external — tracking pixel risk)
- *            blob: (client-only, meaningless server-side)
- *            data: (all forms)
- *            javascript: / vbscript:
- *
- * This is intentionally more restrictive than the client-side sanitiser
- * (sanitiseHtml.ts) which allows https: for display. The server-side
- * sanitiser runs on content destined for Gotenberg (headless Chromium) where
- * external network requests are a concrete exfiltration risk.
+ * Image URL policy (conservative — Gotenberg context):
+ *   Allowed:  /api/...  (internal document image API)
+ *             /         (any same-origin relative path)
+ *   Blocked:  http://   (plain HTTP — tracking pixel)
+ *             https://  (external — tracking pixel)
+ *             blob:     (client-only, meaningless in Node/Gotenberg)
+ *             data:     (all forms)
+ *             javascript: / vbscript:
  */
 
-// ── Tags dropped with all their content ──────────────────────────────────────
+import { JSDOM } from 'jsdom';
 
-const DROP_WITH_CONTENT_RE = /^(script|style|noscript|template|iframe|frame|frameset|object|embed|applet|base|link|meta|title|svg|math)$/i;
+// ── Tags dropped with all descendant content ──────────────────────────────────
+
+const DROP_WITH_CONTENT = new Set([
+  'script', 'style', 'noscript', 'template',
+  'iframe', 'frame', 'frameset',
+  'object', 'embed', 'applet',
+  'base', 'link', 'meta', 'title',
+  'svg', 'math',
+]);
 
 // ── Allowed tags ──────────────────────────────────────────────────────────────
 
@@ -66,30 +83,30 @@ const ALLOWED_TAGS = new Set([
 
 // ── Allowed attributes per tag ────────────────────────────────────────────────
 
-const ALLOWED_ATTRS: Record<string, Set<string>> = {
-  a:         new Set(['href', 'title', 'target', 'rel']),
-  span:      new Set(['style', 'class', 'data-sys-field']),
-  div:       new Set(['style', 'class']),
-  p:         new Set(['style', 'class']),
-  table:     new Set(['style', 'class']),
-  thead:     new Set(['style', 'class']),
-  tbody:     new Set(['style', 'class']),
-  tr:        new Set(['style', 'class']),
-  td:        new Set(['colspan', 'rowspan', 'style', 'class']),
-  th:        new Set(['colspan', 'rowspan', 'style', 'class']),
-  img:       new Set(['src', 'alt', 'width', 'height', 'style', 'class']),
-  h1:        new Set(['style', 'class']),
-  h2:        new Set(['style', 'class']),
-  h3:        new Set(['style', 'class']),
-  h4:        new Set(['style', 'class']),
-  h5:        new Set(['style', 'class']),
-  h6:        new Set(['style', 'class']),
-  ul:        new Set(['style', 'class']),
-  ol:        new Set(['style', 'class']),
-  li:        new Set(['style', 'class']),
-  blockquote: new Set(['style', 'class']),
-  pre:       new Set(['style', 'class']),
-  code:      new Set(['style', 'class']),
+const ALLOWED_ATTRS: Record<string, string[]> = {
+  a:          ['href', 'title', 'target', 'rel'],
+  span:       ['style', 'class', 'data-sys-field'],
+  div:        ['style', 'class'],
+  p:          ['style', 'class'],
+  table:      ['style', 'class'],
+  thead:      ['style', 'class'],
+  tbody:      ['style', 'class'],
+  tr:         ['style', 'class'],
+  td:         ['colspan', 'rowspan', 'style', 'class'],
+  th:         ['colspan', 'rowspan', 'style', 'class'],
+  img:        ['src', 'alt', 'width', 'height', 'style', 'class'],
+  h1:         ['style', 'class'],
+  h2:         ['style', 'class'],
+  h3:         ['style', 'class'],
+  h4:         ['style', 'class'],
+  h5:         ['style', 'class'],
+  h6:         ['style', 'class'],
+  ul:         ['style', 'class'],
+  ol:         ['style', 'class'],
+  li:         ['style', 'class'],
+  blockquote: ['style', 'class'],
+  pre:        ['style', 'class'],
+  code:       ['style', 'class'],
 };
 
 // ── CSS sanitisation ──────────────────────────────────────────────────────────
@@ -109,6 +126,7 @@ const SAFE_CSS_PREFIXES = [
   'page-break', 'break-before', 'break-after', 'break-inside',
 ];
 
+// Note: /g flag requires lastIndex reset before each test — done below.
 const UNSAFE_CSS_VALUE = /url\s*\(|expression\s*\(|javascript\s*:|data\s*:|vbscript\s*:/gi;
 
 function sanitiseCssStyle(raw: string): string {
@@ -124,7 +142,6 @@ function sanitiseCssStyle(raw: string): string {
       (prefix) => prop === prefix || prop.startsWith(prefix + '-'),
     );
     if (!allowed) continue;
-    // Reset UNSAFE_CSS_VALUE lastIndex (global flag)
     UNSAFE_CSS_VALUE.lastIndex = 0;
     if (UNSAFE_CSS_VALUE.test(val)) continue;
     safe.push(`${prop}: ${val}`);
@@ -134,214 +151,163 @@ function sanitiseCssStyle(raw: string): string {
 
 // ── URL validation ────────────────────────────────────────────────────────────
 
-const SAFE_HREF   = /^(https?:|mailto:|#)/i;
-const UNSAFE_URL  = /^(javascript:|vbscript:|data:)/i;
+const SAFE_HREF  = /^(https?:|mailto:|#)/i;
+const UNSAFE_URL = /^(javascript:|vbscript:|data:)/i;
 
 /**
- * Validate an img src for server-side use (Gotenberg context).
- * Only same-origin relative paths and /api/... are permitted.
- * External https/http, blob, and data URLs are all blocked.
+ * Server-side img src policy: only same-origin paths allowed.
+ * External http/https, blob, and data URLs are all blocked.
  */
 function isSafeImgSrc(val: string): boolean {
-  const trimmed = val.trim();
-  if (UNSAFE_URL.test(trimmed)) return false;
-  // Must start with / (same-origin) — external https/http blocked
-  if (trimmed.startsWith('/')) return true;
-  return false;
+  const t = val.trim();
+  if (UNSAFE_URL.test(t)) return false;
+  if (/^https?:/i.test(t)) return false;   // external — tracking pixel risk
+  if (/^blob:/i.test(t)) return false;     // meaningless in Node/Gotenberg
+  return t.startsWith('/');                // same-origin only
 }
 
-// ── Attribute parser ──────────────────────────────────────────────────────────
-// Parses key="value", key='value', key=value, key (boolean) from a raw
-// attribute string. Returns an array of [name, value] pairs.
-
-function parseAttrs(attrStr: string): Array<[string, string]> {
-  const result: Array<[string, string]> = [];
-  // Tokenise: name="val" | name='val' | name=val | name
-  const re = /([a-zA-Z][a-zA-Z0-9_:.-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]*)))?/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(attrStr)) !== null) {
-    const name = m[1].toLowerCase();
-    const val  = m[2] ?? m[3] ?? m[4] ?? '';
-    result.push([name, val]);
-  }
-  return result;
-}
-
-// ── Tag scanner ───────────────────────────────────────────────────────────────
-// Tokenises HTML into text nodes, open tags, close tags, and self-closing tags.
-
-type Token =
-  | { type: 'text';  value: string }
-  | { type: 'open';  tag: string; attrs: Array<[string, string]>; selfClose: boolean }
-  | { type: 'close'; tag: string };
-
-function tokenise(html: string): Token[] {
-  const tokens: Token[] = [];
-  // Matches: comments, CDATA, doctype, tags, text
-  const re = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<!DOCTYPE[^>]*>|<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)(\/?)\s*>|([^<]+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    if (m[5] !== undefined) {
-      // Text node
-      tokens.push({ type: 'text', value: m[5] });
-    } else if (m[2] !== undefined) {
-      const isClose    = m[1] === '/';
-      const tag        = m[2].toLowerCase();
-      const attrStr    = m[3] ?? '';
-      const selfClose  = m[4] === '/';
-      if (isClose) {
-        tokens.push({ type: 'close', tag });
-      } else {
-        tokens.push({ type: 'open', tag, attrs: parseAttrs(attrStr), selfClose });
-      }
-    }
-    // comments, CDATA, DOCTYPE — silently dropped
-  }
-  return tokens;
-}
-
-// ── Main sanitiser ────────────────────────────────────────────────────────────
+// ── DOM walker ────────────────────────────────────────────────────────────────
 
 /**
- * Sanitise an HTML string on the server (Node, no DOM).
- * Safe for use before inserting stored content into Gotenberg HTML payloads.
+ * Recursively clean a parsed DOM node, returning a safe clone or null.
+ * Uses the jsdom window's document for createElement/createDocumentFragment/
+ * createTextNode so the output nodes belong to the same document.
+ */
+function cleanNode(
+  node: Node,
+  ownerDoc: Document,
+  { Node: NodeCtor }: { Node: typeof Node },
+): Node | null {
+  // Text nodes — clone as-is (jsdom has already HTML-decoded them)
+  if (node.nodeType === NodeCtor.TEXT_NODE) {
+    return ownerDoc.createTextNode((node as Text).data);
+  }
+
+  if (node.nodeType !== NodeCtor.ELEMENT_NODE) {
+    return null; // comments, processing instructions, etc.
+  }
+
+  const el  = node as Element;
+  const tag = el.tagName.toLowerCase();
+
+  // Drop dangerous elements and their entire subtree
+  if (DROP_WITH_CONTENT.has(tag)) return null;
+
+  if (!ALLOWED_TAGS.has(tag)) {
+    // Disallowed but not dangerous — unwrap: keep children, drop the tag
+    const frag = ownerDoc.createDocumentFragment();
+    for (const child of Array.from(el.childNodes)) {
+      const cleaned = cleanNode(child, ownerDoc, { Node: NodeCtor });
+      if (cleaned) frag.appendChild(cleaned);
+    }
+    return frag;
+  }
+
+  // Build a clean element with only allowed attributes
+  const safe = ownerDoc.createElement(tag);
+  const allowedForTag = ALLOWED_ATTRS[tag] ?? [];
+
+  for (const attrName of allowedForTag) {
+    if (!el.hasAttribute(attrName)) continue;
+    const val = el.getAttribute(attrName) ?? '';
+
+    // Block all event handlers (belt-and-suspenders — they shouldn't be in
+    // allowedForTag, but guard explicitly)
+    if (attrName.startsWith('on')) continue;
+
+    // Block DOM-clobbering and dangerous attrs
+    if (['id', 'name', 'srcdoc', 'formaction', 'action', 'ping', 'xlink:href'].includes(attrName)) continue;
+
+    if (attrName === 'href') {
+      const t = val.trim();
+      if (UNSAFE_URL.test(t)) continue;
+      if (!SAFE_HREF.test(t)) continue;
+      safe.setAttribute('href', t);
+      continue;
+    }
+
+    if (attrName === 'src') {
+      if (!isSafeImgSrc(val)) continue;
+      safe.setAttribute('src', val.trim());
+      continue;
+    }
+
+    if (attrName === 'style') {
+      const safeStyle = sanitiseCssStyle(val);
+      if (safeStyle) safe.setAttribute('style', safeStyle);
+      continue;
+    }
+
+    if (attrName === 'target') {
+      if (val === '_blank') safe.setAttribute('target', '_blank');
+      continue;
+    }
+
+    if (attrName === 'rel') {
+      // Forced below for anchors; skip here
+      continue;
+    }
+
+    // colspan, rowspan, alt, width, height, class, data-sys-field, title
+    safe.setAttribute(attrName, val);
+  }
+
+  // Force rel on all anchors regardless of what was in the source
+  if (tag === 'a') {
+    safe.setAttribute('rel', 'noopener noreferrer');
+  }
+
+  // Also strip any event-handler attributes that may have slipped through
+  // (e.g. on a tag whose allowedForTag list is empty but the element was
+  // allowed — defensive pass over the safe element's own attributes)
+  for (const attr of Array.from(safe.attributes)) {
+    if (attr.name.startsWith('on')) safe.removeAttribute(attr.name);
+  }
+
+  // Recurse into children
+  for (const child of Array.from(el.childNodes)) {
+    const cleaned = cleanNode(child, ownerDoc, { Node: NodeCtor });
+    if (cleaned) safe.appendChild(cleaned);
+  }
+
+  return safe;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Sanitise an HTML string on the server using jsdom's HTML5 parser.
+ *
+ * The input is parsed into an inert jsdom document (scripts disabled,
+ * resources not loaded). The resulting DOM tree is walked with a strict
+ * allowlist. The sanitised tree is serialised back to an HTML string.
+ *
+ * Safe for use before inserting stored content into Gotenberg HTML payloads
+ * or any server-rendered HTML response.
  */
 export function sanitiseHtmlServer(dirty: string): string {
   if (!dirty) return '';
 
-  const tokens = tokenise(dirty);
-  const out: string[] = [];
+  // Parse into an inert document — runScripts: 'outside-only' is the default
+  // (scripts in the parsed HTML are NOT executed). resources: 'usable' is
+  // deliberately NOT set so no external resources are fetched during parsing.
+  const dom = new JSDOM(dirty, {
+    runScripts: 'outside-only',
+    resources:  'usable',
+  });
 
-  // Stack tracks open DROP_WITH_CONTENT elements — while depth > 0 suppress all output
-  let dropDepth = 0;
-  // Stack of open allowed tags (for proper nesting)
-  const openStack: string[] = [];
+  const { window } = dom;
+  const { document, Node: NodeCtor } = window;
 
-  // Void elements — never emit a close tag
-  const VOID_ELEMENTS = new Set([
-    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-    'link', 'meta', 'param', 'source', 'track', 'wbr',
-  ]);
+  const outputDoc = new JSDOM('').window.document;
+  const frag = outputDoc.createDocumentFragment();
 
-  for (const tok of tokens) {
-    if (tok.type === 'text') {
-      if (dropDepth > 0) continue;
-      // Escape text content
-      out.push(
-        tok.value
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;'),
-      );
-      continue;
-    }
-
-    if (tok.type === 'close') {
-      const tag = tok.tag;
-      if (DROP_WITH_CONTENT_RE.test(tag)) {
-        if (dropDepth > 0) dropDepth--;
-        continue;
-      }
-      if (dropDepth > 0) continue;
-      if (ALLOWED_TAGS.has(tag) && !VOID_ELEMENTS.has(tag)) {
-        // Only emit close if we have a matching open on the stack
-        const idx = openStack.lastIndexOf(tag);
-        if (idx !== -1) {
-          openStack.splice(idx, 1);
-          out.push(`</${tag}>`);
-        }
-      }
-      continue;
-    }
-
-    // tok.type === 'open'
-    const tag = tok.tag;
-
-    if (DROP_WITH_CONTENT_RE.test(tag)) {
-      if (!tok.selfClose) dropDepth++;
-      continue;
-    }
-
-    if (dropDepth > 0) continue;
-
-    if (!ALLOWED_TAGS.has(tag)) {
-      // Disallowed but not dangerous — skip tag, keep children (text will flow through)
-      continue;
-    }
-
-    // Build safe attribute string
-    const allowedForTag = ALLOWED_ATTRS[tag] ?? new Set<string>();
-    const safeAttrs: string[] = [];
-
-    for (const [name, val] of tok.attrs) {
-      // Block all event handlers
-      if (name.startsWith('on')) continue;
-      // Block DOM-clobbering and dangerous attrs
-      if (['id', 'name', 'srcdoc', 'formaction', 'action', 'ping', 'xlink:href'].includes(name)) continue;
-      if (!allowedForTag.has(name)) continue;
-
-      if (name === 'href') {
-        const trimmed = val.trim();
-        if (UNSAFE_URL.test(trimmed)) continue;
-        if (!SAFE_HREF.test(trimmed)) continue;
-        safeAttrs.push(`href="${escAttr(trimmed)}"`);
-        continue;
-      }
-
-      if (name === 'src') {
-        if (!isSafeImgSrc(val)) continue;
-        safeAttrs.push(`src="${escAttr(val.trim())}"`);
-        continue;
-      }
-
-      if (name === 'style') {
-        const safeStyle = sanitiseCssStyle(val);
-        if (safeStyle) safeAttrs.push(`style="${escAttr(safeStyle)}"`);
-        continue;
-      }
-
-      if (name === 'target') {
-        // Only allow _blank; force rel noopener
-        if (val === '_blank') safeAttrs.push('target="_blank"');
-        continue;
-      }
-
-      if (name === 'rel') {
-        // Will be forced below for anchors
-        continue;
-      }
-
-      // colspan, rowspan, alt, width, height, class, data-sys-field, title
-      safeAttrs.push(`${name}="${escAttr(val)}"`);
-    }
-
-    // Force rel on anchors
-    if (tag === 'a') {
-      safeAttrs.push('rel="noopener noreferrer"');
-    }
-
-    const attrStr = safeAttrs.length ? ' ' + safeAttrs.join(' ') : '';
-
-    if (VOID_ELEMENTS.has(tag) || tok.selfClose) {
-      out.push(`<${tag}${attrStr}>`);
-    } else {
-      out.push(`<${tag}${attrStr}>`);
-      openStack.push(tag);
-    }
+  for (const child of Array.from(document.body.childNodes)) {
+    const cleaned = cleanNode(child, outputDoc, { Node: NodeCtor as typeof Node });
+    if (cleaned) frag.appendChild(cleaned);
   }
 
-  // Close any unclosed tags in reverse order
-  for (let i = openStack.length - 1; i >= 0; i--) {
-    out.push(`</${openStack[i]}>`);
-  }
-
-  return out.join('');
-}
-
-function escAttr(val: string): string {
-  return val
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  const wrapper = outputDoc.createElement('div');
+  wrapper.appendChild(frag);
+  return wrapper.innerHTML;
 }

@@ -20,6 +20,16 @@
 // Default export — satisfies `import X from 'pkg'`
 export default {};
 
+// ── jsdom ─────────────────────────────────────────────────────────────────────
+// jsdom is stubbed during the client/SSR build. sanitiseHtmlServer.ts imports
+// JSDOM from jsdom — it is a server-only module called only from API handlers.
+// This no-op class satisfies the static import so the build resolves; it is
+// never instantiated in the browser or SSR render path.
+export class JSDOM {
+  constructor() {}
+  window = { document: null, Node: null };
+}
+
 // ── react-pdf / pdfjs-dist ────────────────────────────────────────────────
 export const Document = null;
 export const Page = null;
