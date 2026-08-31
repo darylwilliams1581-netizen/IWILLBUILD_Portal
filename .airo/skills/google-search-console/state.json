@@ -1,6 +1,6 @@
 {
-  "workflowState": "pending-gsc-connection",
-  "nextStep": "call-social-connect",
+  "workflowState": "pending-publish",
+  "nextStep": "call-publish",
   "lastError": null,
-  "updatedAt": "2026-08-31T09:26:23.174Z"
+  "updatedAt": "2026-08-31T10:57:45.854Z"
 }
