@@ -113,6 +113,7 @@
     "nanoid": "^5.1.16",
     "openai": "^6.45.0",
     "otplib": "^13.4.1",
+    "parse5": "8.0.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
@@ -124,6 +125,7 @@
     "react-markdown": "^9.0.1",
     "react-pdf": "^10.4.1",
     "react-resizable-panels": "^3.0.5",
+    "react-router": "^8.3.0",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "rrweb-snapshot": "^2.0.0-alpha.18",
@@ -133,8 +135,7 @@
     "vaul": "^1.1.2",
     "web-push": "^3.6.7",
     "zod": "^3.25.76",
-    "zustand": "^5.0.2",
-    "react-router": "^8.3.0"
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.29.6",

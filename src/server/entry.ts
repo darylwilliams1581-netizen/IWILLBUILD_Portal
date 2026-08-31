@@ -596,12 +596,15 @@ import me_profile_attachments_thumbnail_get_563 from "./api/me/profile-attachmen
 import me_profile_extras_get_564 from "./api/me/profile-extras/GET";
 import me_profile_extras_put_565 from "./api/me/profile-extras/PUT";
 import me_recovery_email_get_566 from "./api/me/recovery-email/GET";
-import me_recovery_email_cancel_get_567 from "./api/me/recovery-email/cancel/GET";
+// recoveryEmail* aliases used by recoveryTokenLimiter registrations below.
+// The token-link GET endpoints (verify, cancel, freeze) are rate-limited with
+// recoveryTokenLimiter to prevent token-grinding attacks on one-time links.
+import recoveryEmailCancelGet from "./api/me/recovery-email/cancel/GET";
 import me_recovery_email_cancel_post_568 from "./api/me/recovery-email/cancel/POST";
-import me_recovery_email_freeze_get_569 from "./api/me/recovery-email/freeze/GET";
+import recoveryEmailFreezeGet from "./api/me/recovery-email/freeze/GET";
 import me_recovery_email_freeze_post_570 from "./api/me/recovery-email/freeze/POST";
 import me_recovery_email_request_post_571 from "./api/me/recovery-email/request/POST";
-import me_recovery_email_verify_get_572 from "./api/me/recovery-email/verify/GET";
+import recoveryEmailVerifyGet from "./api/me/recovery-email/verify/GET";
 import migrate_account_recovery_post_573 from "./api/migrate-account-recovery/POST";
 import migrate_anatomy_post_574 from "./api/migrate-anatomy/POST";
 import migrate_asset_manager_post_575 from "./api/migrate-asset-manager/POST";
@@ -3923,12 +3926,12 @@ app.get("/api/me/profile-attachments/thumbnail", me_profile_attachments_thumbnai
 app.get("/api/me/profile-extras", me_profile_extras_get_564);
 app.put("/api/me/profile-extras", me_profile_extras_put_565);
 app.get("/api/me/recovery-email", me_recovery_email_get_566);
-app.get("/api/me/recovery-email/cancel", me_recovery_email_cancel_get_567);
+app.get("/api/me/recovery-email/cancel", recoveryTokenLimiter, recoveryEmailCancelGet);
 app.post("/api/me/recovery-email/cancel", me_recovery_email_cancel_post_568);
-app.get("/api/me/recovery-email/freeze", me_recovery_email_freeze_get_569);
+app.get("/api/me/recovery-email/freeze", recoveryTokenLimiter, recoveryEmailFreezeGet);
 app.post("/api/me/recovery-email/freeze", me_recovery_email_freeze_post_570);
 app.post("/api/me/recovery-email/request", me_recovery_email_request_post_571);
-app.get("/api/me/recovery-email/verify", me_recovery_email_verify_get_572);
+app.get("/api/me/recovery-email/verify", recoveryTokenLimiter, recoveryEmailVerifyGet);
 app.post("/api/migrate-account-recovery", migrate_account_recovery_post_573);
 app.post("/api/migrate-anatomy", migrate_anatomy_post_574);
 app.post("/api/migrate-asset-manager", migrate_asset_manager_post_575);
