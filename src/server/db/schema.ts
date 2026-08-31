@@ -46,6 +46,10 @@ export const account = mysqlTable('account', {
   id: varchar('id', { length: 36 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),
   providerId: varchar('provider_id', { length: 255 }).notNull(),
+  // BetterAuth 1.7.2+ requires an issuer column on the account table.
+  // Credential accounts use 'local:credential'; OAuth accounts use 'local:oauth:<provider>'.
+  // Existing rows are backfilled by the startup migration in entry.ts.
+  issuer: varchar('issuer', { length: 255 }),
   userId: varchar('user_id', { length: 36 })
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),

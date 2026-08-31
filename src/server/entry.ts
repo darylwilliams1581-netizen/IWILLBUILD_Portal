@@ -4978,6 +4978,36 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.warn('[startup] sms_verification_codes.verified_at migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
+		// ── BetterAuth 1.7.2: account.issuer column + backfill ───────────────
+		// BetterAuth 1.7.2 added an `issuer` field to the account schema.
+		// Credential accounts must have issuer = 'local:credential'.
+		// OAuth accounts must have issuer = 'local:oauth:<providerId>'.
+		// Without this column every login returns "User not found".
+		try {
+			await db.execute(sql.raw(
+				"ALTER TABLE `account` ADD COLUMN `issuer` VARCHAR(255) NULL DEFAULT NULL AFTER `provider_id`"
+			));
+			console.log('[startup] account.issuer column added');
+		} catch (e) {
+			// ER_DUP_FIELDNAME = column already exists — safe to ignore
+			const msg = (e as Error)?.message ?? '';
+			if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+				console.warn('[startup] account.issuer ALTER skipped:', msg.slice(0, 120));
+			}
+		}
+		// Backfill: set issuer for all existing rows that are still NULL
+		try {
+			await db.execute(sql.raw(
+				"UPDATE `account` SET `issuer` = CASE " +
+				"  WHEN `provider_id` = 'credential' THEN 'local:credential' " +
+				"  ELSE CONCAT('local:oauth:', `provider_id`) " +
+				"END WHERE `issuer` IS NULL"
+			));
+			console.log('[startup] account.issuer backfill complete');
+		} catch (e) {
+			console.warn('[startup] account.issuer backfill failed:', (e as Error)?.message?.slice(0, 120));
+		}
+
 		// ── All migrations done — now start accepting requests ─────────────────
 		console.log('[startup] all inline migrations complete — calling app.listen');
 
