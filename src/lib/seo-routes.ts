@@ -39,17 +39,4 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/",        changefreq: "weekly", priority: 1.0, lastmod: "2026-08-31" },
   { path: "/privacy", changefreq: "yearly", priority: 0.4 },
   { path: "/terms",   changefreq: "yearly", priority: 0.4 },
-
-  // ── Authenticated portal pages — excluded from sitemap ───────────────────
-  // These pages are behind login; they must not appear in the public sitemap.
-  // Listed here with sitemap:false so the scanner knows they are intentionally
-  // excluded rather than missing.
-  { path: "/lists",   sitemap: false },
-
-  // ── Test files — not real routes ─────────────────────────────────────────
-  // src/pages/__tests__/*.test files are picked up by the SEO scanner as
-  // routes. They are test files, not pages. Excluded from sitemap entirely.
-  { path: "/__tests__/finance.test",        sitemap: false },
-  { path: "/__tests__/library.test",        sitemap: false },
-  { path: "/__tests__/work-behaviour.test", sitemap: false },
 ];

@@ -106,7 +106,7 @@ describe('DazzaBuilderAssistant — visibility', () => {
   });
 
   it('1. Owner sees Dazza panel toggle button', () => {
-    mockUsePermissions.mockReturnValue({ isOwner: true, loading: false } as ReturnType<typeof usePermissions>);
+    mockUsePermissions.mockReturnValue({ isOwner: true, isPlatformOwner: true, loading: false } as ReturnType<typeof usePermissions>);
     renderAssistant(makeDocContext());
     // The FAB or collapsed tab should be visible
     const btn = screen.queryByLabelText(/open dazza builder assistant/i)

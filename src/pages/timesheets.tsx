@@ -24,9 +24,11 @@ export default function TimesheetsPage() {
     <>
       <Helmet>
         <title>Timesheets — IWILLBUILD</title>
+        <meta name="description" content="Timesheets — redirecting to Finance workspace." />
+        <link rel="canonical" href="https://iwillbuild.com/finance" />
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
-      {/* Blank while redirecting */}
+      <h1 className="sr-only">Timesheets</h1>
     </>
   );
 }
