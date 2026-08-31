@@ -194,6 +194,8 @@ import dazza_v3_incidents_post_157 from "./api/dazza/v3/incidents/POST";
 import dazza_v3_incidents_id_get_158 from "./api/dazza/v3/incidents/[id]/GET";
 import dazza_v3_incidents_id_investigate_post_159 from "./api/dazza/v3/incidents/[id]/investigate/POST";
 import developer_activity_log_get_160 from "./api/developer/activity-log/GET";
+// TEMPORARY AUDIT — remove after use
+import energyq_audit_get from "./api/internal/energyq-audit/GET";
 import developer_audit_log_get_161 from "./api/developer/audit-log/GET";
 import developer_companies_id_archive_post_162 from "./api/developer/companies/[id]/archive/POST";
 import developer_company_health_get_163 from "./api/developer/company-health/GET";
@@ -3521,6 +3523,8 @@ app.post("/api/dazza/v3/incidents", dazza_v3_incidents_post_157);
 app.get("/api/dazza/v3/incidents/:id", dazza_v3_incidents_id_get_158);
 app.post("/api/dazza/v3/incidents/:id/investigate", dazza_v3_incidents_id_investigate_post_159);
 app.get("/api/developer/activity-log", developer_activity_log_get_160);
+// TEMPORARY AUDIT — remove after use
+app.get("/api/internal/energyq-audit", energyq_audit_get);
 app.get("/api/developer/audit-log", developer_audit_log_get_161);
 app.post("/api/developer/companies/:id/archive", developer_companies_id_archive_post_162);
 app.get("/api/developer/company-health", developer_company_health_get_163);
