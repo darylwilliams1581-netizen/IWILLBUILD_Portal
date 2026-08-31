@@ -5,18 +5,13 @@
  *  1. Timesheets icon appears in MANAGEMENT_ICON_DEFS (Manage page)
  *  2. Timesheets icon does NOT appear in COMING_SOON_ICON_DEFS
  *  3. Timesheets icon does NOT appear in JOB_FEATURES (Work & Field / job picker)
- *  4. Timesheets href routes to /timesheets (not /finance?financeTab=timesheets)
- *  5. /timesheets page exists and renders a back button
- *  6. /timesheets page renders FinanceTimesheetsTab (the canonical component)
- *  7. /timesheets page has a back-to-manage control
- *  8. /timesheets page has an h1 heading
- *  9. Finance page redirects /finance?financeTab=timesheets → /timesheets
- * 10. GET /api/finance/timesheets/me returns profile info (company isolation)
- * 11. GET /api/finance/timesheets enforces company isolation (workers see own)
- * 12. Timesheets page is registered in routes.tsx
- * 13. Mobile layout: page uses portal-page + portal-content structure
- * 14. No job picker import in timesheets page
- * 15. No employee selector in timesheets page
+ *  4. Timesheets href routes to /finance?financeTab=timesheets (Finance shell)
+ *  5. /timesheets page redirects to /finance?financeTab=timesheets (deep-link compat)
+ *  6. Finance page does NOT redirect financeTab=timesheets away (timesheets stays in shell)
+ *  7. /timesheets route is still registered in routes.tsx (deep-link compat)
+ *  8. GET /api/finance/timesheets/me returns profile info (company isolation)
+ *  9. GET /api/finance/timesheets enforces company isolation (workers see own)
+ * 10. PortalSidebar timesheets link goes to Finance shell
  */
 
 import { describe, it, expect } from 'vitest';
@@ -32,12 +27,12 @@ const financeSrc         = src('src/pages/finance.tsx');
 const routesSrc          = src('src/routes.tsx');
 const timesheetsGetSrc   = src('src/server/api/finance/timesheets/GET.ts');
 const timesheetsMeSrc    = src('src/server/api/finance/timesheets/me/GET.ts');
+const sidebarSrc         = src('src/components/PortalSidebar.tsx');
 
 // ── 1. Timesheets in MANAGEMENT_ICON_DEFS ─────────────────────────────────────
 
 describe('Timesheets icon placement', () => {
   it('is in MANAGEMENT_ICON_DEFS', () => {
-    // The management block must contain the timesheet key
     const mgmtBlock = managementIconsSrc.match(/MANAGEMENT_ICON_DEFS[\s\S]*?];/)?.[0] ?? '';
     expect(mgmtBlock).toContain("key: 'timesheet'");
   });
@@ -48,7 +43,6 @@ describe('Timesheets icon placement', () => {
   });
 
   it('does NOT have comingSoon: true', () => {
-    // Find the timesheet entry and confirm it has no comingSoon flag
     const timesheetEntry = managementIconsSrc.match(/key: 'timesheet'[^\n]*/)?.[0] ?? '';
     expect(timesheetEntry).not.toContain('comingSoon');
   });
@@ -59,52 +53,35 @@ describe('Timesheets icon placement', () => {
   });
 });
 
-// ── 2. Timesheets href ────────────────────────────────────────────────────────
+// ── 2. Timesheets href — Finance shell ────────────────────────────────────────
 
 describe('Timesheets icon href', () => {
-  it('routes to /timesheets (not /finance?financeTab=timesheets)', () => {
+  it('routes to /finance?financeTab=timesheets (Finance shell, not standalone page)', () => {
     const timesheetEntry = managementIconsSrc.match(/key: 'timesheet'[^\n]*/)?.[0] ?? '';
-    expect(timesheetEntry).toContain("href: '/timesheets'");
-    expect(timesheetEntry).not.toContain('/finance?financeTab=timesheets');
+    expect(timesheetEntry).toContain("href: '/finance?financeTab=timesheets'");
+    // Must NOT link to the bare /timesheets standalone page
+    expect(timesheetEntry).not.toContain("href: '/timesheets'");
   });
 });
 
-// ── 3. /timesheets page structure ─────────────────────────────────────────────
+// ── 3. /timesheets page — redirect only ──────────────────────────────────────
 
-describe('/timesheets page', () => {
-  it('renders FinanceTimesheetsTab', () => {
-    expect(timesheetsPageSrc).toContain('FinanceTimesheetsTab');
+describe('/timesheets page (deep-link redirect)', () => {
+  it('redirects to /finance?financeTab=timesheets', () => {
+    expect(timesheetsPageSrc).toContain('/finance?financeTab=timesheets');
+    expect(timesheetsPageSrc).toContain('replace: true');
   });
 
-  it('has a back button with aria-label "Back to Manage"', () => {
-    expect(timesheetsPageSrc).toContain('Back to Manage');
-    expect(timesheetsPageSrc).toContain('timesheets-back-button');
+  it('does NOT render FinanceTimesheetsTab directly (redirect page only)', () => {
+    // The redirect page should not embed the tab component — it just redirects
+    expect(timesheetsPageSrc).not.toContain('<FinanceTimesheetsTab');
   });
 
-  it('has an h1 heading', () => {
-    expect(timesheetsPageSrc).toMatch(/<h1[^>]*>/);
-  });
-
-  it('uses portal-page layout (mobile-compatible)', () => {
-    expect(timesheetsPageSrc).toContain('portal-page');
-    expect(timesheetsPageSrc).toContain('portal-content');
-  });
-
-  it('does NOT import a job picker', () => {
-    expect(timesheetsPageSrc).not.toContain('JobPicker');
-    expect(timesheetsPageSrc).not.toContain('job-picker');
-    expect(timesheetsPageSrc).not.toContain('picker=');
-  });
-
-  it('does NOT include an employee selector', () => {
-    expect(timesheetsPageSrc).not.toContain('EmployeeSelect');
-    expect(timesheetsPageSrc).not.toContain('employee-selector');
-    expect(timesheetsPageSrc).not.toContain('Select employee');
-  });
-
-  it('navigates back to home manage page', () => {
-    // Back button should navigate to /home?page=2 (Manage page on the authenticated home screen)
-    expect(timesheetsPageSrc).toContain('/home?page=2');
+  it('does NOT have a standalone page header with back button', () => {
+    // The old standalone header is gone — redirect page has no chrome
+    expect(timesheetsPageSrc).not.toContain('timesheets-back-button');
+    expect(timesheetsPageSrc).not.toContain('portal-page');
+    expect(timesheetsPageSrc).not.toContain('portal-content');
   });
 
   it('is marked seo-exempt (authenticated-only page)', () => {
@@ -115,40 +92,48 @@ describe('/timesheets page', () => {
 // ── 4. Route registration ─────────────────────────────────────────────────────
 
 describe('/timesheets route', () => {
-  it('is registered in routes.tsx', () => {
+  it('is still registered in routes.tsx (deep-link compat)', () => {
     expect(routesSrc).toContain("path: '/timesheets'");
   });
 
   it('imports TimesheetsPage lazily', () => {
     expect(routesSrc).toContain("import('./pages/timesheets')");
   });
-
-  it('is protected (wrapped in protect())', () => {
-    // The route element must use protect()
-    const timesheetsRoute = routesSrc.match(/path: '\/timesheets'[\s\S]*?errorElement/)?.[0] ?? '';
-    expect(timesheetsRoute).toContain('protect(');
-  });
 });
 
-// ── 5. Finance page legacy redirect ──────────────────────────────────────────
+// ── 5. Finance page — no redirect away from timesheets tab ───────────────────
 
-describe('Finance page legacy redirect', () => {
-  it('redirects financeTab=timesheets to /timesheets', () => {
+describe('Finance page — timesheets stays in shell', () => {
+  it('does NOT redirect financeTab=timesheets to /timesheets', () => {
+    // The old redirect is removed — timesheets renders inside the Finance shell
+    expect(financeSrc).not.toContain("navigate('/timesheets'");
+    expect(financeSrc).not.toContain("navigate(\"/timesheets\"");
+  });
+
+  it('TABS array includes timesheets', () => {
+    expect(financeSrc).toContain("key: 'timesheets'");
+  });
+
+  it('renders FinanceTimesheetsTab for the timesheets tab', () => {
+    expect(financeSrc).toContain('FinanceTimesheetsTab');
     expect(financeSrc).toContain("activeTab === 'timesheets'");
-    expect(financeSrc).toContain("navigate('/timesheets'");
-  });
-
-  it('uses replace:true for the redirect (no history entry)', () => {
-    const redirectBlock = financeSrc.match(/activeTab === 'timesheets'[\s\S]*?}\s*},?\s*\[/)?.[0] ?? '';
-    expect(redirectBlock).toContain('replace: true');
   });
 });
 
-// ── 6. API — company isolation ────────────────────────────────────────────────
+// ── 6. PortalSidebar — timesheets link goes to Finance shell ─────────────────
+
+describe('PortalSidebar timesheets link', () => {
+  it('links to /finance?financeTab=timesheets (not /timesheets)', () => {
+    expect(sidebarSrc).toContain("href: '/finance?financeTab=timesheets'");
+    // Must NOT link to the bare /timesheets standalone page
+    expect(sidebarSrc).not.toContain("href: '/timesheets'");
+  });
+});
+
+// ── 7. API — company isolation ────────────────────────────────────────────────
 
 describe('GET /api/finance/timesheets — company isolation', () => {
   it('passes companyId to the service (company isolation enforced in service layer)', () => {
-    // The handler passes profile.companyId to listTimesheets — isolation is in the service
     expect(timesheetsGetSrc).toContain('companyId: profile.companyId');
   });
 
@@ -167,7 +152,6 @@ describe('GET /api/finance/timesheets/me — profile endpoint', () => {
   });
 
   it('returns the authenticated user profile only', () => {
-    // Must filter by profile.id (not expose all profiles)
     expect(timesheetsMeSrc).toContain('profile.id');
   });
 });

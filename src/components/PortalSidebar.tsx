@@ -206,7 +206,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     idx: '11f',
     label: 'Timesheets',
     icon: Clock,
-    href: '/timesheets'
+    href: '/finance?financeTab=timesheets'
   }, {
     id: 'nav-11d',
     idx: '11d',

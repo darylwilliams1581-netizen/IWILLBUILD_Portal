@@ -360,9 +360,9 @@ describe('homeIcons.ts — no /work-field hrefs', () => {
     expect(homeIconsSrc).not.toMatch(/href: '\/work-field/);
   });
 
-  it('timesheet icon now routes to /timesheets (Manage page, not comingSoon)', () => {
-    expect(homeIconsSrc).toContain("href: '/timesheets'");
-    expect(homeIconsSrc).not.toContain("href: '/finance?financeTab=timesheets'");
+  it('timesheet icon now routes to /finance?financeTab=timesheets (Finance shell)', () => {
+    expect(homeIconsSrc).toContain("href: '/finance?financeTab=timesheets'");
+    expect(homeIconsSrc).not.toContain("href: '/timesheets'");
   });
 
   it('Work & Field icon is NOT in FIELD_ICON_DEFS (removed)', () => {
@@ -567,9 +567,9 @@ describe('Timesheets — not in job picker launcher', () => {
     expect(registrySrc).not.toContain("key: 'timesheet'");
   });
 
-  it('Timesheets routes to /timesheets (live Manage page entry, not comingSoon)', () => {
-    expect(homeIconsSrc).toContain("href: '/timesheets'");
-    expect(homeIconsSrc).not.toContain("href: '/finance?financeTab=timesheets'");
+  it('Timesheets routes to /finance?financeTab=timesheets (Finance shell, not comingSoon)', () => {
+    expect(homeIconsSrc).toContain("href: '/finance?financeTab=timesheets'");
+    expect(homeIconsSrc).not.toContain("href: '/timesheets'");
   });
 
   it('Timesheets is NOT in the Work & Field redirect page', () => {

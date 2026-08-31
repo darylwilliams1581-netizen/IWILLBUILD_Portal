@@ -53,7 +53,7 @@ describe('Mobile home screen — core routes present', () => {
     '/studio/forms', '/safety?safetyTab=documents', '/safety/posters',
     '/incidents', '/risk-register',
     // Management
-    '/timesheets', '/profile', '/dazza-ai',
+    '/finance?financeTab=timesheets', '/profile', '/dazza-ai',
     '/studio/documents', '/studio/library', '/quick-links', '/lists',
     '/user-logs', '/signin-history',
     '/team', '/billing', '/settings', '/help',
@@ -180,9 +180,9 @@ describe('HomeIconPermissions — permission grid role gating', () => {
 // ── 5. Sidebar parity — Finance timesheets link updated ───────────────────────
 
 describe('PortalSidebar — Finance timesheets link', () => {
-  it('links directly to /timesheets (not /finance?financeTab=timesheets)', () => {
-    expect(sidebarSrc).toContain("href: '/timesheets'");
-    expect(sidebarSrc).not.toContain("href: '/finance?financeTab=timesheets'");
+  it('links to /finance?financeTab=timesheets (Finance shell)', () => {
+    expect(sidebarSrc).toContain("href: '/finance?financeTab=timesheets'");
+    expect(sidebarSrc).not.toContain("href: '/timesheets'");
   });
 });
 
