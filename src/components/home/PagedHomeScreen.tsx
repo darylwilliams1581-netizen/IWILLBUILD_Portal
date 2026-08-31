@@ -566,14 +566,13 @@ export default function PagedHomeScreen({
       {/* Row 1: logo + name (left) + utility buttons (right) */}
       <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
         {/* Brand mark + wordmark */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
           <img
-            src="/airo-assets/images/logo/horizontal/dark"
+            src="/airo-assets/images/logo/primary/dark"
             alt="IWILLBUILD"
-            className="h-7 w-auto object-contain shrink-0"
-            style={{ maxWidth: 28 }}
+            className="h-7 w-7 object-contain shrink-0"
           />
-          <span className="text-[15px] font-black tracking-tight text-foreground select-none truncate">
+          <span className="text-[15px] font-black tracking-tight text-foreground select-none">
             IWILLBUILD
           </span>
         </div>
