@@ -104,10 +104,10 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // Note: Contacts is surfaced directly on the Dashboard as a quick-dial panel
 // (ContactsPanel) — it is intentionally excluded from the Manage icon grid here.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
-  { key: 'timesheet',      label: 'Timesheets',      icon: FileSpreadsheet,  href: '/timesheets',             bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
+  { key: 'timesheet',      label: 'Timesheets',      icon: FileSpreadsheet,  href: '/finance?financeTab=timesheets',  bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
   { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', ownerOnly: true },
-  { key: 'app_docs',       label: 'App Docs',        icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'app_docs',       label: 'Studio',        icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'library',        label: 'Library',         icon: Library,          href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'quick_links',    label: 'Quick Links',     icon: Link2,            href: '/quick-links',            bg: 'bg-lime-700',    fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'lists',          label: 'Lists',           icon: TableProperties,  href: '/lists',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management', adminOnly: true },
@@ -128,7 +128,7 @@ export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
   { key: 'messages',       label: 'Messages',    icon: MessageSquare,      href: '/messages',    bg: 'bg-green-500',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'invoices_field', label: 'Invoices',    icon: Wallet,             href: '/invoices',    bg: 'bg-teal-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'daily_log',      label: 'Daily Log',   icon: ClipboardList,      href: '/daily-log',   bg: 'bg-violet-500', fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'weather',        label: 'Weather',     icon: CloudRain,          href: '/weather',     bg: 'bg-cyan-400',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
+  // Weather intentionally removed — feature was cancelled
 ];
 
 // ── Flat list of ALL icons (used for permission grid) ─────────────────────────
@@ -199,3 +199,26 @@ export const GROUP_LABELS: Record<IconGroup, string> = {
   management:  'Administration',
   comingSoon:  'Coming Soon',
 };
+
+// ── Visible group config ──────────────────────────────────────────────────────
+/**
+ * Pre-built group config for navigation and Help.
+ * Each entry contains only RELEASED (non-comingSoon) icons.
+ * Consumers (Help page, nav grids) must import this — never build their own
+ * hardcoded group list.
+ */
+export interface VisibleGroupConfig {
+  group: IconGroup;
+  label: string;
+  defs: HomeIconDef[];
+}
+
+export const VISIBLE_GROUP_CONFIG: VisibleGroupConfig[] = [
+  { group: 'field',      label: GROUP_LABELS.field,      defs: FIELD_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'files',      label: GROUP_LABELS.files,      defs: FILES_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'fleet',      label: GROUP_LABELS.fleet,      defs: FLEET_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'finance',    label: GROUP_LABELS.finance,    defs: FINANCE_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'safety',     label: GROUP_LABELS.safety,     defs: SAFETY_ICON_DEFS.filter(i => !i.comingSoon) },
+  { group: 'management', label: GROUP_LABELS.management, defs: MANAGEMENT_ICON_DEFS.filter(i => !i.comingSoon) },
+  // comingSoon group intentionally excluded — never rendered in navigation or Help
+].filter(gc => gc.defs.length > 0);

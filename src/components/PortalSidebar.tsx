@@ -9,7 +9,7 @@ Plus, Briefcase, Clock } from 'lucide-react';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
-import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopTopBar, { TOPBAR_HEIGHT_CSS } from '@/components/DesktopTopBar';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
@@ -206,7 +206,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     idx: '11f',
     label: 'Timesheets',
     icon: Clock,
-    href: '/timesheets'
+    href: '/finance?financeTab=timesheets'
   }, {
     id: 'nav-11d',
     idx: '11d',
@@ -252,7 +252,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   items: [{
     id: 'nav-17',
     idx: '17',
-    label: 'App Docs',
+    label: 'Studio',
     icon: FileText,
     href: '/studio/documents'
   }, {
@@ -814,10 +814,11 @@ export default function PortalSidebar() {
       {/* ── Desktop top bar — fixed, full-width, z-1100 ── */}
       <DesktopTopBar />
 
-      {/* ── Desktop sidebar — fixed left rail, below topbar, md+ only ── */}
-      <aside ref={_sidebarRef} aria-label="Desktop sidebar navigation" className="hidden md:flex flex-col" style={{
+      {/* ── Desktop sidebar — fixed left rail, below topbar, lg+ only ── */}
+      {/* Hidden on tablet (md) — tablet uses the Dock + mobile drawer instead */}
+      <aside ref={_sidebarRef} aria-label="Desktop sidebar navigation" className="hidden lg:flex flex-col" style={{
       position: 'fixed',
-      top: 56,
+      top: TOPBAR_HEIGHT_CSS,
       left: 0,
       bottom: 0,
       width: sidebarWidth,
@@ -851,6 +852,7 @@ export default function PortalSidebar() {
           duration: 0.25,
           ease: 'easeOut' as const
         }} className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200" style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}>
               <SidebarContent onClose={() => setMobileOpen(false)} />

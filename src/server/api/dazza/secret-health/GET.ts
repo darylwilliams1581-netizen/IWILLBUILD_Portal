@@ -31,11 +31,8 @@ const SECRET_GROUPS: Record<string, string[]> = {
   stripe: [
     'STRIPE_SECRET_KEY',
     'STRIPE_PUBLISHABLE_KEY',
-    'STRIPE_PRICE_SOLO',
-    'STRIPE_PRICE_PRO',
-    'STRIPE_PRICE_TEAM',
+    // Canonical price IDs — used by create-checkout and upgrade-subscription
     'STRIPE_SOLO_PRICE_ID',
-    'STRIPE_PRO_PRICE_ID',
     'STRIPE_TEAM_PRICE_ID',
     'STRIPE_BUSINESS_PRICE_ID',
   ],

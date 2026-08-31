@@ -55,10 +55,14 @@ function formatRelative(dateStr: string): string {
 }
 export default function NotificationBell({
   collapsed,
-  onTopBar
+  onTopBar,
+  buttonClassName,
+  label,
 }: {
   collapsed?: boolean;
   onTopBar?: boolean;
+  buttonClassName?: string;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -152,8 +156,9 @@ export default function NotificationBell({
   }
   return <div ref={panelRef} className="relative">
       {/* Bell button */}
-      <button onClick={() => setOpen(v => !v)} title="Notifications" className={`relative flex items-center justify-center w-8 h-8 rounded-[10px] border border-red-700/60 text-white transition-colors shrink-0 ${open ? 'bg-red-700' : 'bg-red-600 hover:bg-red-700'}`}>
-        <Bell size={16} />
+      <button onClick={() => setOpen(v => !v)} title="Notifications" className={`relative flex items-center justify-center rounded-[10px] border border-red-700/60 text-white transition-colors ${label ? 'w-full h-8 gap-1.5 px-2 text-[11px] font-semibold' : 'w-8 h-8 shrink-0'} ${open ? 'bg-red-700' : 'bg-red-600 hover:bg-red-700'} ${buttonClassName ?? ''}`}>
+        <Bell size={label ? 14 : 16} />
+        {label && <span className="truncate">{label}</span>}
         {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>}

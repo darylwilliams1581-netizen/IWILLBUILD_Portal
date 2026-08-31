@@ -132,17 +132,10 @@ const routeError = <RouteErrorFallback />;
 function PageLoader() {
   return <div style={{
     display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
     height: '100%',
-    minHeight: '100dvh',
-    boxSizing: 'border-box',
-    background: '#f1f5f9',
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: 600
+    minHeight: 200
   }}>
       <div style={{
       width: 28,
@@ -152,7 +145,6 @@ function PageLoader() {
       borderRadius: '50%',
       animation: 'spin 0.7s linear infinite'
     }} />
-      <span>Loading IWILLBUILD…</span>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>;
 }
@@ -520,6 +512,16 @@ export const routes: RouteObject[] = [{
   element: protect(<SafetyPage />),
   errorElement: routeError
 }, {
+  // Old SWMS builder tab deep-link → Safety documents tab (sign-on workflow preserved)
+  path: '/safety/swms',
+  loader: () => redirect('/safety?safetyTab=documents'),
+}, {
+  // Old Safety Plans builder tab deep-link → Studio with apply_widget hint
+  path: '/safety/plans',
+  loader: () => redirect('/studio/documents'),
+}, {
+  // Any old ?safetyTab=swms or ?safetyTab=plans deep-links are handled client-side
+  // by SafetyContent falling back to DEFAULT_TAB='documents' for unknown tab IDs. {
   path: '/library',
   loader: () => redirect('/studio/library')
 }, {

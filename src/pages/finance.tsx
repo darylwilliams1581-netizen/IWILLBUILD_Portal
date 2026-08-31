@@ -50,14 +50,9 @@ export default function FinancePage() {
     }
   }, [rawTab, setSearchParams]);
 
-  // Legacy redirect: /finance?financeTab=timesheets → /timesheets
-  // Workers who land here via an old link or bookmark are sent to the
-  // dedicated employee-facing timesheets page instead.
-  useEffect(() => {
-    if (activeTab === 'timesheets') {
-      navigate('/timesheets', { replace: true });
-    }
-  }, [activeTab, navigate]);
+  // Legacy redirect: /finance?financeTab=timesheets used to go to /timesheets.
+  // Timesheets now lives inside the Finance shell — no redirect needed.
+  // (The /timesheets route redirects here instead.)
 
   // Invoices tab navigates to the existing /invoices route
   useEffect(() => {
@@ -92,11 +87,11 @@ export default function FinancePage() {
       <PortalSidebar />
       <DesktopDock />
 
-      <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
+      <div className="portal-content flex flex-col overflow-hidden" style={{ height: '100%' }}>
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors shrink-0"
             aria-label="Back"
           >
@@ -111,8 +106,11 @@ export default function FinancePage() {
           </div>
         </div>
 
-        {/* ── Tab strip ───────────────────────────────────────────────────── */}
-        <div className="flex border-b border-border shrink-0 overflow-x-auto">
+        {/* ── Tab strip — horizontally scrollable on tablet ───────────────── */}
+        <div
+          className="flex border-b border-border shrink-0 overflow-x-auto"
+          style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
+        >
           {TABS.map(tab => (
             <button
               key={tab.key}

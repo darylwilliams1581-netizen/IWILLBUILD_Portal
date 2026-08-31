@@ -593,7 +593,7 @@ export default function QuickLinksPage() {
           {/* ── Header ── */}
           <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
             <div className="flex items-center gap-2 px-4 h-12">
-              <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+              <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
                 <ArrowLeft size={16} />
                 <span className="hidden sm:inline">Home</span>
               </button>

@@ -33,7 +33,8 @@ export default async function handler(req: Request, res: Response) {
 
     const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings,
             sourceJobId, docStatus,
-            docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature } = req.body as {
+            docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature,
+            appliedWidgets } = req.body as {
       name?: string;
       templateType?: string;
       pageLayout?: unknown;
@@ -50,9 +51,10 @@ export default async function handler(req: Request, res: Response) {
       acknowledgementText?: string;
       submitLabel?: string;
       requiresSignature?: boolean;
+      appliedWidgets?: unknown[];
     };
 
-    const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [] });
+    const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [], appliedWidgets: appliedWidgets ?? [] });
     const pageLayoutJson = JSON.stringify(pageLayout ?? {});
     const themeJson = JSON.stringify(theme ?? {});
     const pdfSettingsJson = pdfSettings ? JSON.stringify(pdfSettings) : null;
@@ -76,6 +78,7 @@ export default async function handler(req: Request, res: Response) {
     if (acknowledgementText !== undefined) newerParts.push(`acknowledgement_text = ${JSON.stringify(acknowledgementText)}`);
     if (submitLabel !== undefined) newerParts.push(`submit_label = ${JSON.stringify(submitLabel)}`);
     if (requiresSignature !== undefined) newerParts.push(`requires_signature = ${requiresSignature ? 1 : 0}`);
+    if (appliedWidgets !== undefined) newerParts.push(`applied_widgets_json = ${JSON.stringify(JSON.stringify(appliedWidgets ?? []))}`);
 
     const runUpdate = async (parts: string[]) =>
       db.execute(sql.raw(

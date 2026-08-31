@@ -1,12 +1,21 @@
 /**
- * Publicly-crawlable routes for the sitemap.
+ * Auto-synced registry of publicly-crawlable routes. Consumed by the
+ * /sitemap.xml handler in src/server/entry.ts.
  *
- * RULE: Only genuine public marketing and legal pages belong here.
- * Authenticated portal pages, tools, admin consoles, test files, API routes,
- * auth flows, share/document routes and internal pages must NOT appear.
+ * RULE: Only genuinely public, unauthenticated marketing and legal pages
+ * belong here. Every authenticated portal route is blocked in robots.txt
+ * and must NOT appear in the sitemap — search engines should never index
+ * app-internal pages.
  *
- * The sitemap handler in src/server/entry.ts reads this file.
- * robots.txt is generated dynamically in entry.ts and must stay in sync.
+ * Safe to hand-edit: priority, changefreq, lastmod.
+ * Do NOT add authenticated routes here.
+ *
+ * EXCLUDED PAGES (do not add until conditions are met):
+ *   /download-app — noindex,nofollow until APK_AVAILABLE is true and a signed
+ *                   release is published. Re-add here AND remove the noindex
+ *                   meta tag in pages/download-app.tsx at the same time.
+ *   /subscribe    — noindex,nofollow; auth-gated subscription flow, not a
+ *                   public landing page.
  */
 
 export interface SeoRoute {
@@ -21,34 +30,13 @@ export interface SeoRoute {
     | "never";
   priority?: number;
   lastmod?: string;
-  /** Set to false to exclude from sitemap XML while keeping the entry for reference */
+  /** Set to false to exclude from sitemap output without deleting the entry */
   sitemap?: boolean;
 }
 
 export const seoRoutes: SeoRoute[] = [
   // ── Public marketing pages ────────────────────────────────────────────────
-  { path: "/",            changefreq: "weekly",  priority: 1.0, lastmod: "2026-08-26" },
-
-  // /download-app: noindex + excluded from sitemap until first signed APK release.
-  // To activate: set sitemap:true (or remove this entry), remove noindex from the
-  // page's <Helmet>, set APK_AVAILABLE=true in download-app.tsx, update lastmod.
-  { path: "/download-app", sitemap: false },
-
-  // ── Legal pages ───────────────────────────────────────────────────────────
-  { path: "/privacy",     changefreq: "yearly",  priority: 0.4 },
-  { path: "/terms",       changefreq: "yearly",  priority: 0.4 },
-
-  // ── Authenticated portal pages — excluded from sitemap, noindex ───────────
-  // These are registered here so the SEO scanner knows they are intentionally
-  // excluded. They must NOT appear in the sitemap XML (sitemap: false).
-  { path: "/lists",       sitemap: false },
-
-  // ── Test files — not route pages, excluded from sitemap and indexing ──────
-  // src/pages/__tests__/*.test.tsx files are picked up by the page scanner.
-  // Registering them here with sitemap:false suppresses the "not registered"
-  // audit warning. These paths are never served as real routes.
-  { path: "/__tests__/finance.test",        sitemap: false },
-  { path: "/__tests__/library.test",        sitemap: false },
-  { path: "/__tests__/safety-posters.test", sitemap: false },
-  { path: "/__tests__/work-behaviour.test", sitemap: false },
+  { path: "/",        changefreq: "weekly", priority: 1.0, lastmod: "2026-08-31" },
+  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
+  { path: "/terms",   changefreq: "yearly", priority: 0.4 },
 ];

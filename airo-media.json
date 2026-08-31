@@ -137,16 +137,20 @@
   },
   "safety-badges/icons-sheet": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/safety-badges-icons-sheet-8365124b.jpg",
+    "searchQuery": "safe work method statement construction template",
+    "alternatives": [
+      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png"
+    ],
     "userModified": true,
     "createdAt": "2026-07-08T04:52:19.912Z",
-    "lastUpdated": "2026-07-08T04:52:19.912Z",
+    "lastUpdated": "2026-08-28T09:54:56.668Z",
     "uploadSources": {
-      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png": "f38wenbvln_1783486300702_file_56AQGF9z5W.png"
+      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png": "f38wenbvln_1783486300702_file_56AQGF9z5W.png",
+      "/airo-assets/uploads/safety-badges-icons-sheet-8365124b.jpg": "f38wenbvln_1787899724347_file_cLVgHiToD2.jpg"
     },
-    "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
+    "uploadContentHash": "1d96ee936f91b50db74bd84c900df57ebf61fbb086acda2c8e982d1d433d9666",
+    "caption": "safe work method statement construction template"
   },
   "reference/screenshot-1": {
     "mediaType": "image",
@@ -430,29 +434,49 @@
   },
   "safety-badges/ppe-banner-strip": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/safety-badges-ppe-banner-strip-d9798dfa.jpg",
+    "searchQuery": "personal protective equipment safety icons",
+    "alternatives": [
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png"
+    ],
     "userModified": true,
     "createdAt": "2026-07-21T08:18:43.272Z",
-    "lastUpdated": "2026-07-21T08:18:43.272Z",
+    "lastUpdated": "2026-08-28T09:54:04.317Z",
     "uploadSources": {
-      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png": "f38wenbvln_1784621907364_file_jBjjOx9Zdc.png"
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png": "f38wenbvln_1784621907364_file_jBjjOx9Zdc.png",
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-d9798dfa.jpg": "f38wenbvln_1787910827774_file_ceeKCn1x8F.jpg"
     },
-    "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
+    "uploadContentHash": "3cd92df1970527f49a2539c62231bf71cfb8bfe145eaac4bdf4b4d8ffe842f72",
+    "caption": "personal protective equipment safety icons"
   },
   "safety-badges/risk-assessment-banner": {
+    "requestedSize": {
+      "width": 900,
+      "height": 120,
+      "fit": "cover"
+    },
+    "orientations": "panoramic_horizontal",
+    "graphicalStyles": "vector,illustration",
+    "minimumSize": "medium",
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "https://img1.wsimg.com/isteam/getty/1358222838",
+    "searchQuery": "workplace safety risk control hierarchy eliminate substitute engineering administrative PPE icons horizontal banner",
+    "alternatives": [
+      "https://img1.wsimg.com/isteam/getty/2222070235",
+      "https://img1.wsimg.com/isteam/getty/2173714140",
+      "https://img1.wsimg.com/isteam/getty/1878169958",
+      "https://img1.wsimg.com/isteam/getty/1155415413"
+    ],
     "userModified": true,
     "createdAt": "2026-07-21T08:19:44.639Z",
-    "lastUpdated": "2026-07-21T08:19:44.639Z",
-    "uploadSources": {
-      "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png": "f38wenbvln_1784621937174_file_iqsZE3JojZ.png"
-    },
-    "uploadContentHash": "29015dcfa2229d1a17196fe9970769821a0d27e57a3d193f5c6d1db1ef63a640"
+    "lastUpdated": "2026-08-28T10:39:33.678Z",
+    "gettyId": "1358222838",
+    "alternativeGettyIds": [
+      "2222070235",
+      "2173714140",
+      "1878169958",
+      "1155415413"
+    ]
   },
   "reference/screenshot-9": {
     "mediaType": "image",
@@ -501,20 +525,22 @@
   },
   "reference/screenshot-latest": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg",
-    "searchQuery": "photo assignment interface with status indicator",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-latest-7c636c0f.jpg",
+    "searchQuery": "safety guidelines electrical hazard procedures document",
     "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg",
       "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg"
     ],
     "userModified": true,
     "createdAt": "2026-08-07T23:30:34.817Z",
-    "lastUpdated": "2026-08-08T09:46:39.679Z",
+    "lastUpdated": "2026-08-28T03:17:10.520Z",
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-latest-9c9e9c94.jpg": "f38wenbvln_1786145204557_file_bj40l5fLP-.jpg",
-      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg": "f38wenbvln_1786175987519_file_Qb8jN3r_R1.jpg"
+      "/airo-assets/uploads/reference-screenshot-latest-1a2e2402.jpg": "f38wenbvln_1786175987519_file_Qb8jN3r_R1.jpg",
+      "/airo-assets/uploads/reference-screenshot-latest-7c636c0f.jpg": "f38wenbvln_1787886675897_file_d5HE-EEkiH.jpg"
     },
-    "uploadContentHash": "d6002d935f94564ce0bd732463a3005c977c529770ce6dcb93352dbb955f6522",
-    "caption": "photo assignment interface with status indicator"
+    "uploadContentHash": "aa4add459ba58b7f6c2af4af94438f5b7ab13647221ea9feacd0043ad2f128b9",
+    "caption": "safety guidelines electrical hazard procedures document"
   },
   "debug/upload-error-screenshot": {
     "mediaType": "image",
@@ -655,5 +681,47 @@
     },
     "uploadContentHash": "fdfa066629967d0d657ae5d5afe7e070e46ecb7743f536315f6fb606d0dfdb36",
     "caption": "mobile app dashboard with job management tools"
+  },
+  "reference/screenshot-import-docx": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-import-docx-41ec4c98.jpg",
+    "searchQuery": "document template theme branding settings interface",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-28T06:38:24.341Z",
+    "lastUpdated": "2026-08-28T06:38:24.341Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-import-docx-41ec4c98.jpg": "f38wenbvln_1787887131258_file_H4NigcuB_8.jpg"
+    },
+    "uploadContentHash": "64ead2d4c121a492754716e1fd04199c96dc8011b3bcbb8429534d8ef40c6d0e",
+    "caption": "document template theme branding settings interface"
+  },
+  "safety-badges/risk-matrix": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/safety-badges-risk-matrix-96a6a6f7.png",
+    "searchQuery": "risk matrix assessment framework chart",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-28T10:23:33.067Z",
+    "lastUpdated": "2026-08-28T10:23:33.067Z",
+    "uploadSources": {
+      "/airo-assets/uploads/safety-badges-risk-matrix-96a6a6f7.png": "f38wenbvln_1787912601214_file_WuocHIxjvw.png"
+    },
+    "uploadContentHash": "485b51259637e05b13928c20b846605b091e4327d579152bd1a5ef2490d2e2df",
+    "caption": "risk matrix assessment framework chart"
+  },
+  "debug/import-button-issue": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-import-button-issue-83e7b2a2.jpg",
+    "searchQuery": "safe work method statement template form",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-08-28T20:20:19.161Z",
+    "lastUpdated": "2026-08-28T20:20:19.161Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-import-button-issue-83e7b2a2.jpg": "f38wenbvln_1787947381795_file_0b18aeKU3i.jpg"
+    },
+    "uploadContentHash": "e2a0ff32992a2801a2deebb95cb603151c358c40f5e8c84c9c85cd4e2934e484",
+    "caption": "safe work method statement template form"
   }
 }

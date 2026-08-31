@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Outlet, StaticRouterProvider, createStaticHandler, createStaticRouter, type RouteObject } from "react-router";
 import RootLayout from './layouts/RootLayout';
 import { routes } from './routes';
+
 export interface RenderResult {
   html: string;
   head: string;
@@ -17,6 +18,9 @@ export interface RenderResult {
 // renderToString resolves Suspense synchronously and serialises the inner div,
 // but the client sees the Suspense boundary itself, causing a tree mismatch.
 // Lazy page components carry their own Suspense boundaries inside routes.tsx.
+//
+// RouteChangeTracker is placed inside RootLayout (via a useEffect in RootLayout)
+// so it never appears as a sibling element here and cannot cause a tree mismatch.
 const routeTree: RouteObject[] = [{
   element: <RootLayout>
         <Outlet />

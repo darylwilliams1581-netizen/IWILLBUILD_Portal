@@ -6,10 +6,10 @@
  */
 
 import { createAuthClient } from 'better-auth/react';
+import { twoFactorClient } from 'better-auth/client/plugins';
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from "react-router";
 import { SESSION_RECOVERY_URL, claimSessionRecovery, clearSessionRecovery } from './session-recovery';
-import { clearSessionExpiry } from './session-timeout';
 import { isNativeApp } from '@/lib/native-routing';
 import { resetDiagnosticBuffer } from '@/lib/diagnosticBuffer';
 
@@ -58,8 +58,81 @@ function getAuthBaseURL(): string {
   }
   return origin;
 }
+// ── Two-factor redirect handoff ───────────────────────────────────────────────
+// The twoFactorClient plugin's onTwoFactorRedirect callback fires *inside* the
+// SDK's onSuccess hook, which is awaited before signIn.email() resolves back to
+// the caller. This means the callback runs synchronously (from the caller's
+// perspective) before the `await signIn.email()` line returns.
+//
+// We use a module-level variable as the handoff channel — not window globals,
+// not React state, not sessionStorage. React state would be set *after* the
+// await returns (wrong order). sessionStorage is async on some browsers.
+// A module-level variable is synchronous, typed, and scoped to this module.
+//
+// Usage:
+//   After `await signIn.email(...)`, call consumeTwoFactorRedirect().
+//   It returns the pending context and clears it atomically.
+
+interface TwoFactorRedirectContext {
+  needs2FA: true;
+  methods: string[];
+  smsChallengeToken?: string;
+}
+
+let _pendingTwoFactorRedirect: TwoFactorRedirectContext | null = null;
+
+/** Called by the twoFactorClient onTwoFactorRedirect hook. */
+function storeTwoFactorRedirect(twoFactorMethods?: string[]): void {
+  _pendingTwoFactorRedirect = {
+    needs2FA: true,
+    methods: twoFactorMethods ?? [],
+    // smsChallengeToken is patched in by the smsChallengeCapture fetchPlugin
+    // which runs its onSuccess hook before the twoFactorClient plugin does.
+    smsChallengeToken: _pendingTwoFactorRedirect?.smsChallengeToken,
+  };
+}
+
+/** Reads and clears the pending 2FA redirect context. Returns null if none. */
+export function consumeTwoFactorRedirect(): TwoFactorRedirectContext | null {
+  const ctx = _pendingTwoFactorRedirect;
+  _pendingTwoFactorRedirect = null;
+  return ctx;
+}
+
 const _authClient = createAuthClient({
-  baseURL: getAuthBaseURL()
+  baseURL: getAuthBaseURL(),
+  plugins: [
+    // ── SMS challenge token capture ──────────────────────────────────────────
+    // The twoFactorClient plugin's onTwoFactorRedirect callback only forwards
+    // twoFactorMethods — not the full context.data. This custom plugin uses the
+    // same fetchPlugins shape as twoFactorClient and runs first (plugins are
+    // processed in order), stashing smsChallengeToken so storeTwoFactorRedirect()
+    // can pick it up when the twoFactorClient plugin fires next.
+    {
+      id: 'sms-challenge-capture',
+      fetchPlugins: [{
+        id: 'sms-challenge-capture',
+        name: 'SMS Challenge Token Capture',
+        hooks: {
+          async onSuccess(context: { data?: Record<string, unknown> }) {
+            const token = context.data?.smsChallengeToken as string | undefined;
+            if (token) {
+              _pendingTwoFactorRedirect = {
+                needs2FA: true,
+                methods: [],
+                smsChallengeToken: token,
+              };
+            }
+          },
+        },
+      }],
+    },
+    twoFactorClient({
+      onTwoFactorRedirect({ twoFactorMethods }) {
+        storeTwoFactorRedirect(twoFactorMethods);
+      },
+    }),
+  ],
 });
 
 // How long an unsettled session may stay pending before we treat it as a stuck
@@ -282,7 +355,6 @@ export function LogoutButton({
   async function handleLogout() {
     setIsLoading(true);
     try {
-      clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
       // Reset diagnostic buffer on logout — clears any buffered events
       try {
         resetDiagnosticBuffer();

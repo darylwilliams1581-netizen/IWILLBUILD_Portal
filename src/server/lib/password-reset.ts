@@ -237,4 +237,13 @@ export async function consumeResetToken(rawToken: string, userId: string): Promi
         eq(passwordResetTokens.tokenHash, hashed),
       ),
     );
+
+  // Place a 72-hour block on recovery-email changes after a password reset
+  // (high-risk event — attacker may have used a stolen reset link)
+  try {
+    const { placeChangeBlock } = await import('./recovery-email-service.js');
+    await placeChangeBlock(userId, 'password_reset');
+  } catch (e) {
+    console.warn('[password-reset] placeChangeBlock failed:', e instanceof Error ? e.message : String(e));
+  }
 }

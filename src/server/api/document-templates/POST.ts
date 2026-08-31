@@ -24,7 +24,8 @@ export default async function handler(req: Request, res: Response) {
 
     const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings,
             sourceJobId, docStatus,
-            docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature } = req.body as {
+            docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature,
+            appliedWidgets } = req.body as {
       name?: string;
       templateType?: string;
       pageLayout?: unknown;
@@ -41,11 +42,12 @@ export default async function handler(req: Request, res: Response) {
       acknowledgementText?: string;
       submitLabel?: string;
       requiresSignature?: boolean;
+      appliedWidgets?: unknown[];
     };
 
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
 
-    const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [] });
+    const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [], appliedWidgets: appliedWidgets ?? [] });
     const pageLayoutJson = JSON.stringify(pageLayout ?? {});
     const themeJson = JSON.stringify(theme ?? {});
     const pdfSettingsJson = pdfSettings ? JSON.stringify(pdfSettings) : null;

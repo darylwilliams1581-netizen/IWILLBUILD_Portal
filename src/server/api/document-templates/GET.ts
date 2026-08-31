@@ -15,7 +15,10 @@ const FULL_SELECT = (companyId: number) =>
   `SELECT id, company_id, name, template_type, page_layout_json, theme_json,
           source_docx_name, is_active, created_by_user_id, created_at, updated_at,
           doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text,
-          submit_label, requires_signature, doc_status
+          submit_label, requires_signature, doc_status,
+          safety_category, source_widget_type, source_record_id,
+          source_type, source_file_name, source_revision,
+          html_content, import_css, import_report
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;
@@ -30,7 +33,16 @@ const SAFE_SELECT = (companyId: number) =>
           ''      AS acknowledgement_text,
           ''      AS submit_label,
           0       AS requires_signature,
-          'draft' AS doc_status
+          'draft' AS doc_status,
+          NULL    AS safety_category,
+          NULL    AS source_widget_type,
+          NULL    AS source_record_id,
+          NULL    AS source_type,
+          NULL    AS source_file_name,
+          NULL    AS source_revision,
+          NULL    AS html_content,
+          NULL    AS import_css,
+          NULL    AS import_report
    FROM document_templates
    WHERE company_id = ${companyId}
    ORDER BY updated_at DESC`;
@@ -55,10 +67,20 @@ export default async function handler(req: Request, res: Response) {
       const [result] = await db.execute(sql.raw(FULL_SELECT(profile.companyId))) as unknown as [Array<Record<string, unknown>>, unknown];
       rows = result ?? [];
     } catch (innerErr: unknown) {
-      const msg = String((innerErr as Error)?.message ?? innerErr);
+      // DrizzleQueryError wraps the MySQL error in .cause — check both levels
+      const errObj = innerErr as { message?: string; cause?: { message?: string; code?: string; sqlMessage?: string } };
+      const topMsg = String(errObj?.message ?? innerErr);
+      const causeMsg = String(errObj?.cause?.message ?? errObj?.cause?.sqlMessage ?? '');
+      const causeCode = String(errObj?.cause?.code ?? '');
+      const isColumnMissing =
+        topMsg.includes('Unknown column') ||
+        topMsg.includes('ER_BAD_FIELD_ERROR') ||
+        causeMsg.includes('Unknown column') ||
+        causeMsg.includes('ER_BAD_FIELD_ERROR') ||
+        causeCode === 'ER_BAD_FIELD_ERROR';
       // ER_BAD_FIELD_ERROR = column doesn't exist yet — fall back to safe query
-      if (msg.includes('ER_BAD_FIELD_ERROR') || msg.includes('Unknown column')) {
-        console.warn('[document-templates GET] Newer columns missing — using safe fallback query. Redeploy to apply migrations.');
+      if (isColumnMissing) {
+        console.warn('[document-templates GET] Newer columns missing — using safe fallback query. Run POST /api/migrate-studio-phase2 to apply migrations.');
         const [result] = await db.execute(sql.raw(SAFE_SELECT(profile.companyId))) as unknown as [Array<Record<string, unknown>>, unknown];
         rows = result ?? [];
       } else {

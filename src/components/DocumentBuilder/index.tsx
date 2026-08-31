@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
-  AlertCircle, FileText, Library, Layers,
+  AlertCircle, FileText, Layers,
   ChevronDown, Printer, Download, Upload,
   Table2, FormInput, Cpu,
   Hash, Type, List, Minus, AlignLeft,
@@ -26,12 +26,15 @@ import {
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
 import StructurePanel from './StructurePanel';
+import DocSidebar from './DocSidebar';
 import DocxImporter from './DocxImporter';
 import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
 import { usePermissions } from '@/lib/usePermissions';
 import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings, BannerVariant, PaperSize, Orientation, MarginPreset } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
+import HtmlDocumentCanvas from './HtmlDocumentCanvas';
+import type { HtmlDocumentCanvasHandle } from './HtmlDocumentCanvas';
 import JobPhotoPicker from './JobPhotoPicker';
 
 interface Props {
@@ -40,6 +43,10 @@ interface Props {
   onSaved?: (id: number) => void;
   /** Open directly in 'build' (default) or 'use' mode */
   initialMode?: 'build' | 'use';
+  /** Which sidebar tab to open on first load — passed via ?tab= query param */
+  initialTab?: BuilderTab;
+  /** Width in px of the Dazza sidebar — builder right edge is inset by this amount */
+  sidebarWidth?: number;
 }
 
 /** Top-level mode: building the template vs using/filling it */
@@ -59,7 +66,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   handover:   'Handover',
 };
 
-export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build' }: Props) {
+export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build', initialTab, sidebarWidth = 0 }: Props) {
   const {
     isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
@@ -77,15 +84,24 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     (template?.docStatus as 'draft' | 'published' | 'archived') ?? 'draft'
   );
   const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
-  const [activeTab, setActiveTab]                   = useState<BuilderTab>('structure');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>(initialTab ?? 'layout');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
-  const [showPublishModal, setShowPublishModal]     = useState(false);
   const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
   const [zoomLevel, setZoomLevel]                   = useState(100); // percent
   /** Mobile: show the tools bottom sheet */
   const [showMobileTools, setShowMobileTools]       = useState(false);
+
+  // ── HTML canvas state (source_type = 'html') ──────────────────────────────
+  const isHtmlDoc = template?.sourceType === 'html';
+  const [liveHtmlContent, setLiveHtmlContent] = useState<string>(template?.htmlContent ?? '');
+  /** Ref to the HtmlDocumentCanvas imperative handle — used by Document Tools */
+  const htmlCanvasRef = useRef<HtmlDocumentCanvasHandle>(null);
+  // Sync if a new template is loaded
+  useEffect(() => {
+    setLiveHtmlContent(template?.htmlContent ?? '');
+  }, [template?.id, template?.htmlContent]);
 
   /** Top-level app mode: build the template or use/fill it */
   const [appMode] = useState<AppMode>(initialMode);
@@ -254,21 +270,41 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
 
-  // Ribbon tab definitions — Layout + Theme first, then insert tabs
+  /**
+   * Render the correct canvas for this document type.
+   * HTML-canvas documents (source_type='html') use HtmlDocumentCanvas.
+   * Block-canvas documents use the existing StructurePanel / BlockCanvas.
+   */
+  const renderCanvas = (canvasMode: 'build' | 'preview' | 'use') => {
+    if (isHtmlDoc && template?.id) {
+      return (
+        <HtmlDocumentCanvas
+          ref={htmlCanvasRef}
+          templateId={template.id}
+          htmlContent={liveHtmlContent}
+          importCss={template.importCss ?? ''}
+          importReport={template.importReport ?? null}
+          mode={canvasMode}
+          zoom={zoomLevel}
+          onSaved={(html) => setLiveHtmlContent(html)}
+        />
+      );
+    }
+    return <StructurePanel zoom={zoomLevel} />;
+  };
+
+  // Ribbon tab definitions — Apply Widget retired; import is the primary entry point
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
-    { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
-    { id: 'structure',     label: 'Structure',     icon: <Layers size={13} /> },
-    { id: 'tables',        label: 'Tables',        icon: <Table2 size={13} /> },
-    { id: 'form_fields',   label: 'Form Fields',   icon: <FormInput size={13} /> },
-    { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
-    { id: 'advanced',      label: 'Advanced',      icon: <ShieldAlert size={13} /> },
-    { id: 'view',          label: 'View',          icon: <Monitor size={13} /> },
+    { id: 'layout',        label: 'Layout',         icon: <LayoutGrid size={13} /> },
+    { id: 'theme',         label: 'Theme',          icon: <Image size={13} /> },
+    { id: 'document_tools', label: 'Document Tools', icon: <Layers size={13} /> },
+    { id: 'view',          label: 'View',           icon: <Monitor size={13} /> },
   ];
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-white"
+      className="fixed inset-0 z-50 flex flex-col bg-white transition-[right] duration-200"
+      style={{ right: sidebarWidth }}
       onClick={() => setShowDocTypeMenu(false)}
     >
       {/* ── Row 1: Title bar ─────────────────────────────────────────────────── */}
@@ -327,14 +363,6 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                 <Eye size={12} /> {buildSubMode === 'preview' ? 'Editing' : 'Preview'}
               </button>
               <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
-              {isPlatformOwner && templateId && (
-                <button
-                  onClick={() => setShowPublishModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300"
-                >
-                  <Library size={12} /> Publish Template
-                </button>
-              )}
               <div className="w-px h-4 bg-slate-300" />
               {/* ── Save button — saves to Studio library under the correct tab (job_report, swms, etc.) */}
               <div className="relative">
@@ -434,14 +462,14 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         {/* USE MODE — full-width fill canvas */}
         {appMode === 'use' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} />
+            {renderCanvas('use')}
           </div>
         )}
 
         {/* BUILD MODE — preview sub-mode: full-width canvas, no ribbon panel */}
         {appMode === 'build' && buildSubMode === 'preview' && (
           <div className="flex-1 flex min-h-0">
-            <StructurePanel zoom={zoomLevel} />
+            {renderCanvas('preview')}
           </div>
         )}
 
@@ -596,57 +624,20 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
               </div>
             )}
 
-            {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas */}
-            {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
+            {/* SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas (Structure/Tables/Form Fields moved to DocSidebar) */}
+            {(activeTab !== 'layout' && activeTab !== 'theme') && (
               <>
-                {/* ── Desktop ribbon panels (hidden on mobile via RibbonPanel's hidden sm:flex) ── */}
-                {/* STRUCTURE insert strip */}
-                {activeTab === 'structure' && (
-                    <RibbonPanel title="Structure">
-                      <RibbonGroup label="Import">
-                        <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
-                      </RibbonGroup>
-                      <RibbonGroup label="Blocks">
-                        <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
-                        <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
-                        <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
-                        <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
-                        <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Rich Text" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<p>Click to type…</p>' })} />
-                        <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
-                        <RibbonInsertBtn icon={<Image size={12} />} label="Image" onClick={() => appendBlock({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'center', preserveAspectRatio: true })} />
-                        <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
-                        <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
-                      </RibbonGroup>
-                    </RibbonPanel>
+                  {/* DOCUMENT TOOLS panel — DocSidebar rendered as the left ribbon panel */}
+                  {activeTab === 'document_tools' && (
+                    <DocSidebar
+                      onImportDocx={() => setShowDocxImporter(true)}
+                      collapsed={false}
+                      onToggleCollapse={() => {}}
+                      onInsertHtml={isHtmlDoc ? (html) => htmlCanvasRef.current?.insertHtml(html) : undefined}
+                    />
                   )}
 
-                  {/* TABLES insert strip */}
-                  {activeTab === 'tables' && (
-                    <RibbonPanel title="Tables">
-                      <RibbonGroup label="Insert Table">
-                        <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
-                        <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
-                        <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
-                        <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
-                      </RibbonGroup>
-                    </RibbonPanel>
-                  )}
-
-                  {/* FORM FIELDS insert strip */}
-                  {activeTab === 'form_fields' && (
-                    <RibbonPanel title="Form Fields">
-                      <RibbonGroup label="Insert Field">
-                        <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
-                        <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
-                        <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
-                        <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
-                        <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
-                        <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
-                        <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
-                        <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
-                      </RibbonGroup>
-                    </RibbonPanel>
-                  )}
+                  {/* Apply Widget tab retired — block builders still available internally */}
 
                   {/* SYSTEM FIELDS insert strip */}
                   {activeTab === 'system_fields' && (
@@ -728,7 +719,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
                 {/* Canvas — full width on mobile, shares row with ribbon on desktop */}
                 <div className="flex-1 flex min-h-0">
-                  <StructurePanel zoom={zoomLevel} />
+                  {renderCanvas('build')}
                 </div>
               </>
             )}
@@ -903,17 +894,26 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showDocxImporter && (
-          <DocxImporter templateId={templateId} hasExistingBlocks={blocks.length > 0} onClose={() => setShowDocxImporter(false)} onImported={handleDocxImported} onSaveFirst={handleSaveFirst} />
+          <DocxImporter
+            templateId={templateId}
+            hasExistingBlocks={blocks.length > 0}
+            onClose={() => setShowDocxImporter(false)}
+            onImported={handleDocxImported}
+            onOpenInStudio={(result) => {
+              // Immediately update the live HTML so the canvas switches without
+              // waiting for the parent re-fetch round-trip
+              setLiveHtmlContent(result.htmlContent);
+              setShowDocxImporter(false);
+              // Notify parent to re-fetch the template (switches isHtmlDoc → true)
+              if (result.id) onSaved?.(result.id);
+            }}
+            onSaveFirst={handleSaveFirst}
+          />
         )}
       </AnimatePresence>
       <AnimatePresence>
         {showBlocksImporter && (
           <BlocksJsonImporter templateId={templateId} hasExistingBlocks={blocks.length > 0} onClose={() => setShowBlocksImporter(false)} onImported={handleDocxImported} onSaveFirst={handleSaveFirst} />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showPublishModal && templateId && (
-          <PublishToLibraryModal templateId={templateId} templateName={templateName} onClose={() => setShowPublishModal(false)} />
         )}
       </AnimatePresence>
     </div>
@@ -1093,192 +1093,5 @@ function MobileInsertBtn({
       <span className={`flex-shrink-0 ${primary ? 'text-primary' : accent ? accentMap[accent] ?? 'text-slate-400' : 'text-slate-400'}`}>{icon}</span>
       <span className="truncate">{label}</span>
     </button>
-  );
-}
-
-// ── Publish to Library Modal ──────────────────────────────────────────────────
-
-const LIBRARY_TYPES = ['form', 'procedure', 'policy', 'swms', 'recipe'] as const;
-type LibraryType = typeof LIBRARY_TYPES[number];
-
-function PublishToLibraryModal({
-  templateId,
-  templateName,
-  onClose,
-}: {
-  templateId: number;
-  templateName: string;
-  onClose: () => void;
-}) {
-  const [title, setTitle]         = useState(templateName);
-  const [type, setType]           = useState<LibraryType>('form');
-  const [category, setCategory]   = useState('');
-  const [discipline, setDiscipline] = useState('');
-  const [summary, setSummary]     = useState('');
-  const [status, setStatus]       = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg]   = useState('');
-
-  const handlePublish = async () => {
-    if (!title.trim()) return;
-    setStatus('loading');
-    setErrorMsg('');
-    try {
-      const res = await fetch(`/api/document-templates/${templateId}/publish-to-library`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ title: title.trim(), type, category, discipline, summary }),
-      });
-      const data = await res.json() as { ok?: boolean; libraryItemId?: number; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Publish failed');
-      setStatus('success');
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Publish failed');
-      setStatus('error');
-    }
-  };
-
-  const inp = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors';
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ duration: 0.15 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center">
-              <Library size={15} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800">Publish to Global Library</p>
-              <p className="text-xs text-slate-400">Available to all companies immediately</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-
-        {status === 'success' ? (
-          <div className="p-8 flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-50 border border-green-200 flex items-center justify-center">
-              <CheckCircle size={28} className="text-green-500" />
-            </div>
-            <p className="text-base font-bold text-slate-800">Published!</p>
-            <p className="text-sm text-slate-500">
-              <strong>{title}</strong> is now live in the global library.
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        ) : (
-          <div className="p-5 flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Title
-              </label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className={inp}
-                placeholder="Document title"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Type
-                </label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value as LibraryType)}
-                  className={`${inp} appearance-none`}
-                >
-                  {LIBRARY_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Category
-                </label>
-                <input
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className={inp}
-                  placeholder="e.g. Safety"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Discipline
-              </label>
-              <input
-                value={discipline}
-                onChange={(e) => setDiscipline(e.target.value)}
-                className={inp}
-                placeholder="e.g. Construction"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Summary{' '}
-                <span className="font-normal text-slate-400">(optional)</span>
-              </label>
-              <textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                rows={2}
-                className={`${inp} resize-none`}
-                placeholder="Brief description shown in the library"
-              />
-            </div>
-            {status === 'error' && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-                <AlertCircle size={13} />
-                {errorMsg}
-              </div>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => void handlePublish()}
-                disabled={!title.trim() || status === 'loading'}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {status === 'loading' ? (
-                  <><Loader2 size={13} className="animate-spin" />Publishing…</>
-                ) : (
-                  <><Library size={13} />Publish</>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
   );
 }

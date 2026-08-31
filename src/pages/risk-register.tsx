@@ -714,7 +714,7 @@ export default function RiskRegisterPage() {
         {/* Header */}
         <div className="bg-orange-600 text-white px-4 safe-top pb-3">
           <div className="flex items-center gap-1.5 text-xs text-orange-300 mb-2 pt-1">
-            <button type="button" onClick={() => navigate('/?page=2')} className="flex items-center gap-1 hover:text-white transition-colors">
+            <button type="button" onClick={() => navigate('/home')} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-orange-400" />

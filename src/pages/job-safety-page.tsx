@@ -19,7 +19,7 @@ export default function JobSafetyPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=safety');
+    navigate('/home?picker=safety');
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JobSafetyPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

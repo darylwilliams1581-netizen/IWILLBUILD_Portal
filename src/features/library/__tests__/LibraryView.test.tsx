@@ -4,12 +4,14 @@
  * Unit tests for the LibraryView feature component.
  *
  * Verifies:
- *   A. Structural — renders header, tabs, search, type filter
- *   B. Browse tab — loading skeleton, error state, empty state, item list
- *   C. Installed tab — empty state, installed list
- *   D. Permissions — delete button visible only for platform owner
- *   E. initialTypeFilter prop — pre-populates the type filter
- *   F. No route responsibilities — no Helmet title, no Navigate redirect
+ *   A. Structural — renders header, search, type filter (no Installed tab)
+ *   B. Browse — loading skeleton, error state, empty state, item list
+ *   C. Download button — labelled "Download to My Templates"
+ *   D. Post-download link — labelled "Open in X"
+ *   E. Permissions — delete button visible only for platform owner
+ *   F. initialTypeFilter prop — pre-populates the type filter
+ *   G. No route responsibilities — no Helmet title, no Navigate redirect
+ *   H. No Installed tab — removed per spec
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -38,12 +40,6 @@ function mockFetchEmpty() {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ ok: true, items: [], pagination: { total: 0, page: 1, limit: 20, pages: 0 } }),
-      });
-    }
-    if (String(url).includes('/api/library/my-installed')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, items: [] }),
       });
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -97,12 +93,6 @@ function mockFetchWithItems() {
         }),
       });
     }
-    if (String(url).includes('/api/library/my-installed')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, items: [] }),
-      });
-    }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   }) as unknown as typeof fetch;
 }
@@ -116,34 +106,33 @@ function mockFetchError() {
   }) as unknown as typeof fetch;
 }
 
-function mockFetchWithInstalled() {
+function mockFetchWithDownloadSuccess() {
   global.fetch = vi.fn().mockImplementation((url: string) => {
-    if (String(url).includes('/api/library/items')) {
+    if (String(url).includes('/api/library/items') && String(url).includes('/install')) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ ok: true, items: [], pagination: { total: 0, page: 1, limit: 20, pages: 0 } }),
+        json: () => Promise.resolve({
+          ok: true,
+          message: '"Site Safety Policy" downloaded to your Forms.',
+          redirectTarget: '/forms',
+          redirectLabel: 'Forms',
+        }),
       });
     }
-    if (String(url).includes('/api/library/my-installed')) {
+    if (String(url).includes('/api/library/items')) {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
           ok: true,
           items: [
             {
-              id: 10,
-              source_item_id: 1,
-              type: 'policy',
-              category: 'Safety',
-              title: 'Site Safety Policy',
-              source_version: '1.0',
-              update_available: 0,
-              installed_at: '2026-03-01T00:00:00Z',
-              updated_at: '2026-03-01T00:00:00Z',
-              current_source_version: '1.0',
-              source_title: 'Site Safety Policy',
+              id: 1, type: 'policy', category: 'Safety', title: 'Site Safety Policy',
+              summary: null, tags: null, discipline: null, version: '1.0', status: 'active',
+              install_count: 12, avg_rating: 0, rating_count: 0,
+              source_file_name: null, has_file: 0, updated_at: '2026-01-01T00:00:00Z',
             },
           ],
+          pagination: { total: 1, page: 1, limit: 20, pages: 1 },
         }),
       });
     }
@@ -174,12 +163,6 @@ describe('LibraryView — structure', () => {
     expect(screen.getByText('Content Library')).toBeInTheDocument();
   });
 
-  it('renders Browse and Installed tab buttons', async () => {
-    renderView();
-    expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /installed/i })).toBeInTheDocument();
-  });
-
   it('renders the search input', async () => {
     renderView();
     expect(screen.getByPlaceholderText(/search title, summary, tags/i)).toBeInTheDocument();
@@ -192,15 +175,14 @@ describe('LibraryView — structure', () => {
 
   it('renders the refresh button', async () => {
     renderView();
-    // Refresh button has no text label — find by its container
     const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThan(2);
+    expect(buttons.length).toBeGreaterThan(0);
   });
 });
 
-// ── Suite B — Browse tab ──────────────────────────────────────────────────────
+// ── Suite B — Browse ──────────────────────────────────────────────────────────
 
-describe('LibraryView — browse tab', () => {
+describe('LibraryView — browse', () => {
   beforeEach(() => {
     mockUsePermissions.mockReturnValue({ isPlatformOwner: false } as ReturnType<typeof usePermissions>);
   });
@@ -230,15 +212,6 @@ describe('LibraryView — browse tab', () => {
     });
   });
 
-  it('renders Install button for uninstalled items', async () => {
-    mockFetchWithItems();
-    renderView();
-    await waitFor(() => {
-      const installBtns = screen.getAllByRole('button', { name: /install/i });
-      expect(installBtns.length).toBeGreaterThan(0);
-    });
-  });
-
   it('renders results count when items exist', async () => {
     mockFetchWithItems();
     renderView();
@@ -248,44 +221,54 @@ describe('LibraryView — browse tab', () => {
   });
 });
 
-// ── Suite C — Installed tab ───────────────────────────────────────────────────
+// ── Suite C — Download button label ──────────────────────────────────────────
 
-describe('LibraryView — installed tab', () => {
+describe('LibraryView — download button', () => {
   beforeEach(() => {
     mockUsePermissions.mockReturnValue({ isPlatformOwner: false } as ReturnType<typeof usePermissions>);
   });
 
-  it('switches to Installed tab on click', async () => {
-    mockFetchEmpty();
+  it('labels the download button "Download to My Templates"', async () => {
+    mockFetchWithItems();
     renderView();
-    const installedBtn = screen.getByRole('button', { name: /installed/i });
-    fireEvent.click(installedBtn);
     await waitFor(() => {
-      expect(screen.getByText('No items installed yet.')).toBeInTheDocument();
+      const btns = screen.getAllByRole('button', { name: /download to my templates/i });
+      expect(btns.length).toBeGreaterThan(0);
     });
   });
 
-  it('shows installed item title in Installed tab', async () => {
-    mockFetchWithInstalled();
+  it('does NOT label the button "Install"', async () => {
+    mockFetchWithItems();
     renderView();
-    const installedBtn = screen.getByRole('button', { name: /installed/i });
-    fireEvent.click(installedBtn);
     await waitFor(() => {
       expect(screen.getByText('Site Safety Policy')).toBeInTheDocument();
     });
+    expect(screen.queryByRole('button', { name: /^install$/i })).not.toBeInTheDocument();
   });
+});
 
-  it('shows installed count badge when items are installed', async () => {
-    mockFetchWithInstalled();
+// ── Suite D — Post-download "Open in X" link ──────────────────────────────────
+
+describe('LibraryView — post-download link', () => {
+  it('shows "Open in Forms" link after successful download', async () => {
+    mockUsePermissions.mockReturnValue({ isPlatformOwner: false } as ReturnType<typeof usePermissions>);
+    mockFetchWithDownloadSuccess();
     renderView();
+
     await waitFor(() => {
-      // The badge shows the count of installed IDs
-      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText('Site Safety Policy')).toBeInTheDocument();
+    });
+
+    const downloadBtn = screen.getByRole('button', { name: /download to my templates/i });
+    fireEvent.click(downloadBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/open in forms/i)).toBeInTheDocument();
     });
   });
 });
 
-// ── Suite D — Permissions ─────────────────────────────────────────────────────
+// ── Suite E — Permissions ─────────────────────────────────────────────────────
 
 describe('LibraryView — permissions', () => {
   it('does NOT show delete button for non-platform-owner', async () => {
@@ -310,7 +293,7 @@ describe('LibraryView — permissions', () => {
   });
 });
 
-// ── Suite E — initialTypeFilter prop ─────────────────────────────────────────
+// ── Suite F — initialTypeFilter prop ─────────────────────────────────────────
 
 describe('LibraryView — initialTypeFilter prop', () => {
   it('pre-populates the type filter select when prop is provided', async () => {
@@ -330,7 +313,7 @@ describe('LibraryView — initialTypeFilter prop', () => {
   });
 });
 
-// ── Suite F — No route responsibilities ──────────────────────────────────────
+// ── Suite G — No route responsibilities ──────────────────────────────────────
 
 describe('LibraryView — no route responsibilities', () => {
   beforeEach(() => {
@@ -340,16 +323,30 @@ describe('LibraryView — no route responsibilities', () => {
 
   it('does not render a page <title> element (Helmet is route responsibility)', () => {
     renderView();
-    // LibraryView must not set document.title — that belongs to the route page
-    // The Helmet mock passes children through, so if a <title> were rendered
-    // it would appear as a DOM element. Verify it is absent.
     expect(document.querySelector('title')).toBeNull();
   });
 
   it('does not render a Navigate redirect element', async () => {
     renderView();
-    // If a Navigate were rendered, the MemoryRouter would redirect and the
-    // Content Library heading would not be present.
     expect(screen.getByText('Content Library')).toBeInTheDocument();
+  });
+});
+
+// ── Suite H — No Installed tab ────────────────────────────────────────────────
+
+describe('LibraryView — no Installed tab', () => {
+  beforeEach(() => {
+    mockUsePermissions.mockReturnValue({ isPlatformOwner: false } as ReturnType<typeof usePermissions>);
+    mockFetchEmpty();
+  });
+
+  it('does not render an Installed tab button', async () => {
+    renderView();
+    expect(screen.queryByRole('button', { name: /installed/i })).not.toBeInTheDocument();
+  });
+
+  it('does not render a Browse tab button (Browse is the only view)', async () => {
+    renderView();
+    expect(screen.queryByRole('button', { name: /^browse$/i })).not.toBeInTheDocument();
   });
 });

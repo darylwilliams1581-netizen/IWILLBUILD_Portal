@@ -1,7 +1,7 @@
 /**
- * StructurePanel — canvas only (no inspector)
- * The BlockInspector is rendered by the parent (index.tsx) only when the
- * Structure tab is active, so other tabs never show the right panel.
+ * StructurePanel — canvas only.
+ * The DocSidebar insert panel is rendered by index.tsx as a ribbon panel
+ * when the "Document Tools" tab is active, keeping a single left panel.
  */
 
 import BlockCanvas from './BlockCanvas';

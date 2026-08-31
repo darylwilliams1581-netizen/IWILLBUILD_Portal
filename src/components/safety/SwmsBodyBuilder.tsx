@@ -6,7 +6,7 @@ import {
   X, Check, Loader2, AlertCircle, AlertTriangle, ChevronRight, ChevronDown,
   Plus, Trash2, Copy, GripVertical, ChevronLeft, Zap, Settings2,
   ShieldAlert, HardHat, ClipboardList, Wrench, Users, FileText,
-  TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare,
+  TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare, Layers,
 } from 'lucide-react';
 import {
   type SwmsBodyData, type WorkStep, type CriticalControl, type PlantItem,
@@ -87,10 +87,12 @@ interface Props {
   initial?: SwmsTemplate | null;
   onClose: () => void;
   onSaved: (s: SwmsTemplate) => void;
+  /** Called after a Studio document is successfully generated; receives the new doc ID */
+  onGenerateStudio?: (studioDocId: number) => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
+export default function SwmsBodyBuilder({ initial, onClose, onSaved, onGenerateStudio }: Props) {
   const isEdit = !!initial;
 
   // Parse existing swms_body or migrate from legacy fields
@@ -125,6 +127,8 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [savedId, setSavedId] = useState<number | null>(initial?.id ?? null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
 
   const allSections = data.buildMode === 'advanced'
     ? [...QUICK_SECTIONS, ...ADVANCED_SECTIONS]
@@ -181,6 +185,75 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ─── Generate Studio Document ─────────────────────────────────────────────
+  async function handleGenerateStudio() {
+    if (errorCount > 0) {
+      setGenerateError('Fix all validation errors before generating a Studio document.');
+      return;
+    }
+    setGenerating(true); setGenerateError('');
+    try {
+      // 1. Save the SWMS first (ensure we have a saved record ID)
+      let currentSavedId = savedId;
+      if (!currentSavedId) {
+        const body = {
+          title: data.title || data.purpose.slice(0, 80) || 'SWMS',
+          category: data.category,
+          workActivity: data.scope,
+          purposeScope: data.purpose,
+          authorName: data.authorName,
+          approvedByName: data.approvedByName,
+          revisionNumber: data.revisionNumber,
+          reviewDate: data.reviewDate || null,
+          status: data.status,
+          hazards: data.legacyHazards ?? data.criticalControls.map((c) => c.criticalRisk).join('\n'),
+          controls: data.legacyControls ?? data.criticalControls.map((c) => c.mandatoryControls).join('\n'),
+          ppe: data.ppeRows.map((pr) => `${pr.item}: ${pr.requirement}`).join('\n'),
+          plantEquipment: data.plantItems.map((pi) => pi.item).join('\n'),
+          emergencyControls: data.emergencyActions.map((a) => a.action).join('\n'),
+          swms_body: JSON.stringify(data),
+          build_mode: data.buildMode,
+          document_type: data.documentType,
+        };
+        const r = await fetch('/api/safety/swms', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const resp = await r.json();
+        if (!r.ok) throw new Error(resp.error ?? 'Failed to save SWMS');
+        currentSavedId = resp.swms?.id ?? null;
+        if (currentSavedId) setSavedId(currentSavedId);
+        onSaved(resp.swms);
+      }
+
+      // 2. Convert to Studio blocks (dynamic import to keep bundle lean)
+      const { swmsBodyToStudioBlocks } = await import('@/lib/safety-to-studio/swmsBodyToStudioBlocks');
+      const blocks = swmsBodyToStudioBlocks(data, data.title || 'SWMS');
+
+      // 3. Call the generate endpoint
+      const genR = await fetch('/api/studio/generate-from-safety', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetType: 'swms',
+          sourceRecordId: currentSavedId,
+          title: data.title || 'SWMS',
+          blocks,
+          safetyCategory: 'SWMS',
+        }),
+      });
+      const genResp = await genR.json();
+      if (!genR.ok) throw new Error(genResp.error ?? 'Failed to generate Studio document');
+
+      onGenerateStudio?.(genResp.id);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Failed to generate Studio document');
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -1095,129 +1168,209 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
   const isLast = step === allSections.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-stretch">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[96vh] sm:max-h-[92vh] flex flex-col"
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.97 }}
+        transition={{ duration: 0.15 }}
+        className="relative bg-white w-full max-w-5xl mx-auto my-4 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
       >
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-violet-50 rounded-md"><ShieldAlert size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-primary/20 rounded-md"><ShieldAlert size={15} className="text-primary" /></div>
             <div>
-              <h2 className="font-heading font-bold text-base leading-tight">{isEdit ? 'Edit SWMS' : 'New SWMS'}</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{data.title || 'Safe Work Method Statement'}</p>
+              <h2 className="font-heading font-bold text-sm">{isEdit ? 'Edit SWMS' : 'New SWMS'}</h2>
+              <p className="text-xs text-slate-400">{data.title || 'Safe Work Method Statement'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Mode toggle — two explicit options */}
-            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 gap-0.5">
+            {/* Mode toggle */}
+            <div className="flex items-center rounded-lg border border-slate-700 bg-slate-800 p-0.5 gap-0.5">
               <button
                 type="button"
                 onClick={() => { set('buildMode', 'quick'); setStep(0); }}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'quick' ? 'bg-white text-violet-700 shadow-sm border border-violet-200' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'quick' ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 title="9 sections — Identity, HRCW, Controls, PPE, Sequence, Emergency, Sign-On"
               >
                 <Zap size={12} />
                 Quick
-                <span className={`text-[10px] font-normal ${data.buildMode === 'quick' ? 'text-violet-400' : 'text-slate-400'}`}>9 sections</span>
+                <span className="text-[10px] font-normal opacity-70">9</span>
               </button>
               <button
                 type="button"
                 onClick={() => { set('buildMode', 'advanced'); setStep(0); }}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'advanced' ? 'bg-white text-slate-800 shadow-sm border border-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'advanced' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 title="14 sections — adds Task Requirements, Environmental Controls, Training & Competency, Definitions, Related Documents"
               >
                 <Settings2 size={12} />
                 Advanced
-                <span className={`text-[10px] font-normal ${data.buildMode === 'advanced' ? 'text-slate-400' : 'text-slate-400'}`}>14 sections</span>
+                <span className="text-[10px] font-normal opacity-70">14</span>
               </button>
             </div>
             {/* Validation badge */}
             {(errorCount > 0 || warnCount > 0) && (
-              <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${errorCount > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+              <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${errorCount > 0 ? 'bg-red-900/60 text-red-300' : 'bg-amber-900/60 text-amber-300'}`}>
                 <AlertTriangle size={11} />
                 {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warnCount} warning${warnCount > 1 ? 's' : ''}`}
               </div>
             )}
-            <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+            {/* Save Draft */}
+            <button
+              type="button"
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              Save Draft
+            </button>
+            <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"><X size={16} /></button>
           </div>
         </div>
 
-        {/* ── Step nav ── */}
-        <div className="flex gap-0 overflow-x-auto border-b border-slate-200 shrink-0 bg-slate-50">
-          {allSections.map((sec, i) => (
-            <button
-              key={sec.id}
-              type="button"
-              onClick={() => setStep(i)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0
-                ${i === step ? 'border-primary text-primary bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'}
-                ${!sec.quickBuild ? 'border-l border-l-violet-200 bg-violet-50/40' : ''}`}
-              title={!sec.quickBuild ? 'Advanced mode only' : ''}
-            >
-              {sec.icon}
-              <span className="hidden sm:inline">{sec.label}</span>
-              <span className="sm:hidden">{i + 1}</span>
-              {!sec.quickBuild && <span className="hidden sm:inline text-[9px] font-bold text-violet-400 uppercase tracking-wide ml-0.5">+</span>}
-            </button>
-          ))}
+        {/* ── Progress bar ── */}
+        <div className="h-1 bg-slate-200 shrink-0">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${Math.round(((step + 1) / allSections.length) * 100)}%` }}
+          />
         </div>
 
-        {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto p-5">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.15 }}
-            >
-              {renderSection()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="px-5 py-3.5 border-t border-slate-200 shrink-0 bg-white">
-          {saveError && (
-            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm mb-3">
-              <AlertCircle size={14} className="shrink-0" />{saveError}
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={isFirst}
-              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40">
-              <ChevronLeft size={14} /> Back
-            </button>
-            <div className="flex-1 flex items-center justify-center gap-1">
-              {allSections.map((_, i) => (
-                <button key={i} type="button" onClick={() => setStep(i)}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${i === step ? 'bg-primary' : 'bg-slate-300 hover:bg-slate-400'}`} />
-              ))}
-            </div>
-            <button type="button" onClick={() => handleSave(false)} disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-              Save
-            </button>
-            {isLast ? (
-              <button type="button" onClick={() => handleSave(true)} disabled={saving}
-                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60">
-                {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                Save & Close
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* ── Sidebar nav ── */}
+          <div className="w-48 shrink-0 border-r border-slate-200 bg-slate-50 overflow-y-auto hidden md:flex flex-col py-2">
+            {/* Quick sections */}
+            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Build</div>
+            {QUICK_SECTIONS.map((sec, i) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => setStep(i)}
+                className={[
+                  'flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors',
+                  i === step
+                    ? 'bg-primary text-white font-bold'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800',
+                ].join(' ')}
+              >
+                <span className="shrink-0">{sec.icon}</span>
+                <span className="truncate">{sec.label}</span>
               </button>
-            ) : (
-              <button type="button" onClick={() => setStep((s) => Math.min(allSections.length - 1, s + 1))}
-                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors">
-                Next <ChevronRight size={14} />
-              </button>
+            ))}
+            {/* Advanced sections */}
+            {data.buildMode === 'advanced' && (
+              <>
+                <div className="px-3 py-1.5 mt-1 text-[10px] font-bold text-violet-400 uppercase tracking-widest border-t border-slate-200">Advanced</div>
+                {ADVANCED_SECTIONS.map((sec, i) => {
+                  const idx = QUICK_SECTIONS.length + i;
+                  return (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      onClick={() => setStep(idx)}
+                      className={[
+                        'flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors',
+                        idx === step
+                          ? 'bg-primary text-white font-bold'
+                          : 'text-slate-500 hover:bg-violet-50 hover:text-violet-700',
+                      ].join(' ')}
+                    >
+                      <span className="shrink-0">{sec.icon}</span>
+                      <span className="truncate">{sec.label}</span>
+                    </button>
+                  );
+                })}
+              </>
             )}
+          </div>
+
+          {/* ── Content ── */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Mobile step indicator */}
+            <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-500 shrink-0">
+              <span className="font-bold text-slate-700">{currentSection?.label}</span>
+              <span>({step + 1} of {allSections.length})</span>
+            </div>
+
+            {/* Save error */}
+            {saveError && (
+              <div className="mx-4 mt-3 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs shrink-0">
+                <AlertCircle size={13} className="shrink-0" />{saveError}
+              </div>
+            )}
+            {/* Generate error */}
+            {generateError && (
+              <div className="mx-4 mt-3 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs shrink-0">
+                <AlertCircle size={13} className="shrink-0" />{generateError}
+              </div>
+            )}
+
+            {/* Section content */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {renderSection()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* ── Footer nav ── */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-white shrink-0 gap-3">
+              <button
+                type="button"
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+                disabled={isFirst}
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
+              >
+                <ChevronLeft size={15} />Previous
+              </button>
+
+              <div className="flex items-center gap-2">
+                {isLast ? (
+                  <>
+                    {onGenerateStudio && (
+                      <button
+                        type="button"
+                        onClick={() => void handleGenerateStudio()}
+                        disabled={generating || saving}
+                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
+                        title={errorCount > 0 ? 'Fix validation errors first' : 'Generate a Studio document from this SWMS'}
+                      >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
+                        Generate Studio Document
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSave(true)}
+                      disabled={saving || generating}
+                      className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                      Save & Close
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setStep((s) => Math.min(allSections.length - 1, s + 1))}
+                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
+                  >
+                    Next<ChevronRight size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>

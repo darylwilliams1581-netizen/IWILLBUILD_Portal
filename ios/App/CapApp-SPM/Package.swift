@@ -2,6 +2,38 @@
 import PackageDescription
 
 // DO NOT MODIFY THIS FILE - managed by Capacitor CLI commands
+//
+// ── Manual fix applied 2026-08-07 ────────────────────────────────────────────
+// `npx cap sync` regenerates this file on every build. The committed version
+// here is overwritten by Appflow before Xcode runs. The only file in this
+// package that must survive in git is:
+//
+//   Sources/CapApp-SPM/CapApp-SPM.swift
+//
+// That stub file satisfies SPM's requirement that the CapApp-SPM target is
+// non-empty. Without it, Xcode fails with:
+//   "target 'CapApp-SPM' referenced in product 'CapApp-SPM' is empty"
+//
+// The actual Package.swift content (dependencies, plugin products) is written
+// fresh by `npx cap sync ios` using @capacitor/cli's generatePackageFile().
+// It pins capacitor-swift-pm to exact: "<@capacitor/ios version>" and adds
+// each installed Capacitor plugin that ships a Package.swift as a local path
+// dependency.
+//
+// ── Plugins confirmed working via SPM (build 11074980) ───────────────────────
+// All 10 plugins resolved automatically because each ships its own Package.swift:
+//   @capacitor-community/media@9.1.0
+//   @capacitor/app@8.1.0
+//   @capacitor/camera@8.2.1
+//   @capacitor/filesystem@8.1.2
+//   @capacitor/geolocation@8.2.0
+//   @capacitor/haptics@8.0.2
+//   @capacitor/network@8.0.1
+//   @capacitor/push-notifications@8.1.1
+//   @capacitor/splash-screen@8.0.1
+//   @capacitor/status-bar@8.0.2
+// ─────────────────────────────────────────────────────────────────────────────
+
 let package = Package(
     name: "CapApp-SPM",
     platforms: [.iOS(.v15)],
@@ -11,18 +43,7 @@ let package = Package(
             targets: ["CapApp-SPM"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.5.0"),
-        .package(name: "CapacitorCommunityMedia", path: "..\..\..\node_modules\.pnpm\@capacitor-community+media@9.1.0_@capacitor+core@8.5.0\node_modules\@capacitor-community\media"),
-        .package(name: "CapacitorApp", path: "..\..\..\node_modules\.pnpm\@capacitor+app@8.1.1_@capacitor+core@8.5.0\node_modules\@capacitor\app"),
-        .package(name: "CapacitorCamera", path: "..\..\..\node_modules\.pnpm\@capacitor+camera@8.2.2_@capacitor+core@8.5.0\node_modules\@capacitor\camera"),
-        .package(name: "CapacitorFilesystem", path: "..\..\..\node_modules\.pnpm\@capacitor+filesystem@8.1.2_@capacitor+core@8.5.0\node_modules\@capacitor\filesystem"),
-        .package(name: "CapacitorGeolocation", path: "..\..\..\node_modules\.pnpm\@capacitor+geolocation@8.2.2_@capacitor+core@8.5.0\node_modules\@capacitor\geolocation"),
-        .package(name: "CapacitorHaptics", path: "..\..\..\node_modules\.pnpm\@capacitor+haptics@8.0.2_@capacitor+core@8.5.0\node_modules\@capacitor\haptics"),
-        .package(name: "CapacitorNetwork", path: "..\..\..\node_modules\.pnpm\@capacitor+network@8.0.1_@capacitor+core@8.5.0\node_modules\@capacitor\network"),
-        .package(name: "CapacitorPushNotifications", path: "..\..\..\node_modules\.pnpm\@capacitor+push-notifications@8.1.2_@capacitor+core@8.5.0\node_modules\@capacitor\push-notifications"),
-        .package(name: "CapacitorShare", path: "..\..\..\node_modules\.pnpm\@capacitor+share@8.0.1_@capacitor+core@8.5.0\node_modules\@capacitor\share"),
-        .package(name: "CapacitorSplashScreen", path: "..\..\..\node_modules\.pnpm\@capacitor+splash-screen@8.0.2_@capacitor+core@8.5.0\node_modules\@capacitor\splash-screen"),
-        .package(name: "CapacitorStatusBar", path: "..\..\..\node_modules\.pnpm\@capacitor+status-bar@8.0.3_@capacitor+core@8.5.0\node_modules\@capacitor\status-bar")
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0"),
     ],
     targets: [
         .target(
@@ -30,18 +51,8 @@ let package = Package(
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Cordova", package: "capacitor-swift-pm"),
-                .product(name: "CapacitorCommunityMedia", package: "CapacitorCommunityMedia"),
-                .product(name: "CapacitorApp", package: "CapacitorApp"),
-                .product(name: "CapacitorCamera", package: "CapacitorCamera"),
-                .product(name: "CapacitorFilesystem", package: "CapacitorFilesystem"),
-                .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
-                .product(name: "CapacitorHaptics", package: "CapacitorHaptics"),
-                .product(name: "CapacitorNetwork", package: "CapacitorNetwork"),
-                .product(name: "CapacitorPushNotifications", package: "CapacitorPushNotifications"),
-                .product(name: "CapacitorShare", package: "CapacitorShare"),
-                .product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen"),
-                .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar")
-            ]
+            ],
+            path: "Sources/CapApp-SPM"
         )
     ]
 )

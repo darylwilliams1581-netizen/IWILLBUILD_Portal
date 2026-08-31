@@ -1,0 +1,4 @@
+# Build artifacts — not source code, not tracked in git
+dist/
+dist-ssr/
+node_modules/

@@ -8,7 +8,7 @@ import {
   X, ChevronLeft, ChevronRight, Save, Check, AlertTriangle,
   Plus, Trash2, Loader2, ShieldCheck, ClipboardList, Users,
   AlertCircle, Wrench, Zap, Car, FlaskConical, Building2,
-  Leaf, FileWarning, RotateCcw, PenLine, BookOpen, Info,
+  Leaf, FileWarning, RotateCcw, PenLine, BookOpen, Info, Layers,
 } from 'lucide-react';
 import type { WHS_PlanData, WHS_Contact, WHS_HazardRow, WHS_ConsultationRow, WHS_EnvControlRow, WHS_AppendixRow, WHS_RevisionRow } from './safety-types';
 import {
@@ -1163,9 +1163,11 @@ interface Props {
   jobs: Array<{ id: number; name: string; jobNumber: string | null }>;
   onClose: () => void;
   onSaved: (planId: number, title: string) => void;
+  /** Called after a Studio document is successfully generated; receives the new doc ID */
+  onGenerateStudio?: (studioDocId: number) => void;
 }
 
-export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jobs, onClose, onSaved }: Props) {
+export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jobs, onClose, onSaved, onGenerateStudio }: Props) {
   const defaults = { ...blankPlanDefaults(), ...(initial ?? {}) };
   const [data, setData] = useState<WHS_PlanData>(defaults);
   const [savedPlanId, setSavedPlanId] = useState<number | null>(existingPlanId ?? null);
@@ -1173,6 +1175,8 @@ export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jo
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showValidation, setShowValidation] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
 
   const set = useCallback((k: keyof WHS_PlanData, v: unknown) => {
     setData((prev) => ({ ...prev, [k]: v }));
@@ -1235,6 +1239,70 @@ export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jo
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ─── Generate Studio Document ─────────────────────────────────────────────
+  async function handleGenerateStudio() {
+    setGenerating(true); setGenerateError('');
+    try {
+      const resolvedTitle = planTitle || data.projectName || 'WHS Management Plan';
+
+      // 1. Save the plan first
+      let currentPlanId = savedPlanId;
+      if (!currentPlanId) {
+        const body = {
+          title: resolvedTitle,
+          plan_data: JSON.stringify(data),
+          status: data.status,
+          job_id: data.jobId ? parseInt(data.jobId) : null,
+          site_address: data.siteAddress,
+          site_supervisor: data.contacts.find((c) => c.role === 'Site Supervisor')?.name ?? '',
+          first_aid_officer: data.contacts.find((c) => c.role === 'First Aid Officer')?.name ?? '',
+          emergency_contact: data.emergencyServicesNumber,
+          nearest_hospital: data.nearestHospital,
+          emergency_assembly_point: data.assemblyPointDescription,
+          evacuation_notes: data.evacuationProcedure,
+          project_value: data.projectValue,
+          is_principal_contractor: data.principalContractorWho === 'Our company' ? 1 : 0,
+          high_risk_activities: data.selectedHRCW.join('|'),
+        };
+        const r = await fetch('/api/safety/plans', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const resp = await r.json();
+        if (!r.ok) throw new Error((resp.error as string) ?? 'Failed to save plan');
+        currentPlanId = (resp.plan as Record<string, unknown>)?.id as number;
+        setSavedPlanId(currentPlanId);
+        onSaved(currentPlanId!, resolvedTitle);
+      }
+
+      // 2. Convert to Studio blocks
+      const { whsPlanToStudioBlocks } = await import('@/lib/safety-to-studio/whsPlanToStudioBlocks');
+      const blocks = whsPlanToStudioBlocks(data, resolvedTitle);
+
+      // 3. Call the generate endpoint
+      const genR = await fetch('/api/studio/generate-from-safety', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetType: 'whs_plan',
+          sourceRecordId: currentPlanId,
+          title: resolvedTitle,
+          blocks,
+          safetyCategory: 'WHS Plan',
+        }),
+      });
+      const genResp = await genR.json();
+      if (!genR.ok) throw new Error((genResp.error as string) ?? 'Failed to generate Studio document');
+
+      onGenerateStudio?.(genResp.id);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Failed to generate Studio document');
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -1348,6 +1416,11 @@ export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jo
                 <AlertCircle size={13} className="shrink-0" />{saveError}
               </div>
             )}
+            {generateError && (
+              <div className="mx-4 mt-3 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs shrink-0">
+                <AlertCircle size={13} className="shrink-0" />{generateError}
+              </div>
+            )}
 
             {/* Section content */}
             <div className="flex-1 overflow-y-auto p-5">
@@ -1384,14 +1457,27 @@ export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jo
                 </button>
 
                 {step === totalSteps - 1 ? (
-                  <button
-                    onClick={() => handleSave(true)}
-                    disabled={saving}
-                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
-                  >
-                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    Save Plan
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {onGenerateStudio && (
+                      <button
+                        onClick={() => void handleGenerateStudio()}
+                        disabled={generating || saving}
+                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
+                        title="Generate a Studio document from this WHS Plan"
+                      >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
+                        Generate Studio Document
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleSave(true)}
+                      disabled={saving || generating}
+                      className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                      Save Plan
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => setStep((s) => Math.min(totalSteps - 1, s + 1))}

@@ -1,8 +1,13 @@
 /**
  * GET /api/forms/submissions
- * Returns a combined, company-isolated list of ALL completed forms:
+ * Returns a combined, company-isolated list of form submissions.
+ *
+ * Sources:
  *   - Internal: job_form_submissions WHERE status = 'completed'
- *   - Public:   form_public_submissions (all statuses, existing behaviour)
+ *   - Public:   form_public_submissions (all statuses)
+ *
+ * By default, archived submissions are EXCLUDED.
+ * Pass ?archived=1 to return ONLY archived submissions.
  *
  * Normalised response shape:
  *   {
@@ -22,19 +27,17 @@
  *   submitter_name
  *   submitter_email – null for internal (not stored)
  *   status
- *   completed_at    – ISO timestamp; internal uses updated_at (best available)
+ *   completed_at    – ISO timestamp
  *   answers_json
  *   form_route      – '/jobs/:jobId/forms/:id' for internal; null for public
- *
- * Completion timestamp source:
- *   Internal: job_form_submissions.updated_at
- *     (no dedicated completed_at column exists; updated_at is bumped on every
- *      save including the final status='completed' write, making it the best
- *      available proxy for completion time)
- *   Public: form_public_submissions.submitted_at
+ *   archived_at     – ISO timestamp or null
+ *   archived_by     – name/email of archiver or null
+ *   archive_reason  – free-text or null
+ *   legal_hold      – 0 or 1
  *
  * Query params:
- *   templateId  – filter both sources by template
+ *   templateId  – filter by template
+ *   archived    – '1' to return archived submissions only (default: active only)
  *   limit       – default 100, max 200
  *   offset      – default 0
  */
@@ -59,11 +62,17 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const companyId = profile.companyId;
-    const { templateId, limit = '100', offset = '0' } = req.query as Record<string, string>;
+    const { templateId, limit = '100', offset = '0', archived = '0' } = req.query as Record<string, string>;
 
     const lim = Math.min(parseInt(limit, 10) || 100, 200);
     const off = parseInt(offset, 10) || 0;
     const tidFilter = templateId ? `AND template_id = ${parseInt(templateId, 10)}` : '';
+    const showArchived = archived === '1';
+
+    // archived_at filter — default view excludes archived; archived view includes only archived
+    const archiveFilter = showArchived
+      ? 'AND archived_at IS NOT NULL'
+      : 'AND archived_at IS NULL';
 
     // ── Internal: completed job_form_submissions ──────────────────────────────
     const [internalRows] = await db.execute(sql.raw(`
@@ -81,12 +90,17 @@ export default async function handler(req: Request, res: Response) {
         jfs.status,
         jfs.updated_at                      AS completed_at,
         jfs.answers_json,
-        CONCAT('/jobs/', jfs.job_id, '/forms/', jfs.id) AS form_route
+        CONCAT('/jobs/', jfs.job_id, '/forms/', jfs.id) AS form_route,
+        jfs.archived_at,
+        jfs.archived_by,
+        jfs.archive_reason,
+        COALESCE(jfs.legal_hold, 0)         AS legal_hold
       FROM job_form_submissions jfs
       JOIN form_templates ft ON ft.id = jfs.template_id
       JOIN jobs j            ON j.id  = jfs.job_id
       WHERE jfs.company_id = ${companyId}
         AND jfs.status = 'completed'
+        ${archiveFilter}
         ${tidFilter}
     `)) as unknown as [Array<Record<string, unknown>>];
 
@@ -106,11 +120,16 @@ export default async function handler(req: Request, res: Response) {
         fps.status,
         fps.submitted_at                    AS completed_at,
         fps.answers_json,
-        NULL                                AS form_route
+        NULL                                AS form_route,
+        fps.archived_at,
+        fps.archived_by,
+        fps.archive_reason,
+        COALESCE(fps.legal_hold, 0)         AS legal_hold
       FROM form_public_submissions fps
       JOIN form_templates ft ON ft.id = fps.template_id
       LEFT JOIN jobs j       ON j.id  = fps.job_id
       WHERE fps.company_id = ${companyId}
+        ${archiveFilter}
         ${tidFilter}
     `)) as unknown as [Array<Record<string, unknown>>];
 

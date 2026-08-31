@@ -14,10 +14,6 @@ import { tryClearStaleSession } from '@/lib/auth/session-cookies';
 import { recordLoginEvent } from '@/server/activity-tracker';
 import { logActivity, getIp, getUserAgent } from '@/server/lib/activity-log';
 import { checkLoginRate } from '@/server/lib/signup-rate-limiter';
-import {
-  createChallenge,
-  setChallengeCookie,
-} from '@/server/lib/pending-2fa';
 import { db } from '@/server/db/client';
 import { sql } from 'drizzle-orm';
 
@@ -134,6 +130,8 @@ export async function authHandler(req: Request, res: Response) {
       console.info(JSON.stringify({
         event: isSignIn ? 'server.auth.signin.response' : 'server.auth.signout.response',
         status: webResponse.status,
+        referer: req.headers['referer'] ?? req.headers['referrer'] ?? null,
+        userAgent: (req.headers['user-agent'] ?? '').slice(0, 80),
         ts: Date.now(),
       }));
     }
@@ -146,6 +144,87 @@ export async function authHandler(req: Request, res: Response) {
         const body = await clone.json().catch(() => null);
         const userId: string | undefined = body?.user?.id;
         const email: string | undefined = body?.user?.email;
+
+        // ── SMS 2FA intercept ──────────────────────────────────────────────────
+        // BetterAuth's twoFactor plugin only handles TOTP. SMS 2FA is a separate
+        // custom system stored in user.sms_2fa_enabled. If the user has SMS 2FA
+        // enabled, we must:
+        //   1. Revoke the just-created BetterAuth session so useSession() returns
+        //      null and the React app cannot auto-navigate past the challenge.
+        //   2. Insert a pending_2fa_challenges row with a short-lived plain token
+        //      (stored hashed) that the client sends as X-SMS-Challenge-Token on
+        //      the /send and /verify requests — replacing session auth for those
+        //      two endpoints only.
+        //   3. Return { twoFactorRedirect: true, twoFactorMethods: ['sms'],
+        //      smsChallengeToken: '<raw>' } so the client can show the challenge UI.
+        if (userId) {
+          try {
+            const [smsRows] = await db.execute(
+              sql`SELECT sms_2fa_enabled FROM \`user\` WHERE id = ${userId} LIMIT 1`
+            ) as unknown as [Array<{ sms_2fa_enabled: number }>, unknown];
+
+            if (smsRows?.[0]?.sms_2fa_enabled) {
+              const { randomBytes, createHash } = await import('node:crypto');
+
+              // Revoke the BetterAuth session so the client cannot skip the challenge
+              try {
+                const setCookieHeader = webResponse.headers.get('set-cookie') ?? '';
+                const tokenMatch = setCookieHeader.match(/better-auth\.session_token=([^;]+)/);
+                if (tokenMatch?.[1]) {
+                  const sessionToken = decodeURIComponent(tokenMatch[1]);
+                  const auth = getAuth();
+                  await auth.api.revokeSession({ body: { token: sessionToken } }).catch(() => null);
+                }
+              } catch { /* non-critical */ }
+
+              // Generate a short-lived challenge token (plain → sent to client;
+              // hashed → stored in DB)
+              const challengeId = randomBytes(18).toString('hex');
+              const tokenRaw    = randomBytes(32).toString('hex');
+              const tokenHash   = createHash('sha256').update(tokenRaw).digest('hex');
+              const expiresAt   = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+              await db.execute(
+                sql`DELETE FROM pending_2fa_challenges WHERE user_id = ${userId} AND method = 'sms'`
+              );
+              await db.execute(
+                sql`INSERT INTO pending_2fa_challenges (id, user_id, token_hash, method, expires_at)
+                    VALUES (${challengeId}, ${userId}, ${tokenHash}, 'sms', ${expiresAt})`
+              );
+
+              void logActivity({
+                eventType: 'login_sms_2fa_required',
+                success: false,
+                userId,
+                email: email ?? null,
+                ipAddress: ip,
+                userAgent: ua,
+                reason: 'SMS 2FA challenge required',
+              });
+
+              // Do NOT forward the session Set-Cookie — we revoked it.
+              // Return the challenge token so the client can authenticate
+              // the /send and /verify calls without a session cookie.
+              console.info(JSON.stringify({
+                event: 'sms.intercept.fired',
+                userId: userId.slice(0, 8) + '…',
+                challengeId,
+                ts: Date.now(),
+              }));
+              res.status(200).json({
+                twoFactorRedirect: true,
+                twoFactorMethods: ['sms'],
+                smsChallengeToken: tokenRaw,
+              });
+              return;
+            }
+          } catch {
+            // DB error checking SMS 2FA — fail safe: allow login rather than
+            // permanently locking out users if the check itself fails.
+          }
+        }
+        // ── End SMS 2FA intercept ──────────────────────────────────────────────
+
         if (userId) {
           void recordLoginEvent(userId);
           void logActivity({
@@ -156,59 +235,6 @@ export async function authHandler(req: Request, res: Response) {
             ipAddress: ip,
             userAgent: ua,
           });
-
-          // ── 2FA intercept ─────────────────────────────────────────────────
-          // If the user has TOTP or SMS 2FA enabled, we must NOT complete the
-          // sign-in. Instead: create a server-side pending challenge, set the
-          // challenge cookie, and return 403 TWO_FACTOR_REQUIRED.
-          // The client must then call /api/me/2fa/verify (TOTP) or
-          // /api/me/2fa/sms/verify (SMS) to complete the login.
-          try {
-            const [twoFaRows] = await db.execute(
-              sql`SELECT two_factor_enabled, sms_2fa_enabled
-                  FROM \`user\` WHERE id = ${userId} LIMIT 1`
-            ) as unknown as [Array<{ two_factor_enabled: number; sms_2fa_enabled: number }>, unknown];
-
-            const twoFaRow = twoFaRows?.[0];
-            const totpEnabled = !!twoFaRow?.two_factor_enabled;
-            const smsEnabled  = !!twoFaRow?.sms_2fa_enabled;
-
-            if (totpEnabled || smsEnabled) {
-              const method = totpEnabled ? 'totp' : 'sms';
-
-              // Create a server-side pending challenge (expires in 10 min)
-              const { token } = await createChallenge(userId, method);
-
-              // Revoke the BetterAuth session that was just created — we must
-              // not let it persist until 2FA is complete.
-              try {
-                const sessionToken: string | undefined = body?.token as string | undefined;
-                if (sessionToken) {
-                  const auth = getAuth();
-                  // revokeSession expects the raw session token
-                  await auth.api.revokeSession({
-                    body:    { token: sessionToken },
-                    headers: new Headers(),
-                  }).catch(() => null);
-                }
-              } catch { /* non-critical — challenge expiry is the safety net */ }
-
-              // Set the challenge cookie and return TWO_FACTOR_REQUIRED
-              setChallengeCookie(res, token);
-              res.status(403).json({
-                error:  'Two-factor authentication required.',
-                code:   'TWO_FACTOR_REQUIRED',
-                method,
-              });
-              return;
-            }
-          } catch (twoFaErr) {
-            // 2FA check failed — log and fall through to complete login normally.
-            // This is a fail-open decision: if we can't read the 2FA flag we
-            // don't lock users out, but we do log it for investigation.
-            console.error('[auth-middleware] 2FA intercept check failed:', twoFaErr instanceof Error ? twoFaErr.message : String(twoFaErr));
-          }
-          // ── end 2FA intercept ─────────────────────────────────────────────
 
           // Check must_change_password — if set, inject flag into response
           try {

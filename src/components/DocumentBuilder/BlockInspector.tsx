@@ -6,9 +6,9 @@
  * Each block has two tabs: Settings and Logic.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import{useAuthImage,isInternalSrc}from'./useAuthImage';
-import { Settings, Zap, X, Plus, Trash2, Upload, Loader2, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { Settings, Zap, X, Plus, Trash2, Upload, Loader2, PanelRightClose, PanelRightOpen, AlignLeft, AlignCenter, AlignRight, Rows3, Columns3, TableProperties, SplitSquareHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import { SYSTEM_FIELDS, SYSTEM_FIELD_GROUPS } from './systemFields';
@@ -374,29 +374,7 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
       );
 
     case 'table':
-      return (
-        <Section title="Table">
-          <label className={lbl}>Mode</label>
-          <select value={block.mode} onChange={(e) => upd({ mode: e.target.value as TableBlock['mode'] })} className={sel}>
-            <option value="static">Static (reference)</option>
-            <option value="fillable">Fillable</option>
-          </select>
-          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer mt-2">
-            <input type="checkbox" checked={!!block.stripedRows} onChange={(e) => upd({ stripedRows: e.target.checked })} className="accent-primary" />
-            Striped rows
-          </label>
-          {block.mode === 'fillable' && (
-            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer mt-1">
-              <input type="checkbox" checked={!!block.repeatable} onChange={(e) => upd({ repeatable: e.target.checked })} className="accent-primary" />
-              Repeatable rows
-            </label>
-          )}
-          <label className={`${lbl} mt-2`}>Header BG</label>
-          <input type="color" value={block.headerBgColor ?? '#1e293b'} onChange={(e) => upd({ headerBgColor: e.target.value })} className="w-8 h-7 rounded border border-slate-200 cursor-pointer p-0.5" />
-          <label className={`${lbl} mt-2`}>Header Text</label>
-          <input type="color" value={block.headerTextColor ?? '#ffffff'} onChange={(e) => upd({ headerTextColor: e.target.value })} className="w-8 h-7 rounded border border-slate-200 cursor-pointer p-0.5" />
-        </Section>
-      );
+      return <TableInspector block={block} upd={upd} />;
 
     case 'safety_badge_row':
       return <SafetyBadgeInspector block={block} upd={upd} />;
@@ -409,6 +387,271 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
 }
 
 // ── Common block settings (background, border, padding) ───────────────────────
+
+// ── TableInspector ────────────────────────────────────────────────────────────
+
+function TableInspector({ block, upd }: { block: TableBlock; upd: (p: Partial<TableBlock>) => void }) {
+  const [selectedRow, setSelectedRow] = useState<string | null>(null);
+  const [selectedCol, setSelectedCol] = useState<string | null>(null);
+
+  const newId = useCallback(() => Math.random().toString(36).slice(2, 10), []);
+
+  // ── Row operations ──────────────────────────────────────────────────────────
+  const addRow = () => {
+    const cells: Record<string, string> = {};
+    block.columns.forEach((c) => { cells[c.id] = ''; });
+    upd({ rows: [...block.rows, { id: newId(), cells }] });
+  };
+
+  const insertRowAbove = (rowId: string) => {
+    const idx = block.rows.findIndex((r) => r.id === rowId);
+    if (idx < 0) return;
+    const cells: Record<string, string> = {};
+    block.columns.forEach((c) => { cells[c.id] = ''; });
+    const rows = [...block.rows];
+    rows.splice(idx, 0, { id: newId(), cells });
+    upd({ rows });
+  };
+
+  const insertRowBelow = (rowId: string) => {
+    const idx = block.rows.findIndex((r) => r.id === rowId);
+    if (idx < 0) return;
+    const cells: Record<string, string> = {};
+    block.columns.forEach((c) => { cells[c.id] = ''; });
+    const rows = [...block.rows];
+    rows.splice(idx + 1, 0, { id: newId(), cells });
+    upd({ rows });
+  };
+
+  const deleteRow = (rowId: string) => {
+    if (block.rows.length <= 1) return;
+    upd({ rows: block.rows.filter((r) => r.id !== rowId) });
+    if (selectedRow === rowId) setSelectedRow(null);
+  };
+
+  const moveRow = (rowId: string, dir: -1 | 1) => {
+    const idx = block.rows.findIndex((r) => r.id === rowId);
+    if (idx < 0) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= block.rows.length) return;
+    const rows = [...block.rows];
+    [rows[idx], rows[newIdx]] = [rows[newIdx], rows[idx]];
+    upd({ rows });
+  };
+
+  // ── Column operations ───────────────────────────────────────────────────────
+  const addColumn = () => {
+    const newColId = newId();
+    const newCols = [...block.columns, { id: newColId, header: 'Column', cellType: 'text' as const, width: 1 }];
+    const newRows = block.rows.map((r) => ({ ...r, cells: { ...r.cells, [newColId]: '' } }));
+    upd({ columns: newCols, rows: newRows });
+  };
+
+  const insertColLeft = (colId: string) => {
+    const idx = block.columns.findIndex((c) => c.id === colId);
+    if (idx < 0) return;
+    const newColId = newId();
+    const cols = [...block.columns];
+    cols.splice(idx, 0, { id: newColId, header: 'Column', cellType: 'text' as const, width: 1 });
+    const rows = block.rows.map((r) => ({ ...r, cells: { ...r.cells, [newColId]: '' } }));
+    upd({ columns: cols, rows });
+  };
+
+  const insertColRight = (colId: string) => {
+    const idx = block.columns.findIndex((c) => c.id === colId);
+    if (idx < 0) return;
+    const newColId = newId();
+    const cols = [...block.columns];
+    cols.splice(idx + 1, 0, { id: newColId, header: 'Column', cellType: 'text' as const, width: 1 });
+    const rows = block.rows.map((r) => ({ ...r, cells: { ...r.cells, [newColId]: '' } }));
+    upd({ columns: cols, rows });
+  };
+
+  const deleteColumn = (colId: string) => {
+    if (block.columns.length <= 1) return;
+    const newCols = block.columns.filter((c) => c.id !== colId);
+    const newRows = block.rows.map((r) => {
+      const cells = { ...r.cells };
+      delete cells[colId];
+      return { ...r, cells };
+    });
+    upd({ columns: newCols, rows: newRows });
+    if (selectedCol === colId) setSelectedCol(null);
+  };
+
+  // ── Merge / split (colspan on selected row) ─────────────────────────────────
+  const mergeSelectedRow = (rowId: string) => {
+    if (block.columns.length < 2) return;
+    const firstColId = block.columns[0].id;
+    const existing = { ...(block.cellStyles ?? {}) };
+    const key = `${rowId}:${firstColId}`;
+    existing[key] = { ...(existing[key] ?? {}), colspan: block.columns.length };
+    upd({ cellStyles: existing });
+  };
+
+  const splitCell = (rowId: string, colId: string) => {
+    const existing = { ...(block.cellStyles ?? {}) };
+    const key = `${rowId}:${colId}`;
+    if (existing[key]) {
+      const { colspan: _c, rowspan: _r, ...rest } = existing[key];
+      if (Object.keys(rest).length > 0) {
+        existing[key] = rest;
+      } else {
+        delete existing[key];
+      }
+    }
+    upd({ cellStyles: Object.keys(existing).length > 0 ? existing : undefined });
+  };
+
+  const isMerged = (rowId: string, colId: string) => {
+    const cs = block.cellStyles?.[`${rowId}:${colId}`];
+    return (cs?.colspan ?? 1) > 1 || (cs?.rowspan ?? 1) > 1;
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <>
+      {/* ── Appearance ── */}
+      <Section title="Table">
+        <label className={lbl}>Mode</label>
+        <select value={block.mode} onChange={(e) => upd({ mode: e.target.value as TableBlock['mode'] })} className={sel}>
+          <option value="static">Static (reference)</option>
+          <option value="fillable">Fillable</option>
+        </select>
+        <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer mt-2">
+          <input type="checkbox" checked={!!block.stripedRows} onChange={(e) => upd({ stripedRows: e.target.checked })} className="accent-primary" />
+          Striped rows
+        </label>
+        {block.mode === 'fillable' && (
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer mt-1">
+            <input type="checkbox" checked={!!block.repeatable} onChange={(e) => upd({ repeatable: e.target.checked })} className="accent-primary" />
+            Repeatable rows
+          </label>
+        )}
+        <div className="flex items-center gap-3 mt-2">
+          <div>
+            <label className={lbl}>Header BG</label>
+            <input type="color" value={block.headerBgColor ?? '#1e293b'} onChange={(e) => upd({ headerBgColor: e.target.value })} className="w-8 h-7 rounded border border-slate-200 cursor-pointer p-0.5" />
+          </div>
+          <div>
+            <label className={lbl}>Header Text</label>
+            <input type="color" value={block.headerTextColor ?? '#ffffff'} onChange={(e) => upd({ headerTextColor: e.target.value })} className="w-8 h-7 rounded border border-slate-200 cursor-pointer p-0.5" />
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Rows ── */}
+      <Section title={`Rows (${block.rows.length})`}>
+        <div className="space-y-1 mb-2 max-h-40 overflow-y-auto pr-0.5">
+          {block.rows.map((row, idx) => {
+            const isSelected = selectedRow === row.id;
+            const firstCell = Object.values(row.cells)[0] ?? '';
+            const preview = firstCell.replace(/<[^>]+>/g, '').slice(0, 22) || `Row ${idx + 1}`;
+            return (
+              <div
+                key={row.id}
+                className={`flex items-center gap-1 rounded px-1.5 py-1 cursor-pointer transition-colors text-xs
+                  ${isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-slate-50'}`}
+                onClick={() => setSelectedRow(isSelected ? null : row.id)}
+              >
+                <span className="flex-1 truncate text-slate-600">{preview}</span>
+                <button type="button" title="Move up" onMouseDown={(e) => { e.stopPropagation(); moveRow(row.id, -1); }}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors disabled:opacity-30"
+                  disabled={idx === 0}>
+                  <ChevronUp size={10} />
+                </button>
+                <button type="button" title="Move down" onMouseDown={(e) => { e.stopPropagation(); moveRow(row.id, 1); }}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors disabled:opacity-30"
+                  disabled={idx === block.rows.length - 1}>
+                  <ChevronDown size={10} />
+                </button>
+                <button type="button" title="Delete row" onMouseDown={(e) => { e.stopPropagation(); deleteRow(row.id); }}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-30"
+                  disabled={block.rows.length <= 1}>
+                  <Trash2 size={10} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Row actions */}
+        {selectedRow ? (
+          <div className="flex flex-wrap gap-1">
+            <button type="button" onClick={() => insertRowAbove(selectedRow)}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-100 hover:bg-primary/10 hover:text-primary text-slate-600 transition-colors">
+              <Rows3 size={9} /> Insert above
+            </button>
+            <button type="button" onClick={() => insertRowBelow(selectedRow)}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-100 hover:bg-primary/10 hover:text-primary text-slate-600 transition-colors">
+              <Rows3 size={9} /> Insert below
+            </button>
+            {block.columns.length > 1 && (
+              <button type="button" onClick={() => mergeSelectedRow(selectedRow)}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-100 hover:bg-primary/10 hover:text-primary text-slate-600 transition-colors">
+                <TableProperties size={9} /> Merge all cells
+              </button>
+            )}
+            {isMerged(selectedRow, block.columns[0]?.id ?? '') && (
+              <button type="button" onClick={() => splitCell(selectedRow, block.columns[0]?.id ?? '')}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-100 hover:bg-primary/10 hover:text-primary text-slate-600 transition-colors">
+                <SplitSquareHorizontal size={9} /> Split cells
+              </button>
+            )}
+          </div>
+        ) : (
+          <button type="button" onClick={addRow}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors">
+            <Plus size={11} /> Add row
+          </button>
+        )}
+      </Section>
+
+      {/* ── Columns ── */}
+      <Section title={`Columns (${block.columns.length})`}>
+        <div className="space-y-1 mb-2">
+          {block.columns.map((col, idx) => {
+            const isSelected = selectedCol === col.id;
+            return (
+              <div
+                key={col.id}
+                className={`flex items-center gap-1 rounded px-1.5 py-1 cursor-pointer transition-colors text-xs
+                  ${isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-slate-50'}`}
+                onClick={() => setSelectedCol(isSelected ? null : col.id)}
+              >
+                <span className="flex-1 truncate text-slate-600">{col.header || `Col ${idx + 1}`}</span>
+                <button type="button" title="Delete column" onMouseDown={(e) => { e.stopPropagation(); deleteColumn(col.id); }}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-30"
+                  disabled={block.columns.length <= 1}>
+                  <Trash2 size={10} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Column actions */}
+        {selectedCol ? (
+          <div className="flex flex-wrap gap-1">
+            <button type="button" onClick={() => insertColLeft(selectedCol)}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-100 hover:bg-primary/10 hover:text-primary text-slate-600 transition-colors">
+              <Columns3 size={9} /> Insert left
+            </button>
+            <button type="button" onClick={() => insertColRight(selectedCol)}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-100 hover:bg-primary/10 hover:text-primary text-slate-600 transition-colors">
+              <Columns3 size={9} /> Insert right
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={addColumn}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors">
+            <Plus size={11} /> Add column
+          </button>
+        )}
+      </Section>
+    </>
+  );
+}
 
 function CommonBlockSettings({ block }: { block: DocumentBlock }) {
   const { updateBlock } = useDocumentStore();
@@ -810,7 +1053,7 @@ function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd:
   );
 }
 
-// ── Image Inspector (with file upload) ────────────────────────────────────────
+// ── Image Inspector (with file upload, size + alignment controls) ─────────────
 
 function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<ImageBlock>) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -837,6 +1080,22 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
     }
   };
 
+  const SIZE_PRESETS: { value: ImageBlock['size']; label: string }[] = [
+    { value: 'small',  label: 'S' },
+    { value: 'medium', label: 'M' },
+    { value: 'large',  label: 'L' },
+    { value: 'full',   label: 'Full' },
+    { value: 'custom', label: 'Custom' },
+  ];
+
+  const SIZE_HINTS: Record<string, string> = {
+    small:  '200px',
+    medium: '400px',
+    large:  '600px',
+    full:   '100%',
+    custom: '',
+  };
+
   return (
     <Section title="Image">
       {/* Upload button */}
@@ -845,7 +1104,7 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
         disabled={uploading}
         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-violet-50 border border-violet-200 text-primary text-xs font-semibold hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
       >
-        {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> Upload Image</>}
+        {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> {block.src ? 'Replace Image' : 'Upload Image'}</>}
       </button>
       <input
         ref={fileRef}
@@ -875,20 +1134,27 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
         </div>
       )}
 
-      <label className={`${lbl} mt-2`}>Alt Text</label>
-      <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} />
+      <label className={`${lbl} mt-3`}>Alt Text</label>
+      <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} placeholder="Describe the image" />
       <label className={`${lbl} mt-2`}>Caption</label>
-      <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} />
+      <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} placeholder="Optional caption" />
 
-      {/* Size — button pickers */}
-      <label className={`${lbl} mt-2`}>Size</label>
-      <div className="grid grid-cols-2 gap-1">
-        {([['small','Small (200px)'],['medium','Medium (400px)'],['large','Large (600px)'],['full','Full Width']] as const).map(([val, label]) => (
+      {/* ── Size ── */}
+      <label className={`${lbl} mt-3`}>Size</label>
+      <div className="flex gap-1">
+        {SIZE_PRESETS.map(({ value, label }) => (
           <button
-            key={val}
-            onClick={() => upd({ size: val })}
-            className={`py-1.5 rounded text-[10px] font-semibold transition-colors ${
-              block.size === val
+            key={value}
+            onClick={() => {
+              if (value === 'custom') {
+                upd({ size: 'custom', customWidth: block.customWidth ?? 300 });
+              } else {
+                upd({ size: value, customWidth: undefined });
+              }
+            }}
+            title={SIZE_HINTS[value] ? `Max width: ${SIZE_HINTS[value]}` : 'Custom width'}
+            className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${
+              block.size === value
                 ? 'bg-primary text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'
             }`}
@@ -898,9 +1164,55 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
         ))}
       </div>
 
-      {/* Align */}
-      <label className={`${lbl} mt-2`}>Align</label>
-      <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
+      {/* Custom width input — shown only when size === 'custom' */}
+      {block.size === 'custom' && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="number"
+            min={40}
+            max={1200}
+            step={10}
+            value={block.customWidth ?? 300}
+            onChange={(e) => upd({ customWidth: Math.max(40, Math.min(1200, Number(e.target.value))) })}
+            className={`${inp} flex-1`}
+          />
+          <span className="text-xs text-slate-400 flex-shrink-0">px</span>
+        </div>
+      )}
+
+      {/* ── Alignment ── */}
+      <label className={`${lbl} mt-3`}>Alignment</label>
+      <div className="flex gap-1">
+        {([
+          { value: 'left',   Icon: AlignLeft   },
+          { value: 'center', Icon: AlignCenter },
+          { value: 'right',  Icon: AlignRight  },
+        ] as const).map(({ value, Icon }) => (
+          <button
+            key={value}
+            onClick={() => upd({ align: value })}
+            title={value.charAt(0).toUpperCase() + value.slice(1)}
+            className={`flex-1 py-1.5 rounded flex items-center justify-center transition-colors ${
+              block.align === value
+                ? 'bg-primary text-white'
+                : 'bg-white border border-slate-200 text-slate-500 hover:border-primary/40 hover:text-primary'
+            }`}
+          >
+            <Icon size={13} />
+          </button>
+        ))}
+      </div>
+
+      {/* Preserve aspect ratio toggle */}
+      <label className="flex items-center gap-2 cursor-pointer mt-3">
+        <input
+          type="checkbox"
+          checked={block.preserveAspectRatio}
+          onChange={(e) => upd({ preserveAspectRatio: e.target.checked })}
+          className="w-3.5 h-3.5 rounded accent-violet-600"
+        />
+        <span className="text-[10px] text-slate-600 font-medium">Preserve aspect ratio</span>
+      </label>
     </Section>
   );
 }

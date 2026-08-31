@@ -19,7 +19,7 @@ export default function JobPurchaseOrdersPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=purchase-orders');
+    navigate('/home?picker=purchase-orders');
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JobPurchaseOrdersPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

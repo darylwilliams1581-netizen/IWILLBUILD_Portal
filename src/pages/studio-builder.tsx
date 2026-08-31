@@ -5,12 +5,15 @@
  * document (create). Handles loading state, error state, and navigation
  * back to /studio on close/save.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertCircle } from 'lucide-react';
 import DocumentBuilder from '@/components/DocumentBuilder';
 import JobContextTab from '@/components/JobContextTab';
+import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
+import { buildDocumentBuilderContext, buildDocumentBuilderContextFromTemplate } from '@/components/DazzaBuilderAssistant/DocumentBuilderAdapter';
+import { useDocumentStore } from '@/components/DocumentBuilder/useDocumentStore';
 import type { DocumentTemplate, StudioDocumentType } from '@/components/DocumentBuilder/types';
 import { DOC_KIND_ACKNOWLEDGEMENT_TYPES, DEFAULT_DOC_KIND_SETTINGS } from '@/components/DocumentBuilder/types';
 
@@ -124,9 +127,56 @@ export default function StudioBuilderPage() {
 
   // ?mode=use opens directly in Use Mode (fill/complete); default is Build Mode
   const initialMode = searchParams.get('mode') === 'use' ? 'use' : 'build';
+
+  // ?tab=layout (or any BuilderTab) opens that sidebar tab on first load
+  const initialTab = (searchParams.get('tab') ?? undefined) as import('@/components/DocumentBuilder/types').BuilderTab | undefined;
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [error, setError] = useState<string | null>(null);
+
+  // Dazza Builder Assistant state
+  const [dazzaOpen, setDazzaOpen] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState(0);
+
+  // ── Zustand store subscriptions (must be before any early return) ──────────
+  // Use individual primitive selectors — object selectors create a new object
+  // every render and cause an infinite update loop in Zustand.
+  const storeTemplateId   = useDocumentStore(s => s.templateId);
+  const storeTemplateName = useDocumentStore(s => s.templateName);
+  const storeTemplateType = useDocumentStore(s => s.templateType);
+  const storeBlocks       = useDocumentStore(s => s.blocks);
+  const storeLogicRules   = useDocumentStore(s => s.logicRules);
+  const storeIsDirty      = useDocumentStore(s => s.isDirty);
+  const storePageLayout   = useDocumentStore(s => s.pageLayout);
+  const storeDocKind      = useDocumentStore(s => s.docKind);
+  const storeReqAck       = useDocumentStore(s => s.requiresAcknowledgement);
+  const selectedBlockId   = useDocumentStore(s => s.selection?.blockId ?? null);
+
+  const loadTemplate = useDocumentStore(s => s.loadTemplate);
+
+  const handleDazzaApplied = useCallback((versionId: string, versionNumber: number) => {
+    setCurrentVersion(versionNumber);
+    // Reload the template from server so builder reflects applied changes.
+    // Also call loadTemplate directly so the Zustand store updates immediately
+    // (isDirty → false, blocks updated) without waiting for a second render cycle.
+    if (!isNew && id) {
+      const numId = Number(id);
+      if (numId) {
+        fetch(`/api/document-templates/${numId}`, { credentials: 'include' })
+          .then(r => r.json())
+          .then(data => {
+            if (data.template) {
+              setTemplate(data.template);
+              // Update the store directly so blocks appear immediately and
+              // isDirty/canUndo reflect the new state without a full remount.
+              loadTemplate(data.template);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+    void versionId;
+  }, [isNew, id, loadTemplate]);
 
   // Load existing template
   useEffect(() => {
@@ -219,6 +269,31 @@ export default function StudioBuilderPage() {
     // Apply kind defaults based on template type
     ...defaultKindForType(mapped.type)
   } : template;
+
+  // Build Dazza context from the live Zustand store so Dazza always sees the
+  // current document state (blocks, templateId, isDirty, etc.).
+  // Fall back to the static template snapshot only when the store hasn't
+  // loaded yet (templateId is null and we have a real template to load).
+  // canonicalTemplateId is always derived from the URL param — it is the
+  // authoritative ID used for apply when the store hasn't populated yet.
+  const canonicalTemplateId = isNew ? null : (Number(id) || null);
+  const storeTemplateLoaded = storeTemplateId !== null || isNew;
+  const storeSnapshot = {
+    templateId:               storeTemplateId,
+    templateName:             storeTemplateName,
+    templateType:             storeTemplateType,
+    blocks:                   storeBlocks,
+    logicRules:               storeLogicRules ?? [],
+    isDirty:                  storeIsDirty,
+    mode:                     initialMode,
+    pageLayout:               storePageLayout,
+    docKind:                  storeDocKind ?? 'doc',
+    requiresAcknowledgement:  storeReqAck ?? false,
+  };
+  const dazzaContext = storeTemplateLoaded
+    ? buildDocumentBuilderContext(storeSnapshot, selectedBlockId, [], currentVersion, canonicalTemplateId)
+    : buildDocumentBuilderContextFromTemplate(templateToLoad, currentVersion, canonicalTemplateId);
+
   return <>
       <Helmet>
         <title>
@@ -228,7 +303,19 @@ export default function StudioBuilderPage() {
         <link rel="canonical" href="https://iwillbuild.com/studio/builder" />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} />
+      {/* Flex wrapper so sidebar can resize the builder workspace */}
+      <div className="flex h-screen w-screen overflow-hidden">
+        <div className={`flex-1 min-w-0 overflow-hidden transition-all duration-200`}>
+          <DocumentBuilder template={templateToLoad} onClose={handleClose} onSaved={handleSaved} initialMode={initialMode} initialTab={initialTab} sidebarWidth={dazzaOpen ? 380 : 0} />
+        </div>
+        <div className="relative z-[60] shrink-0">
+          <DazzaBuilderAssistant
+            builderContext={dazzaContext}
+            onApplied={handleDazzaApplied}
+            onOpenChange={setDazzaOpen}
+          />
+        </div>
+      </div>
       <JobContextTab />
     </>;
 }

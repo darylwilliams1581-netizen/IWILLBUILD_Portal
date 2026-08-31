@@ -25,45 +25,6 @@ export interface AuthedRequest extends Request {
   _authProfile?: { id: number; userId: string; companyId: number; role: string; status: string };
 }
 
-// ── Session expiry check ──────────────────────────────────────────────────────
-
-/**
- * IWB_SESSION_EXPIRY_HEADER
- *
- * The client stamps the effective session expiry (Unix ms) into this request
- * header on every API call. The server validates it here so that even if the
- * BetterAuth cookie is still technically valid, we enforce the 14h / 06:00
- * cutoff rules independently.
- *
- * Header name: x-iwb-session-expires (lowercase, as HTTP/2 requires)
- */
-const SESSION_EXPIRY_HEADER = 'x-iwb-session-expires';
-
-/**
- * Check the custom session expiry header. Returns true (and sends 401) if the
- * session has expired according to the client-stamped value. Returns false if
- * the header is absent (older clients / non-portal callers) — we don't block
- * those; the BetterAuth session cookie is still the primary auth mechanism.
- */
-function checkCustomExpiry(req: Request, res: Response): boolean {
-  const raw = req.headers[SESSION_EXPIRY_HEADER];
-  if (!raw) return false; // header absent — skip custom check
-
-  const expiresAt = Number(Array.isArray(raw) ? raw[0] : raw);
-  if (!Number.isFinite(expiresAt) || expiresAt <= 0) return false; // malformed — skip
-
-  if (Date.now() >= expiresAt) {
-    res.status(401).json({
-      error: 'Session expired',
-      code: 'SESSION_EXPIRED',
-      reason: 'Daily security cutoff reached. Please sign in again.',
-    });
-    return true; // response sent — caller must return
-  }
-
-  return false;
-}
-
 // ── Core helper ───────────────────────────────────────────────────────────────
 
 /**
@@ -75,9 +36,6 @@ export async function getSessionAndProfile(
   req: Request,
   res: Response,
 ): Promise<{ session: { user: { id: string; email: string; name: string } }; profile: { id: number; userId: string; companyId: number; role: string; status: string } } | null> {
-  // ── Custom expiry check (14h / 06:00 cutoff) ──────────────────────────────
-  if (checkCustomExpiry(req, res)) return null;
-
   const auth = getAuth();
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers)) {
@@ -292,6 +250,20 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'POST', pattern: /^\/api\/jobs\/\d+\/signout-qr$/ },
   // Public job photo share — token-validated, view-only
   { method: 'GET',  pattern: /^\/api\/public\/job-photos\/[^/]+$/ },
+  // Recovery email token links — clicked from email, no session available
+  // Token is the only credential; handler validates it cryptographically
+  { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/verify$/ },
+  { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/cancel$/ },
+  { method: 'POST', pattern: /^\/api\/me\/recovery-email\/cancel$/ },
+  { method: 'GET',  pattern: /^\/api\/me\/recovery-email\/freeze$/ },
+  { method: 'POST', pattern: /^\/api\/me\/recovery-email\/freeze$/ },
+  // Feature flags — non-sensitive boolean capability signals, no auth required
+  { method: 'GET',  pattern: /^\/api\/features$/ },
+  // Pre-login SMS 2FA — no authenticated session exists yet; handlers validate
+  // X-SMS-Challenge-Token internally and return 401 if it is missing/invalid/expired.
+  // send-setup, enable, disable, status and all other /api/me routes remain protected.
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/send$/ },
+  { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/verify$/ },
 ];
 
 /**

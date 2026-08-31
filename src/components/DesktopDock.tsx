@@ -9,6 +9,7 @@
 import React from 'react';
 import { useLocation, Link } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
+import { TOPBAR_HEIGHT_CSS } from '@/components/DesktopTopBar';
 import { Camera, LayoutDashboard, HardHat, Zap, Calculator, Receipt, CalendarDays, FileText, ClipboardList, BookOpen, FolderOpen, Map, ShieldCheck, AlertCircle, Building2, Users, TableProperties, ScrollText, Link2, History, Truck, ShieldAlert, TriangleAlert, UserCircle, CreditCard, HelpCircle } from 'lucide-react';
 interface DockItem {
   label: string;
@@ -108,7 +109,7 @@ const ALL_ITEMS: DockItem[] = [
 },
 // ── Studio / Tools ────────────────────────────────────────────────────────
 {
-  label: 'App Docs',
+  label: 'Studio',
   icon: FileText,
   href: '/studio/documents',
   color: '#6366f1'
@@ -269,7 +270,7 @@ export default function DesktopDock() {
 
       <nav aria-label="Desktop navigation dock" className="hidden md:flex lg:hidden" style={{
       position: 'fixed',
-      top: 56,
+      top: TOPBAR_HEIGHT_CSS,
       left: 0,
       right: 0,
       zIndex: 1050,

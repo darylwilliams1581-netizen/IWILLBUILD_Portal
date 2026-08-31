@@ -1,45 +1,23 @@
-import { lazy, Suspense, useMemo, useEffect } from 'react';
-import { Outlet, createBrowserRouter, type RouteObject, useLocation } from "react-router";
+import { useMemo } from 'react';
+import { Outlet, createBrowserRouter, type RouteObject } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import RootLayout from './layouts/RootLayout';
 import { routes } from './routes';
-import ImpersonationBanner from '@/components/ImpersonationBanner';
-import CapacitorInit from '@/components/CapacitorInit';
-import AppErrorBoundary from '@/components/AppErrorBoundary';
-import { recordRouteChange } from '@/lib/diagnosticCapture';
 
-// ── Route change tracker ──────────────────────────────────────────────────────
-function RouteChangeTracker() {
-  const location = useLocation();
-  useEffect(() => {
-    recordRouteChange(location.pathname);
-  }, [location.pathname]);
-  return null;
-}
-
-const CookieBanner = lazy(() => import('@/components/CookieBanner').catch(error => {
-  console.warn('Failed to load CookieBanner:', error);
-  return {
-    default: () => null
-  };
-}));
-
+// ── App ───────────────────────────────────────────────────────────────────────
+// IMPORTANT: This component must render EXACTLY the same tree the server
+// renders in entry-server.tsx — RouterProvider(RootLayout > Outlet).
+// AppErrorBoundary is intentionally NOT here — it lives in main.tsx wrapping
+// the entire providers tree so it never appears inside the hydration boundary.
+// Any extra wrappers here cause React #418 (hydration tree mismatch) because
+// the server (entry-server.tsx) uses StaticRouterProvider with no extra wrapper.
 export default function App() {
   const router = useMemo(() => {
-    const layoutElement = (
-      <RouteChangeTracker />
-    );
-    void layoutElement; // suppress unused warning — RouteChangeTracker is used below
-
     const routeTree: RouteObject[] = [{
       element: (
-        <>
-          <RouteChangeTracker />
-          <RootLayout>
-            <Outlet />
-          </RootLayout>
-        </>
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
       ),
       children: routes
     }];
@@ -47,16 +25,5 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <AppErrorBoundary>
-      <CapacitorInit />
-      <ImpersonationBanner />
-      <RouterProvider router={router} />
-      <CookieBannerErrorBoundary>
-        <Suspense fallback={null}>
-          <CookieBanner />
-        </Suspense>
-      </CookieBannerErrorBoundary>
-    </AppErrorBoundary>
-  );
+  return <RouterProvider router={router} />;
 }

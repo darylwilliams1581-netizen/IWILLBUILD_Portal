@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { getSecret } from '#airo/secrets';
-import { globalApiLimiter, authApiLimiter } from './lib/api-rate-limiter.js';
+import { globalApiLimiter, authApiLimiter, recoveryTokenLimiter } from './lib/api-rate-limiter.js';
 import { requirePlatformOwner } from './lib/platform-owner-guard.js';
 
 // Route group files — each registers a slice of the API surface.
@@ -177,6 +177,10 @@ import dazza_knowledge_id_delete_144 from "./api/dazza/knowledge/[id]/DELETE";
 import dazza_knowledge_id_put_145 from "./api/dazza/knowledge/[id]/PUT";
 import dazza_secret_health_get_146 from "./api/dazza/secret-health/GET";
 import dazza_v3_chat_stream_post_147 from "./api/dazza/v3/chat/stream/POST";
+import dazza_builder_chat_stream_post from "./api/dazza/builder/chat/stream/POST";
+import dazza_builder_apply_post from "./api/dazza/builder/apply/POST";
+import dazza_builder_versions_get from "./api/dazza/builder/versions/GET";
+import dazza_builder_versions_restore_post from "./api/dazza/builder/versions/restore/POST";
 import dazza_v3_client_rescue_get_148 from "./api/dazza/v3/client-rescue/GET";
 import dazza_v3_client_rescue_id_patch_149 from "./api/dazza/v3/client-rescue/[id]/PATCH";
 import dazza_v3_communications_get_150 from "./api/dazza/v3/communications/GET";
@@ -191,6 +195,7 @@ import dazza_v3_incidents_id_get_158 from "./api/dazza/v3/incidents/[id]/GET";
 import dazza_v3_incidents_id_investigate_post_159 from "./api/dazza/v3/incidents/[id]/investigate/POST";
 import developer_activity_log_get_160 from "./api/developer/activity-log/GET";
 import developer_audit_log_get_161 from "./api/developer/audit-log/GET";
+import developer_billing_reconcile_post from "./api/developer/billing-reconcile/POST";
 import developer_companies_id_archive_post_162 from "./api/developer/companies/[id]/archive/POST";
 import developer_company_health_get_163 from "./api/developer/company-health/GET";
 import developer_email_log_get_164 from "./api/developer/email-log/GET";
@@ -225,12 +230,19 @@ import document_templates_post_192 from "./api/document-templates/POST";
 import document_templates_id_delete_193 from "./api/document-templates/[id]/DELETE";
 import document_templates_id_get_194 from "./api/document-templates/[id]/GET";
 import document_templates_id_put_195 from "./api/document-templates/[id]/PUT";
+import document_templates_id_patch from "./api/document-templates/[id]/PATCH";
 import document_templates_id_duplicate_post_196 from "./api/document-templates/[id]/duplicate/POST";
 import document_templates_id_export_docx_get_197 from "./api/document-templates/[id]/export/docx/GET";
 import document_templates_id_export_pdf_get_198 from "./api/document-templates/[id]/export/pdf/GET";
 import document_templates_id_import_blocks_post_199 from "./api/document-templates/[id]/import-blocks/POST";
 import document_templates_id_import_docx_post_200 from "./api/document-templates/[id]/import-docx/POST";
 import document_templates_id_import_pdf_post_201 from "./api/document-templates/[id]/import-pdf/POST";
+import document_templates_id_pdf_bytes_get from "./api/document-templates/[id]/pdf-bytes/GET";
+import document_templates_id_import_auto_post from "./api/document-templates/[id]/import-auto/POST";
+import document_templates_id_source_document_get from "./api/document-templates/[id]/source-document/GET";
+import document_templates_id_source_document_download_get from "./api/document-templates/[id]/source-document/download/GET";
+import document_templates_id_source_document_replace_post from "./api/document-templates/[id]/source-document/replace/POST";
+import document_templates_id_source_document_pdf_preview_get from "./api/document-templates/[id]/source-document/pdf-preview/GET";
 import document_templates_id_publish_to_library_post_202 from "./api/document-templates/[id]/publish-to-library/POST";
 import documents_get_203 from "./api/documents/GET";
 import documents_share_token_get_204 from "./api/documents/share/[token]/GET";
@@ -246,635 +258,649 @@ import drawings_upload_post_213 from "./api/drawings/upload/POST";
 import drawings_id_delete_214 from "./api/drawings/[id]/DELETE";
 import drawings_id_patch_215 from "./api/drawings/[id]/PATCH";
 import drawings_id_markup_post_216 from "./api/drawings/[id]/markup/POST";
-import emergency_alerts_get_217 from "./api/emergency-alerts/GET";
-import emergency_alerts_post_218 from "./api/emergency-alerts/POST";
-import emergency_alerts_id_put_219 from "./api/emergency-alerts/[id]/PUT";
-import estimates_get_220 from "./api/estimates/GET";
-import estimates_post_221 from "./api/estimates/POST";
-import estimates_id_delete_222 from "./api/estimates/[id]/DELETE";
-import estimates_id_get_223 from "./api/estimates/[id]/GET";
-import estimates_id_put_224 from "./api/estimates/[id]/PUT";
-import estimates_id_compose_defaults_get_225 from "./api/estimates/[id]/compose-defaults/GET";
-import estimates_id_convert_to_invoice_post_226 from "./api/estimates/[id]/convert-to-invoice/POST";
-import estimates_id_export_csv_get_227 from "./api/estimates/[id]/export-csv/GET";
-import estimates_id_export_pdf_get_228 from "./api/estimates/[id]/export-pdf/GET";
-import estimates_id_import_csv_post_229 from "./api/estimates/[id]/import-csv/POST";
-import estimates_id_send_email_post_230 from "./api/estimates/[id]/send-email/POST";
-import estimates_id_unlock_post_231 from "./api/estimates/[id]/unlock/POST";
-import external_form_token_get_232 from "./api/external/form/[token]/GET";
-import external_form_token_post_233 from "./api/external/form/[token]/POST";
-import files_get_234 from "./api/files/GET";
-import files_post_235 from "./api/files/POST";
-import files_id_delete_236 from "./api/files/[id]/DELETE";
-import files_id_download_get_237 from "./api/files/[id]/download/GET";
-import finance_estimates_get_238 from "./api/finance/estimates/GET";
-import finance_ledger_get_239 from "./api/finance/ledger/GET";
-import finance_purchase_orders_get_240 from "./api/finance/purchase-orders/GET";
-import finance_purchase_orders_post_241 from "./api/finance/purchase-orders/POST";
-import finance_purchase_orders_poId_delete_242 from "./api/finance/purchase-orders/[poId]/DELETE";
-import finance_purchase_orders_poId_get_243 from "./api/finance/purchase-orders/[poId]/GET";
-import finance_purchase_orders_poId_put_244 from "./api/finance/purchase-orders/[poId]/PUT";
-import finance_purchase_orders_poId_pdf_get_245 from "./api/finance/purchase-orders/[poId]/pdf/GET";
-import finance_timesheets_get_246 from "./api/finance/timesheets/GET";
-import finance_timesheets_post_247 from "./api/finance/timesheets/POST";
-import finance_timesheets_employees_get_248 from "./api/finance/timesheets/employees/GET";
-import finance_timesheets_me_get_249 from "./api/finance/timesheets/me/GET";
-import finance_timesheets_id_delete_250 from "./api/finance/timesheets/[id]/DELETE";
-import finance_timesheets_id_get_251 from "./api/finance/timesheets/[id]/GET";
-import finance_timesheets_id_put_252 from "./api/finance/timesheets/[id]/PUT";
-import fleet_get_253 from "./api/fleet/GET";
-import fleet_post_254 from "./api/fleet/POST";
-import fleet_analytics_settings_get_255 from "./api/fleet/analytics-settings/GET";
-import fleet_analytics_settings_put_256 from "./api/fleet/analytics-settings/PUT";
-import fleet_asset_bookings_get_257 from "./api/fleet/asset-bookings/GET";
-import fleet_asset_bookings_post_258 from "./api/fleet/asset-bookings/POST";
-import fleet_asset_bookings_id_delete_259 from "./api/fleet/asset-bookings/[id]/DELETE";
-import fleet_asset_bookings_id_patch_260 from "./api/fleet/asset-bookings/[id]/PATCH";
-import fleet_driver_sessions_post_261 from "./api/fleet/driver-sessions/POST";
-import fleet_driver_sessions_active_get_262 from "./api/fleet/driver-sessions/active/GET";
-import fleet_driver_sessions_live_get_263 from "./api/fleet/driver-sessions/live/GET";
-import fleet_driver_sessions_migrate_gps_status_post_264 from "./api/fleet/driver-sessions/migrate-gps-status/POST";
-import fleet_driver_sessions_id_heartbeat_post_265 from "./api/fleet/driver-sessions/[id]/heartbeat/POST";
-import fleet_driver_sessions_id_stop_post_266 from "./api/fleet/driver-sessions/[id]/stop/POST";
-import fleet_driver_sessions_id_summary_get_267 from "./api/fleet/driver-sessions/[id]/summary/GET";
-import fleet_driver_sessions_id_telemetry_post_268 from "./api/fleet/driver-sessions/[id]/telemetry/POST";
-import fleet_driver_sessions_id_telemetry_latest_get_269 from "./api/fleet/driver-sessions/[id]/telemetry/latest/GET";
-import fleet_flags_get_270 from "./api/fleet/flags/GET";
-import fleet_last_known_positions_get_271 from "./api/fleet/last-known-positions/GET";
-import fleet_service_logs_logId_delete_272 from "./api/fleet/service-logs/[logId]/DELETE";
-import fleet_service_logs_logId_patch_273 from "./api/fleet/service-logs/[logId]/PATCH";
-import fleet_vehicles_get_274 from "./api/fleet/vehicles/GET";
-import fleet_id_delete_275 from "./api/fleet/[id]/DELETE";
-import fleet_id_get_276 from "./api/fleet/[id]/GET";
-import fleet_id_put_277 from "./api/fleet/[id]/PUT";
-import fleet_id_driver_sessions_get_278 from "./api/fleet/[id]/driver-sessions/GET";
-import fleet_id_driver_sessions_manual_post_279 from "./api/fleet/[id]/driver-sessions/manual/POST";
-import fleet_id_files_get_280 from "./api/fleet/[id]/files/GET";
-import fleet_id_prestarts_get_281 from "./api/fleet/[id]/prestarts/GET";
-import fleet_id_prestarts_post_282 from "./api/fleet/[id]/prestarts/POST";
-import fleet_id_service_logs_get_283 from "./api/fleet/[id]/service-logs/GET";
-import fleet_id_service_logs_post_284 from "./api/fleet/[id]/service-logs/POST";
-import fleet_id_signin_post_285 from "./api/fleet/[id]/signin/POST";
-import fleet_id_signout_post_286 from "./api/fleet/[id]/signout/POST";
-import fleet_id_usage_export_get_287 from "./api/fleet/[id]/usage-export/GET";
-import fleet_id_usage_status_get_288 from "./api/fleet/[id]/usage-status/GET";
-import fleet_id_usage_summary_get_289 from "./api/fleet/[id]/usage-summary/GET";
-import form_attachments_post_290 from "./api/form-attachments/POST";
-import form_global_lists_get_291 from "./api/form-global-lists/GET";
-import form_global_lists_post_292 from "./api/form-global-lists/POST";
-import form_global_lists_id_delete_293 from "./api/form-global-lists/[id]/DELETE";
-import form_global_lists_id_put_294 from "./api/form-global-lists/[id]/PUT";
-import form_templates_get_295 from "./api/form-templates/GET";
-import form_templates_post_296 from "./api/form-templates/POST";
-import form_templates_seed_post_297 from "./api/form-templates/seed/POST";
-import form_templates_id_delete_298 from "./api/form-templates/[id]/DELETE";
-import form_templates_id_put_299 from "./api/form-templates/[id]/PUT";
-import form_templates_id_publish_to_library_post_300 from "./api/form-templates/[id]/publish-to-library/POST";
-import forms_assets_list_get_301 from "./api/forms/assets-list/GET";
-import forms_jobs_list_get_302 from "./api/forms/jobs-list/GET";
-import forms_migrate_skip_logic_post_303 from "./api/forms/migrate-skip-logic/POST";
-import forms_skip_audit_get_304 from "./api/forms/skip-audit/GET";
-import forms_skip_audit_post_305 from "./api/forms/skip-audit/POST";
-import forms_start_post_306 from "./api/forms/start/POST";
-import forms_submissions_get_307 from "./api/forms/submissions/GET";
-import forms_templates_id_share_link_delete_308 from "./api/forms/templates/[id]/share-link/DELETE";
-import forms_templates_id_share_link_post_309 from "./api/forms/templates/[id]/share-link/POST";
-import forms_id_fields_get_310 from "./api/forms/[id]/fields/GET";
-import forms_id_fields_post_311 from "./api/forms/[id]/fields/POST";
-import forms_id_fields_reorder_post_312 from "./api/forms/[id]/fields/reorder/POST";
-import forms_id_fields_fieldId_delete_313 from "./api/forms/[id]/fields/[fieldId]/DELETE";
-import forms_id_fields_fieldId_patch_314 from "./api/forms/[id]/fields/[fieldId]/PATCH";
-import forms_id_fields_fieldId_thumbnail_post_315 from "./api/forms/[id]/fields/[fieldId]/thumbnail/POST";
-import health_get_316 from "./api/health/GET";
-import incidents_get_317 from "./api/incidents/GET";
-import incidents_post_318 from "./api/incidents/POST";
-import incidents_id_archive_post_319 from "./api/incidents/[id]/archive/POST";
-import incidents_id_unarchive_post_320 from "./api/incidents/[id]/unarchive/POST";
-import incidents_incidentId_get_321 from "./api/incidents/[incidentId]/GET";
-import incidents_incidentId_put_322 from "./api/incidents/[incidentId]/PUT";
-import incidents_incidentId_attachments_get_323 from "./api/incidents/[incidentId]/attachments/GET";
-import incidents_incidentId_attachments_post_324 from "./api/incidents/[incidentId]/attachments/POST";
-import incidents_incidentId_attachments_attachId_delete_325 from "./api/incidents/[incidentId]/attachments/[attachId]/DELETE";
-import incidents_incidentId_close_post_326 from "./api/incidents/[incidentId]/close/POST";
-import incidents_incidentId_corrective_actions_post_327 from "./api/incidents/[incidentId]/corrective-actions/POST";
-import incidents_incidentId_corrective_actions_actionId_put_328 from "./api/incidents/[incidentId]/corrective-actions/[actionId]/PUT";
-import incidents_incidentId_pdf_get_329 from "./api/incidents/[incidentId]/pdf/GET";
-import incidents_incidentId_third_parties_post_330 from "./api/incidents/[incidentId]/third-parties/POST";
-import incidents_incidentId_third_parties_thirdPartyId_delete_331 from "./api/incidents/[incidentId]/third-parties/[thirdPartyId]/DELETE";
-import integrations_myob_auth_url_get_332 from "./api/integrations/myob/auth-url/GET";
-import integrations_myob_callback_get_333 from "./api/integrations/myob/callback/GET";
-import integrations_myob_disconnect_post_334 from "./api/integrations/myob/disconnect/POST";
-import integrations_myob_status_get_335 from "./api/integrations/myob/status/GET";
-import integrations_myob_sync_invoice_post_336 from "./api/integrations/myob/sync-invoice/POST";
-import integrations_onedrive_auth_url_get_337 from "./api/integrations/onedrive/auth-url/GET";
-import integrations_onedrive_callback_get_338 from "./api/integrations/onedrive/callback/GET";
-import integrations_onedrive_disconnect_post_339 from "./api/integrations/onedrive/disconnect/POST";
-import integrations_onedrive_status_get_340 from "./api/integrations/onedrive/status/GET";
-import integrations_onedrive_upload_file_post_341 from "./api/integrations/onedrive/upload-file/POST";
-import integrations_qbo_auth_url_get_342 from "./api/integrations/qbo/auth-url/GET";
-import integrations_qbo_callback_get_343 from "./api/integrations/qbo/callback/GET";
-import integrations_qbo_disconnect_post_344 from "./api/integrations/qbo/disconnect/POST";
-import integrations_qbo_status_get_345 from "./api/integrations/qbo/status/GET";
-import integrations_qbo_sync_invoice_post_346 from "./api/integrations/qbo/sync-invoice/POST";
-import integrations_xero_auth_url_get_347 from "./api/integrations/xero/auth-url/GET";
-import integrations_xero_callback_get_348 from "./api/integrations/xero/callback/GET";
-import integrations_xero_disconnect_post_349 from "./api/integrations/xero/disconnect/POST";
-import integrations_xero_status_get_350 from "./api/integrations/xero/status/GET";
-import integrations_xero_sync_customer_post_351 from "./api/integrations/xero/sync-customer/POST";
-import integrations_xero_sync_invoice_post_352 from "./api/integrations/xero/sync-invoice/POST";
-import integrations_xero_webhook_post_353 from "./api/integrations/xero/webhook/POST";
-import invoices_get_354 from "./api/invoices/GET";
-import invoices_post_355 from "./api/invoices/POST";
-import invoices_id_delete_356 from "./api/invoices/[id]/DELETE";
-import invoices_id_get_357 from "./api/invoices/[id]/GET";
-import invoices_id_put_358 from "./api/invoices/[id]/PUT";
-import invoices_id_compose_defaults_get_359 from "./api/invoices/[id]/compose-defaults/GET";
-import invoices_id_duplicate_post_360 from "./api/invoices/[id]/duplicate/POST";
-import invoices_id_export_pdf_get_361 from "./api/invoices/[id]/export-pdf/GET";
-import invoices_id_mark_sent_post_362 from "./api/invoices/[id]/mark-sent/POST";
-import invoices_id_record_payment_post_363 from "./api/invoices/[id]/record-payment/POST";
-import invoices_id_send_email_post_364 from "./api/invoices/[id]/send-email/POST";
-import invoices_id_unlock_patch_365 from "./api/invoices/[id]/unlock/PATCH";
-import invoices_id_void_post_366 from "./api/invoices/[id]/void/POST";
-import job_cards_get_367 from "./api/job-cards/GET";
-import job_cards_post_368 from "./api/job-cards/POST";
-import job_cards_id_delete_369 from "./api/job-cards/[id]/DELETE";
-import job_cards_id_get_370 from "./api/job-cards/[id]/GET";
-import job_cards_id_put_371 from "./api/job-cards/[id]/PUT";
-import job_cards_id_convert_post_372 from "./api/job-cards/[id]/convert/POST";
-import job_cards_id_invoice_post_373 from "./api/job-cards/[id]/invoice/POST";
-import job_cards_id_photos_post_374 from "./api/job-cards/[id]/photos/POST";
-import job_cards_id_photos_photoId_delete_375 from "./api/job-cards/[id]/photos/[photoId]/DELETE";
-import job_cards_id_photos_photoId_patch_376 from "./api/job-cards/[id]/photos/[photoId]/PATCH";
-import job_cards_id_photos_photoId_download_get_377 from "./api/job-cards/[id]/photos/[photoId]/download/GET";
-import job_cards_id_photos_photoId_save_and_lock_post_378 from "./api/job-cards/[id]/photos/[photoId]/save-and-lock/POST";
-import job_costs_post_379 from "./api/job-costs/POST";
-import job_forms_id_delete_380 from "./api/job-forms/[id]/DELETE";
-import job_forms_id_get_381 from "./api/job-forms/[id]/GET";
-import job_forms_id_put_382 from "./api/job-forms/[id]/PUT";
-import job_forms_id_compose_defaults_get_383 from "./api/job-forms/[id]/compose-defaults/GET";
-import job_forms_id_export_pdf_get_384 from "./api/job-forms/[id]/export-pdf/GET";
-import job_forms_id_reset_post_385 from "./api/job-forms/[id]/reset/POST";
-import job_forms_id_send_email_post_386 from "./api/job-forms/[id]/send-email/POST";
-import job_forms_id_share_delete_387 from "./api/job-forms/[id]/share/DELETE";
-import job_forms_id_share_get_388 from "./api/job-forms/[id]/share/GET";
-import job_forms_id_share_post_389 from "./api/job-forms/[id]/share/POST";
-import jobs_get_390 from "./api/jobs/GET";
-import jobs_post_391 from "./api/jobs/POST";
-import jobs_report_generate_post_392 from "./api/jobs/report/generate/POST";
-import jobs_search_get_393 from "./api/jobs/search/GET";
-import jobs_id_get_394 from "./api/jobs/[id]/GET";
-import jobs_id_put_395 from "./api/jobs/[id]/PUT";
-import jobs_id_attendance_attendanceId_close_post_396 from "./api/jobs/[id]/attendance/[attendanceId]/close/POST";
-import jobs_id_compose_defaults_get_397 from "./api/jobs/[id]/compose-defaults/GET";
-import jobs_id_costs_get_398 from "./api/jobs/[id]/costs/GET";
-import jobs_id_costs_post_399 from "./api/jobs/[id]/costs/POST";
-import jobs_id_costs_export_get_400 from "./api/jobs/[id]/costs/export/GET";
-import jobs_id_costs_costId_delete_401 from "./api/jobs/[id]/costs/[costId]/DELETE";
-import jobs_id_costs_costId_put_402 from "./api/jobs/[id]/costs/[costId]/PUT";
-import jobs_id_costs_costId_receipt_get_403 from "./api/jobs/[id]/costs/[costId]/receipt/GET";
-import jobs_id_costs_costId_receipt_post_404 from "./api/jobs/[id]/costs/[costId]/receipt/POST";
-import jobs_id_delays_get_405 from "./api/jobs/[id]/delays/GET";
-import jobs_id_delays_post_406 from "./api/jobs/[id]/delays/POST";
-import jobs_id_delays_export_csv_get_407 from "./api/jobs/[id]/delays/export-csv/GET";
-import jobs_id_delays_delayId_delete_408 from "./api/jobs/[id]/delays/[delayId]/DELETE";
-import jobs_id_delays_delayId_put_409 from "./api/jobs/[id]/delays/[delayId]/PUT";
-import jobs_id_documents_get_410 from "./api/jobs/[id]/documents/GET";
-import jobs_id_documents_post_411 from "./api/jobs/[id]/documents/POST";
-import jobs_id_export_zip_get_412 from "./api/jobs/[id]/export-zip/GET";
-import jobs_id_field_docs_get_413 from "./api/jobs/[id]/field-docs/GET";
-import jobs_id_files_get_414 from "./api/jobs/[id]/files/GET";
-import jobs_id_forms_get_415 from "./api/jobs/[id]/forms/GET";
-import jobs_id_forms_post_416 from "./api/jobs/[id]/forms/POST";
-import jobs_id_forms_export_csv_get_417 from "./api/jobs/[id]/forms/export-csv/GET";
-import jobs_id_forms_submissionId_delete_418 from "./api/jobs/[id]/forms/[submissionId]/DELETE";
-import jobs_id_forms_submissionId_reopen_post_419 from "./api/jobs/[id]/forms/[submissionId]/reopen/POST";
-import jobs_id_generate_qr_post_420 from "./api/jobs/[id]/generate-qr/POST";
-import jobs_id_ledger_get_421 from "./api/jobs/[id]/ledger/GET";
-import jobs_id_ledger_post_422 from "./api/jobs/[id]/ledger/POST";
-import jobs_id_ledger_export_get_423 from "./api/jobs/[id]/ledger/export/GET";
-import jobs_id_ledger_sync_post_424 from "./api/jobs/[id]/ledger/sync/POST";
-import jobs_id_ledger_entryId_delete_425 from "./api/jobs/[id]/ledger/[entryId]/DELETE";
-import jobs_id_ledger_entryId_put_426 from "./api/jobs/[id]/ledger/[entryId]/PUT";
-import jobs_id_ledger_entryId_correct_post_427 from "./api/jobs/[id]/ledger/[entryId]/correct/POST";
-import jobs_id_milestones_get_428 from "./api/jobs/[id]/milestones/GET";
-import jobs_id_milestones_post_429 from "./api/jobs/[id]/milestones/POST";
-import jobs_id_milestones_milestoneId_delete_430 from "./api/jobs/[id]/milestones/[milestoneId]/DELETE";
-import jobs_id_milestones_milestoneId_patch_431 from "./api/jobs/[id]/milestones/[milestoneId]/PATCH";
-import jobs_id_notes_export_csv_get_432 from "./api/jobs/[id]/notes/export-csv/GET";
-import jobs_id_photos_get_433 from "./api/jobs/[id]/photos/GET";
-import jobs_id_photos_post_434 from "./api/jobs/[id]/photos/POST";
-import jobs_id_photos_export_zip_post_435 from "./api/jobs/[id]/photos/export-zip/POST";
-import jobs_id_photos_picker_get_436 from "./api/jobs/[id]/photos/picker/GET";
-import jobs_id_photos_share_post_437 from "./api/jobs/[id]/photos/share/POST";
-import jobs_id_photos_photoId_delete_438 from "./api/jobs/[id]/photos/[photoId]/DELETE";
-import jobs_id_photos_photoId_patch_439 from "./api/jobs/[id]/photos/[photoId]/PATCH";
-import jobs_id_photos_photoId_download_get_440 from "./api/jobs/[id]/photos/[photoId]/download/GET";
-import jobs_id_photos_photoId_lock_post_441 from "./api/jobs/[id]/photos/[photoId]/lock/POST";
-import jobs_id_photos_photoId_replace_post_442 from "./api/jobs/[id]/photos/[photoId]/replace/POST";
-import jobs_id_photos_photoId_report_image_get_443 from "./api/jobs/[id]/photos/[photoId]/report-image/GET";
-import jobs_id_progress_get_444 from "./api/jobs/[id]/progress/GET";
-import jobs_id_progress_put_445 from "./api/jobs/[id]/progress/PUT";
-import jobs_id_progress_export_csv_get_446 from "./api/jobs/[id]/progress/export-csv/GET";
-import jobs_id_progress_lines_post_447 from "./api/jobs/[id]/progress/lines/POST";
-import jobs_id_progress_lines_reorder_post_448 from "./api/jobs/[id]/progress/lines/reorder/POST";
-import jobs_id_progress_lines_lineId_delete_449 from "./api/jobs/[id]/progress/lines/[lineId]/DELETE";
-import jobs_id_progress_lines_lineId_patch_450 from "./api/jobs/[id]/progress/lines/[lineId]/PATCH";
-import jobs_id_progress_lines_lineId_duplicate_post_451 from "./api/jobs/[id]/progress/lines/[lineId]/duplicate/POST";
-import jobs_id_progress_report_get_452 from "./api/jobs/[id]/progress/report/GET";
-import jobs_id_progress_report_put_453 from "./api/jobs/[id]/progress/report/PUT";
-import jobs_id_progress_report_pdf_get_454 from "./api/jobs/[id]/progress/report/pdf/GET";
-import jobs_id_progress_sections_post_455 from "./api/jobs/[id]/progress/sections/POST";
-import jobs_id_progress_sections_reorder_post_456 from "./api/jobs/[id]/progress/sections/reorder/POST";
-import jobs_id_progress_sections_sectionId_delete_457 from "./api/jobs/[id]/progress/sections/[sectionId]/DELETE";
-import jobs_id_progress_sections_sectionId_patch_458 from "./api/jobs/[id]/progress/sections/[sectionId]/PATCH";
-import jobs_id_progress_sync_post_459 from "./api/jobs/[id]/progress/sync/POST";
-import jobs_id_purchase_orders_get_460 from "./api/jobs/[id]/purchase-orders/GET";
-import jobs_id_purchase_orders_post_461 from "./api/jobs/[id]/purchase-orders/POST";
-import jobs_id_purchase_orders_poId_delete_462 from "./api/jobs/[id]/purchase-orders/[poId]/DELETE";
-import jobs_id_purchase_orders_poId_get_463 from "./api/jobs/[id]/purchase-orders/[poId]/GET";
-import jobs_id_purchase_orders_poId_put_464 from "./api/jobs/[id]/purchase-orders/[poId]/PUT";
-import jobs_id_purchase_orders_poId_pdf_get_465 from "./api/jobs/[id]/purchase-orders/[poId]/pdf/GET";
-import jobs_id_report_pdf_post_466 from "./api/jobs/[id]/report/pdf/POST";
-import jobs_id_risky_get_467 from "./api/jobs/[id]/risky/GET";
-import jobs_id_risky_post_468 from "./api/jobs/[id]/risky/POST";
-import jobs_id_risky_riskyId_get_469 from "./api/jobs/[id]/risky/[riskyId]/GET";
-import jobs_id_risky_riskyId_put_470 from "./api/jobs/[id]/risky/[riskyId]/PUT";
-import jobs_id_risky_riskyId_finalise_post_471 from "./api/jobs/[id]/risky/[riskyId]/finalise/POST";
-import jobs_id_risky_riskyId_signatures_post_472 from "./api/jobs/[id]/risky/[riskyId]/signatures/POST";
-import jobs_id_risky_riskyId_supervisor_signoff_post_473 from "./api/jobs/[id]/risky/[riskyId]/supervisor-signoff/POST";
-import jobs_id_send_email_post_474 from "./api/jobs/[id]/send-email/POST";
-import jobs_id_signin_post_475 from "./api/jobs/[id]/signin/POST";
-import jobs_id_signin_qr_post_476 from "./api/jobs/[id]/signin-qr/POST";
-import jobs_id_signin_status_get_477 from "./api/jobs/[id]/signin-status/GET";
-import jobs_id_signout_post_478 from "./api/jobs/[id]/signout/POST";
-import jobs_id_signout_qr_post_479 from "./api/jobs/[id]/signout-qr/POST";
-import jobs_id_signout_user_post_480 from "./api/jobs/[id]/signout-user/POST";
-import jobs_id_site_prestarts_get_481 from "./api/jobs/[id]/site-prestarts/GET";
-import jobs_id_site_prestarts_post_482 from "./api/jobs/[id]/site-prestarts/POST";
-import jobs_id_site_prestarts_prestartId_get_483 from "./api/jobs/[id]/site-prestarts/[prestartId]/GET";
-import jobs_id_site_prestarts_prestartId_put_484 from "./api/jobs/[id]/site-prestarts/[prestartId]/PUT";
-import jobs_id_site_prestarts_prestartId_finalise_post_485 from "./api/jobs/[id]/site-prestarts/[prestartId]/finalise/POST";
-import jobs_id_site_prestarts_prestartId_workers_post_486 from "./api/jobs/[id]/site-prestarts/[prestartId]/workers/POST";
-import jobs_id_swms_get_487 from "./api/jobs/[id]/swms/GET";
-import jobs_id_swms_post_488 from "./api/jobs/[id]/swms/POST";
-import jobs_id_swms_swmsId_signoff_post_489 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
-import jobs_id_todos_get_490 from "./api/jobs/[id]/todos/GET";
-import jobs_id_todos_post_491 from "./api/jobs/[id]/todos/POST";
-import jobs_id_todos_todoId_delete_492 from "./api/jobs/[id]/todos/[todoId]/DELETE";
-import jobs_id_todos_todoId_put_493 from "./api/jobs/[id]/todos/[todoId]/PUT";
-import lens_photos_get_494 from "./api/lens/photos/GET";
-import lens_photos_export_zip_post_495 from "./api/lens/photos/export-zip/POST";
-import lens_photos_photoId_download_get_496 from "./api/lens/photos/[photoId]/download/GET";
-import library_items_get_497 from "./api/library/items/GET";
-import library_items_id_get_498 from "./api/library/items/[id]/GET";
-import library_items_id_patch_499 from "./api/library/items/[id]/PATCH";
-import library_items_id_download_get_500 from "./api/library/items/[id]/download/GET";
-import library_items_id_install_delete_501 from "./api/library/items/[id]/install/DELETE";
-import library_items_id_install_post_502 from "./api/library/items/[id]/install/POST";
-import library_my_installed_get_503 from "./api/library/my-installed/GET";
-import library_my_submissions_get_504 from "./api/library/my-submissions/GET";
-import lists_get_505 from "./api/lists/GET";
-import me_get_506 from "./api/me/GET";
-import me_put_507 from "./api/me/PUT";
-import me_2fa_disable_post_508 from "./api/me/2fa/disable/POST";
-import me_2fa_enable_post_509 from "./api/me/2fa/enable/POST";
-import me_2fa_setup_get_510 from "./api/me/2fa/setup/GET";
-import me_2fa_sms_disable_post_511 from "./api/me/2fa/sms/disable/POST";
-import me_2fa_sms_enable_post_512 from "./api/me/2fa/sms/enable/POST";
-import me_2fa_sms_send_post_513 from "./api/me/2fa/sms/send/POST";
-import me_2fa_sms_send_setup_post_514 from "./api/me/2fa/sms/send-setup/POST";
-import me_2fa_sms_verify_post_515 from "./api/me/2fa/sms/verify/POST";
-import me_2fa_status_get_516 from "./api/me/2fa/status/GET";
-import me_2fa_verify_post_517 from "./api/me/2fa/verify/POST";
-import me_2fa_recover_post_518 from "./api/me/2fa/recover/POST";
-import me_active_status_get_518 from "./api/me/active-status/GET";
-import me_change_password_post_519 from "./api/me/change-password/POST";
-import me_email_status_get_520 from "./api/me/email-status/GET";
-import me_phone_get_521 from "./api/me/phone/GET";
-import me_phone_put_522 from "./api/me/phone/PUT";
-import me_profile_attachments_delete_523 from "./api/me/profile-attachments/DELETE";
-import me_profile_attachments_post_524 from "./api/me/profile-attachments/POST";
-import me_profile_attachments_download_get_525 from "./api/me/profile-attachments/download/GET";
-import me_profile_attachments_thumbnail_get_526 from "./api/me/profile-attachments/thumbnail/GET";
-import me_profile_extras_get_527 from "./api/me/profile-extras/GET";
-import me_profile_extras_put_528 from "./api/me/profile-extras/PUT";
-import migrate_account_recovery_post_529 from "./api/migrate-account-recovery/POST";
-import migrate_anatomy_post_530 from "./api/migrate-anatomy/POST";
-import migrate_asset_manager_post_531 from "./api/migrate-asset-manager/POST";
-import migrate_attendance_post_532 from "./api/migrate-attendance/POST";
-import migrate_company_settings_post_533 from "./api/migrate-company-settings/POST";
-import migrate_dazza_audit_post_534 from "./api/migrate-dazza-audit/POST";
-import migrate_dazza_knowledge_post_535 from "./api/migrate-dazza-knowledge/POST";
-import migrate_emergency_alerts_post_536 from "./api/migrate-emergency-alerts/POST";
-import migrate_estimates_post_537 from "./api/migrate-estimates/POST";
-import migrate_estimating_library_post_538 from "./api/migrate-estimating-library/POST";
-import migrate_files_post_539 from "./api/migrate-files/POST";
-import migrate_fleet_post_540 from "./api/migrate-fleet/POST";
-import migrate_fleet_analytics_post_541 from "./api/migrate-fleet-analytics/POST";
-import migrate_fleet_driver_sessions_post_542 from "./api/migrate-fleet-driver-sessions/POST";
-import migrate_fleet_usage_post_543 from "./api/migrate-fleet-usage/POST";
-import migrate_form_fields_post_544 from "./api/migrate-form-fields/POST";
-import migrate_form_logic_post_545 from "./api/migrate-form-logic/POST";
-import migrate_form_templates_post_546 from "./api/migrate-form-templates/POST";
-import migrate_job_forms_post_547 from "./api/migrate-job-forms/POST";
-import migrate_job_photo_shares_post_548 from "./api/migrate-job-photo-shares/POST";
-import migrate_job_photos_post_549 from "./api/migrate-job-photos/POST";
-import migrate_job_tabs_post_550 from "./api/migrate-job-tabs/POST";
-import migrate_jobs_post_551 from "./api/migrate-jobs/POST";
-import migrate_ledger_photo_post_552 from "./api/migrate-ledger-photo/POST";
-import migrate_library_post_553 from "./api/migrate-library/POST";
-import migrate_library_downloads_post_554 from "./api/migrate-library-downloads/POST";
-import migrate_notifications_post_555 from "./api/migrate-notifications/POST";
-import migrate_owner_console_post_556 from "./api/migrate-owner-console/POST";
-import migrate_owner_role_post_557 from "./api/migrate-owner-role/POST";
-import migrate_pdf_settings_post_558 from "./api/migrate-pdf-settings/POST";
-import migrate_photo_gps_post_559 from "./api/migrate-photo-gps/POST";
-import migrate_plan_manager_post_560 from "./api/migrate-plan-manager/POST";
-import migrate_plan_manager_v2_post_561 from "./api/migrate-plan-manager-v2/POST";
-import migrate_plan_manager_v3_post_562 from "./api/migrate-plan-manager-v3/POST";
-import migrate_safety_post_563 from "./api/migrate-safety/POST";
-import migrate_site_prestart_post_564 from "./api/migrate-site-prestart/POST";
-import migrate_sms_verified_at_post_565 from "./api/migrate-sms-verified-at/POST";
-import migrate_starter_pack_post_566 from "./api/migrate-starter-pack/POST";
-import migrate_studio_pdf_post_567 from "./api/migrate-studio-pdf/POST";
-import migrate_subscriptions_post_568 from "./api/migrate-subscriptions/POST";
-import migrate_support_mode_post_569 from "./api/migrate-support-mode/POST";
-import migrate_takeoff_pad_post_570 from "./api/migrate-takeoff-pad/POST";
-import migrate_team_post_571 from "./api/migrate-team/POST";
-import notes_get_572 from "./api/notes/GET";
-import notes_post_573 from "./api/notes/POST";
-import notes_comments_post_574 from "./api/notes/comments/POST";
-import notes_migrate_post_575 from "./api/notes/migrate/POST";
-import notes_id_delete_576 from "./api/notes/[id]/DELETE";
-import notifications_alerts_get_577 from "./api/notifications/alerts/GET";
-import notifications_prefs_get_578 from "./api/notifications/prefs/GET";
-import notifications_prefs_put_579 from "./api/notifications/prefs/PUT";
-import notifications_read_post_580 from "./api/notifications/read/POST";
-import owner_console_activity_get_581 from "./api/owner-console/activity/GET";
-import owner_console_cancellation_feedback_get_582 from "./api/owner-console/cancellation-feedback/GET";
-import owner_console_companies_get_583 from "./api/owner-console/companies/GET";
-import owner_console_companies_post_584 from "./api/owner-console/companies/POST";
-import owner_console_companies_usage_get_585 from "./api/owner-console/companies/usage/GET";
-import owner_console_companies_id_limits_put_586 from "./api/owner-console/companies/[id]/limits/PUT";
-import owner_console_form_templates_get_587 from "./api/owner-console/form-templates/GET";
-import owner_console_form_templates_post_588 from "./api/owner-console/form-templates/POST";
-import owner_console_library_items_get_589 from "./api/owner-console/library/items/GET";
-import owner_console_library_items_post_590 from "./api/owner-console/library/items/POST";
-import owner_console_library_items_id_delete_591 from "./api/owner-console/library/items/[id]/DELETE";
-import owner_console_library_items_id_patch_592 from "./api/owner-console/library/items/[id]/PATCH";
-import owner_console_library_items_id_put_593 from "./api/owner-console/library/items/[id]/PUT";
-import owner_console_library_items_id_push_update_post_594 from "./api/owner-console/library/items/[id]/push-update/POST";
-import owner_console_library_submissions_get_595 from "./api/owner-console/library/submissions/GET";
-import owner_console_library_submissions_id_review_post_596 from "./api/owner-console/library/submissions/[id]/review/POST";
-import owner_console_starter_pack_get_597 from "./api/owner-console/starter-pack/GET";
-import owner_console_starter_pack_post_598 from "./api/owner-console/starter-pack/POST";
-import owner_console_stats_get_599 from "./api/owner-console/stats/GET";
-import owner_console_storage_get_600 from "./api/owner-console/storage/GET";
-import owner_console_swms_masters_get_601 from "./api/owner-console/swms/masters/GET";
-import owner_console_swms_masters_post_602 from "./api/owner-console/swms/masters/POST";
-import owner_console_swms_masters_publish_all_post_603 from "./api/owner-console/swms/masters/publish-all/POST";
-import owner_console_swms_masters_id_delete_604 from "./api/owner-console/swms/masters/[id]/DELETE";
-import owner_console_swms_masters_id_get_605 from "./api/owner-console/swms/masters/[id]/GET";
-import owner_console_swms_masters_id_put_606 from "./api/owner-console/swms/masters/[id]/PUT";
-import owner_console_swms_masters_id_publish_post_607 from "./api/owner-console/swms/masters/[id]/publish/POST";
-import owner_console_swms_migrate_master_library_post_608 from "./api/owner-console/swms/migrate-master-library/POST";
-import owner_console_swms_push_post_609 from "./api/owner-console/swms/push/POST";
-import owner_console_swms_seed_bricklaying_post_610 from "./api/owner-console/swms/seed-bricklaying/POST";
-import owner_console_swms_seed_building_inspection_post_611 from "./api/owner-console/swms/seed-building-inspection/POST";
-import owner_console_swms_seed_cabinets_post_612 from "./api/owner-console/swms/seed-cabinets/POST";
-import owner_console_swms_seed_carpenter_fixing_post_613 from "./api/owner-console/swms/seed-carpenter-fixing/POST";
-import owner_console_swms_seed_carpenter_framing_post_614 from "./api/owner-console/swms/seed-carpenter-framing/POST";
-import owner_console_swms_seed_carpenter_lockup_post_615 from "./api/owner-console/swms/seed-carpenter-lockup/POST";
-import owner_console_swms_seed_ceramic_tiling_post_616 from "./api/owner-console/swms/seed-ceramic-tiling/POST";
-import owner_console_swms_seed_concreting_slab_post_617 from "./api/owner-console/swms/seed-concreting-slab/POST";
-import owner_console_swms_seed_delivery_loading_post_618 from "./api/owner-console/swms/seed-delivery-loading/POST";
-import owner_console_swms_seed_environmental_spill_post_619 from "./api/owner-console/swms/seed-environmental-spill/POST";
-import owner_console_swms_seed_ewp_post_620 from "./api/owner-console/swms/seed-ewp/POST";
-import owner_console_swms_seed_excavations_substation_post_621 from "./api/owner-console/swms/seed-excavations-substation/POST";
-import owner_console_swms_seed_fencing_post_622 from "./api/owner-console/swms/seed-fencing/POST";
-import owner_console_swms_seed_heat_stress_post_623 from "./api/owner-console/swms/seed-heat-stress/POST";
-import owner_console_swms_seed_landscaping_post_624 from "./api/owner-console/swms/seed-landscaping/POST";
-import owner_console_swms_seed_live_parts_post_625 from "./api/owner-console/swms/seed-live-parts/POST";
-import owner_console_swms_seed_manual_handling_post_626 from "./api/owner-console/swms/seed-manual-handling/POST";
-import owner_console_swms_seed_moving_plant_post_627 from "./api/owner-console/swms/seed-moving-plant/POST";
-import owner_console_swms_seed_painting_post_628 from "./api/owner-console/swms/seed-painting/POST";
-import owner_console_swms_seed_power_tools_post_629 from "./api/owner-console/swms/seed-power-tools/POST";
-import owner_console_swms_seed_silica_dust_post_630 from "./api/owner-console/swms/seed-silica-dust/POST";
-import owner_console_swms_seed_traffic_management_post_631 from "./api/owner-console/swms/seed-traffic-management/POST";
-import owner_console_swms_seed_underground_services_post_632 from "./api/owner-console/swms/seed-underground-services/POST";
-import owner_console_swms_seed_vacuum_excavation_post_633 from "./api/owner-console/swms/seed-vacuum-excavation/POST";
-import owner_console_system_ai_builtin_checks_post_634 from "./api/owner-console/system-ai/builtin-checks/POST";
-import owner_console_users_get_635 from "./api/owner-console/users/GET";
-import owner_console_users_verify_post_636 from "./api/owner-console/users/verify/POST";
-import plan_manager_drawings_get_637 from "./api/plan-manager/drawings/GET";
-import plan_manager_drawings_post_638 from "./api/plan-manager/drawings/POST";
-import plan_manager_drawings_id_get_639 from "./api/plan-manager/drawings/[id]/GET";
-import plan_manager_drawings_id_annotations_put_640 from "./api/plan-manager/drawings/[id]/annotations/PUT";
-import plan_manager_drawings_id_archive_post_641 from "./api/plan-manager/drawings/[id]/archive/POST";
-import plan_manager_drawings_id_job_links_delete_642 from "./api/plan-manager/drawings/[id]/job-links/DELETE";
-import plan_manager_drawings_id_job_links_post_643 from "./api/plan-manager/drawings/[id]/job-links/POST";
-import plan_manager_drawings_id_pages_pageNo_annotations_get_644 from "./api/plan-manager/drawings/[id]/pages/[pageNo]/annotations/GET";
-import plan_manager_drawings_id_permanent_delete_645 from "./api/plan-manager/drawings/[id]/permanent/DELETE";
-import plan_manager_drawings_id_reorder_patch_646 from "./api/plan-manager/drawings/[id]/reorder/PATCH";
-import plan_manager_drawings_id_restore_post_647 from "./api/plan-manager/drawings/[id]/restore/POST";
-import plan_manager_drawings_id_revisions_post_648 from "./api/plan-manager/drawings/[id]/revisions/POST";
-import plan_manager_drawings_id_revisions_revisionId_finalize_post_649 from "./api/plan-manager/drawings/[id]/revisions/[revisionId]/finalize/POST";
-import plan_manager_drawings_id_upload_post_650 from "./api/plan-manager/drawings/[id]/upload/POST";
-import plan_manager_jobs_jobId_drawings_zip_get_651 from "./api/plan-manager/jobs/[jobId]/drawings-zip/GET";
-import plan_manager_jobs_with_drawings_get_652 from "./api/plan-manager/jobs-with-drawings/GET";
-import plan_manager_share_post_653 from "./api/plan-manager/share/POST";
-import plan_manager_share_validate_get_654 from "./api/plan-manager/share/validate/GET";
-import plan_manager_upload_post_655 from "./api/plan-manager/upload/POST";
-import portal_estimates_id_approve_post_656 from "./api/portal/estimates/[id]/approve/POST";
-import portal_invite_post_657 from "./api/portal/invite/POST";
-import portal_invoices_id_pay_post_658 from "./api/portal/invoices/[id]/pay/POST";
-import portal_jobs_get_659 from "./api/portal/jobs/GET";
-import portal_jobs_id_get_660 from "./api/portal/jobs/[id]/GET";
-import portal_migrate_post_661 from "./api/portal/migrate/POST";
-import portal_validate_post_662 from "./api/portal/validate/POST";
-import public_form_token_get_663 from "./api/public/form/[token]/GET";
-import public_form_token_submit_post_664 from "./api/public/form/[token]/submit/POST";
-import public_job_photos_token_get_665 from "./api/public/job-photos/[token]/GET";
-import public_job_photos_token_photo_photoId_get_666 from "./api/public/job-photos/[token]/photo/[photoId]/GET";
-import public_swms_token_get_667 from "./api/public/swms/[token]/GET";
-import public_swms_token_signoff_post_668 from "./api/public/swms/[token]/signoff/POST";
-import purchase_orders_poId_compose_defaults_get_669 from "./api/purchase-orders/[poId]/compose-defaults/GET";
-import purchase_orders_poId_send_email_post_670 from "./api/purchase-orders/[poId]/send-email/POST";
-import push_subscribe_delete_671 from "./api/push/subscribe/DELETE";
-import push_subscribe_post_672 from "./api/push/subscribe/POST";
-import push_vapid_key_get_673 from "./api/push/vapid-key/GET";
-import quick_links_site_meta_get_674 from "./api/quick-links/site-meta/GET";
-import recipes_get_675 from "./api/recipes/GET";
-import recipes_post_676 from "./api/recipes/POST";
-import recipes_id_delete_677 from "./api/recipes/[id]/DELETE";
-import recipes_id_put_678 from "./api/recipes/[id]/PUT";
-import risk_register_get_679 from "./api/risk-register/GET";
-import risk_register_post_680 from "./api/risk-register/POST";
-import risk_register_id_get_681 from "./api/risk-register/[id]/GET";
-import risk_register_id_put_682 from "./api/risk-register/[id]/PUT";
-import risk_register_id_archive_post_683 from "./api/risk-register/[id]/archive/POST";
-import risk_register_id_unarchive_post_684 from "./api/risk-register/[id]/unarchive/POST";
-import safety_ai_draft_post_685 from "./api/safety/ai/draft/POST";
-import safety_documents_get_686 from "./api/safety/documents/GET";
-import safety_documents_post_687 from "./api/safety/documents/POST";
-import safety_documents_new_post_688 from "./api/safety/documents/new/POST";
-import safety_documents_id_delete_689 from "./api/safety/documents/[id]/DELETE";
-import safety_documents_id_download_get_690 from "./api/safety/documents/[id]/download/GET";
-import sds_register_get from "./api/sds-register/GET";
-import sds_register_post from "./api/sds-register/POST";
-import sds_register_id_download_get from "./api/sds-register/[id]/download/GET";
-import sds_register_id_put from "./api/sds-register/[id]/PUT";
-import sds_register_id_delete from "./api/sds-register/[id]/DELETE";
-import sds_register_id_replace_post from "./api/sds-register/[id]/replace/POST";
-import rl_register_get from "./api/rl-register/GET";
-import rl_register_post from "./api/rl-register/POST";
-// ── Electrical Test Recorder ──────────────────────────────────────────────────
-import elec_tests_get from "./api/electrical-tests/GET";
-import elec_tests_post from "./api/electrical-tests/POST";
-import elec_test_id_get from "./api/electrical-tests/[id]/GET";
-import elec_test_id_put from "./api/electrical-tests/[id]/PUT";
-import elec_test_retest_post from "./api/electrical-tests/[id]/retest/POST";
-import elec_test_signoff_post from "./api/electrical-tests/[id]/sign-off/POST";
-import elec_test_photos_post from "./api/electrical-tests/[id]/photos/POST";
-import elec_test_photo_view from "./api/electrical-tests/photos/[photoId]/GET";
-import elec_equip_get from "./api/electrical-test-equipment/GET";
-import elec_equip_post from "./api/electrical-test-equipment/POST";
-import elec_equip_put from "./api/electrical-test-equipment/[id]/PUT";
-import elec_export_csv from "./api/electrical-tests/export/[jobId]/csv/GET";
-import elec_export_pdf from "./api/electrical-tests/export/[jobId]/pdf/GET";
-import rl_register_bm_points_get from "./api/rl-register/[benchmarkId]/points/GET";
-import rl_register_bm_points_post from "./api/rl-register/[benchmarkId]/points/POST";
-import rl_register_point_put from "./api/rl-register/points/[id]/PUT";
-import rl_register_point_delete from "./api/rl-register/points/[id]/DELETE";
-import rl_register_export_csv from "./api/rl-register/[jobId]/export/csv/GET";
-import rl_register_export_pdf from "./api/rl-register/[jobId]/export/pdf/GET";
-import safety_generated_posters_get_691 from "./api/safety/generated-posters/GET";
-import safety_generated_posters_post_692 from "./api/safety/generated-posters/POST";
-import safety_generated_posters_id_delete_693 from "./api/safety/generated-posters/[id]/DELETE";
-import safety_generated_posters_id_pdf_get_694 from "./api/safety/generated-posters/[id]/pdf/GET";
-import safety_job_safety_plans_get_695 from "./api/safety/job-safety-plans/GET";
-import safety_job_safety_plans_post_696 from "./api/safety/job-safety-plans/POST";
-import safety_job_safety_plans_id_delete_697 from "./api/safety/job-safety-plans/[id]/DELETE";
-import safety_job_safety_plans_id_put_698 from "./api/safety/job-safety-plans/[id]/PUT";
-import safety_job_swms_get_699 from "./api/safety/job-swms/GET";
-import safety_job_swms_post_700 from "./api/safety/job-swms/POST";
-import safety_job_swms_id_delete_701 from "./api/safety/job-swms/[id]/DELETE";
-import safety_job_swms_id_get_702 from "./api/safety/job-swms/[id]/GET";
-import safety_job_swms_id_put_703 from "./api/safety/job-swms/[id]/PUT";
-import safety_job_swms_id_share_token_post_704 from "./api/safety/job-swms/[id]/share-token/POST";
-import safety_job_swms_id_signoffs_get_705 from "./api/safety/job-swms/[id]/signoffs/GET";
-import safety_job_swms_id_signoffs_post_706 from "./api/safety/job-swms/[id]/signoffs/POST";
-import safety_job_swms_id_signoffs_signoffId_delete_707 from "./api/safety/job-swms/[id]/signoffs/[signoffId]/DELETE";
-import safety_plans_get_708 from "./api/safety/plans/GET";
-import safety_plans_post_709 from "./api/safety/plans/POST";
-import safety_plans_seed_post_710 from "./api/safety/plans/seed/POST";
-import safety_plans_id_delete_711 from "./api/safety/plans/[id]/DELETE";
-import safety_plans_id_put_712 from "./api/safety/plans/[id]/PUT";
-import safety_plans_id_export_get_713 from "./api/safety/plans/[id]/export/GET";
-import safety_plans_id_pack_get_714 from "./api/safety/plans/[id]/pack/GET";
-import safety_posters_get_715 from "./api/safety/posters/GET";
-import safety_posters_post_716 from "./api/safety/posters/POST";
-import safety_posters_id_delete_717 from "./api/safety/posters/[id]/DELETE";
-import safety_posters_id_download_get_718 from "./api/safety/posters/[id]/download/GET";
-import safety_swms_get_719 from "./api/safety/swms/GET";
-import safety_swms_post_720 from "./api/safety/swms/POST";
-import safety_swms_import_docx_post_721 from "./api/safety/swms/import-docx/POST";
-import safety_swms_seed_post_722 from "./api/safety/swms/seed/POST";
-import safety_swms_id_delete_723 from "./api/safety/swms/[id]/DELETE";
-import safety_swms_id_get_724 from "./api/safety/swms/[id]/GET";
-import safety_swms_id_put_725 from "./api/safety/swms/[id]/PUT";
-import safety_swms_id_duplicate_post_726 from "./api/safety/swms/[id]/duplicate/POST";
-import safety_swms_id_export_get_727 from "./api/safety/swms/[id]/export/GET";
-import safety_swms_id_publish_to_library_post_728 from "./api/safety/swms/[id]/publish-to-library/POST";
-import safety_swms_submissions_get_729 from "./api/safety/swms-submissions/GET";
-import scheduler_crew_get_730 from "./api/scheduler/crew/GET";
-import scheduler_jobs_get_731 from "./api/scheduler/jobs/GET";
-import scheduler_jobs_id_reschedule_patch_732 from "./api/scheduler/jobs/[id]/reschedule/PATCH";
-import scheduler_tasks_get_733 from "./api/scheduler/tasks/GET";
-import secure_share_get_734 from "./api/secure-share/GET";
-import secure_share_post_735 from "./api/secure-share/POST";
-import secure_share_active_get_736 from "./api/secure-share/active/GET";
-import secure_share_id_delete_737 from "./api/secure-share/[id]/DELETE";
-import secure_share_id_revoke_and_rotate_post_738 from "./api/secure-share/[id]/revoke-and-rotate/POST";
-import secure_share_token_get_739 from "./api/secure-share/[token]/GET";
-import secure_share_token_post_740 from "./api/secure-share/[token]/POST";
-import secure_share_token_content_get_741 from "./api/secure-share/[token]/content/GET";
-import settings_backup_get_742 from "./api/settings/backup/GET";
-import settings_backup_post_743 from "./api/settings/backup/POST";
-import settings_backup_company_data_get_744 from "./api/settings/backup/company-data/GET";
-import settings_backup_csv_pack_get_745 from "./api/settings/backup/csv-pack/GET";
-import settings_backup_export_get_746 from "./api/settings/backup/export/GET";
-import settings_backup_run_post_747 from "./api/settings/backup/run/POST";
-import settings_backup_destination_get_748 from "./api/settings/backup-destination/GET";
-import settings_backup_destination_post_749 from "./api/settings/backup-destination/POST";
-import settings_dazza_ai_key_get_750 from "./api/settings/dazza-ai-key/GET";
-import settings_dazza_ai_key_post_751 from "./api/settings/dazza-ai-key/POST";
-import settings_file_transfer_backup_get_752 from "./api/settings/file-transfer-backup/GET";
-import settings_file_transfer_backup_post_753 from "./api/settings/file-transfer-backup/POST";
-import settings_retention_get_754 from "./api/settings/retention/GET";
-import settings_retention_post_755 from "./api/settings/retention/POST";
-import settings_storage_provider_get_756 from "./api/settings/storage-provider/GET";
-import settings_storage_provider_debug_get_757 from "./api/settings/storage-provider/debug/GET";
-import settings_storage_provider_test_post_758 from "./api/settings/storage-provider/test/POST";
-import settings_terminology_get_759 from "./api/settings/terminology/GET";
-import settings_terminology_post_760 from "./api/settings/terminology/POST";
-import settings_xero_credentials_get_761 from "./api/settings/xero-credentials/GET";
-import settings_xero_credentials_post_762 from "./api/settings/xero-credentials/POST";
-import share_token_get_763 from "./api/share/[token]/GET";
-import signin_history_get_764 from "./api/signin-history/GET";
-import signup_post_765 from "./api/signup/POST";
-import sos_get_766 from "./api/sos/GET";
-import sos_acknowledge_post_767 from "./api/sos/acknowledge/POST";
-import sos_trigger_post_768 from "./api/sos/trigger/POST";
-import stakeholders_sms_post_769 from "./api/stakeholders/sms/POST";
-import stripe_create_checkout_session_post_770 from "./api/stripe/create-checkout-session/POST";
-import stripe_session_sessionId_get_771 from "./api/stripe/session/[sessionId]/GET";
-import subscription_create_checkout_post_772 from "./api/subscription/create-checkout/POST";
-import subscription_status_get_773 from "./api/subscription/status/GET";
-import subscription_webhook_post_774 from "./api/subscription/webhook/POST";
-import support_mode_audit_get_775 from "./api/support-mode/audit/GET";
-import support_mode_checklist_get_776 from "./api/support-mode/checklist/GET";
-import support_mode_checklist_put_777 from "./api/support-mode/checklist/PUT";
-import support_mode_enter_post_778 from "./api/support-mode/enter/POST";
-import support_mode_exit_post_779 from "./api/support-mode/exit/POST";
-import support_mode_status_get_780 from "./api/support-mode/status/GET";
-import tag_tasks_get_781 from "./api/tag-tasks/GET";
-import tag_tasks_id_patch_782 from "./api/tag-tasks/[id]/PATCH";
-import takeoff_pad_get_783 from "./api/takeoff-pad/GET";
-import takeoff_pad_put_784 from "./api/takeoff-pad/PUT";
-import tasks_post_785 from "./api/tasks/POST";
-import tasks_id_put_786 from "./api/tasks/[id]/PUT";
-import team_get_787 from "./api/team/GET";
-import team_invite_post_788 from "./api/team/invite/POST";
-import team_invites_get_789 from "./api/team/invites/GET";
-import team_invites_post_790 from "./api/team/invites/POST";
-import team_invites_id_cancel_post_791 from "./api/team/invites/[id]/cancel/POST";
-import team_invites_id_resend_post_792 from "./api/team/invites/[id]/resend/POST";
-import team_members_get_793 from "./api/team/members/GET";
-import team_members_id_icon_permissions_get_794 from "./api/team/members/[id]/icon-permissions/GET";
-import team_members_id_icon_permissions_put_795 from "./api/team/members/[id]/icon-permissions/PUT";
-import team_resend_verification_post_796 from "./api/team/resend-verification/POST";
-import team_schedule_migrate_post_797 from "./api/team/schedule/migrate/POST";
-import team_shifts_get_798 from "./api/team/shifts/GET";
-import team_shifts_post_799 from "./api/team/shifts/POST";
-import team_shifts_id_delete_800 from "./api/team/shifts/[id]/DELETE";
-import team_shifts_id_put_801 from "./api/team/shifts/[id]/PUT";
-import team_time_entries_get_802 from "./api/team/time-entries/GET";
-import team_time_entries_post_803 from "./api/team/time-entries/POST";
-import team_time_entries_export_get_804 from "./api/team/time-entries/export/GET";
-import team_time_entries_id_put_805 from "./api/team/time-entries/[id]/PUT";
-import team_verify_user_post_806 from "./api/team/verify-user/POST";
-import team_id_delete_807 from "./api/team/[id]/DELETE";
-import team_id_put_808 from "./api/team/[id]/PUT";
-import usage_get_809 from "./api/usage/GET";
-import user_logs_get_810 from "./api/user-logs/GET";
-import user_logs_users_get_811 from "./api/user-logs/users/GET";
-import work_attendance_get_812 from "./api/work/attendance/GET";
-import work_delays_get_813 from "./api/work/delays/GET";
-import work_notes_get_814 from "./api/work/notes/GET";
-import work_progress_get_815 from "./api/work/progress/GET";
-import work_tasks_get_816 from "./api/work/tasks/GET";
+import electrical_test_equipment_get_217 from "./api/electrical-test-equipment/GET";
+import electrical_test_equipment_post_218 from "./api/electrical-test-equipment/POST";
+import electrical_test_equipment_id_put_219 from "./api/electrical-test-equipment/[id]/PUT";
+import electrical_tests_get_220 from "./api/electrical-tests/GET";
+import electrical_tests_post_221 from "./api/electrical-tests/POST";
+import electrical_tests_export_jobId_csv_get_222 from "./api/electrical-tests/export/[jobId]/csv/GET";
+import electrical_tests_export_jobId_pdf_get_223 from "./api/electrical-tests/export/[jobId]/pdf/GET";
+import electrical_tests_photos_photoId_get_224 from "./api/electrical-tests/photos/[photoId]/GET";
+import electrical_tests_id_get_225 from "./api/electrical-tests/[id]/GET";
+import electrical_tests_id_put_226 from "./api/electrical-tests/[id]/PUT";
+import electrical_tests_id_photos_post_227 from "./api/electrical-tests/[id]/photos/POST";
+import electrical_tests_id_retest_post_228 from "./api/electrical-tests/[id]/retest/POST";
+import electrical_tests_id_sign_off_post_229 from "./api/electrical-tests/[id]/sign-off/POST";
+import emergency_alerts_get_230 from "./api/emergency-alerts/GET";
+import emergency_alerts_post_231 from "./api/emergency-alerts/POST";
+import emergency_alerts_id_put_232 from "./api/emergency-alerts/[id]/PUT";
+import estimates_get_233 from "./api/estimates/GET";
+import estimates_post_234 from "./api/estimates/POST";
+import estimates_id_delete_235 from "./api/estimates/[id]/DELETE";
+import estimates_id_get_236 from "./api/estimates/[id]/GET";
+import estimates_id_put_237 from "./api/estimates/[id]/PUT";
+import estimates_id_compose_defaults_get_238 from "./api/estimates/[id]/compose-defaults/GET";
+import estimates_id_convert_to_invoice_post_239 from "./api/estimates/[id]/convert-to-invoice/POST";
+import estimates_id_export_csv_get_240 from "./api/estimates/[id]/export-csv/GET";
+import estimates_id_export_pdf_get_241 from "./api/estimates/[id]/export-pdf/GET";
+import estimates_id_import_csv_post_242 from "./api/estimates/[id]/import-csv/POST";
+import estimates_id_send_email_post_243 from "./api/estimates/[id]/send-email/POST";
+import estimates_id_unlock_post_244 from "./api/estimates/[id]/unlock/POST";
+import external_form_token_get_245 from "./api/external/form/[token]/GET";
+import external_form_token_post_246 from "./api/external/form/[token]/POST";
+import files_get_247 from "./api/files/GET";
+import files_post_248 from "./api/files/POST";
+import files_id_delete_249 from "./api/files/[id]/DELETE";
+import files_id_download_get_250 from "./api/files/[id]/download/GET";
+import finance_estimates_get_251 from "./api/finance/estimates/GET";
+import finance_ledger_get_252 from "./api/finance/ledger/GET";
+import finance_purchase_orders_get_253 from "./api/finance/purchase-orders/GET";
+import finance_purchase_orders_post_254 from "./api/finance/purchase-orders/POST";
+import finance_purchase_orders_poId_delete_255 from "./api/finance/purchase-orders/[poId]/DELETE";
+import finance_purchase_orders_poId_get_256 from "./api/finance/purchase-orders/[poId]/GET";
+import finance_purchase_orders_poId_put_257 from "./api/finance/purchase-orders/[poId]/PUT";
+import finance_purchase_orders_poId_pdf_get_258 from "./api/finance/purchase-orders/[poId]/pdf/GET";
+import finance_timesheets_get_259 from "./api/finance/timesheets/GET";
+import finance_timesheets_post_260 from "./api/finance/timesheets/POST";
+import finance_timesheets_employees_get_261 from "./api/finance/timesheets/employees/GET";
+import finance_timesheets_me_get_262 from "./api/finance/timesheets/me/GET";
+import finance_timesheets_id_delete_263 from "./api/finance/timesheets/[id]/DELETE";
+import finance_timesheets_id_get_264 from "./api/finance/timesheets/[id]/GET";
+import finance_timesheets_id_put_265 from "./api/finance/timesheets/[id]/PUT";
+import fleet_get_266 from "./api/fleet/GET";
+import fleet_post_267 from "./api/fleet/POST";
+import fleet_analytics_settings_get_268 from "./api/fleet/analytics-settings/GET";
+import fleet_analytics_settings_put_269 from "./api/fleet/analytics-settings/PUT";
+import fleet_asset_bookings_get_270 from "./api/fleet/asset-bookings/GET";
+import fleet_asset_bookings_post_271 from "./api/fleet/asset-bookings/POST";
+import fleet_asset_bookings_id_delete_272 from "./api/fleet/asset-bookings/[id]/DELETE";
+import fleet_asset_bookings_id_patch_273 from "./api/fleet/asset-bookings/[id]/PATCH";
+import fleet_driver_sessions_post_274 from "./api/fleet/driver-sessions/POST";
+import fleet_driver_sessions_active_get_275 from "./api/fleet/driver-sessions/active/GET";
+import fleet_driver_sessions_live_get_276 from "./api/fleet/driver-sessions/live/GET";
+import fleet_driver_sessions_migrate_gps_status_post_277 from "./api/fleet/driver-sessions/migrate-gps-status/POST";
+import fleet_driver_sessions_id_heartbeat_post_278 from "./api/fleet/driver-sessions/[id]/heartbeat/POST";
+import fleet_driver_sessions_id_stop_post_279 from "./api/fleet/driver-sessions/[id]/stop/POST";
+import fleet_driver_sessions_id_summary_get_280 from "./api/fleet/driver-sessions/[id]/summary/GET";
+import fleet_driver_sessions_id_telemetry_post_281 from "./api/fleet/driver-sessions/[id]/telemetry/POST";
+import fleet_driver_sessions_id_telemetry_latest_get_282 from "./api/fleet/driver-sessions/[id]/telemetry/latest/GET";
+import fleet_flags_get_283 from "./api/fleet/flags/GET";
+import fleet_last_known_positions_get_284 from "./api/fleet/last-known-positions/GET";
+import fleet_service_logs_logId_delete_285 from "./api/fleet/service-logs/[logId]/DELETE";
+import fleet_service_logs_logId_patch_286 from "./api/fleet/service-logs/[logId]/PATCH";
+import fleet_vehicles_get_287 from "./api/fleet/vehicles/GET";
+import fleet_id_delete_288 from "./api/fleet/[id]/DELETE";
+import fleet_id_get_289 from "./api/fleet/[id]/GET";
+import fleet_id_put_290 from "./api/fleet/[id]/PUT";
+import fleet_id_driver_sessions_get_291 from "./api/fleet/[id]/driver-sessions/GET";
+import fleet_id_driver_sessions_manual_post_292 from "./api/fleet/[id]/driver-sessions/manual/POST";
+import fleet_id_files_get_293 from "./api/fleet/[id]/files/GET";
+import fleet_id_prestarts_get_294 from "./api/fleet/[id]/prestarts/GET";
+import fleet_id_prestarts_post_295 from "./api/fleet/[id]/prestarts/POST";
+import fleet_id_service_logs_get_296 from "./api/fleet/[id]/service-logs/GET";
+import fleet_id_service_logs_post_297 from "./api/fleet/[id]/service-logs/POST";
+import fleet_id_signin_post_298 from "./api/fleet/[id]/signin/POST";
+import fleet_id_signout_post_299 from "./api/fleet/[id]/signout/POST";
+import fleet_id_usage_export_get_300 from "./api/fleet/[id]/usage-export/GET";
+import fleet_id_usage_status_get_301 from "./api/fleet/[id]/usage-status/GET";
+import fleet_id_usage_summary_get_302 from "./api/fleet/[id]/usage-summary/GET";
+import form_attachments_post_303 from "./api/form-attachments/POST";
+import form_global_lists_get_304 from "./api/form-global-lists/GET";
+import form_global_lists_post_305 from "./api/form-global-lists/POST";
+import form_global_lists_id_delete_306 from "./api/form-global-lists/[id]/DELETE";
+import form_global_lists_id_put_307 from "./api/form-global-lists/[id]/PUT";
+import form_templates_get_308 from "./api/form-templates/GET";
+import form_templates_post_309 from "./api/form-templates/POST";
+import form_templates_seed_post_310 from "./api/form-templates/seed/POST";
+import form_templates_id_delete_311 from "./api/form-templates/[id]/DELETE";
+import form_templates_id_put_312 from "./api/form-templates/[id]/PUT";
+import form_templates_id_publish_to_library_post_313 from "./api/form-templates/[id]/publish-to-library/POST";
+import forms_assets_list_get_314 from "./api/forms/assets-list/GET";
+import forms_jobs_list_get_315 from "./api/forms/jobs-list/GET";
+import forms_migrate_skip_logic_post_316 from "./api/forms/migrate-skip-logic/POST";
+import forms_skip_audit_get_317 from "./api/forms/skip-audit/GET";
+import forms_skip_audit_post_318 from "./api/forms/skip-audit/POST";
+import forms_start_post_319 from "./api/forms/start/POST";
+import forms_submissions_get_320 from "./api/forms/submissions/GET";
+import forms_submissions_source_id_delete_321 from "./api/forms/submissions/[source]/[id]/DELETE";
+import forms_submissions_source_id_archive_post_322 from "./api/forms/submissions/[source]/[id]/archive/POST";
+import forms_submissions_source_id_restore_post_323 from "./api/forms/submissions/[source]/[id]/restore/POST";
+import forms_templates_id_share_link_delete_324 from "./api/forms/templates/[id]/share-link/DELETE";
+import forms_templates_id_share_link_post_325 from "./api/forms/templates/[id]/share-link/POST";
+import forms_id_fields_get_326 from "./api/forms/[id]/fields/GET";
+import forms_id_fields_post_327 from "./api/forms/[id]/fields/POST";
+import forms_id_fields_reorder_post_328 from "./api/forms/[id]/fields/reorder/POST";
+import forms_id_fields_fieldId_delete_329 from "./api/forms/[id]/fields/[fieldId]/DELETE";
+import forms_id_fields_fieldId_patch_330 from "./api/forms/[id]/fields/[fieldId]/PATCH";
+import forms_id_fields_fieldId_thumbnail_post_331 from "./api/forms/[id]/fields/[fieldId]/thumbnail/POST";
+import health_get_332 from "./api/health/GET";
+import incidents_get_333 from "./api/incidents/GET";
+import incidents_post_334 from "./api/incidents/POST";
+import incidents_id_archive_post_335 from "./api/incidents/[id]/archive/POST";
+import incidents_id_unarchive_post_336 from "./api/incidents/[id]/unarchive/POST";
+import incidents_incidentId_get_337 from "./api/incidents/[incidentId]/GET";
+import incidents_incidentId_put_338 from "./api/incidents/[incidentId]/PUT";
+import incidents_incidentId_attachments_get_339 from "./api/incidents/[incidentId]/attachments/GET";
+import incidents_incidentId_attachments_post_340 from "./api/incidents/[incidentId]/attachments/POST";
+import incidents_incidentId_attachments_attachId_delete_341 from "./api/incidents/[incidentId]/attachments/[attachId]/DELETE";
+import incidents_incidentId_close_post_342 from "./api/incidents/[incidentId]/close/POST";
+import incidents_incidentId_corrective_actions_post_343 from "./api/incidents/[incidentId]/corrective-actions/POST";
+import incidents_incidentId_corrective_actions_actionId_put_344 from "./api/incidents/[incidentId]/corrective-actions/[actionId]/PUT";
+import incidents_incidentId_pdf_get_345 from "./api/incidents/[incidentId]/pdf/GET";
+import incidents_incidentId_third_parties_post_346 from "./api/incidents/[incidentId]/third-parties/POST";
+import incidents_incidentId_third_parties_thirdPartyId_delete_347 from "./api/incidents/[incidentId]/third-parties/[thirdPartyId]/DELETE";
+import integrations_myob_auth_url_get_348 from "./api/integrations/myob/auth-url/GET";
+import integrations_myob_callback_get_349 from "./api/integrations/myob/callback/GET";
+import integrations_myob_disconnect_post_350 from "./api/integrations/myob/disconnect/POST";
+import integrations_myob_status_get_351 from "./api/integrations/myob/status/GET";
+import integrations_myob_sync_invoice_post_352 from "./api/integrations/myob/sync-invoice/POST";
+import integrations_onedrive_auth_url_get_353 from "./api/integrations/onedrive/auth-url/GET";
+import integrations_onedrive_callback_get_354 from "./api/integrations/onedrive/callback/GET";
+import integrations_onedrive_disconnect_post_355 from "./api/integrations/onedrive/disconnect/POST";
+import integrations_onedrive_status_get_356 from "./api/integrations/onedrive/status/GET";
+import integrations_onedrive_upload_file_post_357 from "./api/integrations/onedrive/upload-file/POST";
+import integrations_qbo_auth_url_get_358 from "./api/integrations/qbo/auth-url/GET";
+import integrations_qbo_callback_get_359 from "./api/integrations/qbo/callback/GET";
+import integrations_qbo_disconnect_post_360 from "./api/integrations/qbo/disconnect/POST";
+import integrations_qbo_status_get_361 from "./api/integrations/qbo/status/GET";
+import integrations_qbo_sync_invoice_post_362 from "./api/integrations/qbo/sync-invoice/POST";
+import integrations_xero_auth_url_get_363 from "./api/integrations/xero/auth-url/GET";
+import integrations_xero_callback_get_364 from "./api/integrations/xero/callback/GET";
+import integrations_xero_disconnect_post_365 from "./api/integrations/xero/disconnect/POST";
+import integrations_xero_status_get_366 from "./api/integrations/xero/status/GET";
+import integrations_xero_sync_customer_post_367 from "./api/integrations/xero/sync-customer/POST";
+import integrations_xero_sync_invoice_post_368 from "./api/integrations/xero/sync-invoice/POST";
+import integrations_xero_webhook_post_369 from "./api/integrations/xero/webhook/POST";
+import invoices_get_370 from "./api/invoices/GET";
+import invoices_post_371 from "./api/invoices/POST";
+import invoices_id_delete_372 from "./api/invoices/[id]/DELETE";
+import invoices_id_get_373 from "./api/invoices/[id]/GET";
+import invoices_id_put_374 from "./api/invoices/[id]/PUT";
+import invoices_id_compose_defaults_get_375 from "./api/invoices/[id]/compose-defaults/GET";
+import invoices_id_duplicate_post_376 from "./api/invoices/[id]/duplicate/POST";
+import invoices_id_export_pdf_get_377 from "./api/invoices/[id]/export-pdf/GET";
+import invoices_id_mark_sent_post_378 from "./api/invoices/[id]/mark-sent/POST";
+import invoices_id_record_payment_post_379 from "./api/invoices/[id]/record-payment/POST";
+import invoices_id_send_email_post_380 from "./api/invoices/[id]/send-email/POST";
+import invoices_id_unlock_patch_381 from "./api/invoices/[id]/unlock/PATCH";
+import invoices_id_void_post_382 from "./api/invoices/[id]/void/POST";
+import job_cards_get_383 from "./api/job-cards/GET";
+import job_cards_post_384 from "./api/job-cards/POST";
+import job_cards_id_delete_385 from "./api/job-cards/[id]/DELETE";
+import job_cards_id_get_386 from "./api/job-cards/[id]/GET";
+import job_cards_id_put_387 from "./api/job-cards/[id]/PUT";
+import job_cards_id_convert_post_388 from "./api/job-cards/[id]/convert/POST";
+import job_cards_id_invoice_post_389 from "./api/job-cards/[id]/invoice/POST";
+import job_cards_id_photos_post_390 from "./api/job-cards/[id]/photos/POST";
+import job_cards_id_photos_photoId_delete_391 from "./api/job-cards/[id]/photos/[photoId]/DELETE";
+import job_cards_id_photos_photoId_patch_392 from "./api/job-cards/[id]/photos/[photoId]/PATCH";
+import job_cards_id_photos_photoId_download_get_393 from "./api/job-cards/[id]/photos/[photoId]/download/GET";
+import job_cards_id_photos_photoId_save_and_lock_post_394 from "./api/job-cards/[id]/photos/[photoId]/save-and-lock/POST";
+import job_costs_post_395 from "./api/job-costs/POST";
+import job_forms_id_delete_396 from "./api/job-forms/[id]/DELETE";
+import job_forms_id_get_397 from "./api/job-forms/[id]/GET";
+import job_forms_id_put_398 from "./api/job-forms/[id]/PUT";
+import job_forms_id_compose_defaults_get_399 from "./api/job-forms/[id]/compose-defaults/GET";
+import job_forms_id_export_pdf_get_400 from "./api/job-forms/[id]/export-pdf/GET";
+import job_forms_id_reset_post_401 from "./api/job-forms/[id]/reset/POST";
+import job_forms_id_send_email_post_402 from "./api/job-forms/[id]/send-email/POST";
+import job_forms_id_share_delete_403 from "./api/job-forms/[id]/share/DELETE";
+import job_forms_id_share_get_404 from "./api/job-forms/[id]/share/GET";
+import job_forms_id_share_post_405 from "./api/job-forms/[id]/share/POST";
+import jobs_get_406 from "./api/jobs/GET";
+import jobs_post_407 from "./api/jobs/POST";
+import jobs_report_generate_post_408 from "./api/jobs/report/generate/POST";
+import jobs_search_get_409 from "./api/jobs/search/GET";
+import jobs_id_get_410 from "./api/jobs/[id]/GET";
+import jobs_id_put_411 from "./api/jobs/[id]/PUT";
+import jobs_id_attendance_attendanceId_close_post_412 from "./api/jobs/[id]/attendance/[attendanceId]/close/POST";
+import jobs_id_compose_defaults_get_413 from "./api/jobs/[id]/compose-defaults/GET";
+import jobs_id_costs_get_414 from "./api/jobs/[id]/costs/GET";
+import jobs_id_costs_post_415 from "./api/jobs/[id]/costs/POST";
+import jobs_id_costs_export_get_416 from "./api/jobs/[id]/costs/export/GET";
+import jobs_id_costs_costId_delete_417 from "./api/jobs/[id]/costs/[costId]/DELETE";
+import jobs_id_costs_costId_put_418 from "./api/jobs/[id]/costs/[costId]/PUT";
+import jobs_id_costs_costId_receipt_get_419 from "./api/jobs/[id]/costs/[costId]/receipt/GET";
+import jobs_id_costs_costId_receipt_post_420 from "./api/jobs/[id]/costs/[costId]/receipt/POST";
+import jobs_id_delays_get_421 from "./api/jobs/[id]/delays/GET";
+import jobs_id_delays_post_422 from "./api/jobs/[id]/delays/POST";
+import jobs_id_delays_export_csv_get_423 from "./api/jobs/[id]/delays/export-csv/GET";
+import jobs_id_delays_delayId_delete_424 from "./api/jobs/[id]/delays/[delayId]/DELETE";
+import jobs_id_delays_delayId_put_425 from "./api/jobs/[id]/delays/[delayId]/PUT";
+import jobs_id_documents_get_426 from "./api/jobs/[id]/documents/GET";
+import jobs_id_documents_post_427 from "./api/jobs/[id]/documents/POST";
+import jobs_id_export_zip_get_428 from "./api/jobs/[id]/export-zip/GET";
+import jobs_id_field_docs_get_429 from "./api/jobs/[id]/field-docs/GET";
+import jobs_id_files_get_430 from "./api/jobs/[id]/files/GET";
+import jobs_id_forms_get_431 from "./api/jobs/[id]/forms/GET";
+import jobs_id_forms_post_432 from "./api/jobs/[id]/forms/POST";
+import jobs_id_forms_export_csv_get_433 from "./api/jobs/[id]/forms/export-csv/GET";
+import jobs_id_forms_submissionId_delete_434 from "./api/jobs/[id]/forms/[submissionId]/DELETE";
+import jobs_id_forms_submissionId_reopen_post_435 from "./api/jobs/[id]/forms/[submissionId]/reopen/POST";
+import jobs_id_generate_qr_post_436 from "./api/jobs/[id]/generate-qr/POST";
+import jobs_id_ledger_get_437 from "./api/jobs/[id]/ledger/GET";
+import jobs_id_ledger_post_438 from "./api/jobs/[id]/ledger/POST";
+import jobs_id_ledger_export_get_439 from "./api/jobs/[id]/ledger/export/GET";
+import jobs_id_ledger_sync_post_440 from "./api/jobs/[id]/ledger/sync/POST";
+import jobs_id_ledger_entryId_delete_441 from "./api/jobs/[id]/ledger/[entryId]/DELETE";
+import jobs_id_ledger_entryId_put_442 from "./api/jobs/[id]/ledger/[entryId]/PUT";
+import jobs_id_ledger_entryId_correct_post_443 from "./api/jobs/[id]/ledger/[entryId]/correct/POST";
+import jobs_id_milestones_get_444 from "./api/jobs/[id]/milestones/GET";
+import jobs_id_milestones_post_445 from "./api/jobs/[id]/milestones/POST";
+import jobs_id_milestones_milestoneId_delete_446 from "./api/jobs/[id]/milestones/[milestoneId]/DELETE";
+import jobs_id_milestones_milestoneId_patch_447 from "./api/jobs/[id]/milestones/[milestoneId]/PATCH";
+import jobs_id_notes_export_csv_get_448 from "./api/jobs/[id]/notes/export-csv/GET";
+import jobs_id_photos_get_449 from "./api/jobs/[id]/photos/GET";
+import jobs_id_photos_post_450 from "./api/jobs/[id]/photos/POST";
+import jobs_id_photos_export_zip_post_451 from "./api/jobs/[id]/photos/export-zip/POST";
+import jobs_id_photos_picker_get_452 from "./api/jobs/[id]/photos/picker/GET";
+import jobs_id_photos_share_post_453 from "./api/jobs/[id]/photos/share/POST";
+import jobs_id_photos_photoId_delete_454 from "./api/jobs/[id]/photos/[photoId]/DELETE";
+import jobs_id_photos_photoId_patch_455 from "./api/jobs/[id]/photos/[photoId]/PATCH";
+import jobs_id_photos_photoId_download_get_456 from "./api/jobs/[id]/photos/[photoId]/download/GET";
+import jobs_id_photos_photoId_lock_post_457 from "./api/jobs/[id]/photos/[photoId]/lock/POST";
+import jobs_id_photos_photoId_replace_post_458 from "./api/jobs/[id]/photos/[photoId]/replace/POST";
+import jobs_id_photos_photoId_report_image_get_459 from "./api/jobs/[id]/photos/[photoId]/report-image/GET";
+import jobs_id_progress_get_460 from "./api/jobs/[id]/progress/GET";
+import jobs_id_progress_put_461 from "./api/jobs/[id]/progress/PUT";
+import jobs_id_progress_export_csv_get_462 from "./api/jobs/[id]/progress/export-csv/GET";
+import jobs_id_progress_lines_post_463 from "./api/jobs/[id]/progress/lines/POST";
+import jobs_id_progress_lines_reorder_post_464 from "./api/jobs/[id]/progress/lines/reorder/POST";
+import jobs_id_progress_lines_lineId_delete_465 from "./api/jobs/[id]/progress/lines/[lineId]/DELETE";
+import jobs_id_progress_lines_lineId_patch_466 from "./api/jobs/[id]/progress/lines/[lineId]/PATCH";
+import jobs_id_progress_lines_lineId_duplicate_post_467 from "./api/jobs/[id]/progress/lines/[lineId]/duplicate/POST";
+import jobs_id_progress_report_get_468 from "./api/jobs/[id]/progress/report/GET";
+import jobs_id_progress_report_put_469 from "./api/jobs/[id]/progress/report/PUT";
+import jobs_id_progress_report_pdf_get_470 from "./api/jobs/[id]/progress/report/pdf/GET";
+import jobs_id_progress_sections_post_471 from "./api/jobs/[id]/progress/sections/POST";
+import jobs_id_progress_sections_reorder_post_472 from "./api/jobs/[id]/progress/sections/reorder/POST";
+import jobs_id_progress_sections_sectionId_delete_473 from "./api/jobs/[id]/progress/sections/[sectionId]/DELETE";
+import jobs_id_progress_sections_sectionId_patch_474 from "./api/jobs/[id]/progress/sections/[sectionId]/PATCH";
+import jobs_id_progress_sync_post_475 from "./api/jobs/[id]/progress/sync/POST";
+import jobs_id_purchase_orders_get_476 from "./api/jobs/[id]/purchase-orders/GET";
+import jobs_id_purchase_orders_post_477 from "./api/jobs/[id]/purchase-orders/POST";
+import jobs_id_purchase_orders_poId_delete_478 from "./api/jobs/[id]/purchase-orders/[poId]/DELETE";
+import jobs_id_purchase_orders_poId_get_479 from "./api/jobs/[id]/purchase-orders/[poId]/GET";
+import jobs_id_purchase_orders_poId_put_480 from "./api/jobs/[id]/purchase-orders/[poId]/PUT";
+import jobs_id_purchase_orders_poId_pdf_get_481 from "./api/jobs/[id]/purchase-orders/[poId]/pdf/GET";
+import jobs_id_report_pdf_post_482 from "./api/jobs/[id]/report/pdf/POST";
+import jobs_id_risky_get_483 from "./api/jobs/[id]/risky/GET";
+import jobs_id_risky_post_484 from "./api/jobs/[id]/risky/POST";
+import jobs_id_risky_riskyId_get_485 from "./api/jobs/[id]/risky/[riskyId]/GET";
+import jobs_id_risky_riskyId_put_486 from "./api/jobs/[id]/risky/[riskyId]/PUT";
+import jobs_id_risky_riskyId_finalise_post_487 from "./api/jobs/[id]/risky/[riskyId]/finalise/POST";
+import jobs_id_risky_riskyId_signatures_post_488 from "./api/jobs/[id]/risky/[riskyId]/signatures/POST";
+import jobs_id_risky_riskyId_supervisor_signoff_post_489 from "./api/jobs/[id]/risky/[riskyId]/supervisor-signoff/POST";
+import jobs_id_send_email_post_490 from "./api/jobs/[id]/send-email/POST";
+import jobs_id_signin_post_491 from "./api/jobs/[id]/signin/POST";
+import jobs_id_signin_qr_post_492 from "./api/jobs/[id]/signin-qr/POST";
+import jobs_id_signin_status_get_493 from "./api/jobs/[id]/signin-status/GET";
+import jobs_id_signout_post_494 from "./api/jobs/[id]/signout/POST";
+import jobs_id_signout_qr_post_495 from "./api/jobs/[id]/signout-qr/POST";
+import jobs_id_signout_user_post_496 from "./api/jobs/[id]/signout-user/POST";
+import jobs_id_site_prestarts_get_497 from "./api/jobs/[id]/site-prestarts/GET";
+import jobs_id_site_prestarts_post_498 from "./api/jobs/[id]/site-prestarts/POST";
+import jobs_id_site_prestarts_prestartId_get_499 from "./api/jobs/[id]/site-prestarts/[prestartId]/GET";
+import jobs_id_site_prestarts_prestartId_put_500 from "./api/jobs/[id]/site-prestarts/[prestartId]/PUT";
+import jobs_id_site_prestarts_prestartId_finalise_post_501 from "./api/jobs/[id]/site-prestarts/[prestartId]/finalise/POST";
+import jobs_id_site_prestarts_prestartId_workers_post_502 from "./api/jobs/[id]/site-prestarts/[prestartId]/workers/POST";
+import jobs_id_studio_swms_get_503 from "./api/jobs/[id]/studio-swms/GET";
+import jobs_id_studio_swms_post_504 from "./api/jobs/[id]/studio-swms/POST";
+import jobs_id_swms_get_505 from "./api/jobs/[id]/swms/GET";
+import jobs_id_swms_post_506 from "./api/jobs/[id]/swms/POST";
+import jobs_id_swms_swmsId_signoff_post_507 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
+import jobs_id_todos_get_508 from "./api/jobs/[id]/todos/GET";
+import jobs_id_todos_post_509 from "./api/jobs/[id]/todos/POST";
+import jobs_id_todos_todoId_delete_510 from "./api/jobs/[id]/todos/[todoId]/DELETE";
+import jobs_id_todos_todoId_put_511 from "./api/jobs/[id]/todos/[todoId]/PUT";
+import lens_photos_get_512 from "./api/lens/photos/GET";
+import lens_photos_export_zip_post_513 from "./api/lens/photos/export-zip/POST";
+import lens_photos_photoId_download_get_514 from "./api/lens/photos/[photoId]/download/GET";
+import library_check_published_get_515 from "./api/library/check-published/GET";
+import library_items_get_516 from "./api/library/items/GET";
+import library_items_id_get_517 from "./api/library/items/[id]/GET";
+import library_items_id_patch_518 from "./api/library/items/[id]/PATCH";
+import library_items_id_download_get_519 from "./api/library/items/[id]/download/GET";
+import library_items_id_install_delete_520 from "./api/library/items/[id]/install/DELETE";
+import library_items_id_install_post_521 from "./api/library/items/[id]/install/POST";
+import library_my_installed_get_522 from "./api/library/my-installed/GET";
+import library_my_installed_id_get_523 from "./api/library/my-installed/[id]/GET";
+import library_my_submissions_get_524 from "./api/library/my-submissions/GET";
+import lists_get_525 from "./api/lists/GET";
+import me_get_526 from "./api/me/GET";
+import me_put_527 from "./api/me/PUT";
+import me_2fa_disable_post_528 from "./api/me/2fa/disable/POST";
+import me_2fa_enable_post_529 from "./api/me/2fa/enable/POST";
+import me_2fa_recover_post_530 from "./api/me/2fa/recover/POST";
+import me_2fa_setup_get_531 from "./api/me/2fa/setup/GET";
+import me_2fa_qr_get from "./api/me/2fa/qr/GET";
+import me_2fa_sms_disable_post_532 from "./api/me/2fa/sms/disable/POST";
+import me_2fa_sms_enable_post_533 from "./api/me/2fa/sms/enable/POST";
+import me_2fa_sms_send_post_534 from "./api/me/2fa/sms/send/POST";
+import me_2fa_sms_send_setup_post_535 from "./api/me/2fa/sms/send-setup/POST";
+import me_2fa_sms_verify_post_536 from "./api/me/2fa/sms/verify/POST";
+import me_2fa_status_get_537 from "./api/me/2fa/status/GET";
+import me_2fa_verify_post_538 from "./api/me/2fa/verify/POST";
+import me_active_status_get_539 from "./api/me/active-status/GET";
+import me_change_password_post_540 from "./api/me/change-password/POST";
+import features_get from "./api/features/GET";
+import me_email_status_get_541 from "./api/me/email-status/GET";
+import me_phone_get_542 from "./api/me/phone/GET";
+import me_phone_put_543 from "./api/me/phone/PUT";
+import me_profile_attachments_delete_544 from "./api/me/profile-attachments/DELETE";
+import me_profile_attachments_post_545 from "./api/me/profile-attachments/POST";
+import me_profile_attachments_download_get_546 from "./api/me/profile-attachments/download/GET";
+import me_profile_attachments_thumbnail_get_547 from "./api/me/profile-attachments/thumbnail/GET";
+import me_profile_extras_get_548 from "./api/me/profile-extras/GET";
+import me_profile_extras_put_549 from "./api/me/profile-extras/PUT";
+import migrate_account_recovery_post_550 from "./api/migrate-account-recovery/POST";
+import migrate_anatomy_post_551 from "./api/migrate-anatomy/POST";
+import migrate_asset_manager_post_552 from "./api/migrate-asset-manager/POST";
+import migrate_attendance_post_553 from "./api/migrate-attendance/POST";
+import migrate_company_settings_post_554 from "./api/migrate-company-settings/POST";
+import migrate_dazza_audit_post_555 from "./api/migrate-dazza-audit/POST";
+import migrate_dazza_knowledge_post_556 from "./api/migrate-dazza-knowledge/POST";
+import migrate_emergency_alerts_post_557 from "./api/migrate-emergency-alerts/POST";
+import migrate_estimates_post_558 from "./api/migrate-estimates/POST";
+import migrate_estimating_library_post_559 from "./api/migrate-estimating-library/POST";
+import migrate_files_post_560 from "./api/migrate-files/POST";
+import migrate_fleet_post_561 from "./api/migrate-fleet/POST";
+import migrate_fleet_analytics_post_562 from "./api/migrate-fleet-analytics/POST";
+import migrate_fleet_driver_sessions_post_563 from "./api/migrate-fleet-driver-sessions/POST";
+import migrate_fleet_usage_post_564 from "./api/migrate-fleet-usage/POST";
+import migrate_form_fields_post_565 from "./api/migrate-form-fields/POST";
+import migrate_form_logic_post_566 from "./api/migrate-form-logic/POST";
+import migrate_form_templates_post_567 from "./api/migrate-form-templates/POST";
+import migrate_job_forms_post_568 from "./api/migrate-job-forms/POST";
+import migrate_job_photo_shares_post_569 from "./api/migrate-job-photo-shares/POST";
+import migrate_job_photos_post_570 from "./api/migrate-job-photos/POST";
+import migrate_job_tabs_post_571 from "./api/migrate-job-tabs/POST";
+import migrate_jobs_post_572 from "./api/migrate-jobs/POST";
+import migrate_ledger_photo_post_573 from "./api/migrate-ledger-photo/POST";
+import migrate_library_post_574 from "./api/migrate-library/POST";
+import migrate_library_downloads_post_575 from "./api/migrate-library-downloads/POST";
+import migrate_notifications_post_576 from "./api/migrate-notifications/POST";
+import migrate_owner_console_post_577 from "./api/migrate-owner-console/POST";
+import migrate_owner_role_post_578 from "./api/migrate-owner-role/POST";
+import migrate_pdf_settings_post_579 from "./api/migrate-pdf-settings/POST";
+import migrate_photo_gps_post_580 from "./api/migrate-photo-gps/POST";
+import migrate_plan_manager_post_581 from "./api/migrate-plan-manager/POST";
+import migrate_plan_manager_v2_post_582 from "./api/migrate-plan-manager-v2/POST";
+import migrate_plan_manager_v3_post_583 from "./api/migrate-plan-manager-v3/POST";
+import migrate_safety_post_584 from "./api/migrate-safety/POST";
+import migrate_safety_studio_post_585 from "./api/migrate-safety-studio/POST";
+import migrate_site_prestart_post_586 from "./api/migrate-site-prestart/POST";
+import migrate_sms_verified_at_post_587 from "./api/migrate-sms-verified-at/POST";
+import migrate_starter_pack_post_588 from "./api/migrate-starter-pack/POST";
+import migrate_studio_pdf_post_589 from "./api/migrate-studio-pdf/POST";
+import migrate_studio_phase2_post_590 from "./api/migrate-studio-phase2/POST";
+import migrate_subscriptions_post_591 from "./api/migrate-subscriptions/POST";
+import migrate_support_mode_post_592 from "./api/migrate-support-mode/POST";
+import migrate_takeoff_pad_post_593 from "./api/migrate-takeoff-pad/POST";
+import migrate_team_post_594 from "./api/migrate-team/POST";
+import notes_get_595 from "./api/notes/GET";
+import notes_post_596 from "./api/notes/POST";
+import notes_comments_post_597 from "./api/notes/comments/POST";
+import notes_migrate_post_598 from "./api/notes/migrate/POST";
+import notes_id_delete_599 from "./api/notes/[id]/DELETE";
+import notifications_alerts_get_600 from "./api/notifications/alerts/GET";
+import notifications_prefs_get_601 from "./api/notifications/prefs/GET";
+import notifications_prefs_put_602 from "./api/notifications/prefs/PUT";
+import notifications_read_post_603 from "./api/notifications/read/POST";
+import owner_console_activity_get_604 from "./api/owner-console/activity/GET";
+import owner_console_cancellation_feedback_get_605 from "./api/owner-console/cancellation-feedback/GET";
+import owner_console_companies_get_606 from "./api/owner-console/companies/GET";
+import owner_console_companies_post_607 from "./api/owner-console/companies/POST";
+import owner_console_companies_usage_get_608 from "./api/owner-console/companies/usage/GET";
+import owner_console_companies_id_limits_put_609 from "./api/owner-console/companies/[id]/limits/PUT";
+import owner_console_form_templates_get_610 from "./api/owner-console/form-templates/GET";
+import owner_console_form_templates_post_611 from "./api/owner-console/form-templates/POST";
+import owner_console_library_items_get_612 from "./api/owner-console/library/items/GET";
+import owner_console_library_items_post_613 from "./api/owner-console/library/items/POST";
+import owner_console_library_items_from_template_post_614 from "./api/owner-console/library/items/from-template/POST";
+import owner_console_library_items_id_delete_615 from "./api/owner-console/library/items/[id]/DELETE";
+import owner_console_library_items_id_patch_616 from "./api/owner-console/library/items/[id]/PATCH";
+import owner_console_library_items_id_put_617 from "./api/owner-console/library/items/[id]/PUT";
+import owner_console_library_items_id_push_update_post_618 from "./api/owner-console/library/items/[id]/push-update/POST";
+import owner_console_library_submissions_get_619 from "./api/owner-console/library/submissions/GET";
+import owner_console_library_submissions_id_review_post_620 from "./api/owner-console/library/submissions/[id]/review/POST";
+import owner_console_starter_pack_get_621 from "./api/owner-console/starter-pack/GET";
+import owner_console_starter_pack_post_622 from "./api/owner-console/starter-pack/POST";
+import owner_console_stats_get_623 from "./api/owner-console/stats/GET";
+import owner_console_twilio_info_get from "./api/owner-console/twilio-info/GET";
+import owner_console_storage_get_624 from "./api/owner-console/storage/GET";
+import owner_console_swms_masters_get_625 from "./api/owner-console/swms/masters/GET";
+import owner_console_swms_masters_post_626 from "./api/owner-console/swms/masters/POST";
+import owner_console_swms_masters_publish_all_post_627 from "./api/owner-console/swms/masters/publish-all/POST";
+import owner_console_swms_masters_id_delete_628 from "./api/owner-console/swms/masters/[id]/DELETE";
+import owner_console_swms_masters_id_get_629 from "./api/owner-console/swms/masters/[id]/GET";
+import owner_console_swms_masters_id_put_630 from "./api/owner-console/swms/masters/[id]/PUT";
+import owner_console_swms_masters_id_publish_post_631 from "./api/owner-console/swms/masters/[id]/publish/POST";
+import owner_console_swms_migrate_master_library_post_632 from "./api/owner-console/swms/migrate-master-library/POST";
+import owner_console_swms_push_post_633 from "./api/owner-console/swms/push/POST";
+import owner_console_swms_seed_bricklaying_post_634 from "./api/owner-console/swms/seed-bricklaying/POST";
+import owner_console_swms_seed_building_inspection_post_635 from "./api/owner-console/swms/seed-building-inspection/POST";
+import owner_console_swms_seed_cabinets_post_636 from "./api/owner-console/swms/seed-cabinets/POST";
+import owner_console_swms_seed_carpenter_fixing_post_637 from "./api/owner-console/swms/seed-carpenter-fixing/POST";
+import owner_console_swms_seed_carpenter_framing_post_638 from "./api/owner-console/swms/seed-carpenter-framing/POST";
+import owner_console_swms_seed_carpenter_lockup_post_639 from "./api/owner-console/swms/seed-carpenter-lockup/POST";
+import owner_console_swms_seed_ceramic_tiling_post_640 from "./api/owner-console/swms/seed-ceramic-tiling/POST";
+import owner_console_swms_seed_concreting_slab_post_641 from "./api/owner-console/swms/seed-concreting-slab/POST";
+import owner_console_swms_seed_delivery_loading_post_642 from "./api/owner-console/swms/seed-delivery-loading/POST";
+import owner_console_swms_seed_environmental_spill_post_643 from "./api/owner-console/swms/seed-environmental-spill/POST";
+import owner_console_swms_seed_ewp_post_644 from "./api/owner-console/swms/seed-ewp/POST";
+import owner_console_swms_seed_excavations_substation_post_645 from "./api/owner-console/swms/seed-excavations-substation/POST";
+import owner_console_swms_seed_fencing_post_646 from "./api/owner-console/swms/seed-fencing/POST";
+import owner_console_swms_seed_heat_stress_post_647 from "./api/owner-console/swms/seed-heat-stress/POST";
+import owner_console_swms_seed_landscaping_post_648 from "./api/owner-console/swms/seed-landscaping/POST";
+import owner_console_swms_seed_live_parts_post_649 from "./api/owner-console/swms/seed-live-parts/POST";
+import owner_console_swms_seed_manual_handling_post_650 from "./api/owner-console/swms/seed-manual-handling/POST";
+import owner_console_swms_seed_moving_plant_post_651 from "./api/owner-console/swms/seed-moving-plant/POST";
+import owner_console_swms_seed_painting_post_652 from "./api/owner-console/swms/seed-painting/POST";
+import owner_console_swms_seed_power_tools_post_653 from "./api/owner-console/swms/seed-power-tools/POST";
+import owner_console_swms_seed_silica_dust_post_654 from "./api/owner-console/swms/seed-silica-dust/POST";
+import owner_console_swms_seed_traffic_management_post_655 from "./api/owner-console/swms/seed-traffic-management/POST";
+import owner_console_swms_seed_underground_services_post_656 from "./api/owner-console/swms/seed-underground-services/POST";
+import owner_console_swms_seed_vacuum_excavation_post_657 from "./api/owner-console/swms/seed-vacuum-excavation/POST";
+import owner_console_system_ai_builtin_checks_post_658 from "./api/owner-console/system-ai/builtin-checks/POST";
+import owner_console_users_get_659 from "./api/owner-console/users/GET";
+import owner_console_users_verify_post_660 from "./api/owner-console/users/verify/POST";
+import plan_manager_drawings_get_661 from "./api/plan-manager/drawings/GET";
+import plan_manager_drawings_post_662 from "./api/plan-manager/drawings/POST";
+import plan_manager_drawings_id_get_663 from "./api/plan-manager/drawings/[id]/GET";
+import plan_manager_drawings_id_annotations_put_664 from "./api/plan-manager/drawings/[id]/annotations/PUT";
+import plan_manager_drawings_id_archive_post_665 from "./api/plan-manager/drawings/[id]/archive/POST";
+import plan_manager_drawings_id_job_links_delete_666 from "./api/plan-manager/drawings/[id]/job-links/DELETE";
+import plan_manager_drawings_id_job_links_post_667 from "./api/plan-manager/drawings/[id]/job-links/POST";
+import plan_manager_drawings_id_pages_pageNo_annotations_get_668 from "./api/plan-manager/drawings/[id]/pages/[pageNo]/annotations/GET";
+import plan_manager_drawings_id_permanent_delete_669 from "./api/plan-manager/drawings/[id]/permanent/DELETE";
+import plan_manager_drawings_id_reorder_patch_670 from "./api/plan-manager/drawings/[id]/reorder/PATCH";
+import plan_manager_drawings_id_restore_post_671 from "./api/plan-manager/drawings/[id]/restore/POST";
+import plan_manager_drawings_id_revisions_post_672 from "./api/plan-manager/drawings/[id]/revisions/POST";
+import plan_manager_drawings_id_revisions_revisionId_finalize_post_673 from "./api/plan-manager/drawings/[id]/revisions/[revisionId]/finalize/POST";
+import plan_manager_drawings_id_upload_post_674 from "./api/plan-manager/drawings/[id]/upload/POST";
+import plan_manager_jobs_jobId_drawings_zip_get_675 from "./api/plan-manager/jobs/[jobId]/drawings-zip/GET";
+import plan_manager_jobs_with_drawings_get_676 from "./api/plan-manager/jobs-with-drawings/GET";
+import plan_manager_share_post_677 from "./api/plan-manager/share/POST";
+import plan_manager_share_validate_get_678 from "./api/plan-manager/share/validate/GET";
+import plan_manager_upload_post_679 from "./api/plan-manager/upload/POST";
+import portal_estimates_id_approve_post_680 from "./api/portal/estimates/[id]/approve/POST";
+import portal_invite_post_681 from "./api/portal/invite/POST";
+import portal_invoices_id_pay_post_682 from "./api/portal/invoices/[id]/pay/POST";
+import portal_jobs_get_683 from "./api/portal/jobs/GET";
+import portal_jobs_id_get_684 from "./api/portal/jobs/[id]/GET";
+import portal_migrate_post_685 from "./api/portal/migrate/POST";
+import portal_validate_post_686 from "./api/portal/validate/POST";
+import public_form_token_get_687 from "./api/public/form/[token]/GET";
+import public_form_token_submit_post_688 from "./api/public/form/[token]/submit/POST";
+import public_job_photos_token_get_689 from "./api/public/job-photos/[token]/GET";
+import public_job_photos_token_photo_photoId_get_690 from "./api/public/job-photos/[token]/photo/[photoId]/GET";
+import public_swms_token_get_691 from "./api/public/swms/[token]/GET";
+import public_swms_token_signoff_post_692 from "./api/public/swms/[token]/signoff/POST";
+import purchase_orders_poId_compose_defaults_get_693 from "./api/purchase-orders/[poId]/compose-defaults/GET";
+import purchase_orders_poId_send_email_post_694 from "./api/purchase-orders/[poId]/send-email/POST";
+import push_subscribe_delete_695 from "./api/push/subscribe/DELETE";
+import push_subscribe_post_696 from "./api/push/subscribe/POST";
+import push_vapid_key_get_697 from "./api/push/vapid-key/GET";
+import quick_links_site_meta_get_698 from "./api/quick-links/site-meta/GET";
+import recipes_get_699 from "./api/recipes/GET";
+import recipes_post_700 from "./api/recipes/POST";
+import recipes_id_delete_701 from "./api/recipes/[id]/DELETE";
+import recipes_id_put_702 from "./api/recipes/[id]/PUT";
+import risk_register_get_703 from "./api/risk-register/GET";
+import risk_register_post_704 from "./api/risk-register/POST";
+import risk_register_id_get_705 from "./api/risk-register/[id]/GET";
+import risk_register_id_put_706 from "./api/risk-register/[id]/PUT";
+import risk_register_id_archive_post_707 from "./api/risk-register/[id]/archive/POST";
+import risk_register_id_unarchive_post_708 from "./api/risk-register/[id]/unarchive/POST";
+import rl_register_get_709 from "./api/rl-register/GET";
+import rl_register_post_710 from "./api/rl-register/POST";
+import rl_register_points_id_delete_711 from "./api/rl-register/points/[id]/DELETE";
+import rl_register_points_id_put_712 from "./api/rl-register/points/[id]/PUT";
+import rl_register_benchmarkId_points_get_713 from "./api/rl-register/[benchmarkId]/points/GET";
+import rl_register_benchmarkId_points_post_714 from "./api/rl-register/[benchmarkId]/points/POST";
+import rl_register_jobId_export_csv_get_715 from "./api/rl-register/[jobId]/export/csv/GET";
+import rl_register_jobId_export_pdf_get_716 from "./api/rl-register/[jobId]/export/pdf/GET";
+import safety_ai_draft_post_717 from "./api/safety/ai/draft/POST";
+import safety_documents_get_718 from "./api/safety/documents/GET";
+import safety_documents_post_719 from "./api/safety/documents/POST";
+import safety_documents_new_post_720 from "./api/safety/documents/new/POST";
+import safety_documents_id_delete_721 from "./api/safety/documents/[id]/DELETE";
+import safety_documents_id_download_get_722 from "./api/safety/documents/[id]/download/GET";
+import safety_generated_posters_get_723 from "./api/safety/generated-posters/GET";
+import safety_generated_posters_post_724 from "./api/safety/generated-posters/POST";
+import safety_generated_posters_id_delete_725 from "./api/safety/generated-posters/[id]/DELETE";
+import safety_generated_posters_id_pdf_get_726 from "./api/safety/generated-posters/[id]/pdf/GET";
+import safety_job_safety_plans_get_727 from "./api/safety/job-safety-plans/GET";
+import safety_job_safety_plans_post_728 from "./api/safety/job-safety-plans/POST";
+import safety_job_safety_plans_id_delete_729 from "./api/safety/job-safety-plans/[id]/DELETE";
+import safety_job_safety_plans_id_put_730 from "./api/safety/job-safety-plans/[id]/PUT";
+import safety_job_swms_get_731 from "./api/safety/job-swms/GET";
+import safety_job_swms_post_732 from "./api/safety/job-swms/POST";
+import safety_job_swms_id_delete_733 from "./api/safety/job-swms/[id]/DELETE";
+import safety_job_swms_id_get_734 from "./api/safety/job-swms/[id]/GET";
+import safety_job_swms_id_put_735 from "./api/safety/job-swms/[id]/PUT";
+import safety_job_swms_id_share_token_post_736 from "./api/safety/job-swms/[id]/share-token/POST";
+import safety_job_swms_id_signoffs_get_737 from "./api/safety/job-swms/[id]/signoffs/GET";
+import safety_job_swms_id_signoffs_post_738 from "./api/safety/job-swms/[id]/signoffs/POST";
+import safety_job_swms_id_signoffs_signoffId_delete_739 from "./api/safety/job-swms/[id]/signoffs/[signoffId]/DELETE";
+import safety_plans_get_740 from "./api/safety/plans/GET";
+import safety_plans_post_741 from "./api/safety/plans/POST";
+import safety_plans_seed_post_742 from "./api/safety/plans/seed/POST";
+import safety_plans_id_delete_743 from "./api/safety/plans/[id]/DELETE";
+import safety_plans_id_put_744 from "./api/safety/plans/[id]/PUT";
+import safety_plans_id_export_get_745 from "./api/safety/plans/[id]/export/GET";
+import safety_plans_id_pack_get_746 from "./api/safety/plans/[id]/pack/GET";
+import safety_posters_get_747 from "./api/safety/posters/GET";
+import safety_posters_post_748 from "./api/safety/posters/POST";
+import safety_posters_id_delete_749 from "./api/safety/posters/[id]/DELETE";
+import safety_posters_id_download_get_750 from "./api/safety/posters/[id]/download/GET";
+import safety_swms_get_751 from "./api/safety/swms/GET";
+import safety_swms_post_752 from "./api/safety/swms/POST";
+import safety_swms_import_docx_post_753 from "./api/safety/swms/import-docx/POST";
+import safety_swms_seed_post_754 from "./api/safety/swms/seed/POST";
+import safety_swms_id_delete_755 from "./api/safety/swms/[id]/DELETE";
+import safety_swms_id_get_756 from "./api/safety/swms/[id]/GET";
+import safety_swms_id_put_757 from "./api/safety/swms/[id]/PUT";
+import safety_swms_id_duplicate_post_758 from "./api/safety/swms/[id]/duplicate/POST";
+import safety_swms_id_export_get_759 from "./api/safety/swms/[id]/export/GET";
+import safety_swms_id_publish_to_library_post_760 from "./api/safety/swms/[id]/publish-to-library/POST";
+import safety_swms_submissions_get_761 from "./api/safety/swms-submissions/GET";
+import scheduler_crew_get_762 from "./api/scheduler/crew/GET";
+import scheduler_jobs_get_763 from "./api/scheduler/jobs/GET";
+import scheduler_jobs_id_reschedule_patch_764 from "./api/scheduler/jobs/[id]/reschedule/PATCH";
+import scheduler_tasks_get_765 from "./api/scheduler/tasks/GET";
+import sds_register_get_766 from "./api/sds-register/GET";
+import sds_register_post_767 from "./api/sds-register/POST";
+import sds_register_id_delete_768 from "./api/sds-register/[id]/DELETE";
+import sds_register_id_put_769 from "./api/sds-register/[id]/PUT";
+import sds_register_id_download_get_770 from "./api/sds-register/[id]/download/GET";
+import sds_register_id_replace_post_771 from "./api/sds-register/[id]/replace/POST";
+import secure_share_get_772 from "./api/secure-share/GET";
+import secure_share_post_773 from "./api/secure-share/POST";
+import secure_share_active_get_774 from "./api/secure-share/active/GET";
+import secure_share_id_delete_775 from "./api/secure-share/[id]/DELETE";
+import secure_share_id_revoke_and_rotate_post_776 from "./api/secure-share/[id]/revoke-and-rotate/POST";
+import secure_share_token_get_777 from "./api/secure-share/[token]/GET";
+import secure_share_token_post_778 from "./api/secure-share/[token]/POST";
+import secure_share_token_content_get_779 from "./api/secure-share/[token]/content/GET";
+import settings_backup_get_780 from "./api/settings/backup/GET";
+import settings_backup_post_781 from "./api/settings/backup/POST";
+import settings_backup_company_data_get_782 from "./api/settings/backup/company-data/GET";
+import settings_backup_csv_pack_get_783 from "./api/settings/backup/csv-pack/GET";
+import settings_backup_export_get_784 from "./api/settings/backup/export/GET";
+import settings_backup_run_post_785 from "./api/settings/backup/run/POST";
+import settings_backup_destination_get_786 from "./api/settings/backup-destination/GET";
+import settings_backup_destination_post_787 from "./api/settings/backup-destination/POST";
+import settings_dazza_ai_key_get_788 from "./api/settings/dazza-ai-key/GET";
+import settings_dazza_ai_key_post_789 from "./api/settings/dazza-ai-key/POST";
+import settings_file_transfer_backup_get_790 from "./api/settings/file-transfer-backup/GET";
+import settings_file_transfer_backup_post_791 from "./api/settings/file-transfer-backup/POST";
+import settings_retention_get_792 from "./api/settings/retention/GET";
+import settings_retention_post_793 from "./api/settings/retention/POST";
+import settings_storage_provider_get_794 from "./api/settings/storage-provider/GET";
+import settings_storage_provider_debug_get_795 from "./api/settings/storage-provider/debug/GET";
+import settings_storage_provider_test_post_796 from "./api/settings/storage-provider/test/POST";
+import settings_terminology_get_797 from "./api/settings/terminology/GET";
+import settings_terminology_post_798 from "./api/settings/terminology/POST";
+import settings_xero_credentials_get_799 from "./api/settings/xero-credentials/GET";
+import settings_xero_credentials_post_800 from "./api/settings/xero-credentials/POST";
+import share_token_get_801 from "./api/share/[token]/GET";
+import signin_history_get_802 from "./api/signin-history/GET";
+import signup_post_803 from "./api/signup/POST";
+import sos_get_804 from "./api/sos/GET";
+import sos_acknowledge_post_805 from "./api/sos/acknowledge/POST";
+import sos_trigger_post_806 from "./api/sos/trigger/POST";
+import stakeholders_sms_post_807 from "./api/stakeholders/sms/POST";
+import stripe_create_checkout_session_post_808 from "./api/stripe/create-checkout-session/POST";
+import stripe_session_sessionId_get_809 from "./api/stripe/session/[sessionId]/GET";
+import studio_generate_from_safety_post_810 from "./api/studio/generate-from-safety/POST";
+import studio_upload_image_post from "./api/studio/upload-image/POST";
+import subscription_create_checkout_post_811 from "./api/subscription/create-checkout/POST";
+import subscription_status_get_812 from "./api/subscription/status/GET";
+import subscription_webhook_post_813 from "./api/subscription/webhook/POST";
+import support_mode_audit_get_814 from "./api/support-mode/audit/GET";
+import support_mode_checklist_get_815 from "./api/support-mode/checklist/GET";
+import support_mode_checklist_put_816 from "./api/support-mode/checklist/PUT";
+import support_mode_enter_post_817 from "./api/support-mode/enter/POST";
+import support_mode_exit_post_818 from "./api/support-mode/exit/POST";
+import support_mode_status_get_819 from "./api/support-mode/status/GET";
+import tag_tasks_get_820 from "./api/tag-tasks/GET";
+import tag_tasks_id_patch_821 from "./api/tag-tasks/[id]/PATCH";
+import takeoff_pad_get_822 from "./api/takeoff-pad/GET";
+import takeoff_pad_put_823 from "./api/takeoff-pad/PUT";
+import tasks_post_824 from "./api/tasks/POST";
+import tasks_id_put_825 from "./api/tasks/[id]/PUT";
+import team_get_826 from "./api/team/GET";
+import team_invite_post_827 from "./api/team/invite/POST";
+import team_invites_get_828 from "./api/team/invites/GET";
+import team_invites_post_829 from "./api/team/invites/POST";
+import team_invites_id_cancel_post_830 from "./api/team/invites/[id]/cancel/POST";
+import team_invites_id_resend_post_831 from "./api/team/invites/[id]/resend/POST";
+import team_members_get_832 from "./api/team/members/GET";
+import team_members_id_icon_permissions_get_833 from "./api/team/members/[id]/icon-permissions/GET";
+import team_members_id_icon_permissions_put_834 from "./api/team/members/[id]/icon-permissions/PUT";
+import team_resend_verification_post_835 from "./api/team/resend-verification/POST";
+import team_schedule_migrate_post_836 from "./api/team/schedule/migrate/POST";
+import team_shifts_get_837 from "./api/team/shifts/GET";
+import team_shifts_post_838 from "./api/team/shifts/POST";
+import team_shifts_id_delete_839 from "./api/team/shifts/[id]/DELETE";
+import team_shifts_id_put_840 from "./api/team/shifts/[id]/PUT";
+import team_time_entries_get_841 from "./api/team/time-entries/GET";
+import team_time_entries_post_842 from "./api/team/time-entries/POST";
+import team_time_entries_export_get_843 from "./api/team/time-entries/export/GET";
+import team_time_entries_id_put_844 from "./api/team/time-entries/[id]/PUT";
+import team_verify_user_post_845 from "./api/team/verify-user/POST";
+import team_id_delete_846 from "./api/team/[id]/DELETE";
+import team_id_put_847 from "./api/team/[id]/PUT";
+import usage_get_848 from "./api/usage/GET";
+import user_logs_get_849 from "./api/user-logs/GET";
+import user_logs_users_get_850 from "./api/user-logs/users/GET";
+import work_attendance_get_851 from "./api/work/attendance/GET";
+import work_delays_get_852 from "./api/work/delays/GET";
+import work_notes_get_853 from "./api/work/notes/GET";
+import work_progress_get_854 from "./api/work/progress/GET";
+import work_tasks_get_855 from "./api/work/tasks/GET";
 // </api-imports>
 // ── Job Cards ─────────────────────────────────────────────────────────────────
 import job_cards_get from "./api/job-cards/GET.js";
@@ -901,7 +927,7 @@ import adminFixPhotoRecordFieldsPost from "./api/admin/fix-photo-record-fields/P
 import adminFixAllPhotoFieldsPost from "./api/admin/fix-all-photo-fields/POST.js";
 
 import { seoRoutes } from "../lib/seo-routes";
-import { requireOwner, requireAdmin, isPublicRoute, checkPending2fa } from "./lib/auth-middleware.js";
+import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
 import { applyWriteGate } from "./lib/write-gate-apply.js";
 import {
@@ -1203,14 +1229,12 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ error: 'Unauthorised' });
     }
 
-    // ── Pending-2FA guard ────────────────────────────────────────────────────
-    // If the user has a pending challenge cookie, block all routes except the
-    // 2FA verification endpoints. This enforces server-side 2FA before any
-    // protected API access is granted.
-    const fullPath = req.path.startsWith('/') ? `/api${req.path}` : `/api/${req.path}`;
-    const blocked = await checkPending2fa(req, res, fullPath);
-    if (blocked) return;
-
+    // ── Session guard ────────────────────────────────────────────────────────
+    // The official BetterAuth twoFactor plugin handles 2FA at the sign-in level:
+    // no authenticated session is created until the second factor succeeds.
+    // SMS 2FA: the session is revoked before the challenge response is sent, so
+    // no pending-challenge guard is needed here — the session simply won't exist
+    // until the SMS verify endpoint creates a fresh one.
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorised' });
@@ -1428,6 +1452,9 @@ async function runStartupMigrations() {
     { table: 'company_settings', column: 'work_label_singular',       definition: "VARCHAR(60) NULL" },
     { table: 'company_settings', column: 'work_label_plural',         definition: "VARCHAR(60) NULL" },
     // Subscription columns
+    // Form templates
+    { table: 'form_templates', column: 'shared_in_library', definition: 'BOOLEAN NOT NULL DEFAULT FALSE' },
+    // Subscription columns
     { table: 'companies', column: 'plan',                   definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'subscription_status',    definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'trial_ends_at',          definition: 'DATETIME NULL' },
@@ -1500,6 +1527,11 @@ async function runStartupMigrations() {
     // ── job_swms: timestamp columns (created_at was missing on some deploys) ────
     { table: 'job_swms', column: 'created_at',             definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP' },
     { table: 'job_swms', column: 'updated_at',             definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP' },
+    // ── job_swms: Studio document attachment columns (Phase 2) ───────────────
+    { table: 'job_swms', column: 'studio_document_id',     definition: "INT NULL DEFAULT NULL COMMENT 'document_templates.id — set for Studio-sourced rows'" },
+    { table: 'job_swms', column: 'studio_source_revision', definition: "VARCHAR(20) NULL DEFAULT NULL COMMENT 'Revision label at attachment time'" },
+    { table: 'job_swms', column: 'content_snapshot_json',  definition: "LONGTEXT NULL DEFAULT NULL COMMENT 'Immutable builder_json snapshot at attachment time'" },
+    { table: 'job_swms', column: 'studio_attached_at',     definition: "DATETIME NULL DEFAULT NULL COMMENT 'Timestamp of Studio attachment'" },
     // ── jobs: customer link (v2) ──────────────────────────────────────────────
     { table: 'jobs', column: 'customer_id', definition: 'INT NULL' },
     // ── profiles: invoices permission ────────────────────────────────────────
@@ -1543,6 +1575,16 @@ async function runStartupMigrations() {
     { table: 'job_form_submissions', column: 'submitted_at',              definition: 'DATETIME NULL' },
     { table: 'job_form_submissions', column: 'external_submitter_name',   definition: 'VARCHAR(255) NULL' },
     { table: 'job_form_submissions', column: 'external_submitter_email',  definition: 'VARCHAR(255) NULL' },
+    // ── job_form_submissions: archive / legal-hold lifecycle ─────────────────
+    { table: 'job_form_submissions', column: 'archived_at',     definition: 'DATETIME NULL' },
+    { table: 'job_form_submissions', column: 'archived_by',     definition: 'VARCHAR(255) NULL' },
+    { table: 'job_form_submissions', column: 'archive_reason',  definition: 'TEXT NULL' },
+    { table: 'job_form_submissions', column: 'legal_hold',      definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── form_public_submissions: archive / legal-hold lifecycle ──────────────
+    { table: 'form_public_submissions', column: 'archived_at',    definition: 'DATETIME NULL' },
+    { table: 'form_public_submissions', column: 'archived_by',    definition: 'VARCHAR(255) NULL' },
+    { table: 'form_public_submissions', column: 'archive_reason', definition: 'TEXT NULL' },
+    { table: 'form_public_submissions', column: 'legal_hold',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // notifications table: link column
     { table: 'notifications', column: 'link', definition: 'VARCHAR(500) NULL' },
     // ── swms_signoffs: extended sign-on fields ────────────────────────────────
@@ -1621,6 +1663,24 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'requires_signature',          definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'document_templates', column: 'source_job_id',               definition: 'INT NULL' },
     { table: 'document_templates', column: 'doc_status',                  definition: "VARCHAR(20) NOT NULL DEFAULT 'draft'" },
+    { table: 'document_templates', column: 'applied_widgets_json',        definition: "MEDIUMTEXT NULL COMMENT 'JSON array of AppliedWidgetMeta'" },
+    // ── document_templates: safety-studio integration columns ────────────────
+    { table: 'document_templates', column: 'safety_category',             definition: "VARCHAR(100) NULL DEFAULT NULL COMMENT 'SWMS | WHS Plan'" },
+    { table: 'document_templates', column: 'source_widget_type',          definition: "VARCHAR(50) NULL DEFAULT NULL COMMENT 'swms | whs_plan'" },
+    { table: 'document_templates', column: 'source_record_id',            definition: 'INT NULL DEFAULT NULL' },
+    // ── document_templates: Phase 2 Word Source Document columns ─────────────
+    { table: 'document_templates', column: 'source_type',         definition: "VARCHAR(20) NOT NULL DEFAULT 'blocks' COMMENT 'blocks|docx|pdf|html'" },
+    { table: 'document_templates', column: 'source_file_key',     definition: "VARCHAR(1000) NULL COMMENT 'Storage key for original source file'" },
+    { table: 'document_templates', column: 'source_file_name',    definition: "VARCHAR(500) NULL COMMENT 'Original uploaded filename'" },
+    { table: 'document_templates', column: 'source_mime_type',    definition: "VARCHAR(100) NULL COMMENT 'MIME type of source file'" },
+    { table: 'document_templates', column: 'source_sha256',       definition: "VARCHAR(64) NULL COMMENT 'SHA-256 hex of source file bytes'" },
+    { table: 'document_templates', column: 'source_revision',     definition: "INT NOT NULL DEFAULT 0 COMMENT 'Monotonic revision counter'" },
+    { table: 'document_templates', column: 'source_updated_at',   definition: "DATETIME NULL COMMENT 'When source file was last replaced'" },
+    { table: 'document_templates', column: 'rendered_pdf_key',    definition: "VARCHAR(1000) NULL COMMENT 'Storage key for cached PDF render'" },
+    // ── document_templates: HTML canvas columns (DOCX → editable HTML) ────────
+    { table: 'document_templates', column: 'html_content',        definition: "LONGTEXT NULL COMMENT 'Sanitised HTML body for html-canvas documents'" },
+    { table: 'document_templates', column: 'import_css',          definition: "LONGTEXT NULL COMMENT 'Scoped CSS produced by DOCX converter'" },
+    { table: 'document_templates', column: 'import_report',       definition: "TEXT NULL COMMENT 'JSON: { dropped: string[], approximated: string[] }'" },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
@@ -1651,6 +1711,8 @@ async function runStartupMigrations() {
     { table: 'library_items', column: 'file_mime',        definition: 'VARCHAR(100) NULL' },
     { table: 'library_items', column: 'builder_json',     definition: 'LONGTEXT NULL' },
     { table: 'library_items', column: 'download_count',   definition: 'INT NOT NULL DEFAULT 0' },
+    // source_template_ref — "type:id" e.g. "form:42" — used for upsert on republish
+    { table: 'library_items', column: 'source_template_ref', definition: "VARCHAR(100) NULL DEFAULT NULL" },
     // ── company_library_items: customised flag ────────────────────────────────
     { table: 'company_library_items', column: 'customised', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── fleet_driver_sessions: analytics summary columns ─────────────────────
@@ -1853,6 +1915,8 @@ async function runStartupMigrations() {
     { table: 'job_form_submissions',  indexName: 'idx_jfs_company',          columns: '(company_id)' },
     { table: 'job_form_submissions',  indexName: 'idx_jfs_job',              columns: '(job_id)' },
     { table: 'job_form_submissions',  indexName: 'idx_jfs_company_job',      columns: '(company_id, job_id)' },
+    { table: 'job_form_submissions',  indexName: 'idx_jfs_archived',         columns: '(company_id, archived_at)' },
+    { table: 'form_public_submissions', indexName: 'idx_fps_archived',       columns: '(company_id, archived_at)' },
     // estimate_lines — fetched by estimate_id on every estimate load
     { table: 'estimate_lines',        indexName: 'idx_estlines_estimate',    columns: '(estimate_id)' },
     // job_photo_shares — one share per job (unique), fast token lookup
@@ -1932,6 +1996,9 @@ async function runStartupMigrations() {
     { name: 'dazza_v3_audit', ddl: "CREATE TABLE IF NOT EXISTS dazza_v3_audit (id VARCHAR(36) NOT NULL PRIMARY KEY, owner_user_id VARCHAR(36) NOT NULL, event_type VARCHAR(100) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_owner (owner_user_id), INDEX idx_event (event_type), INDEX idx_created (created_at DESC))" },
     { name: 'dazza_attachments', ddl: "CREATE TABLE IF NOT EXISTS dazza_attachments (id VARCHAR(36) NOT NULL PRIMARY KEY, owner_user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL DEFAULT 0, conversation_id VARCHAR(36) NULL, message_id VARCHAR(36) NULL, safe_filename VARCHAR(200) NOT NULL, mime_type VARCHAR(100) NOT NULL, byte_length INT NOT NULL DEFAULT 0, sha256 VARCHAR(64) NOT NULL, storage_key VARCHAR(500) NOT NULL, storage_provider VARCHAR(50) NOT NULL DEFAULT 'local', trust_classification VARCHAR(50) NOT NULL DEFAULT 'untrusted_external_data', parser_version VARCHAR(20) NOT NULL DEFAULT '1.0', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_owner (owner_user_id), INDEX idx_sha256 (owner_user_id, sha256), INDEX idx_conversation (conversation_id))" },
     { name: 'dazza_attachment_links', ddl: "CREATE TABLE IF NOT EXISTS dazza_attachment_links (id VARCHAR(36) NOT NULL PRIMARY KEY, attachment_id VARCHAR(36) NOT NULL, conversation_id VARCHAR(36) NOT NULL, message_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_att_msg (attachment_id, message_id), INDEX idx_conversation (conversation_id), INDEX idx_attachment (attachment_id))" },
+    // ── Dazza Builder Assistant tables (added 2026-08-30) ────────────────────
+    { name: 'dazza_builder_versions', ddl: "CREATE TABLE IF NOT EXISTS dazza_builder_versions (id VARCHAR(36) NOT NULL PRIMARY KEY, template_id INT NOT NULL, builder_type VARCHAR(20) NOT NULL, version_number INT NOT NULL DEFAULT 1, owner_user_id VARCHAR(36) NOT NULL, change_source VARCHAR(50) NOT NULL DEFAULT 'dazza', instruction_summary VARCHAR(500) NOT NULL DEFAULT '', operations_json MEDIUMTEXT NULL, operations_count INT NOT NULL DEFAULT 0, previous_snapshot_json LONGTEXT NULL, new_snapshot_json LONGTEXT NULL, validation_result VARCHAR(50) NOT NULL DEFAULT 'valid', conversation_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_template (template_id, builder_type, version_number DESC), INDEX idx_owner (owner_user_id), INDEX idx_conversation (conversation_id))" },
+    { name: 'dazza_builder_audit', ddl: "CREATE TABLE IF NOT EXISTS dazza_builder_audit (id VARCHAR(36) NOT NULL PRIMARY KEY, owner_user_id VARCHAR(36) NOT NULL, event_type VARCHAR(100) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_owner (owner_user_id), INDEX idx_event (event_type), INDEX idx_created (created_at DESC))" },
     { name: 'builder_cases', ddl: "CREATE TABLE IF NOT EXISTS builder_cases (id VARCHAR(36) NOT NULL PRIMARY KEY, owner_user_id VARCHAR(36) NOT NULL, title VARCHAR(500) NOT NULL, requested_result TEXT NULL, linked_bug_id VARCHAR(36) NULL, conversation_id VARCHAR(36) NULL, anatomy_snapshot_id VARCHAR(36) NULL, anatomy_commit_sha VARCHAR(40) NULL, anatomy_snapshot_name VARCHAR(200) NULL, source_version VARCHAR(200) NULL, repo_name VARCHAR(200) NULL, status ENUM('draft','analysing','diagnosis_ready','patch_ready','awaiting_daryl_review','sent_to_airo','awaiting_verification','verified','failed','closed') NOT NULL DEFAULT 'draft', risk_level ENUM('low','medium','high','critical') NULL, confirmed_symptom TEXT NULL, root_cause TEXT NULL, evidence TEXT NULL, files_inspected TEXT NULL, assumptions TEXT NULL, unknowns TEXT NULL, proposed_files TEXT NULL, change_summary TEXT NULL, db_route_impact TEXT NULL, security_considerations TEXT NULL, rollback_instructions TEXT NULL, proposed_patch MEDIUMTEXT NULL, airo_prompt MEDIUMTEXT NULL, test_plan TEXT NULL, runtime_checks TEXT NULL, verification_notes TEXT NULL, resolution_note TEXT NULL, sent_to_airo_at DATETIME NULL, verified_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_owner (owner_user_id), INDEX idx_status (status), INDEX idx_bug (linked_bug_id), INDEX idx_updated (updated_at DESC))" },
     // ── Bug Communication Centre (added 2026-08-14) ──────────────────────────
     { name: 'incident_communications', ddl: "CREATE TABLE IF NOT EXISTS incident_communications (id VARCHAR(36) NOT NULL PRIMARY KEY, incident_id VARCHAR(36) NULL, bug_report_id INT NULL, comm_type VARCHAR(30) NOT NULL DEFAULT 'banner', channel VARCHAR(30) NOT NULL DEFAULT 'dashboard', status VARCHAR(30) NOT NULL DEFAULT 'draft', title VARCHAR(300) NOT NULL, message TEXT NOT NULL, workaround TEXT NULL, action_label VARCHAR(100) NULL, action_url VARCHAR(500) NULL, target_scope VARCHAR(30) NOT NULL DEFAULT 'affected_users', target_company_id INT NULL, target_user_id VARCHAR(36) NULL, target_build VARCHAR(50) NULL, target_route VARCHAR(300) NULL, is_dismissible TINYINT(1) NOT NULL DEFAULT 1, is_critical TINYINT(1) NOT NULL DEFAULT 0, approved_by_user_id VARCHAR(36) NULL, approved_at DATETIME NULL, display_from DATETIME NULL, display_until DATETIME NULL, removed_at DATETIME NULL, removed_by_user_id VARCHAR(36) NULL, view_count INT NOT NULL DEFAULT 0, dismiss_count INT NOT NULL DEFAULT 0, resolve_confirm_count INT NOT NULL DEFAULT 0, still_trouble_count INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_incident (incident_id), INDEX idx_status (status), INDEX idx_scope (target_scope, status), INDEX idx_company (target_company_id))" },
@@ -1992,6 +2059,8 @@ async function runStartupMigrations() {
     { name: 'swms_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS swms_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_job_swms (job_swms_id))" },
     // ── Public form submissions (template-level, no job required) ─────────────
     { name: 'form_public_submissions', ddl: "CREATE TABLE IF NOT EXISTS form_public_submissions (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL, submitter_name VARCHAR(255) NULL, submitter_email VARCHAR(255) NULL, job_id INT NULL, answers_json LONGTEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'submitted', submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(64) NULL, INDEX idx_company (company_id), INDEX idx_template (template_id), INDEX idx_token (token), INDEX idx_job (company_id, job_id))" },
+    // ── submission_audit_log — records archive / restore / permanent-delete events ──
+    { name: 'submission_audit_log', ddl: "CREATE TABLE IF NOT EXISTS submission_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, submission_source VARCHAR(20) NOT NULL, submission_id INT NOT NULL, action VARCHAR(40) NOT NULL, actor_user_id VARCHAR(36) NOT NULL, actor_name VARCHAR(255) NULL, note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_sal_company (company_id), INDEX idx_sal_submission (submission_source, submission_id), INDEX idx_sal_action (company_id, action))" },
     // ── Form public share tokens ──────────────────────────────────────────────
     { name: 'form_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS form_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_template (template_id))" },
     // ── Plan Manager ─────────────────────────────────────────────────────────
@@ -2031,6 +2100,14 @@ async function runStartupMigrations() {
     // ── 2FA security tables ───────────────────────────────────────────────────
     { name: 'pending_2fa_challenges', ddl: "CREATE TABLE IF NOT EXISTS pending_2fa_challenges (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, method ENUM('totp','sms') NOT NULL DEFAULT 'totp', expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_p2fa_user (user_id), INDEX idx_p2fa_token (token_hash), INDEX idx_p2fa_expires (expires_at))" },
     { name: 'totp_backup_codes', ddl: "CREATE TABLE IF NOT EXISTS totp_backup_codes (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_tbc_user (user_id), INDEX idx_tbc_hash (user_id, code_hash))" },
+    // Official BetterAuth twoFactor plugin table — stores encrypted TOTP secrets,
+    // encrypted backup codes, and per-account lockout state.
+    // The plugin uses BETTER_AUTH_SECRET (via symmetricEncrypt) for encryption —
+    // NOT TOTP_ENCRYPTION_KEY. This table is additive; existing custom columns
+    // (totp_secret, totp_attempts, totp_locked_until) on the user table are preserved.
+    { name: 'twoFactor', ddl: "CREATE TABLE IF NOT EXISTS `twoFactor` (id VARCHAR(36) PRIMARY KEY, secret TEXT NOT NULL, backup_codes TEXT NOT NULL, user_id VARCHAR(36) NOT NULL, verified TINYINT(1) NOT NULL DEFAULT 1, failed_verification_count INT NOT NULL DEFAULT 0, locked_until DATETIME NULL, INDEX idx_tf_user (user_id), INDEX idx_tf_user_id (user_id))" },
+    // ── Phase 2: Word Source Document revision history ────────────────────────
+    { name: 'document_template_revisions', ddl: "CREATE TABLE IF NOT EXISTS document_template_revisions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, revision INT NOT NULL DEFAULT 1, source_type VARCHAR(20) NOT NULL DEFAULT 'docx', source_file_key VARCHAR(1000) NOT NULL, source_file_name VARCHAR(500) NOT NULL, source_mime_type VARCHAR(100) NOT NULL, source_sha256 VARCHAR(64) NOT NULL, file_size_bytes INT NOT NULL DEFAULT 0, uploaded_by VARCHAR(36) NULL, uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, notes TEXT NULL, INDEX idx_dtr_template (template_id), INDEX idx_dtr_company (company_id), INDEX idx_dtr_revision (template_id, revision))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -2145,7 +2222,7 @@ async function runStartupMigrations() {
     },
     {
       name: 'sms_verification_codes',
-      ddl: "CREATE TABLE IF NOT EXISTS sms_verification_codes (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
+      ddl: "CREATE TABLE IF NOT EXISTS sms_verification_codes (id VARCHAR(36) NOT NULL PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, phone VARCHAR(30) NOT NULL DEFAULT '', expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, verified_at DATETIME NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
     },
     {
       name: 'bug_reports',
@@ -2485,8 +2562,8 @@ async function runStartupMigrations() {
 
   // ── Seed platform_role = 'developer' for known platform developer emails ──────────
   // darylwilliams1581@gmail.com = developer account (full platform access)
-  // daryl.williams@energyq.com.au = regular user test account (clean slate, no developer access)
-  const developerEmails = ['darylwilliams1581@gmail.com'];
+  // daryl.williams@energyq.com.au = also a developer account (platform access granted)
+  const developerEmails = ['darylwilliams1581@gmail.com', 'daryl.williams@energyq.com.au'];
   for (const email of developerEmails) {
     try {
       await db.execute(
@@ -2498,17 +2575,6 @@ async function runStartupMigrations() {
     } catch (e: unknown) {
       console.warn(`[startup-migration] platform_role seed failed for ${email}:`, String((e as Error)?.message ?? e));
     }
-  }
-  // Explicitly clear developer flag for the regular user test account
-  try {
-    await db.execute(
-      sql`UPDATE profiles p
-          INNER JOIN user u ON u.id = p.user_id
-          SET p.platform_role = NULL
-          WHERE LOWER(u.email) = LOWER('daryl.williams@energyq.com.au')`
-    );
-  } catch (e: unknown) {
-    console.warn('[startup-migration] platform_role clear failed for energyq account:', String((e as Error)?.message ?? e));
   }
   console.log('[startup-migration] platform_role seeding complete');
 
@@ -3098,6 +3164,25 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── library_items: unique index on source_template_ref ───────────────────────
+  // Allows upsert (INSERT … ON DUPLICATE KEY UPDATE) when republishing a template.
+  try {
+    const [libIdxRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.STATISTICS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'library_items'
+            AND INDEX_NAME = 'uq_lib_source_template_ref'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(libIdxRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(
+        `ALTER TABLE library_items ADD UNIQUE INDEX uq_lib_source_template_ref (source_template_ref)`
+      ));
+      console.log('[startup-migration] library_items.uq_lib_source_template_ref index added');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] library_items source_template_ref index:', migrationErrMsg(e));
+  }
+
   // ── sms_verification_codes: phone column ──────────────────────────────────────
   // Added after initial table creation — stores the phone number the code was sent to
   try {
@@ -3147,6 +3232,70 @@ if (!process.env.VITEST) {
       console.error('[media-migration] fatal:', e)
     )
   );
+  // Recovery email tables — independent, non-blocking
+  void import('./db/migrations/recovery-email.js').then(m =>
+    m.runRecoveryEmailMigration().catch((e: unknown) =>
+      console.error('[recovery-email] migration fatal:', e)
+    )
+  );
+  // ── sms_verification_codes.id column type repair ─────────────────────────────
+  // Historical context: the original CREATE TABLE DDL used INT AUTO_INCREMENT for
+  // the id column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
+  // This migration detects the mismatch and repairs it WITHOUT truncating data.
+  //
+  // Strategy: if any existing rows have INT-style ids (numeric strings), they are
+  // short-lived verification codes (10-min expiry) that are already expired. We
+  // DELETE only the expired rows, then MODIFY COLUMN. This avoids TRUNCATE which
+  // would discard any unexpired codes (unlikely but possible in a race window).
+  //
+  // Fully idempotent: once the column is VARCHAR it exits immediately.
+  void (async () => {
+    try {
+      // 1. Check current column type
+      const [[colRow]] = await db.execute(sql.raw(
+        "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+        "WHERE TABLE_SCHEMA = DATABASE() " +
+        "  AND TABLE_NAME  = 'sms_verification_codes' " +
+        "  AND COLUMN_NAME = 'id'"
+      )) as unknown as [[{ DATA_TYPE: string } | undefined]];
+
+      if (!colRow) {
+        // Table doesn't exist yet — CREATE TABLE DDL (corrected to VARCHAR) handles it.
+        return;
+      }
+
+      if (colRow.DATA_TYPE?.toLowerCase() === 'varchar') {
+        // Already correct — no action needed.
+        return;
+      }
+
+      // 2. Delete only expired rows (INT ids are all expired codes; expiry < 10 min)
+      await db.execute(sql.raw(
+        "DELETE FROM `sms_verification_codes` WHERE expires_at < NOW()"
+      ));
+
+      // 3. Alter column: remove AUTO_INCREMENT, change type to VARCHAR(36)
+      await db.execute(sql.raw(
+        "ALTER TABLE `sms_verification_codes` MODIFY COLUMN `id` VARCHAR(36) NOT NULL"
+      ));
+
+      // 4. Verify the repair succeeded
+      const [[verifyRow]] = await db.execute(sql.raw(
+        "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+        "WHERE TABLE_SCHEMA = DATABASE() " +
+        "  AND TABLE_NAME  = 'sms_verification_codes' " +
+        "  AND COLUMN_NAME = 'id'"
+      )) as unknown as [[{ DATA_TYPE: string } | undefined]];
+
+      if (verifyRow?.DATA_TYPE?.toLowerCase() !== 'varchar') {
+        console.error('[startup-migration] sms_verification_codes.id repair FAILED — column is still', verifyRow?.DATA_TYPE);
+      } else {
+        console.log('[startup-migration] sms_verification_codes.id repaired: INT → VARCHAR(36)');
+      }
+    } catch (e) {
+      console.warn('[startup-migration] sms_verification_codes.id repair skipped:', (e as Error)?.message?.slice(0, 160));
+    }
+  })();
 }
 
 // ── DB connection keep-alive ──────────────────────────────────────────────────
@@ -3346,6 +3495,10 @@ app.delete("/api/dazza/knowledge/:id", dazza_knowledge_id_delete_144);
 app.put("/api/dazza/knowledge/:id", dazza_knowledge_id_put_145);
 app.get("/api/dazza/secret-health", dazza_secret_health_get_146);
 app.post("/api/dazza/v3/chat/stream", dazza_v3_chat_stream_post_147);
+app.post("/api/dazza/builder/chat/stream", dazza_builder_chat_stream_post);
+app.post("/api/dazza/builder/apply", dazza_builder_apply_post);
+app.get("/api/dazza/builder/versions", dazza_builder_versions_get);
+app.post("/api/dazza/builder/versions/restore", dazza_builder_versions_restore_post);
 app.get("/api/dazza/v3/client-rescue", dazza_v3_client_rescue_get_148);
 app.patch("/api/dazza/v3/client-rescue/:id", dazza_v3_client_rescue_id_patch_149);
 app.get("/api/dazza/v3/communications", dazza_v3_communications_get_150);
@@ -3360,6 +3513,7 @@ app.get("/api/dazza/v3/incidents/:id", dazza_v3_incidents_id_get_158);
 app.post("/api/dazza/v3/incidents/:id/investigate", dazza_v3_incidents_id_investigate_post_159);
 app.get("/api/developer/activity-log", developer_activity_log_get_160);
 app.get("/api/developer/audit-log", developer_audit_log_get_161);
+app.post("/api/developer/billing-reconcile", developer_billing_reconcile_post);
 app.post("/api/developer/companies/:id/archive", developer_companies_id_archive_post_162);
 app.get("/api/developer/company-health", developer_company_health_get_163);
 app.get("/api/developer/email-log", developer_email_log_get_164);
@@ -3394,12 +3548,20 @@ app.post("/api/document-templates", document_templates_post_192);
 app.delete("/api/document-templates/:id", document_templates_id_delete_193);
 app.get("/api/document-templates/:id", document_templates_id_get_194);
 app.put("/api/document-templates/:id", document_templates_id_put_195);
+app.patch("/api/document-templates/:id", document_templates_id_patch);
 app.post("/api/document-templates/:id/duplicate", document_templates_id_duplicate_post_196);
 app.get("/api/document-templates/:id/export/docx", document_templates_id_export_docx_get_197);
 app.get("/api/document-templates/:id/export/pdf", document_templates_id_export_pdf_get_198);
 app.post("/api/document-templates/:id/import-blocks", document_templates_id_import_blocks_post_199);
 app.post("/api/document-templates/:id/import-docx", document_templates_id_import_docx_post_200);
 app.post("/api/document-templates/:id/import-pdf", document_templates_id_import_pdf_post_201);
+app.get("/api/document-templates/:id/pdf-bytes", document_templates_id_pdf_bytes_get);
+app.post("/api/document-templates/:id/import-auto", document_templates_id_import_auto_post);
+// Source document routes — must come before the generic /:id routes to avoid param conflicts
+app.get("/api/document-templates/:id/source-document", document_templates_id_source_document_get);
+app.get("/api/document-templates/:id/source-document/download", document_templates_id_source_document_download_get);
+app.post("/api/document-templates/:id/source-document/replace", document_templates_id_source_document_replace_post);
+app.get("/api/document-templates/:id/source-document/pdf-preview", document_templates_id_source_document_pdf_preview_get);
 app.post("/api/document-templates/:id/publish-to-library", document_templates_id_publish_to_library_post_202);
 app.get("/api/documents", documents_get_203);
 app.get("/api/documents/share/:token", documents_share_token_get_204);
@@ -3415,643 +3577,670 @@ app.post("/api/drawings/upload", drawings_upload_post_213);
 app.delete("/api/drawings/:id", drawings_id_delete_214);
 app.patch("/api/drawings/:id", drawings_id_patch_215);
 app.post("/api/drawings/:id/markup", drawings_id_markup_post_216);
-app.get("/api/emergency-alerts", emergency_alerts_get_217);
-app.post("/api/emergency-alerts", emergency_alerts_post_218);
-app.put("/api/emergency-alerts/:id", emergency_alerts_id_put_219);
-app.get("/api/estimates", estimates_get_220);
-app.post("/api/estimates", estimates_post_221);
-app.delete("/api/estimates/:id", estimates_id_delete_222);
-app.get("/api/estimates/:id", estimates_id_get_223);
-app.put("/api/estimates/:id", estimates_id_put_224);
-app.get("/api/estimates/:id/compose-defaults", estimates_id_compose_defaults_get_225);
-app.post("/api/estimates/:id/convert-to-invoice", estimates_id_convert_to_invoice_post_226);
-app.get("/api/estimates/:id/export-csv", estimates_id_export_csv_get_227);
-app.get("/api/estimates/:id/export-pdf", estimates_id_export_pdf_get_228);
-app.post("/api/estimates/:id/import-csv", estimates_id_import_csv_post_229);
-app.post("/api/estimates/:id/send-email", estimates_id_send_email_post_230);
-app.post("/api/estimates/:id/unlock", estimates_id_unlock_post_231);
-app.get("/api/external/form/:token", external_form_token_get_232);
-app.post("/api/external/form/:token", external_form_token_post_233);
-app.get("/api/files", files_get_234);
-app.post("/api/files", files_post_235);
-app.delete("/api/files/:id", files_id_delete_236);
-app.get("/api/files/:id/download", files_id_download_get_237);
-app.get("/api/finance/estimates", finance_estimates_get_238);
-app.get("/api/finance/ledger", finance_ledger_get_239);
-app.get("/api/finance/purchase-orders", finance_purchase_orders_get_240);
-app.post("/api/finance/purchase-orders", finance_purchase_orders_post_241);
-app.delete("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_delete_242);
-app.get("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_get_243);
-app.put("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_put_244);
-app.get("/api/finance/purchase-orders/:poId/pdf", finance_purchase_orders_poId_pdf_get_245);
-app.get("/api/finance/timesheets", finance_timesheets_get_246);
-app.post("/api/finance/timesheets", finance_timesheets_post_247);
-app.get("/api/finance/timesheets/employees", finance_timesheets_employees_get_248);
-app.get("/api/finance/timesheets/me", finance_timesheets_me_get_249);
-app.delete("/api/finance/timesheets/:id", finance_timesheets_id_delete_250);
-app.get("/api/finance/timesheets/:id", finance_timesheets_id_get_251);
-app.put("/api/finance/timesheets/:id", finance_timesheets_id_put_252);
-app.get("/api/fleet", fleet_get_253);
-app.post("/api/fleet", fleet_post_254);
-app.get("/api/fleet/analytics-settings", fleet_analytics_settings_get_255);
-app.put("/api/fleet/analytics-settings", fleet_analytics_settings_put_256);
-app.get("/api/fleet/asset-bookings", fleet_asset_bookings_get_257);
-app.post("/api/fleet/asset-bookings", fleet_asset_bookings_post_258);
-app.delete("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_delete_259);
-app.patch("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_patch_260);
-app.post("/api/fleet/driver-sessions", fleet_driver_sessions_post_261);
-app.get("/api/fleet/driver-sessions/active", fleet_driver_sessions_active_get_262);
-app.get("/api/fleet/driver-sessions/live", fleet_driver_sessions_live_get_263);
-app.post("/api/fleet/driver-sessions/migrate-gps-status", fleet_driver_sessions_migrate_gps_status_post_264);
-app.post("/api/fleet/driver-sessions/:id/heartbeat", fleet_driver_sessions_id_heartbeat_post_265);
-app.post("/api/fleet/driver-sessions/:id/stop", fleet_driver_sessions_id_stop_post_266);
-app.get("/api/fleet/driver-sessions/:id/summary", fleet_driver_sessions_id_summary_get_267);
-app.post("/api/fleet/driver-sessions/:id/telemetry", fleet_driver_sessions_id_telemetry_post_268);
-app.get("/api/fleet/driver-sessions/:id/telemetry/latest", fleet_driver_sessions_id_telemetry_latest_get_269);
-app.get("/api/fleet/flags", fleet_flags_get_270);
-app.get("/api/fleet/last-known-positions", fleet_last_known_positions_get_271);
-app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_logId_delete_272);
-app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_logId_patch_273);
-app.get("/api/fleet/vehicles", fleet_vehicles_get_274);
-app.delete("/api/fleet/:id", fleet_id_delete_275);
-app.get("/api/fleet/:id", fleet_id_get_276);
-app.put("/api/fleet/:id", fleet_id_put_277);
-app.get("/api/fleet/:id/driver-sessions", fleet_id_driver_sessions_get_278);
-app.post("/api/fleet/:id/driver-sessions/manual", fleet_id_driver_sessions_manual_post_279);
-app.get("/api/fleet/:id/files", fleet_id_files_get_280);
-app.get("/api/fleet/:id/prestarts", fleet_id_prestarts_get_281);
-app.post("/api/fleet/:id/prestarts", fleet_id_prestarts_post_282);
-app.get("/api/fleet/:id/service-logs", fleet_id_service_logs_get_283);
-app.post("/api/fleet/:id/service-logs", fleet_id_service_logs_post_284);
-app.post("/api/fleet/:id/signin", fleet_id_signin_post_285);
-app.post("/api/fleet/:id/signout", fleet_id_signout_post_286);
-app.get("/api/fleet/:id/usage-export", fleet_id_usage_export_get_287);
-app.get("/api/fleet/:id/usage-status", fleet_id_usage_status_get_288);
-app.get("/api/fleet/:id/usage-summary", fleet_id_usage_summary_get_289);
-app.post("/api/form-attachments", form_attachments_post_290);
-app.get("/api/form-global-lists", form_global_lists_get_291);
-app.post("/api/form-global-lists", form_global_lists_post_292);
-app.delete("/api/form-global-lists/:id", form_global_lists_id_delete_293);
-app.put("/api/form-global-lists/:id", form_global_lists_id_put_294);
-app.get("/api/form-templates", form_templates_get_295);
-app.post("/api/form-templates", form_templates_post_296);
-app.post("/api/form-templates/seed", form_templates_seed_post_297);
-app.delete("/api/form-templates/:id", form_templates_id_delete_298);
-app.put("/api/form-templates/:id", form_templates_id_put_299);
-app.post("/api/form-templates/:id/publish-to-library", form_templates_id_publish_to_library_post_300);
-app.get("/api/forms/assets-list", forms_assets_list_get_301);
-app.get("/api/forms/jobs-list", forms_jobs_list_get_302);
-app.post("/api/forms/migrate-skip-logic", forms_migrate_skip_logic_post_303);
-app.get("/api/forms/skip-audit", forms_skip_audit_get_304);
-app.post("/api/forms/skip-audit", forms_skip_audit_post_305);
-app.post("/api/forms/start", forms_start_post_306);
-app.get("/api/forms/submissions", forms_submissions_get_307);
-app.delete("/api/forms/templates/:id/share-link", forms_templates_id_share_link_delete_308);
-app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_post_309);
-app.get("/api/forms/:id/fields", forms_id_fields_get_310);
-app.post("/api/forms/:id/fields", forms_id_fields_post_311);
-app.post("/api/forms/:id/fields/reorder", forms_id_fields_reorder_post_312);
-app.delete("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_delete_313);
-app.patch("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_patch_314);
-app.post("/api/forms/:id/fields/:fieldId/thumbnail", forms_id_fields_fieldId_thumbnail_post_315);
-app.get("/api/health", health_get_316);
-app.get("/api/incidents", incidents_get_317);
-app.post("/api/incidents", incidents_post_318);
-app.post("/api/incidents/:id/archive", incidents_id_archive_post_319);
-app.post("/api/incidents/:id/unarchive", incidents_id_unarchive_post_320);
-app.get("/api/incidents/:incidentId", incidents_incidentId_get_321);
-app.put("/api/incidents/:incidentId", incidents_incidentId_put_322);
-app.get("/api/incidents/:incidentId/attachments", incidents_incidentId_attachments_get_323);
-app.post("/api/incidents/:incidentId/attachments", incidents_incidentId_attachments_post_324);
-app.delete("/api/incidents/:incidentId/attachments/:attachId", incidents_incidentId_attachments_attachId_delete_325);
-app.post("/api/incidents/:incidentId/close", incidents_incidentId_close_post_326);
-app.post("/api/incidents/:incidentId/corrective-actions", incidents_incidentId_corrective_actions_post_327);
-app.put("/api/incidents/:incidentId/corrective-actions/:actionId", incidents_incidentId_corrective_actions_actionId_put_328);
-app.get("/api/incidents/:incidentId/pdf", incidents_incidentId_pdf_get_329);
-app.post("/api/incidents/:incidentId/third-parties", incidents_incidentId_third_parties_post_330);
-app.delete("/api/incidents/:incidentId/third-parties/:thirdPartyId", incidents_incidentId_third_parties_thirdPartyId_delete_331);
-app.get("/api/integrations/myob/auth-url", integrations_myob_auth_url_get_332);
-app.get("/api/integrations/myob/callback", integrations_myob_callback_get_333);
-app.post("/api/integrations/myob/disconnect", integrations_myob_disconnect_post_334);
-app.get("/api/integrations/myob/status", integrations_myob_status_get_335);
-app.post("/api/integrations/myob/sync-invoice", integrations_myob_sync_invoice_post_336);
-app.get("/api/integrations/onedrive/auth-url", integrations_onedrive_auth_url_get_337);
-app.get("/api/integrations/onedrive/callback", integrations_onedrive_callback_get_338);
-app.post("/api/integrations/onedrive/disconnect", integrations_onedrive_disconnect_post_339);
-app.get("/api/integrations/onedrive/status", integrations_onedrive_status_get_340);
-app.post("/api/integrations/onedrive/upload-file", integrations_onedrive_upload_file_post_341);
-app.get("/api/integrations/qbo/auth-url", integrations_qbo_auth_url_get_342);
-app.get("/api/integrations/qbo/callback", integrations_qbo_callback_get_343);
-app.post("/api/integrations/qbo/disconnect", integrations_qbo_disconnect_post_344);
-app.get("/api/integrations/qbo/status", integrations_qbo_status_get_345);
-app.post("/api/integrations/qbo/sync-invoice", integrations_qbo_sync_invoice_post_346);
-app.get("/api/integrations/xero/auth-url", integrations_xero_auth_url_get_347);
-app.get("/api/integrations/xero/callback", integrations_xero_callback_get_348);
-app.post("/api/integrations/xero/disconnect", integrations_xero_disconnect_post_349);
-app.get("/api/integrations/xero/status", integrations_xero_status_get_350);
-app.post("/api/integrations/xero/sync-customer", integrations_xero_sync_customer_post_351);
-app.post("/api/integrations/xero/sync-invoice", integrations_xero_sync_invoice_post_352);
-app.post("/api/integrations/xero/webhook", integrations_xero_webhook_post_353);
-app.get("/api/invoices", invoices_get_354);
-app.post("/api/invoices", invoices_post_355);
-app.delete("/api/invoices/:id", invoices_id_delete_356);
-app.get("/api/invoices/:id", invoices_id_get_357);
-app.put("/api/invoices/:id", invoices_id_put_358);
-app.get("/api/invoices/:id/compose-defaults", invoices_id_compose_defaults_get_359);
-app.post("/api/invoices/:id/duplicate", invoices_id_duplicate_post_360);
-app.get("/api/invoices/:id/export-pdf", invoices_id_export_pdf_get_361);
-app.post("/api/invoices/:id/mark-sent", invoices_id_mark_sent_post_362);
-app.post("/api/invoices/:id/record-payment", invoices_id_record_payment_post_363);
-app.post("/api/invoices/:id/send-email", invoices_id_send_email_post_364);
-app.patch("/api/invoices/:id/unlock", invoices_id_unlock_patch_365);
-app.post("/api/invoices/:id/void", invoices_id_void_post_366);
-app.get("/api/job-cards", job_cards_get_367);
-app.post("/api/job-cards", job_cards_post_368);
-app.delete("/api/job-cards/:id", job_cards_id_delete_369);
-app.get("/api/job-cards/:id", job_cards_id_get_370);
-app.put("/api/job-cards/:id", job_cards_id_put_371);
-app.post("/api/job-cards/:id/convert", job_cards_id_convert_post_372);
-app.post("/api/job-cards/:id/invoice", job_cards_id_invoice_post_373);
-app.post("/api/job-cards/:id/photos", job_cards_id_photos_post_374);
-app.delete("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoId_delete_375);
-app.patch("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoId_patch_376);
-app.get("/api/job-cards/:id/photos/:photoId/download", job_cards_id_photos_photoId_download_get_377);
-app.post("/api/job-cards/:id/photos/:photoId/save-and-lock", job_cards_id_photos_photoId_save_and_lock_post_378);
-app.post("/api/job-costs", job_costs_post_379);
-app.delete("/api/job-forms/:id", job_forms_id_delete_380);
-app.get("/api/job-forms/:id", job_forms_id_get_381);
-app.put("/api/job-forms/:id", job_forms_id_put_382);
-app.get("/api/job-forms/:id/compose-defaults", job_forms_id_compose_defaults_get_383);
-app.get("/api/job-forms/:id/export-pdf", job_forms_id_export_pdf_get_384);
-app.post("/api/job-forms/:id/reset", job_forms_id_reset_post_385);
-app.post("/api/job-forms/:id/send-email", job_forms_id_send_email_post_386);
-app.delete("/api/job-forms/:id/share", job_forms_id_share_delete_387);
-app.get("/api/job-forms/:id/share", job_forms_id_share_get_388);
-app.post("/api/job-forms/:id/share", job_forms_id_share_post_389);
-app.get("/api/jobs", jobs_get_390);
-app.post("/api/jobs", jobs_post_391);
-app.post("/api/jobs/report/generate", jobs_report_generate_post_392);
-app.get("/api/jobs/search", jobs_search_get_393);
-app.get("/api/jobs/:id", jobs_id_get_394);
-app.put("/api/jobs/:id", jobs_id_put_395);
-app.post("/api/jobs/:id/attendance/:attendanceId/close", jobs_id_attendance_attendanceId_close_post_396);
-app.get("/api/jobs/:id/compose-defaults", jobs_id_compose_defaults_get_397);
-app.get("/api/jobs/:id/costs", jobs_id_costs_get_398);
-app.post("/api/jobs/:id/costs", jobs_id_costs_post_399);
-app.get("/api/jobs/:id/costs/export", jobs_id_costs_export_get_400);
-app.delete("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_delete_401);
-app.put("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_put_402);
-app.get("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_get_403);
-app.post("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_post_404);
-app.get("/api/jobs/:id/delays", jobs_id_delays_get_405);
-app.post("/api/jobs/:id/delays", jobs_id_delays_post_406);
-app.get("/api/jobs/:id/delays/export-csv", jobs_id_delays_export_csv_get_407);
-app.delete("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_delete_408);
-app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put_409);
-app.get("/api/jobs/:id/documents", jobs_id_documents_get_410);
-app.post("/api/jobs/:id/documents", jobs_id_documents_post_411);
-app.get("/api/jobs/:id/export-zip", jobs_id_export_zip_get_412);
-app.get("/api/jobs/:id/field-docs", jobs_id_field_docs_get_413);
-app.get("/api/jobs/:id/files", jobs_id_files_get_414);
-app.get("/api/jobs/:id/forms", jobs_id_forms_get_415);
-app.post("/api/jobs/:id/forms", jobs_id_forms_post_416);
-app.get("/api/jobs/:id/forms/export-csv", jobs_id_forms_export_csv_get_417);
-app.delete("/api/jobs/:id/forms/:submissionId", jobs_id_forms_submissionId_delete_418);
-app.post("/api/jobs/:id/forms/:submissionId/reopen", jobs_id_forms_submissionId_reopen_post_419);
-app.post("/api/jobs/:id/generate-qr", jobs_id_generate_qr_post_420);
-app.get("/api/jobs/:id/ledger", jobs_id_ledger_get_421);
-app.post("/api/jobs/:id/ledger", jobs_id_ledger_post_422);
-app.get("/api/jobs/:id/ledger/export", jobs_id_ledger_export_get_423);
-app.post("/api/jobs/:id/ledger/sync", jobs_id_ledger_sync_post_424);
-app.delete("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_delete_425);
-app.put("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_put_426);
-app.post("/api/jobs/:id/ledger/:entryId/correct", jobs_id_ledger_entryId_correct_post_427);
-app.get("/api/jobs/:id/milestones", jobs_id_milestones_get_428);
-app.post("/api/jobs/:id/milestones", jobs_id_milestones_post_429);
-app.delete("/api/jobs/:id/milestones/:milestoneId", jobs_id_milestones_milestoneId_delete_430);
-app.patch("/api/jobs/:id/milestones/:milestoneId", jobs_id_milestones_milestoneId_patch_431);
-app.get("/api/jobs/:id/notes/export-csv", jobs_id_notes_export_csv_get_432);
-app.get("/api/jobs/:id/photos", jobs_id_photos_get_433);
-app.post("/api/jobs/:id/photos", jobs_id_photos_post_434);
-app.post("/api/jobs/:id/photos/export-zip", jobs_id_photos_export_zip_post_435);
-app.get("/api/jobs/:id/photos/picker", jobs_id_photos_picker_get_436);
-app.post("/api/jobs/:id/photos/share", jobs_id_photos_share_post_437);
-app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_438);
-app.patch("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_patch_439);
-app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_440);
-app.post("/api/jobs/:id/photos/:photoId/lock", jobs_id_photos_photoId_lock_post_441);
-app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace_post_442);
-app.get("/api/jobs/:id/photos/:photoId/report-image", jobs_id_photos_photoId_report_image_get_443);
-app.get("/api/jobs/:id/progress", jobs_id_progress_get_444);
-app.put("/api/jobs/:id/progress", jobs_id_progress_put_445);
-app.get("/api/jobs/:id/progress/export-csv", jobs_id_progress_export_csv_get_446);
-app.post("/api/jobs/:id/progress/lines", jobs_id_progress_lines_post_447);
-app.post("/api/jobs/:id/progress/lines/reorder", jobs_id_progress_lines_reorder_post_448);
-app.delete("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineId_delete_449);
-app.patch("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineId_patch_450);
-app.post("/api/jobs/:id/progress/lines/:lineId/duplicate", jobs_id_progress_lines_lineId_duplicate_post_451);
-app.get("/api/jobs/:id/progress/report", jobs_id_progress_report_get_452);
-app.put("/api/jobs/:id/progress/report", jobs_id_progress_report_put_453);
-app.get("/api/jobs/:id/progress/report/pdf", jobs_id_progress_report_pdf_get_454);
-app.post("/api/jobs/:id/progress/sections", jobs_id_progress_sections_post_455);
-app.post("/api/jobs/:id/progress/sections/reorder", jobs_id_progress_sections_reorder_post_456);
-app.delete("/api/jobs/:id/progress/sections/:sectionId", jobs_id_progress_sections_sectionId_delete_457);
-app.patch("/api/jobs/:id/progress/sections/:sectionId", jobs_id_progress_sections_sectionId_patch_458);
-app.post("/api/jobs/:id/progress/sync", jobs_id_progress_sync_post_459);
-app.get("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_get_460);
-app.post("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_post_461);
-app.delete("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_delete_462);
-app.get("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_get_463);
-app.put("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_put_464);
-app.get("/api/jobs/:id/purchase-orders/:poId/pdf", jobs_id_purchase_orders_poId_pdf_get_465);
-app.post("/api/jobs/:id/report/pdf", jobs_id_report_pdf_post_466);
-app.get("/api/jobs/:id/risky", jobs_id_risky_get_467);
-app.post("/api/jobs/:id/risky", jobs_id_risky_post_468);
-app.get("/api/jobs/:id/risky/:riskyId", jobs_id_risky_riskyId_get_469);
-app.put("/api/jobs/:id/risky/:riskyId", jobs_id_risky_riskyId_put_470);
-app.post("/api/jobs/:id/risky/:riskyId/finalise", jobs_id_risky_riskyId_finalise_post_471);
-app.post("/api/jobs/:id/risky/:riskyId/signatures", jobs_id_risky_riskyId_signatures_post_472);
-app.post("/api/jobs/:id/risky/:riskyId/supervisor-signoff", jobs_id_risky_riskyId_supervisor_signoff_post_473);
-app.post("/api/jobs/:id/send-email", jobs_id_send_email_post_474);
-app.post("/api/jobs/:id/signin", jobs_id_signin_post_475);
-app.post("/api/jobs/:id/signin-qr", jobs_id_signin_qr_post_476);
-app.get("/api/jobs/:id/signin-status", jobs_id_signin_status_get_477);
-app.post("/api/jobs/:id/signout", jobs_id_signout_post_478);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_479);
-app.post("/api/jobs/:id/signout-user", jobs_id_signout_user_post_480);
-app.get("/api/jobs/:id/site-prestarts", jobs_id_site_prestarts_get_481);
-app.post("/api/jobs/:id/site-prestarts", jobs_id_site_prestarts_post_482);
-app.get("/api/jobs/:id/site-prestarts/:prestartId", jobs_id_site_prestarts_prestartId_get_483);
-app.put("/api/jobs/:id/site-prestarts/:prestartId", jobs_id_site_prestarts_prestartId_put_484);
-app.post("/api/jobs/:id/site-prestarts/:prestartId/finalise", jobs_id_site_prestarts_prestartId_finalise_post_485);
-app.post("/api/jobs/:id/site-prestarts/:prestartId/workers", jobs_id_site_prestarts_prestartId_workers_post_486);
-app.get("/api/jobs/:id/swms", jobs_id_swms_get_487);
-app.post("/api/jobs/:id/swms", jobs_id_swms_post_488);
-app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_489);
-app.get("/api/jobs/:id/todos", jobs_id_todos_get_490);
-app.post("/api/jobs/:id/todos", jobs_id_todos_post_491);
-app.delete("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_delete_492);
-app.put("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_put_493);
-app.get("/api/lens/photos", lens_photos_get_494);
-app.post("/api/lens/photos/export-zip", lens_photos_export_zip_post_495);
-app.get("/api/lens/photos/:photoId/download", lens_photos_photoId_download_get_496);
-app.get("/api/library/items", library_items_get_497);
-app.get("/api/library/items/:id", library_items_id_get_498);
-app.patch("/api/library/items/:id", library_items_id_patch_499);
-app.get("/api/library/items/:id/download", library_items_id_download_get_500);
-app.delete("/api/library/items/:id/install", library_items_id_install_delete_501);
-app.post("/api/library/items/:id/install", library_items_id_install_post_502);
-app.get("/api/library/my-installed", library_my_installed_get_503);
-app.get("/api/library/my-submissions", library_my_submissions_get_504);
-app.get("/api/lists", lists_get_505);
-app.get("/api/me", me_get_506);
-app.put("/api/me", me_put_507);
-app.post("/api/me/2fa/disable", me_2fa_disable_post_508);
-app.post("/api/me/2fa/enable", me_2fa_enable_post_509);
-app.get("/api/me/2fa/setup", me_2fa_setup_get_510);
-app.post("/api/me/2fa/sms/disable", me_2fa_sms_disable_post_511);
-app.post("/api/me/2fa/sms/enable", me_2fa_sms_enable_post_512);
-app.post("/api/me/2fa/sms/send", me_2fa_sms_send_post_513);
-app.post("/api/me/2fa/sms/send-setup", me_2fa_sms_send_setup_post_514);
-app.post("/api/me/2fa/sms/verify", me_2fa_sms_verify_post_515);
-app.get("/api/me/2fa/status", me_2fa_status_get_516);
-app.post("/api/me/2fa/verify", me_2fa_verify_post_517);
-app.post("/api/me/2fa/recover", me_2fa_recover_post_518);
-app.get("/api/me/active-status", me_active_status_get_518);
-app.post("/api/me/change-password", me_change_password_post_519);
-app.get("/api/me/email-status", me_email_status_get_520);
-app.get("/api/me/phone", me_phone_get_521);
-app.put("/api/me/phone", me_phone_put_522);
-app.delete("/api/me/profile-attachments", me_profile_attachments_delete_523);
-app.post("/api/me/profile-attachments", me_profile_attachments_post_524);
-app.get("/api/me/profile-attachments/download", me_profile_attachments_download_get_525);
-app.get("/api/me/profile-attachments/thumbnail", me_profile_attachments_thumbnail_get_526);
-app.get("/api/me/profile-extras", me_profile_extras_get_527);
-app.put("/api/me/profile-extras", me_profile_extras_put_528);
-app.post("/api/migrate-account-recovery", migrate_account_recovery_post_529);
-app.post("/api/migrate-anatomy", migrate_anatomy_post_530);
-app.post("/api/migrate-asset-manager", migrate_asset_manager_post_531);
-app.post("/api/migrate-attendance", migrate_attendance_post_532);
-app.post("/api/migrate-company-settings", migrate_company_settings_post_533);
-app.post("/api/migrate-dazza-audit", migrate_dazza_audit_post_534);
-app.post("/api/migrate-dazza-knowledge", migrate_dazza_knowledge_post_535);
-app.post("/api/migrate-emergency-alerts", migrate_emergency_alerts_post_536);
-app.post("/api/migrate-estimates", migrate_estimates_post_537);
-app.post("/api/migrate-estimating-library", migrate_estimating_library_post_538);
-app.post("/api/migrate-files", migrate_files_post_539);
-app.post("/api/migrate-fleet", migrate_fleet_post_540);
-app.post("/api/migrate-fleet-analytics", migrate_fleet_analytics_post_541);
-app.post("/api/migrate-fleet-driver-sessions", migrate_fleet_driver_sessions_post_542);
-app.post("/api/migrate-fleet-usage", migrate_fleet_usage_post_543);
-app.post("/api/migrate-form-fields", migrate_form_fields_post_544);
-app.post("/api/migrate-form-logic", migrate_form_logic_post_545);
-app.post("/api/migrate-form-templates", migrate_form_templates_post_546);
-app.post("/api/migrate-job-forms", migrate_job_forms_post_547);
-app.post("/api/migrate-job-photo-shares", migrate_job_photo_shares_post_548);
-app.post("/api/migrate-job-photos", migrate_job_photos_post_549);
-app.post("/api/migrate-job-tabs", migrate_job_tabs_post_550);
-app.post("/api/migrate-jobs", migrate_jobs_post_551);
-app.post("/api/migrate-ledger-photo", migrate_ledger_photo_post_552);
-app.post("/api/migrate-library", migrate_library_post_553);
-app.post("/api/migrate-library-downloads", migrate_library_downloads_post_554);
-app.post("/api/migrate-notifications", migrate_notifications_post_555);
-app.post("/api/migrate-owner-console", migrate_owner_console_post_556);
-app.post("/api/migrate-owner-role", migrate_owner_role_post_557);
-app.post("/api/migrate-pdf-settings", migrate_pdf_settings_post_558);
-app.post("/api/migrate-photo-gps", migrate_photo_gps_post_559);
-app.post("/api/migrate-plan-manager", migrate_plan_manager_post_560);
-app.post("/api/migrate-plan-manager-v2", migrate_plan_manager_v2_post_561);
-app.post("/api/migrate-plan-manager-v3", migrate_plan_manager_v3_post_562);
-app.post("/api/migrate-safety", migrate_safety_post_563);
-app.post("/api/migrate-site-prestart", migrate_site_prestart_post_564);
-app.post("/api/migrate-sms-verified-at", migrate_sms_verified_at_post_565);
-app.post("/api/migrate-starter-pack", migrate_starter_pack_post_566);
-app.post("/api/migrate-studio-pdf", migrate_studio_pdf_post_567);
-app.post("/api/migrate-subscriptions", migrate_subscriptions_post_568);
-app.post("/api/migrate-support-mode", migrate_support_mode_post_569);
-app.post("/api/migrate-takeoff-pad", migrate_takeoff_pad_post_570);
-app.post("/api/migrate-team", migrate_team_post_571);
-app.get("/api/notes", notes_get_572);
-app.post("/api/notes", notes_post_573);
-app.post("/api/notes/comments", notes_comments_post_574);
-app.post("/api/notes/migrate", notes_migrate_post_575);
-app.delete("/api/notes/:id", notes_id_delete_576);
-app.get("/api/notifications/alerts", notifications_alerts_get_577);
-app.get("/api/notifications/prefs", notifications_prefs_get_578);
-app.put("/api/notifications/prefs", notifications_prefs_put_579);
-app.post("/api/notifications/read", notifications_read_post_580);
-app.get("/api/owner-console/activity", owner_console_activity_get_581);
-app.get("/api/owner-console/cancellation-feedback", owner_console_cancellation_feedback_get_582);
-app.get("/api/owner-console/companies", owner_console_companies_get_583);
-app.post("/api/owner-console/companies", owner_console_companies_post_584);
-app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_585);
-app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_586);
-app.get("/api/owner-console/form-templates", owner_console_form_templates_get_587);
-app.post("/api/owner-console/form-templates", owner_console_form_templates_post_588);
-app.get("/api/owner-console/library/items", owner_console_library_items_get_589);
-app.post("/api/owner-console/library/items", owner_console_library_items_post_590);
-app.delete("/api/owner-console/library/items/:id", owner_console_library_items_id_delete_591);
-app.patch("/api/owner-console/library/items/:id", owner_console_library_items_id_patch_592);
-app.put("/api/owner-console/library/items/:id", owner_console_library_items_id_put_593);
-app.post("/api/owner-console/library/items/:id/push-update", owner_console_library_items_id_push_update_post_594);
-app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_595);
-app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_596);
-app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_597);
-app.post("/api/owner-console/starter-pack", owner_console_starter_pack_post_598);
-app.get("/api/owner-console/stats", owner_console_stats_get_599);
-app.get("/api/owner-console/storage", owner_console_storage_get_600);
-app.get("/api/owner-console/swms/masters", owner_console_swms_masters_get_601);
-app.post("/api/owner-console/swms/masters", owner_console_swms_masters_post_602);
-app.post("/api/owner-console/swms/masters/publish-all", owner_console_swms_masters_publish_all_post_603);
-app.delete("/api/owner-console/swms/masters/:id", owner_console_swms_masters_id_delete_604);
-app.get("/api/owner-console/swms/masters/:id", owner_console_swms_masters_id_get_605);
-app.put("/api/owner-console/swms/masters/:id", owner_console_swms_masters_id_put_606);
-app.post("/api/owner-console/swms/masters/:id/publish", owner_console_swms_masters_id_publish_post_607);
-app.post("/api/owner-console/swms/migrate-master-library", owner_console_swms_migrate_master_library_post_608);
-app.post("/api/owner-console/swms/push", owner_console_swms_push_post_609);
-app.post("/api/owner-console/swms/seed-bricklaying", owner_console_swms_seed_bricklaying_post_610);
-app.post("/api/owner-console/swms/seed-building-inspection", owner_console_swms_seed_building_inspection_post_611);
-app.post("/api/owner-console/swms/seed-cabinets", owner_console_swms_seed_cabinets_post_612);
-app.post("/api/owner-console/swms/seed-carpenter-fixing", owner_console_swms_seed_carpenter_fixing_post_613);
-app.post("/api/owner-console/swms/seed-carpenter-framing", owner_console_swms_seed_carpenter_framing_post_614);
-app.post("/api/owner-console/swms/seed-carpenter-lockup", owner_console_swms_seed_carpenter_lockup_post_615);
-app.post("/api/owner-console/swms/seed-ceramic-tiling", owner_console_swms_seed_ceramic_tiling_post_616);
-app.post("/api/owner-console/swms/seed-concreting-slab", owner_console_swms_seed_concreting_slab_post_617);
-app.post("/api/owner-console/swms/seed-delivery-loading", owner_console_swms_seed_delivery_loading_post_618);
-app.post("/api/owner-console/swms/seed-environmental-spill", owner_console_swms_seed_environmental_spill_post_619);
-app.post("/api/owner-console/swms/seed-ewp", owner_console_swms_seed_ewp_post_620);
-app.post("/api/owner-console/swms/seed-excavations-substation", owner_console_swms_seed_excavations_substation_post_621);
-app.post("/api/owner-console/swms/seed-fencing", owner_console_swms_seed_fencing_post_622);
-app.post("/api/owner-console/swms/seed-heat-stress", owner_console_swms_seed_heat_stress_post_623);
-app.post("/api/owner-console/swms/seed-landscaping", owner_console_swms_seed_landscaping_post_624);
-app.post("/api/owner-console/swms/seed-live-parts", owner_console_swms_seed_live_parts_post_625);
-app.post("/api/owner-console/swms/seed-manual-handling", owner_console_swms_seed_manual_handling_post_626);
-app.post("/api/owner-console/swms/seed-moving-plant", owner_console_swms_seed_moving_plant_post_627);
-app.post("/api/owner-console/swms/seed-painting", owner_console_swms_seed_painting_post_628);
-app.post("/api/owner-console/swms/seed-power-tools", owner_console_swms_seed_power_tools_post_629);
-app.post("/api/owner-console/swms/seed-silica-dust", owner_console_swms_seed_silica_dust_post_630);
-app.post("/api/owner-console/swms/seed-traffic-management", owner_console_swms_seed_traffic_management_post_631);
-app.post("/api/owner-console/swms/seed-underground-services", owner_console_swms_seed_underground_services_post_632);
-app.post("/api/owner-console/swms/seed-vacuum-excavation", owner_console_swms_seed_vacuum_excavation_post_633);
-app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post_634);
-app.get("/api/owner-console/users", owner_console_users_get_635);
-app.post("/api/owner-console/users/verify", owner_console_users_verify_post_636);
-app.get("/api/plan-manager/drawings", plan_manager_drawings_get_637);
-app.post("/api/plan-manager/drawings", plan_manager_drawings_post_638);
-app.get("/api/plan-manager/drawings/:id", plan_manager_drawings_id_get_639);
-app.put("/api/plan-manager/drawings/:id/annotations", plan_manager_drawings_id_annotations_put_640);
-app.post("/api/plan-manager/drawings/:id/archive", plan_manager_drawings_id_archive_post_641);
-app.delete("/api/plan-manager/drawings/:id/job-links", plan_manager_drawings_id_job_links_delete_642);
-app.post("/api/plan-manager/drawings/:id/job-links", plan_manager_drawings_id_job_links_post_643);
-app.get("/api/plan-manager/drawings/:id/pages/:pageNo/annotations", plan_manager_drawings_id_pages_pageNo_annotations_get_644);
-app.delete("/api/plan-manager/drawings/:id/permanent", plan_manager_drawings_id_permanent_delete_645);
-app.patch("/api/plan-manager/drawings/:id/reorder", plan_manager_drawings_id_reorder_patch_646);
-app.post("/api/plan-manager/drawings/:id/restore", plan_manager_drawings_id_restore_post_647);
-app.post("/api/plan-manager/drawings/:id/revisions", plan_manager_drawings_id_revisions_post_648);
-app.post("/api/plan-manager/drawings/:id/revisions/:revisionId/finalize", plan_manager_drawings_id_revisions_revisionId_finalize_post_649);
-app.post("/api/plan-manager/drawings/:id/upload", plan_manager_drawings_id_upload_post_650);
-app.get("/api/plan-manager/jobs/:jobId/drawings-zip", plan_manager_jobs_jobId_drawings_zip_get_651);
-app.get("/api/plan-manager/jobs-with-drawings", plan_manager_jobs_with_drawings_get_652);
-app.post("/api/plan-manager/share", plan_manager_share_post_653);
-app.get("/api/plan-manager/share/validate", plan_manager_share_validate_get_654);
-app.post("/api/plan-manager/upload", plan_manager_upload_post_655);
-app.post("/api/portal/estimates/:id/approve", portal_estimates_id_approve_post_656);
-app.post("/api/portal/invite", portal_invite_post_657);
-app.post("/api/portal/invoices/:id/pay", portal_invoices_id_pay_post_658);
-app.get("/api/portal/jobs", portal_jobs_get_659);
-app.get("/api/portal/jobs/:id", portal_jobs_id_get_660);
-app.post("/api/portal/migrate", portal_migrate_post_661);
-app.post("/api/portal/validate", portal_validate_post_662);
-app.get("/api/public/form/:token", public_form_token_get_663);
-app.post("/api/public/form/:token/submit", public_form_token_submit_post_664);
-app.get("/api/public/job-photos/:token", public_job_photos_token_get_665);
-app.get("/api/public/job-photos/:token/photo/:photoId", public_job_photos_token_photo_photoId_get_666);
-app.get("/api/public/swms/:token", public_swms_token_get_667);
-app.post("/api/public/swms/:token/signoff", public_swms_token_signoff_post_668);
-app.get("/api/purchase-orders/:poId/compose-defaults", purchase_orders_poId_compose_defaults_get_669);
-app.post("/api/purchase-orders/:poId/send-email", purchase_orders_poId_send_email_post_670);
-app.delete("/api/push/subscribe", push_subscribe_delete_671);
-app.post("/api/push/subscribe", push_subscribe_post_672);
-app.get("/api/push/vapid-key", push_vapid_key_get_673);
-app.get("/api/quick-links/site-meta", quick_links_site_meta_get_674);
-app.get("/api/recipes", recipes_get_675);
-app.post("/api/recipes", recipes_post_676);
-app.delete("/api/recipes/:id", recipes_id_delete_677);
-app.put("/api/recipes/:id", recipes_id_put_678);
-app.get("/api/risk-register", risk_register_get_679);
-app.post("/api/risk-register", risk_register_post_680);
-app.get("/api/risk-register/:id", risk_register_id_get_681);
-app.put("/api/risk-register/:id", risk_register_id_put_682);
-app.post("/api/risk-register/:id/archive", risk_register_id_archive_post_683);
-app.post("/api/risk-register/:id/unarchive", risk_register_id_unarchive_post_684);
-app.post("/api/safety/ai/draft", safety_ai_draft_post_685);
-app.get("/api/safety/documents", safety_documents_get_686);
-app.post("/api/safety/documents", safety_documents_post_687);
-app.post("/api/safety/documents/new", safety_documents_new_post_688);
-app.delete("/api/safety/documents/:id", safety_documents_id_delete_689);
-app.get("/api/safety/documents/:id/download", safety_documents_id_download_get_690);
-// ── SDS / MSDS Register ───────────────────────────────────────────────────────
-app.get("/api/sds-register", sds_register_get);
-app.post("/api/sds-register", sds_register_post);
-app.get("/api/sds-register/:id/download", sds_register_id_download_get);
-app.put("/api/sds-register/:id", sds_register_id_put);
-app.delete("/api/sds-register/:id", sds_register_id_delete);
-app.post("/api/sds-register/:id/replace", sds_register_id_replace_post);
-// ── RL Register ───────────────────────────────────────────────────────────────
-// Static sub-paths before param routes to avoid shadowing
-// Static-prefix routes first — must come before any /:param routes to avoid shadowing
-app.put("/api/rl-register/points/:id", rl_register_point_put);
-app.delete("/api/rl-register/points/:id", rl_register_point_delete);
-app.get("/api/rl-register/export/:jobId/csv", rl_register_export_csv);
-app.get("/api/rl-register/export/:jobId/pdf", rl_register_export_pdf);
-// Param routes after
-app.get("/api/rl-register/:benchmarkId/points", rl_register_bm_points_get);
-app.post("/api/rl-register/:benchmarkId/points", rl_register_bm_points_post);
-app.get("/api/rl-register", rl_register_get);
-app.post("/api/rl-register", rl_register_post);
+app.get("/api/electrical-test-equipment", electrical_test_equipment_get_217);
+app.post("/api/electrical-test-equipment", electrical_test_equipment_post_218);
+app.put("/api/electrical-test-equipment/:id", electrical_test_equipment_id_put_219);
+app.get("/api/electrical-tests", electrical_tests_get_220);
+app.post("/api/electrical-tests", electrical_tests_post_221);
+app.get("/api/electrical-tests/export/:jobId/csv", electrical_tests_export_jobId_csv_get_222);
+app.get("/api/electrical-tests/export/:jobId/pdf", electrical_tests_export_jobId_pdf_get_223);
+app.get("/api/electrical-tests/photos/:photoId", electrical_tests_photos_photoId_get_224);
+app.get("/api/electrical-tests/:id", electrical_tests_id_get_225);
+app.put("/api/electrical-tests/:id", electrical_tests_id_put_226);
+app.post("/api/electrical-tests/:id/photos", electrical_tests_id_photos_post_227);
+app.post("/api/electrical-tests/:id/retest", electrical_tests_id_retest_post_228);
+app.post("/api/electrical-tests/:id/sign-off", electrical_tests_id_sign_off_post_229);
+app.get("/api/emergency-alerts", emergency_alerts_get_230);
+app.post("/api/emergency-alerts", emergency_alerts_post_231);
+app.put("/api/emergency-alerts/:id", emergency_alerts_id_put_232);
+app.get("/api/estimates", estimates_get_233);
+app.post("/api/estimates", estimates_post_234);
+app.delete("/api/estimates/:id", estimates_id_delete_235);
+app.get("/api/estimates/:id", estimates_id_get_236);
+app.put("/api/estimates/:id", estimates_id_put_237);
+app.get("/api/estimates/:id/compose-defaults", estimates_id_compose_defaults_get_238);
+app.post("/api/estimates/:id/convert-to-invoice", estimates_id_convert_to_invoice_post_239);
+app.get("/api/estimates/:id/export-csv", estimates_id_export_csv_get_240);
+app.get("/api/estimates/:id/export-pdf", estimates_id_export_pdf_get_241);
+app.post("/api/estimates/:id/import-csv", estimates_id_import_csv_post_242);
+app.post("/api/estimates/:id/send-email", estimates_id_send_email_post_243);
+app.post("/api/estimates/:id/unlock", estimates_id_unlock_post_244);
+app.get("/api/external/form/:token", external_form_token_get_245);
+app.post("/api/external/form/:token", external_form_token_post_246);
+app.get("/api/files", files_get_247);
+app.post("/api/files", files_post_248);
+app.delete("/api/files/:id", files_id_delete_249);
+app.get("/api/files/:id/download", files_id_download_get_250);
+app.get("/api/finance/estimates", finance_estimates_get_251);
+app.get("/api/finance/ledger", finance_ledger_get_252);
+app.get("/api/finance/purchase-orders", finance_purchase_orders_get_253);
+app.post("/api/finance/purchase-orders", finance_purchase_orders_post_254);
+app.delete("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_delete_255);
+app.get("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_get_256);
+app.put("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_put_257);
+app.get("/api/finance/purchase-orders/:poId/pdf", finance_purchase_orders_poId_pdf_get_258);
+app.get("/api/finance/timesheets", finance_timesheets_get_259);
+app.post("/api/finance/timesheets", finance_timesheets_post_260);
+app.get("/api/finance/timesheets/employees", finance_timesheets_employees_get_261);
+app.get("/api/finance/timesheets/me", finance_timesheets_me_get_262);
+app.delete("/api/finance/timesheets/:id", finance_timesheets_id_delete_263);
+app.get("/api/finance/timesheets/:id", finance_timesheets_id_get_264);
+app.put("/api/finance/timesheets/:id", finance_timesheets_id_put_265);
+app.get("/api/fleet", fleet_get_266);
+app.post("/api/fleet", fleet_post_267);
+app.get("/api/fleet/analytics-settings", fleet_analytics_settings_get_268);
+app.put("/api/fleet/analytics-settings", fleet_analytics_settings_put_269);
+app.get("/api/fleet/asset-bookings", fleet_asset_bookings_get_270);
+app.post("/api/fleet/asset-bookings", fleet_asset_bookings_post_271);
+app.delete("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_delete_272);
+app.patch("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_patch_273);
+app.post("/api/fleet/driver-sessions", fleet_driver_sessions_post_274);
+app.get("/api/fleet/driver-sessions/active", fleet_driver_sessions_active_get_275);
+app.get("/api/fleet/driver-sessions/live", fleet_driver_sessions_live_get_276);
+app.post("/api/fleet/driver-sessions/migrate-gps-status", fleet_driver_sessions_migrate_gps_status_post_277);
+app.post("/api/fleet/driver-sessions/:id/heartbeat", fleet_driver_sessions_id_heartbeat_post_278);
+app.post("/api/fleet/driver-sessions/:id/stop", fleet_driver_sessions_id_stop_post_279);
+app.get("/api/fleet/driver-sessions/:id/summary", fleet_driver_sessions_id_summary_get_280);
+app.post("/api/fleet/driver-sessions/:id/telemetry", fleet_driver_sessions_id_telemetry_post_281);
+app.get("/api/fleet/driver-sessions/:id/telemetry/latest", fleet_driver_sessions_id_telemetry_latest_get_282);
+app.get("/api/fleet/flags", fleet_flags_get_283);
+app.get("/api/fleet/last-known-positions", fleet_last_known_positions_get_284);
+app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_logId_delete_285);
+app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_logId_patch_286);
+app.get("/api/fleet/vehicles", fleet_vehicles_get_287);
+app.delete("/api/fleet/:id", fleet_id_delete_288);
+app.get("/api/fleet/:id", fleet_id_get_289);
+app.put("/api/fleet/:id", fleet_id_put_290);
+app.get("/api/fleet/:id/driver-sessions", fleet_id_driver_sessions_get_291);
+app.post("/api/fleet/:id/driver-sessions/manual", fleet_id_driver_sessions_manual_post_292);
+app.get("/api/fleet/:id/files", fleet_id_files_get_293);
+app.get("/api/fleet/:id/prestarts", fleet_id_prestarts_get_294);
+app.post("/api/fleet/:id/prestarts", fleet_id_prestarts_post_295);
+app.get("/api/fleet/:id/service-logs", fleet_id_service_logs_get_296);
+app.post("/api/fleet/:id/service-logs", fleet_id_service_logs_post_297);
+app.post("/api/fleet/:id/signin", fleet_id_signin_post_298);
+app.post("/api/fleet/:id/signout", fleet_id_signout_post_299);
+app.get("/api/fleet/:id/usage-export", fleet_id_usage_export_get_300);
+app.get("/api/fleet/:id/usage-status", fleet_id_usage_status_get_301);
+app.get("/api/fleet/:id/usage-summary", fleet_id_usage_summary_get_302);
+app.post("/api/form-attachments", form_attachments_post_303);
+app.get("/api/form-global-lists", form_global_lists_get_304);
+app.post("/api/form-global-lists", form_global_lists_post_305);
+app.delete("/api/form-global-lists/:id", form_global_lists_id_delete_306);
+app.put("/api/form-global-lists/:id", form_global_lists_id_put_307);
+app.get("/api/form-templates", form_templates_get_308);
+app.post("/api/form-templates", form_templates_post_309);
+app.post("/api/form-templates/seed", form_templates_seed_post_310);
+app.delete("/api/form-templates/:id", form_templates_id_delete_311);
+app.put("/api/form-templates/:id", form_templates_id_put_312);
+app.post("/api/form-templates/:id/publish-to-library", form_templates_id_publish_to_library_post_313);
+app.get("/api/forms/assets-list", forms_assets_list_get_314);
+app.get("/api/forms/jobs-list", forms_jobs_list_get_315);
+app.post("/api/forms/migrate-skip-logic", forms_migrate_skip_logic_post_316);
+app.get("/api/forms/skip-audit", forms_skip_audit_get_317);
+app.post("/api/forms/skip-audit", forms_skip_audit_post_318);
+app.post("/api/forms/start", forms_start_post_319);
+app.get("/api/forms/submissions", forms_submissions_get_320);
+app.delete("/api/forms/submissions/:source/:id", forms_submissions_source_id_delete_321);
+app.post("/api/forms/submissions/:source/:id/archive", forms_submissions_source_id_archive_post_322);
+app.post("/api/forms/submissions/:source/:id/restore", forms_submissions_source_id_restore_post_323);
+app.delete("/api/forms/templates/:id/share-link", forms_templates_id_share_link_delete_324);
+app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_post_325);
+app.get("/api/forms/:id/fields", forms_id_fields_get_326);
+app.post("/api/forms/:id/fields", forms_id_fields_post_327);
+app.post("/api/forms/:id/fields/reorder", forms_id_fields_reorder_post_328);
+app.delete("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_delete_329);
+app.patch("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_patch_330);
+app.post("/api/forms/:id/fields/:fieldId/thumbnail", forms_id_fields_fieldId_thumbnail_post_331);
+app.get("/api/health", health_get_332);
+app.get("/api/incidents", incidents_get_333);
+app.post("/api/incidents", incidents_post_334);
+app.post("/api/incidents/:id/archive", incidents_id_archive_post_335);
+app.post("/api/incidents/:id/unarchive", incidents_id_unarchive_post_336);
+app.get("/api/incidents/:incidentId", incidents_incidentId_get_337);
+app.put("/api/incidents/:incidentId", incidents_incidentId_put_338);
+app.get("/api/incidents/:incidentId/attachments", incidents_incidentId_attachments_get_339);
+app.post("/api/incidents/:incidentId/attachments", incidents_incidentId_attachments_post_340);
+app.delete("/api/incidents/:incidentId/attachments/:attachId", incidents_incidentId_attachments_attachId_delete_341);
+app.post("/api/incidents/:incidentId/close", incidents_incidentId_close_post_342);
+app.post("/api/incidents/:incidentId/corrective-actions", incidents_incidentId_corrective_actions_post_343);
+app.put("/api/incidents/:incidentId/corrective-actions/:actionId", incidents_incidentId_corrective_actions_actionId_put_344);
+app.get("/api/incidents/:incidentId/pdf", incidents_incidentId_pdf_get_345);
+app.post("/api/incidents/:incidentId/third-parties", incidents_incidentId_third_parties_post_346);
+app.delete("/api/incidents/:incidentId/third-parties/:thirdPartyId", incidents_incidentId_third_parties_thirdPartyId_delete_347);
+app.get("/api/integrations/myob/auth-url", integrations_myob_auth_url_get_348);
+app.get("/api/integrations/myob/callback", integrations_myob_callback_get_349);
+app.post("/api/integrations/myob/disconnect", integrations_myob_disconnect_post_350);
+app.get("/api/integrations/myob/status", integrations_myob_status_get_351);
+app.post("/api/integrations/myob/sync-invoice", integrations_myob_sync_invoice_post_352);
+app.get("/api/integrations/onedrive/auth-url", integrations_onedrive_auth_url_get_353);
+app.get("/api/integrations/onedrive/callback", integrations_onedrive_callback_get_354);
+app.post("/api/integrations/onedrive/disconnect", integrations_onedrive_disconnect_post_355);
+app.get("/api/integrations/onedrive/status", integrations_onedrive_status_get_356);
+app.post("/api/integrations/onedrive/upload-file", integrations_onedrive_upload_file_post_357);
+app.get("/api/integrations/qbo/auth-url", integrations_qbo_auth_url_get_358);
+app.get("/api/integrations/qbo/callback", integrations_qbo_callback_get_359);
+app.post("/api/integrations/qbo/disconnect", integrations_qbo_disconnect_post_360);
+app.get("/api/integrations/qbo/status", integrations_qbo_status_get_361);
+app.post("/api/integrations/qbo/sync-invoice", integrations_qbo_sync_invoice_post_362);
+app.get("/api/integrations/xero/auth-url", integrations_xero_auth_url_get_363);
+app.get("/api/integrations/xero/callback", integrations_xero_callback_get_364);
+app.post("/api/integrations/xero/disconnect", integrations_xero_disconnect_post_365);
+app.get("/api/integrations/xero/status", integrations_xero_status_get_366);
+app.post("/api/integrations/xero/sync-customer", integrations_xero_sync_customer_post_367);
+app.post("/api/integrations/xero/sync-invoice", integrations_xero_sync_invoice_post_368);
+app.post("/api/integrations/xero/webhook", integrations_xero_webhook_post_369);
+app.get("/api/invoices", invoices_get_370);
+app.post("/api/invoices", invoices_post_371);
+app.delete("/api/invoices/:id", invoices_id_delete_372);
+app.get("/api/invoices/:id", invoices_id_get_373);
+app.put("/api/invoices/:id", invoices_id_put_374);
+app.get("/api/invoices/:id/compose-defaults", invoices_id_compose_defaults_get_375);
+app.post("/api/invoices/:id/duplicate", invoices_id_duplicate_post_376);
+app.get("/api/invoices/:id/export-pdf", invoices_id_export_pdf_get_377);
+app.post("/api/invoices/:id/mark-sent", invoices_id_mark_sent_post_378);
+app.post("/api/invoices/:id/record-payment", invoices_id_record_payment_post_379);
+app.post("/api/invoices/:id/send-email", invoices_id_send_email_post_380);
+app.patch("/api/invoices/:id/unlock", invoices_id_unlock_patch_381);
+app.post("/api/invoices/:id/void", invoices_id_void_post_382);
+app.get("/api/job-cards", job_cards_get_383);
+app.post("/api/job-cards", job_cards_post_384);
+app.delete("/api/job-cards/:id", job_cards_id_delete_385);
+app.get("/api/job-cards/:id", job_cards_id_get_386);
+app.put("/api/job-cards/:id", job_cards_id_put_387);
+app.post("/api/job-cards/:id/convert", job_cards_id_convert_post_388);
+app.post("/api/job-cards/:id/invoice", job_cards_id_invoice_post_389);
+app.post("/api/job-cards/:id/photos", job_cards_id_photos_post_390);
+app.delete("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoId_delete_391);
+app.patch("/api/job-cards/:id/photos/:photoId", job_cards_id_photos_photoId_patch_392);
+app.get("/api/job-cards/:id/photos/:photoId/download", job_cards_id_photos_photoId_download_get_393);
+app.post("/api/job-cards/:id/photos/:photoId/save-and-lock", job_cards_id_photos_photoId_save_and_lock_post_394);
+app.post("/api/job-costs", job_costs_post_395);
+app.delete("/api/job-forms/:id", job_forms_id_delete_396);
+app.get("/api/job-forms/:id", job_forms_id_get_397);
+app.put("/api/job-forms/:id", job_forms_id_put_398);
+app.get("/api/job-forms/:id/compose-defaults", job_forms_id_compose_defaults_get_399);
+app.get("/api/job-forms/:id/export-pdf", job_forms_id_export_pdf_get_400);
+app.post("/api/job-forms/:id/reset", job_forms_id_reset_post_401);
+app.post("/api/job-forms/:id/send-email", job_forms_id_send_email_post_402);
+app.delete("/api/job-forms/:id/share", job_forms_id_share_delete_403);
+app.get("/api/job-forms/:id/share", job_forms_id_share_get_404);
+app.post("/api/job-forms/:id/share", job_forms_id_share_post_405);
+app.get("/api/jobs", jobs_get_406);
+app.post("/api/jobs", jobs_post_407);
+app.post("/api/jobs/report/generate", jobs_report_generate_post_408);
+app.get("/api/jobs/search", jobs_search_get_409);
+app.get("/api/jobs/:id", jobs_id_get_410);
+app.put("/api/jobs/:id", jobs_id_put_411);
+app.post("/api/jobs/:id/attendance/:attendanceId/close", jobs_id_attendance_attendanceId_close_post_412);
+app.get("/api/jobs/:id/compose-defaults", jobs_id_compose_defaults_get_413);
+app.get("/api/jobs/:id/costs", jobs_id_costs_get_414);
+app.post("/api/jobs/:id/costs", jobs_id_costs_post_415);
+app.get("/api/jobs/:id/costs/export", jobs_id_costs_export_get_416);
+app.delete("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_delete_417);
+app.put("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_put_418);
+app.get("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_get_419);
+app.post("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_post_420);
+app.get("/api/jobs/:id/delays", jobs_id_delays_get_421);
+app.post("/api/jobs/:id/delays", jobs_id_delays_post_422);
+app.get("/api/jobs/:id/delays/export-csv", jobs_id_delays_export_csv_get_423);
+app.delete("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_delete_424);
+app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put_425);
+app.get("/api/jobs/:id/documents", jobs_id_documents_get_426);
+app.post("/api/jobs/:id/documents", jobs_id_documents_post_427);
+app.get("/api/jobs/:id/export-zip", jobs_id_export_zip_get_428);
+app.get("/api/jobs/:id/field-docs", jobs_id_field_docs_get_429);
+app.get("/api/jobs/:id/files", jobs_id_files_get_430);
+app.get("/api/jobs/:id/forms", jobs_id_forms_get_431);
+app.post("/api/jobs/:id/forms", jobs_id_forms_post_432);
+app.get("/api/jobs/:id/forms/export-csv", jobs_id_forms_export_csv_get_433);
+app.delete("/api/jobs/:id/forms/:submissionId", jobs_id_forms_submissionId_delete_434);
+app.post("/api/jobs/:id/forms/:submissionId/reopen", jobs_id_forms_submissionId_reopen_post_435);
+app.post("/api/jobs/:id/generate-qr", jobs_id_generate_qr_post_436);
+app.get("/api/jobs/:id/ledger", jobs_id_ledger_get_437);
+app.post("/api/jobs/:id/ledger", jobs_id_ledger_post_438);
+app.get("/api/jobs/:id/ledger/export", jobs_id_ledger_export_get_439);
+app.post("/api/jobs/:id/ledger/sync", jobs_id_ledger_sync_post_440);
+app.delete("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_delete_441);
+app.put("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_put_442);
+app.post("/api/jobs/:id/ledger/:entryId/correct", jobs_id_ledger_entryId_correct_post_443);
+app.get("/api/jobs/:id/milestones", jobs_id_milestones_get_444);
+app.post("/api/jobs/:id/milestones", jobs_id_milestones_post_445);
+app.delete("/api/jobs/:id/milestones/:milestoneId", jobs_id_milestones_milestoneId_delete_446);
+app.patch("/api/jobs/:id/milestones/:milestoneId", jobs_id_milestones_milestoneId_patch_447);
+app.get("/api/jobs/:id/notes/export-csv", jobs_id_notes_export_csv_get_448);
+app.get("/api/jobs/:id/photos", jobs_id_photos_get_449);
+app.post("/api/jobs/:id/photos", jobs_id_photos_post_450);
+app.post("/api/jobs/:id/photos/export-zip", jobs_id_photos_export_zip_post_451);
+app.get("/api/jobs/:id/photos/picker", jobs_id_photos_picker_get_452);
+app.post("/api/jobs/:id/photos/share", jobs_id_photos_share_post_453);
+app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_454);
+app.patch("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_patch_455);
+app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_456);
+app.post("/api/jobs/:id/photos/:photoId/lock", jobs_id_photos_photoId_lock_post_457);
+app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace_post_458);
+app.get("/api/jobs/:id/photos/:photoId/report-image", jobs_id_photos_photoId_report_image_get_459);
+app.get("/api/jobs/:id/progress", jobs_id_progress_get_460);
+app.put("/api/jobs/:id/progress", jobs_id_progress_put_461);
+app.get("/api/jobs/:id/progress/export-csv", jobs_id_progress_export_csv_get_462);
+app.post("/api/jobs/:id/progress/lines", jobs_id_progress_lines_post_463);
+app.post("/api/jobs/:id/progress/lines/reorder", jobs_id_progress_lines_reorder_post_464);
+app.delete("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineId_delete_465);
+app.patch("/api/jobs/:id/progress/lines/:lineId", jobs_id_progress_lines_lineId_patch_466);
+app.post("/api/jobs/:id/progress/lines/:lineId/duplicate", jobs_id_progress_lines_lineId_duplicate_post_467);
+app.get("/api/jobs/:id/progress/report", jobs_id_progress_report_get_468);
+app.put("/api/jobs/:id/progress/report", jobs_id_progress_report_put_469);
+app.get("/api/jobs/:id/progress/report/pdf", jobs_id_progress_report_pdf_get_470);
+app.post("/api/jobs/:id/progress/sections", jobs_id_progress_sections_post_471);
+app.post("/api/jobs/:id/progress/sections/reorder", jobs_id_progress_sections_reorder_post_472);
+app.delete("/api/jobs/:id/progress/sections/:sectionId", jobs_id_progress_sections_sectionId_delete_473);
+app.patch("/api/jobs/:id/progress/sections/:sectionId", jobs_id_progress_sections_sectionId_patch_474);
+app.post("/api/jobs/:id/progress/sync", jobs_id_progress_sync_post_475);
+app.get("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_get_476);
+app.post("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_post_477);
+app.delete("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_delete_478);
+app.get("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_get_479);
+app.put("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_put_480);
+app.get("/api/jobs/:id/purchase-orders/:poId/pdf", jobs_id_purchase_orders_poId_pdf_get_481);
+app.post("/api/jobs/:id/report/pdf", jobs_id_report_pdf_post_482);
+app.get("/api/jobs/:id/risky", jobs_id_risky_get_483);
+app.post("/api/jobs/:id/risky", jobs_id_risky_post_484);
+app.get("/api/jobs/:id/risky/:riskyId", jobs_id_risky_riskyId_get_485);
+app.put("/api/jobs/:id/risky/:riskyId", jobs_id_risky_riskyId_put_486);
+app.post("/api/jobs/:id/risky/:riskyId/finalise", jobs_id_risky_riskyId_finalise_post_487);
+app.post("/api/jobs/:id/risky/:riskyId/signatures", jobs_id_risky_riskyId_signatures_post_488);
+app.post("/api/jobs/:id/risky/:riskyId/supervisor-signoff", jobs_id_risky_riskyId_supervisor_signoff_post_489);
+app.post("/api/jobs/:id/send-email", jobs_id_send_email_post_490);
+app.post("/api/jobs/:id/signin", jobs_id_signin_post_491);
+app.post("/api/jobs/:id/signin-qr", jobs_id_signin_qr_post_492);
+app.get("/api/jobs/:id/signin-status", jobs_id_signin_status_get_493);
+app.post("/api/jobs/:id/signout", jobs_id_signout_post_494);
+app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_495);
+app.post("/api/jobs/:id/signout-user", jobs_id_signout_user_post_496);
+app.get("/api/jobs/:id/site-prestarts", jobs_id_site_prestarts_get_497);
+app.post("/api/jobs/:id/site-prestarts", jobs_id_site_prestarts_post_498);
+app.get("/api/jobs/:id/site-prestarts/:prestartId", jobs_id_site_prestarts_prestartId_get_499);
+app.put("/api/jobs/:id/site-prestarts/:prestartId", jobs_id_site_prestarts_prestartId_put_500);
+app.post("/api/jobs/:id/site-prestarts/:prestartId/finalise", jobs_id_site_prestarts_prestartId_finalise_post_501);
+app.post("/api/jobs/:id/site-prestarts/:prestartId/workers", jobs_id_site_prestarts_prestartId_workers_post_502);
+app.get("/api/jobs/:id/studio-swms", jobs_id_studio_swms_get_503);
+app.post("/api/jobs/:id/studio-swms", jobs_id_studio_swms_post_504);
+app.get("/api/jobs/:id/swms", jobs_id_swms_get_505);
+app.post("/api/jobs/:id/swms", jobs_id_swms_post_506);
+app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_507);
+app.get("/api/jobs/:id/todos", jobs_id_todos_get_508);
+app.post("/api/jobs/:id/todos", jobs_id_todos_post_509);
+app.delete("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_delete_510);
+app.put("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_put_511);
+app.get("/api/lens/photos", lens_photos_get_512);
+app.post("/api/lens/photos/export-zip", lens_photos_export_zip_post_513);
+app.get("/api/lens/photos/:photoId/download", lens_photos_photoId_download_get_514);
+app.get("/api/library/check-published", library_check_published_get_515);
+app.get("/api/library/items", library_items_get_516);
+app.get("/api/library/items/:id", library_items_id_get_517);
+app.patch("/api/library/items/:id", library_items_id_patch_518);
+app.get("/api/library/items/:id/download", library_items_id_download_get_519);
+app.delete("/api/library/items/:id/install", library_items_id_install_delete_520);
+app.post("/api/library/items/:id/install", library_items_id_install_post_521);
+app.get("/api/library/my-installed", library_my_installed_get_522);
+app.get("/api/library/my-installed/:id", library_my_installed_id_get_523);
+app.get("/api/library/my-submissions", library_my_submissions_get_524);
+app.get("/api/lists", lists_get_525);
+app.get("/api/me", me_get_526);
+app.put("/api/me", me_put_527);
+app.post("/api/me/2fa/disable", me_2fa_disable_post_528);
+app.post("/api/me/2fa/enable", me_2fa_enable_post_529);
+app.post("/api/me/2fa/recover", me_2fa_recover_post_530);
+app.get("/api/me/2fa/setup", me_2fa_setup_get_531);
+app.get("/api/me/2fa/qr", me_2fa_qr_get);
+app.post("/api/me/2fa/sms/disable", me_2fa_sms_disable_post_532);
+app.post("/api/me/2fa/sms/enable", me_2fa_sms_enable_post_533);
+app.post("/api/me/2fa/sms/send", me_2fa_sms_send_post_534);
+app.post("/api/me/2fa/sms/send-setup", me_2fa_sms_send_setup_post_535);
+app.get("/api/features", features_get);
+app.post("/api/me/2fa/sms/verify", me_2fa_sms_verify_post_536);
+app.get("/api/me/2fa/status", me_2fa_status_get_537);
+app.post("/api/me/2fa/verify", me_2fa_verify_post_538);
+app.get("/api/me/active-status", me_active_status_get_539);
+app.post("/api/me/change-password", me_change_password_post_540);
+app.get("/api/me/email-status", me_email_status_get_541);
+app.get("/api/me/phone", me_phone_get_542);
+app.put("/api/me/phone", me_phone_put_543);
+app.delete("/api/me/profile-attachments", me_profile_attachments_delete_544);
+app.post("/api/me/profile-attachments", me_profile_attachments_post_545);
+app.get("/api/me/profile-attachments/download", me_profile_attachments_download_get_546);
+app.get("/api/me/profile-attachments/thumbnail", me_profile_attachments_thumbnail_get_547);
+app.get("/api/me/profile-extras", me_profile_extras_get_548);
+app.put("/api/me/profile-extras", me_profile_extras_put_549);
+app.post("/api/migrate-account-recovery", migrate_account_recovery_post_550);
+app.post("/api/migrate-anatomy", migrate_anatomy_post_551);
+app.post("/api/migrate-asset-manager", migrate_asset_manager_post_552);
+app.post("/api/migrate-attendance", migrate_attendance_post_553);
+app.post("/api/migrate-company-settings", migrate_company_settings_post_554);
+app.post("/api/migrate-dazza-audit", migrate_dazza_audit_post_555);
+app.post("/api/migrate-dazza-knowledge", migrate_dazza_knowledge_post_556);
+app.post("/api/migrate-emergency-alerts", migrate_emergency_alerts_post_557);
+app.post("/api/migrate-estimates", migrate_estimates_post_558);
+app.post("/api/migrate-estimating-library", migrate_estimating_library_post_559);
+app.post("/api/migrate-files", migrate_files_post_560);
+app.post("/api/migrate-fleet", migrate_fleet_post_561);
+app.post("/api/migrate-fleet-analytics", migrate_fleet_analytics_post_562);
+app.post("/api/migrate-fleet-driver-sessions", migrate_fleet_driver_sessions_post_563);
+app.post("/api/migrate-fleet-usage", migrate_fleet_usage_post_564);
+app.post("/api/migrate-form-fields", migrate_form_fields_post_565);
+app.post("/api/migrate-form-logic", migrate_form_logic_post_566);
+app.post("/api/migrate-form-templates", migrate_form_templates_post_567);
+app.post("/api/migrate-job-forms", migrate_job_forms_post_568);
+app.post("/api/migrate-job-photo-shares", migrate_job_photo_shares_post_569);
+app.post("/api/migrate-job-photos", migrate_job_photos_post_570);
+app.post("/api/migrate-job-tabs", migrate_job_tabs_post_571);
+app.post("/api/migrate-jobs", migrate_jobs_post_572);
+app.post("/api/migrate-ledger-photo", migrate_ledger_photo_post_573);
+app.post("/api/migrate-library", migrate_library_post_574);
+app.post("/api/migrate-library-downloads", migrate_library_downloads_post_575);
+app.post("/api/migrate-notifications", migrate_notifications_post_576);
+app.post("/api/migrate-owner-console", migrate_owner_console_post_577);
+app.post("/api/migrate-owner-role", migrate_owner_role_post_578);
+app.post("/api/migrate-pdf-settings", migrate_pdf_settings_post_579);
+app.post("/api/migrate-photo-gps", migrate_photo_gps_post_580);
+app.post("/api/migrate-plan-manager", migrate_plan_manager_post_581);
+app.post("/api/migrate-plan-manager-v2", migrate_plan_manager_v2_post_582);
+app.post("/api/migrate-plan-manager-v3", migrate_plan_manager_v3_post_583);
+app.post("/api/migrate-safety", migrate_safety_post_584);
+app.post("/api/migrate-safety-studio", migrate_safety_studio_post_585);
+app.post("/api/migrate-site-prestart", migrate_site_prestart_post_586);
+app.post("/api/migrate-sms-verified-at", migrate_sms_verified_at_post_587);
+app.post("/api/migrate-starter-pack", migrate_starter_pack_post_588);
+app.post("/api/migrate-studio-pdf", migrate_studio_pdf_post_589);
+app.post("/api/migrate-studio-phase2", migrate_studio_phase2_post_590);
+app.post("/api/migrate-subscriptions", migrate_subscriptions_post_591);
+app.post("/api/migrate-support-mode", migrate_support_mode_post_592);
+app.post("/api/migrate-takeoff-pad", migrate_takeoff_pad_post_593);
+app.post("/api/migrate-team", migrate_team_post_594);
+app.get("/api/notes", notes_get_595);
+app.post("/api/notes", notes_post_596);
+app.post("/api/notes/comments", notes_comments_post_597);
+app.post("/api/notes/migrate", notes_migrate_post_598);
+app.delete("/api/notes/:id", notes_id_delete_599);
+app.get("/api/notifications/alerts", notifications_alerts_get_600);
+app.get("/api/notifications/prefs", notifications_prefs_get_601);
+app.put("/api/notifications/prefs", notifications_prefs_put_602);
+app.post("/api/notifications/read", notifications_read_post_603);
+app.get("/api/owner-console/activity", owner_console_activity_get_604);
+app.get("/api/owner-console/cancellation-feedback", owner_console_cancellation_feedback_get_605);
+app.get("/api/owner-console/companies", owner_console_companies_get_606);
+app.post("/api/owner-console/companies", owner_console_companies_post_607);
+app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_608);
+app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_609);
+app.get("/api/owner-console/form-templates", owner_console_form_templates_get_610);
+app.post("/api/owner-console/form-templates", owner_console_form_templates_post_611);
+app.get("/api/owner-console/library/items", owner_console_library_items_get_612);
+app.post("/api/owner-console/library/items", owner_console_library_items_post_613);
+app.post("/api/owner-console/library/items/from-template", owner_console_library_items_from_template_post_614);
+app.delete("/api/owner-console/library/items/:id", owner_console_library_items_id_delete_615);
+app.patch("/api/owner-console/library/items/:id", owner_console_library_items_id_patch_616);
+app.put("/api/owner-console/library/items/:id", owner_console_library_items_id_put_617);
+app.post("/api/owner-console/library/items/:id/push-update", owner_console_library_items_id_push_update_post_618);
+app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_619);
+app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_620);
+app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_621);
+app.post("/api/owner-console/starter-pack", owner_console_starter_pack_post_622);
+app.get("/api/owner-console/stats", owner_console_stats_get_623);
+app.get("/api/owner-console/twilio-info", requirePlatformOwner, owner_console_twilio_info_get);
+app.get("/api/owner-console/storage", owner_console_storage_get_624);
+app.get("/api/owner-console/swms/masters", owner_console_swms_masters_get_625);
+app.post("/api/owner-console/swms/masters", owner_console_swms_masters_post_626);
+app.post("/api/owner-console/swms/masters/publish-all", owner_console_swms_masters_publish_all_post_627);
+app.delete("/api/owner-console/swms/masters/:id", owner_console_swms_masters_id_delete_628);
+app.get("/api/owner-console/swms/masters/:id", owner_console_swms_masters_id_get_629);
+app.put("/api/owner-console/swms/masters/:id", owner_console_swms_masters_id_put_630);
+app.post("/api/owner-console/swms/masters/:id/publish", owner_console_swms_masters_id_publish_post_631);
+app.post("/api/owner-console/swms/migrate-master-library", owner_console_swms_migrate_master_library_post_632);
+app.post("/api/owner-console/swms/push", owner_console_swms_push_post_633);
+app.post("/api/owner-console/swms/seed-bricklaying", owner_console_swms_seed_bricklaying_post_634);
+app.post("/api/owner-console/swms/seed-building-inspection", owner_console_swms_seed_building_inspection_post_635);
+app.post("/api/owner-console/swms/seed-cabinets", owner_console_swms_seed_cabinets_post_636);
+app.post("/api/owner-console/swms/seed-carpenter-fixing", owner_console_swms_seed_carpenter_fixing_post_637);
+app.post("/api/owner-console/swms/seed-carpenter-framing", owner_console_swms_seed_carpenter_framing_post_638);
+app.post("/api/owner-console/swms/seed-carpenter-lockup", owner_console_swms_seed_carpenter_lockup_post_639);
+app.post("/api/owner-console/swms/seed-ceramic-tiling", owner_console_swms_seed_ceramic_tiling_post_640);
+app.post("/api/owner-console/swms/seed-concreting-slab", owner_console_swms_seed_concreting_slab_post_641);
+app.post("/api/owner-console/swms/seed-delivery-loading", owner_console_swms_seed_delivery_loading_post_642);
+app.post("/api/owner-console/swms/seed-environmental-spill", owner_console_swms_seed_environmental_spill_post_643);
+app.post("/api/owner-console/swms/seed-ewp", owner_console_swms_seed_ewp_post_644);
+app.post("/api/owner-console/swms/seed-excavations-substation", owner_console_swms_seed_excavations_substation_post_645);
+app.post("/api/owner-console/swms/seed-fencing", owner_console_swms_seed_fencing_post_646);
+app.post("/api/owner-console/swms/seed-heat-stress", owner_console_swms_seed_heat_stress_post_647);
+app.post("/api/owner-console/swms/seed-landscaping", owner_console_swms_seed_landscaping_post_648);
+app.post("/api/owner-console/swms/seed-live-parts", owner_console_swms_seed_live_parts_post_649);
+app.post("/api/owner-console/swms/seed-manual-handling", owner_console_swms_seed_manual_handling_post_650);
+app.post("/api/owner-console/swms/seed-moving-plant", owner_console_swms_seed_moving_plant_post_651);
+app.post("/api/owner-console/swms/seed-painting", owner_console_swms_seed_painting_post_652);
+app.post("/api/owner-console/swms/seed-power-tools", owner_console_swms_seed_power_tools_post_653);
+app.post("/api/owner-console/swms/seed-silica-dust", owner_console_swms_seed_silica_dust_post_654);
+app.post("/api/owner-console/swms/seed-traffic-management", owner_console_swms_seed_traffic_management_post_655);
+app.post("/api/owner-console/swms/seed-underground-services", owner_console_swms_seed_underground_services_post_656);
+app.post("/api/owner-console/swms/seed-vacuum-excavation", owner_console_swms_seed_vacuum_excavation_post_657);
+app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post_658);
+app.get("/api/owner-console/users", owner_console_users_get_659);
+app.post("/api/owner-console/users/verify", owner_console_users_verify_post_660);
+app.get("/api/plan-manager/drawings", plan_manager_drawings_get_661);
+app.post("/api/plan-manager/drawings", plan_manager_drawings_post_662);
+app.get("/api/plan-manager/drawings/:id", plan_manager_drawings_id_get_663);
+app.put("/api/plan-manager/drawings/:id/annotations", plan_manager_drawings_id_annotations_put_664);
+app.post("/api/plan-manager/drawings/:id/archive", plan_manager_drawings_id_archive_post_665);
+app.delete("/api/plan-manager/drawings/:id/job-links", plan_manager_drawings_id_job_links_delete_666);
+app.post("/api/plan-manager/drawings/:id/job-links", plan_manager_drawings_id_job_links_post_667);
+app.get("/api/plan-manager/drawings/:id/pages/:pageNo/annotations", plan_manager_drawings_id_pages_pageNo_annotations_get_668);
+app.delete("/api/plan-manager/drawings/:id/permanent", plan_manager_drawings_id_permanent_delete_669);
+app.patch("/api/plan-manager/drawings/:id/reorder", plan_manager_drawings_id_reorder_patch_670);
+app.post("/api/plan-manager/drawings/:id/restore", plan_manager_drawings_id_restore_post_671);
+app.post("/api/plan-manager/drawings/:id/revisions", plan_manager_drawings_id_revisions_post_672);
+app.post("/api/plan-manager/drawings/:id/revisions/:revisionId/finalize", plan_manager_drawings_id_revisions_revisionId_finalize_post_673);
+app.post("/api/plan-manager/drawings/:id/upload", plan_manager_drawings_id_upload_post_674);
+app.get("/api/plan-manager/jobs/:jobId/drawings-zip", plan_manager_jobs_jobId_drawings_zip_get_675);
+app.get("/api/plan-manager/jobs-with-drawings", plan_manager_jobs_with_drawings_get_676);
+app.post("/api/plan-manager/share", plan_manager_share_post_677);
+app.get("/api/plan-manager/share/validate", plan_manager_share_validate_get_678);
+app.post("/api/plan-manager/upload", plan_manager_upload_post_679);
+app.post("/api/portal/estimates/:id/approve", portal_estimates_id_approve_post_680);
+app.post("/api/portal/invite", portal_invite_post_681);
+app.post("/api/portal/invoices/:id/pay", portal_invoices_id_pay_post_682);
+app.get("/api/portal/jobs", portal_jobs_get_683);
+app.get("/api/portal/jobs/:id", portal_jobs_id_get_684);
+app.post("/api/portal/migrate", portal_migrate_post_685);
+app.post("/api/portal/validate", portal_validate_post_686);
+app.get("/api/public/form/:token", public_form_token_get_687);
+app.post("/api/public/form/:token/submit", public_form_token_submit_post_688);
+app.get("/api/public/job-photos/:token", public_job_photos_token_get_689);
+app.get("/api/public/job-photos/:token/photo/:photoId", public_job_photos_token_photo_photoId_get_690);
+app.get("/api/public/swms/:token", public_swms_token_get_691);
+app.post("/api/public/swms/:token/signoff", public_swms_token_signoff_post_692);
+app.get("/api/purchase-orders/:poId/compose-defaults", purchase_orders_poId_compose_defaults_get_693);
+app.post("/api/purchase-orders/:poId/send-email", purchase_orders_poId_send_email_post_694);
+app.delete("/api/push/subscribe", push_subscribe_delete_695);
+app.post("/api/push/subscribe", push_subscribe_post_696);
+app.get("/api/push/vapid-key", push_vapid_key_get_697);
+app.get("/api/quick-links/site-meta", quick_links_site_meta_get_698);
+app.get("/api/recipes", recipes_get_699);
+app.post("/api/recipes", recipes_post_700);
+app.delete("/api/recipes/:id", recipes_id_delete_701);
+app.put("/api/recipes/:id", recipes_id_put_702);
+app.get("/api/risk-register", risk_register_get_703);
+app.post("/api/risk-register", risk_register_post_704);
+app.get("/api/risk-register/:id", risk_register_id_get_705);
+app.put("/api/risk-register/:id", risk_register_id_put_706);
+app.post("/api/risk-register/:id/archive", risk_register_id_archive_post_707);
+app.post("/api/risk-register/:id/unarchive", risk_register_id_unarchive_post_708);
+app.get("/api/rl-register", rl_register_get_709);
+app.post("/api/rl-register", rl_register_post_710);
+app.delete("/api/rl-register/points/:id", rl_register_points_id_delete_711);
+app.put("/api/rl-register/points/:id", rl_register_points_id_put_712);
+app.get("/api/rl-register/:benchmarkId/points", rl_register_benchmarkId_points_get_713);
+app.post("/api/rl-register/:benchmarkId/points", rl_register_benchmarkId_points_post_714);
+app.get("/api/rl-register/:jobId/export/csv", rl_register_jobId_export_csv_get_715);
+app.get("/api/rl-register/:jobId/export/pdf", rl_register_jobId_export_pdf_get_716);
+app.post("/api/safety/ai/draft", safety_ai_draft_post_717);
+app.get("/api/safety/documents", safety_documents_get_718);
+app.post("/api/safety/documents", safety_documents_post_719);
+app.post("/api/safety/documents/new", safety_documents_new_post_720);
+app.delete("/api/safety/documents/:id", safety_documents_id_delete_721);
+app.get("/api/safety/documents/:id/download", safety_documents_id_download_get_722);
+app.get("/api/safety/generated-posters", safety_generated_posters_get_723);
+app.post("/api/safety/generated-posters", safety_generated_posters_post_724);
+app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete_725);
+app.get("/api/safety/generated-posters/:id/pdf", safety_generated_posters_id_pdf_get_726);
+app.get("/api/safety/job-safety-plans", safety_job_safety_plans_get_727);
+app.post("/api/safety/job-safety-plans", safety_job_safety_plans_post_728);
+app.delete("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_delete_729);
+app.put("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_put_730);
+app.get("/api/safety/job-swms", safety_job_swms_get_731);
+app.post("/api/safety/job-swms", safety_job_swms_post_732);
+app.delete("/api/safety/job-swms/:id", safety_job_swms_id_delete_733);
+app.get("/api/safety/job-swms/:id", safety_job_swms_id_get_734);
+app.put("/api/safety/job-swms/:id", safety_job_swms_id_put_735);
+app.post("/api/safety/job-swms/:id/share-token", safety_job_swms_id_share_token_post_736);
+app.get("/api/safety/job-swms/:id/signoffs", safety_job_swms_id_signoffs_get_737);
+app.post("/api/safety/job-swms/:id/signoffs", safety_job_swms_id_signoffs_post_738);
+app.delete("/api/safety/job-swms/:id/signoffs/:signoffId", safety_job_swms_id_signoffs_signoffId_delete_739);
+app.get("/api/safety/plans", safety_plans_get_740);
+app.post("/api/safety/plans", safety_plans_post_741);
+app.post("/api/safety/plans/seed", safety_plans_seed_post_742);
+app.delete("/api/safety/plans/:id", safety_plans_id_delete_743);
+app.put("/api/safety/plans/:id", safety_plans_id_put_744);
+app.get("/api/safety/plans/:id/export", safety_plans_id_export_get_745);
+app.get("/api/safety/plans/:id/pack", safety_plans_id_pack_get_746);
+app.get("/api/safety/posters", safety_posters_get_747);
+app.post("/api/safety/posters", safety_posters_post_748);
+app.delete("/api/safety/posters/:id", safety_posters_id_delete_749);
+app.get("/api/safety/posters/:id/download", safety_posters_id_download_get_750);
+app.get("/api/safety/swms", safety_swms_get_751);
+app.post("/api/safety/swms", safety_swms_post_752);
+app.post("/api/safety/swms/import-docx", safety_swms_import_docx_post_753);
+app.post("/api/safety/swms/seed", safety_swms_seed_post_754);
+app.delete("/api/safety/swms/:id", safety_swms_id_delete_755);
+app.get("/api/safety/swms/:id", safety_swms_id_get_756);
+app.put("/api/safety/swms/:id", safety_swms_id_put_757);
+app.post("/api/safety/swms/:id/duplicate", safety_swms_id_duplicate_post_758);
+app.get("/api/safety/swms/:id/export", safety_swms_id_export_get_759);
+app.post("/api/safety/swms/:id/publish-to-library", safety_swms_id_publish_to_library_post_760);
+app.get("/api/safety/swms-submissions", safety_swms_submissions_get_761);
+app.get("/api/scheduler/crew", scheduler_crew_get_762);
+app.get("/api/scheduler/jobs", scheduler_jobs_get_763);
+app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_patch_764);
+app.get("/api/scheduler/tasks", scheduler_tasks_get_765);
+app.get("/api/sds-register", sds_register_get_766);
+app.post("/api/sds-register", sds_register_post_767);
+app.delete("/api/sds-register/:id", sds_register_id_delete_768);
+app.put("/api/sds-register/:id", sds_register_id_put_769);
+app.get("/api/sds-register/:id/download", sds_register_id_download_get_770);
+app.post("/api/sds-register/:id/replace", sds_register_id_replace_post_771);
+app.get("/api/secure-share", secure_share_get_772);
+app.post("/api/secure-share", secure_share_post_773);
+app.get("/api/secure-share/active", secure_share_active_get_774);
+app.delete("/api/secure-share/:id", secure_share_id_delete_775);
+app.post("/api/secure-share/:id/revoke-and-rotate", secure_share_id_revoke_and_rotate_post_776);
+app.get("/api/secure-share/:token", secure_share_token_get_777);
+app.post("/api/secure-share/:token", secure_share_token_post_778);
+app.get("/api/secure-share/:token/content", secure_share_token_content_get_779);
+app.get("/api/settings/backup", settings_backup_get_780);
+app.post("/api/settings/backup", settings_backup_post_781);
+app.get("/api/settings/backup/company-data", settings_backup_company_data_get_782);
+app.get("/api/settings/backup/csv-pack", settings_backup_csv_pack_get_783);
+app.get("/api/settings/backup/export", settings_backup_export_get_784);
+app.post("/api/settings/backup/run", settings_backup_run_post_785);
+app.get("/api/settings/backup-destination", settings_backup_destination_get_786);
+app.post("/api/settings/backup-destination", settings_backup_destination_post_787);
+app.get("/api/settings/dazza-ai-key", settings_dazza_ai_key_get_788);
+app.post("/api/settings/dazza-ai-key", settings_dazza_ai_key_post_789);
+app.get("/api/settings/file-transfer-backup", settings_file_transfer_backup_get_790);
+app.post("/api/settings/file-transfer-backup", settings_file_transfer_backup_post_791);
+app.get("/api/settings/retention", settings_retention_get_792);
+app.post("/api/settings/retention", settings_retention_post_793);
+app.get("/api/settings/storage-provider", settings_storage_provider_get_794);
+app.get("/api/settings/storage-provider/debug", settings_storage_provider_debug_get_795);
+app.post("/api/settings/storage-provider/test", settings_storage_provider_test_post_796);
+app.get("/api/settings/terminology", settings_terminology_get_797);
+app.post("/api/settings/terminology", settings_terminology_post_798);
+app.get("/api/settings/xero-credentials", settings_xero_credentials_get_799);
+app.post("/api/settings/xero-credentials", settings_xero_credentials_post_800);
+app.get("/api/share/:token", share_token_get_801);
+app.get("/api/signin-history", signin_history_get_802);
+app.post("/api/signup", signup_post_803);
+app.get("/api/sos", sos_get_804);
+app.post("/api/sos/acknowledge", sos_acknowledge_post_805);
+app.post("/api/sos/trigger", sos_trigger_post_806);
+app.post("/api/stakeholders/sms", stakeholders_sms_post_807);
+app.post("/api/stripe/create-checkout-session", stripe_create_checkout_session_post_808);
+app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_809);
+app.post("/api/studio/generate-from-safety", studio_generate_from_safety_post_810);
+app.post("/api/studio/upload-image", studio_upload_image_post);
+app.post("/api/subscription/create-checkout", subscription_create_checkout_post_811);
+app.get("/api/subscription/status", subscription_status_get_812);
+app.post("/api/subscription/webhook", subscription_webhook_post_813);
+app.get("/api/support-mode/audit", support_mode_audit_get_814);
+app.get("/api/support-mode/checklist", support_mode_checklist_get_815);
+app.put("/api/support-mode/checklist", support_mode_checklist_put_816);
+app.post("/api/support-mode/enter", support_mode_enter_post_817);
+app.post("/api/support-mode/exit", support_mode_exit_post_818);
+app.get("/api/support-mode/status", support_mode_status_get_819);
+app.get("/api/tag-tasks", tag_tasks_get_820);
+app.patch("/api/tag-tasks/:id", tag_tasks_id_patch_821);
+app.get("/api/takeoff-pad", takeoff_pad_get_822);
+app.put("/api/takeoff-pad", takeoff_pad_put_823);
+app.post("/api/tasks", tasks_post_824);
+app.put("/api/tasks/:id", tasks_id_put_825);
+app.get("/api/team", team_get_826);
+app.post("/api/team/invite", team_invite_post_827);
+app.get("/api/team/invites", team_invites_get_828);
+app.post("/api/team/invites", team_invites_post_829);
+app.post("/api/team/invites/:id/cancel", team_invites_id_cancel_post_830);
+app.post("/api/team/invites/:id/resend", team_invites_id_resend_post_831);
+app.get("/api/team/members", team_members_get_832);
+app.get("/api/team/members/:id/icon-permissions", team_members_id_icon_permissions_get_833);
+app.put("/api/team/members/:id/icon-permissions", team_members_id_icon_permissions_put_834);
+app.post("/api/team/resend-verification", team_resend_verification_post_835);
+app.post("/api/team/schedule/migrate", team_schedule_migrate_post_836);
+app.get("/api/team/shifts", team_shifts_get_837);
+app.post("/api/team/shifts", team_shifts_post_838);
+app.delete("/api/team/shifts/:id", team_shifts_id_delete_839);
+app.put("/api/team/shifts/:id", team_shifts_id_put_840);
+app.get("/api/team/time-entries", team_time_entries_get_841);
+app.post("/api/team/time-entries", team_time_entries_post_842);
+app.get("/api/team/time-entries/export", team_time_entries_export_get_843);
+app.put("/api/team/time-entries/:id", team_time_entries_id_put_844);
+app.post("/api/team/verify-user", team_verify_user_post_845);
+app.delete("/api/team/:id", team_id_delete_846);
+app.put("/api/team/:id", team_id_put_847);
+app.get("/api/usage", usage_get_848);
+app.get("/api/user-logs", user_logs_get_849);
+app.get("/api/user-logs/users", user_logs_users_get_850);
+app.get("/api/work/attendance", work_attendance_get_851);
+app.get("/api/work/delays", work_delays_get_852);
+app.get("/api/work/notes", work_notes_get_853);
+app.get("/api/work/progress", work_progress_get_854);
+app.get("/api/work/tasks", work_tasks_get_855);
+// ── Recovery Email — Protected Change Flow ────────────────────────────────────
+import recoveryEmailGet          from './api/me/recovery-email/GET.js';
+import recoveryEmailRequestPost  from './api/me/recovery-email/request/POST.js';
+import recoveryEmailVerifyGet    from './api/me/recovery-email/verify/GET.js';
+import recoveryEmailCancelGet    from './api/me/recovery-email/cancel/GET.js';
+import recoveryEmailCancelPost   from './api/me/recovery-email/cancel/POST.js';
+import recoveryEmailFreezeGet    from './api/me/recovery-email/freeze/GET.js';
+import recoveryEmailFreezePost   from './api/me/recovery-email/freeze/POST.js';
+import adminRecoveryFreezePost   from './api/admin/recovery-email/freeze/POST.js';
 
-// ── Electrical Test Recorder ──────────────────────────────────────────────────
-// Static-prefix routes first
-app.get("/api/electrical-test-equipment", elec_equip_get);
-app.post("/api/electrical-test-equipment", elec_equip_post);
-app.put("/api/electrical-test-equipment/:id", elec_equip_put);
-app.get("/api/electrical-tests/photos/:photoId/view", elec_test_photo_view);
-app.get("/api/electrical-tests/export/:jobId/csv", elec_export_csv);
-app.get("/api/electrical-tests/export/:jobId/pdf", elec_export_pdf);
-// Param routes after
-app.get("/api/electrical-tests", elec_tests_get);
-app.post("/api/electrical-tests", elec_tests_post);
-app.get("/api/electrical-tests/:id", elec_test_id_get);
-app.put("/api/electrical-tests/:id", elec_test_id_put);
-app.post("/api/electrical-tests/:id/retest", elec_test_retest_post);
-app.post("/api/electrical-tests/:id/sign-off", elec_test_signoff_post);
-app.post("/api/electrical-tests/:id/photos", elec_test_photos_post);
-app.get("/api/safety/generated-posters", safety_generated_posters_get_691);
-app.post("/api/safety/generated-posters", safety_generated_posters_post_692);
-app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete_693);
-app.get("/api/safety/generated-posters/:id/pdf", safety_generated_posters_id_pdf_get_694);
-app.get("/api/safety/job-safety-plans", safety_job_safety_plans_get_695);
-app.post("/api/safety/job-safety-plans", safety_job_safety_plans_post_696);
-app.delete("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_delete_697);
-app.put("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_put_698);
-app.get("/api/safety/job-swms", safety_job_swms_get_699);
-app.post("/api/safety/job-swms", safety_job_swms_post_700);
-app.delete("/api/safety/job-swms/:id", safety_job_swms_id_delete_701);
-app.get("/api/safety/job-swms/:id", safety_job_swms_id_get_702);
-app.put("/api/safety/job-swms/:id", safety_job_swms_id_put_703);
-app.post("/api/safety/job-swms/:id/share-token", safety_job_swms_id_share_token_post_704);
-app.get("/api/safety/job-swms/:id/signoffs", safety_job_swms_id_signoffs_get_705);
-app.post("/api/safety/job-swms/:id/signoffs", safety_job_swms_id_signoffs_post_706);
-app.delete("/api/safety/job-swms/:id/signoffs/:signoffId", safety_job_swms_id_signoffs_signoffId_delete_707);
-app.get("/api/safety/plans", safety_plans_get_708);
-app.post("/api/safety/plans", safety_plans_post_709);
-app.post("/api/safety/plans/seed", safety_plans_seed_post_710);
-app.delete("/api/safety/plans/:id", safety_plans_id_delete_711);
-app.put("/api/safety/plans/:id", safety_plans_id_put_712);
-app.get("/api/safety/plans/:id/export", safety_plans_id_export_get_713);
-app.get("/api/safety/plans/:id/pack", safety_plans_id_pack_get_714);
-app.get("/api/safety/posters", safety_posters_get_715);
-app.post("/api/safety/posters", safety_posters_post_716);
-app.delete("/api/safety/posters/:id", safety_posters_id_delete_717);
-app.get("/api/safety/posters/:id/download", safety_posters_id_download_get_718);
-app.get("/api/safety/swms", safety_swms_get_719);
-app.post("/api/safety/swms", safety_swms_post_720);
-app.post("/api/safety/swms/import-docx", safety_swms_import_docx_post_721);
-app.post("/api/safety/swms/seed", safety_swms_seed_post_722);
-app.delete("/api/safety/swms/:id", safety_swms_id_delete_723);
-app.get("/api/safety/swms/:id", safety_swms_id_get_724);
-app.put("/api/safety/swms/:id", safety_swms_id_put_725);
-app.post("/api/safety/swms/:id/duplicate", safety_swms_id_duplicate_post_726);
-app.get("/api/safety/swms/:id/export", safety_swms_id_export_get_727);
-app.post("/api/safety/swms/:id/publish-to-library", safety_swms_id_publish_to_library_post_728);
-app.get("/api/safety/swms-submissions", safety_swms_submissions_get_729);
-app.get("/api/scheduler/crew", scheduler_crew_get_730);
-app.get("/api/scheduler/jobs", scheduler_jobs_get_731);
-app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_patch_732);
-app.get("/api/scheduler/tasks", scheduler_tasks_get_733);
-app.get("/api/secure-share", secure_share_get_734);
-app.post("/api/secure-share", secure_share_post_735);
-app.get("/api/secure-share/active", secure_share_active_get_736);
-app.delete("/api/secure-share/:id", secure_share_id_delete_737);
-app.post("/api/secure-share/:id/revoke-and-rotate", secure_share_id_revoke_and_rotate_post_738);
-app.get("/api/secure-share/:token", secure_share_token_get_739);
-app.post("/api/secure-share/:token", secure_share_token_post_740);
-app.get("/api/secure-share/:token/content", secure_share_token_content_get_741);
-app.get("/api/settings/backup", settings_backup_get_742);
-app.post("/api/settings/backup", settings_backup_post_743);
-app.get("/api/settings/backup/company-data", settings_backup_company_data_get_744);
-app.get("/api/settings/backup/csv-pack", settings_backup_csv_pack_get_745);
-app.get("/api/settings/backup/export", settings_backup_export_get_746);
-app.post("/api/settings/backup/run", settings_backup_run_post_747);
-app.get("/api/settings/backup-destination", settings_backup_destination_get_748);
-app.post("/api/settings/backup-destination", settings_backup_destination_post_749);
-app.get("/api/settings/dazza-ai-key", settings_dazza_ai_key_get_750);
-app.post("/api/settings/dazza-ai-key", settings_dazza_ai_key_post_751);
-app.get("/api/settings/file-transfer-backup", settings_file_transfer_backup_get_752);
-app.post("/api/settings/file-transfer-backup", settings_file_transfer_backup_post_753);
-app.get("/api/settings/retention", settings_retention_get_754);
-app.post("/api/settings/retention", settings_retention_post_755);
-app.get("/api/settings/storage-provider", settings_storage_provider_get_756);
-app.get("/api/settings/storage-provider/debug", settings_storage_provider_debug_get_757);
-app.post("/api/settings/storage-provider/test", settings_storage_provider_test_post_758);
-app.get("/api/settings/terminology", settings_terminology_get_759);
-app.post("/api/settings/terminology", settings_terminology_post_760);
-app.get("/api/settings/xero-credentials", settings_xero_credentials_get_761);
-app.post("/api/settings/xero-credentials", settings_xero_credentials_post_762);
-app.get("/api/share/:token", share_token_get_763);
-app.get("/api/signin-history", signin_history_get_764);
-app.post("/api/signup", signup_post_765);
-app.get("/api/sos", sos_get_766);
-app.post("/api/sos/acknowledge", sos_acknowledge_post_767);
-app.post("/api/sos/trigger", sos_trigger_post_768);
-app.post("/api/stakeholders/sms", stakeholders_sms_post_769);
-app.post("/api/stripe/create-checkout-session", stripe_create_checkout_session_post_770);
-app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_771);
-app.post("/api/subscription/create-checkout", subscription_create_checkout_post_772);
-app.get("/api/subscription/status", subscription_status_get_773);
-app.post("/api/subscription/webhook", subscription_webhook_post_774);
-app.get("/api/support-mode/audit", support_mode_audit_get_775);
-app.get("/api/support-mode/checklist", support_mode_checklist_get_776);
-app.put("/api/support-mode/checklist", support_mode_checklist_put_777);
-app.post("/api/support-mode/enter", support_mode_enter_post_778);
-app.post("/api/support-mode/exit", support_mode_exit_post_779);
-app.get("/api/support-mode/status", support_mode_status_get_780);
-app.get("/api/tag-tasks", tag_tasks_get_781);
-app.patch("/api/tag-tasks/:id", tag_tasks_id_patch_782);
-app.get("/api/takeoff-pad", takeoff_pad_get_783);
-app.put("/api/takeoff-pad", takeoff_pad_put_784);
-app.post("/api/tasks", tasks_post_785);
-app.put("/api/tasks/:id", tasks_id_put_786);
-app.get("/api/team", team_get_787);
-app.post("/api/team/invite", team_invite_post_788);
-app.get("/api/team/invites", team_invites_get_789);
-app.post("/api/team/invites", team_invites_post_790);
-app.post("/api/team/invites/:id/cancel", team_invites_id_cancel_post_791);
-app.post("/api/team/invites/:id/resend", team_invites_id_resend_post_792);
-app.get("/api/team/members", team_members_get_793);
-app.get("/api/team/members/:id/icon-permissions", team_members_id_icon_permissions_get_794);
-app.put("/api/team/members/:id/icon-permissions", team_members_id_icon_permissions_put_795);
-app.post("/api/team/resend-verification", team_resend_verification_post_796);
-app.post("/api/team/schedule/migrate", team_schedule_migrate_post_797);
-app.get("/api/team/shifts", team_shifts_get_798);
-app.post("/api/team/shifts", team_shifts_post_799);
-app.delete("/api/team/shifts/:id", team_shifts_id_delete_800);
-app.put("/api/team/shifts/:id", team_shifts_id_put_801);
-app.get("/api/team/time-entries", team_time_entries_get_802);
-app.post("/api/team/time-entries", team_time_entries_post_803);
-app.get("/api/team/time-entries/export", team_time_entries_export_get_804);
-app.put("/api/team/time-entries/:id", team_time_entries_id_put_805);
-app.post("/api/team/verify-user", team_verify_user_post_806);
-app.delete("/api/team/:id", team_id_delete_807);
-app.put("/api/team/:id", team_id_put_808);
-app.get("/api/usage", usage_get_809);
-app.get("/api/user-logs", user_logs_get_810);
-app.get("/api/user-logs/users", user_logs_users_get_811);
-app.get("/api/work/attendance", work_attendance_get_812);
-app.get("/api/work/delays", work_delays_get_813);
-app.get("/api/work/notes", work_notes_get_814);
-app.get("/api/work/progress", work_progress_get_815);
-app.get("/api/work/tasks", work_tasks_get_816);
+// Token-link endpoints: rate-limit per IP (10 req / 15 min) to slow brute-force
+// even though 48-byte tokens make brute-force infeasible in practice.
+
+app.get('/api/me/recovery-email',                recoveryEmailGet);
+app.post('/api/me/recovery-email/request',       recoveryEmailRequestPost);
+app.get('/api/me/recovery-email/verify',         recoveryTokenLimiter, recoveryEmailVerifyGet);
+app.get('/api/me/recovery-email/cancel',         recoveryTokenLimiter, recoveryEmailCancelGet);
+app.post('/api/me/recovery-email/cancel',        recoveryTokenLimiter, recoveryEmailCancelPost);
+app.get('/api/me/recovery-email/freeze',         recoveryTokenLimiter, recoveryEmailFreezeGet);
+app.post('/api/me/recovery-email/freeze',        recoveryTokenLimiter, recoveryEmailFreezePost);
+app.post('/api/admin/recovery-email/freeze',     adminRecoveryFreezePost);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
@@ -4589,6 +4778,10 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 		// either completed or failed (with a logged warning). No await needed.
 		console.log('[startup] skipping duplicate runStartupMigrations() — already ran at module load');
 
+		// NOTE: runRecoveryEmailMigration() is called at module-load level (~line 3236)
+		// and must NOT be called again here — the module-load call is the authoritative
+		// one and a second call would be redundant and could cause lock contention.
+
 		// ── project_drawings (full canonical schema) ──────────────────────────
 		try {
 			await _db.execute(_sql.raw(
@@ -4776,6 +4969,36 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.log('[startup] sms_verification_codes.verified_at column added');
 		} catch (e) {
 			console.warn('[startup] sms_verification_codes.verified_at migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── BetterAuth 1.7.2: account.issuer column + backfill ───────────────
+		// BetterAuth 1.7.2 added an `issuer` field to the account schema.
+		// Credential accounts must have issuer = 'local:credential'.
+		// OAuth accounts must have issuer = 'local:oauth:<providerId>'.
+		// Without this column every login returns "User not found".
+		try {
+			await db.execute(sql.raw(
+				"ALTER TABLE `account` ADD COLUMN `issuer` VARCHAR(255) NULL DEFAULT NULL AFTER `provider_id`"
+			));
+			console.log('[startup] account.issuer column added');
+		} catch (e) {
+			// ER_DUP_FIELDNAME = column already exists — safe to ignore
+			const msg = (e as Error)?.message ?? '';
+			if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+				console.warn('[startup] account.issuer ALTER skipped:', msg.slice(0, 120));
+			}
+		}
+		// Backfill: set issuer for all existing rows that are still NULL
+		try {
+			await db.execute(sql.raw(
+				"UPDATE `account` SET `issuer` = CASE " +
+				"  WHEN `provider_id` = 'credential' THEN 'local:credential' " +
+				"  ELSE CONCAT('local:oauth:', `provider_id`) " +
+				"END WHERE `issuer` IS NULL"
+			));
+			console.log('[startup] account.issuer backfill complete');
+		} catch (e) {
+			console.warn('[startup] account.issuer backfill failed:', (e as Error)?.message?.slice(0, 120));
 		}
 
 		// ── All migrations done — now start accepting requests ─────────────────

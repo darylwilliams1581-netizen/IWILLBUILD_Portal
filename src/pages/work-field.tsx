@@ -6,7 +6,7 @@
  *
  * Redirect rules:
  *   /work-field           → /  (home screen)
- *   /work-field/:slug     → /?picker=<key>  (home screen + auto-open picker)
+ *   /work-field/:slug     → /home?picker=<key>  (home screen + auto-open picker)
  *
  * These redirects preserve all existing bookmarks and deep links.
  *
@@ -23,15 +23,15 @@ export default function WorkFieldRedirect() {
 
   useEffect(() => {
     if (featureSlug) {
-      // /work-field/:slug → /?picker=<key>
+      // /work-field/:slug → /home?picker=<key>
       const feature = getFeatureByLauncherSlug(featureSlug);
       if (feature) {
-        navigate(`/?picker=${feature.key}`, { replace: true });
+        navigate(`/home?picker=${feature.key}`, { replace: true });
         return;
       }
     }
-    // /work-field → /
-    navigate('/', { replace: true });
+    // /work-field → /home
+    navigate('/home', { replace: true });
   }, [featureSlug, navigate]);
 
   // Render nothing — redirect fires immediately

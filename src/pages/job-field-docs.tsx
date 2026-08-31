@@ -679,7 +679,7 @@ function PrintView({
   }
   return <div className="fixed inset-0 z-50 bg-white overflow-y-auto print:static print:overflow-visible field-docs-print-view">
       {/* Screen-only toolbar */}
-      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-3 safe-top">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center">
             <Printer size={14} className="text-teal-600" />
@@ -999,7 +999,7 @@ export default function JobFieldDocsPage() {
       {/* ── Top bar (matches forms layout) ── */}
       <div className="bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 sticky top-0 z-10" style={{
         boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
-        paddingTop: 'max(env(safe-area-inset-top), 0px)'
+        paddingTop: 'max(env(safe-area-inset-top), 12px)'
       }}>
         <div className="flex items-center gap-3 w-full px-4 py-3">
           <button onClick={() => navigate('/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">

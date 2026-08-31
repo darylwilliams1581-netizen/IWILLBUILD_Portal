@@ -267,7 +267,8 @@ export type BlockType =
   | 'table'
   | 'image'
   | 'field'
-  | 'system_field';
+  | 'system_field'
+  | 'pdf_page';
 
 // ── Heading Block ─────────────────────────────────────────────────────────────
 
@@ -446,6 +447,26 @@ export interface TableRow {
   cells: Record<string, string>; // columnId → default/static value
 }
 
+/**
+ * Per-cell style overrides.
+ * All fields are optional — absence means "use table default".
+ * Stored in TableBlock.cellStyles as a map keyed by `${rowId}:${colId}`.
+ * Existing documents without cellStyles continue to work unchanged.
+ */
+export interface CellStyle {
+  backgroundColor?: string;
+  color?: string;
+  fontWeight?: 'bold';
+  fontStyle?: 'italic';
+  textDecoration?: 'underline';
+  textAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  borderColor?: string;
+  borderWidth?: number; // px
+  colspan?: number;
+  rowspan?: number;
+}
+
 export interface TableBlock extends BlockBase {
   type: 'table';
   mode: TableMode;
@@ -456,11 +477,17 @@ export interface TableBlock extends BlockBase {
   stripedRows?: boolean;
   repeatable?: boolean; // fillable mode: user can add rows
   showRowNumbers?: boolean;
+  /**
+   * Optional per-cell style overrides.
+   * Key format: `${rowId}:${colId}` (or `header:${colId}` for header cells).
+   * Absent key → no override. Existing documents without this field are unaffected.
+   */
+  cellStyles?: Record<string, CellStyle>;
 }
 
 // ── Image Block ───────────────────────────────────────────────────────────────
 
-export type ImageSize = 'small' | 'medium' | 'large' | 'full';
+export type ImageSize = 'small' | 'medium' | 'large' | 'full' | 'custom';
 export type ImageAlign = 'left' | 'center' | 'right';
 
 export interface ImageBlock extends BlockBase {
@@ -469,6 +496,8 @@ export interface ImageBlock extends BlockBase {
   alt: string;
   caption?: string;
   size: ImageSize;
+  /** Custom width in px — only used when size === 'custom' */
+  customWidth?: number;
   align: ImageAlign;
   preserveAspectRatio: boolean;
 }
@@ -516,6 +545,27 @@ export interface SystemFieldBlock extends BlockBase {
   showLabel: boolean;
 }
 
+// ── PDF Page Block ────────────────────────────────────────────────────────────
+// Represents one page of an imported PDF. Multiple PdfPageBlocks reference the
+// same stored source (storageKey) and differ only by pageIndex/pageNumber.
+// No OCR / editable text — preview renders the original page at A4 width.
+
+export interface PdfPageBlock extends BlockBase {
+  type: 'pdf_page';
+  /** R2 / persistent-storage key for the original PDF bytes */
+  storageKey: string;
+  /** Authenticated download URL (resolved at render time via /api/…/source-document/download) */
+  downloadUrl?: string;
+  /** 0-based index of this page within the source PDF */
+  pageIndex: number;
+  /** 1-based display number */
+  pageNumber: number;
+  /** Total pages in the source PDF */
+  totalPages: number;
+  /** Original filename for display */
+  sourceFileName: string;
+}
+
 // ── Union ─────────────────────────────────────────────────────────────────────
 
 export type DocumentBlock =
@@ -533,7 +583,8 @@ export type DocumentBlock =
   | TableBlock
   | ImageBlock
   | FieldBlock
-  | SystemFieldBlock;
+  | SystemFieldBlock
+  | PdfPageBlock;
 
 // ── Source Attachment ─────────────────────────────────────────────────────────
 
@@ -629,10 +680,22 @@ export type StudioDocumentType =
   | 'document'
   | 'pre_start';
 
+// ── Import report (mirrors server lib/docx-to-html.ts ImportReport) ──────────
+
+export interface ImportReport {
+  /** Total number of mammoth warning/info messages */
+  messageCount: number;
+  /** Deduplicated list of human-readable warning strings (max 20) */
+  warnings: string[];
+  /** Number of images found in the document */
+  imageCount: number;
+  /** Number of page-break markers found */
+  pageBreakCount: number;
+  /** Whether any unsupported constructs were silently dropped */
+  hadUnsupported: boolean;
+}
+
 export interface DocumentTemplate {
-  id?: number;
-  companyId?: number;
-  name: string;
   templateType: StudioDocumentType;
   pageLayout: PageLayout;
   theme: DocumentTheme;
@@ -662,6 +725,42 @@ export interface DocumentTemplate {
   sourceJobId?: number | null;
   /** Document status: draft, published, or archived */
   docStatus?: 'draft' | 'published' | 'archived';
+  /**
+   * Metadata for widgets applied via the Apply Widget panel.
+   * Stored inside builder_json so no schema change is needed.
+   * Each entry records which widget was applied and when, enabling
+   * duplicate detection and "Update existing structure" flow.
+   */
+  appliedWidgets?: AppliedWidgetMeta[];
+
+  // ── HTML canvas fields (source_type = 'html') ────────────────────────────
+  /** 'html' when the document was imported from DOCX and is stored as HTML */
+  sourceType?: string | null;
+  /** Sanitised HTML content for the editable canvas */
+  htmlContent?: string | null;
+  /** Scoped CSS for the canvas — all rules prefixed with .studio-doc[data-doc-id="<id>"] */
+  importCss?: string | null;
+  /** Import report from the DOCX converter */
+  importReport?: ImportReport | null;
+  /** Original source file name (DOCX/PDF) */
+  sourceFileName?: string | null;
+}
+
+// ── Applied Widget Metadata ───────────────────────────────────────────────────
+
+/**
+ * Stored inside builder_json.appliedWidgets[].
+ * Enables duplicate detection and "Update existing structure" flow.
+ */
+export interface AppliedWidgetMeta {
+  /** Widget identifier — matches WidgetId in StudioWidgetPanel */
+  widgetId: 'swms' | 'safety_plan' | 'policy';
+  /** Monotonically increasing version — bump on each "Update" */
+  version: number;
+  /** ISO 8601 timestamp of when this widget was applied/updated */
+  appliedAt: string;
+  /** Number of blocks that were prepended by this widget application */
+  blockCount: number;
 }
 
 // ── PDF Output Settings (per-template overlay) ────────────────────────────────
@@ -731,7 +830,7 @@ export interface BuilderSelection {
 export type BuilderMode = 'edit' | 'preview' | 'fill';
 
 /** Which top-level tab is active in the builder */
-export type BuilderTab = 'layout' | 'theme' | 'structure' | 'tables' | 'form_fields' | 'system_fields' | 'advanced' | 'file' | 'view';
+export type BuilderTab = 'document_tools' | 'layout' | 'theme' | 'structure' | 'tables' | 'form_fields' | 'system_fields' | 'advanced' | 'file' | 'view' | 'apply_widget';
 
 /** Which tab is active in the BlockInspector right panel */
 export type InspectorTab = 'settings' | 'logic';

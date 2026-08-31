@@ -27,7 +27,7 @@ export default function JobInvoicesPage() {
   }, [jobBasic]);
 
   function handleChangeJob() {
-    navigate('/?picker=invoices');
+    navigate('/home?picker=invoices');
   }
 
   return (
@@ -59,7 +59,7 @@ export default function JobInvoicesPage() {
             featureLabel={FEATURE.label}
             jobName={fullJob.name}
             jobNumber={fullJob.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

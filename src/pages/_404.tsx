@@ -1,4 +1,5 @@
 import { Link } from '../router';
+import { useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 
 /**
@@ -9,6 +10,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
  * The layout (header/footer) is handled by RootLayout in App.tsx.
  */
 export default function NotFoundPage() {
+  const navigate = useNavigate();
   return (
     <>
       <Helmet>
@@ -34,7 +36,7 @@ export default function NotFoundPage() {
           <Link to="/">
             <button className="px-8 py-3 bg-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105" style={{ color: 'hsl(var(--primary))' }}>🏠 Go Home</button>
           </Link>
-          <button className="px-8 py-3 bg-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105" style={{ color: 'hsl(var(--primary))' }} onClick={() => window.history.back()}>← Go Back</button>
+          <button className="px-8 py-3 bg-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105" style={{ color: 'hsl(var(--primary))' }} onClick={() => navigate('/home')}>← Go Back</button>
         </div>
       </div>
     </div>

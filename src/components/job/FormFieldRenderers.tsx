@@ -597,64 +597,32 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
         return <SignaturePad value={parseSignatureAnswer(value)} onChange={(sig) => onChange(sig)} error={error} />;
       })()}
       {field.fieldType === 'job_link' && (() => {
-        const [jobs, setJobs] = useState<LinkOption[]>([]);
-        const [loadingJobs, setLoadingJobs] = useState(true);
-        useEffect(() => {
-          fetch('/api/forms/jobs-list', { credentials: 'include' })
-            .then((r) => r.ok ? r.json() : { jobs: [] })
-            .then((d: { jobs?: Array<{ id: number; title: string; client: string | null; address: string | null }> }) => {
-              setJobs((d.jobs ?? []).map((j) => ({
-                id: j.id,
-                label: j.title,
-                sublabel: [j.client, j.address].filter(Boolean).join(' · ') || undefined,
-              })));
-            })
-            .catch(() => {})
-            .finally(() => setLoadingJobs(false));
-        }, []);
+        // Rendered as a plain text field — type the job name or number
         return (
-          <LinkDropdown
-            options={jobs}
-            value={value}
-            onChange={onChange}
-            placeholder="Select a job…"
-            loading={loadingJobs}
-            error={error}
+          <input
+            type="text"
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Enter job name or number…"
             disabled={disabled}
-            icon={Briefcase}
+            className={`${baseInput} ${errorBorder}`}
           />
         );
       })()}
       {field.fieldType === 'asset_link' && (() => {
-        const [assets, setAssets] = useState<LinkOption[]>([]);
-        const [loadingAssets, setLoadingAssets] = useState(true);
-        useEffect(() => {
-          fetch('/api/forms/assets-list', { credentials: 'include' })
-            .then((r) => r.ok ? r.json() : { assets: [] })
-            .then((d: { assets?: Array<{ id: number; name: string; registration: string | null; asset_type: string | null }> }) => {
-              setAssets((d.assets ?? []).map((a) => ({
-                id: a.id,
-                label: a.name,
-                sublabel: [a.asset_type, a.registration].filter(Boolean).join(' · ') || undefined,
-              })));
-            })
-            .catch(() => {})
-            .finally(() => setLoadingAssets(false));
-        }, []);
+        // Rendered as a plain text field — type the asset name or ID
         return (
-          <LinkDropdown
-            options={assets}
-            value={value}
-            onChange={onChange}
-            placeholder="Select an asset…"
-            loading={loadingAssets}
-            error={error}
+          <input
+            type="text"
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Enter asset name or ID…"
             disabled={disabled}
-            icon={Truck}
+            className={`${baseInput} ${errorBorder}`}
           />
         );
       })()}
-      {error && field.fieldType !== 'signature' && field.fieldType !== 'job_link' && field.fieldType !== 'asset_link' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
+      {error && field.fieldType !== 'signature' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
 
       {/* Fallback: unknown field type — render as plain text input so the field is never invisible */}
       {!['short_text','text','long_text','textarea','number','url','date','datetime','yes_no','checkbox','single_choice','select','multi_select','linear_scale','rating','location','photo','signature','job_link','asset_link','section','instruction','instruction_image','page_break'].includes(field.fieldType) && (

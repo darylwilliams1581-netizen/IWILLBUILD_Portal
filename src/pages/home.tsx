@@ -20,6 +20,7 @@ import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
+
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
 import { isNative } from '@/lib/capacitor-plugins';
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1313,11 +1314,7 @@ function SignInOutSheet({
         credentials: 'include'
       });
       if (res.status === 401) {
-        // Session expired or not authenticated — clear stale expiry so next
-        // request goes through cleanly after re-login
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
+        // Session expired or not authenticated
         setError('Session expired — please sign in again to continue.');
         return;
       }
@@ -1355,9 +1352,6 @@ function SignInOutSheet({
         })
       });
       if (res.status === 401) {
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
         setError('Session expired — please close this and sign in again.');
         return;
       }
@@ -1396,9 +1390,6 @@ function SignInOutSheet({
         body: JSON.stringify({})
       });
       if (res.status === 401) {
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
         setError('Session expired — please close this and sign in again.');
         return;
       }
@@ -1921,28 +1912,13 @@ export default function HomeScreen() {
   const activeStatus = useActiveStatus(activeStatusKey);
   const name = session?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
-  const [localClock, setLocalClock] = useState({
-    greeting: 'Welcome',
-    dateStr: ''
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const dateStr = new Date().toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
   });
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      setLocalClock({
-        greeting: hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening',
-        dateStr: now.toLocaleDateString('en-AU', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long'
-        })
-      });
-    };
-    updateClock();
-    const timer = window.setInterval(updateClock, 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const { greeting, dateStr } = localClock;
   function handleNavigate(href: string) {
     if (href === '?panel=notes') {
       setNotesOpen(true);
@@ -2068,9 +2044,9 @@ export default function HomeScreen() {
           background: 'linear-gradient(150deg, #0d1117 0%, #161d2e 55%, #1a1208 100%)',
           boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)'
         }}>
-        {/* Row 1: local date */}
+        {/* Row 1: date pill — full width, no weather widget */}
         <div className="flex items-center mb-2.5">
-          {dateStr ? <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span> : <span />}
+          <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span>
         </div>
         {/* Row 2: greeting — large, bold, personal */}
         <div className="flex items-end justify-between gap-3">

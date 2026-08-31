@@ -1,32 +1,25 @@
-# IWILLBUILD release candidate - Version 12.0.5, Build 17
+# IWILLBUILD release candidate - Version 12, Build 12
 
-Prepared 2026-08-26 from:
+This is the prepared GitHub/TestFlight source based on successful Appflow Build Package #59.
 
-`C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\DOWNLOAD\IWILLBUILD_Portal`
+- Application base: installed Airo download
+- Source Git remote: `https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal.git`
+- Build #59 source commit: `8bf95229e533493b66ca281c2a98044d7f65832d`
+- iOS version/build: `12 (12)`
+- npm application version: `12.0.0`
 
-Target repository:
+## Document email repair
 
-`C:\Users\daryl_ey\OneDrive\Desktop\iwillbuild\IWILLBUILD_Portal`
+Quote Email now uses IWILLBUILD's server email service and attaches the generated quote PDF. It no longer opens an Outlook `mailto:` draft, and no private in-app link is sent to external customers.
 
-- Git remote: `https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal.git`
-- Base commit: `6c2c9a6`
-- Target branch: `main`
-- Web/package version: `12.0.5`
-- iOS marketing version: `12`
-- iOS build number: `17`
+Completed Form Send Email now generates and attaches a PDF containing the form details, stored photos and captured signatures. Invoice Email has been aligned to the same reusable email dialog while retaining its existing attachment endpoint.
 
-## Preparation result
+The Quote PDF download and email paths share one generator, including correct handling for the application's `Add 10% GST` and `No GST` values.
 
-The latest Airo application download was merged into the GitHub repository while preserving Git history, the Capacitor/iOS project, native assets, release scripts, the direct Busboy dependency and the ESM-safe Vite configuration.
+## Existing release polish
 
-The release also preserves timezone-free MySQL DATETIME values during evidence upload, avoiding an unintended Brisbane-to-UTC time shift.
+The dependency lockfile is prepared for reliable `npm ci` installs. React Router is updated to 7.18.2, build-only Drizzle tooling is in development dependencies, and iOS Debug/Release build numbers are both 12.
 
-## Verification result
+The current Airo camera and Job Photos workflow is preserved. No GPS/location feature or database migration is included.
 
-- Complete browser and SSR production build: passed with exit code 0.
-- Capacitor iOS sync: passed; 11 native plugins registered, including Share.
-- Debug and Release Xcode configurations both use Version 12 / Build 17.
-- Strict standalone TypeScript audit: does not pass because the exported Airo source contains a large inherited diagnostics backlog. The production bundler succeeds; the backlog was not hidden or bulk-rewritten during this release merge.
-- Exported unit tests have local harness limitations around Airo-only modules and database mocks. In the electrical suite, 117/135 calculation and validation tests pass; the 18 handler tests require the unavailable Airo database configuration. The evidence timestamp correction was confirmed with the database module stubbed locally.
-
-The iOS project has been synchronised and is ready for the downstream Xcode archive and App Store submission workflow.
+See `PATCH_MANIFEST.md` for the exact file list, apply instructions and verification record.

@@ -361,11 +361,11 @@ describe('RL register — route registration in entry.ts', () => {
   });
 
   it('registers GET /api/rl-register/export/:jobId/csv', () => {
-    expect(src).toContain('app.get("/api/rl-register/export/:jobId/csv"');
+    expect(src).toContain('app.get("/api/rl-register/:jobId/export/csv"');
   });
 
   it('registers GET /api/rl-register/export/:jobId/pdf', () => {
-    expect(src).toContain('app.get("/api/rl-register/export/:jobId/pdf"');
+    expect(src).toContain('app.get("/api/rl-register/:jobId/export/pdf"');
   });
 });
 

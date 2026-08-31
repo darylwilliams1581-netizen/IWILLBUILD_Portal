@@ -63,7 +63,7 @@ export default function SessionExpiredBanner({
         fontSize: 12,
         color: '#94a3b8'
       }}>
-          Your session reached its daily security limit. Redirecting in {remaining}s…
+          Your session has expired. Redirecting in {remaining}s…
         </p>
       </div>
       <button onClick={() => navigate('/login?reason=expired', {

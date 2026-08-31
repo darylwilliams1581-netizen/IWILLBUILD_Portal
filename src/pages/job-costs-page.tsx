@@ -41,7 +41,7 @@ export default function JobCostsPage() {
   }, [id]);
 
   function handleChangeJob() {
-    navigate('/?picker=costs');
+    navigate('/home?picker=costs');
   }
 
   return (
@@ -66,7 +66,7 @@ export default function JobCostsPage() {
             featureLabel="Job Ledger"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             {/* Add Entry button — floats in the shell content area */}

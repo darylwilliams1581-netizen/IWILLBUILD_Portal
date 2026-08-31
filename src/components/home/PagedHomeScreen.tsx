@@ -13,7 +13,8 @@
 
 import { useState, useRef, useCallback, useEffect, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
-import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users, ChevronDown } from 'lucide-react';
+import * as Collapsible from '@radix-ui/react-collapsible';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
 import NotificationBell from '@/components/NotificationBell';
@@ -239,62 +240,67 @@ function DashboardPage({
 
       {/* Full-width Lens + Add Job row */}
       <div className="flex items-center gap-3">
-        <button onClick={() => onNavigate('/lens')} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <CameraIcon size={20} strokeWidth={2} />
+        <button onClick={() => onNavigate('/lens')} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <CameraIcon size={16} strokeWidth={2} />
           </div>
           Lens
         </button>
-        <button onClick={onNewJob} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Plus size={20} strokeWidth={2} />
+        <button onClick={onNewJob} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Plus size={16} strokeWidth={2} />
           </div>
           Add Job
         </button>
       </div>
 
       {/* ── Quick-action grid ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => onNavigate('?panel=signin')} className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <LogIn size={20} strokeWidth={2} />
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => onNavigate('?panel=signin')} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <LogIn size={16} strokeWidth={2} />
           </div>
-          <span className="text-sm font-bold leading-tight">Sign In</span>
-          <span className="text-[10px] text-white/60 leading-tight">Record site attendance</span>
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-[13px] font-bold leading-tight">Sign In</span>
+            <span className="text-[10px] text-white/60 leading-tight">Site attendance</span>
+          </div>
         </button>
-        <button onClick={() => onNavigate('/fleet')} className="flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <Car size={20} strokeWidth={2} />
+        <button onClick={() => onNavigate('/fleet')} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Car size={16} strokeWidth={2} />
           </div>
-          <span className="text-sm font-bold leading-tight">Fleet</span>
-          <span className="text-[10px] text-white/60 leading-tight">Vehicles &amp; equipment</span>
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-[13px] font-bold leading-tight">Fleet</span>
+            <span className="text-[10px] text-white/60 leading-tight">Vehicles &amp; equipment</span>
+          </div>
         </button>
         {/* Site Prestart — col-span-2 */}
-        <button onClick={() => onNavigate('?panel=site-prestart-picker')} className="col-span-2 flex items-center justify-center gap-3 px-3 py-4 rounded-2xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <HardHat size={20} strokeWidth={2} />
+        <button onClick={() => onNavigate('?panel=site-prestart-picker')} className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-red-500 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <HardHat size={16} strokeWidth={2} />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-bold leading-tight">Site Prestart</span>
+            <span className="text-[13px] font-bold leading-tight">Site Prestart</span>
             <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
           </div>
         </button>
-        {/* Contacts — col-span-2, matches Site Prestart exactly */}
+        {/* Contacts — col-span-2 */}
         <button
           onClick={() => onNavigate('/customers')}
-          className="col-span-2 flex items-center justify-center gap-3 px-3 py-4 rounded-2xl bg-teal-600 text-white shadow-sm active:scale-95 transition-transform relative"
+          className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-600 text-white shadow-sm active:scale-95 transition-transform relative"
           data-testid="contacts-launcher-btn"
+          style={{ minHeight: 52 }}
         >
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Users size={20} strokeWidth={2} />
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Users size={16} strokeWidth={2} />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-bold leading-tight">Contacts</span>
+            <span className="text-[13px] font-bold leading-tight">Contacts</span>
             <span className="text-[10px] text-white/60 leading-tight">Call, message or email</span>
           </div>
           {/* Count badge — only shown once loaded and > 0 */}
           {contactCount !== null && contactCount > 0 && (
-            <span className="absolute top-2.5 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center leading-none">
+            <span className="absolute top-2 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center leading-none">
               {contactCount > 99 ? '99+' : contactCount}
             </span>
           )}
@@ -318,6 +324,84 @@ const MANAGE_GROUP_ORDER: Array<{ group: HomeIconDef['group']; label: string }> 
   { group: 'management', label: 'Administration' },
 ];
 
+// ── Collapsible section — generic ────────────────────────────────────────────
+// Finance (8 icons), Safety (9 icons), and Administration (13 icons) all
+// collapse by default. Work (5), Field & Files (4), and Fleet (1) stay open.
+// State is persisted in sessionStorage so it survives swipe-away/swipe-back.
+
+const ADMIN_STORAGE_KEY   = 'manage_admin_open';
+const FINANCE_STORAGE_KEY = 'manage_finance_open';
+const SAFETY_STORAGE_KEY  = 'manage_safety_open';
+
+function CollapsibleSection({
+  label,
+  storageKey,
+  testId,
+  icons,
+  onNavigate,
+}: {
+  label: string;
+  storageKey: string;
+  testId: string;
+  icons: HomeIconDef[];
+  onNavigate: (href: string) => void;
+}) {
+  const [open, setOpen] = useState<boolean>(() => {
+    try { return sessionStorage.getItem(storageKey) === '1'; }
+    catch { return false; }
+  });
+
+  const toggle = () => {
+    setOpen(prev => {
+      const next = !prev;
+      try { sessionStorage.setItem(storageKey, next ? '1' : '0'); }
+      catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={toggle} data-testid={testId}>
+      {/* Heading row — always visible, acts as the toggle trigger */}
+      <Collapsible.Trigger asChild>
+        <button
+          className="w-full flex items-center justify-between mb-2 px-0.5"
+          aria-label={open ? `Collapse ${label}` : `Expand ${label}`}
+          data-testid={`${testId}-trigger`}
+        >
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+            {label}
+          </p>
+          <ChevronDown
+            size={14}
+            className={`text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+      </Collapsible.Trigger>
+
+      {/* Collapsible grid */}
+      <Collapsible.Content
+        className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
+        data-testid={`${testId}-content`}
+      >
+        <div className="grid grid-cols-2 gap-2 pb-1">
+          {icons.map(item => (
+            <IconTile key={item.key} item={item} onNavigate={onNavigate} wide={item.key === 'tools'} />
+          ))}
+        </div>
+      </Collapsible.Content>
+    </Collapsible.Root>
+  );
+}
+
+// Which groups get a collapsible toggle and their config
+const COLLAPSIBLE_GROUPS: Record<string, { storageKey: string; testId: string }> = {
+  finance:    { storageKey: FINANCE_STORAGE_KEY, testId: 'finance-collapsible' },
+  safety:     { storageKey: SAFETY_STORAGE_KEY,  testId: 'safety-collapsible'  },
+  management: { storageKey: ADMIN_STORAGE_KEY,   testId: 'admin-collapsible'   },
+};
+
 function ManagePage({
   icons,
   onNavigate
@@ -333,10 +417,28 @@ function ManagePage({
         {MANAGE_GROUP_ORDER.map(({ group, label }) => {
           const groupIcons = icons.filter(i => i.group === group);
           if (groupIcons.length === 0) return null;
+
+          const collapsibleCfg = COLLAPSIBLE_GROUPS[group];
+
+          if (collapsibleCfg) {
+            return (
+              <div key={group} className="mb-5">
+                <CollapsibleSection
+                  label={label}
+                  storageKey={collapsibleCfg.storageKey}
+                  testId={collapsibleCfg.testId}
+                  icons={groupIcons}
+                  onNavigate={onNavigate}
+                />
+              </div>
+            );
+          }
+
+          // Always-open sections: Work, Field & Files, Fleet
           return (
             <div key={group} className="mb-5">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
-              <div className="grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(96px, 1fr)' }}>
+              <div className="grid grid-cols-2 gap-2">
                 {groupIcons.map(item => (
                   <IconTile key={item.key} item={item} onNavigate={onNavigate} wide={item.key === 'tools'} />
                 ))}
@@ -460,42 +562,59 @@ export default function PagedHomeScreen({
 
   return <>
     <div className="flex flex-col flex-1 min-h-0">
-      {/* ── Top bar: page tabs + utility buttons ─────────────────────────────── */}
-      <div className="flex items-center shrink-0 px-2 pt-1.5 pb-1 gap-1.5">
-        <div className="flex-1 min-w-0 flex items-center justify-center gap-1">
-          {PAGE_LABELS.map((label, i) => {
-            const Icon = PAGE_ICONS[i];
-            const active = page === i;
-            return (
-              <button
-                key={label}
-                onClick={() => setPage(i)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
-              >
-                <Icon size={11} strokeWidth={2.2} />
-                {label}
-              </button>
-            );
-          })}
+      {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
+      {/* Row 1: logo + name (left) + utility buttons (right) */}
+      <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
+        {/* Brand mark + wordmark */}
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          <img
+            src="/airo-assets/images/logo/horizontal/dark"
+            alt="IWILLBUILD"
+            className="h-7 w-auto max-w-[80px] object-contain shrink-0"
+          />
+          <span className="text-[15px] font-black tracking-tight text-foreground select-none">
+            IWILLBUILD
+          </span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <div className="shrink-0"><NotificationBell /></div>
+        <div className="flex items-center gap-1.5 flex-1 justify-end">
+          <div className="shrink-0">
+            <NotificationBell />
+          </div>
           <button
             onClick={() => navigate('/profile')}
-            className="w-8 h-8 rounded-xl bg-violet-600 border border-violet-500 flex items-center justify-center hover:bg-violet-500 active:scale-95 transition-all shrink-0"
+            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2"
             aria-label="Profile"
           >
-            <User size={15} className="text-white" />
+            <User size={14} className="text-white shrink-0" />
+            <span className="truncate">Profile</span>
           </button>
           <button
             onClick={async () => { await signOut(); navigate('/login'); }}
-            className="w-8 h-8 rounded-xl bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all shrink-0"
+            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2"
             aria-label="Log out"
             title="Log out"
           >
-            <LogOut size={13} className="text-slate-200" />
+            <LogOut size={13} className="shrink-0" />
+            <span className="truncate">Sign out</span>
           </button>
         </div>
+      </div>
+      {/* Row 2: page tabs — full width, no scroll, equal-width pills */}
+      <div className="flex items-center shrink-0 px-2 pb-1.5 gap-1.5">
+        {PAGE_LABELS.map((label, i) => {
+          const Icon = PAGE_ICONS[i];
+          const active = page === i;
+          return (
+            <button
+              key={label}
+              onClick={() => setPage(i)}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
+            >
+              <Icon size={13} strokeWidth={2.2} />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Swipe container ──────────────────────────────────────────────────── */}
@@ -505,7 +624,7 @@ export default function PagedHomeScreen({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: 'pan-y', overflowX: 'hidden', overflowY: 'visible' }}
+        style={{ touchAction: 'pan-y', overflowX: 'clip', overflowY: 'visible' }}
       >
         <div
           className="flex h-full"

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode } from 'lucide-react';
+import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode, BookOpen } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -25,10 +25,12 @@ import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
+import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
 import AnatomyTab from '@/components/owner-console/AnatomyTab';
+import TwilioTab from '@/components/owner-console/TwilioTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -346,7 +348,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : 'overview');
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | 'twilio' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : searchParams.get('tab') as 'twilio' | null === 'twilio' ? 'twilio' : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
@@ -720,7 +722,7 @@ export default function OwnerConsolePage() {
 
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 shrink-0">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
+          <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
@@ -908,6 +910,24 @@ export default function OwnerConsolePage() {
               Anatomy
             </span>
           </Tab>
+          <Tab active={tab === 'global-library'} onClick={() => {
+          setTab('global-library');
+          setSearchParams({ tab: 'global-library' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <BookOpen size={12} />
+              Global Library
+            </span>
+          </Tab>
+          <Tab active={tab === 'twilio'} onClick={() => {
+          setTab('twilio');
+          setSearchParams({ tab: 'twilio' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <Phone size={12} />
+              Twilio
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
           setTab('support-setup');
           setSearchParams({
@@ -928,7 +948,7 @@ export default function OwnerConsolePage() {
         </div>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 ${tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue' || tab === 'builder' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+        <div className={`flex-1 min-h-0 ${tab === 'bug-reports' || tab === 'incidents' || tab === 'client-rescue' || tab === 'builder' || tab === 'global-library' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
           {loading ? <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 size={28} className="animate-spin text-primary" />
@@ -1083,6 +1103,12 @@ export default function OwnerConsolePage() {
               {/* ── Client Rescue ── */}
               {tab === 'client-rescue' && <ClientRescueTab />}
               {tab === 'anatomy' && <AnatomyTab />}
+              {tab === 'global-library' && (
+                <div className="h-full overflow-hidden flex flex-col">
+                  <LibraryManagerTab />
+                </div>
+              )}
+              {tab === 'twilio' && <TwilioTab />}
 
 
               {/* ── Health Check (Annette) ── */}

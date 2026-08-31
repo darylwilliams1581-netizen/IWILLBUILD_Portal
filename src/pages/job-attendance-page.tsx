@@ -19,7 +19,7 @@ export default function JobAttendancePage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=attendance');
+    navigate('/home?picker=attendance');
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JobAttendancePage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

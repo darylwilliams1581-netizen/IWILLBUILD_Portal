@@ -2,12 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CAPACITOR_DEBUG</key>
-	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-        <string>IWILLBUILD</string>
+	<string>IWILLBUILD</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,18 +22,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>IWILLBUILD needs camera access to capture job photos, records, receipts, and site documentation in the field.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>IWILLBUILD uses location to support live fleet tracking, job attendance context, and field activity visibility when authorised by your business.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>IWILLBUILD uses your location while the app is in use to support live fleet tracking, job attendance context, and field activity visibility.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>IWILLBUILD may need microphone access when using the device camera to capture field media on supported devices.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>IWILLBUILD needs permission to save captured photos to your device gallery when backup to camera roll is enabled.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>IWILLBUILD needs photo library access so you can select, upload, and organise images for jobs, forms, and records.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -59,5 +45,15 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>IWILLBUILD uses your camera to capture job site photos and watermarked images.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>IWILLBUILD accesses your photo library to attach images to job cards and reports.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>IWILLBUILD saves captured photos to your photo library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>IWILLBUILD uses your location to display local weather on the dashboard, show your position on the live map, and record job site check-ins.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>IWILLBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.</string>
 </dict>
 </plist>

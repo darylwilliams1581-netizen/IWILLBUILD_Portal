@@ -372,7 +372,7 @@ export default function JobSchedulePage() {
       {/* ── Top bar ── */}
       <div className="bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 sticky top-0 z-10" style={{
       boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
-      paddingTop: 'max(env(safe-area-inset-top), 0px)'
+      paddingTop: 'max(env(safe-area-inset-top), 12px)'
     }}>
         <div className="flex items-center gap-3 w-full px-4 py-3">
         <button onClick={() => navigate(`/jobs/${id}`)} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">

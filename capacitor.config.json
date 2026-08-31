@@ -1,7 +1,9 @@
 {
+  "_note": "This file is kept in sync with capacitor.config.ts for reference. cap sync reads capacitor.config.ts — edit that file, not this one.",
   "appId": "com.iwillbuild.portal",
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
+  "bundledWebRuntime": false,
   "server": {
     "url": "https://iwillbuild.com",
     "cleartext": false,
@@ -27,15 +29,13 @@
     "SplashScreen": {
       "launchShowDuration": 3000,
       "launchAutoHide": false,
-      "backgroundColor": "#111827"
+      "backgroundColor": "#111827",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
     },
     "PushNotifications": {
-      "presentationOptions": [
-        "badge",
-        "sound",
-        "alert"
-      ]
+      "presentationOptions": ["badge", "sound", "alert"]
     }
-  },
-  "bundledWebRuntime": false
+  }
 }

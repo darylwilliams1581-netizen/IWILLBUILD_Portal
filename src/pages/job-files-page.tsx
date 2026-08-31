@@ -19,7 +19,7 @@ export default function JobFilesPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=files');
+    navigate('/home?picker=files');
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JobFilesPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

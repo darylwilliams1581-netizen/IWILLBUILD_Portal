@@ -5,11 +5,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle, ChevronDown, AlertTriangle, Trash2, X, ShieldCheck, ArrowLeft, FileUp, Library } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle, ChevronDown, AlertTriangle, Trash2, X, ShieldCheck, ArrowLeft, FileUp } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
-import ShareLibraryTab from '@/components/studio/ShareLibraryTab';
 import { AnimatePresence } from 'motion/react';
 import { usePermissions } from '@/lib/usePermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -50,10 +49,6 @@ const STUDIO_TABS = [{
   id: 'safety',
   label: 'Safety',
   icon: ShieldCheck
-}, {
-  id: 'share',
-  label: 'Share',
-  icon: Library
 }] as const;
 type StudioTabId = typeof STUDIO_TABS[number]['id'];
 
@@ -105,8 +100,7 @@ export default function StudioPage() {
 
   // Read tab from ?tab= query param so direct links and sidebar work
   const tabParam = searchParams.get('tab');
-  // Share tab only visible to platform owners (developers)
-  const validTabs: StudioTabId[] = isPlatformOwner ? ['safety', 'share'] : ['safety'];
+  const validTabs: StudioTabId[] = ['safety'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(validTabs.includes(tabParam as StudioTabId) ? tabParam as StudioTabId : 'safety');
   function switchTab(id: StudioTabId) {
     setActiveTab(id);
@@ -229,9 +223,7 @@ export default function StudioPage() {
       {/* ── Tab bar ── */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto">
         <div className="flex gap-0.5 py-2 min-w-max">
-          {STUDIO_TABS.filter(({
-          id
-        }) => id !== 'share' || isPlatformOwner).map(({
+          {STUDIO_TABS.map(({
           id,
           label,
           icon: Icon
@@ -246,16 +238,26 @@ export default function StudioPage() {
       {/* ── Tab content ── */}
       <div className={`flex-1 min-h-0 overflow-hidden`}>
         {activeTab === 'safety' && <SafetyContent />}
-        {activeTab === 'share' && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
       </div>
 
       {/* ── Import DOCX/PDF modal ── */}
-      {showImporter && importTemplateId !== null && <DocxImporter templateId={importTemplateId} hasExistingBlocks={false} onClose={() => {
-      setShowImporter(false);
-      setImportTemplateId(null);
-    }} onImported={(blocks, name) => {
-      setShowImporter(false);
-      void handleStudioImported(blocks, name, importTemplateId);
-    }} onSaveFirst={async () => importTemplateId} />}
+      {showImporter && importTemplateId !== null && <DocxImporter
+        templateId={importTemplateId}
+        hasExistingBlocks={false}
+        onClose={() => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+        }}
+        onImported={(blocks, name) => {
+          setShowImporter(false);
+          void handleStudioImported(blocks, name, importTemplateId);
+        }}
+        onOpenInStudio={(result) => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+          navigate(`/studio/builder/${result.id}`);
+        }}
+        onSaveFirst={async () => importTemplateId}
+      />}
     </div>;
 }

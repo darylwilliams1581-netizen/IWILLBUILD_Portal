@@ -72,9 +72,10 @@ export default async function handler(req: Request, res: Response) {
         l.entry_date,
         l.created_at,
         l.updated_at,
-        l.supplier_name,
         l.source_module,
-        l.reference_number,
+        /* DDL uses contact_name / reference — alias to the names the handler expects */
+        l.contact_name   AS supplier_name,
+        l.reference      AS reference_number,
         j.name       AS job_name,
         j.job_number AS job_number
       FROM job_cost_ledger l

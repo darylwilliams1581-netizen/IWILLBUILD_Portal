@@ -40,7 +40,7 @@ export default function JobPhotosTab({
   return <div className="flex flex-col gap-0 -m-4 md:-m-6">
 
       {/* ── Toolbar ── */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-white border-b border-border sticky top-0 z-10 flex-wrap">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-white border-b border-border sticky top-0 z-10 flex-wrap safe-top">
 
         {/* Photo count */}
         <span className="text-xs text-muted-foreground mr-1 shrink-0">

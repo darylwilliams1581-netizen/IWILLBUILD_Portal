@@ -146,10 +146,10 @@ export default function ElectricalTestsPage() {
 
       <main className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="bg-white border-b sticky top-0 z-20">
+        <div className="bg-white border-b sticky top-0 z-20 safe-top">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => navigate('/?page=2')}
+              onClick={() => navigate('/home')}
               className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors shrink-0"
               aria-label="Back to Manage"
             >

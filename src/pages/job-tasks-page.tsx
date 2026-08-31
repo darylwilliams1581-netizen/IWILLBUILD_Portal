@@ -19,7 +19,7 @@ export default function JobTasksPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=tasks');
+    navigate('/home?picker=tasks');
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JobTasksPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

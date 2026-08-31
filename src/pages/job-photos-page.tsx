@@ -22,7 +22,7 @@ export default function JobPhotosPage() {
   }>();
   const navigate = useNavigate();
   const openCameraPage = () => navigate(`/jobs/${id}/camera`);
-  const handleChangeJob = () => navigate('/?picker=photos');
+  const handleChangeJob = () => navigate('/home?picker=photos');
   const jobId = Number(id);
   const photosRef = useRef<JobPhotosHandle>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -185,7 +185,7 @@ export default function JobPhotosPage() {
           featureLabel="Photos"
           jobName={job?.name ?? 'Job'}
           jobNumber={job?.jobNumber}
-          backTo="/"
+          backTo="/home"
           onChangeJob={handleChangeJob}
           desktopActions={
             <div className="hidden md:flex items-center gap-1.5">

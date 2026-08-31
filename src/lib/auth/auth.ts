@@ -14,9 +14,10 @@
 
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { twoFactor } from 'better-auth/plugins';
 
 import { db } from '@/server/db/client';
-import { user, session, account, verification } from '@/server/db/schema';
+import { user, session, account, verification, twoFactor as twoFactorTable } from '@/server/db/schema';
 import { getSecret } from '#airo/secrets';
 
 // Lazy singleton — betterAuth() must NOT run at module init time.
@@ -46,7 +47,7 @@ export function getAuth() {
     // Schema passed explicitly — avoids BetterAuth's runtime schema inference.
     database: drizzleAdapter(db, {
       provider: 'mysql',
-      schema: { user, session, account, verification },
+      schema: { user, session, account, verification, twoFactor: twoFactorTable },
     }),
 
     secret: authSecret,
@@ -62,6 +63,14 @@ export function getAuth() {
           type: 'boolean',
           defaultValue: false,
           input: false,  // Prevent clients from writing this field
+          returned: true,
+        },
+        // twoFactorEnabled is managed by the twoFactor plugin — declared here
+        // so the drizzle adapter maps it correctly to the two_factor_enabled column.
+        twoFactorEnabled: {
+          type: 'boolean',
+          defaultValue: false,
+          input: false,
           returned: true,
         },
       },
@@ -198,6 +207,20 @@ export function getAuth() {
     },
 
     emailAndPassword: { enabled: true },
+
+    plugins: [
+      twoFactor({
+        issuer: 'IWILLBUILD',
+        // 10-minute window for the two_factor challenge cookie
+        twoFactorCookieMaxAge: 600,
+        // Account lockout: 10 failures → 15-minute lock (NIST SP 800-63B)
+        accountLockout: {
+          enabled: true,
+          maxFailedAttempts: 10,
+          durationSeconds: 900,
+        },
+      }),
+    ],
 
     // socialProviders: {
     //   google: {

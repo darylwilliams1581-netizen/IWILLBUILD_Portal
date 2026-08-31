@@ -118,10 +118,9 @@ export default function JobFormRunnerPage() {
     let dest: string;
     if (explicitReturnTo) {
       dest = explicitReturnTo;
-    } else if (isDone) {
-      dest = '/studio/forms?tab=submissions';
     } else {
-      dest = '/studio/forms?tab=forms';
+      // No explicit returnTo — fall back to the app home dashboard
+      dest = '/home';
     }
     // Hard navigation guarantees the Form Runner unmounts and the destination
     // page renders correctly, regardless of how the router shell is structured.
@@ -275,7 +274,7 @@ export default function JobFormRunnerPage() {
       }}>
           <div className="max-w-2xl mx-auto px-4 pt-3 pb-1">
 
-            {isReadOnly ? (/* ── Completed view: status pill (left) + Edit button (right) ── */
+            {isReadOnly ? (/* ── Completed view: status pill + Edit ── */
           <div className="flex items-center justify-between gap-3 h-11">
                 {/* Completed pill */}
                 <span className="inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
