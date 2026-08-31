@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
+import { extractLeadingEmoji } from '@/lib/string-scanners';
 
 // ── Markdown-lite renderer ────────────────────────────────────────────────────
 // Renders the Annette report (headings, bullets, bold) without a full MD lib.
@@ -33,11 +34,10 @@ function renderReport(text: string): React.ReactNode[] {
     // H2 heading
     if (line.startsWith('## ')) {
       const content = line.slice(3);
-      // Slice to 8 chars before regex — bounding invariant prevents catastrophic backtracking.
-      // The pattern uses a simple character-class union with no alternation between overlapping
-      // branches, so backtracking is not possible on this bounded input.
+      // Slice to 8 chars before emoji check — bounding invariant prevents
+      // any backtracking risk. Uses the shared codePointAt-based scanner.
       const contentHead = content.slice(0, 8);
-      const emoji = contentHead.match(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\u{1F004}\u{1F0CF}]/u)?.[0] ?? '';
+      const emoji = extractLeadingEmoji(contentHead);
       const rest = emoji ? content.slice(emoji.length).trim() : content;
       nodes.push(
         <div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">

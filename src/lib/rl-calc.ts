@@ -8,6 +8,8 @@
  * Millimetre values are whole numbers (rounded, not truncated).
  */
 
+import { isValidRLValue } from './string-scanners.js';
+
 /** Round to 3 decimal places (metres precision). */
 export function roundRL(value: number): number {
   return Math.round(value * 1000) / 1000;
@@ -121,7 +123,7 @@ export function formatMmShort(diffMetres: number): string {
 
 /** Validate that an RL string has at most 3 decimal places. */
 export function isValidRL(value: string): boolean {
-  return /^-?\d+(\.\d{1,3})?$/.test(value.trim());
+  return isValidRLValue(value);
 }
 
 /** Parse an RL string to a number, returning NaN if invalid. */

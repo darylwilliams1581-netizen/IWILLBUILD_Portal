@@ -109,42 +109,158 @@ function classifyFile(relPath: string): { language: string; fileType: string } {
 
 // ── Symbol extraction ─────────────────────────────────────────────────────────
 
+/**
+ * Checks whether a line starts with one of the TS/JS export keyword sequences.
+ * Replaces: /^export\s+(?:default\s+)?(?:async\s+)?(?:function|class|const|let|var|interface|type|enum)\s+/gm
+ * Returns the identifier name that follows, or null.  Linear scan — no regex.
+ */
+/** @internal — exported for unit tests only */
+export function parseExportSymbol(line: string): string | null {
+  let pos = 0;
+  if (!line.startsWith('export')) return null;
+  pos = 6;
+  while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+  if (pos === 6) return null; // no whitespace after 'export'
+
+  if (line.startsWith('default', pos)) {
+    pos += 7;
+    while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+  }
+  if (line.startsWith('async', pos)) {
+    pos += 5;
+    while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+  }
+
+  const KEYWORDS = ['function', 'interface', 'class', 'const', 'let', 'var', 'type', 'enum'];
+  let matched = false;
+  for (const kw of KEYWORDS) {
+    if (line.startsWith(kw, pos)) {
+      const after = pos + kw.length;
+      if (after < line.length && (line.charCodeAt(after) === 32 || line.charCodeAt(after) === 9)) {
+        pos = after;
+        matched = true;
+        break;
+      }
+    }
+  }
+  if (!matched) return null;
+
+  while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+
+  if (pos >= line.length) return null;
+  const c0 = line.charCodeAt(pos);
+  if (!((c0 >= 65 && c0 <= 90) || (c0 >= 97 && c0 <= 122) || c0 === 95 || c0 === 36)) return null;
+  const idStart = pos++;
+  while (pos < line.length) {
+    const c = line.charCodeAt(pos);
+    if (!((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
+    pos++;
+  }
+  return line.slice(idStart, pos);
+}
+
+/**
+ * Checks whether a line declares a React component (PascalCase function).
+ * Replaces: /^(?:export\s+)?(?:default\s+)?function\s+([A-Z][A-Za-z0-9_$]*)/gm
+ * Returns the component name, or null.
+ */
+/** @internal — exported for unit tests only */
+export function parseComponentDecl(line: string): string | null {
+  let pos = 0;
+  if (line.startsWith('export', pos)) {
+    pos += 6;
+    while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+  }
+  if (line.startsWith('default', pos)) {
+    pos += 7;
+    while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+  }
+  if (!line.startsWith('function', pos)) return null;
+  pos += 8;
+  if (pos >= line.length || (line.charCodeAt(pos) !== 32 && line.charCodeAt(pos) !== 9)) return null;
+  while (pos < line.length && (line.charCodeAt(pos) === 32 || line.charCodeAt(pos) === 9)) pos++;
+
+  if (pos >= line.length) return null;
+  const c0 = line.charCodeAt(pos);
+  if (c0 < 65 || c0 > 90) return null; // must be uppercase A-Z
+  const idStart = pos++;
+  while (pos < line.length) {
+    const c = line.charCodeAt(pos);
+    if (!((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
+    pos++;
+  }
+  return line.slice(idStart, pos);
+}
+
+/**
+ * Checks whether a line is a SQL CREATE TABLE statement.
+ * Replaces: /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?([A-Za-z_][A-Za-z0-9_]*)[`"]?/gi
+ * Returns the table name, or null.  Case-insensitive via toUpperCase on the line.
+ */
+/** @internal — exported for unit tests only */
+export function parseSqlCreateTable(line: string): string | null {
+  const up = line.toUpperCase();
+  let pos = up.indexOf('CREATE');
+  if (pos === -1) return null;
+  pos += 6;
+  if (pos >= up.length || (up.charCodeAt(pos) !== 32 && up.charCodeAt(pos) !== 9)) return null;
+  while (pos < up.length && (up.charCodeAt(pos) === 32 || up.charCodeAt(pos) === 9)) pos++;
+  if (!up.startsWith('TABLE', pos)) return null;
+  pos += 5;
+  if (pos >= up.length || (up.charCodeAt(pos) !== 32 && up.charCodeAt(pos) !== 9)) return null;
+  while (pos < up.length && (up.charCodeAt(pos) === 32 || up.charCodeAt(pos) === 9)) pos++;
+  if (up.startsWith('IF', pos)) {
+    pos += 2;
+    while (pos < up.length && (up.charCodeAt(pos) === 32 || up.charCodeAt(pos) === 9)) pos++;
+    if (!up.startsWith('NOT', pos)) return null;
+    pos += 3;
+    while (pos < up.length && (up.charCodeAt(pos) === 32 || up.charCodeAt(pos) === 9)) pos++;
+    if (!up.startsWith('EXISTS', pos)) return null;
+    pos += 6;
+    while (pos < up.length && (up.charCodeAt(pos) === 32 || up.charCodeAt(pos) === 9)) pos++;
+  }
+  // Optional backtick or double-quote
+  if (pos < up.length && (up.charCodeAt(pos) === 96 || up.charCodeAt(pos) === 34)) pos++;
+  if (pos >= line.length) return null;
+  const c0 = line.charCodeAt(pos);
+  if (!((c0 >= 65 && c0 <= 90) || (c0 >= 97 && c0 <= 122) || c0 === 95)) return null;
+  const idStart = pos++;
+  while (pos < line.length) {
+    const c = line.charCodeAt(pos);
+    if (!((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95)) break;
+    pos++;
+  }
+  return line.slice(idStart, pos);
+}
+
 function extractSymbols(content: string, language: string): string[] {
   const symbols: string[] = [];
 
   if (language === 'typescript' || language === 'javascript') {
-    // Exported functions / classes / consts
-    const exportMatches = content.matchAll(
-      /^export\s+(?:default\s+)?(?:async\s+)?(?:function|class|const|let|var|interface|type|enum)\s+([A-Za-z_$][A-Za-z0-9_$]*)/gm
-    );
-    for (const m of exportMatches) {
-      if (m[1]) symbols.push(m[1]);
+    // Line-by-line scan — bounded per-line, no whole-content multiline regex.
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const exportName = parseExportSymbol(line);
+      if (exportName) symbols.push(exportName);
+
+      const componentName = parseComponentDecl(line);
+      if (componentName) symbols.push(`component:${componentName}`);
     }
 
-    // Express route registrations
+    // Express route registrations — negated char class [^'"`] is linear; safe.
     const routeMatches = content.matchAll(
       /app\.(get|post|put|patch|delete|use)\s*\(\s*['"`]([^'"`]+)['"`]/g
     );
     for (const m of routeMatches) {
       if (m[1] && m[2]) symbols.push(`route:${m[1].toUpperCase()}:${m[2]}`);
     }
-
-    // React component names (PascalCase functions)
-    const componentMatches = content.matchAll(
-      /^(?:export\s+)?(?:default\s+)?function\s+([A-Z][A-Za-z0-9_$]*)/gm
-    );
-    for (const m of componentMatches) {
-      if (m[1]) symbols.push(`component:${m[1]}`);
-    }
   }
 
   if (language === 'sql') {
-    // Table names
-    const tableMatches = content.matchAll(
-      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?([A-Za-z_][A-Za-z0-9_]*)[`"]?/gi
-    );
-    for (const m of tableMatches) {
-      if (m[1]) symbols.push(`table:${m[1]}`);
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const tableName = parseSqlCreateTable(line);
+      if (tableName) symbols.push(`table:${tableName}`);
     }
   }
 

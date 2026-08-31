@@ -34,6 +34,7 @@ import TwilioTab from '@/components/owner-console/TwilioTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
+import { extractLeadingEmoji } from '@/lib/string-scanners';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -510,7 +511,7 @@ export default function OwnerConsolePage() {
       if (line.startsWith('## ')) {
         const content = line.slice(3);
         const contentHead = content.slice(0, 8);
-        const emoji = contentHead.match(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\u{1F004}\u{1F0CF}]/u)?.[0] ?? '';
+        const emoji = extractLeadingEmoji(contentHead);
         const rest = emoji ? content.slice(emoji.length).trim() : content;
         nodes.push(<div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">{emoji && <span className="text-lg leading-none">{emoji}</span>}<h2 className="font-heading font-black text-sm text-slate-800 uppercase tracking-wider">{rest}</h2></div>);
         continue;

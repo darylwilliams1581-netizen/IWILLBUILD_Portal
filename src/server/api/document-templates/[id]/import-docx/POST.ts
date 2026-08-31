@@ -705,10 +705,37 @@ function parseParagraph(xml: string): ParsedParagraph {
 }
 
 function extractPlainText(xml: string): string {
+  // indexOf/slice scanner — no regex, no backtracking.
+  // Matches <w:t> and <w:t ...> (with attributes), extracts text content.
   const parts: string[] = [];
-  const re = /<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(xml)) !== null) parts.push(m[1]);
+  let pos = 0;
+  while (pos < xml.length) {
+    // Find opening <w:t tag
+    const tagStart = xml.indexOf('<w:t', pos);
+    if (tagStart === -1) break;
+
+    // After '<w:t' must be '>' or whitespace (not another letter — avoids matching <w:tbl etc.)
+    const afterTag = tagStart + 4;
+    if (afterTag >= xml.length) break;
+    const nextCh = xml.charCodeAt(afterTag);
+    // 62 = '>', 32 = space, 9 = tab, 10 = LF, 13 = CR
+    if (nextCh !== 62 && nextCh !== 32 && nextCh !== 9 && nextCh !== 10 && nextCh !== 13) {
+      pos = afterTag;
+      continue;
+    }
+
+    // Find the closing '>' of the opening tag
+    const tagClose = xml.indexOf('>', afterTag);
+    if (tagClose === -1) break;
+
+    // Find the closing </w:t>
+    const contentStart = tagClose + 1;
+    const closeTag = xml.indexOf('</w:t>', contentStart);
+    if (closeTag === -1) break;
+
+    parts.push(xml.slice(contentStart, closeTag));
+    pos = closeTag + 6; // length of '</w:t>'
+  }
   return parts.join('').trim();
 }
 
@@ -765,9 +792,27 @@ function parseTableXml(xml: string): DocumentBlock | null {
       const gridSpanMatch = /<w:gridSpan\s+w:val="(\d+)"/.exec(cellXml);
       const colSpan = gridSpanMatch ? parseInt(gridSpanMatch[1], 10) : 1;
 
-      // Vertical merge continuation
-      const vMergeMatch = /<w:vMerge(?:\s+w:val="([^"]*)")?/.exec(cellXml);
-      const isVMerge = !!vMergeMatch && vMergeMatch[1] !== 'restart';
+      // Vertical merge continuation — indexOf-based attribute extraction, no regex.
+      // <w:vMerge/> or <w:vMerge> with no val = continuation (isVMerge = true)
+      // <w:vMerge w:val="restart"> = start of merge group (isVMerge = false)
+      const vMergePos = cellXml.indexOf('<w:vMerge');
+      let isVMerge = false;
+      if (vMergePos !== -1) {
+        // Look for w:val="..." attribute within the tag
+        const tagEnd = cellXml.indexOf('>', vMergePos);
+        const tagContent = tagEnd !== -1 ? cellXml.slice(vMergePos, tagEnd + 1) : cellXml.slice(vMergePos);
+        const valAttr = 'w:val="';
+        const valPos = tagContent.indexOf(valAttr);
+        if (valPos === -1) {
+          // No w:val attribute — this is a continuation cell
+          isVMerge = true;
+        } else {
+          const valStart = valPos + valAttr.length;
+          const valEnd = tagContent.indexOf('"', valStart);
+          const val = valEnd !== -1 ? tagContent.slice(valStart, valEnd) : '';
+          isVMerge = val !== 'restart';
+        }
+      }
 
       // Cell background colour from w:shd fill attribute
       const shdMatch = /<w:shd\s[^>]*w:fill="([0-9A-Fa-f]{6})"/.exec(cellXml);
