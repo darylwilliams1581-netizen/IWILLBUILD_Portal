@@ -17,6 +17,7 @@ import { eq, and, count, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../../lib/plan-limits.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import {
   compressImageIfNeeded,
@@ -125,7 +126,14 @@ export default async function handler(req: Request, res: Response) {
       }
 
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
-      const storageKey = `${randomUUID()}.${ext}`;
+      const uuid = randomUUID();
+      const storageKey = buildObjectKey({
+        logicalNamespace: 'job-photos',
+        companyId: profile.companyId,
+        category: 'job-photos',
+        uuid,
+        originalName: `${uuid}.${ext}`,
+      });
 
       // Get dimensions (non-blocking, best-effort)
       let imgWidth: number | null = null;

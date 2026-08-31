@@ -13,6 +13,7 @@ import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 
 const BUCKET = 'incident-attachments';
 const MAX_FILE_BYTES = 30 * 1024 * 1024;
@@ -60,7 +61,13 @@ export default async function handler(req: Request, res: Response) {
       const isImage = file.mimetype.startsWith('image/');
       const isPdf   = file.mimetype === 'application/pdf';
       const fileType = isImage ? 'image' : isPdf ? 'pdf' : 'document';
-      const storageKey = `${BUCKET}/${profile.companyId}/${incidentId}/${randomUUID()}`;
+      const storageKey = buildObjectKey({
+        logicalNamespace: 'incident-attachments',
+        companyId: profile.companyId,
+        category: 'incident-attachments',
+        uuid: randomUUID(),
+        originalName: file.originalname,
+      });
 
       try {
         const result = await uploadMedia({

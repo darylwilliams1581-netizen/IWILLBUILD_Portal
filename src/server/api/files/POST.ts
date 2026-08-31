@@ -24,6 +24,7 @@ import type { CompatibilityContext } from '../../lib/uploadService.js';
 import type { ResultSetHeader } from 'mysql2';
 import { randomUUID } from 'node:crypto';
 import { extForMime } from '../../lib/file-upload.js';
+import { buildObjectKey } from '../../storage/r2Config.js';
 
 const FILE_CATEGORIES = ['Job','Fleet','Company','User','Template','Report','Other'] as const;
 
@@ -81,7 +82,14 @@ export default async function handler(req: Request, res: Response) {
       ? (fileCategory as string) : 'Other';
     const clientId = (req.headers['x-client-id'] as string | undefined)?.trim() || null;
     const ext = extForMime(file.mimetype);
-    const storageKey = `${randomUUID()}.${ext}`;
+    const uuid = randomUUID();
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'company-files',
+      companyId: profile.companyId,
+      category: 'company-files',
+      uuid,
+      originalName: file.originalname || `${uuid}.${ext}`,
+    });
 
     let insertedId = 0;
 

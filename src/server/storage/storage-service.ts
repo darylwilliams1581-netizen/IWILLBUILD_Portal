@@ -3,37 +3,42 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Single entry point for all file I/O in IWILLBUILD.
  *
+ * PHYSICAL vs LOGICAL STORAGE MODEL (CP10A2)
+ * ──────────────────────────────────────────
+ * There is exactly ONE physical Cloudflare R2 bucket: R2_BUCKET secret.
+ * All object keys are prefixed with a logical namespace (object-key prefix)
+ * that partitions the bucket by data category:
+ *
+ *   Physical bucket:  iwillbuild-files  (from R2_BUCKET secret)
+ *   Logical namespaces (object-key prefixes):
+ *     job-photos          → job-photos/companies/{id}/{category}/{uuid}/{file}
+ *     company-files       → company-files/companies/{id}/{category}/{uuid}/{file}
+ *     safety-documents    → safety-documents/companies/{id}/{category}/{uuid}/{file}
+ *     safety-posters      → safety-posters/companies/{id}/{category}/{uuid}/{file}
+ *     source-documents    → source-documents/companies/{id}/{category}/{uuid}/{file}
+ *     dazza-sources       → dazza-sources/companies/{id}/{category}/{uuid}/{file}
+ *     form-media          → form-media/companies/{id}/{category}/{uuid}/{file}
+ *     fleet-files         → fleet-files/companies/{id}/{category}/{uuid}/{file}
+ *     (+ additional namespaces — see LOGICAL_NAMESPACES in r2Config.ts)
+ *
+ * The "bucket" parameter in all storage functions is the logical namespace
+ * (object-key prefix), NOT a separate physical bucket.
+ *
  * SWITCHING PROVIDERS
  * ───────────────────
  * Change `activeProvider` below to any StorageProvider implementation.
  * All upload handlers call this service — no handler changes needed.
  *
- *   import { vercelBlobProvider } from './providers/vercelBlobProvider.js';
- *   const activeProvider: StorageProvider = vercelBlobProvider;
- *
- * BUCKETS
- * ───────
- * Logical bucket names map to sub-folders on local disk and to prefixes /
- * actual buckets on cloud providers:
- *
- *   BUCKET_JOB_PHOTOS   = 'job-photos'
- *   BUCKET_COMPANY_FILES = 'company-files'
- *   BUCKET_RECEIPTS     = 'uploads/receipts'
- *   BUCKET_SAFETY_DOCS  = 'safety-documents'
- *   BUCKET_SAFETY_POSTERS = 'safety-posters'
- *   BUCKET_FLEET_FILES  = 'fleet-files'
- *   BUCKET_FORM_MEDIA   = 'form-media'
- *
- * VALIDATION RULES (centralised here)
- * ────────────────────────────────────
- *   • HEIC/HEIF rejected
- *   • Max 10 files per batch upload
- *   • Max image size before compression: 10 MB
- *   • Max general file size: 25 MB
- *   • Allowed image types: jpg, jpeg, png, webp
- *   • Allowed document types: pdf, doc, docx, xls, xlsx, csv, txt, zip
+ * VALIDATION RULES (centralised in uploadPolicy.ts)
+ * ──────────────────────────────────────────────────
+ *   • Per-namespace policies: size, MIME, extension, magic bytes
+ *   • HEIC/HEIF accepted for image namespaces — converted to JPEG by compressImageIfNeeded()
+ *   • Max image size: 10 MB; max document size: 25 MB
  *   • Blocked: exe, bat, cmd, sh, ps1, msi, dmg, app, bin, com, vbs,
- *              js, ts, py, rb, pl, php, jar, class, dll, so, dylib
+ *              js, ts, py, rb, pl, php, jar, class, dll, so, dylib,
+ *              html, htm, svg, xml (markup — XSS risk)
+ *   • MIME/extension/magic-byte mismatches rejected
+ *   • Signed URL expiry capped at 1 hour (default 15 minutes)
  */
 
 import { db } from '../db/client.js';
@@ -42,6 +47,7 @@ import { localProvider } from './providers/localProvider.js';
 import { r2Provider } from './providers/r2Provider.js';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult, StorageUsageResult } from './providers/types.js';
 import { resolveProviderName } from './r2Config.js';
+import { clampSignedUrlExpiry, SIGNED_URL_DEFAULT_EXPIRY_SECONDS } from './uploadPolicy.js';
 
 // ── Active provider ───────────────────────────────────────────────────────────
 // Driven by the STORAGE_PROVIDER environment variable:
@@ -61,7 +67,10 @@ function resolveProvider(): StorageProvider {
 
 const activeProvider: StorageProvider = resolveProvider();
 
-// ── Bucket constants ──────────────────────────────────────────────────────────
+// ── Logical namespace constants ───────────────────────────────────────────────
+// These are object-key prefixes within the single physical R2 bucket (R2_BUCKET).
+// They are NOT separate Cloudflare buckets.
+// Always use these constants — never accept a namespace from client input.
 
 export const BUCKET_JOB_PHOTOS     = 'job-photos';
 export const BUCKET_COMPANY_FILES  = 'company-files';
@@ -476,14 +485,25 @@ export async function deleteFile(storageKey: string, bucket: string): Promise<vo
 /**
  * Get a URL for serving a file.
  * For local provider: returns the public path.
- * For cloud providers: returns a signed URL with the given expiry.
+ * For cloud providers: returns a signed GET-only URL.
+ *
+ * SECURITY RULES:
+ *   - Call only after verifying the caller owns the record (company membership + DB ownership)
+ *   - Expiry is clamped to [60s, SIGNED_URL_MAX_EXPIRY_SECONDS] — never store the result
+ *   - The "bucket" parameter is the logical namespace (object-key prefix), not a physical bucket
+ *   - Never log the returned URL (contains credentials in query string)
+ *
+ * @param storageKey  The storage key from the DB record
+ * @param bucket      The logical namespace (e.g. 'job-photos', 'company-files')
+ * @param expiresInSeconds  Requested expiry — clamped to max 1 hour
  */
 export async function getSignedUrl(
   storageKey: string,
   bucket: string,
-  expiresInSeconds = 3600,
+  expiresInSeconds = SIGNED_URL_DEFAULT_EXPIRY_SECONDS,
 ): Promise<string> {
-  return activeProvider.getSignedUrl(storageKey, bucket, expiresInSeconds);
+  const clampedExpiry = clampSignedUrlExpiry(expiresInSeconds);
+  return activeProvider.getSignedUrl(storageKey, bucket, clampedExpiry);
 }
 
 /** Whether the active provider supports real signed URL expiry */

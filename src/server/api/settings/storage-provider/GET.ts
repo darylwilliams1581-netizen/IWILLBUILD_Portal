@@ -18,7 +18,7 @@ export default async function handler(req: Request, res: Response) {
     res.json({
       activeProvider:  status.provider,
       configured:      status.configured,
-      bucket:          status.bucket,       // bucket name is non-sensitive
+      physicalBucket:  status.physicalBucket,  // physical R2 bucket name (non-sensitive)
       publicMode:      status.publicMode,
       error:           status.error ?? null,
     });

@@ -1,13 +1,28 @@
 /**
- * r2Config.ts — Central validated R2 configuration loader (CP10)
+ * r2Config.ts — Central validated R2 configuration loader (CP10 / CP10A2)
  * ─────────────────────────────────────────────────────────────────────────────
  * Single source of truth for all R2 configuration.
+ *
+ * PHYSICAL vs LOGICAL STORAGE MODEL
+ * ──────────────────────────────────
+ * There is exactly ONE physical Cloudflare R2 bucket: the value of R2_BUCKET
+ * (e.g. "iwillbuild-files").  All object keys are prefixed with a logical
+ * namespace that partitions the bucket by data category:
+ *
+ *   Physical bucket:  iwillbuild-files
+ *   Logical namespace examples:
+ *     job-photos/companies/42/job-photos/uuid/photo.jpg
+ *     company-files/companies/42/company-files/uuid/report.pdf
+ *     safety-documents/companies/42/safety-documents/uuid/swms.pdf
+ *
+ * The physical bucket name ALWAYS comes from the R2_BUCKET secret.
+ * Logical namespaces are server-side constants — never client-supplied.
  *
  * CONTRACT:
  *   - Fails closed: throws if STORAGE_PROVIDER=r2 and any required secret is absent.
  *   - Never silently falls back to local storage after R2 has been selected.
  *   - Never returns raw credential values through any public API.
- *   - Status-safe fields: provider, configured, bucket, publicMode, sanitizedError.
+ *   - Status-safe fields: provider, configured, physicalBucket, publicMode, sanitizedError.
  *
  * REQUIRED SECRETS (when STORAGE_PROVIDER=r2):
  *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
@@ -18,13 +33,69 @@
 
 import { getSecret } from '#airo/secrets';
 
+// ── Logical namespace allowlist ───────────────────────────────────────────────
+
+/**
+ * Every supported logical namespace (object-key prefix).
+ * These are SERVER-SIDE CONSTANTS — never accept a namespace from client input.
+ *
+ * The physical R2 bucket is always R2_BUCKET.
+ * Object keys are structured as: {namespace}/companies/{companyId}/{category}/{uuid}/{filename}
+ */
+export const LOGICAL_NAMESPACES = [
+  'job-photos',
+  'company-files',
+  'safety-documents',
+  'safety-posters',
+  'source-documents',
+  'dazza-sources',
+  'form-media',
+  'fleet-files',
+  // Additional namespaces used by the application
+  'job-card-photos',
+  'am-asset-photos',
+  'am-inspection-media',
+  'bug-reports',
+  'incident-attachments',
+  'form-attachments',
+  'profile-attachments',
+  'doc-assets',
+  'drawings',
+  'sds-register',
+  'tender-attachments',
+] as const;
+
+export type LogicalNamespace = typeof LOGICAL_NAMESPACES[number];
+
+/**
+ * Assert that a value is a known logical namespace.
+ * Throws a sanitized error if the value is not in the allowlist.
+ * Use this to reject arbitrary client-supplied namespace values.
+ */
+export function assertValidNamespace(value: string): asserts value is LogicalNamespace {
+  if (!(LOGICAL_NAMESPACES as readonly string[]).includes(value)) {
+    throw new Error(
+      `[r2Config] Unknown logical namespace: "${value}". ` +
+      'Namespace must be a server-side constant from LOGICAL_NAMESPACES.',
+    );
+  }
+}
+
+/**
+ * Check (without throwing) whether a value is a known logical namespace.
+ */
+export function isValidNamespace(value: string): value is LogicalNamespace {
+  return (LOGICAL_NAMESPACES as readonly string[]).includes(value);
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface R2Config {
   accountId: string;
   accessKeyId: string;
   secretAccessKey: string;
-  bucket: string;
+  /** Physical R2 bucket name — always from R2_BUCKET secret */
+  physicalBucket: string;
   /** Optional public base URL — undefined means private/signed-URL mode */
   publicUrl: string | undefined;
 }
@@ -35,7 +106,8 @@ export type StorageProviderName = 'r2' | 'local';
 export interface StorageStatus {
   provider: StorageProviderName;
   configured: boolean;
-  bucket: string | null;
+  /** Physical bucket name (non-sensitive) */
+  physicalBucket: string | null;
   publicMode: boolean;
   /** Sanitized error category — never a raw error message with credentials */
   error?: 'missing_credentials' | 'missing_bucket' | 'unknown';
@@ -70,13 +142,13 @@ export function loadR2Config(): R2Config {
   const accountId       = readSecret('R2_ACCOUNT_ID');
   const accessKeyId     = readSecret('R2_ACCESS_KEY_ID');
   const secretAccessKey = readSecret('R2_SECRET_ACCESS_KEY');
-  const bucket          = readSecret('R2_BUCKET');
+  const physicalBucket  = readSecret('R2_BUCKET');
 
   const missing: string[] = [];
   if (!accountId)       missing.push('R2_ACCOUNT_ID');
   if (!accessKeyId)     missing.push('R2_ACCESS_KEY_ID');
   if (!secretAccessKey) missing.push('R2_SECRET_ACCESS_KEY');
-  if (!bucket)          missing.push('R2_BUCKET');
+  if (!physicalBucket)  missing.push('R2_BUCKET');
 
   if (missing.length > 0) {
     // Throw a sanitized error — list missing secret NAMES only, never values
@@ -93,7 +165,7 @@ export function loadR2Config(): R2Config {
     accountId:       accountId!,
     accessKeyId:     accessKeyId!,
     secretAccessKey: secretAccessKey!,
-    bucket:          bucket!,
+    physicalBucket:  physicalBucket!,
     publicUrl,
   };
 }
@@ -108,31 +180,31 @@ export function getStorageStatus(): StorageStatus {
   const provider = resolveProviderName();
 
   if (provider !== 'r2') {
-    return { provider: 'local', configured: true, bucket: null, publicMode: false };
+    return { provider: 'local', configured: true, physicalBucket: null, publicMode: false };
   }
 
   const accountId       = readSecret('R2_ACCOUNT_ID');
   const accessKeyId     = readSecret('R2_ACCESS_KEY_ID');
   const secretAccessKey = readSecret('R2_SECRET_ACCESS_KEY');
-  const bucket          = readSecret('R2_BUCKET');
+  const physicalBucket  = readSecret('R2_BUCKET');
   const publicUrl       = readSecret('R2_PUBLIC_URL');
 
   const credentialsPresent = !!(accountId && accessKeyId && secretAccessKey);
-  const bucketPresent      = !!bucket;
+  const bucketPresent      = !!physicalBucket;
   const configured         = credentialsPresent && bucketPresent;
 
   if (!credentialsPresent) {
-    return { provider: 'r2', configured: false, bucket: null, publicMode: false, error: 'missing_credentials' };
+    return { provider: 'r2', configured: false, physicalBucket: null, publicMode: false, error: 'missing_credentials' };
   }
   if (!bucketPresent) {
-    return { provider: 'r2', configured: false, bucket: null, publicMode: false, error: 'missing_bucket' };
+    return { provider: 'r2', configured: false, physicalBucket: null, publicMode: false, error: 'missing_bucket' };
   }
 
   return {
-    provider:   'r2',
+    provider:       'r2',
     configured,
-    bucket:     bucket ?? null,        // bucket name is non-sensitive
-    publicMode: !!publicUrl,
+    physicalBucket: physicalBucket ?? null,  // bucket name is non-sensitive
+    publicMode:     !!publicUrl,
   };
 }
 
@@ -155,7 +227,6 @@ export function isValidKeySegment(segment: string): boolean {
     if (c < 0x20 || c === 0x7f) return false;
   }
   // Percent-encoded traversal: %2e%2e, %2f, %5c etc.
-  // Decode and re-validate — if the decoded form differs, check it too
   let decoded: string;
   try {
     decoded = decodeURIComponent(segment);
@@ -188,18 +259,29 @@ export function isValidObjectKey(key: string): boolean {
 
 /**
  * Build a canonical object key for a new upload.
- * Format: companies/{companyId}/{category}/{uuid}/{sanitisedFilename}
  *
- * The sanitised filename strips path separators and control characters.
- * UUID prevents collisions and unintended overwrites.
+ * Format: {logicalNamespace}/companies/{companyId}/{category}/{uuid}/{sanitisedFilename}
+ *
+ * - logicalNamespace must be a value from LOGICAL_NAMESPACES (server-side constant)
+ * - companyId comes from the authenticated server context
+ * - uuid is generated server-side
+ * - sanitisedFilename strips path separators and control characters
+ *
+ * The physical R2 bucket is always R2_BUCKET — never encoded in the key.
+ * The r2Provider prepends the logicalNamespace as the object key prefix
+ * (replacing the old `bucket` parameter which was also used as a prefix).
  */
 export function buildObjectKey(opts: {
+  logicalNamespace: LogicalNamespace;
   companyId: number;
   category: string;
   uuid: string;
   originalName: string;
 }): string {
-  const { companyId, category, uuid, originalName } = opts;
+  const { logicalNamespace, companyId, category, uuid, originalName } = opts;
+
+  // Validate namespace is in the allowlist
+  assertValidNamespace(logicalNamespace);
 
   // Sanitise the display filename: keep only safe characters
   const safeName = originalName
@@ -209,22 +291,23 @@ export function buildObjectKey(opts: {
     .slice(0, 200)                    // length cap
     || 'file';
 
-  return `companies/${companyId}/${category}/${uuid}/${safeName}`;
+  return `${logicalNamespace}/companies/${companyId}/${category}/${uuid}/${safeName}`;
 }
 
 /**
  * Assert that a storage key belongs to the given company.
- * Returns true if the key starts with `companies/{companyId}/`.
- * Legacy keys (pre-CP10) that don't follow the new format are allowed through
- * with a warning — they are identified by NOT starting with `companies/`.
+ * Returns true if the key starts with `{namespace}/companies/{companyId}/`.
+ * Legacy keys (pre-CP10A2) that don't follow the new format are allowed through
+ * with a warning — they are identified by NOT containing `/companies/`.
  */
 export function keyBelongsToCompany(key: string, companyId: number): boolean {
-  const prefix = `companies/${companyId}/`;
-  if (key.startsWith(prefix)) return true;
-  // Legacy key — does not start with `companies/` at all
-  if (!key.startsWith('companies/')) return true; // legacy: pass through
-  // Starts with `companies/` but a different company ID — reject
-  return false;
+  // New-format key: {namespace}/companies/{companyId}/...
+  const newFormatMatch = key.match(/^[^/]+\/companies\/(\d+)\//);
+  if (newFormatMatch) {
+    return parseInt(newFormatMatch[1], 10) === companyId;
+  }
+  // Legacy key — does not contain /companies/ — pass through (DB ownership check covers it)
+  return true;
 }
 
 // ── Log redaction ─────────────────────────────────────────────────────────────
@@ -245,3 +328,29 @@ export function redactStorageUrl(url: string): string {
     return '[redacted-url]';
   }
 }
+
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface R2Config {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+  /** Optional public base URL — undefined means private/signed-URL mode */
+  publicUrl: string | undefined;
+}
+
+export type StorageProviderName = 'r2' | 'local';
+
+/** Safe status object — never contains credential values */
+export interface StorageStatus {
+  provider: StorageProviderName;
+  configured: boolean;
+  bucket: string | null;
+  publicMode: boolean;
+  /** Sanitized error category — never a raw error message with credentials */
+  error?: 'missing_credentials' | 'missing_bucket' | 'unknown';
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────

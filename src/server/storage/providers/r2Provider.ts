@@ -63,7 +63,7 @@ async function getClient() {
 
 function getBucket(): string {
   const cfg = loadR2Config();
-  return cfg.bucket;
+  return cfg.physicalBucket;
 }
 
 /** Object key stored in the DB — includes the logical bucket as a prefix */
@@ -232,7 +232,7 @@ export const r2Provider: StorageProvider = {
       accountId:       cfg.accountId,
       accessKeyId:     cfg.accessKeyId,
       secretAccessKey: cfg.secretAccessKey,
-      r2Bucket:        cfg.bucket,
+      r2Bucket:        cfg.physicalBucket,
       key,
       body,
       contentType: input.mimeType,
@@ -254,7 +254,7 @@ export const r2Provider: StorageProvider = {
       const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
       publicUrl = await awsGetSignedUrl(
         client,
-        new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
+        new GetObjectCommand({ Bucket: cfg.physicalBucket, Key: key }),
         { expiresIn: 3600 },
       );
     }
@@ -319,7 +319,7 @@ export const r2Provider: StorageProvider = {
 
     return awsGetSignedUrl(
       client,
-      new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      new GetObjectCommand({ Bucket: cfg.physicalBucket, Key: key }),
       { expiresIn: expiresInSeconds },
     );
   },
@@ -335,11 +335,11 @@ export async function testR2Connection(): Promise<{ ok: boolean; error?: string 
   try {
     const client = await getClient(); // uses loadR2Config() — fails closed
     const { HeadObjectCommand } = await getS3Lazy();
-    const r2Bucket = getBucket();
+    const cfg = loadR2Config();
 
     try {
       await client.send(new HeadObjectCommand({
-        Bucket: r2Bucket,
+        Bucket: cfg.physicalBucket,
         Key: '__iwillbuild_connection_test__',
       }));
     } catch (err: unknown) {

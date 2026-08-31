@@ -13,6 +13,7 @@ import { parseMultipartForm } from '../../../../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../../storage/r2Config.js';
 
 const BUCKET = 'am-asset-photos';
 const MAX_SIZE = 20 * 1024 * 1024;
@@ -49,7 +50,13 @@ export default async function handler(req: Request, res: Response) {
       normaliseMime(file);
 
       const ext = file.originalname.includes('.') ? (file.originalname.split('.').pop() ?? 'jpg') : 'jpg';
-      const storageKey = `${randomUUID()}.${ext}`;
+      const storageKey = buildObjectKey({
+        logicalNamespace: 'am-asset-photos',
+        companyId: profile.companyId,
+        category: 'am-asset-photos',
+        uuid: randomUUID(),
+        originalName: file.originalname || `photo.${ext}`,
+      });
 
       const result = await uploadMedia({
         file,

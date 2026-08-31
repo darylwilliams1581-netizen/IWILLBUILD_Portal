@@ -23,6 +23,7 @@ import {
 } from '../../../storage/storage-service.js';
 import { getPlanLimits, getCompanyPlan } from '../../../lib/plan-limits.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../storage/r2Config.js';
 import { extForMime } from '../../../lib/file-upload.js';
 
 const BUCKET = 'doc-assets';
@@ -76,7 +77,13 @@ export default async function handler(req: Request, res: Response) {
     } catch { /* non-fatal — use original */ }
 
     const ext = extForMime(file.mimetype);
-    const storageKey = `${profile.companyId}/${randomUUID()}.${ext}`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'doc-assets',
+      companyId: profile.companyId,
+      category: 'doc-assets',
+      uuid: randomUUID(),
+      originalName: file.originalname,
+    });
 
     const saved = await saveFile({
       storageKey,
