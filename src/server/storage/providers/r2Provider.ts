@@ -21,6 +21,7 @@ import { randomUUID, createHmac, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
 import { getSecret } from '#airo/secrets';
+import { loadR2Config, redactStorageUrl } from '../r2Config.js';
 
 // ── AWS SDK lazy imports — ONLY used for GET/DELETE/signed URLs, never for PUT ──
 // These are intentionally NOT imported at module scope so Vite SSR does not
@@ -44,49 +45,25 @@ let _client: any | null = null;
 async function getClient() {
   if (_client) return _client;
 
-  const accountId = getSecret('R2_ACCOUNT_ID') || process.env.R2_ACCOUNT_ID;
-  const accessKeyId = getSecret('R2_ACCESS_KEY_ID') || process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = getSecret('R2_SECRET_ACCESS_KEY') || process.env.R2_SECRET_ACCESS_KEY;
-
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    throw new Error(
-      '[r2Provider] Missing R2 credentials. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in Secrets.'
-    );
-  }
+  const cfg = loadR2Config(); // throws with sanitized error if any secret is absent
 
   const { S3Client } = await getS3Lazy();
   _client = new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
+    endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
     forcePathStyle: false, // virtual-hosted style — required by R2
+    requestHandler: {
+      requestTimeout: 30_000, // 30 s per SDK request
+    },
   });
 
   return _client;
 }
 
 function getBucket(): string {
-  const bucket = getSecret('R2_BUCKET') || process.env.R2_BUCKET;
-  if (!bucket) throw new Error('[r2Provider] R2_BUCKET env var is not set.');
-  return bucket;
-}
-
-function getAccountId(): string {
-  const id = getSecret('R2_ACCOUNT_ID') || process.env.R2_ACCOUNT_ID;
-  if (!id) throw new Error('[r2Provider] R2_ACCOUNT_ID env var is not set.');
-  return id;
-}
-
-function getAccessKey(): string {
-  const k = getSecret('R2_ACCESS_KEY_ID') || process.env.R2_ACCESS_KEY_ID;
-  if (!k) throw new Error('[r2Provider] R2_ACCESS_KEY_ID env var is not set.');
-  return k;
-}
-
-function getSecretKey(): string {
-  const k = getSecret('R2_SECRET_ACCESS_KEY') || process.env.R2_SECRET_ACCESS_KEY;
-  if (!k) throw new Error('[r2Provider] R2_SECRET_ACCESS_KEY env var is not set.');
-  return k;
+  const cfg = loadR2Config();
+  return cfg.bucket;
 }
 
 /** Object key stored in the DB — includes the logical bucket as a prefix */
@@ -211,7 +188,8 @@ async function putObjectDirect(opts: {
     fetchHeaders[k] = v;
   }
 
-  console.log(`[r2Provider] PUT ${url} size=${body.length} contentType=${contentType}`);
+  // Log path only — never log the full URL (contains accountId in the host)
+  console.log(`[r2Provider] PUT /${encodedKey} size=${body.length} contentType=${contentType}`);
 
   const response = await fetch(url, {
     method: 'PUT',
@@ -219,6 +197,7 @@ async function putObjectDirect(opts: {
     body,
     // @ts-expect-error — Node 18+ fetch accepts Buffer as body
     duplex: 'half',
+    signal: AbortSignal.timeout(60_000), // 60 s upload timeout
   });
 
   if (!response.ok) {
@@ -234,10 +213,7 @@ export const r2Provider: StorageProvider = {
   supportsSignedUrls: true,
 
   async saveFile(input: SaveFileInput): Promise<SaveFileResult> {
-    const accountId    = getAccountId();
-    const accessKeyId  = getAccessKey();
-    const secretKey    = getSecretKey();
-    const r2Bucket     = getBucket();
+    const cfg = loadR2Config(); // fails closed if any secret is absent
 
     const ext        = extFromMime(input.mimeType);
     const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
@@ -246,26 +222,31 @@ export const r2Provider: StorageProvider = {
     // Ensure a true Node.js Buffer regardless of what Jimp / busboy returns
     const body = Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer);
 
+    // Use `attachment` disposition for documents; `inline` only for images
+    const isImage = input.mimeType.startsWith('image/');
+    const disposition = isImage
+      ? `inline; filename="${encodeURIComponent(input.originalName)}"`
+      : `attachment; filename="${encodeURIComponent(input.originalName)}"`;
+
     await putObjectDirect({
-      accountId,
-      accessKeyId,
-      secretAccessKey: secretKey,
-      r2Bucket,
+      accountId:       cfg.accountId,
+      accessKeyId:     cfg.accessKeyId,
+      secretAccessKey: cfg.secretAccessKey,
+      r2Bucket:        cfg.bucket,
       key,
       body,
       contentType: input.mimeType,
-      contentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
+      contentDisposition: disposition,
       metadata: {
         originalName: input.originalName,
         bucket: input.bucket,
       },
     });
 
-    const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
     let publicUrl: string;
 
-    if (publicBase) {
-      publicUrl = `${publicBase}/${key}`;
+    if (cfg.publicUrl) {
+      publicUrl = `${cfg.publicUrl}/${key}`;
     } else {
       // Fall back to a signed URL via the SDK (GET — no hash middleware issue)
       const client = await getClient();
@@ -273,7 +254,7 @@ export const r2Provider: StorageProvider = {
       const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
       publicUrl = await awsGetSignedUrl(
         client,
-        new GetObjectCommand({ Bucket: r2Bucket, Key: key }),
+        new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
         { expiresIn: 3600 },
       );
     }
@@ -298,7 +279,7 @@ export const r2Provider: StorageProvider = {
     }));
 
     if (!response.Body) {
-      throw new Error(`[r2Provider] Empty body for key: ${key}`);
+      throw new Error(`[r2Provider] Empty body for key: ${redactStorageUrl(`https://bucket.host/${key}`)}`);
     }
 
     const stream = response.Body as unknown as Readable;
@@ -320,24 +301,25 @@ export const r2Provider: StorageProvider = {
         Bucket: r2Bucket,
         Key: objectKey(bucket, storageKey),
       }));
-    } catch {
-      // Best-effort — already gone is fine
+    } catch (err: unknown) {
+      // Log error category only — never log the key or credentials
+      const category = err instanceof Error ? err.constructor.name : 'UnknownError';
+      console.warn(`[r2Provider] deleteFile best-effort failed: category=${category}`);
     }
   },
 
   async getSignedUrl(storageKey: string, bucket: string, expiresInSeconds = 3600): Promise<string> {
+    const cfg = loadR2Config();
+    if (cfg.publicUrl) return `${cfg.publicUrl}/${objectKey(bucket, storageKey)}`;
+
     const client = await getClient();
     const { GetObjectCommand } = await getS3Lazy();
     const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
-    const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
-
-    const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
-    if (publicBase) return `${publicBase}/${key}`;
 
     return awsGetSignedUrl(
       client,
-      new GetObjectCommand({ Bucket: r2Bucket, Key: key }),
+      new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
       { expiresIn: expiresInSeconds },
     );
   },
@@ -351,7 +333,7 @@ export const r2Provider: StorageProvider = {
  */
 export async function testR2Connection(): Promise<{ ok: boolean; error?: string }> {
   try {
-    const client = await getClient();
+    const client = await getClient(); // uses loadR2Config() — fails closed
     const { HeadObjectCommand } = await getS3Lazy();
     const r2Bucket = getBucket();
 
@@ -371,7 +353,12 @@ export async function testR2Connection(): Promise<{ ok: boolean; error?: string 
 
     return { ok: true };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: msg };
+    // Return a sanitized error category — never raw message (may contain credentials)
+    const category = err instanceof Error ? err.constructor.name : 'UnknownError';
+    const isConfig = err instanceof Error && err.message.includes('r2Config');
+    return {
+      ok: false,
+      error: isConfig ? 'missing_credentials' : `connectivity_error:${category}`,
+    };
   }
 }
