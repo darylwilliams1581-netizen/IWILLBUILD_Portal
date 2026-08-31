@@ -6,6 +6,8 @@ import { getAuth } from '../../../../lib/auth/auth.js';
 import { parseMultipartForm } from '../../../lib/file-upload.js';
 import { saveFile, checkStorageQuota, BUCKET_COMPANY_FILES } from '../../../storage/storage-service.js';
 import { getPlanLimits, getCompanyPlan } from '../../../lib/plan-limits.js';
+import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../storage/r2Config.js';
 import type { ResultSetHeader } from 'mysql2';
 
 const DRAWING_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -57,11 +59,20 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ code: 'limit_reached', error: quotaCheck.error });
     }
 
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'company-files',
+      companyId: profile.companyId,
+      category: 'drawings',
+      uuid: randomUUID(),
+      originalName: file.originalname,
+    });
+
     const saved = await saveFile({
       buffer: file.buffer,
       originalName: file.originalname,
       mimeType: file.mimetype,
       bucket: BUCKET_COMPANY_FILES,
+      storageKey,
     });
 
     const { jobId } = parsed.fields as { jobId?: string };

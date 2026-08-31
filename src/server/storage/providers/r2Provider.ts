@@ -66,8 +66,33 @@ function getBucket(): string {
   return cfg.physicalBucket;
 }
 
-/** Object key stored in the DB — includes the logical bucket as a prefix */
+/**
+ * Resolve the final R2 object key from a (bucket, storageKey) pair.
+ *
+ * CP10A3 — KEY COMPOSITION RULE
+ * ─────────────────────────────
+ * New-format keys (built by buildObjectKey) already include the logical
+ * namespace as their first segment:
+ *   job-photos/companies/42/job-photos/uuid/photo.jpg
+ *
+ * Legacy keys do NOT start with a known namespace:
+ *   uuid.jpg                          (old job photo)
+ *   42/uuid.jpg                       (old company file)
+ *   sds/uuid.pdf                      (old SDS)
+ *   electrical-tests/uuid.jpg         (old electrical test)
+ *   dazza-sources/userId/uuid-name    (dazza — already prefixed)
+ *
+ * Rule: if storageKey already starts with "{bucket}/", the bucket prefix is
+ * already present — do NOT prepend it again.  Otherwise prepend bucket.
+ *
+ * This prevents the double-prefix bug:
+ *   WRONG:  job-photos/job-photos/companies/42/.../photo.jpg
+ *   RIGHT:  job-photos/companies/42/.../photo.jpg
+ */
 function objectKey(bucket: string, storageKey: string): string {
+  // New-format: storageKey starts with the namespace — use as-is
+  if (storageKey.startsWith(`${bucket}/`)) return storageKey;
+  // Legacy: prepend the bucket as a namespace prefix
   return `${bucket}/${storageKey}`;
 }
 

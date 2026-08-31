@@ -329,28 +329,3 @@ export function redactStorageUrl(url: string): string {
   }
 }
 
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface R2Config {
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  bucket: string;
-  /** Optional public base URL — undefined means private/signed-URL mode */
-  publicUrl: string | undefined;
-}
-
-export type StorageProviderName = 'r2' | 'local';
-
-/** Safe status object — never contains credential values */
-export interface StorageStatus {
-  provider: StorageProviderName;
-  configured: boolean;
-  bucket: string | null;
-  publicMode: boolean;
-  /** Sanitized error category — never a raw error message with credentials */
-  error?: 'missing_credentials' | 'missing_bucket' | 'unknown';
-}
-
-// ── Internal helpers ──────────────────────────────────────────────────────────

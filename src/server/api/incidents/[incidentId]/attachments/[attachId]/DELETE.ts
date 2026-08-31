@@ -8,6 +8,7 @@ import { profiles } from '../../../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { deleteFile } from '../../../../../storage/storage-service.js';
+import { recordStorageDeletion } from '../../../../../lib/storageAudit.js';
 
 const BUCKET = 'incident-attachments';
 
@@ -38,12 +39,24 @@ export default async function handler(req: Request, res: Response) {
 
     const attach = rows[0];
 
-    // Delete from storage (best-effort)
+    // Delete from storage (best-effort) with audit
+    let deleteSuccess = true;
+    let errorCategory: string | undefined;
     try {
       await deleteFile(attach.storage_key, BUCKET);
     } catch (e) {
-      console.warn('[incident-attachments DELETE] storage delete failed:', e);
+      deleteSuccess = false;
+      errorCategory = e instanceof Error ? e.constructor.name : 'UnknownError';
+      console.warn('[incident-attachments DELETE] storage delete failed:', errorCategory);
     }
+    await recordStorageDeletion({
+      actorUserId: session.user.id,
+      companyId: profile.companyId,
+      category: BUCKET,
+      storageKey: attach.storage_key,
+      success: deleteSuccess,
+      errorCategory,
+    });
 
     await db.execute(sql.raw(`DELETE FROM incident_attachments WHERE id = ${attachId}`));
 

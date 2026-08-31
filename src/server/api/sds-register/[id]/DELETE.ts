@@ -10,6 +10,7 @@ import { profiles } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { deleteFile, BUCKET_COMPANY_FILES } from '../../../storage/storage-service.js';
+import { recordStorageDeletion } from '../../../lib/storageAudit.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -42,7 +43,23 @@ export default async function handler(req: Request, res: Response) {
       // Permanently delete storage object + row
       const storedName = record['storedName'] as string || record['stored_name'] as string;
       await db.execute(sql.raw(`DELETE FROM sds_register WHERE id = ${entryId} AND company_id = ${profile.companyId}`));
-      try { await deleteFile(storedName, BUCKET_COMPANY_FILES); } catch { /* non-fatal */ }
+      let deleteSuccess = true;
+      let errorCategory: string | undefined;
+      try {
+        await deleteFile(storedName, BUCKET_COMPANY_FILES);
+      } catch (err) {
+        deleteSuccess = false;
+        errorCategory = err instanceof Error ? err.constructor.name : 'UnknownError';
+        console.warn('[sds DELETE] storage deleteFile failed:', errorCategory);
+      }
+      await recordStorageDeletion({
+        actorUserId: session.user.id,
+        companyId: profile.companyId,
+        category: BUCKET_COMPANY_FILES,
+        storageKey: storedName,
+        success: deleteSuccess,
+        errorCategory,
+      });
       return res.json({ ok: true, deleted: true });
     }
 

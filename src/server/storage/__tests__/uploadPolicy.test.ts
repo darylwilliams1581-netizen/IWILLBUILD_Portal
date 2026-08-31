@@ -25,6 +25,11 @@ import {
   SIGNED_URL_DEFAULT_EXPIRY_SECONDS,
   SIGNED_URL_MAX_EXPIRY_SECONDS,
   getPolicyForNamespace,
+  validateZipContainer,
+  zipContainerTypeFromMime,
+  ZIP_MAX_ENTRIES,
+  ZIP_MAX_EXPANDED_BYTES,
+  ZIP_MAX_COMPRESSION_RATIO,
 } from '../uploadPolicy.js';
 import type { FileToValidate } from '../uploadPolicy.js';
 
@@ -537,5 +542,238 @@ describe('UP11 namespace injection rejection', () => {
   it('isValidNamespace returns false for traversal', async () => {
     const { isValidNamespace } = await import('../r2Config.js');
     expect(isValidNamespace('../../etc')).toBe(false);
+  });
+});
+
+// ── UP12: ZIP container validation (CP10A3) ───────────────────────────────────
+
+/**
+ * Build a minimal valid ZIP archive buffer containing the given entries.
+ * Each entry has zero-length content (compressed and uncompressed size = 0).
+ */
+function buildMinimalZip(entries: string[]): Buffer {
+  const localHeaders: Buffer[] = [];
+  const centralDirs: Buffer[] = [];
+  let offset = 0;
+
+  for (const name of entries) {
+    const nameBytes = Buffer.from(name, 'utf8');
+    const nameLen = nameBytes.length;
+
+    // Local file header (30 bytes + name)
+    const local = Buffer.alloc(30 + nameLen, 0);
+    local.writeUInt32LE(0x04034b50, 0); // local file header sig
+    local.writeUInt16LE(20, 4);          // version needed
+    local.writeUInt16LE(0, 6);           // flags
+    local.writeUInt16LE(0, 8);           // compression (stored)
+    local.writeUInt32LE(0, 14);          // crc-32
+    local.writeUInt32LE(0, 18);          // compressed size
+    local.writeUInt32LE(0, 22);          // uncompressed size
+    local.writeUInt16LE(nameLen, 26);    // file name length
+    local.writeUInt16LE(0, 28);          // extra field length
+    nameBytes.copy(local, 30);
+
+    // Central directory entry (46 bytes + name)
+    const cd = Buffer.alloc(46 + nameLen, 0);
+    cd.writeUInt32LE(0x02014b50, 0);     // central dir sig
+    cd.writeUInt16LE(20, 4);             // version made by
+    cd.writeUInt16LE(20, 6);             // version needed
+    cd.writeUInt16LE(0, 8);              // flags
+    cd.writeUInt16LE(0, 10);             // compression
+    cd.writeUInt32LE(0, 16);             // crc-32
+    cd.writeUInt32LE(0, 20);             // compressed size
+    cd.writeUInt32LE(0, 24);             // uncompressed size
+    cd.writeUInt16LE(nameLen, 28);       // file name length
+    cd.writeUInt16LE(0, 30);             // extra field length
+    cd.writeUInt16LE(0, 32);             // comment length
+    cd.writeUInt32LE(offset, 42);        // local header offset
+    nameBytes.copy(cd, 46);
+
+    localHeaders.push(local);
+    centralDirs.push(cd);
+    offset += local.length;
+  }
+
+  const cdStart = offset;
+  const cdBuf = Buffer.concat(centralDirs);
+
+  // End of central directory (22 bytes)
+  const eocd = Buffer.alloc(22, 0);
+  eocd.writeUInt32LE(0x06054b50, 0);    // EOCD sig
+  eocd.writeUInt16LE(0, 4);             // disk number
+  eocd.writeUInt16LE(0, 6);             // disk with CD
+  eocd.writeUInt16LE(entries.length, 8); // entries on disk
+  eocd.writeUInt16LE(entries.length, 10); // total entries
+  eocd.writeUInt32LE(cdBuf.length, 12); // CD size
+  eocd.writeUInt32LE(cdStart, 16);      // CD offset
+  eocd.writeUInt16LE(0, 20);            // comment length
+
+  return Buffer.concat([...localHeaders, cdBuf, eocd]);
+}
+
+/** Build a ZIP with one entry that has a very high compression ratio */
+function buildZipBombEntry(compressedSize: number, uncompressedSize: number): Buffer {
+  const nameBytes = Buffer.from('bomb.txt', 'utf8');
+  const nameLen = nameBytes.length;
+
+  const local = Buffer.alloc(30 + nameLen + compressedSize, 0);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt32LE(0, 14);
+  local.writeUInt32LE(compressedSize, 18);
+  local.writeUInt32LE(uncompressedSize, 22);
+  local.writeUInt16LE(nameLen, 26);
+  nameBytes.copy(local, 30);
+
+  const cdStart = local.length;
+  const cd = Buffer.alloc(46 + nameLen, 0);
+  cd.writeUInt32LE(0x02014b50, 0);
+  cd.writeUInt32LE(compressedSize, 20);
+  cd.writeUInt32LE(uncompressedSize, 24);
+  cd.writeUInt16LE(nameLen, 28);
+  cd.writeUInt32LE(0, 42);
+  nameBytes.copy(cd, 46);
+
+  const eocd = Buffer.alloc(22, 0);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(1, 8);
+  eocd.writeUInt16LE(1, 10);
+  eocd.writeUInt32LE(cd.length, 12);
+  eocd.writeUInt32LE(cdStart, 16);
+
+  return Buffer.concat([local, cd, eocd]);
+}
+
+describe('UP12 validateZipContainer — ZIP structure validation', () => {
+  // ── Constants ──────────────────────────────────────────────────────────────
+
+  it('ZIP_MAX_ENTRIES is 10,000', () => expect(ZIP_MAX_ENTRIES).toBe(10_000));
+  it('ZIP_MAX_EXPANDED_BYTES is 100 MB', () => expect(ZIP_MAX_EXPANDED_BYTES).toBe(100 * 1024 * 1024));
+  it('ZIP_MAX_COMPRESSION_RATIO is 100', () => expect(ZIP_MAX_COMPRESSION_RATIO).toBe(100));
+
+  // ── Valid DOCX ─────────────────────────────────────────────────────────────
+
+  it('valid DOCX: [Content_Types].xml + word/ → ok', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', 'word/document.xml', 'word/_rels/document.xml.rels']);
+    const r = validateZipContainer(buf, 'docx');
+    expect(r.ok).toBe(true);
+  });
+
+  it('valid XLSX: [Content_Types].xml + xl/ → ok', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', 'xl/workbook.xml', 'xl/worksheets/sheet1.xml']);
+    const r = validateZipContainer(buf, 'xlsx');
+    expect(r.ok).toBe(true);
+  });
+
+  it('plain ZIP: no structure requirements → ok', () => {
+    const buf = buildMinimalZip(['file1.txt', 'file2.csv']);
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(true);
+  });
+
+  // ── Missing required entries ───────────────────────────────────────────────
+
+  it('DOCX missing [Content_Types].xml → missing_required_entry', () => {
+    const buf = buildMinimalZip(['word/document.xml']);
+    const r = validateZipContainer(buf, 'docx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('missing_required_entry');
+  });
+
+  it('DOCX missing word/ directory → missing_required_entry', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', '_rels/.rels']);
+    const r = validateZipContainer(buf, 'docx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('missing_required_entry');
+  });
+
+  it('XLSX missing [Content_Types].xml → missing_required_entry', () => {
+    const buf = buildMinimalZip(['xl/workbook.xml']);
+    const r = validateZipContainer(buf, 'xlsx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('missing_required_entry');
+  });
+
+  it('XLSX missing xl/ directory → missing_required_entry', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', '_rels/.rels']);
+    const r = validateZipContainer(buf, 'xlsx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('missing_required_entry');
+  });
+
+  it('XLSX with word/ but not xl/ → missing_required_entry', () => {
+    const buf = buildMinimalZip(['[Content_Types].xml', 'word/document.xml']);
+    const r = validateZipContainer(buf, 'xlsx');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('missing_required_entry');
+  });
+
+  // ── ZIP bomb detection ─────────────────────────────────────────────────────
+
+  it('ZIP bomb: compression ratio > 100 → zip_bomb', () => {
+    const compressedSize = 1000;
+    const uncompressedSize = compressedSize * (ZIP_MAX_COMPRESSION_RATIO + 1); // 101×
+    const buf = buildZipBombEntry(compressedSize, uncompressedSize);
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('zip_bomb');
+  });
+
+  it('ZIP bomb: exactly at ratio limit → ok', () => {
+    const compressedSize = 1000;
+    const uncompressedSize = compressedSize * ZIP_MAX_COMPRESSION_RATIO; // exactly 100×
+    const buf = buildZipBombEntry(compressedSize, uncompressedSize);
+    const r = validateZipContainer(buf, 'zip');
+    // Exactly at limit is allowed (> not >=)
+    expect(r.ok).toBe(true);
+  });
+
+  // ── Invalid ZIP ────────────────────────────────────────────────────────────
+
+  it('empty buffer → invalid_zip', () => {
+    const r = validateZipContainer(Buffer.alloc(0), 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('invalid_zip');
+  });
+
+  it('JPEG buffer (not a ZIP) → invalid_zip', () => {
+    const buf = Buffer.alloc(100, 0);
+    buf[0] = 0xFF; buf[1] = 0xD8; buf[2] = 0xFF;
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('invalid_zip');
+  });
+
+  it('PDF buffer (not a ZIP) → invalid_zip', () => {
+    const buf = Buffer.from('%PDF-1.4\n%EOF\n');
+    const r = validateZipContainer(buf, 'zip');
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('invalid_zip');
+  });
+
+  // ── zipContainerTypeFromMime ───────────────────────────────────────────────
+
+  it('zipContainerTypeFromMime: DOCX MIME → docx', () => {
+    expect(zipContainerTypeFromMime('application/vnd.openxmlformats-officedocument.wordprocessingml.document')).toBe('docx');
+  });
+
+  it('zipContainerTypeFromMime: XLSX MIME → xlsx', () => {
+    expect(zipContainerTypeFromMime('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe('xlsx');
+  });
+
+  it('zipContainerTypeFromMime: application/zip → zip', () => {
+    expect(zipContainerTypeFromMime('application/zip')).toBe('zip');
+  });
+
+  it('zipContainerTypeFromMime: application/x-zip-compressed → zip', () => {
+    expect(zipContainerTypeFromMime('application/x-zip-compressed')).toBe('zip');
+  });
+
+  it('zipContainerTypeFromMime: image/jpeg → null', () => {
+    expect(zipContainerTypeFromMime('image/jpeg')).toBeNull();
+  });
+
+  it('zipContainerTypeFromMime: application/pdf → null', () => {
+    expect(zipContainerTypeFromMime('application/pdf')).toBeNull();
   });
 });

@@ -470,3 +470,162 @@ export function clampSignedUrlExpiry(requestedSeconds: number): number {
   const clamped = Math.max(60, Math.min(requestedSeconds, SIGNED_URL_MAX_EXPIRY_SECONDS));
   return clamped;
 }
+
+// ── ZIP container validation (CP10A3) ─────────────────────────────────────────
+
+/**
+ * ZIP bomb limits — applied when inspecting DOCX/XLSX archives.
+ * These are conservative limits that cover all real-world Office documents.
+ */
+export const ZIP_MAX_ENTRIES = 10_000;
+export const ZIP_MAX_EXPANDED_BYTES = 100 * 1024 * 1024; // 100 MB
+export const ZIP_MAX_COMPRESSION_RATIO = 100; // reject if any entry expands > 100×
+
+export type ZipContainerType = 'docx' | 'xlsx' | 'zip';
+
+export interface ZipValidationResult {
+  ok: boolean;
+  code?: 'zip_bomb' | 'too_many_entries' | 'missing_required_entry' | 'invalid_zip' | 'parse_error';
+  error?: string;
+}
+
+/**
+ * Validate a ZIP-based file buffer.
+ *
+ * For DOCX: requires [Content_Types].xml and word/ directory entry.
+ * For XLSX: requires [Content_Types].xml and xl/ directory entry.
+ * For plain ZIP: only applies ZIP bomb limits.
+ *
+ * Uses a pure-JS ZIP central-directory parser — no external dependencies.
+ * Bounded by ZIP_MAX_ENTRIES and ZIP_MAX_EXPANDED_BYTES.
+ *
+ * @param buffer  File buffer (must start with PK magic bytes)
+ * @param type    'docx' | 'xlsx' | 'zip'
+ */
+export function validateZipContainer(buffer: Buffer, type: ZipContainerType): ZipValidationResult {
+  // Minimum ZIP size: local file header (30 bytes) + end of central directory (22 bytes)
+  if (buffer.length < 22) {
+    return { ok: false, code: 'invalid_zip', error: 'Buffer too small to be a valid ZIP archive.' };
+  }
+
+  // Locate the End of Central Directory (EOCD) record.
+  // Signature: PK\x05\x06 (0x06054b50 little-endian)
+  // Search from the end of the buffer (comment may follow EOCD).
+  const EOCD_SIG = 0x06054b50;
+  const MAX_COMMENT_LEN = 65535;
+  let eocdOffset = -1;
+
+  const searchStart = Math.max(0, buffer.length - 22 - MAX_COMMENT_LEN);
+  for (let i = buffer.length - 22; i >= searchStart; i--) {
+    if (buffer.readUInt32LE(i) === EOCD_SIG) {
+      eocdOffset = i;
+      break;
+    }
+  }
+
+  if (eocdOffset === -1) {
+    return { ok: false, code: 'invalid_zip', error: 'No End of Central Directory record found.' };
+  }
+
+  // Parse EOCD fields
+  const totalEntries = buffer.readUInt16LE(eocdOffset + 10);
+  const centralDirSize = buffer.readUInt32LE(eocdOffset + 12);
+  const centralDirOffset = buffer.readUInt32LE(eocdOffset + 16);
+
+  // ZIP64 check: if values are 0xFFFF/0xFFFFFFFF, this is a ZIP64 archive.
+  // We accept ZIP64 but skip deep inspection (real Office files are not ZIP64).
+  const isZip64 = totalEntries === 0xFFFF || centralDirOffset === 0xFFFFFFFF;
+  if (isZip64) {
+    // Accept ZIP64 without deep inspection — too large for typical Office files
+    return { ok: true };
+  }
+
+  if (totalEntries > ZIP_MAX_ENTRIES) {
+    return {
+      ok: false,
+      code: 'too_many_entries',
+      error: `ZIP archive has ${totalEntries} entries (max ${ZIP_MAX_ENTRIES}).`,
+    };
+  }
+
+  // Walk the central directory
+  let cdPos = centralDirOffset;
+  const CD_SIG = 0x02014b50;
+  let totalExpandedBytes = 0;
+  const entryNames: string[] = [];
+
+  for (let i = 0; i < totalEntries; i++) {
+    if (cdPos + 46 > buffer.length) break;
+    if (buffer.readUInt32LE(cdPos) !== CD_SIG) break;
+
+    const compressedSize   = buffer.readUInt32LE(cdPos + 20);
+    const uncompressedSize = buffer.readUInt32LE(cdPos + 24);
+    const fileNameLen      = buffer.readUInt16LE(cdPos + 28);
+    const extraLen         = buffer.readUInt16LE(cdPos + 30);
+    const commentLen       = buffer.readUInt16LE(cdPos + 32);
+
+    // ZIP bomb check: compression ratio
+    if (compressedSize > 0 && uncompressedSize > compressedSize * ZIP_MAX_COMPRESSION_RATIO) {
+      return {
+        ok: false,
+        code: 'zip_bomb',
+        error: `ZIP bomb detected: entry expands ${uncompressedSize} bytes from ${compressedSize} bytes (ratio > ${ZIP_MAX_COMPRESSION_RATIO}).`,
+      };
+    }
+
+    totalExpandedBytes += uncompressedSize;
+    if (totalExpandedBytes > ZIP_MAX_EXPANDED_BYTES) {
+      return {
+        ok: false,
+        code: 'zip_bomb',
+        error: `ZIP archive total expanded size exceeds ${ZIP_MAX_EXPANDED_BYTES / (1024 * 1024)} MB limit.`,
+      };
+    }
+
+    // Read entry name
+    if (cdPos + 46 + fileNameLen <= buffer.length) {
+      const name = buffer.toString('utf8', cdPos + 46, cdPos + 46 + fileNameLen);
+      entryNames.push(name);
+    }
+
+    cdPos += 46 + fileNameLen + extraLen + commentLen;
+  }
+
+  // Structure validation for Office formats
+  if (type === 'docx') {
+    const hasContentTypes = entryNames.some(n => n === '[Content_Types].xml');
+    const hasWordDir = entryNames.some(n => n.startsWith('word/'));
+    if (!hasContentTypes || !hasWordDir) {
+      return {
+        ok: false,
+        code: 'missing_required_entry',
+        error: 'File does not appear to be a valid DOCX (missing [Content_Types].xml or word/ directory).',
+      };
+    }
+  }
+
+  if (type === 'xlsx') {
+    const hasContentTypes = entryNames.some(n => n === '[Content_Types].xml');
+    const hasXlDir = entryNames.some(n => n.startsWith('xl/'));
+    if (!hasContentTypes || !hasXlDir) {
+      return {
+        ok: false,
+        code: 'missing_required_entry',
+        error: 'File does not appear to be a valid XLSX (missing [Content_Types].xml or xl/ directory).',
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Determine the ZIP container type from a MIME type.
+ * Returns null for non-ZIP-based formats.
+ */
+export function zipContainerTypeFromMime(mime: string): ZipContainerType | null {
+  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx';
+  if (mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'xlsx';
+  if (mime === 'application/zip' || mime === 'application/x-zip-compressed') return 'zip';
+  return null;
+}

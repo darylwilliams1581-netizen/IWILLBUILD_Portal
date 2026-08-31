@@ -22,6 +22,7 @@ import { jobPhotos, profiles, jobs } from '../../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
+import { buildObjectKey } from '../../../../../../storage/r2Config.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { parseMultipartForm } from '../../../../../../lib/file-upload.js';
 import {
@@ -93,7 +94,13 @@ export default async function handler(req: Request, res: Response) {
     );
 
     const ext = outMime === 'image/png' ? 'png' : 'jpg';
-    const storageKey = `${randomUUID()}.${ext}`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'job-photos',
+      companyId: profile.companyId,
+      category: 'job-photos',
+      uuid: randomUUID(),
+      originalName: file.originalname || `photo.${ext}`,
+    });
     const checksum = createHash('sha256').update(compressed).digest('hex');
 
     const result = await saveFile({
