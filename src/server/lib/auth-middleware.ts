@@ -264,8 +264,6 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // send-setup, enable, disable, status and all other /api/me routes remain protected.
   { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/send$/ },
   { method: 'POST', pattern: /^\/api\/me\/2fa\/sms\/verify$/ },
-  // TEMPORARY AUDIT ENDPOINT — token-gated, remove after use
-  { method: 'GET',  pattern: /^\/api\/internal\/energyq-audit$/ },
 ];
 
 /**
