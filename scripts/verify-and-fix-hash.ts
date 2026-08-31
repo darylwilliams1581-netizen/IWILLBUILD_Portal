@@ -12,10 +12,18 @@ const conn = await mysql.createConnection({
 });
 
 // Check current hash in DB
+// Usage: VERIFY_EMAIL=user@example.com npx tsx scripts/verify-and-fix-hash.ts
+const targetEmail = process.env.VERIFY_EMAIL || process.argv[2] || '';
+if (!targetEmail) {
+  console.error('Usage: VERIFY_EMAIL=user@example.com npx tsx scripts/verify-and-fix-hash.ts');
+  process.exit(1);
+}
+
 const [rows] = await conn.execute(
   `SELECT a.id, a.password, a.updated_at FROM account a
    JOIN user u ON u.id = a.user_id
-   WHERE u.email = 'darylwilliams1581@gmail.com' AND a.provider_id = 'credential'`
+   WHERE u.email = ? AND a.provider_id = 'credential'`,
+  [targetEmail],
 ) as [Array<Record<string,unknown>>, unknown];
 
 const row = rows[0];

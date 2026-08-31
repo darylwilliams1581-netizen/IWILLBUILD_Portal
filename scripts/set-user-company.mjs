@@ -1,12 +1,20 @@
 // One-shot script: move a user to a different company with a specified role
-// Usage: node scripts/set-user-company.mjs
+// Usage: node scripts/set-user-company.mjs <email> [companyId] [role]
+//   EMAIL        — required: user email address (CLI arg or SET_USER_EMAIL env var)
+//   companyId    — optional: target company ID (default: 5)
+//   role         — optional: target role (default: member)
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import mysql from 'mysql2/promise';
 
-const EMAIL = 'daryl.williams@enrgyq.com.au';
-const TARGET_COMPANY_ID = 5;
-const TARGET_ROLE = 'member'; // no owner permissions
+const EMAIL = process.argv[2] || process.env.SET_USER_EMAIL || '';
+if (!EMAIL) {
+  console.error('Usage: node scripts/set-user-company.mjs <email> [companyId] [role]');
+  console.error('  or set SET_USER_EMAIL environment variable');
+  process.exit(1);
+}
+const TARGET_COMPANY_ID = parseInt(process.argv[3] || process.env.SET_USER_COMPANY_ID || '5', 10);
+const TARGET_ROLE = process.argv[4] || process.env.SET_USER_ROLE || 'member'; // no owner permissions
 
 const configPath = join(process.env.NOMAD_TASK_DIR || '/local', 'config.json');
 if (!existsSync(configPath)) {

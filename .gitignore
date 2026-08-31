@@ -35,6 +35,10 @@ pnpm-lock.yaml
 .env.development.local
 .env.test.local
 .env.production.local
+# .env.production contains VITE_PROD_HOST=iwillbuild.com (non-secret, but tracked
+# .env files create a pattern risk — keep it gitignored and supply via Airo secrets
+# or the deployment environment).  See env.example for documentation.
+.env.production
 
 # Build outputs
 build/
@@ -112,3 +116,6 @@ docs/
 
 # Videos — not served by the app
 public/videos/
+
+# Internal security / audit reports — not needed at runtime
+public/audit-fix-summary.html

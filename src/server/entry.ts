@@ -667,6 +667,7 @@ import owner_console_library_submissions_id_review_post_620 from "./api/owner-co
 import owner_console_starter_pack_get_621 from "./api/owner-console/starter-pack/GET";
 import owner_console_starter_pack_post_622 from "./api/owner-console/starter-pack/POST";
 import owner_console_stats_get_623 from "./api/owner-console/stats/GET";
+import owner_console_twilio_info_get from "./api/owner-console/twilio-info/GET";
 import owner_console_storage_get_624 from "./api/owner-console/storage/GET";
 import owner_console_swms_masters_get_625 from "./api/owner-console/swms/masters/GET";
 import owner_console_swms_masters_post_626 from "./api/owner-console/swms/masters/POST";
@@ -3985,6 +3986,7 @@ app.post("/api/owner-console/library/submissions/:id/review", owner_console_libr
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_621);
 app.post("/api/owner-console/starter-pack", owner_console_starter_pack_post_622);
 app.get("/api/owner-console/stats", owner_console_stats_get_623);
+app.get("/api/owner-console/twilio-info", requirePlatformOwner, owner_console_twilio_info_get);
 app.get("/api/owner-console/storage", owner_console_storage_get_624);
 app.get("/api/owner-console/swms/masters", owner_console_swms_masters_get_625);
 app.post("/api/owner-console/swms/masters", owner_console_swms_masters_post_626);
