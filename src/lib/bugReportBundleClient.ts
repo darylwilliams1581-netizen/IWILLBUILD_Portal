@@ -91,7 +91,14 @@ function sanitisePath(path: string | undefined): string | undefined {
 function sanitiseMsg(msg: string): string {
   let s = msg.replace(/https?:\/\/[^\s"')]+/g, '[url]');
   s = s.replace(/\?[^\s"')]+/g, '');
-  s = s.replace(/(?:\/[a-zA-Z0-9_.-]+)+\.[a-zA-Z]{2,4}/g, '[file]');
+  // Strip local filesystem paths — bounded linear scan to avoid nested-quantifier ReDoS.
+  // Splits on whitespace/quotes/parens so each token is independently bounded, then
+  // tests each token for a path-like shape (one or more /segment components ending in
+  // a dot-extension). No nested quantifiers on the same character class.
+  s = s.replace(/[^\s"')]+/g, (token) => {
+    if (token.length > 300) return '[file]'; // hard cap per token
+    return /^(?:\/[A-Za-z0-9_.-]{1,64}){1,16}\.[A-Za-z]{2,4}$/.test(token) ? '[file]' : token;
+  });
   // Strip JWT-style tokens (three base64url segments separated by dots)
   s = s.replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[redacted]');
   // Strip long alphanumeric strings ≥40 chars

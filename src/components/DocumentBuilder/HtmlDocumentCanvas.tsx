@@ -241,11 +241,13 @@ ref,
   // ── Mount: set innerHTML once, wire editability ────────────────────────────
   // Memoised on templateId only — does NOT re-run when htmlContent changes
   // after mount, so React never replaces the live DOM.
+  // Defence-in-depth: sanitise stored HTML at mount time so that any content
+  // that bypassed earlier sanitisation (e.g. legacy imports) cannot execute.
   const mountCanvas = useCallback(
     (el: HTMLDivElement | null) => {
       if (!el) return;
       (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-      el.innerHTML = htmlContent ?? '';
+      el.innerHTML = sanitiseHtml(htmlContent ?? '');
       if (isEditable) {
         attachRowControls(el, () => { isDirtyRef.current = true; });
       }

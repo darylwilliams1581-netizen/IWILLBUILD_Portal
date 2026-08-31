@@ -455,11 +455,50 @@ export function sanitisePastedHtml(raw: string, mode: PasteMode = 'keep'): strin
   // ── 12. Collapse consecutive <br> into paragraph breaks ──────────────────
   let html = container.innerHTML;
   // Replace 2+ consecutive <br> tags (with optional whitespace between) with a paragraph break.
-  // Rewritten without a repeated group quantifier to avoid SAST unsafe-regex flags:
-  // match the first <br>, then one or more additional <br> tags separated by optional whitespace.
-  html = html.replace(/<br\s*\/?>\s*(?:<br\s*\/?>\s*)+/gi, '</p><p>');
+  // Uses a linear string-scan instead of a regex with nested quantifiers to
+  // avoid catastrophic backtracking on adversarially crafted whitespace runs.
+  html = collapseConsecutiveBr(html);
 
   return html;
+}
+
+// ── Consecutive <br> collapse (linear-time, no nested quantifiers) ────────────
+
+/**
+ * Replace runs of 2+ consecutive <br> tags (with optional whitespace between)
+ * with a paragraph break. Uses a forward string scan rather than a regex with
+ * nested quantifiers to guarantee O(n) time on any input.
+ */
+function collapseConsecutiveBr(html: string): string {
+  // Single <br> pattern: optional whitespace, then <br> with optional / and attributes
+  const BR = /<br\s*\/?>/i;
+  const result: string[] = [];
+  let pos = 0;
+  while (pos < html.length) {
+    // Find the next <br>
+    const brMatch = BR.exec(html.slice(pos));
+    if (!brMatch) {
+      result.push(html.slice(pos));
+      break;
+    }
+    const brStart = pos + brMatch.index;
+    result.push(html.slice(pos, brStart));
+    // Consume this <br> and any following whitespace + <br> runs
+    let end = brStart + brMatch[0].length;
+    let count = 1;
+    while (end < html.length) {
+      // Skip whitespace
+      const wsMatch = /^\s+/.exec(html.slice(end));
+      const afterWs = wsMatch ? end + wsMatch[0].length : end;
+      const nextBr = BR.exec(html.slice(afterWs));
+      if (!nextBr || nextBr.index !== 0) break;
+      end = afterWs + nextBr[0].length;
+      count++;
+    }
+    result.push(count >= 2 ? '</p><p>' : brMatch[0]);
+    pos = end;
+  }
+  return result.join('');
 }
 
 // ── Plain text fallback ───────────────────────────────────────────────────────

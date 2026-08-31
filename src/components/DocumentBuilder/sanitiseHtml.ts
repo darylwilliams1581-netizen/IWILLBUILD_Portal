@@ -60,6 +60,15 @@ export function sanitiseCssStyle(raw: string): string {
   return safe.join('; ');
 }
 
+// ── Tags whose text content must be dropped entirely (not just the tag) ───────
+// These elements are dangerous even as text nodes if re-parsed, and their
+// content is never legitimate document formatting.
+const DROP_WITH_CONTENT = new Set([
+  'script', 'style', 'noscript', 'template', 'iframe', 'frame', 'frameset',
+  'object', 'embed', 'applet', 'base', 'link', 'meta', 'title',
+  'svg', 'math',
+]);
+
 // ── HTML sanitiser ────────────────────────────────────────────────────────────
 
 export function sanitiseHtml(dirty: string): string {
@@ -76,6 +85,7 @@ export function sanitiseHtml(dirty: string): string {
     'a', 'blockquote', 'pre', 'code',
     'table', 'thead', 'tbody', 'tr', 'th', 'td',
     'hr', 'sup', 'sub',
+    'img',
   ]);
   const ALLOWED_ATTRS: Record<string, string[]> = {
     a:      ['href', 'title', 'target', 'rel'],
@@ -88,8 +98,13 @@ export function sanitiseHtml(dirty: string): string {
     tr:     ['style', 'class'],
     td:     ['colspan', 'rowspan', 'style', 'class'],
     th:     ['colspan', 'rowspan', 'style', 'class'],
+    // img: src must be a safe URL (https, relative, or app file API path — never javascript: or data:html)
+    img:    ['src', 'alt', 'width', 'height', 'style', 'class'],
   };
   const SAFE_HREF = /^(https?:|mailto:|#)/i;
+  // img src: allow https, relative paths, and app file API paths; block javascript: and data:html
+  const SAFE_IMG_SRC = /^(https?:|\/|blob:)/i;
+  const UNSAFE_IMG_SRC = /^(javascript:|data:text\/html|data:application\/)/i;
 
   const doc = new DOMParser().parseFromString(dirty, 'text/html');
 
@@ -100,7 +115,13 @@ export function sanitiseHtml(dirty: string): string {
     const el = node as Element;
     const tag = el.tagName.toLowerCase();
 
+    // Drop dangerous elements AND their entire content — never preserve text
+    // from script, style, svg, etc. as text nodes.
+    if (DROP_WITH_CONTENT.has(tag)) return null;
+
     if (!ALLOWED_TAGS.has(tag)) {
+      // Unknown/disallowed tag — preserve child content (e.g. custom spans)
+      // but not the tag itself.
       const frag = document.createDocumentFragment();
       el.childNodes.forEach((child) => {
         const cleaned = clean(child);
@@ -115,6 +136,11 @@ export function sanitiseHtml(dirty: string): string {
       const val = el.getAttribute(attr);
       if (val === null) continue;
       if (attr === 'href' && !SAFE_HREF.test(val.trim())) continue;
+      if (attr === 'src') {
+        const trimmed = val.trim();
+        if (UNSAFE_IMG_SRC.test(trimmed)) continue;
+        if (!SAFE_IMG_SRC.test(trimmed) && !trimmed.startsWith('/api/')) continue;
+      }
       if (attr === 'style') {
         const safeStyle = sanitiseCssStyle(val);
         if (safeStyle) safe.setAttribute('style', safeStyle);
