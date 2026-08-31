@@ -46,8 +46,9 @@ import { sql } from 'drizzle-orm';
 import { localProvider } from './providers/localProvider.js';
 import { r2Provider } from './providers/r2Provider.js';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult, StorageUsageResult } from './providers/types.js';
-import { resolveProviderName } from './r2Config.js';
-import { clampSignedUrlExpiry, SIGNED_URL_DEFAULT_EXPIRY_SECONDS } from './uploadPolicy.js';
+import { resolveProviderName, LOGICAL_NAMESPACES } from './r2Config.js';
+import type { LogicalNamespace } from './r2Config.js';
+import { clampSignedUrlExpiry, SIGNED_URL_DEFAULT_EXPIRY_SECONDS, validateUploadPolicy } from './uploadPolicy.js';
 
 // ── Active provider ───────────────────────────────────────────────────────────
 // Driven by the STORAGE_PROVIDER environment variable:
@@ -432,7 +433,47 @@ export async function getImageDimensions(
 // ── Core service functions ────────────────────────────────────────────────────
 
 /**
+ * Infer the logical namespace from a storage key or bucket string.
+ *
+ * Storage keys produced by buildObjectKey() always start with the logical
+ * namespace as the first path segment (e.g. "job-photos/companies/…").
+ * The `bucket` parameter is the same logical namespace constant.
+ *
+ * We try the storageKey prefix first (most reliable), then fall back to the
+ * bucket string.  If neither resolves to a known namespace we return null and
+ * the caller must decide whether to allow or reject.
+ */
+function inferNamespace(input: SaveFileInput): LogicalNamespace | null {
+  // Try storageKey prefix first
+  if (input.storageKey) {
+    const firstSegment = input.storageKey.split('/')[0];
+    if (firstSegment && (LOGICAL_NAMESPACES as readonly string[]).includes(firstSegment)) {
+      return firstSegment as LogicalNamespace;
+    }
+  }
+
+  // Fall back to bucket
+  if (input.bucket && (LOGICAL_NAMESPACES as readonly string[]).includes(input.bucket)) {
+    return input.bucket as LogicalNamespace;
+  }
+
+  return null;
+}
+
+/**
  * Save a file to the active storage provider.
+ *
+ * VALIDATION GATE (CP10A5)
+ * ────────────────────────
+ * Every call to saveFile() passes through validateUploadPolicy() before the
+ * buffer reaches any storage provider.  This applies equally to local and R2.
+ *
+ * The only exception is input.skipValidation === true, which is reserved for
+ * server-generated buffers (Jimp thumbnails/previews, in-place rotation of an
+ * already-validated stored image, images extracted from an already-validated
+ * DOCX).  It MUST NOT be set for any buffer that originates from a multipart
+ * upload or any other user-controlled input.
+ *
  * Does NOT compress — call compressImageIfNeeded() first if needed.
  * Guarantees the buffer passed to the provider is a true Node.js Buffer
  * (Jimp v1 getBuffer returns Uint8Array at runtime which breaks AWS SDK v3).
@@ -442,6 +483,38 @@ export async function saveFile(input: SaveFileInput): Promise<SaveFileResult> {
     ...input,
     buffer: Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer),
   };
+
+  // ── Upload-policy gate ────────────────────────────────────────────────────
+  if (!safeInput.skipValidation) {
+    const namespace = inferNamespace(safeInput);
+
+    if (!namespace) {
+      // Unknown namespace — fail closed.  This should never happen in production
+      // because all callers use buildObjectKey() which enforces the allowlist.
+      throw Object.assign(
+        new Error(`saveFile: unknown storage namespace for bucket="${safeInput.bucket}" key="${safeInput.storageKey ?? ''}". Upload rejected.`),
+        { code: 'unknown_namespace', status: 400 },
+      );
+    }
+
+    const validation = validateUploadPolicy(
+      {
+        originalname: safeInput.originalName,
+        mimetype:     safeInput.mimeType,
+        size:         safeInput.buffer.length,
+        buffer:       safeInput.buffer,
+      },
+      namespace,
+    );
+
+    if (!validation.ok) {
+      throw Object.assign(
+        new Error(validation.error ?? 'File rejected by upload policy.'),
+        { code: validation.code ?? 'upload_policy_violation', status: 400 },
+      );
+    }
+  }
+
   return activeProvider.saveFile(safeInput);
 }
 

@@ -192,10 +192,10 @@ export default async function handler(req: Request, res: Response) {
 
           const { saveFile } = await import('../../../../storage/storage-service.js');
           if (thumb && thumbKey) {
-            await saveFile({ buffer: thumb.buffer, originalName: `thumb_${file.originalname}`, mimeType: thumb.mimeType, bucket: PHOTO_BUCKET, storageKey: thumbKey });
+            await saveFile({ buffer: thumb.buffer, originalName: `thumb_${file.originalname}`, mimeType: thumb.mimeType, bucket: PHOTO_BUCKET, storageKey: thumbKey, skipValidation: true });
           }
           if (preview && previewKey) {
-            await saveFile({ buffer: preview.buffer, originalName: `preview_${file.originalname}`, mimeType: preview.mimeType, bucket: PHOTO_BUCKET, storageKey: previewKey });
+            await saveFile({ buffer: preview.buffer, originalName: `preview_${file.originalname}`, mimeType: preview.mimeType, bucket: PHOTO_BUCKET, storageKey: previewKey, skipValidation: true });
           }
           await db.execute(sql`
             UPDATE job_photos SET

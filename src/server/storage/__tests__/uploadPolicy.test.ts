@@ -212,12 +212,16 @@ describe('UP4 validateUploadPolicy — accepted categories', () => {
   });
 
   it('accepts DOCX for company-files', () => {
-    const f = makeFile('doc.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', zipBuffer());
+    // Must be a structurally valid DOCX (ZIP with [Content_Types].xml + word/)
+    const buf = buildMinimalZip(['[Content_Types].xml', 'word/document.xml', '_rels/.rels']);
+    const f = makeFile('doc.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buf);
     expect(validateUploadPolicy(f, 'company-files').ok).toBe(true);
   });
 
   it('accepts XLSX for company-files', () => {
-    const f = makeFile('sheet.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zipBuffer());
+    // Must be a structurally valid XLSX (ZIP with [Content_Types].xml + xl/)
+    const buf = buildMinimalZip(['[Content_Types].xml', 'xl/workbook.xml', '_rels/.rels']);
+    const f = makeFile('sheet.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buf);
     expect(validateUploadPolicy(f, 'company-files').ok).toBe(true);
   });
 
@@ -242,7 +246,9 @@ describe('UP4 validateUploadPolicy — accepted categories', () => {
   });
 
   it('accepts ZIP for company-files', () => {
-    const f = makeFile('archive.zip', 'application/zip', zipBuffer());
+    // Must be a structurally valid ZIP archive
+    const buf = buildMinimalZip(['file1.txt', 'file2.csv']);
+    const f = makeFile('archive.zip', 'application/zip', buf);
     expect(validateUploadPolicy(f, 'company-files').ok).toBe(true);
   });
 
@@ -372,7 +378,9 @@ describe('UP6 validateUploadPolicy — MIME/magic mismatch', () => {
   });
 
   it('accepts DOCX declared with ZIP magic bytes (ZIP-based format)', () => {
-    const f = makeFile('doc.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', zipBuffer());
+    // DOCX is ZIP-based — must be a structurally valid DOCX archive
+    const buf = buildMinimalZip(['[Content_Types].xml', 'word/document.xml', '_rels/.rels']);
+    const f = makeFile('doc.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buf);
     expect(validateUploadPolicy(f, 'company-files').ok).toBe(true);
   });
 

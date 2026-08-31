@@ -117,6 +117,7 @@ export async function runConvertHtml(
         buffer: img.buffer,
         mimeType: img.contentType,
         originalName: `${img.assetKey}.${ext}`,
+        skipValidation: true, // server-extracted image from already-validated DOCX
       });
       uploadedKeys.push({ storageKey: saved.storageKey, bucket: BUCKET_DOC_ASSETS });
       // Replace placeholder with real public URL in HTML

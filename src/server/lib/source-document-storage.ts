@@ -3,16 +3,17 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Storage helpers for Phase 2 "Word Source Document" workflow.
  *
- * Storage key format:
- *   {companyId}/{templateId}/rev{revision}/{nanoid}.{ext}
+ * Storage key format (CP10A5 — migrated to buildObjectKey):
+ *   source-documents/companies/{companyId}/source-docs/{uuid}/{filename}
  *
  * Uses the existing storage-service (R2 when STORAGE_PROVIDER=r2, local disk
  * otherwise). Bucket name: 'source-documents'.
  */
 
 import { createHash } from 'node:crypto';
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 import { saveFile, getDownloadBuffer, deleteFile } from '../storage/storage-service.js';
+import { buildObjectKey } from '../storage/r2Config.js';
 
 export const BUCKET_SOURCE_DOCS = 'source-documents';
 
@@ -29,6 +30,8 @@ export interface SourceUploadResult {
 
 /**
  * Upload a source document buffer to storage.
+ * The buffer is user-supplied (DOCX from multipart upload) and passes through
+ * the full validateUploadPolicy gate in saveFile().
  */
 export async function uploadSourceDocument(
   buffer: Buffer,
@@ -43,9 +46,16 @@ export async function uploadSourceDocument(
   const { companyId, templateId, revision, originalName, mimeType } = options;
 
   const sha256 = createHash('sha256').update(buffer).digest('hex');
-  const ext = originalName.split('.').pop()?.toLowerCase() ?? 'bin';
-  const slug = nanoid(12);
-  const storageKey = `${companyId}/${templateId}/rev${revision}/${slug}.${ext}`;
+
+  // Use buildObjectKey so the key starts with 'source-documents/' and the
+  // namespace is correctly inferred by saveFile()'s validation gate.
+  const storageKey = buildObjectKey({
+    logicalNamespace: 'source-documents',
+    companyId,
+    category: `rev${revision}-t${templateId}`,
+    uuid: randomUUID(),
+    originalName,
+  });
 
   const result = await saveFile({
     bucket: BUCKET_SOURCE_DOCS,
@@ -53,6 +63,7 @@ export async function uploadSourceDocument(
     buffer,
     mimeType,
     originalName,
+    // skipValidation intentionally omitted — user-supplied DOCX must be validated
   });
 
   return {

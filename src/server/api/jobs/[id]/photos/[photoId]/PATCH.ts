@@ -127,6 +127,7 @@ export default async function handler(req: Request, res: Response) {
         mimeType: mime,
         bucket: PHOTO_BUCKET,
         storageKey: photo.filename,
+        skipValidation: true, // server-generated buffer from Jimp rotation of already-validated stored image
       });
 
       updates.sizeBytes = outBuffer.length;

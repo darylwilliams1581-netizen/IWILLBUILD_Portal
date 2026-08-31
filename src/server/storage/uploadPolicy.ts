@@ -169,6 +169,18 @@ const MIXED_POLICY: UploadPolicy = {
   categoryLabel:     'file',
 };
 
+/** PDF-only policy for drawings (up to 50 MB) */
+const PDF_ONLY_MIMES = new Set(['application/pdf']);
+const PDF_ONLY_EXTENSIONS = new Set(['pdf']);
+const DRAWING_POLICY: UploadPolicy = {
+  maxBytes:          50 * 1024 * 1024, // 50 MB — drawings can be large
+  allowedMimes:      PDF_ONLY_MIMES,
+  allowedExtensions: PDF_ONLY_EXTENSIONS,
+  allowInline:       true,
+  requireMagicMatch: true,
+  categoryLabel:     'drawing',
+};
+
 /**
  * Per-namespace upload policies.
  * Namespaces not listed here fall back to MIXED_POLICY.
@@ -180,7 +192,7 @@ const NAMESPACE_POLICIES: Partial<Record<LogicalNamespace, UploadPolicy>> = {
   'am-inspection-media': IMAGE_POLICY,
   'safety-posters':      IMAGE_POLICY,
   'doc-assets':          IMAGE_POLICY,
-  'drawings':            IMAGE_POLICY,
+  'drawings':            DRAWING_POLICY,   // PDF-only, 50 MB (was IMAGE_POLICY — fixed CP10A5)
   'company-files':       MIXED_POLICY,
   'safety-documents':    DOCUMENT_POLICY,
   'source-documents':    DOCUMENT_POLICY,
@@ -390,6 +402,35 @@ export function validateUploadPolicy(
         code: 'mime_magic_mismatch',
         error: `"${file.originalname}" content does not match its declared type.`,
       };
+    }
+  }
+
+  // 10. ZIP container validation (DOCX, XLSX, plain ZIP)
+  //     Runs for every file whose magic bytes identify it as a ZIP archive,
+  //     regardless of declared MIME.  This catches ZIP bombs, ZIP64 archives
+  //     (which bypass our entry-count and ratio limits), and malformed Office
+  //     documents that claim to be DOCX/XLSX but lack the required structure.
+  const detectedForZip = detectMimeFromMagic(file.buffer);
+  const isZipMagic = detectedForZip === 'application/zip';
+  if (isZipMagic) {
+    const containerType = zipContainerTypeFromMime(file.mimetype);
+    const zipResult = validateZipContainer(file.buffer, containerType ?? 'zip');
+    if (!zipResult.ok) {
+      // Map internal ZIP validation codes to sanitised public codes
+      const codeMap: Record<string, string> = {
+        zip_bomb:               'zip_bomb',
+        too_many_entries:       'zip_bomb',
+        missing_required_entry: 'invalid_zip',
+        invalid_zip:            'invalid_zip',
+        parse_error:            'invalid_zip',
+        unsupported_zip64:      'unsupported_zip64',
+      };
+      const publicCode = codeMap[zipResult.code ?? ''] ?? 'invalid_zip';
+      const publicError =
+        publicCode === 'zip_bomb'         ? `"${file.originalname}" was rejected: archive exceeds safety limits.` :
+        publicCode === 'unsupported_zip64' ? `"${file.originalname}" uses ZIP64 format which is not supported. Please use a standard ZIP archive.` :
+                                             `"${file.originalname}" is not a valid archive or Office document.`;
+      return { ok: false, code: publicCode, error: publicError };
     }
   }
 
