@@ -98,13 +98,16 @@ export function sanitiseHtml(dirty: string): string {
     tr:     ['style', 'class'],
     td:     ['colspan', 'rowspan', 'style', 'class'],
     th:     ['colspan', 'rowspan', 'style', 'class'],
-    // img: src must be a safe URL (https, relative, or app file API path — never javascript: or data:html)
+    // img: src must be a safe URL (same-origin relative or /api/ path — never external, javascript:, or data:)
     img:    ['src', 'alt', 'width', 'height', 'style', 'class'],
   };
   const SAFE_HREF = /^(https?:|mailto:|#)/i;
-  // img src: allow https, relative paths, and app file API paths; block javascript: and data:html
-  const SAFE_IMG_SRC = /^(https?:|\/|blob:)/i;
-  const UNSAFE_IMG_SRC = /^(javascript:|data:text\/html|data:application\/)/i;
+  // img src: allow same-origin relative paths and internal /api/ paths only.
+  // External https/http URLs are blocked to prevent remote tracking requests
+  // when another administrator opens a shared template.
+  // blob: is permitted only for temporary unsaved previews (client-only).
+  const SAFE_IMG_SRC = /^(\/|blob:)/i;
+  const UNSAFE_IMG_SRC = /^(javascript:|vbscript:|data:)/i;
 
   const doc = new DOMParser().parseFromString(dirty, 'text/html');
 

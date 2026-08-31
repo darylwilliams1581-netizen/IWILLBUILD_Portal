@@ -37,6 +37,7 @@ import { profiles } from '../../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getSecret } from '#airo/secrets';
 import { downloadSourceDocument } from '../../../../../lib/source-document-storage.js';
+import { sanitiseHtmlServer } from '../../../../../lib/sanitiseHtmlServer.js';
 
 function esc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -428,7 +429,7 @@ export default async function handler(req: Request, res: Response) {
         var el = document.getElementById('doc-content');
         function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
         if (blocks.length === 0) { el.textContent = 'No content blocks found.'; return; }
-        // eslint-disable-next-line no-unsanitized/property -- block content is escaped via esc() before insertion; raw HTML blocks are trusted document-builder output stored in the company's own DB record
+        // rich_text/html blocks are sanitised by sanitiseHtmlServer before insertion.
         el.innerHTML = blocks.map(function(b) {
           if (!b || !b.type) return '';
           if (b.type === 'heading') {
@@ -436,7 +437,7 @@ export default async function handler(req: Request, res: Response) {
             return '<h' + lvl + '>' + esc(b.content || b.text || '') + '</h' + lvl + '>';
           }
           if (b.type === 'text') return '<p>' + esc(b.content || '') + '</p>';
-          if (b.type === 'rich_text' || b.type === 'richtext' || b.type === 'html') return b.content || b.html || '';
+          if (b.type === 'rich_text' || b.type === 'richtext' || b.type === 'html') return sanitiseHtmlServer(String(b.content || b.html || ''));
           if (b.type === 'divider') return '<hr/>';
           if (b.type === 'spacer') return '<div style="height:' + (b.height || 8) + 'px"></div>';
           if (b.type === 'banner') {

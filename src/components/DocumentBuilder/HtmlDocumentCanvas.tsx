@@ -96,6 +96,14 @@ ref,
   const canvasRef  = useRef<HTMLDivElement>(null);
   const isDirtyRef = useRef(false);
   const isSaving   = useRef(false);
+  /**
+   * Tracks whether the canvas has been initialised with real (non-empty)
+   * content for the current templateId. Used to detect the async-load race:
+   * if htmlContent was '' at mount time and later becomes populated (same
+   * templateId), we initialise the DOM then — but only if the user has not
+   * started editing (isDirtyRef is false).
+   */
+  const canvasInitialisedRef = useRef(false);
   /** Last saved Selection Range inside the canvas — preserved across toolbar focus loss */
   const savedRangeRef = useRef<Range | null>(null);
 
@@ -247,7 +255,18 @@ ref,
     (el: HTMLDivElement | null) => {
       if (!el) return;
       (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-      el.innerHTML = sanitiseHtml(htmlContent ?? '');
+      // Reset initialisation tracking whenever the canvas element mounts
+      // (which happens on templateId change or first mount).
+      canvasInitialisedRef.current = false;
+      isDirtyRef.current = false;
+      const sanitised = sanitiseHtml(htmlContent ?? '');
+      el.innerHTML = sanitised;
+      // Mark as initialised only if we actually received content.
+      // If htmlContent was empty (async load not yet complete), leave
+      // canvasInitialisedRef false so the effect below can initialise later.
+      if (sanitised.trim() !== '') {
+        canvasInitialisedRef.current = true;
+      }
       if (isEditable) {
         attachRowControls(el, () => { isDirtyRef.current = true; });
       }
@@ -255,6 +274,26 @@ ref,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [templateId, isEditable],
   );
+
+  // ── Async-load initialisation ──────────────────────────────────────────────
+  // Handles the race where htmlContent was '' at mount time (parent still
+  // fetching) and later becomes populated with the same templateId.
+  // Only fires when:
+  //   1. The canvas element exists.
+  //   2. The canvas has NOT yet been initialised with real content.
+  //   3. htmlContent is now non-empty.
+  //   4. The user has NOT started editing (isDirtyRef is false).
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    if (canvasInitialisedRef.current) return;
+    if (!htmlContent || htmlContent.trim() === '') return;
+    if (isDirtyRef.current) return;
+    // Content has arrived — initialise the canvas now.
+    const sanitised = sanitiseHtml(htmlContent);
+    el.innerHTML = sanitised;
+    canvasInitialisedRef.current = true;
+  }, [htmlContent]);
 
   // ── Dirty flag ────────────────────────────────────────────────────────────
   const handleInput = useCallback(() => {
