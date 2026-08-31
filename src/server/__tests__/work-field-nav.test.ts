@@ -329,9 +329,11 @@ describe('Routes — standalone feature routes registered', () => {
 // ── 5. Tablet navigation gap fix ─────────────────────────────────────────────
 
 describe('Tablet navigation gap — breakpoint fix', () => {
-  it('desktop sidebar uses md: breakpoint (not lg:)', () => {
-    expect(sidebarSrc).toContain('hidden md:flex flex-col');
-    expect(sidebarSrc).not.toContain('hidden lg:flex flex-col');
+  it('desktop sidebar uses lg: breakpoint (hidden lg:flex) — not md:', () => {
+    // Sidebar is hidden on tablet (md), only visible on desktop (lg+).
+    // This prevents the sidebar + dock from appearing simultaneously on iPad.
+    expect(sidebarSrc).toContain('hidden lg:flex flex-col');
+    expect(sidebarSrc).not.toContain('hidden md:flex flex-col');
   });
 
   it('mobile drawer backdrop uses md:hidden (not lg:hidden)', () => {
@@ -344,7 +346,7 @@ describe('Tablet navigation gap — breakpoint fix', () => {
     expect(sidebarSrc).not.toContain('z-50 lg:hidden');
   });
 
-  it('DesktopTopBar uses hidden md:flex (not hidden lg:flex)', () => {
+  it('DesktopTopBar uses hidden md:flex (visible on tablet and desktop)', () => {
     const topBarSrc = src('src/components/DesktopTopBar.tsx');
     expect(topBarSrc).toContain('hidden md:flex');
     expect(topBarSrc).not.toContain('hidden lg:flex');

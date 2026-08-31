@@ -19,6 +19,13 @@ import { signOut } from '@/lib/auth/auth-client.tsx';
 import { useDriverSessionSafe } from '@/lib/useDriverSession';
 import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
 export const DESKTOP_TOPBAR_HEIGHT = 56;
+/**
+ * CSS calc() expression for the total topbar height including the iOS
+ * safe-area-inset-top. Use this wherever you need to offset content below
+ * the topbar (sidebar top, portal-main padding-top, etc.).
+ * On desktop env() resolves to 0 so this equals DESKTOP_TOPBAR_HEIGHT.
+ */
+export const TOPBAR_HEIGHT_CSS = `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`;
 const OWNER_EMAIL = 'darylwilliams1581@gmail.com';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -108,12 +115,18 @@ export default function DesktopTopBar() {
     top: 0,
     left: 0,
     right: 0,
-    height: DESKTOP_TOPBAR_HEIGHT,
+    /* Total height = fixed content area + iOS status-bar inset.
+       On desktop env() resolves to 0 so this equals DESKTOP_TOPBAR_HEIGHT. */
+    height: `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`,
     zIndex: 1100,
-    alignItems: 'center',
+    alignItems: 'flex-end',   /* push content below the status-bar inset */
     justifyContent: 'space-between',
     paddingLeft: 20,
     paddingRight: 14,
+    /* Bottom padding keeps content vertically centred in the 56px content zone */
+    paddingBottom: 8,
+    /* Top padding = status-bar height so content clears the iOS status bar */
+    paddingTop: 'env(safe-area-inset-top, 0px)',
     background: 'linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #3b0764 100%)',
     borderBottom: '1px solid rgba(255,255,255,0.10)',
     boxShadow: '0 2px 8px rgba(109,40,217,0.20)'

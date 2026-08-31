@@ -92,7 +92,7 @@ export default function FinancePage() {
       <PortalSidebar />
       <DesktopDock />
 
-      <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
+      <div className="portal-content flex flex-col overflow-hidden" style={{ height: '100%' }}>
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
           <button
@@ -111,8 +111,11 @@ export default function FinancePage() {
           </div>
         </div>
 
-        {/* ── Tab strip ───────────────────────────────────────────────────── */}
-        <div className="flex border-b border-border shrink-0 overflow-x-auto">
+        {/* ── Tab strip — horizontally scrollable on tablet ───────────────── */}
+        <div
+          className="flex border-b border-border shrink-0 overflow-x-auto"
+          style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
+        >
           {TABS.map(tab => (
             <button
               key={tab.key}
