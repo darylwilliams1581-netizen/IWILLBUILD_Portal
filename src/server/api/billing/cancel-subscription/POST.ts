@@ -121,22 +121,38 @@ export default async function handler(req: Request, res: Response) {
 
     // If there's no Stripe subscription (e.g. webhook write-back failed), cancel
     // the DB record directly so the user isn't stuck in an unresolvable state.
+    // Keep cancel_pending (not cancelled) so the gate still grants access until
+    // current_period_end — if we have no period end, set it to end of today as
+    // a safe fallback so they aren't immediately locked out.
     if (!company.stripeSubscriptionId) {
+      const existingPeriodEnd = company.currentPeriodEnd
+        ? new Date(company.currentPeriodEnd)
+        : null;
+      // Use existing period end if it's in the future, otherwise end of today
+      const now = new Date();
+      const accessUntilDate = (existingPeriodEnd && existingPeriodEnd > now)
+        ? existingPeriodEnd
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const accessUntilSql = accessUntilDate.toISOString().slice(0, 19).replace('T', ' ');
+
       await db.execute(sql`
         UPDATE companies
         SET
-          subscription_status = 'cancelled',
+          subscription_status = 'cancel_pending',
           cancel_at_period_end = 1,
-          cancelled_at = NOW()
+          current_period_end = ${accessUntilSql}
         WHERE id = ${company.id}
       `);
-      // Send confirmation email (non-blocking)
-      void sendCancellationEmail({ to: userEmail, name: userName, companyName, accessUntil: null });
+
+      const accessUntil = accessUntilDate.toLocaleDateString('en-AU', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
+      void sendCancellationEmail({ to: userEmail, name: userName, companyName, accessUntil });
       return res.json({
         ok: true,
-        cancelAtPeriodEnd: false,
-        currentPeriodEnd: null,
-        message: 'Your subscription has been cancelled. Your account will remain in view-only mode.',
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: accessUntilDate.toISOString(),
+        message: `Your subscription has been cancelled. You'll retain access until ${accessUntil}.`,
       });
     }
 

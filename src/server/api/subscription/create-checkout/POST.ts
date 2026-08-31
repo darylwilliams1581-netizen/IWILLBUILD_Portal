@@ -16,7 +16,7 @@ import { getSecret } from '#airo/secrets';
 import { getStripe } from '../../../lib/stripe-client.js';
 import { db } from '../../../db/client.js';
 import { profiles, companies } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
 // ── Checkout-eligible plans only (enterprise = contact sales, never checkout) ──
@@ -99,6 +99,47 @@ export default async function handler(req: Request, res: Response) {
         .where(eq(companies.id, company.id));
     }
 
+    // ── Trial suppression ─────────────────────────────────────────────────────
+    // Never offer a free trial if:
+    //   1. This company has previously had a paid subscription (any status other than trial/trial_expired)
+    //   2. Any other company sharing the same user email has ever had a paid subscription
+    //   3. The Stripe customer already has a prior subscription on record
+    // This prevents the cancel-and-resubscribe-for-free-trial exploit.
+    let suppressTrial = false;
+
+    // Check 1: this company's own history
+    const companyStatus = company.subscriptionStatus ?? 'trial';
+    if (!['trial', 'trial_expired', null].includes(companyStatus)) {
+      suppressTrial = true;
+    }
+
+    // Check 2: any profile sharing this user's email has ever had a paid sub
+    if (!suppressTrial && session.user.email) {
+      const [prevRows] = await db.execute(sql`
+        SELECT COUNT(*) as cnt
+        FROM companies c
+        INNER JOIN profiles p ON p.company_id = c.id
+        INNER JOIN user u ON u.id = p.user_id
+        WHERE LOWER(u.email) = LOWER(${session.user.email})
+          AND c.subscription_status NOT IN ('trial', 'trial_expired')
+          AND c.subscription_status IS NOT NULL
+      `) as any;
+      if (Number((prevRows as any[])[0]?.cnt ?? 0) > 0) {
+        suppressTrial = true;
+      }
+    }
+
+    // Check 3: Stripe customer already has subscriptions on record
+    if (!suppressTrial && customerId) {
+      const existingSubs = await stripe.subscriptions.list({
+        customer: customerId,
+        limit: 1,
+      });
+      if (existingSubs.data.length > 0) {
+        suppressTrial = true;
+      }
+    }
+
     const origin = req.headers.origin ?? `https://${req.headers.host}`;
 
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -113,6 +154,9 @@ export default async function handler(req: Request, res: Response) {
       },
       subscription_data: {
         metadata: { companyId: String(company.id), plan },
+        // Suppress free trial for returning subscribers to prevent
+        // the cancel-and-resubscribe exploit
+        ...(suppressTrial ? { trial_period_days: 0 } : {}),
       },
     });
 
