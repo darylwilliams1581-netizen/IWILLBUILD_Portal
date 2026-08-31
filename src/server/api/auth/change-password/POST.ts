@@ -54,8 +54,20 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No password set on this account.' });
     }
 
-    const { compare, hash } = await import('bcryptjs');
-    const valid = await compare(currentPassword, currentHash);
+    // Verify current password — handle both legacy bcrypt hashes ($2b$...) and
+    // BetterAuth's scrypt format (salt:key). Accounts created before this fix
+    // may still have bcrypt hashes; we verify them correctly here and always
+    // write the new password in scrypt format so the account is migrated forward.
+    const { verifyPassword, hashPassword } = await import('better-auth/crypto');
+    let valid = false;
+    if (currentHash.startsWith('$2')) {
+      // Legacy bcrypt hash — use bcryptjs to verify
+      const { compare } = await import('bcryptjs');
+      valid = await compare(currentPassword, currentHash);
+    } else {
+      // BetterAuth scrypt format (salt:key)
+      valid = await verifyPassword({ hash: currentHash, password: currentPassword });
+    }
     if (!valid) {
       return res.status(400).json({ error: 'Current password is incorrect.' });
     }
@@ -66,7 +78,8 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ must_change_password: number | null }>, unknown];
     const wasForced = !!profileRows?.[0]?.must_change_password;
 
-    const newHash = await hash(newPassword, 12);
+    // Always write new password in BetterAuth's scrypt format
+    const newHash = await hashPassword(newPassword);
 
     // Update password
     await db.execute(sql`
