@@ -77,6 +77,51 @@ export function parseDiagEvents(raw: string | null): DiagEvent[] {
 
 const SENSITIVE_PATH_SEGMENTS = /\/(password|token|secret|auth|session|cookie|pin|otp|key|credential)/i;
 
+/**
+ * Pure linear string scanner: returns true when `token` looks like a local
+ * filesystem path — one or more `/segment` components followed by a
+ * dot-extension.  Uses no regex on the token itself so there is no
+ * nested-quantifier ReDoS risk regardless of input content.
+ *
+ * Accepts: /foo/bar.ts  /a/b/c.json  /very/deep/path/file.tsx
+ * Rejects: plain words, URLs, tokens without a leading slash or extension.
+ */
+function isFilePath(token: string): boolean {
+  // Must start with '/' and contain at least one more '/' (i.e. ≥2 segments)
+  if (token.charCodeAt(0) !== 47 /* '/' */) return false;
+  // Find the last dot — must exist and not be the last char
+  const lastDot = token.lastIndexOf('.');
+  if (lastDot < 1 || lastDot === token.length - 1) return false;
+  // Extension must be 2–4 alpha chars
+  const ext = token.slice(lastDot + 1);
+  if (ext.length < 2 || ext.length > 4) return false;
+  for (let i = 0; i < ext.length; i++) {
+    const c = ext.charCodeAt(i);
+    if (!((c >= 65 && c <= 90) || (c >= 97 && c <= 122))) return false;
+  }
+  // Walk segments: each must start with '/' and contain only safe chars,
+  // max 64 chars per segment, max 16 segments total.
+  let pos = 0;
+  let segments = 0;
+  while (pos < lastDot) {
+    if (token.charCodeAt(pos) !== 47 /* '/' */) return false;
+    pos++;
+    const segStart = pos;
+    while (pos < lastDot && token.charCodeAt(pos) !== 47) {
+      const c = token.charCodeAt(pos);
+      // Allow: A-Z a-z 0-9 _ . -
+      if (!((c >= 65 && c <= 90) || (c >= 97 && c <= 122) ||
+            (c >= 48 && c <= 57) || c === 95 || c === 46 || c === 45)) return false;
+      pos++;
+    }
+    const segLen = pos - segStart;
+    if (segLen === 0 || segLen > 64) return false;
+    segments++;
+    if (segments > 16) return false;
+  }
+  return segments >= 1;
+}
+
 function sanitisePath(path: string | undefined): string | undefined {
   if (!path) return path;
   let safe = path.split('?')[0];
@@ -93,11 +138,11 @@ function sanitiseMsg(msg: string): string {
   s = s.replace(/\?[^\s"')]+/g, '');
   // Strip local filesystem paths — bounded linear scan to avoid nested-quantifier ReDoS.
   // Splits on whitespace/quotes/parens so each token is independently bounded, then
-  // tests each token for a path-like shape (one or more /segment components ending in
-  // a dot-extension). No nested quantifiers on the same character class.
+  // tests each token for a path-like shape using a pure string scanner (no regex on
+  // the token itself) to guarantee O(n) time on any input.
   s = s.replace(/[^\s"')]+/g, (token) => {
     if (token.length > 300) return '[file]'; // hard cap per token
-    return /^(?:\/[A-Za-z0-9_.-]{1,64}){1,16}\.[A-Za-z]{2,4}$/.test(token) ? '[file]' : token;
+    return isFilePath(token) ? '[file]' : token;
   });
   // Strip JWT-style tokens (three base64url segments separated by dots)
   s = s.replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[redacted]');

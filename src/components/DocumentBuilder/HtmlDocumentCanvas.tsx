@@ -158,12 +158,9 @@ ref,
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Sanitise the incoming fragment through the shared allowlist
-      const clean = sanitiseHtml(fragment);
-
-      // Build a temporary container to parse the fragment into real nodes
-      const tmp = document.createElement('div');
-      tmp.innerHTML = clean;
+      // Sanitise the incoming fragment through the shared allowlist, then
+      // parse into an inert document so no script can execute during parsing.
+      const frag = sanitiseToFragment(fragment);
 
       // Restore the saved selection, or fall back to end-of-canvas
       const sel = window.getSelection();
@@ -189,9 +186,7 @@ ref,
       // Delete any current selection content, then insert
       range.deleteContents();
 
-      // Insert nodes from the fragment (may be multiple top-level nodes)
-      const frag = document.createDocumentFragment();
-      while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+      // Insert nodes from the inert fragment (may be multiple top-level nodes)
       range.insertNode(frag);
 
       // Collapse selection to just after the inserted content
@@ -260,7 +255,9 @@ ref,
       canvasInitialisedRef.current = false;
       isDirtyRef.current = false;
       const sanitised = sanitiseHtml(htmlContent ?? '');
-      el.innerHTML = sanitised;
+      // Use replaceChildren with an inert fragment — never assign untrusted
+      // strings directly to a live element's innerHTML.
+      replaceWithSanitised(el, sanitised);
       // Mark as initialised only if we actually received content.
       // If htmlContent was empty (async load not yet complete), leave
       // canvasInitialisedRef false so the effect below can initialise later.
@@ -291,7 +288,9 @@ ref,
     if (isDirtyRef.current) return;
     // Content has arrived — initialise the canvas now.
     const sanitised = sanitiseHtml(htmlContent);
-    el.innerHTML = sanitised;
+    // Use replaceChildren with an inert fragment — never assign untrusted
+    // strings directly to a live element's innerHTML.
+    replaceWithSanitised(el, sanitised);
     canvasInitialisedRef.current = true;
   }, [htmlContent]);
 
@@ -815,6 +814,38 @@ ${scope} .page-break::after {
   return parts.filter(Boolean).join('\n');
 }
 
+// ─── Safe DOM helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Sanitise `html` and return an inert `DocumentFragment` whose nodes can be
+ * safely inserted into the live DOM.  Uses `DOMParser` so no script can
+ * execute during parsing (the parsed document is never adopted into the live
+ * document until the caller explicitly moves nodes).
+ *
+ * This is the single choke-point for all sanitised-HTML → live-DOM paths in
+ * this file.  It replaces every `el.innerHTML = sanitiseHtml(...)` pattern so
+ * that untrusted strings are never assigned directly to a live element's
+ * `innerHTML` property.
+ */
+function sanitiseToFragment(html: string): DocumentFragment {
+  const clean = sanitiseHtml(html);
+  // DOMParser creates a completely separate document — scripts cannot execute.
+  const inert = new DOMParser().parseFromString(clean, 'text/html');
+  const frag = document.createDocumentFragment();
+  // Move all body children into the fragment (head content is irrelevant here).
+  while (inert.body.firstChild) frag.appendChild(inert.body.firstChild);
+  return frag;
+}
+
+/**
+ * Replace all children of `el` with the sanitised, inert parse of `html`.
+ * Equivalent to `el.innerHTML = sanitiseHtml(html)` but never assigns an
+ * untrusted string to a live element's `innerHTML` property.
+ */
+function replaceWithSanitised(el: HTMLElement, html: string): void {
+  el.replaceChildren(sanitiseToFragment(html));
+}
+
 // ─── Row controls ─────────────────────────────────────────────────────────────
 
 /**
@@ -881,7 +912,7 @@ export function attachRowControls(root: HTMLElement, onMutate: () => void): void
     addBtn.className = ROW_BTN_CLASS;
     addBtn.title = 'Add row below';
     addBtn.setAttribute('data-testid', 'row-add-btn');
-    addBtn.innerHTML = svgPlus;
+    addBtn.appendChild(makePlusSvg());
     addBtn.addEventListener('mousedown', (e) => {
       e.preventDefault(); // keep focus in current cell
       const parent = row.parentElement;
@@ -910,7 +941,7 @@ export function attachRowControls(root: HTMLElement, onMutate: () => void): void
     delBtn.className = `${ROW_BTN_CLASS} delete`;
     delBtn.title = 'Delete row';
     delBtn.setAttribute('data-testid', 'row-delete-btn');
-    delBtn.innerHTML = svgTrash;
+    delBtn.appendChild(makeTrashSvg());
     delBtn.addEventListener('mousedown', (e) => {
       e.preventDefault();
       const parent = row.parentElement;
@@ -951,7 +982,56 @@ export function serialiseCanvas(canvasEl: HTMLElement): string {
   return clone.innerHTML;
 }
 
-// ─── Inline SVG icons (avoids Lucide import in DOM helpers) ──────────────────
+// ─── Inline SVG icon builders (avoids Lucide import in DOM helpers) ──────────
+// Built with createElementNS so no string is ever assigned to innerHTML.
 
-const svgPlus = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-const svgTrash = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function makeSvgBase(w = 11, h = 11): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', String(w));
+  svg.setAttribute('height', String(h));
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2.5');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  return svg;
+}
+
+/** Plus icon — add row */
+function makePlusSvg(): SVGSVGElement {
+  const svg = makeSvgBase();
+  const h = document.createElementNS(SVG_NS, 'line');
+  h.setAttribute('x1', '12'); h.setAttribute('y1', '5');
+  h.setAttribute('x2', '12'); h.setAttribute('y2', '19');
+  const v = document.createElementNS(SVG_NS, 'line');
+  v.setAttribute('x1', '5');  v.setAttribute('y1', '12');
+  v.setAttribute('x2', '19'); v.setAttribute('y2', '12');
+  svg.appendChild(h);
+  svg.appendChild(v);
+  return svg;
+}
+
+/** Trash icon — delete row */
+function makeTrashSvg(): SVGSVGElement {
+  const svg = makeSvgBase();
+  const bar = document.createElementNS(SVG_NS, 'polyline');
+  bar.setAttribute('points', '3 6 5 6 21 6');
+  const body = document.createElementNS(SVG_NS, 'path');
+  body.setAttribute('d', 'M19 6l-1 14H6L5 6');
+  const l1 = document.createElementNS(SVG_NS, 'path');
+  l1.setAttribute('d', 'M10 11v6');
+  const l2 = document.createElementNS(SVG_NS, 'path');
+  l2.setAttribute('d', 'M14 11v6');
+  const lid = document.createElementNS(SVG_NS, 'path');
+  lid.setAttribute('d', 'M9 6V4h6v2');
+  svg.appendChild(bar);
+  svg.appendChild(body);
+  svg.appendChild(l1);
+  svg.appendChild(l2);
+  svg.appendChild(lid);
+  return svg;
+}
