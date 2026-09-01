@@ -113,7 +113,7 @@ export async function runImageSafeguardScanRunsMigration(): Promise<void> {
           AND TABLE_NAME   = ${table}
           AND INDEX_NAME   = ${indexName}
       `);
-      const cnt = Number((rows as { cnt: number }).cnt ?? 0);
+      const cnt = Number((rows as Array<{ cnt: number }>)[0]?.cnt ?? 0);
       if (cnt === 0) {
         await db.execute(
           sql.raw(`ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` (${cols})`),
