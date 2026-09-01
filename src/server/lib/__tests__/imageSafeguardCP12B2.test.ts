@@ -739,10 +739,10 @@ describe('ISG-B2-NEW: executeScan throws after createScanRun → run status is f
   it('scan POST async path calls markRunFailed with a sanitized code when executeScan throws', async () => {
     const { readFileSync } = await import('fs');
     const source = readFileSync('src/server/api/owner-console/image-safeguard/scan/POST.ts', 'utf8');
-    // markRunFailed must be called inside the async catch block
+    // markRunFailed must be called inside the async catch block with rawCode
     const catchIdx = source.indexOf('} catch (err: unknown)');
     const afterCatch = source.slice(catchIdx);
-    expect(afterCatch).toContain('markRunFailed(runId, code)');
+    expect(afterCatch).toContain('markRunFailed(runId, rawCode)');
   });
 
   it('markRunFailed writes run_status=failed and error_code to the DB', async () => {

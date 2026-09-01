@@ -198,15 +198,21 @@ export default async function handler(req: Request, res: Response) {
         }
       } catch (err: unknown) {
         // Log sanitized error details server-side — no raw object, no secrets, no stack trace.
-        console.error('[image-safeguard/scan async]', {
-          name:    err instanceof Error ? err.name    : 'unknown',
-          message: err instanceof Error ? err.message.slice(0, 300) : 'unknown',
-        });
-        const code =
-          err instanceof Error && 'code' in err
-            ? String((err as { code: string }).code)
-            : 'scan_error';
-        await markRunFailed(runId, code).catch(() => undefined);
+        const errName    = err instanceof Error ? err.name    : 'unknown';
+        const errMessage = err instanceof Error ? err.message.slice(0, 300) : 'unknown';
+        console.error('[image-safeguard/scan async]', { name: errName, message: errMessage });
+
+        // Prefer an explicit .code property (set by r2Scanner / scannerAdapter),
+        // then fall back to .name (AWS SDK errors use .name, not .code),
+        // then a generic sentinel.
+        const rawCode =
+          (err instanceof Error && 'code' in err && typeof (err as { code: unknown }).code === 'string')
+            ? (err as { code: string }).code
+            : errName !== 'Error' && errName !== 'unknown'
+              ? errName
+              : 'scan_error';
+
+        await markRunFailed(runId, rawCode).catch(() => undefined);
 
         // Audit: scan failed (sanitized code only)
         try {
@@ -216,7 +222,7 @@ export default async function handler(req: Request, res: Response) {
             VALUES
               (${randomUUID()}, 0, ${initiatedBy}, 'safeguard_scan_failed',
                'scan_run', ${runId},
-               ${JSON.stringify({ errorCode: code })},
+               ${JSON.stringify({ errorCode: rawCode })},
                ${toMySQLDatetime(new Date())})
           `);
         } catch {

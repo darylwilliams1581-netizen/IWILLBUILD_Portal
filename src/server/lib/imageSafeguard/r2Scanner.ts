@@ -102,7 +102,20 @@ export async function runScan(req: ScanRunRequest): Promise<ScanOutcome> {
   // support server-side date filtering in ListObjectsV2.
   // We fetch up to MAX_BATCH_SIZE * 20 entries to allow date filtering,
   // then cap at MAX_BATCH_SIZE after filtering.
-  const allEntries = await scanListObjects(SCAN_PREFIX, MAX_BATCH_SIZE * 20);
+  let allEntries: Awaited<ReturnType<typeof scanListObjects>>;
+  try {
+    allEntries = await scanListObjects(SCAN_PREFIX, MAX_BATCH_SIZE * 20);
+  } catch (listErr: unknown) {
+    // Map R2/AWS errors to a stable code — never expose credentials or internal paths.
+    const name    = listErr instanceof Error ? listErr.name    : 'unknown';
+    const message = listErr instanceof Error ? listErr.message : String(listErr);
+    console.error('[r2Scanner] scanListObjects failed', { name, message: message.slice(0, 300) });
+    // Attach a stable code so the async catch in POST.ts stores a useful error_code.
+    throw Object.assign(
+      new Error('r2_list_failed'),
+      { code: 'r2_list_failed', cause: name },
+    );
+  }
 
   const keys: string[] = [];
   for (const entry of allEntries) {
