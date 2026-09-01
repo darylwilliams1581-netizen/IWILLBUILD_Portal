@@ -230,8 +230,11 @@ export default async function handler(req: Request, res: Response) {
       /table.*doesn'?t exist/i.test(msg) ||
       /no such table/i.test(msg) ||
       /relation.*does not exist/i.test(msg) ||
-      /ER_NO_SUCH_TABLE/i.test(msg) ||
-      /image_safeguard_scan_runs/i.test(msg);
+      /ER_NO_SUCH_TABLE/i.test(msg);
+    // NOTE: do NOT add table-name substring patterns here.
+    // Matching on a table name would misclassify lock timeouts, FK violations,
+    // and connection errors that mention the table as schema_not_ready when
+    // the tables actually exist.
 
     if (isSchemaError) {
       return res.status(503).json({

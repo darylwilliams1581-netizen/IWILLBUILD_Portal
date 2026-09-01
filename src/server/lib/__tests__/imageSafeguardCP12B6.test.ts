@@ -156,7 +156,9 @@ describe('ISG-B6-05: scan POST outer catch — missing table returns 503 schema_
     expect(src).toContain('isSchemaError');
     // Must detect MySQL ER_NO_SUCH_TABLE and similar patterns
     expect(src).toContain('ER_NO_SUCH_TABLE');
-    expect(src).toContain('image_safeguard_scan_runs');
+    // Must NOT use table-name substring match — too broad, causes false positives
+    // when the table exists but throws a lock/FK/connection error mentioning the table name
+    expect(src).not.toContain('/image_safeguard_scan_runs/i');
   });
 
   it('schema_not_ready response uses 503 status', async () => {
