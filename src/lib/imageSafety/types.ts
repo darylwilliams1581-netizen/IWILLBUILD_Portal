@@ -9,6 +9,18 @@
  *  - Scan results are safe to log (they contain only metadata).
  *  - Attestation tokens are opaque UUIDs — they reference an audit row, not
  *    the image itself.
+ *
+ * GRADUATED BEHAVIOUR (CP12A rev 2):
+ *  clear           → silent pass-through, no modal
+ *  privacy_warning → soft one-tap modal (GPS detected)
+ *  blocked         → hard block, no override
+ *  unavailable     → soft one-tap modal once per batch; inherited within batch
+ *
+ * BATCH SCOPING:
+ *  A batch is the set of photos captured/uploaded in a single authenticated
+ *  session for a specific (jobId, surface) pair. Confirmation is requested
+ *  once per batch; subsequent files in the same batch inherit the token.
+ *  Batch state is in-memory only and expires on component unmount or job change.
  */
 
 // ── Scan result ───────────────────────────────────────────────────────────────
@@ -16,14 +28,13 @@
 /**
  * Outcome of the client-side image safety scan.
  *
- *  clear        — no signals detected; confirmation still shown for images
- *                 (policy requirement: all image uploads require attestation)
- *  privacy_warning — EXIF GPS or other privacy signal detected; confirmation
- *                 required with explicit warning
- *  blocked      — file failed hard validation (wrong type, corrupt, etc.);
- *                 upload must not proceed
- *  unavailable  — scanner could not run (no person detector installed);
- *                 show general confirmation, never silently bypass
+ *  clear           — no signals detected; upload proceeds silently
+ *  privacy_warning — EXIF GPS or other privacy signal detected; soft one-tap
+ *                    confirmation required
+ *  blocked         — file failed hard validation (wrong type, corrupt, etc.);
+ *                    upload must not proceed, no override
+ *  unavailable     — scanner could not run; soft one-tap confirmation shown
+ *                    once per batch, then inherited
  */
 export type ScanStatus = 'clear' | 'privacy_warning' | 'blocked' | 'unavailable';
 
@@ -38,7 +49,10 @@ export interface ImageScanResult {
   hasGpsMetadata: boolean;
   /** Whether a person/face signal was detected (always false — no detector installed) */
   hasPersonSignal: boolean;
-  /** Whether the user must confirm before upload proceeds */
+  /**
+   * Whether user confirmation is required for THIS specific file.
+   * false for 'clear' results and for batch-inherited confirmations.
+   */
   confirmationRequired: boolean;
   /** ISO timestamp of the scan */
   scannedAt: string;
@@ -65,6 +79,8 @@ export interface AttestationContext {
   policyVersion: string;
   /** ISO timestamp of the user's confirmation */
   confirmedAt: string;
+  /** Whether this attestation was inherited from a batch (no new modal shown) */
+  batchInherited?: boolean;
 }
 
 /**
@@ -87,3 +103,21 @@ export interface AttestationResponse {
 export type GateOutcome =
   | { allowed: true;  token: string }
   | { allowed: false; reason: 'cancelled' | 'blocked' | 'scan_error' };
+
+// ── Batch state ───────────────────────────────────────────────────────────────
+
+/**
+ * In-memory batch confirmation record.
+ * Keyed by batchKey = `${jobId ?? 'none'}|${surface}`.
+ * Expires on component unmount — never persisted to localStorage or DB.
+ */
+export interface BatchConfirmation {
+  /** The attestation token from the first confirmation in this batch */
+  token: string;
+  /** ISO timestamp of the original confirmation */
+  confirmedAt: string;
+  /** The jobId this batch is scoped to (null for non-job surfaces) */
+  jobId: number | null;
+  /** The surface this batch is scoped to */
+  surface: string;
+}
