@@ -7,6 +7,7 @@ import {
   int,
   date,
   datetime,
+  tinyint,
 } from 'drizzle-orm/mysql-core';
 
 // ── BetterAuth required tables ──────────────────────────────────────────────
@@ -792,4 +793,63 @@ export const imageSafeguardRecords = mysqlTable('image_safeguard_records', {
   reviewStatus:   varchar('review_status', { length: 32 }).notNull().default('none'),
   createdAt:      timestamp('created_at').defaultNow().notNull(),
   updatedAt:      timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+// ── CP12B2: Image Safeguard Scan Runs ─────────────────────────────────────────
+//
+// image_safeguard_scan_runs: one row per scan run initiated by a platform owner.
+// image_safeguard_findings:  one row per image assessed in a scan run.
+// image_safeguard_scan_cursor: singleton row — last successful scan timestamp.
+//
+// NEVER STORED: R2 keys, signed URLs, image bytes, face crops, raw paths,
+//               conclusions about criminal conduct.
+
+export const imageSafeguardScanRuns = mysqlTable('image_safeguard_scan_runs', {
+  id:               varchar('id', { length: 36 }).primaryKey(),
+  initiatedBy:      varchar('initiated_by', { length: 36 }).notNull(),
+  rangeStart:       varchar('range_start', { length: 32 }).notNull(),
+  rangeEnd:         varchar('range_end', { length: 32 }).notNull(),
+  usedCursor:       tinyint('used_cursor').notNull().default(0),
+  // pending | running | completed | failed | cancelled
+  runStatus:        varchar('run_status', { length: 16 }).notNull().default('pending'),
+  imagesConsidered: int('images_considered').notNull().default(0),
+  imagesScanned:    int('images_scanned').notNull().default(0),
+  imagesSkipped:    int('images_skipped').notNull().default(0),
+  imagesWithSignal: int('images_with_signal').notNull().default(0),
+  imagesFailed:     int('images_failed').notNull().default(0),
+  detectorName:     varchar('detector_name', { length: 64 }),
+  detectorVersion:  varchar('detector_version', { length: 32 }),
+  startedAt:        datetime('started_at', { fsp: 3 }),
+  finishedAt:       datetime('finished_at', { fsp: 3 }),
+  createdAt:        datetime('created_at', { fsp: 3 }).notNull(),
+  // Sanitized error code only — no stack traces, no internal paths
+  errorCode:        varchar('error_code', { length: 64 }),
+});
+
+export const imageSafeguardFindings = mysqlTable('image_safeguard_findings', {
+  id:               varchar('id', { length: 36 }).primaryKey(),
+  scanRunId:        varchar('scan_run_id', { length: 36 }).notNull(),
+  // Internal asset reference — NOT an R2 key or signed URL
+  assetId:          varchar('asset_id', { length: 36 }).notNull(),
+  companyId:        int('company_id').notNull(),
+  userId:           varchar('user_id', { length: 36 }),
+  // clear | privacy_signal | unavailable | failed
+  result:           varchar('result', { length: 32 }).notNull().default('unavailable'),
+  faceCount:        int('face_count').notNull().default(0),
+  detectorName:     varchar('detector_name', { length: 64 }),
+  detectorVersion:  varchar('detector_version', { length: 32 }),
+  failureCode:      varchar('failure_code', { length: 64 }),
+  reviewed:         tinyint('reviewed').notNull().default(0),
+  reviewerId:       varchar('reviewer_id', { length: 36 }),
+  reviewedAt:       datetime('reviewed_at', { fsp: 3 }),
+  // Short factual note — no conclusions about criminal conduct
+  reviewerNote:     varchar('reviewer_note', { length: 500 }),
+  scannedAt:        datetime('scanned_at', { fsp: 3 }).notNull(),
+});
+
+export const imageSafeguardScanCursor = mysqlTable('image_safeguard_scan_cursor', {
+  id:                     int('id').primaryKey().default(1),
+  lastSuccessfulScanAt:   varchar('last_successful_scan_at', { length: 32 }),
+  lastSuccessfulRunId:    varchar('last_successful_run_id', { length: 36 }),
+  updatedAt:              datetime('updated_at', { fsp: 3 }).notNull(),
 });

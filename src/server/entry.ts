@@ -668,6 +668,9 @@ import owner_console_form_templates_get_635 from "./api/owner-console/form-templ
 import owner_console_form_templates_post_636 from "./api/owner-console/form-templates/POST";
 import owner_console_image_safeguard_scan_post_637 from "./api/owner-console/image-safeguard/scan/POST";
 import owner_console_image_safeguard_status_get_638 from "./api/owner-console/image-safeguard/status/GET";
+// CP12B2 — Image Safeguard scan runs + findings
+import owner_console_image_safeguard_runs_get from "./api/owner-console/image-safeguard/runs/GET";
+import owner_console_image_safeguard_findings_patch from "./api/owner-console/image-safeguard/findings/[id]/PATCH";
 import owner_console_library_items_get_639 from "./api/owner-console/library/items/GET";
 import owner_console_library_items_post_640 from "./api/owner-console/library/items/POST";
 import owner_console_library_items_from_template_post_641 from "./api/owner-console/library/items/from-template/POST";
@@ -3257,6 +3260,12 @@ if (!process.env.VITEST) {
       console.error('[image-safeguard] migration fatal:', e)
     )
   );
+  // CP12B2: Image Safeguard Scan Runs — independent, non-blocking
+  void import('./db/migrations/image-safeguard-scan-runs.js').then(m =>
+    m.runImageSafeguardScanRunsMigration().catch((e: unknown) =>
+      console.error('[image-safeguard-scan-runs] migration fatal:', e)
+    )
+  );
   // ── sms_verification_codes.id column type repair ─────────────────────────────
   // Historical context: the original CREATE TABLE DDL used INT AUTO_INCREMENT for
   // the id column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
@@ -4003,8 +4012,11 @@ app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_
 app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_634);
 app.get("/api/owner-console/form-templates", owner_console_form_templates_get_635);
 app.post("/api/owner-console/form-templates", owner_console_form_templates_post_636);
-app.post("/api/owner-console/image-safeguard/scan", owner_console_image_safeguard_scan_post_637);
-app.get("/api/owner-console/image-safeguard/status", owner_console_image_safeguard_status_get_638);
+app.post("/api/owner-console/image-safeguard/scan", requirePlatformOwner, owner_console_image_safeguard_scan_post_637);
+app.get("/api/owner-console/image-safeguard/status", requirePlatformOwner, owner_console_image_safeguard_status_get_638);
+// CP12B2 — Image Safeguard scan runs + findings (platform-owner only)
+app.get("/api/owner-console/image-safeguard/runs", requirePlatformOwner, owner_console_image_safeguard_runs_get);
+app.patch("/api/owner-console/image-safeguard/findings/:id", requirePlatformOwner, owner_console_image_safeguard_findings_patch);
 app.get("/api/owner-console/library/items", owner_console_library_items_get_639);
 app.post("/api/owner-console/library/items", owner_console_library_items_post_640);
 app.post("/api/owner-console/library/items/from-template", owner_console_library_items_from_template_post_641);
