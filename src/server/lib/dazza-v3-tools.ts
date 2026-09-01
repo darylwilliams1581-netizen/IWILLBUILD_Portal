@@ -499,6 +499,13 @@ export const V3_TOOL_DEFINITIONS = [
               'If true, use the last successful scan cursor as the start date. ' +
               'Ignored when `since` is provided. Defaults to true.',
           },
+          period_days: {
+            type: 'integer',
+            description:
+              'Look-back window in days (1–90). Used as `since` = now − period_days when ' +
+              'no explicit `since` is provided and `use_cursor` is false or has no cursor. ' +
+              'Ignored when `since` is explicitly set.',
+          },
         },
         required: [],
       },
@@ -1473,7 +1480,17 @@ async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Prom
   const until     = typeof args.until === 'string' ? args.until : null;
   const useCursor = args.use_cursor !== false; // default true
 
-  const rangeResult = await resolveDateRange({ since, until, useCursor });
+  // period_days: integer 1–90; only applied when no explicit `since` is given
+  let resolvedSince = since;
+  if (!resolvedSince && typeof args.period_days !== 'undefined') {
+    const pd = args.period_days;
+    if (!Number.isInteger(pd) || (pd as number) < 1 || (pd as number) > 90) {
+      return err('period_days must be an integer between 1 and 90.');
+    }
+    resolvedSince = new Date(Date.now() - (pd as number) * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  const rangeResult = await resolveDateRange({ since: resolvedSince, until, useCursor });
   if (isDateRangeError(rangeResult)) {
     return err(`Date range error [${rangeResult.code}]: ${rangeResult.message}`);
   }

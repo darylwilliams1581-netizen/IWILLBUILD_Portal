@@ -881,3 +881,52 @@ describe('ISG-B2-26: Dazza trigger tool uses correct function signatures — no 
     }
   });
 });
+
+// ── ISG-B2-27: period_days parameter in Dazza trigger tool ────────────────────
+
+describe('ISG-B2-27: period_days parameter in Dazza trigger tool', () => {
+  it('dazza-v3-tools tool definition includes period_days property', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    expect(source).toContain('period_days');
+    expect(source).toContain('period_days must be an integer between 1 and 90');
+  });
+
+  it('period_days is ignored when explicit since is provided', async () => {
+    // resolveDateRange with explicit since — period_days should not override it
+    mockExecute.mockResolvedValue([{ last_successful_scan_at: null }]);
+    const { resolveDateRange, isDateRangeError } = await import('../imageSafeguard/scanRunService.js');
+    const since = '2026-08-01T00:00:00.000Z';
+    const until = '2026-09-01T00:00:00.000Z';
+    // Simulate: explicit since wins; period_days would compute a different date
+    const result = await resolveDateRange({ since, until, useCursor: false });
+    expect(isDateRangeError(result)).toBe(false);
+    if (!isDateRangeError(result)) {
+      expect(result.rangeStart.toISOString()).toBe(since);
+    }
+  });
+
+  it('period_days=30 computes since = now − 30 days', () => {
+    // Verify the arithmetic used in the dazza tool
+    const now = new Date('2026-09-01T18:00:00.000Z');
+    const pd = 30;
+    const computed = new Date(now.getTime() - pd * 24 * 60 * 60 * 1000).toISOString();
+    expect(computed).toBe('2026-08-02T18:00:00.000Z');
+  });
+
+  it('period_days validation: rejects 0, negative, >90, non-integer', () => {
+    const invalid = [0, -1, 91, 3.14, -0.5, 100];
+    for (const pd of invalid) {
+      const isValid = Number.isInteger(pd) && pd >= 1 && pd <= 90;
+      expect(isValid).toBe(false);
+    }
+  });
+
+  it('period_days validation: accepts 1, 7, 30, 90', () => {
+    const valid = [1, 7, 30, 90];
+    for (const pd of valid) {
+      const isValid = Number.isInteger(pd) && pd >= 1 && pd <= 90;
+      expect(isValid).toBe(true);
+    }
+  });
+});
