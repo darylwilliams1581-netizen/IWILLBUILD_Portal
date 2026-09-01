@@ -24,11 +24,17 @@
  * ISG-UI-14  Successful download resets button to idle (no error shown)
  *
  * All tests use mocked fetch — no real network, no R2, no DB.
+ *
+ * act() discipline (ISG-UI-10, ISG-UI-11):
+ *   Controlled pending promises are resolved inside `await act(async () => { … })`
+ *   so every resulting React state update is flushed before the test ends.
+ *   A console.error spy is installed for the whole file; ISG-UI-10 and ISG-UI-11
+ *   assert it was never called with a "not wrapped in act" message.
  */
 
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Shared fetch mock ─────────────────────────────────────────────────────────
 
@@ -43,6 +49,21 @@ global.fetch = mockFetch as unknown as typeof fetch;
 
 global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
 global.URL.revokeObjectURL = vi.fn();
+
+// ── console.error spy ─────────────────────────────────────────────────────────
+// Installed globally so every test in this file can assert that no
+// "not wrapped in act" warning was emitted.  The spy is reset before each test
+// and restored after each test so it does not bleed into other test files.
+
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore();
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -436,7 +457,8 @@ describe('ISG-UI-10: Button is disabled and aria-busy during download', () => {
   it('header button is disabled while fetch is in flight', async () => {
     const runId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
-    // Make the export fetch hang indefinitely so we can inspect mid-flight state
+    // resolveExport is called inside act() later so the resulting state
+    // update (setState('error')) is flushed before the test ends.
     let resolveExport!: (v: unknown) => void;
     const hangingExport = new Promise(r => { resolveExport = r; });
 
@@ -456,16 +478,34 @@ describe('ISG-UI-10: Button is disabled and aria-busy during download', () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
     const btn = screen.getByTestId('csv-download-header');
+
+    // Click starts the download; userEvent wraps the click in act internally.
     await userEvent.click(btn);
 
-    // Button should now be disabled and aria-busy
+    // ── Assert in-flight state ────────────────────────────────────────────────
+    // The button must be disabled and aria-busy while the promise is pending.
     await waitFor(() => {
       expect(btn).toBeDisabled();
       expect(btn.getAttribute('aria-busy')).toBe('true');
     });
 
-    // Clean up the hanging promise
-    resolveExport({ ok: false, status: 500, json: async () => ({}), headers: { get: () => null } });
+    // ── Resolve inside act so the resulting setState('error') is flushed ──────
+    // Without this, React would update state after the test ends and emit the
+    // "not wrapped in act" warning.
+    await act(async () => {
+      resolveExport({ ok: false, status: 500, json: async () => ({}), headers: { get: () => null } });
+    });
+
+    // Drain: wait for the component to settle back to idle/error state.
+    await waitFor(() => {
+      expect(btn).not.toBeDisabled();
+    });
+
+    // ── Prove no act warning was emitted ─────────────────────────────────────
+    const actWarnings = (consoleErrorSpy.mock.calls as unknown[][]).filter(
+      (args: unknown[]) => typeof args[0] === 'string' && (args[0] as string).includes('not wrapped in act'),
+    );
+    expect(actWarnings).toHaveLength(0);
   });
 });
 
@@ -495,18 +535,38 @@ describe('ISG-UI-11: Duplicate click while in-flight is ignored', () => {
 
     const btn = screen.getByTestId('csv-download-header');
 
-    // First click starts the download
-    await userEvent.click(btn);
-    // Second click while in-flight — button is disabled so userEvent won't fire,
-    // but we also verify the inFlightRef guard via call count
+    // First click starts the download.
     await userEvent.click(btn);
 
+    // Confirm in-flight: button is disabled, so the second click is a no-op
+    // at the DOM level.  The inFlightRef guard provides a second layer of
+    // protection even if the disabled attribute were bypassed.
+    await waitFor(() => { expect(btn).toBeDisabled(); });
+
+    // Second click — button is disabled; userEvent skips it.
+    await userEvent.click(btn);
+
+    // ── Assert exactly one export call ────────────────────────────────────────
     const exportCalls = (mockFetch.mock.calls as unknown[][]).filter(
       (args) => typeof args[0] === 'string' && (args[0] as string).includes('/export.csv'),
     );
     expect(exportCalls).toHaveLength(1);
 
-    resolveExport({ ok: false, status: 500, json: async () => ({}), headers: { get: () => null } });
+    // ── Resolve inside act so setState('error') is flushed before cleanup ─────
+    await act(async () => {
+      resolveExport({ ok: false, status: 500, json: async () => ({}), headers: { get: () => null } });
+    });
+
+    // Drain: wait for the component to settle.
+    await waitFor(() => {
+      expect(btn).not.toBeDisabled();
+    });
+
+    // ── Prove no act warning was emitted ─────────────────────────────────────
+    const actWarnings = (consoleErrorSpy.mock.calls as unknown[][]).filter(
+      (args: unknown[]) => typeof args[0] === 'string' && (args[0] as string).includes('not wrapped in act'),
+    );
+    expect(actWarnings).toHaveLength(0);
   });
 });
 
