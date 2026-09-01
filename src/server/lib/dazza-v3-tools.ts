@@ -1479,7 +1479,8 @@ async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Prom
   }
 
   // Create run record — initiatedBy = 'dazza'
-  const runId = await createScanRun('dazza', rangeResult.rangeStart, rangeResult.rangeEnd, rangeResult.usedCursor);
+  // Pass the full ResolvedDateRange object — createScanRun expects (initiatedBy, range)
+  const runId = await createScanRun('dazza', rangeResult);
   await markRunStarted(runId);
 
   // Execute scan asynchronously — do not await so Dazza gets runId immediately
@@ -1490,11 +1491,30 @@ async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Prom
         rangeStart: rangeResult.rangeStart,
         rangeEnd:   rangeResult.rangeEnd,
       });
-      await markRunCompleted(runId, outcome);
+      // markRunCompleted expects (runId, counts, detectorName, detectorVersion)
+      await markRunCompleted(
+        runId,
+        {
+          imagesConsidered: outcome.imagesConsidered,
+          imagesScanned:    outcome.imagesScanned,
+          imagesSkipped:    outcome.imagesSkipped,
+          imagesWithSignal: outcome.imagesWithSignal,
+          imagesFailed:     outcome.imagesFailed,
+        },
+        outcome.detectorName,
+        outcome.detectorVersion,
+      );
       await advanceCursor(runId, new Date());
     } catch (e: unknown) {
-      const code = (e as { code?: string })?.code ?? 'scan_error';
-      await markRunFailed(runId, code).catch(() => undefined);
+      // Prefer .code (set by r2Scanner), then .name (AWS SDK), then sentinel
+      const errName = e instanceof Error ? e.name : 'unknown';
+      const rawCode =
+        (e instanceof Error && 'code' in e && typeof (e as { code: unknown }).code === 'string')
+          ? (e as { code: string }).code
+          : errName !== 'Error' && errName !== 'unknown'
+            ? errName
+            : 'scan_error';
+      await markRunFailed(runId, rawCode).catch(() => undefined);
     }
   })();
 

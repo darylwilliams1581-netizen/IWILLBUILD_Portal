@@ -818,3 +818,66 @@ describe('ISG-B2-25: Runtime decision documented — Python worker required', ()
     expect(cap.configured).toBe(false);
   });
 });
+
+// ── ISG-B2-26: Dazza trigger uses correct createScanRun / markRunCompleted signatures ──
+
+describe('ISG-B2-26: Dazza trigger tool uses correct function signatures — no undefined toISOString', () => {
+  it('dazza-v3-tools calls createScanRun with (initiatedBy, rangeResult) — not 4 positional args', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    // Must pass the full ResolvedDateRange object as second arg
+    expect(source).toContain("createScanRun('dazza', rangeResult)");
+    // Must NOT pass rangeStart/rangeEnd/usedCursor as separate positional args
+    expect(source).not.toContain('createScanRun(\'dazza\', rangeResult.rangeStart');
+  });
+
+  it('dazza-v3-tools calls markRunCompleted with (runId, counts, detectorName, detectorVersion)', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    // Must pass the counts object, not the raw outcome
+    expect(source).toContain('imagesConsidered: outcome.imagesConsidered');
+    expect(source).toContain('imagesScanned:    outcome.imagesScanned');
+    expect(source).toContain('outcome.detectorName');
+    expect(source).toContain('outcome.detectorVersion');
+    // Must NOT pass outcome directly as second arg
+    expect(source).not.toMatch(/markRunCompleted\(runId,\s*outcome\)/);
+  });
+
+  it('dazza async catch uses rawCode pattern (prefers .code then .name)', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    // The dazza async catch is the LAST catch (e: unknown) block in the file
+    const lastCatchIdx = source.lastIndexOf('} catch (e: unknown) {');
+    const afterCatch = source.slice(lastCatchIdx, lastCatchIdx + 600);
+    expect(afterCatch).toContain("'code' in e");
+    expect(afterCatch).toContain('markRunFailed(runId, rawCode)');
+  });
+
+  it('resolveDateRange with useCursor=true and no cursor does not throw', async () => {
+    // Cursor returns null — must fall back to 7-day default, not throw
+    mockExecute.mockResolvedValue([{ last_successful_scan_at: null }]);
+    const { resolveDateRange, isDateRangeError } = await import('../imageSafeguard/scanRunService.js');
+    const result = await resolveDateRange({ since: null, until: null, useCursor: true });
+    // Must not be an error — must produce a valid range
+    expect(isDateRangeError(result)).toBe(false);
+    if (!isDateRangeError(result)) {
+      // rangeStart and rangeEnd must be valid Dates — toISOString must not throw
+      expect(() => result.rangeStart.toISOString()).not.toThrow();
+      expect(() => result.rangeEnd.toISOString()).not.toThrow();
+      expect(result.usedCursor).toBe(false);
+    }
+  });
+
+  it('explicit since/until from UI are passed through unchanged', async () => {
+    mockExecute.mockResolvedValue([{ last_successful_scan_at: null }]);
+    const { resolveDateRange, isDateRangeError } = await import('../imageSafeguard/scanRunService.js');
+    const since = '2026-08-01T00:00:00.000Z';
+    const until = '2026-09-01T00:00:00.000Z';
+    const result = await resolveDateRange({ since, until, useCursor: false });
+    expect(isDateRangeError(result)).toBe(false);
+    if (!isDateRangeError(result)) {
+      expect(result.rangeStart.toISOString()).toBe(since);
+      expect(result.rangeEnd.toISOString()).toBe(until);
+    }
+  });
+});
