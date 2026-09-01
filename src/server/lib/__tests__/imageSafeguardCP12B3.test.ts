@@ -634,7 +634,80 @@ describe('ISG-B3-24: clear findings not stored', () => {
   });
 });
 
-// ── ISG-B3-25: no identity inference in any CP12B3 file ──────────────────────
+// ── ISG-B3-26: configured-path prefix enforcement ────────────────────────────
+//
+// Runs r2Scanner through its configured execution path.
+// Mocks the scanner capability as configured (both secrets present).
+// Mocks scanListObjects to return [] so no image fetch is needed.
+// Proves behaviourally that attacker-controlled request fields (prefix, bucket,
+// objectKey) never reach the storage boundary — only the hardcoded values do.
+
+describe('ISG-B3-26: configured-path prefix enforcement', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('ISG-B3-26: scanListObjects receives exactly job-photos/ and batchLimit=1000 — attacker fields ignored', async () => {
+    // ── Arrange ──────────────────────────────────────────────────────────────
+    // Override the secrets mock so getAdapterCapability() returns configured:true.
+    // Both SCANNER_WORKER_URL and SCANNER_WORKER_SECRET must be non-null.
+    const secretsMod = await import('#airo/secrets');
+    vi.spyOn(secretsMod, 'getSecret').mockImplementation((name: string) => {
+      if (name === 'SCANNER_WORKER_URL') return 'http://internal-worker:8080';
+      if (name === 'SCANNER_WORKER_SECRET') return 'test-secret-value';
+      return null;
+    });
+
+    // scanListObjects returns empty — no image fetch, no classifier call needed.
+    mockScanListObjects.mockResolvedValueOnce([]);
+
+    // Attacker-controlled request: extra fields that must never reach storage.
+    // ScanRunRequest only has { runId, rangeStart, rangeEnd } — the extra fields
+    // are cast away by TypeScript but we supply them as a plain object to prove
+    // the runtime ignores them too.
+    const attackerReq = {
+      runId: 'attacker-run-id',
+      rangeStart: new Date('2026-01-01T00:00:00Z'),
+      rangeEnd: new Date('2026-01-02T00:00:00Z'),
+      // Attacker-supplied fields — must never reach scanListObjects or scanGetObject
+      prefix: 'private-files/',
+      bucket: 'attacker-bucket',
+      objectKey: '../job-photos/other-company/image.jpg',
+    } as Parameters<typeof runScan>[0];
+
+    // ── Act ───────────────────────────────────────────────────────────────────
+    const { runScan, MAX_BATCH_SIZE, SCAN_PREFIX } = await import('../imageSafeguard/r2Scanner.js');
+    const outcome = await runScan(attackerReq);
+
+    // ── Assert: scanListObjects called exactly once ───────────────────────────
+    expect(mockScanListObjects).toHaveBeenCalledTimes(1);
+
+    // ── Assert: prefix supplied to storage boundary is exactly job-photos/ ───
+    // The first argument must be the hardcoded SCAN_PREFIX constant.
+    // It must NOT be 'private-files/', '../job-photos/other-company/', or any
+    // attacker-supplied value.
+    const [calledPrefix, calledMaxKeys] = mockScanListObjects.mock.calls[0] as [string, number];
+    expect(calledPrefix).toBe('job-photos/');
+    expect(calledPrefix).toBe(SCAN_PREFIX);
+    expect(calledPrefix).not.toBe('private-files/');
+    expect(calledPrefix).not.toContain('..');
+    expect(calledPrefix).not.toContain('attacker');
+
+    // ── Assert: batch limit is exactly MAX_BATCH_SIZE * 20 = 1000 ────────────
+    // MAX_BATCH_SIZE = 50; runScan fetches up to MAX_BATCH_SIZE * 20 entries
+    // to allow date filtering, then caps at MAX_BATCH_SIZE after filtering.
+    expect(MAX_BATCH_SIZE).toBe(50);
+    expect(calledMaxKeys).toBe(MAX_BATCH_SIZE * 20); // 1000
+    expect(calledMaxKeys).toBe(1000);
+
+    // ── Assert: no attacker-provided bucket, prefix or object key reached storage
+    // scanGetObject must NOT have been called at all (empty list → no fetches).
+    expect(mockScanGetObject).not.toHaveBeenCalled();
+
+    // ── Assert: outcome is a valid ScanOutcome with zero images ──────────────
+    expect(outcome.imagesConsidered).toBe(0);
+    expect(outcome.imagesScanned).toBe(0);
+    expect(outcome.results).toHaveLength(0);
+  });
+});
 
 describe('ISG-B3-25: no identity inference in any CP12B3 file', () => {
   it('ISG-B3-25: no identity/age/gender/ethnicity/criminality/intent in code paths', async () => {
