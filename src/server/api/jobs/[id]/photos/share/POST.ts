@@ -89,7 +89,9 @@ export default async function handler(req: Request, res: Response) {
       createdByUserId: session.user.id,
     });
 
-    // ── Audit event (best-effort, non-blocking) ───────────────────────────────
+    // ── Audit event (best-effort, only after share token is persisted) ───────────
+    // Placed after the DB insert succeeds — so the audit record is only written
+    // when the share link was actually created and will be returned to the caller.
     if (currentRefs.length > 0) {
       void recordSharingAuditEvent({
         companyId: profile.companyId,

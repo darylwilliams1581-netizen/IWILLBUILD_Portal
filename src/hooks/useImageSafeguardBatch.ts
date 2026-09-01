@@ -118,6 +118,12 @@ export function useImageSafeguardBatch() {
           // Network error — default to 'unavailable' (requires confirmation)
         }
 
+        // No images at all — skip the modal entirely and allow immediately
+        if (refCount === 0) {
+          resolveOutcome({ allowed: true });
+          return;
+        }
+
         // Blocked/elevated: resolve immediately without showing modal
         if (worstStatus === 'blocked' || worstStatus === 'elevated') {
           resolveOutcome({ allowed: false, reason: 'blocked' });

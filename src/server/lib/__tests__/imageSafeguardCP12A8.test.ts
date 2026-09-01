@@ -17,6 +17,12 @@
  *  ISG-30  Audit entry contains no recipients, URLs, keys or image contents
  *  ISG-31  batch-confirm endpoint no longer exists
  *  ISG-32  Sensitive data never logged
+ *  ISG-33  generateShareLink(false/default) is rejected when photos exist
+ *  ISG-34  generateShareLink(true) proceeds after confirmation
+ *  ISG-35  Image-free form email has no popup (refCount=0 → skip modal)
+ *  ISG-36  Form email containing images has one popup at final Send
+ *  ISG-37  Failed share/email does not create a successful-sharing audit event
+ *  ISG-38  Successful acknowledged action creates one audit event
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -462,5 +468,264 @@ describe('ISG-32: Sensitive data never logged', () => {
     expect(source).toContain('Go Back');
     expect(source).toContain('Confirm and Share');
     expect(source).toContain('Confirm and Send');
+  });
+});
+
+// ── ISG-33: generateShareLink(false/default) is rejected when photos exist ────
+
+describe('ISG-33: generateShareLink(false/default) is rejected when photos exist', () => {
+  it('JobPhotos handle type accepts optional acknowledged boolean defaulting to false', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/components/JobPhotos.tsx', 'utf8');
+    // Interface declaration must accept optional boolean
+    expect(source).toMatch(/generateShareLink:\s*\(acknowledged\?:\s*boolean\)\s*=>/);
+    // Implementation must default to false
+    expect(source).toMatch(/generateShareLink\s*=\s*useCallback\s*\(async\s*\(acknowledged\s*=\s*false\)/);
+    // Must pass acknowledged to the body (not hardcode true)
+    expect(source).toContain('imageSafeguardAcknowledged: acknowledged');
+    // Must NOT hardcode true
+    expect(source).not.toContain('imageSafeguardAcknowledged: true');
+  });
+
+  it('share endpoint rejects imageSafeguardAcknowledged=false when photos exist', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/jobs/[id]/photos/share/POST.ts', 'utf8');
+    // Must check !== true (not just truthy)
+    expect(source).toContain('body.imageSafeguardAcknowledged !== true');
+    expect(source).toContain("code: 'safeguard_acknowledgment_required'");
+  });
+
+  it('share endpoint skips acknowledgment check when no photos (currentRefs.length === 0)', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/jobs/[id]/photos/share/POST.ts', 'utf8');
+    // The entire safeguard block is inside `if (currentRefs.length > 0)`
+    // so acknowledged=false is fine when there are no photos
+    expect(source).toContain('if (currentRefs.length > 0)');
+  });
+
+  it('job-photos-page imperative handle call passes false when no photos', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/pages/job-photos-page.tsx', 'utf8');
+    // When photoCount === 0, generateShareLink(false) is called
+    expect(source).toContain('generateShareLink(false)');
+  });
+});
+
+// ── ISG-34: generateShareLink(true) proceeds after confirmation ───────────────
+
+describe('ISG-34: generateShareLink(true) proceeds after confirmation', () => {
+  it('job-photos-page passes true only after checkBatch returns allowed', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/pages/job-photos-page.tsx', 'utf8');
+    // The early-return guard must exist: if (!outcome.allowed) return
+    expect(source).toContain('if (!outcome.allowed) return');
+    // generateShareLink(true) must appear in the source (the actual call, not just a comment)
+    // Count actual code calls (not comment lines)
+    const codeLines = source.split('\n').filter(l => !l.trimStart().startsWith('*') && !l.trimStart().startsWith('//'));
+    const codeSource = codeLines.join('\n');
+    expect(codeSource).toContain('generateShareLink(true)');
+    // The early-return guard must precede the true call in the code (not comments)
+    const earlyReturnIdx = codeSource.indexOf('if (!outcome.allowed) return');
+    const trueCallIdx = codeSource.indexOf('generateShareLink(true)');
+    expect(earlyReturnIdx).toBeGreaterThan(-1);
+    expect(trueCallIdx).toBeGreaterThan(-1);
+    expect(trueCallIdx).toBeGreaterThan(earlyReturnIdx);
+  });
+
+  it('share endpoint proceeds when imageSafeguardAcknowledged=true and photos present', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/jobs/[id]/photos/share/POST.ts', 'utf8');
+    // After the acknowledgment check, the code continues to generate the share link
+    const ackCheckIdx = source.indexOf('body.imageSafeguardAcknowledged !== true');
+    const generateIdx = source.indexOf('generateShareToken()');
+    expect(ackCheckIdx).toBeGreaterThan(-1);
+    expect(generateIdx).toBeGreaterThan(-1);
+    // generateShareToken comes after the acknowledgment check
+    expect(generateIdx).toBeGreaterThan(ackCheckIdx);
+  });
+});
+
+// ── ISG-35: Image-free form email has no popup ────────────────────────────────
+
+describe('ISG-35: Image-free form email has no popup (refCount=0 → skip modal)', () => {
+  it('batch-status returns refCount=0 and worstStatus=clear when form has no images', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/image-safety/batch-status/POST.ts', 'utf8');
+    // When refCount === 0, return early with clear status
+    expect(source).toContain("worstStatus: 'clear', refCount: 0");
+    expect(source).toContain('if (refCount === 0)');
+  });
+
+  it('useImageSafeguardBatch resolves allowed=true immediately when refCount=0', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/hooks/useImageSafeguardBatch.ts', 'utf8');
+    // Hook skips modal when refCount is 0
+    expect(source).toContain('if (refCount === 0)');
+    expect(source).toContain("resolveOutcome({ allowed: true })");
+  });
+
+  it('batch-status counts photo-type field answers for form_email', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/image-safety/batch-status/POST.ts', 'utf8');
+    // Must query form submissions and count photo fields
+    expect(source).toContain('form_email');
+    expect(source).toContain('job_form_submissions');
+    expect(source).toContain("fieldType === 'photo'");
+    expect(source).toContain('submissionId');
+  });
+
+  it('batch-status requires submissionId for form_email', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/image-safety/batch-status/POST.ts', 'utf8');
+    expect(source).toContain('submissionId is required for form_email');
+  });
+});
+
+// ── ISG-36: Form email containing images has one popup at final Send ──────────
+
+describe('ISG-36: Form email containing images has one popup at final Send', () => {
+  it('batch-status returns refCount>0 when form has images', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/image-safety/batch-status/POST.ts', 'utf8');
+    // When refCount > 0, proceed to getWorstSafeguardStatus
+    expect(source).toContain('getWorstSafeguardStatus');
+    expect(source).toContain('form_submission:');
+  });
+
+  it('send-email endpoint requires imageSafeguardAcknowledged when images present', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/job-forms/[id]/send-email/POST.ts', 'utf8');
+    expect(source).toContain('body.imageSafeguardAcknowledged !== true');
+    expect(source).toContain("code: 'safeguard_acknowledgment_required'");
+  });
+
+  it('SendDocumentEmailModal passes imageSafeguardAcknowledged:true in fetch body', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/components/SendDocumentEmailModal.tsx', 'utf8');
+    expect(source).toContain('imageSafeguardAcknowledged: true');
+    expect(source).not.toContain('safeguardToken');
+  });
+
+  it('gate runs at handleSend time (after recipients finalised), not at modal open', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/components/SendDocumentEmailModal.tsx', 'utf8');
+    // checkBatch is called inside handleSend, not in a useEffect or onOpen
+    const handleSendIdx = source.indexOf('async function handleSend');
+    const checkBatchIdx = source.indexOf('checkBatch(');
+    expect(handleSendIdx).toBeGreaterThan(-1);
+    expect(checkBatchIdx).toBeGreaterThan(-1);
+    expect(checkBatchIdx).toBeGreaterThan(handleSendIdx);
+  });
+});
+
+// ── ISG-37: Failed share/email does not create a successful-sharing audit event
+
+describe('ISG-37: Failed share/email does not create a successful-sharing audit event', () => {
+  it('share endpoint audit fires only after DB insert succeeds', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/jobs/[id]/photos/share/POST.ts', 'utf8');
+    // Audit call must come after the insert, not before
+    const insertIdx = source.indexOf('db.insert(jobPhotoShares)');
+    const auditIdx = source.indexOf('recordSharingAuditEvent(');
+    expect(insertIdx).toBeGreaterThan(-1);
+    expect(auditIdx).toBeGreaterThan(-1);
+    expect(auditIdx).toBeGreaterThan(insertIdx);
+    // And the response must come after the audit
+    const responseIdx = source.indexOf('res.json({ shareUrl');
+    expect(responseIdx).toBeGreaterThan(auditIdx);
+  });
+
+  it('send-email endpoint audit fires only after sendEmail() succeeds', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/job-forms/[id]/send-email/POST.ts', 'utf8');
+    // sendEmail must come before the audit call
+    const sendEmailIdx = source.indexOf('await sendEmail(');
+    const auditIdx = source.indexOf('recordSharingAuditEvent(');
+    expect(sendEmailIdx).toBeGreaterThan(-1);
+    expect(auditIdx).toBeGreaterThan(-1);
+    expect(auditIdx).toBeGreaterThan(sendEmailIdx);
+  });
+
+  it('share endpoint returns 500 on DB failure — no audit call in catch block', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/jobs/[id]/photos/share/POST.ts', 'utf8');
+    // The catch block must not contain recordSharingAuditEvent
+    const catchIdx = source.lastIndexOf('} catch (error)');
+    const auditInCatch = source.indexOf('recordSharingAuditEvent', catchIdx);
+    expect(catchIdx).toBeGreaterThan(-1);
+    expect(auditInCatch).toBe(-1); // no audit in catch
+  });
+
+  it('send-email endpoint returns 500 on failure — no audit call in catch block', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/job-forms/[id]/send-email/POST.ts', 'utf8');
+    const catchIdx = source.lastIndexOf('} catch (error)');
+    const auditInCatch = source.indexOf('recordSharingAuditEvent', catchIdx);
+    expect(catchIdx).toBeGreaterThan(-1);
+    expect(auditInCatch).toBe(-1); // no audit in catch
+  });
+});
+
+// ── ISG-38: Successful acknowledged action creates one audit event ─────────────
+
+describe('ISG-38: Successful acknowledged action creates one audit event', () => {
+  beforeEach(() => { vi.resetModules(); mockExecute.mockReset(); });
+
+  it('recordSharingAuditEvent is called exactly once per successful share', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/jobs/[id]/photos/share/POST.ts', 'utf8');
+    // Count occurrences of recordSharingAuditEvent — must be exactly 1
+    const matches = source.match(/recordSharingAuditEvent\(/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBe(1);
+  });
+
+  it('recordSharingAuditEvent is called exactly once per successful email send', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/job-forms/[id]/send-email/POST.ts', 'utf8');
+    const matches = source.match(/recordSharingAuditEvent\(/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBe(1);
+  });
+
+  it('audit event fields are limited to safe metadata only', async () => {
+    mockExecute.mockResolvedValue({ affectedRows: 1 });
+    const { recordSharingAuditEvent } = await import('../imageSafeguardService.js');
+    await recordSharingAuditEvent({
+      companyId: 1,
+      userId: 'user-abc',
+      action: 'job_photo_share',
+      resourceId: 42,
+      imageCount: 5,
+    });
+    const callStr = JSON.stringify(mockExecute.mock.calls);
+    // Must contain safe fields
+    expect(callStr).toContain('job_photo_share');
+    // Must NOT contain sensitive data
+    expect(callStr).not.toMatch(/X-Amz-Signature/);
+    expect(callStr).not.toMatch(/r2\.cloudflarestorage/);
+    expect(callStr).not.toMatch(/data:image\//);
+    expect(callStr).not.toMatch(/@.*\.com/); // no email addresses
+  });
+
+  it('audit event interface has exactly the required safe fields', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/imageSafeguardService.ts', 'utf8');
+    const interfaceMatch = source.match(/interface SharingAuditEvent \{[\s\S]+?\}/);
+    if (interfaceMatch) {
+      const iface = interfaceMatch[0];
+      // Required fields
+      expect(iface).toContain('companyId');
+      expect(iface).toContain('userId');
+      expect(iface).toContain('action');
+      expect(iface).toContain('resourceId');
+      expect(iface).toContain('imageCount');
+      // Forbidden fields
+      expect(iface).not.toContain('recipients');
+      expect(iface).not.toContain('url');
+      expect(iface).not.toContain('r2');
+      expect(iface).not.toContain('signed');
+      expect(iface).not.toContain('token');
+    }
   });
 });

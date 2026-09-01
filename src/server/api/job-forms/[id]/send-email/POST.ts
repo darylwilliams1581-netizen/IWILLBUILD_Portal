@@ -282,7 +282,9 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // ── Safeguard audit event (best-effort) ────────────────────────────────────
+    // ── Safeguard audit event (best-effort, only after email accepted) ──────────
+    // Placed after sendEmail() succeeds and after the job note — so the audit
+    // record is only written when the email was actually accepted for delivery.
     if (hasImages) {
       void recordSharingAuditEvent({
         companyId: profile.companyId,

@@ -119,8 +119,10 @@ export default function JobPhotosPage() {
   /**
    * CP12A: Safeguard-gated share link generation.
    * Shows one confirmation modal if the job has photos.
-   * After confirmation, calls the share endpoint with imageSafeguardAcknowledged: true.
-   * Cancel creates no share link.
+   * After confirmation, calls generateShareLink(true) — the explicit true
+   * is the only path that passes imageSafeguardAcknowledged: true to the server.
+   * Cancel, or any direct call without going through this gate, sends false
+   * and is rejected by the server when photos exist.
    */
   const handleShareWithGate = useCallback(async () => {
     if (!jobId) return;
@@ -132,8 +134,11 @@ export default function JobPhotosPage() {
         sharingSurface: 'share link',
       });
       if (!outcome.allowed) return;  // user cancelled or blocked — do not share
+      photosRef.current?.generateShareLink(true);
+    } else {
+      // No photos — no modal needed; acknowledged=false is fine (server skips check)
+      photosRef.current?.generateShareLink(false);
     }
-    photosRef.current?.generateShareLink();
   }, [checkBatch, photoCount, jobId]);
 
   /**
