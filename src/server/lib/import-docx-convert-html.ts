@@ -18,26 +18,14 @@
  * a second GET request.
  */
 
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 import { convertDocxToHtml } from './docx-to-html.js';
 import type { ImportReport } from './docx-to-html.js';
 import { validateDocxEmbeddedImage } from '../storage/uploadPolicy.js';
+import { buildObjectKey } from '../storage/r2Config.js';
 
-/** Bucket for images extracted from DOCX documents */
+/** Logical namespace for images extracted from DOCX documents */
 export const BUCKET_DOC_ASSETS = 'doc-assets';
-
-/**
- * Build a server-generated storage key for a DOCX embedded image.
- *
- * The key is derived entirely from server-controlled values — companyId,
- * templateId, a cryptographically random nanoid, and the magic-detected
- * extension.  The DOCX relationship filename is never used.
- *
- * Format: `{companyId}/{templateId}/{nanoid(12)}.{safeExt}`
- */
-function buildDocxImageKey(companyId: number, templateId: number, safeExt: string): string {
-  return `${companyId}/${templateId}/${nanoid(12)}.${safeExt}`;
-}
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -120,6 +108,8 @@ export async function runConvertHtml(
 
   // Track all storage keys written so we can roll back on DB failure
   const uploadedKeys: Array<{ storageKey: string; bucket: string }> = [];
+  // Count only images that pass validation and are successfully stored
+  let storedImageCount = 0;
 
   // ── Step 2: Upload extracted images → substitute placeholders ──────────────
   for (const img of images) {
@@ -127,42 +117,56 @@ export async function runConvertHtml(
       // ── CP10A6: Treat every DOCX-extracted image as untrusted user content ──
       //
       // The DOCX relationship filename, declared content-type, and extension
-      // must NOT be trusted.  validateDocxEmbeddedImage() detects the actual
+      // MUST NOT be trusted.  validateDocxEmbeddedImage() detects the actual
       // type from magic bytes and permits only JPEG, PNG, and WebP.
       const validation = validateDocxEmbeddedImage(img.buffer);
       if (!validation.ok) {
-        // Non-fatal: skip this image, leave placeholder in HTML, log and continue.
-        // The document is still usable — the placeholder will remain as a broken
-        // image rather than silently storing a potentially dangerous file.
-        console.warn(
-          `[import-docx/convert_html] embedded image rejected (${validation.code}): ${validation.error}`,
-          { assetKey: img.assetKey, declaredContentType: img.contentType },
-        );
+        // Rejected: strip the placeholder from HTML entirely so no broken <img>
+        // is left in the document.  Append a sanitised warning to the import
+        // report — no internal paths, no extracted content, no file details.
+        html = html.split(img.placeholder).join('');
+        const warnMsg = `An embedded image was removed: ${validation.error}`;
+        if (!report.warnings.includes(warnMsg) && report.warnings.length < 20) {
+          report.warnings.push(warnMsg);
+        }
+        // No saveFile call — rejected content never reaches the provider.
+        // No DB/storage reference is created for rejected content.
         continue;
       }
 
       // Use magic-detected MIME and safe extension — never the DOCX-declared values
       const { detectedMime, safeExt } = validation;
 
-      // Generate the storage key server-side from validated type — never from DOCX metadata
-      const imgKey = buildDocxImageKey(companyId, templateId, safeExt);
+      // Generate the storage key via buildObjectKey() — canonical CP10 format:
+      //   doc-assets/companies/{companyId}/docx-images/{uuid}/embedded-image.{ext}
+      // The DOCX relationship filename is never used in the key.
+      const imgKey = buildObjectKey({
+        logicalNamespace: 'doc-assets',
+        companyId,
+        category:         'docx-images',
+        uuid:             randomUUID(),
+        originalName:     `embedded-image.${safeExt}`,
+      });
 
       const saved = await deps.saveFile({
-        bucket: BUCKET_DOC_ASSETS,
-        storageKey: imgKey,
-        buffer: img.buffer,
-        mimeType: detectedMime,
+        bucket:       BUCKET_DOC_ASSETS,
+        storageKey:   imgKey,
+        buffer:       img.buffer,
+        mimeType:     detectedMime,
         originalName: `embedded-image.${safeExt}`,
-        // No skipValidation — the gate in saveFile() will run IMAGE_POLICY
-        // for doc-assets and confirm magic bytes match the declared MIME.
-        // This is intentional belt-and-suspenders: validateDocxEmbeddedImage
-        // already ran, but the storage gate provides an independent check.
+        // No skipValidation — the gate in saveFile() runs IMAGE_POLICY for
+        // doc-assets and independently confirms magic bytes match the MIME.
+        // Belt-and-suspenders: validateDocxEmbeddedImage already ran, but the
+        // storage gate is a second independent check.
       });
       uploadedKeys.push({ storageKey: saved.storageKey, bucket: BUCKET_DOC_ASSETS });
+      storedImageCount++;
       // Replace placeholder with real public URL in HTML
       html = html.split(img.placeholder).join(saved.publicUrl);
     } catch (imgErr) {
-      // Non-fatal: leave placeholder in HTML; log and continue
+      // Non-fatal storage failure: strip placeholder, log, continue.
+      // Do not leave a broken placeholder URL in the document.
+      html = html.split(img.placeholder).join('');
       console.warn(`[import-docx/convert_html] image upload failed for ${img.assetKey}:`, imgErr);
     }
   }
@@ -236,7 +240,7 @@ export async function runConvertHtml(
       sha256: recoveryUpload.sha256,
       revision: newRevision,
       sizeBytes: recoveryUpload.sizeBytes,
-      imageCount: images.length,
+      imageCount: storedImageCount,
       html,
       css,
       report,

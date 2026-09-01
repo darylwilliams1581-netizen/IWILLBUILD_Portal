@@ -372,7 +372,7 @@ describe('G4 — image placeholders replaced with real URLs', () => {
     expect(imgSaves.length).toBe(result.payload.imageCount);
   });
 
-  it('image storageKey includes companyId and templateId', async () => {
+  it('image storageKey uses canonical buildObjectKey format with companyId', async () => {
     const buf = await makeDocxWithImage();
     const deps = makeDeps(state);
     const result = await runConvertHtml(makeInput(buf, { companyId: 5, templateId: 20 }), deps);
@@ -382,7 +382,12 @@ describe('G4 — image placeholders replaced with real URLs', () => {
       ([input]) => (input as { bucket: string }).bucket === BUCKET_DOC_ASSETS,
     );
     expect(imgSave).toBeDefined();
-    expect((imgSave![0] as { storageKey: string }).storageKey).toContain('5/20/');
+    const key = (imgSave![0] as { storageKey: string }).storageKey;
+    // Canonical format: doc-assets/companies/{companyId}/docx-images/{uuid}/embedded-image.{ext}
+    expect(key).toContain('doc-assets/companies/5/docx-images/');
+    expect(key).toContain('/embedded-image.');
+    // Must NOT use the legacy {companyId}/{templateId}/... format
+    expect(key).not.toMatch(/^5\/20\//);
   });
 
   it('HTML contains cdn URL after placeholder substitution', async () => {
