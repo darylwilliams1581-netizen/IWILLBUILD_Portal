@@ -87,7 +87,6 @@ export default async function handler(req: Request, res: Response) {
 
     return res.json({
       worstStatus,
-      resolvedRefs,
       refCount: resolvedRefs.length,
     });
   } catch (err) {

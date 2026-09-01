@@ -64,7 +64,6 @@ export interface CheckBatchOptions {
 
 interface PendingBatch {
   worstStatus: SafeguardStatus;
-  resolvedRefs: string[];
   imageCount: number;
   sharingSurface?: string;
   opts: CheckBatchOptions;
@@ -92,10 +91,17 @@ export function useImageSafeguardBatch() {
    */
   const checkBatch = useCallback(
     (opts: CheckBatchOptions): Promise<SharingBatchOutcome> => {
-      return new Promise<SharingBatchOutcome>(async (resolve) => {
+      // Wrap the async work in a non-async Promise executor to satisfy the
+      // no-async-promise-executor lint rule.
+      let resolveOutcome!: (outcome: SharingBatchOutcome) => void;
+      const promise = new Promise<SharingBatchOutcome>((resolve) => {
+        resolveOutcome = resolve;
+      });
+
+      const run = async () => {
         // ── 1. Query server for worst-case status (server resolves refs) ──────
         let worstStatus: SafeguardStatus = 'unavailable';
-        let resolvedRefs: string[] = [];
+        let refCount = 0;
         try {
           const res = await fetch('/api/image-safety/batch-status', {
             method: 'POST',
@@ -110,11 +116,10 @@ export function useImageSafeguardBatch() {
           if (res.ok) {
             const data = (await res.json()) as {
               worstStatus?: SafeguardStatus;
-              resolvedRefs?: string[];
               refCount?: number;
             };
             if (data.worstStatus) worstStatus = data.worstStatus;
-            if (Array.isArray(data.resolvedRefs)) resolvedRefs = data.resolvedRefs;
+            if (typeof data.refCount === 'number') refCount = data.refCount;
           }
         } catch {
           // Network error — default to 'unavailable' (requires confirmation)
@@ -124,29 +129,32 @@ export function useImageSafeguardBatch() {
         confirmingRef.current = false;
         setPending({
           worstStatus,
-          resolvedRefs,
-          imageCount: opts.imageCount ?? resolvedRefs.length,
+          imageCount: opts.imageCount ?? refCount,
           sharingSurface: opts.sharingSurface,
           opts,
-          resolve,
+          resolve: resolveOutcome,
         });
-      });
+      };
+
+      void run();
+      return promise;
     },
     [],
   );
 
   /**
    * Called when the user confirms ("Send securely").
-   * CP12A7: Calls batch-confirm with resolved refs + recipients to get a bound token.
+   * CP12A7: Calls batch-confirm with action + context only (spec §6).
+   * resolvedRefs are NOT sent — the server re-resolves them independently.
    */
   const handleConfirm = useCallback(async () => {
     if (!pending || confirmingRef.current) return;
     confirmingRef.current = true;
 
-    const { worstStatus, resolvedRefs, opts, resolve } = pending;
+    const { opts, resolve } = pending;
     setPending(null);
 
-    // Record the batch confirmation on the server — gets a bound token
+    // Call batch-confirm — server resolves refs independently (spec §6)
     try {
       const res = await fetch('/api/image-safety/batch-confirm', {
         method: 'POST',
@@ -154,12 +162,9 @@ export function useImageSafeguardBatch() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: opts.action,
-          resolvedRefs,
-          recipients: opts.recipients ?? [],
-          worstStatus,
           jobId: opts.jobId ?? null,
           submissionId: opts.submissionId ?? null,
-          confirmedAt: new Date().toISOString(),
+          recipients: opts.recipients ?? [],
         }),
       });
       if (res.ok) {

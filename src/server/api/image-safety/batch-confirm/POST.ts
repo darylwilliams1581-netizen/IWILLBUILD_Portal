@@ -7,35 +7,31 @@
  * The token is cryptographically bound to:
  *   - authenticated company_id + user_id
  *   - sharing action (share_link | form_email)
- *   - sorted digest of the exact resolved image storage refs
- *   - sorted digest of recipients (form_email only)
+ *   - sorted digest of the exact resolved image storage refs (server-resolved)
+ *   - sorted digest of recipients (form_email only, server-normalised)
  *   - expiry (5 minutes)
  *   - unique nonce
  *
- * The consuming endpoint (photos/share or job-forms/send-email) must present
- * this token and will verify all bindings before proceeding.
+ * SECURITY (spec §6):
+ *  - The browser submits ONLY: action, jobId or submissionId, recipients
+ *  - resolvedRefs are NEVER accepted from the browser — always resolved
+ *    server-side from authenticated, company-scoped DB data
+ *  - worstStatus is re-verified server-side — client-supplied value is ignored
+ *    for all blocking logic
+ *  - Blocked/elevated: 403 — token not issued
+ *  - Token stores only SHA-256(rawToken) — raw token never persisted
+ *  - Token is single-use and expires in 5 minutes
  *
  * BODY:
  *   {
  *     action: 'share_link' | 'form_email',
- *     resolvedRefs: string[],       // from batch-status response
- *     recipients?: string[],        // form_email only — sorted before hashing
- *     worstStatus: SafeguardStatus, // from batch-status response (re-verified)
- *     jobId?: number | null,        // share_link only — for re-verification
- *     submissionId?: number | null, // form_email only — for re-verification
+ *     jobId?: number | null,          // share_link only
+ *     submissionId?: number | null,   // form_email only
+ *     recipients?: string[],          // form_email only — normalised server-side
  *   }
  *
  * RESPONSE:
  *   { confirmationToken: string, expiresAt: string }
- *
- * SECURITY:
- *  - Requires authenticated session
- *  - Requires company membership
- *  - Re-resolves refs server-side to verify the client-supplied resolvedRefs
- *    match what the server would resolve — prevents ref substitution attacks
- *  - Never trusts client-supplied worstStatus for blocking logic
- *  - Blocked/elevated: 403 — token not issued
- *  - Token is single-use and expires in 5 minutes
  */
 
 import type { Request, Response } from 'express';
@@ -48,14 +44,8 @@ import {
   resolveFormPhotoRefs,
   getWorstSafeguardStatus,
   issueConfirmationToken,
-  computeDigest,
 } from '../../../lib/imageSafeguardService.js';
 import type { SharingAction } from '../../../lib/imageSafeguardService.js';
-import type { SafeguardStatus } from '../../../../lib/imageSafeguard/types.js';
-
-const VALID_STATUSES: SafeguardStatus[] = [
-  'pending', 'clear', 'privacy_signal', 'elevated', 'blocked', 'unavailable', 'error',
-];
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -74,11 +64,9 @@ export default async function handler(req: Request, res: Response) {
 
     const body = req.body as {
       action?: unknown;
-      resolvedRefs?: unknown;
-      recipients?: unknown;
-      worstStatus?: unknown;
       jobId?: unknown;
       submissionId?: unknown;
+      recipients?: unknown;
     };
 
     const action = body.action as SharingAction | undefined;
@@ -86,15 +74,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'action must be share_link or form_email' });
     }
 
-    // Validate client-supplied resolvedRefs
-    if (!Array.isArray(body.resolvedRefs)) {
-      return res.status(400).json({ error: 'resolvedRefs must be an array' });
-    }
-    const clientRefs = (body.resolvedRefs as unknown[])
-      .filter((r): r is string => typeof r === 'string' && r.length > 0 && r.length <= 255)
-      .slice(0, 500);
-
-    // ── Re-resolve refs server-side to verify client refs are accurate ────────
+    // ── Resolve image refs server-side (spec §6: never accept from browser) ──
     let serverRefs: string[] = [];
     if (action === 'share_link') {
       const jobId = typeof body.jobId === 'number' ? body.jobId : null;
@@ -103,6 +83,7 @@ export default async function handler(req: Request, res: Response) {
       }
       serverRefs = await resolveJobPhotoRefs(profile.companyId, jobId);
     } else {
+      // form_email
       const submissionId = typeof body.submissionId === 'number' ? body.submissionId : null;
       if (!submissionId || !Number.isInteger(submissionId) || submissionId <= 0) {
         return res.status(400).json({ error: 'submissionId is required for form_email' });
@@ -110,20 +91,10 @@ export default async function handler(req: Request, res: Response) {
       serverRefs = await resolveFormPhotoRefs(profile.companyId, submissionId);
     }
 
-    // Verify client refs match server-resolved refs (sorted digest comparison)
-    const clientDigest = computeDigest(clientRefs);
-    const serverDigest = computeDigest(serverRefs);
-    if (clientDigest !== serverDigest) {
-      return res.status(409).json({
-        error: 'Image references have changed. Please refresh and try again.',
-        code: 'refs_changed',
-      });
-    }
-
     // ── Re-verify worst status server-side ────────────────────────────────────
     const serverWorstStatus = await getWorstSafeguardStatus(profile.companyId, serverRefs);
 
-    // Never issue a token for blocked/elevated — regardless of client-supplied status
+    // Never issue a token for blocked/elevated
     if (serverWorstStatus === 'blocked' || serverWorstStatus === 'elevated') {
       return res.status(403).json({
         error: 'External sharing is not permitted for these images',
@@ -131,14 +102,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    // Validate and record client-supplied status (for audit — not used for blocking logic)
-    const clientStatus = typeof body.worstStatus === 'string' &&
-      VALID_STATUSES.includes(body.worstStatus as SafeguardStatus)
-      ? (body.worstStatus as SafeguardStatus)
-      : 'unavailable';
-    void clientStatus; // recorded in token for audit; server status is authoritative
-
-    // ── Validate recipients (form_email only) ─────────────────────────────────
+    // ── Normalise recipients (form_email only) ────────────────────────────────
     let recipients: string[] | undefined;
     if (action === 'form_email') {
       if (!Array.isArray(body.recipients)) {
@@ -146,13 +110,15 @@ export default async function handler(req: Request, res: Response) {
       }
       recipients = (body.recipients as unknown[])
         .filter((r): r is string => typeof r === 'string' && r.length > 0 && r.length <= 254)
+        .map(r => r.toLowerCase().trim())
+        .filter((r, i, arr) => arr.indexOf(r) === i)  // dedupe
         .slice(0, 50);
       if (recipients.length === 0) {
         return res.status(400).json({ error: 'At least one recipient is required for form_email' });
       }
     }
 
-    // ── Issue bound token ─────────────────────────────────────────────────────
+    // ── Issue bound token (stores only SHA-256 hash; returns raw token) ───────
     const token = await issueConfirmationToken({
       companyId: profile.companyId,
       userId: session.user.id,
@@ -167,7 +133,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     return res.json({
-      confirmationToken: token.tokenId,
+      confirmationToken: token.tokenId,   // raw token — client presents this to consuming endpoint
       expiresAt: token.expiresAt,
     });
   } catch (err) {

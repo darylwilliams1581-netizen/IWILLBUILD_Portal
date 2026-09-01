@@ -23,7 +23,7 @@
  *   job            — optional Job object, passed through to email modal
  *   onClose        — called when the modal/sheet should be dismissed
  */
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { X, FileDown, Mail, Link2, Loader2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { isNative, getFilesystemPlugin, getSharePlugin, FilesystemDirectory } from '@/lib/capacitor-plugins';
@@ -131,6 +131,7 @@ export default function FormDocumentActionsModal({
     for (let i = 0; i < uint8.length; i++) {
       binary += String.fromCharCode(uint8[i]);
     }
+    // eslint-disable-next-line no-undef
     const base64 = btoa(binary);
 
     // Safe filename — strip special chars
@@ -209,6 +210,7 @@ export default function FormDocumentActionsModal({
         defaultMessage={`Please find the completed ${templateName} attached.`}
         job={emailJobContext}
         jobId={jobId}
+        submissionId={submissionId}
         onClose={onClose}
       />
     );
@@ -334,8 +336,6 @@ export default function FormDocumentActionsModal({
           </motion.div>
         </div>
       </AnimatePresence>
-      {/* CP12A §6: Batch safeguard confirmation modal */}
-      <ImageSafeguardBatchModal {...safeguardModalProps} />
     </>
     );
   }
@@ -404,9 +404,6 @@ export default function FormDocumentActionsModal({
         </motion.div>
       </div>
     </AnimatePresence>
-    {/* CP12A §6: Batch safeguard confirmation modal — rendered outside AnimatePresence
-        so it can appear over the document actions modal */}
-    <ImageSafeguardBatchModal {...safeguardModalProps} />
     </>
   );
 }

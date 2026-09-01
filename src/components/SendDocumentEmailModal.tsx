@@ -17,7 +17,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
   Briefcase,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   ExternalLink,
@@ -458,6 +457,7 @@ export default function SendDocumentEmailModal({
   );
 
   return (
+    <>
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-[200] flex items-end md:items-start md:pt-[124px] justify-center"
@@ -549,5 +549,9 @@ export default function SendDocumentEmailModal({
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    {/* CP12A7: Safeguard batch confirmation modal — rendered outside AnimatePresence
+        so it can appear over the email compose modal */}
+    <ImageSafeguardBatchModal {...safeguardModalProps} />
+    </>
   );
 }

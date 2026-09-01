@@ -22,6 +22,12 @@
  *   7. Verify the worst_status is not blocked or elevated
  *   8. Mark the token consumed (used_at = NOW()) atomically
  *
+ * SCHEMA NOTE:
+ * The `id` column stores the SHA-256 hex digest of the raw token (64 chars).
+ * The raw token (48 random bytes, base64url encoded) is returned to the client
+ * but NEVER stored. On consumption the endpoint hashes the presented token and
+ * looks up by hash. This means a DB breach does not expose usable tokens.
+ *
  * IDEMPOTENCY:
  *   - CREATE TABLE IF NOT EXISTS — safe to run on every startup
  *   - ADD INDEX uses information_schema existence check (no ER_DUP_KEYNAME)
@@ -39,7 +45,7 @@ export async function runImageSafeguardConfirmationsMigration(): Promise<void> {
     // ── 1. Create table ───────────────────────────────────────────────────────
     await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS image_safeguard_confirmations (
-        id              VARCHAR(36)  NOT NULL PRIMARY KEY,
+        id              VARCHAR(64)  NOT NULL PRIMARY KEY COMMENT 'SHA-256 hex of raw token — raw token never stored',
         company_id      INT          NOT NULL,
         user_id         VARCHAR(36)  NOT NULL,
         action          VARCHAR(50)  NOT NULL COMMENT 'share_link | form_email',

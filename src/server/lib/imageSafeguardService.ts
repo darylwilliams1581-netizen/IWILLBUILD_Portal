@@ -35,7 +35,7 @@
 
 import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID, createHash, randomBytes } from 'node:crypto';
 import type { SafeguardStatus, SafeguardScanResult } from '../../lib/imageSafeguard/types.js';
 
 // ── Protocol policy version ───────────────────────────────────────────────────
@@ -146,7 +146,7 @@ async function scheduleAssessment(
  */
 export async function runBackgroundAssessment(
   recordId: string,
-  companyId: number,
+  _companyId: number,
 ): Promise<void> {
   try {
     // ── No classifier installed ───────────────────────────────────────────────
@@ -420,13 +420,22 @@ export function computeDigest(items: string[]): string {
 /**
  * Issue a server-side bound confirmation token.
  *
- * The token is stored in image_safeguard_confirmations and is:
- *  - Bound to the authenticated company + user
- *  - Bound to the exact sorted storage refs (via SHA-256 digest)
- *  - Bound to the exact sorted recipients (form_email only)
- *  - Single-use (used_at is set atomically on consumption)
- *  - Time-limited (5 minutes)
- *  - Unique nonce (prevents replay within the TTL window)
+ * SECURITY MODEL:
+ *  - A 48-byte cryptographically random raw token is generated and returned
+ *    to the client as a base64url string.
+ *  - Only the SHA-256 hex digest of the raw token is stored in the DB.
+ *    The raw token is NEVER logged or persisted.
+ *  - On consumption the consuming endpoint hashes the presented token and
+ *    looks up by hash — the raw token cannot be recovered from the DB.
+ *
+ * The stored record is bound to:
+ *  - authenticated company + user
+ *  - sharing action
+ *  - SHA-256 digest of sorted image storage refs
+ *  - SHA-256 digest of sorted recipients (form_email only)
+ *  - expiry (5 minutes)
+ *  - unique nonce (prevents replay within the TTL window)
+ *  - single-use (used_at set atomically on consumption)
  *
  * Returns null if the status is blocked/elevated (must not issue token).
  * Returns null on DB failure (fail-closed).
@@ -438,7 +447,12 @@ export async function issueConfirmationToken(
     return null;
   }
 
-  const tokenId = randomUUID();
+  // Generate 48 cryptographically random bytes → base64url raw token
+  const rawBytes = randomBytes(48);
+  const rawToken = rawBytes.toString('base64url');
+  // Store only the SHA-256 hash — raw token never touches the DB
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
   const nonce = randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + CONFIRMATION_TTL_MS);
@@ -451,12 +465,13 @@ export async function issueConfirmationToken(
         (id, company_id, user_id, action, image_refs_digest, recipients_digest,
          worst_status, nonce, expires_at, used_at, created_at)
       VALUES
-        (${tokenId}, ${opts.companyId}, ${opts.userId}, ${opts.action},
+        (${tokenHash}, ${opts.companyId}, ${opts.userId}, ${opts.action},
          ${refsDigest}, ${recipientsDigest},
          ${opts.worstStatus}, ${nonce}, ${expiresAt}, NULL, ${now})
     `);
 
-    return { tokenId, expiresAt: expiresAt.toISOString(), worstStatus: opts.worstStatus };
+    // Return the raw token to the caller — it is NEVER stored
+    return { tokenId: rawToken, expiresAt: expiresAt.toISOString(), worstStatus: opts.worstStatus };
   } catch (err) {
     console.error('[imageSafeguard] issueConfirmationToken failed:', err instanceof Error ? err.message : err);
     return null;
@@ -470,33 +485,45 @@ export type ConsumeTokenResult =
 /**
  * Consume a bound confirmation token.
  *
- * Validates all binding constraints and marks the token used atomically.
- * Returns { ok: false, reason } for any validation failure.
- * Returns { ok: true, worstStatus } on success.
+ * SECURITY MODEL:
+ *  - The caller presents the raw token (base64url string returned by
+ *    issueConfirmationToken).
+ *  - This function hashes it with SHA-256 and looks up by hash.
+ *    The raw token is NEVER logged.
+ *  - All binding constraints are validated before the atomic consume.
+ *  - The used_at update uses WHERE id = hash AND used_at IS NULL to prevent
+ *    two concurrent requests from both consuming the same token.
  *
  * SECURITY INVARIANTS:
- *  - Token must exist and not be expired
+ *  - Token must exist (hash lookup) and not be expired
  *  - Token must not have been used before (single-use)
  *  - company_id and user_id must match the authenticated session
  *  - image_refs_digest must match the exact refs being shared
  *  - recipients_digest must match the exact recipients (form_email only)
  *  - worst_status must not be blocked or elevated
- *  - The used_at update uses WHERE used_at IS NULL to prevent race conditions
  */
 export async function consumeConfirmationToken(opts: {
-  tokenId: string;
+  tokenId: string;   // raw token (base64url) — hashed before DB lookup
   companyId: number;
   userId: string;
   action: SharingAction;
   storageRefs: string[];
   recipients?: string[];
 }): Promise<ConsumeTokenResult> {
+  // Hash the raw token — never log the raw value
+  let tokenHash: string;
+  try {
+    tokenHash = createHash('sha256').update(opts.tokenId).digest('hex');
+  } catch {
+    return { ok: false, reason: 'missing' };
+  }
+
   try {
     const rows = await db.execute(sql`
       SELECT id, company_id, user_id, action, image_refs_digest, recipients_digest,
              worst_status, expires_at, used_at
       FROM image_safeguard_confirmations
-      WHERE id = ${opts.tokenId}
+      WHERE id = ${tokenHash}
       LIMIT 1
     `);
     const row = (rows as unknown as Array<{
@@ -537,11 +564,12 @@ export async function consumeConfirmationToken(opts: {
       return { ok: false, reason: 'blocked' };
     }
 
+    // Atomic single-use consume — WHERE used_at IS NULL prevents race conditions
     const now = new Date();
     const updateResult = await db.execute(sql`
       UPDATE image_safeguard_confirmations
       SET used_at = ${now}
-      WHERE id = ${opts.tokenId} AND used_at IS NULL
+      WHERE id = ${tokenHash} AND used_at IS NULL
     `);
     const affectedRows = (updateResult as unknown as [{ affectedRows?: number }])[0]?.affectedRows ?? 0;
     if (affectedRows === 0) return { ok: false, reason: 'used' };
