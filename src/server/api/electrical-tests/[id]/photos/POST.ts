@@ -17,6 +17,7 @@ import { getPlanLimits, getCompanyPlan } from '../../../../lib/plan-limits.js';
 import { uploadMedia } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import type { ResultSetHeader } from 'mysql2';
+import { createPendingSafeguardRecord } from '../../../../lib/imageSafeguardService.js';
 import { buildObjectKey } from '../../../../storage/r2Config.js';
 import { randomUUID } from 'node:crypto';
 
@@ -131,6 +132,14 @@ export default async function handler(req: Request, res: Response) {
         (test_record_id, company_id, event_type, event_note, user_id, user_name, created_at)
       VALUES (${id}, ${profile.companyId}, 'photo_added', ${JSON.stringify(`${pt} photo uploaded`)}, ${JSON.stringify(session.user.id)}, ${JSON.stringify(uploaderName)}, NOW())
     `));
+
+    // CP12A: Create pending Image Safeguard record (non-blocking, best-effort)
+    void createPendingSafeguardRecord({
+      companyId: profile.companyId,
+      userId: session.user.id,
+      storageRef: `electrical_test_photo:${insertedId ?? result.storageKey}`,
+      surface: 'electrical_test_photo',
+    }).catch(() => { /* safeguard record failure must not affect upload */ });
 
     return res.status(201).json({ id: insertedId, photoType: pt });
   } catch (err) {

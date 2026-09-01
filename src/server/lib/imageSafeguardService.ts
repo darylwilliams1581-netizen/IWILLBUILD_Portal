@@ -216,17 +216,17 @@ export async function getWorstSafeguardStatus(
   if (storageRefs.length === 0) return 'unavailable';
 
   try {
-    // Build a safe IN clause using individual bindings
-    const placeholders = storageRefs.map(() => '?').join(', ');
+    // Build a parameterised IN clause using Drizzle sql template tag.
+    // sql.raw() does NOT accept parameters — we must use the template form.
+    // Each ref is a separate sql`` fragment joined with commas.
+    const refFragments = storageRefs.map(r => sql`${r}`);
+    const inClause = sql.join(refFragments, sql`, `);
     const rows = await db.execute(
-      sql.raw(
-        `SELECT status FROM image_safeguard_records
-         WHERE company_id = ? AND storage_ref IN (${placeholders})`,
-        [companyId, ...storageRefs],
-      ),
+      sql`SELECT status FROM image_safeguard_records
+          WHERE company_id = ${companyId} AND storage_ref IN (${inClause})`,
     );
 
-    const statuses = (rows as Array<{ status: string }>).map(r => r.status as SafeguardStatus);
+    const statuses = (rows as unknown as Array<{ status: string }>).map(r => r.status as SafeguardStatus);
     if (statuses.length === 0) return 'unavailable';
 
     const priority: SafeguardStatus[] = [

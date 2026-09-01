@@ -13,6 +13,7 @@ import SignaturePad, {
   parseMultiSignatureAnswer,
 } from './SignaturePad';
 import { isGpsAnswer, type GpsAnswer } from './form-types';
+import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 
@@ -585,6 +586,8 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
             {uploadError && (
               <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12} />{uploadError}</p>
             )}
+            {/* CP12A: Subtle safeguard notice */}
+            {!disabled && <ImageSafeguardNotice className="mt-1" />}
           </div>
         );
       })()}

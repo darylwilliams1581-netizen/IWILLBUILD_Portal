@@ -15,6 +15,7 @@ import { uploadMedia, normaliseMime } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
 import { buildObjectKey } from '../../../../storage/r2Config.js';
+import { createPendingSafeguardRecord } from '../../../../lib/imageSafeguardService.js';
 
 const BUCKET = 'job-card-photos';
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -119,6 +120,15 @@ export default async function handler(req: Request, res: Response) {
         caption,
         url: freshUrl,           // fresh signed URL for immediate display
       });
+
+      // CP12A: Create pending Image Safeguard record (non-blocking, best-effort)
+      void createPendingSafeguardRecord({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        storageRef: `job_card_photo:${result.destinationId ?? storageKey}`,
+        surface: 'job_card_photo',
+        jobId: cardId ?? null,
+      }).catch(() => { /* safeguard record failure must not affect upload */ });
     }
 
     return res.status(201).json({ photos: saved });

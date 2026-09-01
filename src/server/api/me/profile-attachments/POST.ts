@@ -18,6 +18,7 @@ import { parseMultipartForm } from '../../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
 import { buildObjectKey } from '../../../storage/r2Config.js';
+import { createPendingSafeguardRecord } from '../../../lib/imageSafeguardService.js';
 
 const MAX_ATTACHMENTS = 5;
 const MAX_SIZE_BYTES   = 10 * 1024 * 1024;
@@ -113,6 +114,16 @@ export default async function handler(req: Request, res: Response) {
       UPDATE profiles SET profile_attachments = ${JSON.stringify(attachments)}
       WHERE user_id = ${session.user.id}
     `);
+
+    // CP12A: Create pending Image Safeguard record for image attachments (non-blocking)
+    if (file.mimetype?.startsWith('image/')) {
+      void createPendingSafeguardRecord({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        storageRef: `profile_attachment:${result.mediaAssetId}`,
+        surface: 'profile_attachment',
+      }).catch(() => { /* safeguard record failure must not affect upload */ });
+    }
 
     return res.json({ ok: true, attachments });
   } catch (err) {
