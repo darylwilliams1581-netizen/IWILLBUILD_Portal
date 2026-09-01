@@ -543,19 +543,37 @@ export default function ImageSafeguardTab() {
           errorCode: string | null;
         };
         setLiveProgress(data);
-        // Stop polling once terminal
+        // Stop polling + clear scanning flag once terminal
         if (data.runStatus === 'completed' || data.runStatus === 'failed' || data.runStatus === 'cancelled') {
           if (progressIntervalRef.current) {
             clearInterval(progressIntervalRef.current);
             progressIntervalRef.current = null;
           }
+          setScanning(false);
+          scanningRef.current = false;
+          // Refresh the run list one final time so the completed row appears
+          void fetchRuns();
+          void fetchStatus(true);
         }
       } catch { /* silent — progress display is best-effort */ }
     };
 
     void poll(); // immediate first fetch
     progressIntervalRef.current = setInterval(() => void poll(), 2000);
+
+    // Safety timeout — if the run is still active after 5 min, unlock the button
+    const safetyTimeout = setTimeout(() => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      setScanning(false);
+      scanningRef.current = false;
+      void fetchRuns();
+    }, 5 * 60 * 1000);
+
     return () => {
+      clearTimeout(safetyTimeout);
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
@@ -607,19 +625,22 @@ export default function ImageSafeguardTab() {
 
       if (!res.ok) {
         setScanError(data.message ?? data.error ?? 'Scan request failed.');
+        setScanning(false);
+        scanningRef.current = false;
       } else if (data.runId) {
         setLastScanResult({ runId: data.runId, rangeStart: data.rangeStart ?? '', rangeEnd: data.rangeEnd ?? '' });
-        // Fetch immediately so the run appears in the list right away (status = running),
-        // then the polling effect takes over until it reaches a terminal state.
+        // Keep scanning=true — the progress polling effect will flip it false
+        // once the run reaches a terminal state (completed/failed/cancelled).
+        // fetchRuns/fetchStatus will also update the run list in parallel.
         void fetchRuns();
         void fetchStatus(true);
       }
     } catch {
       setScanError('Network error — could not reach the server.');
-    } finally {
       setScanning(false);
       scanningRef.current = false;
     }
+    // NOTE: no finally block — scanning stays true until progress polling terminates it.
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
