@@ -478,6 +478,8 @@ export default function DashboardPhotoUploader() {
               duration: 0.18
             }}>
                     <DropZone disabled={uploading} onFiles={addFiles} />
+                    {/* CP12A: Subtle safeguard notice */}
+                    {!uploading && <ImageSafeguardNotice className="mt-2" />}
                   </motion.div>}
               </AnimatePresence>
 
