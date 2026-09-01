@@ -143,6 +143,148 @@ describe('ISG-B6-03/04: requirePlatformOwner returns 401/403 on status, scan, ex
   });
 });
 
+// ── ISG-B6-04b: hasActiveRun missing-table → 503, not 409 ────────────────────
+
+describe('ISG-B6-04b: hasActiveRun missing table surfaces as 503 schema_not_ready, not 409', () => {
+  it('SchemaNotReadyError is exported from scanRunService', async () => {
+    const mod = await import('../imageSafeguard/scanRunService.js');
+    expect(typeof mod.SchemaNotReadyError).toBe('function');
+  });
+
+  it('hasActiveRun throws SchemaNotReadyError when scan_runs table is missing', async () => {
+    vi.resetModules();
+    const missingTableErr = Object.assign(
+      new Error("Table 'db.image_safeguard_scan_runs' doesn't exist"),
+      { code: 'ER_NO_SUCH_TABLE' },
+    );
+    mockExecute.mockRejectedValueOnce(missingTableErr);
+    const { hasActiveRun, SchemaNotReadyError } = await import(
+      '../imageSafeguard/scanRunService.js'
+    );
+    await expect(hasActiveRun()).rejects.toBeInstanceOf(SchemaNotReadyError);
+  });
+
+  it('hasActiveRun returns true (fail-closed) for non-schema DB errors', async () => {
+    vi.resetModules();
+    mockExecute.mockRejectedValueOnce(new Error('Lock wait timeout exceeded'));
+    const { hasActiveRun } = await import('../imageSafeguard/scanRunService.js');
+    const result = await hasActiveRun();
+    expect(result).toBe(true);
+  });
+
+  it('scan POST returns 503 when hasActiveRun throws SchemaNotReadyError', async () => {
+    vi.resetModules();
+    vi.doMock('#airo/secrets', () => ({
+      getSecret: (key: string) => {
+        if (key === 'OPENAI_API_KEY')       return 'sk-test';
+        if (key === 'DAZZA_V3_ENABLED')     return '1';
+        if (key === 'PLATFORM_OWNER_EMAIL') return 'owner@test.com';
+        return null;
+      },
+    }));
+    mockGetSession.mockResolvedValue({ user: { id: 'user-123' } });
+    // cursor query succeeds, then hasActiveRun throws ER_NO_SUCH_TABLE
+    mockExecute
+      .mockResolvedValueOnce([[{ last_successful_scan_at: null }]])  // cursor
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error("Table 'db.image_safeguard_scan_runs' doesn't exist"),
+          { code: 'ER_NO_SUCH_TABLE' },
+        ),
+      );
+
+    const handler = (await import(
+      '../../api/owner-console/image-safeguard/scan/POST.js'
+    )).default;
+
+    const req = { body: {}, headers: {} } as never;
+    const jsonMock = vi.fn();
+    const statusMock = vi.fn(() => ({ json: jsonMock }));
+    const res = { status: statusMock } as never;
+
+    await handler(req, res);
+
+    expect(statusMock).toHaveBeenCalledWith(503);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'schema_not_ready' }),
+    );
+    // Must not be 409 scan_already_running
+    expect(statusMock).not.toHaveBeenCalledWith(409);
+  });
+
+  it('scan POST returns 409 when a real active run row exists', async () => {
+    vi.resetModules();
+    vi.doMock('#airo/secrets', () => ({
+      getSecret: (key: string) => {
+        if (key === 'OPENAI_API_KEY')       return 'sk-test';
+        if (key === 'DAZZA_V3_ENABLED')     return '1';
+        if (key === 'PLATFORM_OWNER_EMAIL') return 'owner@test.com';
+        return null;
+      },
+    }));
+    mockGetSession.mockResolvedValue({ user: { id: 'user-123' } });
+    // cursor query succeeds, hasActiveRun returns cnt=1 (real active run)
+    mockExecute
+      .mockResolvedValueOnce([[{ last_successful_scan_at: null }]])  // cursor
+      .mockResolvedValueOnce([{ cnt: 1 }]);                          // hasActiveRun → true
+
+    const handler = (await import(
+      '../../api/owner-console/image-safeguard/scan/POST.js'
+    )).default;
+
+    const req = { body: {}, headers: {} } as never;
+    const jsonMock = vi.fn();
+    const statusMock = vi.fn(() => ({ json: jsonMock }));
+    const res = { status: statusMock } as never;
+
+    await handler(req, res);
+
+    expect(statusMock).toHaveBeenCalledWith(409);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'scan_already_running' }),
+    );
+  });
+
+  it('scan POST returns 500 scan_initiate_failed when non-schema error mentions table name', async () => {
+    vi.resetModules();
+    vi.doMock('#airo/secrets', () => ({
+      getSecret: (key: string) => {
+        if (key === 'OPENAI_API_KEY')       return 'sk-test';
+        if (key === 'DAZZA_V3_ENABLED')     return '1';
+        if (key === 'PLATFORM_OWNER_EMAIL') return 'owner@test.com';
+        return null;
+      },
+    }));
+    mockGetSession.mockResolvedValue({ user: { id: 'user-123' } });
+    // cursor succeeds, hasActiveRun returns false (no active run),
+    // createScanRun throws a lock error whose message happens to mention the table name
+    mockExecute
+      .mockResolvedValueOnce([[{ last_successful_scan_at: null }]])  // cursor
+      .mockResolvedValueOnce([[{ cnt: 0 }]])                         // hasActiveRun → false
+      .mockRejectedValueOnce(
+        new Error('Lock wait timeout on image_safeguard_scan_runs; try restarting transaction'),
+      );
+
+    const handler = (await import(
+      '../../api/owner-console/image-safeguard/scan/POST.js'
+    )).default;
+
+    const req = { body: {}, headers: {} } as never;
+    const jsonMock = vi.fn();
+    const statusMock = vi.fn(() => ({ json: jsonMock }));
+    const res = { status: statusMock } as never;
+
+    await handler(req, res);
+
+    // Must be 500 scan_initiate_failed — NOT 503 schema_not_ready
+    expect(statusMock).toHaveBeenCalledWith(500);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'scan_initiate_failed' }),
+    );
+    expect(statusMock).not.toHaveBeenCalledWith(503);
+  });
+});
+
 // ── ISG-B6-05: missing table → 503 schema_not_ready, no SQL leak ─────────────
 
 describe('ISG-B6-05: scan POST outer catch — missing table returns 503 schema_not_ready', () => {

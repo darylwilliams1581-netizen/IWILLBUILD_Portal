@@ -41,6 +41,7 @@ import {
   markRunCompleted,
   markRunFailed,
   advanceCursor,
+  SchemaNotReadyError,
 } from '../../../../lib/imageSafeguard/scanRunService.js';
 import { executeScan } from '../../../../lib/imageSafeguard/scannerAdapter.js';
 import { db } from '../../../../db/client.js';
@@ -223,6 +224,15 @@ export default async function handler(req: Request, res: Response) {
       runStatus:   'pending',
     });
   } catch (outerErr: unknown) {
+    // SchemaNotReadyError is thrown explicitly by hasActiveRun when the table
+    // is missing — surface it as 503 rather than hiding it as 409.
+    if (outerErr instanceof SchemaNotReadyError) {
+      return res.status(503).json({
+        error: 'schema_not_ready',
+        message: 'Image Safeguard storage is not ready.',
+      });
+    }
+
     // Distinguish a missing schema (table not yet created) from other failures.
     // Never put SQL text, stack traces, R2 keys, or secret names in the body.
     const msg = outerErr instanceof Error ? outerErr.message : String(outerErr);

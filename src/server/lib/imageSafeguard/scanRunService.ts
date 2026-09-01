@@ -208,6 +208,30 @@ export function isDateRangeError(
  * Returns true if a run is currently in `pending` or `running` state.
  * Used to prevent overlapping scans.
  */
+/**
+ * Sentinel error thrown by hasActiveRun when the schema is not ready.
+ * Caught by the outer handler in scan/POST.ts and mapped to 503 schema_not_ready.
+ */
+export class SchemaNotReadyError extends Error {
+  readonly code = 'schema_not_ready';
+  constructor(cause: unknown) {
+    super('Image Safeguard schema is not ready');
+    this.name = 'SchemaNotReadyError';
+    if (cause instanceof Error) this.stack = cause.stack;
+  }
+}
+
+/** Returns true if the error message indicates a missing table (schema not yet created). */
+function isMissingTableError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    /table.*doesn'?t exist/i.test(msg) ||
+    /no such table/i.test(msg) ||
+    /relation.*does not exist/i.test(msg) ||
+    /ER_NO_SUCH_TABLE/i.test(msg)
+  );
+}
+
 export async function hasActiveRun(): Promise<boolean> {
   try {
     const rows = await db.execute(sql`
@@ -217,8 +241,14 @@ export async function hasActiveRun(): Promise<boolean> {
     `);
     const cnt = Number((rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0);
     return cnt > 0;
-  } catch {
-    // Fail closed — assume active to prevent overlapping runs on DB error
+  } catch (err) {
+    // Missing-table errors must surface as schema_not_ready (503), not as
+    // "scan already running" (409). Re-throw so the outer handler can classify.
+    if (isMissingTableError(err)) {
+      throw new SchemaNotReadyError(err);
+    }
+    // Lock timeouts, network errors, auth errors: fail closed (assume active)
+    // to prevent overlapping runs. The outer handler maps this to 500.
     return true;
   }
 }
