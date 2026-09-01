@@ -1,6 +1,6 @@
 name = "iwillbuild-image-safeguard-poc"
 main = "src/index.ts"
-compatibility_date = "2024-09-23"
+compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
 # Workers AI binding — read-only inference only, no R2 or KV

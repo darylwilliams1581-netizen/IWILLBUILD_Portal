@@ -112,11 +112,17 @@ function makeOversizedJpegBody(): Uint8Array {
 // ── Mock AI binding ───────────────────────────────────────────────────────────
 
 function makeMockAi(faceCount: number): Ai {
+  // workers-types v5: moondream detect output uses `objects` (bounding boxes),
+  // not `detections`. runInference reads response.objects.length for faceCount.
   return {
     run: vi.fn().mockResolvedValue({
-      detections: Array.from({ length: faceCount }, (_, i) => ({
-        label: 'human face',
-        score: 0.9 - i * 0.05,
+      finish_reason: 'stop',
+      metrics: { input_tokens: 1, output_tokens: 1, prefill_time_ms: 1, decode_time_ms: 1, ttft_ms: 1 },
+      objects: Array.from({ length: faceCount }, (_, i) => ({
+        x_min: i * 10,
+        y_min: i * 10,
+        x_max: i * 10 + 50,
+        y_max: i * 10 + 50,
       })),
     }),
   } as unknown as Ai;

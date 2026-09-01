@@ -342,15 +342,15 @@ export function validateStructureAndDimensions(
 
 // ── Workers AI inference ──────────────────────────────────────────────────────
 
-interface AiDetectResult {
-  detections?: Array<{ label?: string; score?: number }>;
-}
-
 /**
- * Runs face detection via Workers AI.
+ * Runs face detection via Workers AI (moondream detect task).
+ *
+ * workers-types v5 types the moondream model fully:
+ *  - Input:  { task: "detect", image: string (base64 data URI), target: string }
+ *  - Output: { objects?: { x_min, y_min, x_max, y_max }[] }
  *
  * SECURITY:
- *  - Only counts detections — never returns bounding boxes, labels, or scores.
+ *  - Only counts objects — never returns bounding boxes, labels, or scores.
  *  - Never infers identity, age, gender, ethnicity, intent, or criminality.
  *  - Raw model output is never logged or returned.
  *  - Returns 'unavailable' on any model error rather than throwing.
@@ -358,21 +358,24 @@ interface AiDetectResult {
 export async function runInference(
   ai: Ai,
   imageBytes: Uint8Array,
-  _mime: AllowedMime,
+  mime: AllowedMime,
 ): Promise<{ result: ResultCode; faceCount: number; failureCode: string | null }> {
   try {
-    const response = await (ai.run as (
-      model: string,
-      inputs: { image: number[]; task: string; target: string },
-    ) => Promise<AiDetectResult>)(AI_MODEL, {
-      image: Array.from(imageBytes),
+    // Encode image bytes as a base64 data URI — the v5 moondream input type
+    // requires image as a string (base64 data URI or public HTTPS URL).
+    const base64 = btoa(String.fromCharCode(...imageBytes));
+    const dataUri = `data:${mime};base64,${base64}`;
+
+    const response = await ai.run(AI_MODEL, {
       task: AI_TASK,
+      image: dataUri,
       target: AI_TARGET,
     });
 
-    // Count detections only — never expose bounding boxes, labels, or scores
-    const detections = response?.detections ?? [];
-    const faceCount = detections.length;
+    // Count detected objects only — never expose bounding boxes or coordinates.
+    // response.objects is the detect-task output field in workers-types v5.
+    const objects = response?.objects ?? [];
+    const faceCount = objects.length;
     const result: ResultCode = faceCount > 0 ? 'privacy_signal' : 'clear';
 
     return { result, faceCount, failureCode: null };
