@@ -55,23 +55,19 @@ export interface AdapterCapability {
 /**
  * Returns the current adapter capability.
  *
- * Currently always returns configured:false because the Python worker
- * is not provisioned in this container.
- *
- * A future stage will check SCANNER_WORKER_URL here.
+ * Provider priority:
+ *  1. python_worker  — SCANNER_WORKER_URL + SCANNER_WORKER_SECRET both set.
+ *  2. openai_vision  — OPENAI_API_KEY set + DAZZA_V3_ENABLED set to any truthy value.
+ *     Used for Dazza read-only inspection and the synthetic POC test path.
+ *  3. not configured — neither provider is available.
  */
 export function getAdapterCapability(): AdapterCapability {
-  // Future: check getSecret('SCANNER_WORKER_URL')
+  // ── Priority 1: Python worker (future production path) ────────────────────
   const workerUrl = getSecret('SCANNER_WORKER_URL');
   if (workerUrl) {
-    // Worker URL is set — but we still need the secret to authenticate
     const workerSecret = getSecret('SCANNER_WORKER_SECRET');
     if (workerSecret) {
-      return {
-        configured: true,
-        provider: 'python_worker',
-        reason: null,
-      };
+      return { configured: true, provider: 'python_worker', reason: null };
     }
     return {
       configured: false,
@@ -80,13 +76,20 @@ export function getAdapterCapability(): AdapterCapability {
     };
   }
 
+  // ── Priority 2: OpenAI Vision (Dazza / POC path) ──────────────────────────
+  const openAiKey   = getSecret('OPENAI_API_KEY');
+  const dazzaEnabled = getSecret('DAZZA_V3_ENABLED');
+  if (openAiKey && dazzaEnabled) {
+    return { configured: true, provider: 'openai_vision', reason: null };
+  }
+
+  // ── Not configured ─────────────────────────────────────────────────────────
   return {
     configured: false,
     provider: null,
     reason:
-      'No scanner worker configured. ' +
-      'The Python scanner (opencv-python-headless) requires a separate ' +
-      'glibc-based worker container. See scannerAdapter.ts for activation steps.',
+      'No scanner configured. Set SCANNER_WORKER_URL + SCANNER_WORKER_SECRET ' +
+      'for the Python worker, or OPENAI_API_KEY + DAZZA_V3_ENABLED for OpenAI Vision.',
   };
 }
 
