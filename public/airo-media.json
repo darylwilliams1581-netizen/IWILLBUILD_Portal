@@ -723,5 +723,19 @@
     },
     "uploadContentHash": "e2a0ff32992a2801a2deebb95cb603151c358c40f5e8c84c9c85cd4e2934e484",
     "caption": "safe work method statement template form"
+  },
+  "debug/scan-results-fcceab45": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-scan-results-fcceab45-f4303029.jpg",
+    "searchQuery": "photo gallery selfies and moments",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-01T17:18:31.708Z",
+    "lastUpdated": "2026-09-01T17:18:31.708Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-scan-results-fcceab45-f4303029.jpg": "f38wenbvln_1788283019474_file_7Tmji9moyz.jpg"
+    },
+    "uploadContentHash": "0997f0b513d025b89cc22c40352fd1ec6059f79bc6a4540a4f39e86427237ce8",
+    "caption": "photo gallery selfies and moments"
   }
 }
