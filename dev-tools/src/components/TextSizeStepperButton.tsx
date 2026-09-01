@@ -180,7 +180,6 @@ export default function TextSizeStepperButton({ selectedElement, isOpen, onOpenC
           style={{
             top: "calc(100% + 4px)",
             left: 0,
-            zIndex: 100002,
             border: "1px solid rgba(0,0,0,0.1)",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}

@@ -16,6 +16,8 @@ const GAP = 8;
 const OUTLINE_PAD = 8;
 const ESTIMATED_TOOLBAR_HEIGHT = 40;
 const BAR_STACK_GAP = 6;
+const EDGE_MARGIN = 16;
+const ESTIMATED_LINK_BAR_HEIGHT = 32;
 
 const viewport: Viewport = { width: 1200, height: 800 };
 
@@ -100,8 +102,23 @@ describe('hover-bar-placement', function packageTests() {
       expect(result.style.top).toBe('290px');
     });
 
-    it('stacks link bar below toolbar when toolbar is below', function stackBelowToolbar() {
-      const elementBounds = bounds({ top: 50, bottom: 74 });
+    it('places link bar above the element when toolbar is below', function aboveElement() {
+      const elementBounds = bounds({ top: 150, bottom: 174 });
+      const toolbar = computeHoverBarStyle(elementBounds, viewport);
+      const link = computeLinkFollowBarStyle(elementBounds, toolbar.placement, viewport);
+      const aboveElementAnchor = elementBounds.top - GAP - OUTLINE_PAD;
+      const toolbarTop = elementBounds.bottom + GAP + OUTLINE_PAD;
+      const linkTop = Number.parseFloat(String(link.style.top));
+
+      expect(toolbar.placement).toBe('below');
+      expect(link.placement).toBe('above');
+      expect(linkTop).toBe(aboveElementAnchor);
+      expect(linkTop).toBeLessThan(toolbarTop);
+      expect(String(link.style.transform)).toMatch(/-100%/);
+    });
+
+    it('stacks link bar below toolbar when toolbar is below and no room above', function stackBelowToolbar() {
+      const elementBounds = bounds({ top: 20, bottom: 44 });
       const toolbar = computeHoverBarStyle(elementBounds, viewport);
       const link = computeLinkFollowBarStyle(elementBounds, toolbar.placement, viewport);
       const toolbarTop = elementBounds.bottom + GAP + OUTLINE_PAD;
@@ -111,6 +128,24 @@ describe('hover-bar-placement', function packageTests() {
       expect(link.placement).toBe('below');
       expect(linkTop).toBe(toolbarTop + ESTIMATED_TOOLBAR_HEIGHT + BAR_STACK_GAP);
       expect(linkTop).toBeGreaterThan(toolbarTop);
+    });
+
+    it('clamps link bar to the top edge, not the toolbar, when a tall element leaves no non-overlapping room below', function clampAwayFromToolbarWhenStackedOverflows() {
+      const elementBounds = bounds({ top: 20, bottom: 720 });
+      const toolbar = computeHoverBarStyle(elementBounds, viewport);
+      const link = computeLinkFollowBarStyle(elementBounds, toolbar.placement, viewport);
+      const toolbarTop = Number.parseFloat(String(toolbar.style.top));
+      const toolbarBottom = toolbarTop + ESTIMATED_TOOLBAR_HEIGHT;
+      const linkTop = Number.parseFloat(String(link.style.top));
+      const linkBottom = link.placement === 'above' ? linkTop : linkTop + ESTIMATED_LINK_BAR_HEIGHT;
+      const linkTopEdge = link.placement === 'above' ? linkTop - ESTIMATED_LINK_BAR_HEIGHT : linkTop;
+
+      expect(toolbar.placement).toBe('below');
+      expect(link.placement).toBe('above');
+      expect(link.style.top).toBe(`${EDGE_MARGIN + ESTIMATED_LINK_BAR_HEIGHT}px`);
+      expect(linkBottom <= toolbarTop || linkTopEdge >= toolbarBottom).toBe(true);
+      expect(linkTopEdge).toBeGreaterThanOrEqual(0);
+      expect(linkBottom).toBeLessThanOrEqual(viewport.height);
     });
 
     it('flips link bar above toolbar when toolbar is above and no room below', function flipAboveFooter() {

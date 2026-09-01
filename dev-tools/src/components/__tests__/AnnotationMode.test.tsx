@@ -105,6 +105,88 @@ describe('AnnotationMode', function annotationModeTests() {
     })
   })
 
+  it('shows the selection number and close icon together before hover', function persistentCloseBeforeHover(): void {
+    render(createElement(AnnotationMode, { isActive: true }))
+
+    dragSelection(getOverlay(), 10, 10, 60, 60)
+    submitQuickEdit('annotate this')
+
+    const badge: HTMLElement | null = document.querySelector('[title="Remove selection"]')
+    if (!badge) throw new Error('selection badge not found')
+
+    const spans: NodeListOf<HTMLSpanElement> = badge.querySelectorAll('span')
+    expect(spans).toHaveLength(2)
+    expect(spans[0]?.textContent).toBe('#1')
+    expect(spans[0]?.getAttribute('aria-hidden')).toBe('true')
+    expect(spans[1]?.textContent).toBe('✕')
+    expect(spans[1]?.getAttribute('aria-hidden')).toBe('true')
+    expect(badge.getAttribute('aria-label')).toBe('Remove selection #1')
+    expect(badge.tagName).toBe('BUTTON')
+  })
+
+  it('gives each remove badge a distinct accessible name', function distinctAccessibleNames(): void {
+    render(createElement(AnnotationMode, { isActive: true }))
+
+    dragSelection(getOverlay(), 10, 10, 60, 60)
+    submitQuickEdit('first')
+    dragSelection(getOverlay(), 80, 80, 130, 130)
+    submitQuickEdit('second')
+
+    const badges: NodeListOf<HTMLElement> = document.querySelectorAll('[title="Remove selection"]')
+    expect(badges).toHaveLength(2)
+    expect(badges[0]?.getAttribute('aria-label')).toBe('Remove selection #1')
+    expect(badges[1]?.getAttribute('aria-label')).toBe('Remove selection #2')
+  })
+
+  it('anchors the badge to grow right for a minimum-width selection at the left edge', function leftEdgeBadgeFlip(): void {
+    render(createElement(AnnotationMode, { isActive: true }))
+
+    dragSelection(getOverlay(), 0, 10, 4, 60)
+    submitQuickEdit('left edge')
+
+    const badge: HTMLElement | null = document.querySelector('[title="Remove selection"]')
+    if (!badge) throw new Error('selection badge not found')
+    const wrapper: HTMLElement | null = badge.parentElement
+    if (!wrapper) throw new Error('badge wrapper not found')
+
+    expect(wrapper.style.left).toBe('4px')
+    expect(wrapper.style.transform).toBe('translate(0, -50%)')
+    expect(badge.getBoundingClientRect().left).toBeGreaterThanOrEqual(0)
+  })
+
+  it('anchors the badge to grow left for selections with room on the left', function defaultBadgeAnchor(): void {
+    render(createElement(AnnotationMode, { isActive: true }))
+
+    dragSelection(getOverlay(), 10, 10, 60, 60)
+    submitQuickEdit('inset')
+
+    const badge: HTMLElement | null = document.querySelector('[title="Remove selection"]')
+    if (!badge) throw new Error('selection badge not found')
+    const wrapper: HTMLElement | null = badge.parentElement
+    if (!wrapper) throw new Error('badge wrapper not found')
+
+    expect(wrapper.style.left).toBe('56px')
+    expect(wrapper.style.transform).toBe('translate(-100%, -50%)')
+  })
+
+  it('keeps the badge on-screen for a minimum-width selection at the right edge', function rightEdgeBadgeAnchor(): void {
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: 1000, configurable: true })
+
+    render(createElement(AnnotationMode, { isActive: true }))
+
+    dragSelection(getOverlay(), 990, 10, 1000, 60)
+    submitQuickEdit('right edge')
+
+    const badge: HTMLElement | null = document.querySelector('[title="Remove selection"]')
+    if (!badge) throw new Error('selection badge not found')
+    const wrapper: HTMLElement | null = badge.parentElement
+    if (!wrapper) throw new Error('badge wrapper not found')
+
+    expect(wrapper.style.left).toBe('996px')
+    expect(wrapper.style.transform).toBe('translate(-100%, -50%)')
+    expect(badge.getBoundingClientRect().right).toBeLessThanOrEqual(1000)
+  })
+
   it('emits REMOVE_SELECTION_FROM_PREVIEW when the number badge is clicked', function badgeRemove() {
     render(createElement(AnnotationMode, { isActive: true }))
 

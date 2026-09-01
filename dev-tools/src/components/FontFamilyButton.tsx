@@ -149,7 +149,6 @@ export default function FontFamilyButton({ selectedElement, isOpen, onOpenChange
               : { top: "calc(100% + 4px)" }),
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 100002,
           }}
         >
           <FontPicker

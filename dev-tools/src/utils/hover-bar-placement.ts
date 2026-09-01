@@ -65,6 +65,11 @@ export interface PlacedBarStyle {
   placement: VerticalPlacement;
 }
 
+interface BarAnchor {
+  placement: VerticalPlacement;
+  top: number;
+}
+
 function horizontalPosition(
   bounds: Bounds,
   estimatedBarWidth: number,
@@ -157,6 +162,11 @@ export function computeHoverBarStyle(
   return { style, placement: "below" };
 }
 
+/**
+ * Position the link-follow bar on whichever side of the element the toolbar left
+ * free, so the two bars sandwich the element rather than stacking away from it.
+ * Falls back to stacking on the toolbar's side when the free side has no room.
+ */
 export function computeLinkFollowBarStyle(
   bounds: Bounds,
   toolbarPlacement: VerticalPlacement,
@@ -168,13 +178,30 @@ export function computeLinkFollowBarStyle(
   const aboveElementAnchor = bounds.top - GAP - OUTLINE_PAD;
   const stackedAboveAnchor = aboveElementAnchor - ESTIMATED_TOOLBAR_HEIGHT - BAR_STACK_GAP;
 
-  let placement: VerticalPlacement = "below";
-  let top = toolbarPlacement === "above" ? belowElementTop : stackedBelowTop;
-
-  if (!fitsBelow(top, viewport.height)) {
-    placement = "above";
-    top = toolbarPlacement === "above" ? stackedAboveAnchor : aboveElementAnchor;
-  }
+  const toolbarAbove: boolean = toolbarPlacement === "above";
+  const freeSide: BarAnchor = toolbarAbove
+    ? { placement: "below", top: belowElementTop }
+    : { placement: "above", top: aboveElementAnchor };
+  const stacked: BarAnchor = toolbarAbove
+    ? { placement: "above", top: stackedAboveAnchor }
+    : { placement: "below", top: stackedBelowTop };
+  const freeSideFits: boolean = freeSide.placement === "below"
+    ? fitsBelow(freeSide.top, viewport.height)
+    : fitsAbove(freeSide.top);
+  const stackedFits: boolean = stacked.placement === "below"
+    ? fitsBelow(stacked.top, viewport.height)
+    : fitsAbove(stacked.top);
+  const freeSideEdgeClamp: BarAnchor = {
+    placement: freeSide.placement,
+    top: freeSide.placement === "above"
+      ? EDGE_MARGIN + ESTIMATED_LINK_BAR_HEIGHT
+      : viewport.height - EDGE_MARGIN - ESTIMATED_LINK_BAR_HEIGHT,
+  };
+  const { placement, top }: BarAnchor = freeSideFits
+    ? freeSide
+    : stackedFits
+      ? stacked
+      : freeSideEdgeClamp;
 
   const style: CSSProperties = {
     position: "fixed",
@@ -182,10 +209,6 @@ export function computeLinkFollowBarStyle(
     top: `${top}px`,
     transform: combineTransform(horizontal.horizontalTransform, placement === "above"),
   };
-
-  if (placement === "above" && !fitsAbove(top)) {
-    style.top = `${EDGE_MARGIN + ESTIMATED_LINK_BAR_HEIGHT}px`;
-  }
 
   return { style, placement };
 }

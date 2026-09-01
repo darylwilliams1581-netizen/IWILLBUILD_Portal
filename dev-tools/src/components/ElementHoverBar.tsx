@@ -960,6 +960,16 @@ export default function ElementHoverBar({
 
   return (
     <>
+      {followTarget && (
+        <LinkFollowBar
+          style={linkBarStyle}
+          placement={linkBarPlacement}
+          target={followTarget}
+          onFollow={handleFollow}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        />
+      )}
       <HoverBar style={barStyle} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
         {repositionMode ? (
           <>
@@ -1094,16 +1104,6 @@ export default function ElementHoverBar({
           </>
         )}
       </HoverBar>
-      {followTarget && (
-        <LinkFollowBar
-          style={linkBarStyle}
-          placement={linkBarPlacement}
-          target={followTarget}
-          onFollow={handleFollow}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-        />
-      )}
     </>
   );
 }

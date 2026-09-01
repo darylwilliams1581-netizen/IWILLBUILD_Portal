@@ -40,26 +40,59 @@ interface AnnotationModeProps {
   isActive: boolean
 }
 
-const STROKE_COLOR = '#8b5cf6'
-const FILL_COLOR = 'rgba(139, 92, 246, 0.12)'
-const STROKE_WIDTH = 2.5
-const MIN_BOX_SIZE = 4
-const Z_INDEX = 2147483645
-const SCREENSHOT_PADDING = 60
-const SCREENSHOT_DEBOUNCE_MS = 250
+const STROKE_COLOR: string = '#8b5cf6'
+const BADGE_ACCENT_COLOR: string = '#6d28d9'
+const FILL_COLOR: string = 'rgba(139, 92, 246, 0.12)'
+const STROKE_WIDTH: number = 2.5
+const BOX_CORNER_RADIUS: number = 6
+const MIN_BOX_SIZE: number = 4
+const Z_INDEX: number = 2147483645
+const SCREENSHOT_PADDING: number = 60
+const SCREENSHOT_DEBOUNCE_MS: number = 250
+const BADGE_LAYOUT_WIDTH_ESTIMATE: number = 48
+
+interface BadgeRect {
+  x: number
+  y: number
+  width: number
+}
+
+function badgeWrapperStyle(rect: BadgeRect): React.CSSProperties {
+  const top: number = rect.y + 4
+  const anchorRight: number = rect.x + rect.width - 4
+  if (anchorRight < BADGE_LAYOUT_WIDTH_ESTIMATE) {
+    return {
+      position: 'absolute',
+      top,
+      left: rect.x + 4,
+      transform: 'translate(0, -50%)',
+      pointerEvents: 'none',
+    }
+  }
+  return {
+    position: 'absolute',
+    top,
+    left: anchorRight,
+    transform: 'translate(-100%, -50%)',
+    pointerEvents: 'none',
+  }
+}
 
 const BADGE_STYLES: React.CSSProperties = {
+  appearance: 'none',
   minWidth: '20px',
-  height: '20px',
-  padding: '0 5px',
-  borderRadius: '10px',
+  boxSizing: 'border-box',
+  padding: '4px 6px',
+  borderRadius: '100px',
+  border: `1px solid ${BADGE_ACCENT_COLOR}`,
   background: STROKE_COLOR,
   color: 'white',
   fontSize: '11px',
-  fontWeight: 700,
+  fontWeight: 500,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  gap: '4px',
   fontFamily: 'system-ui, sans-serif',
   cursor: 'pointer',
   boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
@@ -169,19 +202,22 @@ interface BadgeProps {
 function NumberBadge({ number, onRemove }: BadgeProps) {
   const [hovered, setHovered] = useState(false)
   return (
-    <div
+    <button
+      type="button"
       data-airo-dev-tools=""
       style={{
         ...BADGE_STYLES,
-        background: hovered ? '#6d28d9' : STROKE_COLOR,
+        background: hovered ? BADGE_ACCENT_COLOR : STROKE_COLOR,
       }}
       title="Remove selection"
+      aria-label={`Remove selection #${number}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove() }}
     >
-      {hovered ? '✕' : `#${number}`}
-    </div>
+      <span aria-hidden="true">{`#${number}`}</span>
+      <span aria-hidden="true">✕</span>
+    </button>
   )
 }
 
@@ -397,6 +433,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
               y={sel.rect.y}
               width={sel.rect.width}
               height={sel.rect.height}
+              rx={BOX_CORNER_RADIUS}
               fill={FILL_COLOR}
               stroke={STROKE_COLOR}
               strokeWidth={STROKE_WIDTH}
@@ -408,6 +445,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
               y={pendingRect.y}
               width={pendingRect.width}
               height={pendingRect.height}
+              rx={BOX_CORNER_RADIUS}
               fill={FILL_COLOR}
               stroke={STROKE_COLOR}
               strokeWidth={STROKE_WIDTH}
@@ -420,6 +458,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
               y={draftBox.y}
               width={draftBox.width}
               height={draftBox.height}
+              rx={BOX_CORNER_RADIUS}
               fill={FILL_COLOR}
               stroke={STROKE_COLOR}
               strokeWidth={STROKE_WIDTH}
@@ -444,12 +483,7 @@ export default function AnnotationMode({ isActive }: AnnotationModeProps) {
           {selections.map((sel) => (
             <div
               key={sel.id}
-              style={{
-                position: 'absolute',
-                top: sel.rect.y - 10,
-                left: sel.rect.x + sel.rect.width - 10,
-                pointerEvents: 'none',
-              }}
+              style={badgeWrapperStyle(sel.rect)}
             >
               <NumberBadge number={sel.number} onRemove={() => handleRemoveSelection(sel.number)} />
             </div>

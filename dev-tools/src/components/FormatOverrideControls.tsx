@@ -170,7 +170,6 @@ export default function FormatOverrideControls({ selectedElement, colorMenu, pop
                 ? { bottom: "calc(100% + 4px)" }
                 : { top: "calc(100% + 4px)" }),
               left: 0,
-              zIndex: 100002,
             }}
           >
             <ColorPicker
