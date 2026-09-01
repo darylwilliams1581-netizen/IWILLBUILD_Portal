@@ -31,6 +31,7 @@ import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
 import AnatomyTab from '@/components/owner-console/AnatomyTab';
 import TwilioTab from '@/components/owner-console/TwilioTab';
+import ImageSafeguardTab from '@/components/owner-console/ImageSafeguardTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -349,7 +350,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | 'twilio' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : searchParams.get('tab') as 'twilio' | null === 'twilio' ? 'twilio' : 'overview');
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio' | 'image-safeguard'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | 'twilio' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : searchParams.get('tab') as 'twilio' | null === 'twilio' ? 'twilio' : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
@@ -929,6 +930,15 @@ export default function OwnerConsolePage() {
               Twilio
             </span>
           </Tab>
+          <Tab active={tab === 'image-safeguard'} onClick={() => {
+          setTab('image-safeguard');
+          setSearchParams({ tab: 'image-safeguard' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <Shield size={12} />
+              Image Safeguard
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
           setTab('support-setup');
           setSearchParams({
@@ -1110,6 +1120,7 @@ export default function OwnerConsolePage() {
                 </div>
               )}
               {tab === 'twilio' && <TwilioTab />}
+              {tab === 'image-safeguard' && <ImageSafeguardTab />}
 
 
               {/* ── Health Check (Annette) ── */}

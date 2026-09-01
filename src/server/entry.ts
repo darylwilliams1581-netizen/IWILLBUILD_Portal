@@ -718,6 +718,9 @@ import owner_console_swms_seed_vacuum_excavation_post_680 from "./api/owner-cons
 import owner_console_system_ai_builtin_checks_post_681 from "./api/owner-console/system-ai/builtin-checks/POST";
 import owner_console_twilio_info_get_682 from "./api/owner-console/twilio-info/GET";
 import owner_console_users_get_683 from "./api/owner-console/users/GET";
+// CP12B1 — Image Safeguard owner console endpoints
+import owner_console_image_safeguard_status_get from "./api/owner-console/image-safeguard/status/GET";
+import owner_console_image_safeguard_scan_post from "./api/owner-console/image-safeguard/scan/POST";
 import owner_console_users_verify_post_684 from "./api/owner-console/users/verify/POST";
 import plan_manager_drawings_get_685 from "./api/plan-manager/drawings/GET";
 import plan_manager_drawings_post_686 from "./api/plan-manager/drawings/POST";
@@ -4053,6 +4056,9 @@ app.post("/api/owner-console/swms/seed-vacuum-excavation", owner_console_swms_se
 app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post_681);
 app.get("/api/owner-console/twilio-info", owner_console_twilio_info_get_682);
 app.get("/api/owner-console/users", owner_console_users_get_683);
+// CP12B1 — Image Safeguard owner console (platform-owner only)
+app.get("/api/owner-console/image-safeguard/status", requirePlatformOwner, owner_console_image_safeguard_status_get);
+app.post("/api/owner-console/image-safeguard/scan", requirePlatformOwner, owner_console_image_safeguard_scan_post);
 app.post("/api/owner-console/users/verify", owner_console_users_verify_post_684);
 app.get("/api/plan-manager/drawings", plan_manager_drawings_get_685);
 app.post("/api/plan-manager/drawings", plan_manager_drawings_post_686);
