@@ -453,6 +453,75 @@ export const V3_TOOL_DEFINITIONS = [
       },
     },
   },
+  // ── CP12B — Image Safeguard tools ─────────────────────────────────────────
+  {
+    type: 'function' as const,
+    function: {
+      name: 'v3_image_safeguard_status',
+      description:
+        'Returns the current image safeguard scanner configuration, capability (provider, configured), ' +
+        'DB counts (total findings, flagged, failed), and the last 5 scan runs. ' +
+        'Use this to check whether the scanner is operational before triggering a run.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'v3_image_safeguard_trigger_run',
+      description:
+        'Triggers a new image safeguard scan run over job photos in R2. ' +
+        'The server fetches images, validates them, and classifies each via OpenAI Vision (gpt-4o). ' +
+        'Results (privacy_signal / clear / failed) are stored in the DB. ' +
+        'Returns the new runId immediately — poll v3_image_safeguard_run_detail to check completion. ' +
+        'Only one run may be active at a time.',
+      parameters: {
+        type: 'object',
+        properties: {
+          since: {
+            type: 'string',
+            description:
+              'ISO-8601 start of date range (e.g. "2026-08-01T00:00:00Z"). ' +
+              'Omit to use the last successful scan cursor, or 7-day default if no cursor.',
+          },
+          until: {
+            type: 'string',
+            description:
+              'ISO-8601 end of date range. Omit to use server now.',
+          },
+          use_cursor: {
+            type: 'boolean',
+            description:
+              'If true, use the last successful scan cursor as the start date. ' +
+              'Ignored when `since` is provided. Defaults to true.',
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'v3_image_safeguard_run_detail',
+      description:
+        'Returns the status and findings for a specific scan run by runId. ' +
+        'Shows run_status (pending/running/completed/failed), counts, detector info, ' +
+        'and up to 100 findings (privacy_signal or failed — clear results are not stored as rows). ' +
+        'R2 keys are NEVER returned.',
+      parameters: {
+        type: 'object',
+        properties: {
+          run_id: { type: 'string', description: 'The scan run UUID returned by v3_image_safeguard_trigger_run.' },
+        },
+        required: ['run_id'],
+      },
+    },
+  },
 ] as const;
 
 export type V3ToolName = typeof V3_TOOL_DEFINITIONS[number]['function']['name'];
@@ -534,6 +603,10 @@ async function executeV3ToolInner(
     case 'find_database_definition': return toolFindDatabaseDefinition(args);
     case 'get_anatomy_manifest':    return toolGetAnatomyManifest(args);
     case 'compare_anatomy_snapshots': return toolCompareAnatomySnapshots(args);
+    // CP12B — Image Safeguard
+    case 'v3_image_safeguard_status':      return toolImageSafeguardStatus();
+    case 'v3_image_safeguard_trigger_run': return toolImageSafeguardTriggerRun(args);
+    case 'v3_image_safeguard_run_detail':  return toolImageSafeguardRunDetail(args);
     default:
       return err(`Unknown tool: ${name}`);
   }
@@ -1306,5 +1379,172 @@ async function toolCompareAnatomySnapshots(args: Record<string, unknown>): Promi
     removedCount: removed.length,
     changedCount: changed.length,
     note: 'Comparison based on file SHA-256 checksums from indexed content.',
+  });
+}
+
+// ── CP12B — Image Safeguard tool implementations ──────────────────────────────
+
+/**
+ * v3_image_safeguard_status
+ * Returns scanner capability, DB counts, and last 5 runs.
+ * Never returns R2 keys, image bytes, or signed URLs.
+ */
+async function toolImageSafeguardStatus(): Promise<string> {
+  const { getAdapterCapability } = await import('./imageSafeguard/scannerAdapter.js');
+  const { getRecentRuns } = await import('./imageSafeguard/scanRunService.js');
+
+  const cap = getAdapterCapability();
+
+  // DB counts — tables may not exist yet on first deploy; handle gracefully
+  let totalFindings = 0;
+  let flaggedFindings = 0;
+  let failedFindings = 0;
+  try {
+    const [countRows] = await db.execute(sql.raw(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN finding_type = 'privacy_signal' THEN 1 ELSE 0 END) AS flagged,
+        SUM(CASE WHEN finding_type = 'failed'         THEN 1 ELSE 0 END) AS failed_count
+      FROM image_safeguard_findings
+    `)) as unknown as [Array<Record<string, unknown>>, unknown];
+    totalFindings   = Number(countRows?.[0]?.total ?? 0);
+    flaggedFindings = Number(countRows?.[0]?.flagged ?? 0);
+    failedFindings  = Number(countRows?.[0]?.failed_count ?? 0);
+  } catch {
+    // Tables not yet created — migration runs on next deploy
+  }
+
+  let recentRuns: unknown[] = [];
+  try {
+    recentRuns = await getRecentRuns(5);
+  } catch {
+    // Tables not yet created
+  }
+
+  return ok({
+    scanner: {
+      configured: cap.configured,
+      provider:   cap.provider,
+      reason:     cap.reason,
+    },
+    findings: {
+      total:   totalFindings,
+      flagged: flaggedFindings,
+      failed:  failedFindings,
+    },
+    recentRuns,
+    note: 'R2 keys and image bytes are never returned via this tool.',
+  });
+}
+
+/**
+ * v3_image_safeguard_trigger_run
+ * Creates a scan run record, then executes the scan via executeScan().
+ * Fire-and-forget: returns runId immediately; poll v3_image_safeguard_run_detail for results.
+ * Dazza never fetches R2 images — the server does all R2 access internally.
+ */
+async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Promise<string> {
+  const {
+    getAdapterCapability,
+    executeScan,
+  } = await import('./imageSafeguard/scannerAdapter.js');
+  const {
+    hasActiveRun,
+    createScanRun,
+    markRunStarted,
+    markRunCompleted,
+    markRunFailed,
+    resolveDateRange,
+    isDateRangeError,
+    advanceCursor,
+  } = await import('./imageSafeguard/scanRunService.js');
+
+  const cap = getAdapterCapability();
+  if (!cap.configured) {
+    return err(`Scanner not configured: ${cap.reason ?? 'unknown'}`);
+  }
+
+  if (await hasActiveRun()) {
+    return err('A scan run is already active. Wait for it to complete before triggering another.');
+  }
+
+  // Resolve date range
+  const since     = typeof args.since === 'string' ? args.since : null;
+  const until     = typeof args.until === 'string' ? args.until : null;
+  const useCursor = args.use_cursor !== false; // default true
+
+  const rangeResult = await resolveDateRange({ since, until, useCursor });
+  if (isDateRangeError(rangeResult)) {
+    return err(`Date range error [${rangeResult.code}]: ${rangeResult.message}`);
+  }
+
+  // Create run record — initiatedBy = 'dazza'
+  const runId = await createScanRun('dazza', rangeResult.rangeStart, rangeResult.rangeEnd, rangeResult.usedCursor);
+  await markRunStarted(runId);
+
+  // Execute scan asynchronously — do not await so Dazza gets runId immediately
+  void (async () => {
+    try {
+      const outcome = await executeScan({
+        runId,
+        rangeStart: rangeResult.rangeStart,
+        rangeEnd:   rangeResult.rangeEnd,
+      });
+      await markRunCompleted(runId, outcome);
+      await advanceCursor(runId, new Date());
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code ?? 'scan_error';
+      await markRunFailed(runId, code).catch(() => undefined);
+    }
+  })();
+
+  return ok({
+    runId,
+    status: 'running',
+    rangeStart:  rangeResult.rangeStart.toISOString(),
+    rangeEnd:    rangeResult.rangeEnd.toISOString(),
+    usedCursor:  rangeResult.usedCursor,
+    provider:    cap.provider,
+    note: 'Scan is running in the background. Poll v3_image_safeguard_run_detail with this runId for results.',
+  });
+}
+
+/**
+ * v3_image_safeguard_run_detail
+ * Returns run status, counts, and up to 100 findings for a given runId.
+ * R2 keys are NEVER returned.
+ */
+async function toolImageSafeguardRunDetail(args: Record<string, unknown>): Promise<string> {
+  const runId = safeStr(args.run_id);
+  if (!runId) return err('run_id is required');
+
+  // Fetch run record
+  const [runRows] = await db.execute(sql.raw(`
+    SELECT id, initiated_by, range_start, range_end, used_cursor, run_status,
+           images_considered, images_scanned, images_skipped, images_with_signal,
+           images_failed, detector_name, detector_version,
+           started_at, finished_at, created_at, error_code
+    FROM image_safeguard_scan_runs
+    WHERE id = '${runId.replace(/'/g, "''")}'
+    LIMIT 1
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  if (!runRows?.length) return err(`Run ${runId} not found.`);
+
+  // Fetch findings — R2 key column deliberately excluded
+  const [findingRows] = await db.execute(sql.raw(`
+    SELECT id, company_id, finding_type, face_count,
+           detector_name, detector_version, failure_code, created_at
+    FROM image_safeguard_findings
+    WHERE scan_run_id = '${runId.replace(/'/g, "''")}'
+    ORDER BY created_at DESC
+    LIMIT 100
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return ok({
+    run:      runRows[0],
+    findings: findingRows ?? [],
+    findingCount: (findingRows ?? []).length,
+    note: 'R2 keys are never returned. "clear" results are not stored as finding rows — only privacy_signal and failed.',
   });
 }
