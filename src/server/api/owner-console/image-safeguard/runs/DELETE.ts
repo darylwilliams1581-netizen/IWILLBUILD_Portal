@@ -11,7 +11,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { db } from '../../../../../lib/db.js';
+import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 
 export default async function handler(_req: Request, res: Response) {
