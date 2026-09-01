@@ -222,7 +222,26 @@ export default async function handler(req: Request, res: Response) {
       usedCursor:  rangeResult.usedCursor,
       runStatus:   'pending',
     });
-  } catch {
-    return res.status(500).json({ error: 'Failed to initiate scan.' });
+  } catch (outerErr: unknown) {
+    // Distinguish a missing schema (table not yet created) from other failures.
+    // Never put SQL text, stack traces, R2 keys, or secret names in the body.
+    const msg = outerErr instanceof Error ? outerErr.message : String(outerErr);
+    const isSchemaError =
+      /table.*doesn'?t exist/i.test(msg) ||
+      /no such table/i.test(msg) ||
+      /relation.*does not exist/i.test(msg) ||
+      /ER_NO_SUCH_TABLE/i.test(msg) ||
+      /image_safeguard_scan_runs/i.test(msg);
+
+    if (isSchemaError) {
+      return res.status(503).json({
+        error: 'schema_not_ready',
+        message: 'Image Safeguard storage is not ready.',
+      });
+    }
+    return res.status(500).json({
+      error: 'scan_initiate_failed',
+      message: 'Scan could not be started.',
+    });
   }
 }
