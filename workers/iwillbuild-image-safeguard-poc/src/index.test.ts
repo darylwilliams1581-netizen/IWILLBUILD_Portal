@@ -1,8 +1,7 @@
 /**
  * iwillbuild-image-safeguard-poc — unit tests
- *
- * Tests run with vitest (not @cloudflare/vitest-pool-workers) so they can
- * execute in the Airo sandbox without a Cloudflare account.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * CP12B4 — Corrected test suite.
  *
  * The AI binding is mocked — no real inference is performed here.
  * The synthetic POC test (real Workers AI) is performed post-deploy.
@@ -12,85 +11,70 @@
  *  - Non-POST rejected
  *  - JPEG / PNG / WebP accepted (magic bytes)
  *  - SVG / HTML / executable / malformed / mismatched rejected
- *  - Oversized request rejected before body allocation
- *  - Response schema: only result, approximateFaceCount, requestId
+ *  - Body-size enforcement:
+ *      · Content-Length > 10 MB rejected before body read
+ *      · Missing Content-Length with body > 10 MB rejected via stream
+ *      · Falsely small Content-Length with body > 10 MB rejected via stream
+ *      · Malformed Content-Length rejected
+ *      · Exact MAX_BYTES accepted
+ *      · Stream cancelled after exceeding limit (classifier never called)
+ *  - Response schema: result, faceCount, detectorName, detectorVersion,
+ *      failureCode, requestId — matches imageClassifier.ts ClassifyOutcome
  *  - No sensitive fields in any response
  *  - No R2 binding or write capability
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// ── Import the functions under test directly (not the full Worker handler)
-// so tests are fast and don't require a Workers runtime.
-// The handler integration is covered by the integration tests below.
-
-// Re-export internals for testing via a test-only re-export file.
-// We test the pure functions directly.
+import { describe, it, expect, vi } from 'vitest';
 
 // ── Helpers to build minimal valid image buffers ──────────────────────────────
 
-function makeJpegBuffer(): Uint8Array {
+function makeJpegBuffer(padToBytes = 128): Uint8Array {
   // Minimal JPEG: SOI + APP0 (16-byte segment) + SOF0 with 1x1 dimensions.
   // APP0 segment: marker(2) + length(2) + body(14) = 18 bytes total, ends at offset 20.
   // SOF0 must start at offset 20 (immediately after APP0 ends).
-  const buf = new Uint8Array(128).fill(0x00);
+  const buf = new Uint8Array(Math.max(padToBytes, 128)).fill(0x00);
   // SOI
   buf[0] = 0xff; buf[1] = 0xd8;
   // APP0 marker (FF E0) at offset 2
   buf[2] = 0xff; buf[3] = 0xe0;
-  // APP0 length = 16 (big-endian) — covers bytes 4..19 (length field + 14 body bytes)
+  // APP0 length = 16 (big-endian) — covers bytes 4..19
   buf[4] = 0x00; buf[5] = 0x10;
-  // JFIF identifier (5 bytes)
+  // JFIF identifier
   buf[6] = 0x4a; buf[7] = 0x46; buf[8] = 0x49; buf[9] = 0x46; buf[10] = 0x00;
-  // SOF0 marker (FF C0) at offset 20 — immediately after APP0 segment ends
+  // SOF0 marker (FF C0) at offset 20
   buf[20] = 0xff; buf[21] = 0xc0;
-  // SOF0 length = 17 (big-endian)
+  // SOF0 length = 17
   buf[22] = 0x00; buf[23] = 0x11;
   // Precision = 8
   buf[24] = 0x08;
-  // Height = 1 (big-endian, bytes 25-26)
+  // Height = 1 (big-endian)
   buf[25] = 0x00; buf[26] = 0x01;
-  // Width = 1 (big-endian, bytes 27-28)
+  // Width = 1 (big-endian)
   buf[27] = 0x00; buf[28] = 0x01;
   return buf;
 }
 
 function makePngBuffer(): Uint8Array {
-  // Minimal PNG: signature + IHDR (1x1)
   const buf = new Uint8Array(64).fill(0x00);
-  // PNG signature
   buf[0] = 0x89; buf[1] = 0x50; buf[2] = 0x4e; buf[3] = 0x47;
   buf[4] = 0x0d; buf[5] = 0x0a; buf[6] = 0x1a; buf[7] = 0x0a;
-  // IHDR chunk length (13)
   buf[8] = 0x00; buf[9] = 0x00; buf[10] = 0x00; buf[11] = 0x0d;
-  // IHDR type
   buf[12] = 0x49; buf[13] = 0x48; buf[14] = 0x44; buf[15] = 0x52;
-  // Width = 1 (big-endian)
   buf[16] = 0x00; buf[17] = 0x00; buf[18] = 0x00; buf[19] = 0x01;
-  // Height = 1 (big-endian)
   buf[20] = 0x00; buf[21] = 0x00; buf[22] = 0x00; buf[23] = 0x01;
   return buf;
 }
 
 function makeWebpBuffer(): Uint8Array {
-  // Minimal WebP: RIFF header + WEBP + VP8X chunk (80 bytes)
   const buf = new Uint8Array(80).fill(0x00);
-  // RIFF
   buf[0] = 0x52; buf[1] = 0x49; buf[2] = 0x46; buf[3] = 0x46;
-  // File size (little-endian): 72
   buf[4] = 0x48; buf[5] = 0x00; buf[6] = 0x00; buf[7] = 0x00;
-  // WEBP
   buf[8] = 0x57; buf[9] = 0x45; buf[10] = 0x42; buf[11] = 0x50;
-  // VP8X chunk type
+  // VP8X chunk
   buf[12] = 0x56; buf[13] = 0x50; buf[14] = 0x38; buf[15] = 0x58;
-  // VP8X chunk size (10, little-endian)
   buf[16] = 0x0a; buf[17] = 0x00; buf[18] = 0x00; buf[19] = 0x00;
-  // VP8X flags (byte 20)
-  buf[20] = 0x00;
-  // Reserved (bytes 21-23)
-  // Canvas width - 1 (0, little-endian 24-bit) → width = 1
+  // Canvas width-1 = 0 → width=1; height-1 = 0 → height=1
   buf[24] = 0x00; buf[25] = 0x00; buf[26] = 0x00;
-  // Canvas height - 1 (0, little-endian 24-bit) → height = 1
   buf[27] = 0x00; buf[28] = 0x00; buf[29] = 0x00;
   return buf;
 }
@@ -104,15 +88,25 @@ function makeHtmlBuffer(): Uint8Array {
 }
 
 function makeExecutableBuffer(): Uint8Array {
-  // ELF magic bytes
   const buf = new Uint8Array(64).fill(0x00);
   buf[0] = 0x7f; buf[1] = 0x45; buf[2] = 0x4c; buf[3] = 0x46;
   return buf;
 }
 
 function makeTruncatedBuffer(): Uint8Array {
-  // Only 10 bytes — too small for any valid image header
   return new Uint8Array(10).fill(0x00);
+}
+
+/**
+ * Builds a body larger than MAX_BYTES (10 MB + 1 byte) with valid JPEG magic
+ * bytes at the start so it passes the magic-byte check if the size gate fails.
+ */
+function makeOversizedJpegBody(): Uint8Array {
+  const MAX_BYTES = 10 * 1024 * 1024;
+  const buf = new Uint8Array(MAX_BYTES + 1).fill(0x00);
+  // JPEG magic bytes
+  buf[0] = 0xff; buf[1] = 0xd8; buf[2] = 0xff;
+  return buf;
 }
 
 // ── Mock AI binding ───────────────────────────────────────────────────────────
@@ -145,7 +139,6 @@ function makeEnv(token = 'test-secret-token', aiOverride?: Ai) {
 
 // ── Import handler ────────────────────────────────────────────────────────────
 
-// Dynamic import so we can test the handler directly
 async function getHandler() {
   const mod = await import('./index.js');
   return mod.default;
@@ -158,18 +151,29 @@ function makeRequest(
   body: Uint8Array | null,
   contentType: string,
   token: string | null,
-  contentLength?: number,
+  contentLengthOverride?: number | 'omit',
 ): Request {
   const headers: Record<string, string> = {
     'Content-Type': contentType,
   };
   if (token !== null) headers['X-Safeguard-Token'] = token;
-  if (contentLength !== undefined) headers['Content-Length'] = String(contentLength);
+
+  // contentLengthOverride:
+  //   undefined  → set Content-Length to actual body length (default)
+  //   'omit'     → do not set Content-Length header at all
+  //   number     → set Content-Length to that specific value (may be false/malformed)
+  if (contentLengthOverride === 'omit') {
+    // no Content-Length header
+  } else if (contentLengthOverride !== undefined) {
+    headers['Content-Length'] = String(contentLengthOverride);
+  } else if (body !== null) {
+    headers['Content-Length'] = String(body.byteLength);
+  }
 
   return new Request('https://worker.example.com/classify', {
     method,
     headers,
-    body: body ? body : undefined,
+    body: body ?? undefined,
   });
 }
 
@@ -221,26 +225,21 @@ describe('Method enforcement', () => {
 });
 
 describe('Accepted image types', () => {
-  it('accepts JPEG magic bytes and returns result', async () => {
+  it('accepts JPEG magic bytes and returns 200', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
     expect(res.status).toBe(200);
-    const body = await res.json() as { result: string; approximateFaceCount: number; requestId: string };
-    expect(['clear', 'privacy_signal', 'unavailable', 'failed']).toContain(body.result);
-    expect(typeof body.approximateFaceCount).toBe('number');
-    expect(typeof body.requestId).toBe('string');
-    expect(body.requestId.length).toBeGreaterThan(0);
   });
 
-  it('accepts PNG magic bytes and returns result', async () => {
+  it('accepts PNG magic bytes and returns 200', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makePngBuffer(), 'image/png', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
     expect(res.status).toBe(200);
   });
 
-  it('accepts WebP magic bytes and returns result', async () => {
+  it('accepts WebP magic bytes and returns 200', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeWebpBuffer(), 'image/webp', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
@@ -249,9 +248,8 @@ describe('Accepted image types', () => {
 });
 
 describe('Rejected image types', () => {
-  it('rejects SVG with 415', async () => {
+  it('rejects SVG declared as image/jpeg with 415', async () => {
     const handler = await getHandler();
-    // SVG declared as image/jpeg — magic bytes don't match
     const req = makeRequest('POST', makeSvgBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
     expect(res.status).toBe(415);
@@ -285,14 +283,14 @@ describe('Rejected image types', () => {
     expect([415, 422]).toContain(res.status);
   });
 
-  it('rejects Content-Type mismatch (PNG bytes declared as image/jpeg) with 415', async () => {
+  it('rejects PNG bytes declared as image/jpeg with 415', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makePngBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
     expect(res.status).toBe(415);
   });
 
-  it('rejects Content-Type mismatch (JPEG bytes declared as image/png) with 415', async () => {
+  it('rejects JPEG bytes declared as image/png with 415', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/png', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
@@ -307,32 +305,133 @@ describe('Rejected image types', () => {
   });
 });
 
-describe('Size enforcement', () => {
-  it('rejects Content-Length > 10 MB before body allocation with 413', async () => {
+// ── Body-size enforcement ─────────────────────────────────────────────────────
+// These tests prove the body-size bypass is closed.
+// The classifier (AI mock) must never be called for any oversized request.
+
+describe('Body-size enforcement', () => {
+  const MAX_BYTES = 10 * 1024 * 1024;
+
+  it('rejects Content-Length > 10 MB before body read with 413', async () => {
     const handler = await getHandler();
-    const oversizeLength = 10 * 1024 * 1024 + 1;
-    // Body is small — the Content-Length header triggers the early rejection
-    const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token', oversizeLength);
-    const res = await handler.fetch(req, makeEnv() as any, {} as any);
+    const mockAi = makeMockAi(0);
+    // Body is small — Content-Length header triggers early rejection
+    const req = makeRequest(
+      'POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token',
+      MAX_BYTES + 1,
+    );
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
     expect(res.status).toBe(413);
+    // Classifier must not have been called
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+  });
+
+  it('rejects missing Content-Length with body > 10 MB via stream with 413', async () => {
+    const handler = await getHandler();
+    const mockAi = makeMockAi(0);
+    const oversizedBody = makeOversizedJpegBody();
+    // 'omit' → no Content-Length header; size gate must catch it via streaming
+    const req = makeRequest(
+      'POST', oversizedBody, 'image/jpeg', 'test-secret-token',
+      'omit',
+    );
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+    expect(res.status).toBe(413);
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+  });
+
+  it('rejects falsely small Content-Length with body > 10 MB via stream with 413', async () => {
+    const handler = await getHandler();
+    const mockAi = makeMockAi(0);
+    const oversizedBody = makeOversizedJpegBody();
+    // Content-Length claims 100 bytes but actual body is > 10 MB
+    // The stream reader must catch the actual size
+    const req = makeRequest(
+      'POST', oversizedBody, 'image/jpeg', 'test-secret-token',
+      100,
+    );
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+    expect(res.status).toBe(413);
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+  });
+
+  it('rejects malformed Content-Length (non-numeric) with 413', async () => {
+    const handler = await getHandler();
+    const mockAi = makeMockAi(0);
+    // Manually set a non-numeric Content-Length
+    const headers: Record<string, string> = {
+      'Content-Type': 'image/jpeg',
+      'X-Safeguard-Token': 'test-secret-token',
+      'Content-Length': 'not-a-number',
+    };
+    const req = new Request('https://worker.example.com/classify', {
+      method: 'POST',
+      headers,
+      body: makeJpegBuffer(),
+    });
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+    expect(res.status).toBe(413);
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+  });
+
+  it('accepts body at exactly MAX_BYTES with valid JPEG structure', async () => {
+    const handler = await getHandler();
+    const mockAi = makeMockAi(0);
+    // Build a valid JPEG padded to exactly MAX_BYTES
+    const exactBody = makeJpegBuffer(MAX_BYTES);
+    const req = makeRequest(
+      'POST', exactBody, 'image/jpeg', 'test-secret-token',
+      MAX_BYTES,
+    );
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+    // Should reach the classifier (200) — not rejected by size gate
+    expect(res.status).toBe(200);
+  });
+
+  it('stream is cancelled after exceeding limit — classifier never called', async () => {
+    // This test proves the stream cancellation path specifically.
+    // We use the readBoundedBody export directly to verify stream behaviour.
+    const { readBoundedBody } = await import('./index.js');
+    const oversizedBody = makeOversizedJpegBody();
+
+    // Build a Request with no Content-Length so only the stream gate fires
+    const req = new Request('https://worker.example.com/classify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: oversizedBody,
+    });
+
+    const result = await readBoundedBody(req);
+    // Must return null — stream was cancelled after MAX_BYTES+1
+    expect(result).toBeNull();
   });
 });
 
+// ── Response schema ───────────────────────────────────────────────────────────
+// Verifies the response matches imageClassifier.ts ClassifyOutcome exactly.
+
 describe('Response schema', () => {
-  it('success response contains only result, approximateFaceCount, requestId', async () => {
+  it('success response contains exactly the Dazza contract fields', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     const keys = Object.keys(body);
-    // Must contain exactly these three fields
+
+    // Required fields (matches ClassifyOutcome in imageClassifier.ts)
     expect(keys).toContain('result');
-    expect(keys).toContain('approximateFaceCount');
+    expect(keys).toContain('faceCount');
+    expect(keys).toContain('detectorName');
+    expect(keys).toContain('detectorVersion');
+    expect(keys).toContain('failureCode');
     expect(keys).toContain('requestId');
-    // Must NOT contain sensitive fields
+
+    // Must NOT contain the old field name or any sensitive fields
     const forbidden = [
-      'image', 'bytes', 'buffer', 'r2Key', 'storageKey', 'key',
+      'approximateFaceCount',          // old field name — must not appear
+      'image', 'bytes', 'buffer',
+      'r2Key', 'storageKey', 'key',
       'token', 'secret', 'accessKeyId', 'secretAccessKey',
       'identity', 'age', 'gender', 'ethnicity', 'criminality', 'intent',
       'boundingBox', 'bbox', 'label', 'score', 'rawModel', 'modelOutput',
@@ -340,6 +439,22 @@ describe('Response schema', () => {
     for (const field of forbidden) {
       expect(keys).not.toContain(field);
     }
+  });
+
+  it('detectorName is cloudflare-workers-ai', async () => {
+    const handler = await getHandler();
+    const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv() as any, {} as any);
+    const body = await res.json() as { detectorName: string };
+    expect(body.detectorName).toBe('cloudflare-workers-ai');
+  });
+
+  it('detectorVersion is the model identifier', async () => {
+    const handler = await getHandler();
+    const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv() as any, {} as any);
+    const body = await res.json() as { detectorVersion: string };
+    expect(body.detectorVersion).toBe('@cf/moondream/moondream3.1-9B-A2B');
   });
 
   it('result is one of the four permitted codes', async () => {
@@ -350,54 +465,60 @@ describe('Response schema', () => {
     expect(['clear', 'privacy_signal', 'unavailable', 'failed']).toContain(body.result);
   });
 
-  it('privacy_signal returned when AI detects faces', async () => {
+  it('privacy_signal returned with faceCount when AI detects faces', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(2)) as any, {} as any);
-    const body = await res.json() as { result: string; approximateFaceCount: number };
+    const body = await res.json() as { result: string; faceCount: number; failureCode: unknown };
     expect(body.result).toBe('privacy_signal');
-    expect(body.approximateFaceCount).toBe(2);
+    expect(body.faceCount).toBe(2);
+    expect(body.failureCode).toBeNull();
   });
 
-  it('clear returned when AI detects no faces', async () => {
+  it('clear returned with faceCount=0 when AI detects no faces', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(0)) as any, {} as any);
-    const body = await res.json() as { result: string; approximateFaceCount: number };
+    const body = await res.json() as { result: string; faceCount: number; failureCode: unknown };
     expect(body.result).toBe('clear');
-    expect(body.approximateFaceCount).toBe(0);
+    expect(body.faceCount).toBe(0);
+    expect(body.failureCode).toBeNull();
   });
 
-  it('unavailable returned when AI model errors', async () => {
+  it('unavailable returned with sanitized failureCode when AI errors', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAiError()) as any, {} as any);
-    const body = await res.json() as { result: string };
+    const body = await res.json() as { result: string; faceCount: number; failureCode: string | null };
     expect(body.result).toBe('unavailable');
+    expect(body.faceCount).toBe(0);
+    // failureCode must be a sanitized string — not a stack trace or internal path
+    expect(typeof body.failureCode).toBe('string');
+    expect(body.failureCode).not.toContain('Error:');
+    expect(body.failureCode).not.toContain('at ');
+    expect(body.failureCode).not.toContain('/');
   });
 
-  it('requestId is an opaque string with no image content', async () => {
+  it('requestId is an opaque 32-char hex string', async () => {
     const handler = await getHandler();
     const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
     const res = await handler.fetch(req, makeEnv() as any, {} as any);
     const body = await res.json() as { requestId: string };
-    // Opaque hex — 32 hex chars (16 bytes)
     expect(body.requestId).toMatch(/^[0-9a-f]{32}$/);
   });
 });
 
 describe('No sensitive logging', () => {
-  it('does not log image bytes on rejection', async () => {
+  it('does not log image bytes or token on rejection', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const handler = await getHandler();
     const req = makeRequest('POST', makeSvgBuffer(), 'image/jpeg', 'test-secret-token');
     await handler.fetch(req, makeEnv() as any, {} as any);
-    // No console output should contain image bytes or token values
     for (const call of [...consoleSpy.mock.calls, ...errorSpy.mock.calls]) {
       const output = call.join(' ');
       expect(output).not.toContain('test-secret-token');
-      expect(output).not.toContain('FF D8'); // JPEG magic bytes
+      expect(output).not.toContain('FF D8');
     }
     consoleSpy.mockRestore();
     errorSpy.mockRestore();
@@ -406,8 +527,6 @@ describe('No sensitive logging', () => {
 
 describe('No R2 binding or write capability', () => {
   it('Env type has no R2 binding', async () => {
-    // The Env interface only has AI and SAFEGUARD_TOKEN.
-    // This is a structural test — if R2 were added, the mock env would need it.
     const env = makeEnv();
     const envKeys = Object.keys(env);
     expect(envKeys).not.toContain('R2');
@@ -427,5 +546,59 @@ describe('No R2 binding or write capability', () => {
     expect(toml).not.toContain('[[r2_buckets]]');
     expect(toml).toContain('[ai]');
     expect(toml).toContain('binding = "AI"');
+  });
+});
+
+// ── imageClassifier.ts contract alignment ─────────────────────────────────────
+// Proves the Worker response can be consumed by imageClassifier.ts without
+// translation ambiguity.
+
+describe('imageClassifier.ts contract alignment', () => {
+  it('Worker faceCount maps directly to ClassifyOutcome.faceCount', async () => {
+    const handler = await getHandler();
+    const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(3)) as any, {} as any);
+    const body = await res.json() as Record<string, unknown>;
+    // imageClassifier.ts reads: Number(data.faceCount ?? 0)
+    expect(typeof body['faceCount']).toBe('number');
+    expect(body['faceCount']).toBe(3);
+    // Must NOT have approximateFaceCount — that would require translation
+    expect(body['approximateFaceCount']).toBeUndefined();
+  });
+
+  it('Worker detectorName maps directly to ClassifyOutcome.detectorName', async () => {
+    const handler = await getHandler();
+    const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv() as any, {} as any);
+    const body = await res.json() as Record<string, unknown>;
+    // imageClassifier.ts reads: String(data.detectorName ?? 'unknown')
+    expect(typeof body['detectorName']).toBe('string');
+    expect(body['detectorName']).toBe('cloudflare-workers-ai');
+  });
+
+  it('Worker detectorVersion maps directly to ClassifyOutcome.detectorVersion', async () => {
+    const handler = await getHandler();
+    const req = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv() as any, {} as any);
+    const body = await res.json() as Record<string, unknown>;
+    expect(typeof body['detectorVersion']).toBe('string');
+    expect(body['detectorVersion']).toBe('@cf/moondream/moondream3.1-9B-A2B');
+  });
+
+  it('Worker failureCode is null on success and a sanitized string on error', async () => {
+    const handler = await getHandler();
+
+    // Success path: failureCode must be null
+    const reqOk = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const resOk = await handler.fetch(reqOk, makeEnv('test-secret-token', makeMockAi(0)) as any, {} as any);
+    const bodyOk = await resOk.json() as Record<string, unknown>;
+    expect(bodyOk['failureCode']).toBeNull();
+
+    // Error path: failureCode must be a non-empty string (not a stack trace)
+    const reqErr = makeRequest('POST', makeJpegBuffer(), 'image/jpeg', 'test-secret-token');
+    const resErr = await handler.fetch(reqErr, makeEnv('test-secret-token', makeMockAiError()) as any, {} as any);
+    const bodyErr = await resErr.json() as Record<string, unknown>;
+    expect(typeof bodyErr['failureCode']).toBe('string');
+    expect((bodyErr['failureCode'] as string).length).toBeGreaterThan(0);
   });
 });

@@ -8,12 +8,26 @@
  *  - Authentication via X-Safeguard-Token header (constant-time compare).
  *  - Content-Type must be image/jpeg, image/png, or image/webp.
  *  - Magic bytes independently verified — Content-Type header not trusted.
- *  - Content-Length enforced before body allocation (10 MB hard limit).
+ *  - Content-Length > MAX_BYTES rejected before body read.
+ *  - Body read as a bounded stream — cancelled immediately after MAX_BYTES+1.
+ *    request.arrayBuffer() is NEVER called on an unbounded body.
+ *  - Missing, absent, or malformed Content-Length: body is still bounded by
+ *    the stream reader — oversized bodies are rejected during streaming.
  *  - Structural and dimension/pixel limits enforced before model submission.
  *  - Returns ONLY: clear | privacy_signal | unavailable | failed.
  *  - NEVER infers identity, age, gender, ethnicity, intent, or criminality.
  *  - No image bytes, tokens, or raw model output in any log or response.
  *  - No R2 binding. No storage. No queues. No writes of any kind.
+ *
+ * RESPONSE CONTRACT (matches imageClassifier.ts ClassifyOutcome):
+ *  {
+ *    result:          'clear' | 'privacy_signal' | 'unavailable' | 'failed'
+ *    faceCount:       number   (0 when result is clear/unavailable/failed)
+ *    detectorName:    'cloudflare-workers-ai'
+ *    detectorVersion: '@cf/moondream/moondream3.1-9B-A2B'
+ *    failureCode:     string | null  (sanitized code only, never a stack trace)
+ *    requestId:       opaque hex string
+ *  }
  *
  * BINDINGS:
  *  - AI: Workers AI (inference only)
@@ -22,7 +36,7 @@
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — enforced before body read
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB hard limit
 const MAX_PIXELS = 50_000_000;       // 50 MP — enforced before model submission
 const MAX_DIMENSION = 16_000;        // 16,000 px per side
 
@@ -31,9 +45,9 @@ const AI_MODEL = '@cf/moondream/moondream3.1-9B-A2B' as const;
 const AI_TASK = 'detect' as const;
 const AI_TARGET = 'human face' as const;
 
-// Detector identity reported in every response
-const DETECTOR_NAME = 'moondream3.1-9B-A2B';
-const DETECTOR_VERSION = '1';
+// Detector identity — must match the values imageClassifier.ts expects
+const DETECTOR_NAME = 'cloudflare-workers-ai' as const;
+const DETECTOR_VERSION = '@cf/moondream/moondream3.1-9B-A2B' as const;
 
 // ── Environment binding types ─────────────────────────────────────────────────
 
@@ -42,13 +56,21 @@ export interface Env {
   SAFEGUARD_TOKEN: string;
 }
 
-// ── Response helpers ──────────────────────────────────────────────────────────
+// ── Response types ────────────────────────────────────────────────────────────
 
 type ResultCode = 'clear' | 'privacy_signal' | 'unavailable' | 'failed';
 
+/**
+ * Matches imageClassifier.ts ClassifyOutcome exactly.
+ * Never add bounding boxes, confidence scores, raw model output, or personal
+ * attributes to this interface.
+ */
 interface ClassifyResponse {
   result: ResultCode;
-  approximateFaceCount: number;
+  faceCount: number;
+  detectorName: typeof DETECTOR_NAME;
+  detectorVersion: typeof DETECTOR_VERSION;
+  failureCode: string | null;
   requestId: string;
 }
 
@@ -62,21 +84,18 @@ function jsonResponse(
     headers: {
       'Content-Type': 'application/json',
       'X-Request-Id': requestId,
-      // Never cache — each request is a unique image
       'Cache-Control': 'no-store',
     },
   });
 }
 
 function errorResponse(error: string, status: number, requestId: string): Response {
-  // Never include image bytes, tokens, or internal paths in error messages
   return jsonResponse({ error }, status, requestId);
 }
 
 // ── Request ID ────────────────────────────────────────────────────────────────
 
 function generateRequestId(): string {
-  // Opaque 16-byte hex — no timestamp, no counter, no correlation to image content
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -85,10 +104,10 @@ function generateRequestId(): string {
 // ── Constant-time token comparison ───────────────────────────────────────────
 
 /**
- * Compares two strings in constant time to prevent timing attacks.
- * Uses the SubtleCrypto HMAC approach: both strings are HMAC'd with a
- * random key and the MACs are compared — this ensures the comparison
- * time is independent of where the strings first differ.
+ * Compares two strings in constant time using HMAC-SHA-256 with a random key.
+ * Both strings are MAC'd with the same ephemeral key; the MACs are compared
+ * byte-by-byte with no early exit. Comparison time is independent of where
+ * the strings first differ.
  */
 async function constantTimeEqual(a: string, b: string): Promise<boolean> {
   const enc = new TextEncoder();
@@ -114,6 +133,73 @@ async function constantTimeEqual(a: string, b: string): Promise<boolean> {
   return diff === 0;
 }
 
+// ── Bounded body reader ───────────────────────────────────────────────────────
+
+/**
+ * Reads the request body as a bounded stream.
+ *
+ * SECURITY:
+ *  - Never calls request.arrayBuffer() — that would buffer the entire body
+ *    before the size check, allowing memory exhaustion.
+ *  - Reads chunks from the ReadableStream and accumulates them.
+ *  - Cancels the stream and returns null immediately after reading
+ *    MAX_BYTES + 1 bytes — the +1 proves the limit was exceeded without
+ *    reading the full oversized body.
+ *  - Returns null when the body is absent or the stream cannot be read.
+ *  - Returns null when Content-Length is present and > MAX_BYTES (early gate).
+ *
+ * @returns Uint8Array of body bytes, or null if oversized / unreadable.
+ */
+export async function readBoundedBody(request: Request): Promise<Uint8Array | null> {
+  // ── Early gate: reject declared oversized Content-Length before streaming ──
+  const contentLengthHeader = request.headers.get('Content-Length');
+  if (contentLengthHeader !== null) {
+    const declaredLength = parseInt(contentLengthHeader, 10);
+    // Reject NaN (malformed), negative, or > MAX_BYTES
+    if (!Number.isInteger(declaredLength) || declaredLength < 0 || declaredLength > MAX_BYTES) {
+      return null;
+    }
+  }
+  // Note: missing Content-Length is NOT rejected here — the stream reader
+  // enforces the limit regardless of whether Content-Length is present.
+
+  const body = request.body;
+  if (!body) return null;
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_BYTES) {
+          // Cancel the stream immediately — do not read further
+          await reader.cancel();
+          return null; // signals oversized
+        }
+        chunks.push(value);
+      }
+    }
+  } catch {
+    // Stream read error — treat as unreadable
+    try { await reader.cancel(); } catch { /* ignore */ }
+    return null;
+  }
+
+  // Concatenate chunks into a single buffer
+  const result = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
 // ── Magic-byte MIME detection ─────────────────────────────────────────────────
 
 type AllowedMime = 'image/jpeg' | 'image/png' | 'image/webp';
@@ -121,10 +207,9 @@ type AllowedMime = 'image/jpeg' | 'image/png' | 'image/webp';
 /**
  * Detects MIME type from the first bytes of the buffer.
  * Returns null for any type that is not JPEG, PNG, or WebP.
- * This is the authoritative type check — the Content-Type header is ignored
- * for type determination.
+ * This is the authoritative type check — the Content-Type header is not trusted.
  */
-function detectMimeFromMagic(buf: Uint8Array): AllowedMime | null {
+export function detectMimeFromMagic(buf: Uint8Array): AllowedMime | null {
   if (buf.length < 12) return null;
 
   // JPEG: FF D8 FF
@@ -155,7 +240,7 @@ function detectMimeFromMagic(buf: Uint8Array): AllowedMime | null {
  * Checks that the declared Content-Type header matches the magic-byte
  * detected type. Rejects mismatches (e.g. SVG declared as image/jpeg).
  */
-function mimeMatchesMagic(declared: string, detected: AllowedMime): boolean {
+export function mimeMatchesMagic(declared: string, detected: AllowedMime): boolean {
   const normalised = declared.split(';')[0].trim().toLowerCase();
   return normalised === detected;
 }
@@ -172,9 +257,9 @@ interface ValidationResult {
 /**
  * Validates image structure and extracts dimensions.
  * Enforces MAX_DIMENSION and MAX_PIXELS before model submission.
- * Does not decode the full image — reads only the header bytes.
+ * Reads only header bytes — never decodes the full image.
  */
-function validateStructureAndDimensions(
+export function validateStructureAndDimensions(
   buf: Uint8Array,
   mime: AllowedMime,
 ): ValidationResult {
@@ -217,17 +302,14 @@ function validateStructureAndDimensions(
       i += 2 + segLen;
     }
     if (!found) {
-      // Could not find SOF — treat as structurally invalid
       return { ok: false, reason: 'jpeg_no_sof_marker' };
     }
   } else if (mime === 'image/webp') {
-    // WebP: RIFF(4) + size(4) + WEBP(4) + chunk_type(4) = 12 bytes minimum
     if (buf.length < 30) return { ok: false, reason: 'webp_header_truncated' };
     const chunkType = String.fromCharCode(buf[12], buf[13], buf[14], buf[15]);
     const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
     if (chunkType === 'VP8 ') {
       // Lossy: dimensions at bytes 26-29 (14-bit, little-endian, mask 0x3FFF)
-      if (buf.length < 30) return { ok: false, reason: 'webp_vp8_truncated' };
       width = (view.getUint16(26, true) & 0x3fff) + 1;
       height = (view.getUint16(28, true) & 0x3fff) + 1;
     } else if (chunkType === 'VP8L') {
@@ -238,7 +320,6 @@ function validateStructureAndDimensions(
       height = ((bits >> 14) & 0x3fff) + 1;
     } else if (chunkType === 'VP8X') {
       // Extended: canvas width/height at bytes 24-29 (24-bit, little-endian, +1)
-      if (buf.length < 30) return { ok: false, reason: 'webp_vp8x_truncated' };
       width = (buf[24] | (buf[25] << 8) | (buf[26] << 16)) + 1;
       height = (buf[27] | (buf[28] << 8) | (buf[29] << 16)) + 1;
     } else {
@@ -274,13 +355,12 @@ interface AiDetectResult {
  *  - Raw model output is never logged or returned.
  *  - Returns 'unavailable' on any model error rather than throwing.
  */
-async function runInference(
+export async function runInference(
   ai: Ai,
   imageBytes: Uint8Array,
   _mime: AllowedMime,
-): Promise<{ result: ResultCode; approximateFaceCount: number }> {
+): Promise<{ result: ResultCode; faceCount: number; failureCode: string | null }> {
   try {
-    // Workers AI object detection — detect human faces only
     const response = await (ai.run as (
       model: string,
       inputs: { image: number[]; task: string; target: string },
@@ -290,20 +370,15 @@ async function runInference(
       target: AI_TARGET,
     });
 
-    // Count detections — never expose bounding boxes, labels, or scores
+    // Count detections only — never expose bounding boxes, labels, or scores
     const detections = response?.detections ?? [];
     const faceCount = detections.length;
-
-    // privacy_signal = one or more faces detected
-    // clear = no faces detected
-    // No other attributes inferred
     const result: ResultCode = faceCount > 0 ? 'privacy_signal' : 'clear';
 
-    return { result, approximateFaceCount: faceCount };
-  } catch (_err) {
-    // Model unavailable or inference error — never log the error details
-    // (could contain image metadata or internal paths)
-    return { result: 'unavailable', approximateFaceCount: 0 };
+    return { result, faceCount, failureCode: null };
+  } catch {
+    // Model unavailable or inference error — never log error details
+    return { result: 'unavailable', faceCount: 0, failureCode: 'model_error' };
   }
 }
 
@@ -319,34 +394,21 @@ export default {
     }
 
     // ── Authentication ────────────────────────────────────────────────────────
-    // Constant-time comparison prevents timing attacks on the token.
     const providedToken = request.headers.get('X-Safeguard-Token') ?? '';
     const expectedToken = env.SAFEGUARD_TOKEN ?? '';
 
     if (!expectedToken) {
-      // Worker secret not configured — fail closed
       return errorResponse('service_unavailable', 503, requestId);
     }
 
     const authenticated = await constantTimeEqual(providedToken, expectedToken);
     if (!authenticated) {
-      // Never reveal whether the token exists or is close — always 401
       return errorResponse('unauthorized', 401, requestId);
     }
 
-    // ── Content-Length gate (before body allocation) ──────────────────────────
-    // Enforced before reading the body to prevent memory exhaustion.
-    const contentLengthHeader = request.headers.get('Content-Length');
-    if (contentLengthHeader !== null) {
-      const declaredLength = parseInt(contentLengthHeader, 10);
-      if (isNaN(declaredLength) || declaredLength > MAX_BYTES) {
-        return errorResponse('payload_too_large', 413, requestId);
-      }
-    }
-
     // ── Content-Type gate ─────────────────────────────────────────────────────
-    // We check the declared type here only to reject obviously wrong types early.
-    // The magic-byte check below is the authoritative type determination.
+    // Early rejection of obviously wrong declared types.
+    // Magic-byte check below is the authoritative determination.
     const declaredContentType = request.headers.get('Content-Type') ?? '';
     const allowedDeclaredTypes = ['image/jpeg', 'image/png', 'image/webp'];
     const normalisedDeclared = declaredContentType.split(';')[0].trim().toLowerCase();
@@ -354,16 +416,14 @@ export default {
       return errorResponse('unsupported_media_type', 415, requestId);
     }
 
-    // ── Body read ─────────────────────────────────────────────────────────────
-    let bodyBytes: Uint8Array;
-    try {
-      const arrayBuffer = await request.arrayBuffer();
-      if (arrayBuffer.byteLength > MAX_BYTES) {
-        return errorResponse('payload_too_large', 413, requestId);
-      }
-      bodyBytes = new Uint8Array(arrayBuffer);
-    } catch (_err) {
-      return errorResponse('body_read_error', 400, requestId);
+    // ── Bounded body read ─────────────────────────────────────────────────────
+    // readBoundedBody enforces MAX_BYTES via streaming — never calls
+    // request.arrayBuffer() on an unbounded body.
+    // Rejects: Content-Length > MAX_BYTES (early), malformed Content-Length,
+    //          missing Content-Length with body > MAX_BYTES (stream cancel).
+    const bodyBytes = await readBoundedBody(request);
+    if (bodyBytes === null) {
+      return errorResponse('payload_too_large', 413, requestId);
     }
 
     if (bodyBytes.length === 0) {
@@ -371,16 +431,12 @@ export default {
     }
 
     // ── Magic-byte type detection ─────────────────────────────────────────────
-    // This is the authoritative check — Content-Type header is not trusted.
     const detectedMime = detectMimeFromMagic(bodyBytes);
     if (detectedMime === null) {
-      // Rejects SVG, HTML, executables, and any non-JPEG/PNG/WebP content
       return errorResponse('unsupported_or_malformed_image', 415, requestId);
     }
 
     // ── Mismatch check ────────────────────────────────────────────────────────
-    // Reject if declared Content-Type doesn't match magic bytes.
-    // Prevents e.g. SVG with Content-Type: image/jpeg.
     if (!mimeMatchesMagic(declaredContentType, detectedMime)) {
       return errorResponse('content_type_mismatch', 415, requestId);
     }
@@ -392,14 +448,17 @@ export default {
     }
 
     // ── Workers AI inference ──────────────────────────────────────────────────
-    const { result, approximateFaceCount } = await runInference(env.AI, bodyBytes, detectedMime);
+    const { result, faceCount, failureCode } = await runInference(env.AI, bodyBytes, detectedMime);
 
-    // ── Sanitised response ────────────────────────────────────────────────────
+    // ── Sanitised response — matches imageClassifier.ts ClassifyOutcome ───────
     // Never include: image bytes, R2 keys, bounding boxes, labels, scores,
     // raw model output, identity, age, gender, ethnicity, intent, criminality.
     const responseBody: ClassifyResponse = {
       result,
-      approximateFaceCount,
+      faceCount,
+      detectorName: DETECTOR_NAME,
+      detectorVersion: DETECTOR_VERSION,
+      failureCode,
       requestId,
     };
 
