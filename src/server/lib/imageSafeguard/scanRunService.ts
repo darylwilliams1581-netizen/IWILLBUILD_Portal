@@ -324,6 +324,32 @@ export async function markRunCompleted(
 }
 
 /**
+ * Writes incremental progress counts to a running scan row.
+ * Fire-and-forget safe — caller should not await if inside a per-image loop.
+ * Only updates counts; does NOT change run_status.
+ */
+export async function updateRunProgress(
+  runId: string,
+  counts: {
+    imagesConsidered: number;
+    imagesScanned: number;
+    imagesSkipped: number;
+    imagesWithSignal: number;
+    imagesFailed: number;
+  },
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE image_safeguard_scan_runs
+    SET images_considered  = ${counts.imagesConsidered},
+        images_scanned     = ${counts.imagesScanned},
+        images_skipped     = ${counts.imagesSkipped},
+        images_with_signal = ${counts.imagesWithSignal},
+        images_failed      = ${counts.imagesFailed}
+    WHERE id = ${runId} AND run_status = 'running'
+  `);
+}
+
+/**
  * Transitions a run to `failed` with a sanitized error code.
  * Does NOT advance the cursor.
  */
@@ -337,6 +363,41 @@ export async function markRunFailed(runId: string, errorCode: string): Promise<v
         error_code  = ${safeCode}
     WHERE id = ${runId}
   `);
+}
+
+/** Returns the current counts + status for a single run (for live progress polling). */
+export async function getRunProgress(runId: string): Promise<{
+  runStatus: string;
+  imagesConsidered: number;
+  imagesScanned: number;
+  imagesSkipped: number;
+  imagesWithSignal: number;
+  imagesFailed: number;
+  errorCode: string | null;
+} | null> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT run_status, images_considered, images_scanned, images_skipped,
+             images_with_signal, images_failed, error_code
+      FROM image_safeguard_scan_runs
+      WHERE id = ${runId}
+      LIMIT 1
+    `);
+    const arr = rows as unknown as Array<Record<string, unknown>>;
+    if (!arr.length) return null;
+    const row = arr[0];
+    return {
+      runStatus:        String(row.run_status ?? 'unknown'),
+      imagesConsidered: Number(row.images_considered ?? 0),
+      imagesScanned:    Number(row.images_scanned    ?? 0),
+      imagesSkipped:    Number(row.images_skipped    ?? 0),
+      imagesWithSignal: Number(row.images_with_signal ?? 0),
+      imagesFailed:     Number(row.images_failed     ?? 0),
+      errorCode:        row.error_code ? String(row.error_code) : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Returns recent scan runs (most recent first), sanitized for API response. */

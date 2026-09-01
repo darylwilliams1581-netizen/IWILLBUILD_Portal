@@ -427,6 +427,18 @@ export default function ImageSafeguardTab() {
   const [lastScanResult, setLastScanResult] = useState<{ runId: string; rangeStart: string; rangeEnd: string } | null>(null);
   const scanningRef = useRef(false);
 
+  // Live scan progress (polled while scanning === true)
+  const [liveProgress, setLiveProgress] = useState<{
+    runStatus: string;
+    imagesConsidered: number;
+    imagesScanned: number;
+    imagesSkipped: number;
+    imagesWithSignal: number;
+    imagesFailed: number;
+    errorCode: string | null;
+  } | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // UI state
   const [howOpen, setHowOpen] = useState(false);
   const [runsOpen, setRunsOpen] = useState(false);
@@ -504,6 +516,53 @@ export default function ImageSafeguardTab() {
     return () => clearInterval(id);
   }, [recentRuns, fetchRuns, fetchStatus]);
 
+  // ── Live progress polling ──────────────────────────────────────────────────
+  // Starts when a scan is initiated (lastScanResult set), stops when the run
+  // reaches a terminal state or scanning flag clears.
+  useEffect(() => {
+    if (!lastScanResult?.runId) {
+      setLiveProgress(null);
+      return;
+    }
+    const runId = lastScanResult.runId;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/owner-console/image-safeguard/runs/${runId}/progress`,
+          { credentials: 'include' },
+        );
+        if (!res.ok) return;
+        const data = await res.json() as {
+          runStatus: string;
+          imagesConsidered: number;
+          imagesScanned: number;
+          imagesSkipped: number;
+          imagesWithSignal: number;
+          imagesFailed: number;
+          errorCode: string | null;
+        };
+        setLiveProgress(data);
+        // Stop polling once terminal
+        if (data.runStatus === 'completed' || data.runStatus === 'failed' || data.runStatus === 'cancelled') {
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
+        }
+      } catch { /* silent — progress display is best-effort */ }
+    };
+
+    void poll(); // immediate first fetch
+    progressIntervalRef.current = setInterval(() => void poll(), 2000);
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+  }, [lastScanResult?.runId]);
+
   const handleRefresh = () => {
     void fetchStatus(true);
     void fetchRuns();
@@ -524,6 +583,7 @@ export default function ImageSafeguardTab() {
     setConfirmOpen(false);
     setScanError(null);
     setLastScanResult(null);
+    setLiveProgress(null);
 
     try {
       const body: { since?: string; until?: string; useCursor?: boolean } = {};
@@ -834,6 +894,53 @@ export default function ImageSafeguardTab() {
                 {scanning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                 {scanning ? 'Scan running…' : 'Run Image Safeguard Scan'}
               </button>
+
+              {/* Live scan counter — shown while scanning, updates every 2 s */}
+              {scanning && liveProgress && (
+                <div className="flex items-center gap-3 rounded-lg bg-violet-50 border border-violet-200 px-4 py-2.5 text-sm">
+                  <Loader2 size={13} className="animate-spin text-violet-500 shrink-0" />
+                  <div className="flex items-center gap-3 tabular-nums text-violet-800 font-medium flex-wrap">
+                    <span>
+                      <span className="font-bold">{liveProgress.imagesConsidered}</span>
+                      <span className="text-violet-500 font-normal"> found</span>
+                    </span>
+                    <span className="text-violet-300">·</span>
+                    <span>
+                      <span className="font-bold">{liveProgress.imagesScanned}</span>
+                      <span className="text-violet-500 font-normal"> scanned</span>
+                    </span>
+                    {liveProgress.imagesWithSignal > 0 && (
+                      <>
+                        <span className="text-violet-300">·</span>
+                        <span>
+                          <span className="font-bold text-amber-600">{liveProgress.imagesWithSignal}</span>
+                          <span className="text-amber-500 font-normal"> signal</span>
+                        </span>
+                      </>
+                    )}
+                    {liveProgress.imagesFailed > 0 && (
+                      <>
+                        <span className="text-violet-300">·</span>
+                        <span>
+                          <span className="font-bold text-red-500">{liveProgress.imagesFailed}</span>
+                          <span className="text-red-400 font-normal"> failed</span>
+                        </span>
+                      </>
+                    )}
+                    <span className="text-xs text-violet-400 font-normal">
+                      ({liveProgress.runStatus})
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Waiting for first progress tick */}
+              {scanning && !liveProgress && (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Starting scan…</span>
+                </div>
+              )}
 
               <button
                 type="button"

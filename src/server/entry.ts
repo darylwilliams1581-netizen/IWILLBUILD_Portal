@@ -670,6 +670,7 @@ import owner_console_image_safeguard_findings_preview_get_637 from "./api/owner-
 import owner_console_image_safeguard_findings_id_patch_638 from "./api/owner-console/image-safeguard/findings/[id]/PATCH";
 import owner_console_image_safeguard_runs_get_639 from "./api/owner-console/image-safeguard/runs/GET";
 import owner_console_image_safeguard_debug_runs_get from "./api/owner-console/image-safeguard/debug-runs/GET";
+import owner_console_image_safeguard_runs_runId_progress_get from "./api/owner-console/image-safeguard/runs/[runId]/progress/GET";
 import owner_console_image_safeguard_runs_runId_export_csv_get_640 from "./api/owner-console/image-safeguard/runs/[runId]/export-csv/GET";
 import owner_console_image_safeguard_scan_post_641 from "./api/owner-console/image-safeguard/scan/POST";
 import owner_console_image_safeguard_status_get_642 from "./api/owner-console/image-safeguard/status/GET";
@@ -4018,6 +4019,7 @@ app.get("/api/owner-console/image-safeguard/findings/preview", owner_console_ima
 app.patch("/api/owner-console/image-safeguard/findings/:id", owner_console_image_safeguard_findings_id_patch_638);
 app.get("/api/owner-console/image-safeguard/runs", owner_console_image_safeguard_runs_get_639);
 app.get("/api/owner-console/image-safeguard/debug-runs", requirePlatformOwner, owner_console_image_safeguard_debug_runs_get);
+app.get("/api/owner-console/image-safeguard/runs/:runId/progress", requirePlatformOwner, owner_console_image_safeguard_runs_runId_progress_get);
 app.get("/api/owner-console/image-safeguard/runs/:runId/export-csv", owner_console_image_safeguard_runs_runId_export_csv_get_640);
 app.post("/api/owner-console/image-safeguard/scan", owner_console_image_safeguard_scan_post_641);
 app.get("/api/owner-console/image-safeguard/status", owner_console_image_safeguard_status_get_642);

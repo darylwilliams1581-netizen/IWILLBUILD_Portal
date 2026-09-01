@@ -35,6 +35,7 @@ import { scanListObjects } from '../../storage/providers/r2Provider.js';
 import { getAdapterCapability, SCAN_PREFIX, SCAN_BUCKET, type ScanOutcome, type ImageScanResult } from './scannerAdapter.js';
 import { fetchImageForScan } from './r2ImageFetcher.js';
 import { classifyImage } from './imageClassifier.js';
+import { updateRunProgress } from './scanRunService.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -227,6 +228,16 @@ export async function runScan(req: ScanRunRequest): Promise<ScanOutcome> {
       });
     }
     // 'clear' and 'unavailable' — counted only, no row stored, no key stored.
+
+    // ── 3d. Write incremental progress to DB (fire-and-forget) ───────────────
+    // Errors are swallowed — progress display is best-effort, never fatal.
+    void updateRunProgress(req.runId, {
+      imagesConsidered,
+      imagesScanned,
+      imagesSkipped,
+      imagesWithSignal,
+      imagesFailed,
+    }).catch(() => undefined);
   }
 
   return {
