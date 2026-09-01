@@ -374,6 +374,46 @@ describe('Body-size enforcement', () => {
     expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
   });
 
+  it('rejects Content-Length: false (boolean coerced to string "false") with 413', async () => {
+    // Some HTTP clients or proxies may send a boolean false as Content-Length.
+    // parseInt('false', 10) → NaN → must be rejected as malformed.
+    const handler = await getHandler();
+    const mockAi = makeMockAi(0);
+    const headers: Record<string, string> = {
+      'Content-Type': 'image/jpeg',
+      'X-Safeguard-Token': 'test-secret-token',
+      'Content-Length': 'false',
+    };
+    const req = new Request('https://worker.example.com/classify', {
+      method: 'POST',
+      headers,
+      body: makeJpegBuffer(),
+    });
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+    expect(res.status).toBe(413);
+    // Classifier must not have been called
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+  });
+
+  it('rejects negative Content-Length with 413', async () => {
+    // Negative values are not valid Content-Length — must be rejected as malformed.
+    const handler = await getHandler();
+    const mockAi = makeMockAi(0);
+    const headers: Record<string, string> = {
+      'Content-Type': 'image/jpeg',
+      'X-Safeguard-Token': 'test-secret-token',
+      'Content-Length': '-1',
+    };
+    const req = new Request('https://worker.example.com/classify', {
+      method: 'POST',
+      headers,
+      body: makeJpegBuffer(),
+    });
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+    expect(res.status).toBe(413);
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+  });
+
   it('accepts body at exactly MAX_BYTES with valid JPEG structure', async () => {
     const handler = await getHandler();
     const mockAi = makeMockAi(0);
@@ -600,5 +640,176 @@ describe('imageClassifier.ts contract alignment', () => {
     const bodyErr = await resErr.json() as Record<string, unknown>;
     expect(typeof bodyErr['failureCode']).toBe('string');
     expect((bodyErr['failureCode'] as string).length).toBeGreaterThan(0);
+  });
+});
+
+// ── Synthetic fixture test ────────────────────────────────────────────────────
+// Uses fixtures/synthetic-face.jpg — a 200×200 real JPEG (12,547 bytes)
+// generated locally by generate-fixture-node.mjs.
+//
+// SECURITY REQUIREMENTS verified by this suite:
+//  1. result === 'privacy_signal'  (mock AI returns 1 detection)
+//  2. faceCount >= 1
+//  3. No production or customer image is accessed — fixture is a local file
+//  4. No token output in the response
+//  5. No image bytes retained in the response
+//
+// The real Workers AI inference is performed post-deploy via synthetic-poc-test.sh.
+// These unit tests verify the full pipeline with the actual fixture bytes and a
+// mock AI — proving the fixture passes all validation gates before reaching the
+// classifier.
+
+describe('Synthetic fixture — fixtures/synthetic-face.jpg', () => {
+  it('fixture file exists and is a valid JPEG', async () => {
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const buf = readFileSync(fixturePath);
+    // Must be a non-empty file
+    expect(buf.length).toBeGreaterThan(0);
+    // Must have JPEG magic bytes: FF D8 FF
+    expect(buf[0]).toBe(0xff);
+    expect(buf[1]).toBe(0xd8);
+    expect(buf[2]).toBe(0xff);
+  });
+
+  it('fixture is within MAX_BYTES (10 MB)', async () => {
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const buf = readFileSync(fixturePath);
+    const MAX_BYTES = 10 * 1024 * 1024;
+    expect(buf.length).toBeLessThanOrEqual(MAX_BYTES);
+  });
+
+  it('fixture passes all validation gates and reaches the classifier', async () => {
+    // Mock AI returns 1 face detection — simulates the expected POC outcome.
+    // This proves the fixture bytes pass: magic-byte check, MIME match,
+    // structural validation, dimension limits, and bounded body read.
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const nodeBuf = readFileSync(fixturePath);
+    const fixtureBytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+
+    const handler = await getHandler();
+    const mockAi = makeMockAi(1); // 1 face detection → privacy_signal
+    const req = makeRequest('POST', fixtureBytes, 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+
+    // Must reach the classifier — not rejected by any gate
+    expect(res.status).toBe(200);
+    // Classifier must have been called exactly once
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+  });
+
+  it('result is privacy_signal when mock AI detects a face in the fixture', async () => {
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const nodeBuf = readFileSync(fixturePath);
+    const fixtureBytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+
+    const handler = await getHandler();
+    const req = makeRequest('POST', fixtureBytes, 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(1)) as any, {} as any);
+    const body = await res.json() as Record<string, unknown>;
+
+    expect(body['result']).toBe('privacy_signal');
+  });
+
+  it('faceCount is >= 1 when mock AI detects a face in the fixture', async () => {
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const nodeBuf = readFileSync(fixturePath);
+    const fixtureBytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+
+    const handler = await getHandler();
+    const req = makeRequest('POST', fixtureBytes, 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(1)) as any, {} as any);
+    const body = await res.json() as Record<string, unknown>;
+
+    expect(typeof body['faceCount']).toBe('number');
+    expect(body['faceCount'] as number).toBeGreaterThanOrEqual(1);
+  });
+
+  it('response contains no token output', async () => {
+    // The response must never echo back the auth token or any secret value.
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const nodeBuf = readFileSync(fixturePath);
+    const fixtureBytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+
+    const handler = await getHandler();
+    const req = makeRequest('POST', fixtureBytes, 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(1)) as any, {} as any);
+    const rawText = await res.text();
+
+    // The auth token must not appear in the response body
+    expect(rawText).not.toContain('test-secret-token');
+    // No raw model output tokens
+    expect(rawText).not.toContain('human face');
+    expect(rawText).not.toContain('score');
+  });
+
+  it('response contains no image bytes (no retention)', async () => {
+    // The response must never include image data — no base64, no raw bytes.
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const nodeBuf = readFileSync(fixturePath);
+    const fixtureBytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+
+    const handler = await getHandler();
+    const req = makeRequest('POST', fixtureBytes, 'image/jpeg', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', makeMockAi(1)) as any, {} as any);
+    const body = await res.json() as Record<string, unknown>;
+
+    // Response must not contain image-related fields
+    expect(body['image']).toBeUndefined();
+    expect(body['bytes']).toBeUndefined();
+    expect(body['buffer']).toBeUndefined();
+    expect(body['data']).toBeUndefined();
+    // Response body must be small — a JSON object with 6 fields, not image data
+    const responseText = JSON.stringify(body);
+    expect(responseText.length).toBeLessThan(512);
+  });
+
+  it('fixture uses no production or customer image — source is local fixture only', async () => {
+    // This test documents and enforces the no-production-image requirement.
+    // The fixture path must be within the workers package — not a URL, not R2, not S3.
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+
+    // Must be a local filesystem path
+    expect(fixturePath).toMatch(/fixtures\/synthetic-face\.jpg$/);
+    // Must not be an http/https URL
+    expect(fixturePath).not.toMatch(/^https?:\/\//);
+    // Must not reference R2 or S3 endpoints
+    expect(fixturePath).not.toContain('r2.cloudflarestorage');
+    expect(fixturePath).not.toContain('amazonaws.com');
+    expect(fixturePath).not.toContain('iwillbuild-files');
+    expect(fixturePath).not.toContain('job-photos');
+  });
+
+  it('classifier is not called when fixture is rejected by a gate (wrong MIME)', async () => {
+    // Proves that gate rejection before the classifier is not bypassed by the fixture.
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const fixturePath = fileURLToPath(new URL('../fixtures/synthetic-face.jpg', import.meta.url));
+    const nodeBuf = readFileSync(fixturePath);
+    const fixtureBytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+
+    const handler = await getHandler();
+    const mockAi = makeMockAi(1);
+    // Declare wrong MIME — magic bytes are JPEG but we claim PNG
+    const req = makeRequest('POST', fixtureBytes, 'image/png', 'test-secret-token');
+    const res = await handler.fetch(req, makeEnv('test-secret-token', mockAi) as any, {} as any);
+
+    expect(res.status).toBe(415);
+    // Classifier must not have been called
+    expect((mockAi.run as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
   });
 });
