@@ -3,14 +3,12 @@
  * Generate a 90-day view-only share token for a job's photos.
  * Returns { shareUrl, expiresAt }
  *
- * CP12A7: Requires a valid safeguard confirmation token bound to:
- *   - authenticated company + user
- *   - action = 'share_link'
- *   - exact set of job photos at time of confirmation
+ * CP12A: When the job has photos, requires imageSafeguardAcknowledged: true
+ * in the request body. This is a user confirmation and audit control.
+ * The server resolves the job's current photos and checks their statuses.
+ * Blocked/elevated images are rejected regardless of acknowledgment.
  *
  * Strategy: DELETE any existing share for this job, then INSERT fresh.
- * This avoids relying on onDuplicateKeyUpdate for the job_id unique index
- * which may not exist on older DB instances.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -20,7 +18,8 @@ import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { generateShareToken, hashToken, expiresAt } from '../../../../../lib/share-tokens.js';
 import {
   resolveJobPhotoRefs,
-  consumeConfirmationToken,
+  getWorstSafeguardStatus,
+  recordSharingAuditEvent,
 } from '../../../../../lib/imageSafeguardService.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -44,56 +43,29 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // ── CP12A7: Enforce safeguard confirmation token ───────────────────────────
-    const body = req.body as { safeguardToken?: unknown };
-    const safeguardToken = typeof body.safeguardToken === 'string' ? body.safeguardToken.trim() : '';
-    if (!safeguardToken) {
-      return res.status(403).json({
-        error: 'A safeguard confirmation is required before sharing photos.',
-        code: 'safeguard_token_required',
-      });
-    }
-
-    // Resolve the exact photo refs at the moment of the share request
+    // ── Resolve photos server-side (authenticated, company-scoped) ────────────
     const currentRefs = await resolveJobPhotoRefs(profile.companyId, jobId);
 
-    // Consume the token — validates all bindings atomically
-    const consumeResult = await consumeConfirmationToken({
-      tokenId: safeguardToken,
-      companyId: profile.companyId,
-      userId: session.user.id,
-      action: 'share_link',
-      storageRefs: currentRefs,
-    });
+    // ── Safeguard check ───────────────────────────────────────────────────────
+    if (currentRefs.length > 0) {
+      const worstStatus = await getWorstSafeguardStatus(profile.companyId, currentRefs);
 
-    if (!consumeResult.ok) {
-      const statusMap: Record<string, number> = {
-        missing: 404,
-        expired: 410,
-        used: 409,
-        wrong_company: 403,
-        wrong_user: 403,
-        wrong_refs: 409,
-        wrong_recipients: 409,
-        blocked: 403,
-        db_error: 500,
-      };
-      const status = statusMap[consumeResult.reason] ?? 403;
-      const messages: Record<string, string> = {
-        missing: 'Confirmation token not found.',
-        expired: 'Confirmation has expired. Please confirm again.',
-        used: 'Confirmation has already been used.',
-        wrong_company: 'Confirmation is not valid for this account.',
-        wrong_user: 'Confirmation is not valid for this user.',
-        wrong_refs: 'The photo selection has changed since confirmation. Please confirm again.',
-        wrong_recipients: 'Recipients have changed since confirmation.',
-        blocked: 'Sharing is not permitted for these images.',
-        db_error: 'Confirmation verification failed.',
-      };
-      return res.status(status).json({
-        error: messages[consumeResult.reason] ?? 'Confirmation invalid.',
-        code: `safeguard_${consumeResult.reason}`,
-      });
+      // Blocked/elevated: reject regardless of acknowledgment
+      if (worstStatus === 'blocked' || worstStatus === 'elevated') {
+        return res.status(403).json({
+          error: 'Sharing is not permitted for these images.',
+          code: 'sharing_blocked',
+        });
+      }
+
+      // Require explicit acknowledgment when images are present
+      const body = req.body as { imageSafeguardAcknowledged?: unknown };
+      if (body.imageSafeguardAcknowledged !== true) {
+        return res.status(403).json({
+          error: 'A safeguard acknowledgment is required before sharing photos.',
+          code: 'safeguard_acknowledgment_required',
+        });
+      }
     }
 
     // ── Generate share link ───────────────────────────────────────────────────
@@ -116,6 +88,17 @@ export default async function handler(req: Request, res: Response) {
       expiresAt: exp,
       createdByUserId: session.user.id,
     });
+
+    // ── Audit event (best-effort, non-blocking) ───────────────────────────────
+    if (currentRefs.length > 0) {
+      void recordSharingAuditEvent({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        action: 'job_photo_share',
+        resourceId: jobId,
+        imageCount: currentRefs.length,
+      });
+    }
 
     const origin = `${req.protocol}://${req.get('host')}`;
     const shareUrl = `${origin}/photos/share/${raw}`;

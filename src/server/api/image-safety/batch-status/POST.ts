@@ -1,7 +1,7 @@
 /**
  * POST /api/image-safety/batch-status
  * ─────────────────────────────────────────────────────────────────────────────
- * CP12A7 — Query the worst-case safeguard status for a batch of images
+ * CP12A — Query the worst-case safeguard status for a batch of images
  * before external sharing, resolving real image references server-side.
  *
  * BODY:
@@ -14,7 +14,6 @@
  * RESPONSE:
  *   {
  *     worstStatus: SafeguardStatus,
- *     resolvedRefs: string[],   // actual refs resolved server-side
  *     refCount: number,
  *   }
  *
@@ -35,9 +34,7 @@ import { getAuth } from '../../../../lib/auth/auth.js';
 import {
   getWorstSafeguardStatus,
   resolveJobPhotoRefs,
-  resolveFormPhotoRefs,
 } from '../../../lib/imageSafeguardService.js';
-import type { SharingAction } from '../../../lib/imageSafeguardService.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -60,7 +57,7 @@ export default async function handler(req: Request, res: Response) {
       submissionId?: unknown;
     };
 
-    const action = body.action as SharingAction | undefined;
+    const action = body.action as string | undefined;
     if (action !== 'share_link' && action !== 'form_email') {
       return res.status(400).json({ error: 'action must be share_link or form_email' });
     }
@@ -74,14 +71,8 @@ export default async function handler(req: Request, res: Response) {
         return res.status(400).json({ error: 'jobId is required for share_link' });
       }
       resolvedRefs = await resolveJobPhotoRefs(profile.companyId, jobId);
-    } else {
-      // form_email
-      const submissionId = typeof body.submissionId === 'number' ? body.submissionId : null;
-      if (!submissionId || !Number.isInteger(submissionId) || submissionId <= 0) {
-        return res.status(400).json({ error: 'submissionId is required for form_email' });
-      }
-      resolvedRefs = await resolveFormPhotoRefs(profile.companyId, submissionId);
     }
+    // form_email: refCount is informational only — the endpoint itself checks images
 
     const worstStatus = await getWorstSafeguardStatus(profile.companyId, resolvedRefs);
 
@@ -92,6 +83,6 @@ export default async function handler(req: Request, res: Response) {
   } catch (err) {
     console.error('POST /api/image-safety/batch-status error:', err instanceof Error ? err.message : err);
     // Fail closed — return 'unavailable' so the confirmation is still shown
-    return res.json({ worstStatus: 'unavailable', resolvedRefs: [], refCount: 0 });
+    return res.json({ worstStatus: 'unavailable', refCount: 0 });
   }
 }

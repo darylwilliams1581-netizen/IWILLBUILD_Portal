@@ -3,43 +3,31 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * CP12A §6 — External-sharing batch confirmation modal.
  *
- * Shown ONCE per outgoing batch when images are:
- *  - Emailed
- *  - Shared outside the company
- *  - Exported
- *  - Downloaded for external distribution
- *  - Added to a public or guest link
- *
+ * Shown ONCE per outgoing batch when images are emailed or shared externally.
  * NOT shown on upload. NOT shown per-image. ONE confirmation per batch.
  *
- * WORDING (exact, per spec §6):
- *  Title:   "Image Safeguard – Privacy check"
- *  Message: "People or sensitive information may be visible in the selected
- *            images. Confirm the recipients are correct and you have authority
- *            to share them."
+ * WORDING (per spec):
+ *  Title:   "Image sharing check"
+ *  Message: "Please confirm that you are authorised to share these images and
+ *            that they do not contain inappropriate material or information
+ *            that breaches another person's privacy.
+ *
+ *            Images may be reviewed under the IWILLBUILD Image Safeguard
+ *            Protocol."
  *
  * ACTIONS:
- *  - Review images  (secondary — opens image review if available)
- *  - Send securely  (primary — confirms and proceeds)
- *  - Cancel         (tertiary — aborts)
- *
- * GRADUATED BEHAVIOUR:
- *  clear           → compact confirmation (no GPS banner, no warning)
- *  privacy_signal  → standard confirmation + GPS banner
- *  unavailable     → standard confirmation
- *  elevated        → sharing blocked; neutral message + support route
- *  blocked         → sharing blocked; neutral message + support route
+ *  - Go Back          (secondary — aborts)
+ *  - Confirm and Share / Confirm and Send  (primary — confirms and proceeds)
  *
  * DESIGN RULES:
  *  - Works on iPhone, iPad, Android, and desktop.
  *  - Respects safe-area insets.
  *  - Keyboard and screen-reader accessible.
  *  - Prevents double-confirmation.
- *  - "Review images" is optional — only shown when onReview is provided.
  */
 
 import { useEffect, useRef, useCallback, useId } from 'react';
-import { ShieldAlert, MapPin, AlertTriangle, Lock } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Lock } from 'lucide-react';
 import type { SafeguardStatus } from '@/lib/imageSafeguard/types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -53,12 +41,15 @@ export interface ImageSafeguardBatchModalProps {
   imageCount: number;
   /** Sharing surface label for display (e.g. "email", "share link") */
   sharingSurface?: string;
-  /** Called when the user confirms ("Send securely") */
+  /** Called when the user confirms */
   onConfirm: () => void;
   /** Called when the user cancels */
   onCancel: () => void;
-  /** Optional: called when the user clicks "Review images" */
-  onReview?: () => void;
+  /**
+   * When true, the confirm button reads "Confirm and Send" (email).
+   * When false/undefined, reads "Confirm and Share" (share link).
+   */
+  isEmail?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -67,10 +58,9 @@ export default function ImageSafeguardBatchModal({
   open,
   worstStatus,
   imageCount,
-  sharingSurface,
   onConfirm,
   onCancel,
-  onReview,
+  isEmail = false,
 }: ImageSafeguardBatchModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -90,7 +80,7 @@ export default function ImageSafeguardBatchModal({
   // Keyboard: Escape = Cancel; Tab trap
   useEffect(() => {
     if (!open) return;
-    function handleKeyDown(e: KeyboardEvent) {
+    function handleKeyDown(e: KeyboardEvent) { // eslint-disable-line no-undef
       if (e.key === 'Escape') { onCancel(); return; }
       if (e.key !== 'Tab') return;
       const focusable = overlayRef.current?.querySelectorAll<HTMLElement>(
@@ -115,20 +105,15 @@ export default function ImageSafeguardBatchModal({
     onConfirm();
   }, [onConfirm]);
 
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+  const handleOverlayClick = useCallback((e: React.MouseEvent) => { // eslint-disable-line no-undef
     if (e.target === overlayRef.current) onCancel();
   }, [onCancel]);
 
   if (!open) return null;
 
-  // ── Blocked / elevated — no sharing allowed ───────────────────────────────
   const isBlocked = worstStatus === 'blocked' || worstStatus === 'elevated';
-
-  // ── GPS / privacy signal ──────────────────────────────────────────────────
-  const hasPrivacySignal = worstStatus === 'privacy_signal';
-
   const imageLabel = imageCount === 1 ? '1 image' : `${imageCount} images`;
-  const surfaceLabel = sharingSurface ? ` via ${sharingSurface}` : '';
+  const confirmLabel = isEmail ? 'Confirm and Send' : 'Confirm and Share';
 
   return (
     <div
@@ -155,35 +140,26 @@ export default function ImageSafeguardBatchModal({
       >
         {/* ── Header ── */}
         <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-border">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isBlocked ? 'bg-red-500/15' : 'bg-amber-500/15'}`}>
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isBlocked ? 'bg-red-500/15' : 'bg-primary/10'}`}>
             {isBlocked
               ? <Lock size={18} className="text-red-500" />
-              : <ShieldAlert size={18} className="text-amber-500" />
+              : <ShieldCheck size={18} className="text-primary" />
             }
           </div>
           <div className="flex-1 min-w-0">
             <h2 id={titleId} className="text-base font-bold text-foreground leading-snug">
-              Image Safeguard – Privacy check
+              Image sharing check
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {imageLabel}{surfaceLabel}
-            </p>
+            {imageCount > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {imageLabel}
+              </p>
+            )}
           </div>
         </div>
 
         {/* ── Body ── */}
         <div className="px-5 py-4 overflow-y-auto flex-1">
-          {/* GPS / privacy signal banner */}
-          {hasPrivacySignal && (
-            <div className="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3.5 py-3 mb-4">
-              <MapPin size={14} className="text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                <strong>Location data detected.</strong>{' '}
-                One or more images contain GPS coordinates. Confirm the recipients should receive this location information.
-              </p>
-            </div>
-          )}
-
           {/* Blocked / elevated message */}
           {isBlocked && (
             <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 rounded-xl px-3.5 py-3 mb-4">
@@ -199,10 +175,15 @@ export default function ImageSafeguardBatchModal({
 
           {/* Main message */}
           {!isBlocked && (
-            <p id={descId} className="text-sm text-foreground leading-relaxed">
-              People or sensitive information may be visible in the selected images.
-              Confirm the recipients are correct and you have authority to share them.
-            </p>
+            <div id={descId} className="text-sm text-foreground leading-relaxed space-y-3">
+              <p>
+                Please confirm that you are authorised to share these images and that they do not
+                contain inappropriate material or information that breaches another person's privacy.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Images may be reviewed under the IWILLBUILD Image Safeguard Protocol.
+              </p>
+            </div>
           )}
         </div>
 
@@ -212,49 +193,36 @@ export default function ImageSafeguardBatchModal({
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
           {isBlocked ? (
-            /* Blocked: only Cancel */
+            /* Blocked: only Go Back */
             <button
               ref={cancelRef}
               type="button"
               onClick={onCancel}
               className="w-full py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
             >
-              Cancel
+              Go Back
             </button>
           ) : (
             <>
-              {/* Primary: Send securely */}
+              {/* Primary: Confirm and Share / Confirm and Send */}
               <button
                 ref={confirmRef}
                 type="button"
                 onClick={handleConfirm}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-colors"
               >
-                Send securely
+                {confirmLabel}
               </button>
 
-              <div className="flex gap-2">
-                {/* Optional: Review images */}
-                {onReview && (
-                  <button
-                    type="button"
-                    onClick={onReview}
-                    className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-                  >
-                    Review images
-                  </button>
-                )}
-
-                {/* Cancel */}
-                <button
-                  ref={cancelRef}
-                  type="button"
-                  onClick={onCancel}
-                  className={`py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors ${onReview ? 'flex-1' : 'w-full'}`}
-                >
-                  Cancel
-                </button>
-              </div>
+              {/* Go Back */}
+              <button
+                ref={cancelRef}
+                type="button"
+                onClick={onCancel}
+                className="w-full py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                Go Back
+              </button>
             </>
           )}
         </div>

@@ -130,10 +130,12 @@ export interface SharingBatchContext {
 
 /**
  * Result of the external-sharing batch confirmation.
+ * allowed: true  — user confirmed; caller should pass imageSafeguardAcknowledged: true
+ * allowed: false — user cancelled or images are blocked
  */
 export type SharingBatchOutcome =
-  | { allowed: true;  confirmationToken: string }
-  | { allowed: false; reason: 'cancelled' | 'blocked' | 'elevated' | 'error' };
+  | { allowed: true }
+  | { allowed: false; reason: 'cancelled' | 'blocked' | 'error' };
 
 // ── Privacy-safe copy interface (future) ──────────────────────────────────────
 

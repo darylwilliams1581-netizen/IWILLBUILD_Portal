@@ -350,7 +350,6 @@ import fleet_id_usage_summary_get_317 from "./api/fleet/[id]/usage-summary/GET";
 import form_attachments_post_318 from "./api/form-attachments/POST";
 import image_safety_attest_post from "./api/image-safety/attest/POST";
 import image_safety_batch_status_post from "./api/image-safety/batch-status/POST";
-import image_safety_batch_confirm_post from "./api/image-safety/batch-confirm/POST";
 import form_global_lists_get_319 from "./api/form-global-lists/GET";
 import form_global_lists_post_320 from "./api/form-global-lists/POST";
 import form_global_lists_id_delete_321 from "./api/form-global-lists/[id]/DELETE";
@@ -3259,12 +3258,6 @@ if (!process.env.VITEST) {
       console.error('[image-safeguard] migration fatal:', e)
     )
   );
-  // CP12A7: Image Safeguard Confirmations table — independent, non-blocking
-  void import('./db/migrations/image-safeguard-confirmations.js').then(m =>
-    m.runImageSafeguardConfirmationsMigration().catch((e: unknown) =>
-      console.error('[image-safeguard-confirmations] migration fatal:', e)
-    )
-  );
   // ── sms_verification_codes.id column type repair ─────────────────────────────
   // Historical context: the original CREATE TABLE DDL used INT AUTO_INCREMENT for
   // the id column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
@@ -3695,7 +3688,6 @@ app.get("/api/fleet/:id/usage-summary", fleet_id_usage_summary_get_317);
 app.post("/api/form-attachments", form_attachments_post_318);
 app.post("/api/image-safety/attest", image_safety_attest_post);
 app.post("/api/image-safety/batch-status", image_safety_batch_status_post);
-app.post("/api/image-safety/batch-confirm", image_safety_batch_confirm_post);
 app.get("/api/form-global-lists", form_global_lists_get_319);
 app.post("/api/form-global-lists", form_global_lists_post_320);
 app.delete("/api/form-global-lists/:id", form_global_lists_id_delete_321);

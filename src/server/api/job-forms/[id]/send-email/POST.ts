@@ -6,21 +6,21 @@
  * PDF assembly is delegated to buildFormPdfDocument() — the canonical builder
  * shared with the export-pdf endpoint and the secure-share content endpoint.
  *
- * CP12A7: Requires a valid safeguard confirmation token bound to:
- *   - authenticated company + user
- *   - action = 'form_email'
- *   - exact set of photo refs embedded in the PDF
- *   - exact set of recipients (to + cc + bcc)
+ * CP12A: When the generated document contains images, requires
+ * imageSafeguardAcknowledged: true in the request body. This is a user
+ * confirmation and audit control shown at the final Send action.
+ * The server checks the worst safeguard status for the submission's photos.
+ * Blocked/elevated images are rejected regardless of acknowledgment.
  *
  * Body: {
- *   to:              string[]
- *   cc?:             string[]
- *   bcc?:            string[]
- *   subject:         string
- *   message:         string
- *   attachPdf:       boolean
- *   bccOwner:        boolean
- *   safeguardToken:  string   // CP12A7: required
+ *   to:                          string[]
+ *   cc?:                         string[]
+ *   bcc?:                        string[]
+ *   subject:                     string
+ *   message:                     string
+ *   attachPdf:                   boolean
+ *   bccOwner:                    boolean
+ *   imageSafeguardAcknowledged?: boolean   // required when doc has images
  * }
  */
 import type { Request, Response } from 'express';
@@ -32,8 +32,8 @@ import { sendEmail } from '../../../../email.js';
 import { buildFormPdfDocument } from '../../../../lib/form-pdf-document.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import {
-  resolveFormPhotoRefs,
-  consumeConfirmationToken,
+  getWorstSafeguardStatus,
+  recordSharingAuditEvent,
 } from '../../../../lib/imageSafeguardService.js';
 
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
@@ -66,6 +66,53 @@ function escapeHtml(value: string): string {
   }[char] ?? char));
 }
 
+/**
+ * Detect whether a form PDF document contains embedded images.
+ * We use the presence of photo-type answers in the submission as a proxy.
+ * This avoids parsing the PDF bytes.
+ */
+async function submissionHasImages(companyId: number, submissionId: number): Promise<{ hasImages: boolean; storageRefs: string[] }> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT jfs.answers_json, jft.fields_json
+      FROM job_form_submissions jfs
+      JOIN job_form_templates jft ON jft.id = jfs.template_id
+      WHERE jfs.id = ${submissionId} AND jfs.company_id = ${companyId}
+      LIMIT 1
+    `);
+    const row = (rows as unknown as Array<{ answers_json: string | null; fields_json: string | null }>)[0];
+    if (!row) return { hasImages: false, storageRefs: [] };
+
+    let answers: Record<string, unknown> = {};
+    let fields: Array<{ id: string | number; fieldType?: string }> = [];
+    try {
+      if (row.answers_json) answers = JSON.parse(row.answers_json) as Record<string, unknown>;
+      if (row.fields_json) fields = JSON.parse(row.fields_json) as typeof fields;
+    } catch {
+      return { hasImages: false, storageRefs: [] };
+    }
+
+    const photoFieldIds = fields
+      .filter(f => f.fieldType === 'photo')
+      .map(f => String(f.id));
+
+    const hasImages = photoFieldIds.some(id => {
+      const val = answers[id];
+      if (!val) return false;
+      if (Array.isArray(val)) return val.length > 0;
+      if (typeof val === 'string') return val.length > 0;
+      return false;
+    });
+
+    // Build opaque storage refs for the submission (used for status check)
+    const storageRefs = hasImages ? [`form_submission:${submissionId}`] : [];
+    return { hasImages, storageRefs };
+  } catch {
+    // Fail closed — assume images present to require acknowledgment
+    return { hasImages: true, storageRefs: [`form_submission:${submissionId}`] };
+  }
+}
+
 export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
@@ -78,6 +125,7 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
     if (profile.permForms === false && profile.role !== 'owner' && profile.role !== 'admin') {
       return res.status(403).json({ error: 'No forms permission' });
     }
@@ -108,61 +156,29 @@ export default async function handler(req: Request, res: Response) {
     if (!message) return res.status(400).json({ error: 'Message body is required.' });
     if (message.length > MAX_MESSAGE) return res.status(400).json({ error: `Message must be ${MAX_MESSAGE} characters or fewer.` });
 
-    // ── CP12A7: Enforce safeguard confirmation token ───────────────────────────
-    // The token must be bound to the exact recipients and photo refs.
-    // It is issued by POST /api/image-safety/batch-confirm after the user
-    // confirms the privacy notice on the Send action (after recipients are set).
-    const safeguardToken = typeof body.safeguardToken === 'string' ? body.safeguardToken.trim() : '';
-    if (!safeguardToken) {
-      return res.status(403).json({
-        error: 'A safeguard confirmation is required before sending.',
-        code: 'safeguard_token_required',
-      });
-    }
+    // ── CP12A: Safeguard check ─────────────────────────────────────────────────
+    // Check whether the submission has images. If so, require acknowledgment
+    // and verify the worst status is not blocked/elevated.
+    const { hasImages, storageRefs } = await submissionHasImages(profile.companyId, submissionId);
 
-    // Resolve the exact photo refs that will be embedded in the PDF
-    const currentRefs = await resolveFormPhotoRefs(profile.companyId, submissionId);
+    if (hasImages) {
+      // Check worst status server-side (uses opaque form_submission ref)
+      const worstStatus = await getWorstSafeguardStatus(profile.companyId, storageRefs);
 
-    // All recipients (to + cc + bcc) are bound in the token
-    const allRecipients = [...toList, ...ccList, ...bccList];
+      if (worstStatus === 'blocked' || worstStatus === 'elevated') {
+        return res.status(403).json({
+          error: 'Sending is not permitted for these images.',
+          code: 'sharing_blocked',
+        });
+      }
 
-    const consumeResult = await consumeConfirmationToken({
-      tokenId: safeguardToken,
-      companyId: profile.companyId,
-      userId: session.user.id,
-      action: 'form_email',
-      storageRefs: currentRefs,
-      recipients: allRecipients,
-    });
-
-    if (!consumeResult.ok) {
-      const statusMap: Record<string, number> = {
-        missing: 404,
-        expired: 410,
-        used: 409,
-        wrong_company: 403,
-        wrong_user: 403,
-        wrong_refs: 409,
-        wrong_recipients: 409,
-        blocked: 403,
-        db_error: 500,
-      };
-      const status = statusMap[consumeResult.reason] ?? 403;
-      const messages: Record<string, string> = {
-        missing: 'Confirmation token not found.',
-        expired: 'Confirmation has expired. Please confirm again.',
-        used: 'Confirmation has already been used.',
-        wrong_company: 'Confirmation is not valid for this account.',
-        wrong_user: 'Confirmation is not valid for this user.',
-        wrong_refs: 'The attached photos have changed since confirmation. Please confirm again.',
-        wrong_recipients: 'Recipients have changed since confirmation. Please confirm again.',
-        blocked: 'Sending is not permitted for these images.',
-        db_error: 'Confirmation verification failed.',
-      };
-      return res.status(status).json({
-        error: messages[consumeResult.reason] ?? 'Confirmation invalid.',
-        code: `safeguard_${consumeResult.reason}`,
-      });
+      // Require explicit acknowledgment
+      if (body.imageSafeguardAcknowledged !== true) {
+        return res.status(403).json({
+          error: 'A safeguard acknowledgment is required before sending.',
+          code: 'safeguard_acknowledgment_required',
+        });
+      }
     }
 
     // ── Build PDF via canonical builder ────────────────────────────────────────
@@ -264,6 +280,17 @@ export default async function handler(req: Request, res: Response) {
       } catch (noteErr) {
         console.warn('POST /api/job-forms/:id/send-email — note creation failed (non-fatal):', noteErr);
       }
+    }
+
+    // ── Safeguard audit event (best-effort) ────────────────────────────────────
+    if (hasImages) {
+      void recordSharingAuditEvent({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        action: 'form_email',
+        resourceId: submissionId,
+        imageCount: storageRefs.length,
+      });
     }
 
     // Verify submission still belongs to this company (belt-and-braces after builder)

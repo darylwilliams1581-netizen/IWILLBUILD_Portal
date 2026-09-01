@@ -117,21 +117,23 @@ export default function JobPhotosPage() {
   };
 
   /**
-   * CP12A7: Safeguard-gated share link generation.
-   * Calls checkBatch with action='share_link' — the server resolves the exact
-   * photo refs for this job. The returned token is bound to those refs.
-   * The token is passed to POST /api/jobs/:id/photos/share which verifies it.
+   * CP12A: Safeguard-gated share link generation.
+   * Shows one confirmation modal if the job has photos.
+   * After confirmation, calls the share endpoint with imageSafeguardAcknowledged: true.
+   * Cancel creates no share link.
    */
   const handleShareWithGate = useCallback(async () => {
     if (!jobId) return;
-    const outcome = await checkBatch({
-      action: 'share_link',
-      jobId,
-      imageCount: photoCount,
-      sharingSurface: 'share link',
-    });
-    if (!outcome.allowed) return;  // user cancelled or blocked — do not share
-    photosRef.current?.generateShareLink(outcome.confirmationToken);
+    if (photoCount > 0) {
+      const outcome = await checkBatch({
+        action: 'share_link',
+        jobId,
+        imageCount: photoCount,
+        sharingSurface: 'share link',
+      });
+      if (!outcome.allowed) return;  // user cancelled or blocked — do not share
+    }
+    photosRef.current?.generateShareLink();
   }, [checkBatch, photoCount, jobId]);
 
   /**
