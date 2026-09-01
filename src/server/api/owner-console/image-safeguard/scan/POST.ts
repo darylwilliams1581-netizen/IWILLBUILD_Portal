@@ -224,6 +224,10 @@ export default async function handler(req: Request, res: Response) {
       runStatus:   'pending',
     });
   } catch (outerErr: unknown) {
+    // Log the real error server-side so it appears in production logs.
+    // Never echo raw error details to the client.
+    console.error('[image-safeguard/scan POST] outer catch:', outerErr);
+
     // SchemaNotReadyError is thrown explicitly by hasActiveRun when the table
     // is missing — surface it as 503 rather than hiding it as 409.
     if (outerErr instanceof SchemaNotReadyError) {
