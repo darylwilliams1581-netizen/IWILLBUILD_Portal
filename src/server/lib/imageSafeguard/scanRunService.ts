@@ -21,6 +21,16 @@ import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
+// ── MySQL datetime helper ─────────────────────────────────────────────────────
+/**
+ * Converts a Date to the 'YYYY-MM-DD HH:MM:SS' format required by MySQL
+ * DATETIME columns. MySQL rejects ISO 8601 strings with a 'T' separator
+ * and 'Z' suffix (e.g. '2026-09-01T17:02:06.564Z').
+ */
+function toMySQLDatetime(d: Date): string {
+  return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Default lookback when no cursor exists: 7 days. */
@@ -103,7 +113,7 @@ export async function getLastSuccessfulScanAt(): Promise<Date | null> {
 export async function advanceCursor(runId: string, completedAt: Date): Promise<void> {
   await db.execute(sql`
     UPDATE image_safeguard_scan_cursor
-    SET last_successful_scan_at = ${completedAt.toISOString()},
+    SET last_successful_scan_at = ${toMySQLDatetime(completedAt)},
         last_successful_run_id  = ${runId}
     WHERE id = 1
   `);
@@ -261,13 +271,13 @@ export async function createScanRun(
   range: ResolvedDateRange,
 ): Promise<string> {
   const id = randomUUID();
-  const now = new Date().toISOString();
+  const now = toMySQLDatetime(new Date());
   await db.execute(sql`
     INSERT INTO image_safeguard_scan_runs
       (id, initiated_by, range_start, range_end, used_cursor, run_status, created_at)
     VALUES
-      (${id}, ${initiatedBy}, ${range.rangeStart.toISOString()},
-       ${range.rangeEnd.toISOString()}, ${range.usedCursor ? 1 : 0},
+      (${id}, ${initiatedBy}, ${toMySQLDatetime(range.rangeStart)},
+       ${toMySQLDatetime(range.rangeEnd)}, ${range.usedCursor ? 1 : 0},
        'pending', ${now})
   `);
   return id;
@@ -277,7 +287,7 @@ export async function createScanRun(
 export async function markRunStarted(runId: string): Promise<void> {
   await db.execute(sql`
     UPDATE image_safeguard_scan_runs
-    SET run_status = 'running', started_at = ${new Date().toISOString()}
+    SET run_status = 'running', started_at = ${toMySQLDatetime(new Date())}
     WHERE id = ${runId}
   `);
 }
@@ -295,7 +305,7 @@ export async function markRunCompleted(
   detectorName: string,
   detectorVersion: string,
 ): Promise<void> {
-  const now = new Date().toISOString();
+  const now = toMySQLDatetime(new Date());
   await db.execute(sql`
     UPDATE image_safeguard_scan_runs
     SET run_status        = 'completed',
@@ -321,7 +331,7 @@ export async function markRunFailed(runId: string, errorCode: string): Promise<v
   await db.execute(sql`
     UPDATE image_safeguard_scan_runs
     SET run_status  = 'failed',
-        finished_at = ${new Date().toISOString()},
+        finished_at = ${toMySQLDatetime(new Date())},
         error_code  = ${safeCode}
     WHERE id = ${runId}
   `);

@@ -49,6 +49,11 @@ import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 
+/** MySQL DATETIME requires 'YYYY-MM-DD HH:MM:SS' — not ISO 8601 with T/Z. */
+function toMySQLDatetime(d: Date): string {
+  return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+}
+
 export default async function handler(req: Request, res: Response) {
   // requirePlatformOwner middleware applied in entry.ts — access already verified.
   try {
@@ -111,7 +116,7 @@ export default async function handler(req: Request, res: Response) {
              rangeEnd:   rangeResult.rangeEnd.toISOString(),
              usedCursor: rangeResult.usedCursor,
            })},
-           ${new Date().toISOString()})
+           ${toMySQLDatetime(new Date())})
       `);
     } catch {
       // Audit failure must not block the scan
@@ -142,13 +147,13 @@ export default async function handler(req: Request, res: Response) {
                 (${findingId}, ${runId}, ${finding.assetId}, ${finding.companyId},
                  ${finding.userId ?? null}, ${finding.result}, ${finding.faceCount},
                  ${finding.detectorName}, ${finding.detectorVersion},
-                 ${finding.failureCode ?? null}, ${new Date().toISOString()})
+                 ${finding.failureCode ?? null}, ${toMySQLDatetime(new Date())})
             `);
             // Store the R2 key in the server-side lookup table (never exposed via API)
             if (finding.r2Key) {
               await db.execute(sql`
                 INSERT INTO image_safeguard_finding_keys (finding_id, r2_key, created_at)
-                VALUES (${findingId}, ${finding.r2Key}, ${new Date().toISOString()})
+                VALUES (${findingId}, ${finding.r2Key}, ${toMySQLDatetime(new Date())})
               `).catch(() => undefined); // non-fatal — preview will return 404 if missing
             }
           } catch {
@@ -186,7 +191,7 @@ export default async function handler(req: Request, res: Response) {
                  imagesWithSignal: outcome.imagesWithSignal,
                  detectorName:     outcome.detectorName,
                })},
-               ${new Date().toISOString()})
+               ${toMySQLDatetime(new Date())})
           `);
         } catch {
           // Audit failure must not affect run status
@@ -207,7 +212,7 @@ export default async function handler(req: Request, res: Response) {
               (${randomUUID()}, 0, ${initiatedBy}, 'safeguard_scan_failed',
                'scan_run', ${runId},
                ${JSON.stringify({ errorCode: code })},
-               ${new Date().toISOString()})
+               ${toMySQLDatetime(new Date())})
           `);
         } catch {
           // Audit failure must not propagate
