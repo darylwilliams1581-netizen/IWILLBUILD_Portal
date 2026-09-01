@@ -25,6 +25,8 @@ import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 import { IosPermissionBanner } from '@/components/IosMediaInputs';
+import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
+import ImageSafetyConfirmModal from '@/components/ImageSafetyConfirmModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -134,12 +136,26 @@ export default function CameraFab() {
   // which closes over a stale selectedJob state value.
   const pendingJobRef = useRef<JobOption | null>(null);
 
+  // ── Image safety gate ──────────────────────────────────────────────────────
+  const { checkFile: checkFileSafety, modalProps: safetyModalProps } = useImageSafetyGate({
+    surface: 'job_photo_camera_fab',
+  });
+
   // ── Upload handler ────────────────────────────────────────────────────────
   // Defined before useIosMediaPicker so it can be passed as the onChange callback.
 
   async function handlePhotoFile(file: File) {
     const job = pendingJobRef.current;
     if (!job) return;
+
+    // Safety gate: scan + confirmation BEFORE upload
+    const outcome = await checkFileSafety(file, { jobId: job.id });
+    if (!outcome.allowed) {
+      // User cancelled or file blocked — return to job-select state
+      setSheetState('job-select');
+      return;
+    }
+
     setSheetState('uploading');
     setUploadError(null);
     try {
@@ -195,6 +211,9 @@ export default function CameraFab() {
   }
   const isOpen = sheetState !== 'closed';
   return <>
+      {/* Safety gate modal */}
+      <ImageSafetyConfirmModal {...safetyModalProps} />
+
       {/* Hidden file inputs (web fallback) */}
       <IosMediaInputs picker={picker as Parameters<typeof IosMediaInputs>[0]['picker']} />
 
