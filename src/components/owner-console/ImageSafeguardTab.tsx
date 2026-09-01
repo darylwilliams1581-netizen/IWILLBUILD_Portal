@@ -582,13 +582,33 @@ export default function ImageSafeguardTab() {
                   when images are externally shared and when a platform owner initiates a scan.
                 </p>
               </div>
-              {latestCompletedRun && (
-                <div className="shrink-0">
-                  <CsvDownloadButton
-                    runId={latestCompletedRun.id}
-                    variant="header"
-                    ariaLabel={`Download latest CSV (run ${latestCompletedRun.id.slice(0, 8)}…)`}
-                  />
+              {/* CSV download area — always rendered once status has loaded */}
+              {!loading && (
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                  {latestCompletedRun ? (
+                    <CsvDownloadButton
+                      runId={latestCompletedRun.id}
+                      variant="header"
+                      ariaLabel={`Download latest CSV (run ${latestCompletedRun.id.slice(0, 8)}…)`}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      data-testid="csv-download-placeholder"
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-400 cursor-not-allowed"
+                    >
+                      <Download size={14} aria-hidden="true" />
+                      Download CSV — available after a scan completes
+                    </button>
+                  )}
+                  <p
+                    data-testid="csv-helper-text"
+                    className="text-xs text-slate-400 text-right max-w-xs leading-relaxed"
+                  >
+                    Completed CSV reports download through your browser. Flagged images appear under Findings for review.
+                  </p>
                 </div>
               )}
             </div>
@@ -616,10 +636,10 @@ export default function ImageSafeguardTab() {
                   </span>
                 </p>
                 {!status.configured && (
-                  <p id="scan-disabled-reason" className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                    Image scanning is not configured yet. The sharing acknowledgment
-                    remains active, but no automated image assessment has been performed.
-                    A separate Python worker (glibc-based) is required to activate scanning.
+                  <p id="scan-disabled-reason" data-testid="scan-not-configured-message" className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                    Image scanning is not active yet. Image Safeguard acknowledgements and manual review controls remain available,
+                    but no automated image assessment has been performed.
+                    A private authenticated classifier service must pass the synthetic-image test before scanning can be enabled.
                   </p>
                 )}
                 <p className="text-xs text-slate-400 mt-1">

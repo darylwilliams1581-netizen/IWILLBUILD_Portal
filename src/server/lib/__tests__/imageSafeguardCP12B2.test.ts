@@ -471,9 +471,10 @@ describe('ISG-B2-14: UI never claims a scan ran when scanner is unavailable', ()
   it('UI shows honest not-configured message', async () => {
     const { readFileSync } = await import('fs');
     const source = readFileSync('src/components/owner-console/ImageSafeguardTab.tsx', 'utf8');
-    expect(source).toContain('Image scanning is not configured yet');
-    expect(source).toContain('sharing acknowledgment');
-    expect(source).toContain('remains active');
+    // CP12B5-UX: message updated — check revised key phrases individually
+    expect(source).toContain('Image scanning is not active yet');
+    expect(source).toContain('acknowledgements and');
+    expect(source).toContain('manual review controls remain available');
     expect(source).toContain('no automated image assessment has been performed');
   });
 

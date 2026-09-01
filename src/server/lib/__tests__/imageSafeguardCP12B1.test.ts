@@ -365,10 +365,10 @@ describe('ISG-B1-10: UI never claims a successful scan', () => {
     const source = readFileSync(
       'src/components/owner-console/ImageSafeguardTab.tsx', 'utf8',
     );
-    // Text is split across JSX lines — check key phrases individually
-    expect(source).toContain('Image scanning is not configured yet');
-    expect(source).toContain('sharing acknowledgment');
-    expect(source).toContain('remains active');
+    // CP12B5-UX: message updated — check revised key phrases individually
+    expect(source).toContain('Image scanning is not active yet');
+    expect(source).toContain('acknowledgements and');
+    expect(source).toContain('manual review controls remain available');
     expect(source).toContain('no automated image assessment has been');
   });
 
