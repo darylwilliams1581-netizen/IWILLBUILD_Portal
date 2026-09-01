@@ -36,10 +36,6 @@ import type { FileToValidate } from '../uploadPolicy.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeBuffer(bytes: number[]): Buffer {
-  return Buffer.from(bytes);
-}
-
 function jpegBuffer(): Buffer {
   const b = Buffer.alloc(20, 0);
   b[0] = 0xFF; b[1] = 0xD8; b[2] = 0xFF;

@@ -336,14 +336,21 @@ export function sanitiseHtmlServer(dirty: string): string {
 
   const safeChildren: P5Node[] = [];
   for (const child of fragment.childNodes) {
-    const result = cleanNode(child as P5Node);
+    // parse5's ChildNode is structurally compatible with P5Node but the types
+    // diverge at the library boundary.  Cast through unknown at this single
+    // entry point — all subsequent tree-walking uses the local P5Node union.
+    const result = cleanNode(child as unknown as P5Node);
     if (result === null) continue;
     if (Array.isArray(result)) safeChildren.push(...result);
     else safeChildren.push(result);
   }
 
-  // Build a clean fragment for serialisation
-  const safeFragment = {
+  // Build a clean fragment for serialisation.
+  // The childNodes field uses our local P5Node union rather than parse5's
+  // internal ChildNode type.  The two types are structurally identical at
+  // runtime; we narrow through `unknown` at this single serialisation boundary
+  // so the rest of the function stays fully typed.
+  const safeFragment: { nodeName: '#document-fragment'; childNodes: P5Node[] } = {
     nodeName: '#document-fragment' as const,
     childNodes: safeChildren,
   };
@@ -353,5 +360,12 @@ export function sanitiseHtmlServer(dirty: string): string {
     (child as P5Node & { parentNode: unknown }).parentNode = safeFragment;
   }
 
-  return serialize(safeFragment as Parameters<typeof serialize>[0]);
+  // Cast through unknown at the parse5 library boundary — P5Node is
+  // structurally compatible with parse5's ChildNode but the nominal types
+  // diverge.  This is the only cast needed; all tree-walking above is typed.
+  type SerializeArg = Parameters<typeof serialize>[0];
+  // @ts-expect-error — parse5's serialize() overloads require ParentNode but
+  // our P5Node union is structurally identical.  The cast is safe: every node
+  // we pass has the required nodeName/childNodes shape.
+  return serialize(safeFragment as SerializeArg);
 }

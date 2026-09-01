@@ -13,7 +13,7 @@
  * R2C10 isValidNamespace — allowlist check
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   loadR2Config,
   getStorageStatus,

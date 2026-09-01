@@ -82,6 +82,8 @@ describe('FC1 R2 upload succeeds but DB insertion fails — no usable DB record'
         bucket: 'job-photos',
         storageKey,
       });
+      // Verify saveFile returned the expected storageKey before simulating DB failure
+      expect(result.storageKey).toBe(storageKey);
       // Simulate DB failure after upload
       throw dbError;
     } catch (err) {
@@ -408,6 +410,8 @@ describe('FC8 Cleanup never deletes a pre-existing object', () => {
     let rolledBackKey: string | null = null;
     try {
       const result = await mockSaveFile({});
+      // Verify saveFile returned the expected new key before simulating DB failure
+      expect(result.storageKey).toBe(newKey);
       throw new Error('DB insert failed');
     } catch (err) {
       if ((err as Error).message === 'DB insert failed') {

@@ -20,7 +20,6 @@
 import { randomUUID, createHmac, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
-import { getSecret } from '#airo/secrets';
 import { loadR2Config, redactStorageUrl } from '../r2Config.js';
 
 // ── AWS SDK lazy imports — ONLY used for GET/DELETE/signed URLs, never for PUT ──
@@ -216,14 +215,15 @@ async function putObjectDirect(opts: {
   // Log path only — never log the full URL (contains accountId in the host)
   console.log(`[r2Provider] PUT /${encodedKey} size=${body.length} contentType=${contentType}`);
 
+  // Node 18+ fetch accepts Uint8Array as BodyInit; Buffer is a Uint8Array subclass
+  // so this transmits identical bytes without requiring a type suppression comment.
   const response = await fetch(url, {
     method: 'PUT',
     headers: fetchHeaders,
-    body,
-    // @ts-expect-error — Node 18+ fetch accepts Buffer as body
+    body: body as Uint8Array,
     duplex: 'half',
     signal: AbortSignal.timeout(60_000), // 60 s upload timeout
-  });
+  } as RequestInit & { duplex: string });
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');

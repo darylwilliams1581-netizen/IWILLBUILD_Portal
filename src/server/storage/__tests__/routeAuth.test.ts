@@ -146,7 +146,7 @@ describe('RA4 Client-supplied company IDs and keys are ignored or rejected', () 
     // Key contains server companyId
     expect(key).toContain('/companies/42/');
     // Key does NOT contain client-supplied companyId
-    expect(key).not.toContain('/companies/99/');
+    expect(key).not.toContain(`/companies/${clientCompanyId}/`);
   });
 
   it('traversal in originalName is sanitised', () => {
