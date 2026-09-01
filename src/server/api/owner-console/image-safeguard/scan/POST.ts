@@ -197,6 +197,11 @@ export default async function handler(req: Request, res: Response) {
           // Audit failure must not affect run status
         }
       } catch (err: unknown) {
+        // Log sanitized error details server-side — no raw object, no secrets, no stack trace.
+        console.error('[image-safeguard/scan async]', {
+          name:    err instanceof Error ? err.name    : 'unknown',
+          message: err instanceof Error ? err.message.slice(0, 300) : 'unknown',
+        });
         const code =
           err instanceof Error && 'code' in err
             ? String((err as { code: string }).code)

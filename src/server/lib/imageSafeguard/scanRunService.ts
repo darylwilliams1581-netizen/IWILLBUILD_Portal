@@ -355,12 +355,28 @@ export async function getRecentRuns(limit = 10): Promise<ScanRunRecord[]> {
   }
 }
 
+/**
+ * Normalises a MySQL DATETIME string ('YYYY-MM-DD HH:MM:SS') to an ISO-8601
+ * string ('YYYY-MM-DDTHH:MM:SSZ') so that new Date(value) is valid in all
+ * browsers. Safari and Firefox reject the space-separated MySQL format.
+ * Returns the original string unchanged if it is already ISO or empty.
+ */
+function normaliseDatetime(raw: unknown): string {
+  const s = String(raw ?? '');
+  if (!s) return s;
+  // MySQL DATETIME: "YYYY-MM-DD HH:MM:SS" — replace space with T and append Z
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    return s.replace(' ', 'T') + 'Z';
+  }
+  return s;
+}
+
 function rowToScanRun(row: Record<string, unknown>): ScanRunRecord {
   return {
     id:               String(row.id ?? ''),
     initiatedBy:      String(row.initiated_by ?? ''),
-    rangeStart:       String(row.range_start ?? ''),
-    rangeEnd:         String(row.range_end ?? ''),
+    rangeStart:       normaliseDatetime(row.range_start),
+    rangeEnd:         normaliseDatetime(row.range_end),
     usedCursor:       Boolean(row.used_cursor),
     runStatus:        (row.run_status as RunStatus) ?? 'failed',
     imagesConsidered: Number(row.images_considered ?? 0),
@@ -370,9 +386,9 @@ function rowToScanRun(row: Record<string, unknown>): ScanRunRecord {
     imagesFailed:     Number(row.images_failed ?? 0),
     detectorName:     row.detector_name ? String(row.detector_name) : null,
     detectorVersion:  row.detector_version ? String(row.detector_version) : null,
-    startedAt:        row.started_at ? String(row.started_at) : null,
-    finishedAt:       row.finished_at ? String(row.finished_at) : null,
-    createdAt:        String(row.created_at ?? ''),
+    startedAt:        row.started_at  ? normaliseDatetime(row.started_at)  : null,
+    finishedAt:       row.finished_at ? normaliseDatetime(row.finished_at) : null,
+    createdAt:        normaliseDatetime(row.created_at),
     errorCode:        row.error_code ? String(row.error_code) : null,
   };
 }

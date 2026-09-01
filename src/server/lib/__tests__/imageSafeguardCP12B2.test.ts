@@ -731,6 +731,59 @@ describe('ISG-B2-24: Audit fires after successful DB operation only', () => {
   });
 });
 
+// ── ISG-B2-NEW: executeScan throws → run_status=failed, error_code stored ────
+
+describe('ISG-B2-NEW: executeScan throws after createScanRun → run status is failed and error_code stored', () => {
+  beforeEach(() => { vi.resetModules(); mockExecute.mockReset(); });
+
+  it('scan POST async path calls markRunFailed with a sanitized code when executeScan throws', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/owner-console/image-safeguard/scan/POST.ts', 'utf8');
+    // markRunFailed must be called inside the async catch block
+    const catchIdx = source.indexOf('} catch (err: unknown)');
+    const afterCatch = source.slice(catchIdx);
+    expect(afterCatch).toContain('markRunFailed(runId, code)');
+  });
+
+  it('markRunFailed writes run_status=failed and error_code to the DB', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/imageSafeguard/scanRunService.ts', 'utf8');
+    const fnIdx = source.indexOf('export async function markRunFailed');
+    const nextFnIdx = source.indexOf('\nexport async function', fnIdx + 1);
+    const body = source.slice(fnIdx, nextFnIdx > -1 ? nextFnIdx : undefined);
+    expect(body).toContain("run_status  = 'failed'");
+    expect(body).toContain('error_code  = ${safeCode}');
+  });
+
+  it('error_code is sanitized to alphanumeric+underscore, max 64 chars', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/imageSafeguard/scanRunService.ts', 'utf8');
+    expect(source).toContain("replace(/[^a-z0-9_]/gi, '_').slice(0, 64)");
+  });
+
+  it('async inner catch logs name and message (no raw object)', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/api/owner-console/image-safeguard/scan/POST.ts', 'utf8');
+    expect(source).toContain('[image-safeguard/scan async]');
+    expect(source).toContain('err instanceof Error ? err.name');
+    expect(source).toContain('err.message.slice(0, 300)');
+  });
+
+  it('UI Last Run card renders errorCode when present', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/components/owner-console/ImageSafeguardTab.tsx', 'utf8');
+    expect(source).toContain('status.lastRun.errorCode');
+    expect(source).toContain('Error: {status.lastRun.errorCode}');
+  });
+
+  it('Recent runs list renders errorCode per run when present', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/components/owner-console/ImageSafeguardTab.tsx', 'utf8');
+    expect(source).toContain('run.errorCode');
+    expect(source).toContain('Error: {run.errorCode}');
+  });
+});
+
 // ── ISG-B2-25: Runtime decision documented ───────────────────────────────────
 
 describe('ISG-B2-25: Runtime decision documented — Python worker required', () => {
