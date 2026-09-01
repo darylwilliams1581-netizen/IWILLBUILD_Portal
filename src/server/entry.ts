@@ -668,6 +668,7 @@ import owner_console_form_templates_get_635 from "./api/owner-console/form-templ
 import owner_console_form_templates_post_636 from "./api/owner-console/form-templates/POST";
 import owner_console_image_safeguard_scan_post_637 from "./api/owner-console/image-safeguard/scan/POST";
 import owner_console_image_safeguard_status_get_638 from "./api/owner-console/image-safeguard/status/GET";
+import owner_console_db_inspect_get from "./api/owner-console/db-inspect/GET";
 // CP12B2 — Image Safeguard scan runs + findings
 import owner_console_image_safeguard_runs_get from "./api/owner-console/image-safeguard/runs/GET";
 import owner_console_image_safeguard_findings_patch from "./api/owner-console/image-safeguard/findings/[id]/PATCH";
@@ -4017,6 +4018,7 @@ app.get("/api/owner-console/form-templates", owner_console_form_templates_get_63
 app.post("/api/owner-console/form-templates", owner_console_form_templates_post_636);
 app.post("/api/owner-console/image-safeguard/scan", requirePlatformOwner, owner_console_image_safeguard_scan_post_637);
 app.get("/api/owner-console/image-safeguard/status", requirePlatformOwner, owner_console_image_safeguard_status_get_638);
+app.get("/api/owner-console/db-inspect", requirePlatformOwner, owner_console_db_inspect_get);
 // CP12B2 — Image Safeguard scan runs + findings (platform-owner only)
 app.get("/api/owner-console/image-safeguard/runs", requirePlatformOwner, owner_console_image_safeguard_runs_get);
 app.patch("/api/owner-console/image-safeguard/findings/:id", requirePlatformOwner, owner_console_image_safeguard_findings_patch);
