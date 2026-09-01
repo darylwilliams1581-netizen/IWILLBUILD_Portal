@@ -669,6 +669,7 @@ import owner_console_form_templates_post_636 from "./api/owner-console/form-temp
 import owner_console_image_safeguard_findings_preview_get_637 from "./api/owner-console/image-safeguard/findings/preview/GET";
 import owner_console_image_safeguard_findings_id_patch_638 from "./api/owner-console/image-safeguard/findings/[id]/PATCH";
 import owner_console_image_safeguard_runs_get_639 from "./api/owner-console/image-safeguard/runs/GET";
+import owner_console_image_safeguard_debug_runs_get from "./api/owner-console/image-safeguard/debug-runs/GET";
 import owner_console_image_safeguard_runs_runId_export_csv_get_640 from "./api/owner-console/image-safeguard/runs/[runId]/export-csv/GET";
 import owner_console_image_safeguard_scan_post_641 from "./api/owner-console/image-safeguard/scan/POST";
 import owner_console_image_safeguard_status_get_642 from "./api/owner-console/image-safeguard/status/GET";
@@ -4016,6 +4017,7 @@ app.post("/api/owner-console/form-templates", owner_console_form_templates_post_
 app.get("/api/owner-console/image-safeguard/findings/preview", owner_console_image_safeguard_findings_preview_get_637);
 app.patch("/api/owner-console/image-safeguard/findings/:id", owner_console_image_safeguard_findings_id_patch_638);
 app.get("/api/owner-console/image-safeguard/runs", owner_console_image_safeguard_runs_get_639);
+app.get("/api/owner-console/image-safeguard/debug-runs", requirePlatformOwner, owner_console_image_safeguard_debug_runs_get);
 app.get("/api/owner-console/image-safeguard/runs/:runId/export-csv", owner_console_image_safeguard_runs_runId_export_csv_get_640);
 app.post("/api/owner-console/image-safeguard/scan", owner_console_image_safeguard_scan_post_641);
 app.get("/api/owner-console/image-safeguard/status", owner_console_image_safeguard_status_get_642);
