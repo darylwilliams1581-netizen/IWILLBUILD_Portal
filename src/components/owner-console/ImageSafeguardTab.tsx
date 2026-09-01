@@ -23,6 +23,7 @@
  *  - Language: "Privacy signal detected — human review recommended."
  *
  * CP12B3 — Added maxBatchSize display, finding preview thumbnails.
+ * CP12B5-UI — Added CSV download controls (header + per-run row).
  */
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
@@ -43,6 +44,7 @@ import {
   Calendar,
   Loader2,
   CheckSquare,
+  Download,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -287,6 +289,122 @@ function FindingRow({ finding, onReviewed }: FindingRowProps) {
   );
 }
 
+// ── CsvDownloadButton ─────────────────────────────────────────────────────────
+
+/**
+ * Renders a "Download CSV" / "Download latest CSV" button that fetches the
+ * authenticated same-origin export endpoint and triggers a browser download.
+ *
+ * Rules:
+ *  - Only rendered for completed runs (caller is responsible for the guard).
+ *  - Duplicate clicks are blocked while a download is in flight.
+ *  - Errors are surfaced inline; they do not propagate to the parent.
+ *  - No CSV is generated in the browser; no R2 keys or image URLs are exposed.
+ */
+
+interface CsvDownloadButtonProps {
+  /** UUID of the completed scan run to export. */
+  runId: string;
+  /** Visual variant: 'header' shows a slightly larger button; 'row' is compact. */
+  variant?: 'header' | 'row';
+  /** Optional accessible label suffix (e.g. "for run abc123…"). */
+  ariaLabel?: string;
+}
+
+function CsvDownloadButton({ runId, variant = 'row', ariaLabel }: CsvDownloadButtonProps) {
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
+
+  const handleDownload = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setState('loading');
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch(
+        `/api/owner-console/image-safeguard/runs/${runId}/export.csv`,
+        { credentials: 'include' },
+      );
+
+      if (!res.ok) {
+        let msg = `Export failed (HTTP ${res.status})`;
+        try {
+          const body = (await res.json()) as { error?: string; message?: string };
+          if (body.message ?? body.error) msg = body.message ?? body.error ?? msg;
+        } catch { /* ignore parse error — use the status-based message */ }
+        setErrorMsg(msg);
+        setState('error');
+        return;
+      }
+
+      // Stream the response into a Blob and trigger a browser download.
+      // The filename is taken from Content-Disposition when present; otherwise
+      // we fall back to a safe generated name.
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') ?? '';
+      const filenameMatch = /filename="?([^";\r\n]+)"?/i.exec(disposition);
+      const filename = filenameMatch?.[1] ?? `safeguard-run-${runId.slice(0, 8)}.csv`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      setState('idle');
+    } catch {
+      setErrorMsg('Network error — could not reach the server.');
+      setState('error');
+    } finally {
+      inFlightRef.current = false;
+    }
+  };
+
+  const isHeader = variant === 'header';
+  const label = ariaLabel ?? `Download CSV for run ${runId.slice(0, 8)}…`;
+
+  return (
+    <div className={isHeader ? 'flex flex-col items-end gap-1' : 'flex flex-col items-start gap-1'}>
+      <button
+        type="button"
+        onClick={() => void handleDownload()}
+        disabled={state === 'loading'}
+        aria-label={label}
+        aria-busy={state === 'loading'}
+        aria-disabled={state === 'loading'}
+        data-testid={isHeader ? 'csv-download-header' : `csv-download-run-${runId}`}
+        className={
+          isHeader
+            ? 'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-violet-600 text-white hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+            : 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+        }
+      >
+        {state === 'loading'
+          ? <Loader2 size={isHeader ? 14 : 12} className="animate-spin" aria-hidden="true" />
+          : <Download size={isHeader ? 14 : 12} aria-hidden="true" />}
+        {isHeader ? 'Download latest CSV' : 'Download CSV'}
+      </button>
+
+      {state === 'error' && errorMsg && (
+        <p
+          role="alert"
+          className="text-xs text-red-600 flex items-center gap-1"
+          data-testid={isHeader ? 'csv-error-header' : `csv-error-run-${runId}`}
+        >
+          <AlertCircle size={11} aria-hidden="true" />
+          {errorMsg}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ImageSafeguardTab() {
@@ -436,6 +554,9 @@ export default function ImageSafeguardTab() {
 
   const canScan = Boolean(status?.configured) && !scanning;
 
+  // The most recent completed run — used for the header-level CSV download.
+  const latestCompletedRun = recentRuns.find(r => r.runStatus === 'completed') ?? null;
+
   return (
     <div className="max-w-3xl space-y-5">
 
@@ -447,17 +568,30 @@ export default function ImageSafeguardTab() {
           <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
             <Shield size={18} className="text-violet-700" />
           </div>
-          <div className="min-w-0">
-            <h2 className="font-bold text-base text-slate-900">IWILLBUILD Image Safeguard Protocol</h2>
-            <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-              Flags job photos that may contain faces so a platform owner can review unusual volume.
-              Face detection is a privacy signal only — not identity recognition, child detection,
-              or a finding of misconduct.
-            </p>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Ordinary photo capture and upload are never interrupted. Safeguard checks apply
-              when images are externally shared and when a platform owner initiates a scan.
-            </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="font-bold text-base text-slate-900">IWILLBUILD Image Safeguard Protocol</h2>
+                <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                  Flags job photos that may contain faces so a platform owner can review unusual volume.
+                  Face detection is a privacy signal only — not identity recognition, child detection,
+                  or a finding of misconduct.
+                </p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Ordinary photo capture and upload are never interrupted. Safeguard checks apply
+                  when images are externally shared and when a platform owner initiates a scan.
+                </p>
+              </div>
+              {latestCompletedRun && (
+                <div className="shrink-0">
+                  <CsvDownloadButton
+                    runId={latestCompletedRun.id}
+                    variant="header"
+                    ariaLabel={`Download latest CSV (run ${latestCompletedRun.id.slice(0, 8)}…)`}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -723,6 +857,15 @@ export default function ImageSafeguardTab() {
                     </div>
                     {run.errorCode && (
                       <p className="text-xs text-red-600 mt-1">Error: {run.errorCode}</p>
+                    )}
+                    {run.runStatus === 'completed' && (
+                      <div className="mt-3">
+                        <CsvDownloadButton
+                          runId={run.id}
+                          variant="row"
+                          ariaLabel={`Download CSV for run ${run.id.slice(0, 8)}…`}
+                        />
+                      </div>
                     )}
                   </div>
                 ))}
