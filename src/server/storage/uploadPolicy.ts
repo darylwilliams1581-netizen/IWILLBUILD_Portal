@@ -437,6 +437,118 @@ export function validateUploadPolicy(
   return { ok: true, normalisedMime: file.mimetype };
 }
 
+// ── DOCX embedded-image validation (CP10A6) ───────────────────────────────────
+
+/**
+ * Approved raster MIME types for DOCX embedded images.
+ *
+ * SVG is intentionally excluded — it can contain arbitrary script/XSS.
+ * GIF is excluded — animated GIFs in documents are unusual and the format
+ * has a long history of parser exploits; exclude to keep the surface minimal.
+ * HEIC/HEIF are excluded — not universally supported in browsers and rare in
+ * DOCX files produced by Word/LibreOffice.
+ */
+const DOCX_IMAGE_ALLOWED_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+/** Safe extension derived from magic-detected MIME — never from DOCX metadata */
+const DOCX_IMAGE_MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png':  'png',
+  'image/webp': 'webp',
+};
+
+/** Maximum size for a single embedded image extracted from a DOCX (10 MB) */
+const DOCX_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+export interface DocxImageValidationResult {
+  ok: true;
+  /** Magic-detected MIME type — use this, not the DOCX-declared contentType */
+  detectedMime: string;
+  /** Safe file extension derived from detectedMime — use for the storage key */
+  safeExt: string;
+}
+
+export interface DocxImageValidationError {
+  ok: false;
+  code: string;
+  error: string;
+}
+
+export type DocxImageValidationOutcome = DocxImageValidationResult | DocxImageValidationError;
+
+/**
+ * Validate a single image buffer extracted from a DOCX file.
+ *
+ * DOCX embedded images are UNTRUSTED USER-ORIGINATED CONTENT.  The DOCX
+ * relationship filename, declared content-type, and extension must NOT be
+ * trusted.  This function:
+ *
+ *   1. Rejects empty buffers.
+ *   2. Detects the actual type from magic bytes.
+ *   3. Rejects executable, HTML, SVG, script, and any non-raster magic.
+ *   4. Permits only JPEG, PNG, and WebP.
+ *   5. Enforces a 10 MB per-image size limit.
+ *   6. Returns the magic-detected MIME and a safe extension for key generation.
+ *
+ * The caller MUST use the returned `detectedMime` and `safeExt` — never the
+ * DOCX-declared contentType or relationship filename.
+ */
+export function validateDocxEmbeddedImage(buffer: Buffer): DocxImageValidationOutcome {
+  // 1. Empty buffer
+  if (!buffer || buffer.length === 0) {
+    return { ok: false, code: 'empty_file', error: 'Embedded image is empty.' };
+  }
+
+  // 2. Size limit — checked before magic detection to avoid processing huge buffers
+  if (buffer.length > DOCX_IMAGE_MAX_BYTES) {
+    return {
+      ok: false,
+      code: 'file_too_large',
+      error: `Embedded image exceeds the ${DOCX_IMAGE_MAX_BYTES / (1024 * 1024)} MB limit.`,
+    };
+  }
+
+  // 3. Magic-byte detection — this is the authoritative type, not the DOCX metadata
+  const detectedMime = detectMimeFromMagic(buffer);
+
+  // 4. Absolute reject: executable / dangerous magic bytes
+  if (detectedMime !== null && BLOCKED_MIME_TYPES.has(detectedMime)) {
+    return {
+      ok: false,
+      code: 'blocked_magic',
+      error: 'Embedded image contains a blocked file signature.',
+    };
+  }
+
+  // 5. No magic match — could be SVG (text/XML), HTML, or an unknown binary.
+  //    Reject: we only accept formats we can positively identify.
+  if (detectedMime === null) {
+    return {
+      ok: false,
+      code: 'unrecognised_format',
+      error: 'Embedded image format could not be identified from its content.',
+    };
+  }
+
+  // 6. Permit only approved raster formats
+  if (!DOCX_IMAGE_ALLOWED_MIMES.has(detectedMime)) {
+    return {
+      ok: false,
+      code: 'unsupported_image_type',
+      error: `Embedded image type "${detectedMime}" is not permitted. Only JPEG, PNG, and WebP are accepted.`,
+    };
+  }
+
+  // 7. Derive safe extension from detected MIME — never from DOCX metadata
+  const safeExt = DOCX_IMAGE_MIME_TO_EXT[detectedMime] ?? 'bin';
+
+  return { ok: true, detectedMime, safeExt };
+}
+
 // ── Filename validation ───────────────────────────────────────────────────────
 
 /**
