@@ -20,6 +20,8 @@
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { imageSafeguardFindings } from '../../db/schema.js';
+import type { ImageScanResult } from './scannerAdapter.js';
 
 // ── MySQL datetime helper ─────────────────────────────────────────────────────
 /**
@@ -391,4 +393,48 @@ function rowToScanRun(row: Record<string, unknown>): ScanRunRecord {
     createdAt:        normaliseDatetime(row.created_at),
     errorCode:        row.error_code ? String(row.error_code) : null,
   };
+}
+
+// ── Finding persistence ───────────────────────────────────────────────────────
+
+/**
+ * Persists individual scan results to image_safeguard_findings.
+ *
+ * RULES (enforced here):
+ *  - Only privacy_signal and failed results are stored — clear and unavailable
+ *    are counted in the run record only; no row is created.
+ *  - r2Key is NEVER stored here — it goes to image_safeguard_finding_keys only.
+ *  - id and scannedAt are generated server-side — never from the scan result.
+ *  - Empty results array is a no-op (no INSERT, no error).
+ *  - Rows are inserted in a single batch for efficiency.
+ */
+export async function persistFindings(
+  runId: string,
+  results: ImageScanResult[],
+): Promise<void> {
+  // Filter to only storable results — clear and unavailable are never stored as rows
+  const storable = results.filter(
+    r => r.result === 'privacy_signal' || r.result === 'failed',
+  );
+  if (storable.length === 0) return;
+
+  const now = new Date();
+
+  const rows = storable.map(r => ({
+    id:              randomUUID(),
+    scanRunId:       runId,
+    assetId:         r.assetId,
+    companyId:       r.companyId,
+    userId:          r.userId ?? null,
+    result:          r.result,
+    faceCount:       r.faceCount,
+    detectorName:    r.detectorName,
+    detectorVersion: r.detectorVersion,
+    failureCode:     r.failureCode ?? null,
+    reviewed:        0 as const,
+    // scannedAt generated server-side — never from scan result
+    scannedAt:       now,
+  }));
+
+  await db.insert(imageSafeguardFindings).values(rows);
 }

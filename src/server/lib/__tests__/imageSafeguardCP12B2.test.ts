@@ -930,3 +930,125 @@ describe('ISG-B2-27: period_days parameter in Dazza trigger tool', () => {
     }
   });
 });
+
+// ── ISG-B2-28: persistFindings writes only privacy_signal and failed rows ──────
+
+describe('ISG-B2-28: persistFindings persists findings correctly', () => {
+  beforeEach(() => { vi.resetModules(); mockExecute.mockReset(); });
+
+  const makeResult = (result: string, faceCount = 0) => ({
+    assetId:         `key_hash:aabbccdd`,
+    companyId:       42,
+    userId:          null,
+    result,
+    faceCount,
+    detectorName:    'openai_vision',
+    detectorVersion: 'gpt-4o',
+    failureCode:     result === 'failed' ? 'classifier_error' : null,
+  });
+
+  it('inserts one row per privacy_signal and failed result', async () => {
+    const mockInsert = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+    vi.doMock('../../db/client.js', () => ({ db: { execute: mockExecute, insert: mockInsert } }));
+    vi.doMock('../../db/schema.js', () => ({ imageSafeguardFindings: 'imageSafeguardFindings' }));
+
+    const { persistFindings } = await import('../imageSafeguard/scanRunService.js');
+    const results = [
+      makeResult('privacy_signal', 2),
+      makeResult('clear'),
+      makeResult('failed'),
+      makeResult('unavailable'),
+    ];
+    await persistFindings('run-001', results);
+
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const valuesFn = mockInsert.mock.results[0].value.values;
+    const rows = valuesFn.mock.calls[0][0] as Array<Record<string, unknown>>;
+    // Only privacy_signal and failed — clear and unavailable are excluded
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r: Record<string, unknown>) => r.result)).toEqual(
+      expect.arrayContaining(['privacy_signal', 'failed']),
+    );
+  });
+
+  it('is a no-op when results array is empty', async () => {
+    const mockInsert = vi.fn();
+    vi.doMock('../../db/client.js', () => ({ db: { execute: mockExecute, insert: mockInsert } }));
+    vi.doMock('../../db/schema.js', () => ({ imageSafeguardFindings: 'imageSafeguardFindings' }));
+
+    const { persistFindings } = await import('../imageSafeguard/scanRunService.js');
+    await persistFindings('run-002', []);
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when all results are clear or unavailable', async () => {
+    const mockInsert = vi.fn();
+    vi.doMock('../../db/client.js', () => ({ db: { execute: mockExecute, insert: mockInsert } }));
+    vi.doMock('../../db/schema.js', () => ({ imageSafeguardFindings: 'imageSafeguardFindings' }));
+
+    const { persistFindings } = await import('../imageSafeguard/scanRunService.js');
+    await persistFindings('run-003', [makeResult('clear'), makeResult('unavailable')]);
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('each row has a generated uuid id and scannedAt — not from the scan result', async () => {
+    const capturedRows: Array<Record<string, unknown>> = [];
+    const mockInsert = vi.fn().mockReturnValue({
+      values: vi.fn().mockImplementation((rows: Array<Record<string, unknown>>) => {
+        capturedRows.push(...rows);
+        return Promise.resolve(undefined);
+      }),
+    });
+    vi.doMock('../../db/client.js', () => ({ db: { execute: mockExecute, insert: mockInsert } }));
+    vi.doMock('../../db/schema.js', () => ({ imageSafeguardFindings: 'imageSafeguardFindings' }));
+
+    const { persistFindings } = await import('../imageSafeguard/scanRunService.js');
+    await persistFindings('run-004', [makeResult('privacy_signal', 1)]);
+
+    expect(capturedRows).toHaveLength(1);
+    const row = capturedRows[0];
+    // id must be a UUID v4 pattern
+    expect(typeof row.id).toBe('string');
+    expect((row.id as string).length).toBe(36);
+    // scannedAt must be a Date object (not a string from the scan result)
+    expect(row.scannedAt).toBeInstanceOf(Date);
+    // scanRunId must match the passed runId
+    expect(row.scanRunId).toBe('run-004');
+    // r2Key must NOT be present — never stored in findings table
+    expect('r2Key' in row).toBe(false);
+  });
+
+  it('r2Key is never stored in the findings row', async () => {
+    const capturedRows: Array<Record<string, unknown>> = [];
+    const mockInsert = vi.fn().mockReturnValue({
+      values: vi.fn().mockImplementation((rows: Array<Record<string, unknown>>) => {
+        capturedRows.push(...rows);
+        return Promise.resolve(undefined);
+      }),
+    });
+    vi.doMock('../../db/client.js', () => ({ db: { execute: mockExecute, insert: mockInsert } }));
+    vi.doMock('../../db/schema.js', () => ({ imageSafeguardFindings: 'imageSafeguardFindings' }));
+
+    const { persistFindings } = await import('../imageSafeguard/scanRunService.js');
+    // Simulate a result that has r2Key (as r2Scanner would produce)
+    const resultWithKey = { ...makeResult('privacy_signal', 1), r2Key: 'job-photos/companies/42/job-photos/uuid/photo.jpg' };
+    await persistFindings('run-005', [resultWithKey]);
+
+    expect(capturedRows).toHaveLength(1);
+    expect('r2Key' in capturedRows[0]).toBe(false);
+  });
+
+  it('source: persistFindings is exported from scanRunService.ts', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/imageSafeguard/scanRunService.ts', 'utf8');
+    expect(source).toContain('export async function persistFindings');
+    expect(source).toContain("r.result === 'privacy_signal' || r.result === 'failed'");
+  });
+
+  it('source: dazza-v3-tools calls persistFindings after markRunCompleted', async () => {
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    expect(source).toContain('persistFindings');
+    expect(source).toContain('await persistFindings(runId, outcome.results)');
+  });
+});

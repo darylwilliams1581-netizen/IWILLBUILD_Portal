@@ -1464,6 +1464,7 @@ async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Prom
     resolveDateRange,
     isDateRangeError,
     advanceCursor,
+    persistFindings,
   } = await import('./imageSafeguard/scanRunService.js');
 
   const cap = getAdapterCapability();
@@ -1521,6 +1522,9 @@ async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Prom
         outcome.detectorName,
         outcome.detectorVersion,
       );
+      // Persist individual privacy_signal and failed findings to image_safeguard_findings.
+      // clear and unavailable results are counted in the run record only — no rows stored.
+      await persistFindings(runId, outcome.results);
       await advanceCursor(runId, new Date());
     } catch (e: unknown) {
       // Prefer .code (set by r2Scanner), then .name (AWS SDK), then sentinel
