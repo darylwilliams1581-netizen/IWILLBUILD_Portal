@@ -709,6 +709,126 @@ describe('ISG-B3-26: configured-path prefix enforcement', () => {
   });
 });
 
+// ── ISG-B3-27 through ISG-B3-30: classifier parse-failure hardening ───────────
+//
+// Verifies that classifier uncertainty is never silently treated as clear.
+// All four tests mock global fetch so no real OpenAI call is made.
+// scannerAdapter is mocked directly so getAdapterCapability() returns
+// openai_vision configured without needing to re-wire the secrets mock.
+
+describe('ISG-B3-27 through ISG-B3-30: classifier parse-failure hardening', () => {
+  const DETECTOR = 'openai_vision';
+  const VERSION  = 'gpt-4o';
+
+  // Helper: mock a successful OpenAI HTTP response with a given content string.
+  function mockOpenAiResponse(content: string) {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content } }],
+      }),
+    }));
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    // Mock scannerAdapter so getAdapterCapability() returns openai_vision configured.
+    // This avoids fighting the top-level secrets mock which returns null for all keys.
+    vi.doMock('../imageSafeguard/scannerAdapter.js', () => ({
+      getAdapterCapability: vi.fn(() => ({ configured: true, provider: 'openai_vision' })),
+      SCAN_PREFIX: 'job-photos/',
+      SCAN_BUCKET: 'test-bucket',
+    }));
+    // Provide OPENAI_API_KEY via the secrets mock
+    vi.doMock('#airo/secrets', () => ({
+      getSecret: vi.fn((name: string) => {
+        if (name === 'OPENAI_API_KEY') return 'test-openai-key';
+        return null;
+      }),
+    }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('ISG-B3-27: unparseable model text → failed with classifier_parse_error, NOT clear', async () => {
+    mockOpenAiResponse('I cannot determine the face count from this image.');
+    const { classifyImage } = await import('../imageSafeguard/imageClassifier.js');
+    const result = await classifyImage({
+      buffer: makeJpegBuffer(),
+      mimeType: 'image/jpeg',
+      runId: 'test-run-27',
+    });
+    // Must NOT be clear — uncertainty is not a clean bill of health
+    expect(result.result).not.toBe('clear');
+    expect(result.result).toBe('failed');
+    expect(result.failureCode).toBe('classifier_parse_error');
+    expect(result.faceCount).toBe(0);
+    expect(result.detectorName).toBe(DETECTOR);
+    expect(result.detectorVersion).toBe(VERSION);
+  });
+
+  it('ISG-B3-28: {"faceCount": 1} → privacy_signal', async () => {
+    mockOpenAiResponse('{"faceCount": 1}');
+    const { classifyImage } = await import('../imageSafeguard/imageClassifier.js');
+    const result = await classifyImage({
+      buffer: makeJpegBuffer(),
+      mimeType: 'image/jpeg',
+      runId: 'test-run-28',
+    });
+    expect(result.result).toBe('privacy_signal');
+    expect(result.faceCount).toBe(1);
+    expect(result.failureCode).toBeNull();
+  });
+
+  it('ISG-B3-29: {"faceCount": 0} → clear', async () => {
+    mockOpenAiResponse('{"faceCount": 0}');
+    const { classifyImage } = await import('../imageSafeguard/imageClassifier.js');
+    const result = await classifyImage({
+      buffer: makeJpegBuffer(),
+      mimeType: 'image/jpeg',
+      runId: 'test-run-29',
+    });
+    expect(result.result).toBe('clear');
+    expect(result.faceCount).toBe(0);
+    expect(result.failureCode).toBeNull();
+  });
+
+  it('ISG-B3-30: request body uses detail:high and max_tokens:64', async () => {
+    const capturedBodies: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      capturedBodies.push(JSON.parse(init?.body as string));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"faceCount": 0}' } }] }),
+      };
+    }));
+    const { classifyImage } = await import('../imageSafeguard/imageClassifier.js');
+    await classifyImage({
+      buffer: makeJpegBuffer(),
+      mimeType: 'image/jpeg',
+      runId: 'test-run-30',
+    });
+    expect(capturedBodies).toHaveLength(1);
+    const body = capturedBodies[0] as {
+      max_tokens: number;
+      messages: Array<{ role: string; content: unknown }>;
+    };
+    expect(body.max_tokens).toBe(64);
+    const userMsg = body.messages.find(m => m.role === 'user') as {
+      content: Array<{ type: string; image_url?: { detail: string } }>;
+    };
+    expect(userMsg).toBeDefined();
+    const imgPart = userMsg.content.find(c => c.type === 'image_url');
+    expect(imgPart?.image_url?.detail).toBe('high');
+  });
+});
+
 describe('ISG-B3-25: no identity inference in any CP12B3 file', () => {
   it('ISG-B3-25: no identity/age/gender/ethnicity/criminality/intent in code paths', async () => {
     const { readFileSync } = await import('fs');

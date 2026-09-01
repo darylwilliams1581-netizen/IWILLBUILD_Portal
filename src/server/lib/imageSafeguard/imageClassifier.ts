@@ -58,7 +58,7 @@ const PERMITTED_RESULTS = new Set<string>(['clear', 'privacy_signal', 'unavailab
 // ethnicity, criminality, intent, or any personal characteristic.
 const OPENAI_SYSTEM_PROMPT = `You are a privacy-signal detector for a construction job-site photo management platform.
 
-Your ONLY task: count the number of clearly visible human faces in the image.
+Your ONLY task: count the number of human faces visible in the image.
 
 Rules:
 - Return ONLY valid JSON in this exact shape: {"faceCount": <integer>}
@@ -66,9 +66,9 @@ Rules:
 - Do NOT infer, report, or comment on: identity, name, age, gender, ethnicity, emotion, criminality, intent, or any personal characteristic.
 - Do NOT describe the image content.
 - Do NOT add any text outside the JSON object.
-- A face partially obscured by PPE (hard hat, safety glasses, dust mask) still counts if the face is clearly visible.
-- A face that is blurred, turned away, or not clearly visible does NOT count.
-- If you cannot determine a count with confidence, return {"faceCount": 0}.`;
+- Count every recognisable human face, including: faces at a distance, side-on or three-quarter profiles, faces partially obscured by PPE (hard hat, safety glasses, dust mask, hi-vis collar) where the face is still recognisable.
+- Do NOT count a person seen only from behind with no face visible.
+- If you cannot produce a valid integer, return {"faceCount": 0}.`;
 
 // ── Classifier ────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ async function classifyViaOpenAiVision(req: ClassifyRequest): Promise<ClassifyOu
 
     const body = {
       model: 'gpt-4o',
-      max_tokens: 32,
+      max_tokens: 64,
       messages: [
         { role: 'system', content: OPENAI_SYSTEM_PROMPT },
         {
@@ -136,7 +136,7 @@ async function classifyViaOpenAiVision(req: ClassifyRequest): Promise<ClassifyOu
           content: [
             {
               type: 'image_url',
-              image_url: { url: dataUri, detail: 'low' },
+              image_url: { url: dataUri, detail: 'high' },
             },
           ],
         },
@@ -164,17 +164,25 @@ async function classifyViaOpenAiVision(req: ClassifyRequest): Promise<ClassifyOu
 
     const raw = data?.choices?.[0]?.message?.content ?? '';
 
-    // Parse the bounded JSON response — reject anything outside {"faceCount": N}
-    let faceCount = 0;
+    // Parse the bounded JSON response — reject anything outside {"faceCount": N}.
+    // A parse failure or missing/non-numeric faceCount is treated as 'failed',
+    // NOT as faceCount=0/clear — uncertainty must never silently become clear.
+    let faceCount: number;
     try {
       // Strip any markdown code fences the model may have added
       const cleaned = raw.replace(/```[a-z]*\n?/gi, '').trim();
+      if (!cleaned) {
+        return { result: 'failed', faceCount: 0, detectorName: 'openai_vision', detectorVersion: 'gpt-4o', failureCode: 'classifier_bad_output' };
+      }
       const parsed = JSON.parse(cleaned) as { faceCount?: unknown };
-      const n = Number(parsed?.faceCount ?? 0);
-      faceCount = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+      const n = Number(parsed?.faceCount);
+      if (!Number.isFinite(n) || n < 0) {
+        return { result: 'failed', faceCount: 0, detectorName: 'openai_vision', detectorVersion: 'gpt-4o', failureCode: 'classifier_bad_output' };
+      }
+      faceCount = Math.floor(n);
     } catch {
-      // Model returned non-JSON — treat as 0 faces (conservative)
-      faceCount = 0;
+      // Model returned non-JSON — fail explicitly, never treat as clear
+      return { result: 'failed', faceCount: 0, detectorName: 'openai_vision', detectorVersion: 'gpt-4o', failureCode: 'classifier_parse_error' };
     }
 
     const result: ClassifierResult = faceCount > 0 ? 'privacy_signal' : 'clear';
