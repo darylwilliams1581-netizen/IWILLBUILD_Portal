@@ -848,7 +848,7 @@ describe('ISG-B2-26: Dazza trigger tool uses correct function signatures — no 
     const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
     // The dazza async catch is the LAST catch (e: unknown) block in the file
     const lastCatchIdx = source.lastIndexOf('} catch (e: unknown) {');
-    const afterCatch = source.slice(lastCatchIdx, lastCatchIdx + 600);
+    const afterCatch = source.slice(lastCatchIdx, lastCatchIdx + 900);
     expect(afterCatch).toContain("'code' in e");
     expect(afterCatch).toContain('markRunFailed(runId, rawCode)');
   });
@@ -1050,5 +1050,92 @@ describe('ISG-B2-28: persistFindings persists findings correctly', () => {
     const source = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
     expect(source).toContain('persistFindings');
     expect(source).toContain('await persistFindings(runId, outcome.results)');
+  });
+});
+
+// ── ISG-B2-26 through ISG-B2-28: list-failure and empty-range behaviour ───────
+//
+// These tests verify the three scenarios from the live-failure investigation:
+//   B2-26: scanListObjects throws → run marked failed with error_code r2_list_failed
+//   B2-27: list succeeds but date filter yields 0 keys → completed, imagesConsidered=0
+//   B2-28: v3_image_safeguard_status recentRuns includes errorCode and id fields
+
+describe('ISG-B2-26 through ISG-B2-28: list-failure and empty-range behaviour', () => {
+
+  it('ISG-B2-26: scanListObjects throw → run row gets run_status=failed and error_code=r2_list_failed', async () => {
+    // Source-level: r2Scanner must catch scanListObjects errors and re-throw with code r2_list_failed
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/imageSafeguard/r2Scanner.ts', 'utf8');
+
+    // Must have a try/catch around scanListObjects
+    expect(source).toContain('scanListObjects(SCAN_PREFIX');
+    expect(source).toContain("code: 'r2_list_failed'");
+
+    // The re-thrown error must carry a stable .code property
+    expect(source).toMatch(/throw Object\.assign[\s\S]{0,200}r2_list_failed/);
+
+    // POST.ts and dazza-v3-tools must call markRunFailed with the error code
+    const postSource = readFileSync('src/server/api/owner-console/image-safeguard/scan/POST.ts', 'utf8');
+    expect(postSource).toContain('markRunFailed(runId, rawCode)');
+
+    const dazzaSource = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    expect(dazzaSource).toContain('markRunFailed(runId, rawCode)');
+  });
+
+  it('ISG-B2-27: empty date-filter result → markRunCompleted called (not markRunFailed), imagesConsidered=0', async () => {
+    // Source-level: after date filtering, if keys.length === 0 the scan still
+    // calls markRunCompleted (via the normal outcome path), not markRunFailed.
+    // The run should be completed with imagesConsidered=0, not failed.
+    const { readFileSync } = await import('fs');
+    const source = readFileSync('src/server/lib/imageSafeguard/r2Scanner.ts', 'utf8');
+
+    // The keys array is built by date-filtering allEntries; if empty, the for loop
+    // over keys is a no-op and imagesConsidered = keys.length = 0.
+    // The function must return a ScanOutcome (not throw) when keys is empty.
+    expect(source).toContain('const imagesConsidered = keys.length');
+
+    // The return statement must be outside the try/catch for scanListObjects —
+    // i.e. an empty keys array is NOT an error condition.
+    expect(source).toContain('return {');
+    expect(source).toContain('imagesConsidered,');
+
+    // Verify POST.ts calls markRunCompleted (not markRunFailed) on a normal outcome
+    const postSource = readFileSync('src/server/api/owner-console/image-safeguard/scan/POST.ts', 'utf8');
+    expect(postSource).toContain('await markRunCompleted(');
+
+    // markRunFailed is only called in the catch block — not on the happy path
+    const markRunFailedIdx = postSource.indexOf('await markRunFailed(');
+    const catchIdx = postSource.lastIndexOf('} catch (err: unknown) {', markRunFailedIdx);
+    expect(catchIdx).toBeGreaterThan(-1);
+    expect(markRunFailedIdx).toBeGreaterThan(catchIdx);
+  });
+
+  it('ISG-B2-28: v3_image_safeguard_status recentRuns includes errorCode and id fields', async () => {
+    // Source-level: getRecentRuns must select error_code and map it to errorCode.
+    // toolImageSafeguardStatus must return recentRuns directly (not strip fields).
+    const { readFileSync } = await import('fs');
+    const scanRunSource = readFileSync('src/server/lib/imageSafeguard/scanRunService.ts', 'utf8');
+
+    // getRecentRuns SELECT must include error_code
+    expect(scanRunSource).toContain('error_code');
+
+    // rowToScanRun must map error_code → errorCode
+    expect(scanRunSource).toMatch(/errorCode\s*:\s*row\.error_code/);
+
+    // ScanRunRecord type must include errorCode
+    expect(scanRunSource).toContain('errorCode: string | null');
+
+    // dazza-v3-tools status tool must return recentRuns (which includes errorCode)
+    const dazzaSource = readFileSync('src/server/lib/dazza-v3-tools.ts', 'utf8');
+    expect(dazzaSource).toContain('recentRuns');
+
+    // markRunFailed must store error_code in the DB UPDATE
+    expect(scanRunSource).toContain('error_code  = ${safeCode}');
+
+    // The migration must include an ALTER TABLE guard for error_code
+    const migSource = readFileSync('src/server/db/migrations/image-safeguard-scan-runs.ts', 'utf8');
+    expect(migSource).toContain('error_code');
+    // Must have a backfill ALTER (not just in CREATE TABLE)
+    expect(migSource).toMatch(/ALTER TABLE image_safeguard_scan_runs[\s\S]{0,200}error_code/);
   });
 });

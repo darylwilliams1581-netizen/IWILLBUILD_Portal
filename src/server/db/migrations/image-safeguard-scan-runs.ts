@@ -104,6 +104,39 @@ export async function runImageSafeguardScanRunsMigration(): Promise<void> {
       INSERT IGNORE INTO image_safeguard_scan_cursor (id) VALUES (1)
     `);
 
+    // ── 3b. Backfill error_code column if the table was created before CP12B4 ──
+    // The CREATE TABLE above is a no-op when the table already exists.
+    // If the table was created without error_code, add it now.
+    try {
+      await db.execute(sql`
+        ALTER TABLE image_safeguard_scan_runs
+          ADD COLUMN IF NOT EXISTS error_code VARCHAR(64) NULL
+      `);
+    } catch (alterErr) {
+      // MySQL < 8.0 does not support IF NOT EXISTS on ALTER TABLE ADD COLUMN.
+      // Fall back to a column-existence check + conditional ALTER.
+      try {
+        const [colRows] = await db.execute(sql`
+          SELECT COUNT(*) AS cnt
+          FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME   = 'image_safeguard_scan_runs'
+            AND COLUMN_NAME  = 'error_code'
+        `);
+        const exists = Number((colRows as Array<{ cnt: number }>)[0]?.cnt ?? 0) > 0;
+        if (!exists) {
+          await db.execute(sql.raw(
+            'ALTER TABLE `image_safeguard_scan_runs` ADD COLUMN `error_code` VARCHAR(64) NULL',
+          ));
+        }
+      } catch (fallbackErr) {
+        console.error(
+          '[migration] image_safeguard_scan_runs.error_code alter failed:',
+          fallbackErr instanceof Error ? fallbackErr.message : fallbackErr,
+        );
+      }
+    }
+
     // ── 4. Indexes ────────────────────────────────────────────────────────────
     const addIndexIfNotExists = async (table: string, indexName: string, cols: string) => {
       const [rows] = await db.execute(sql`

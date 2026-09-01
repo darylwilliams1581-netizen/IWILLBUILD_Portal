@@ -1528,14 +1528,22 @@ async function toolImageSafeguardTriggerRun(args: Record<string, unknown>): Prom
       await advanceCursor(runId, new Date());
     } catch (e: unknown) {
       // Prefer .code (set by r2Scanner), then .name (AWS SDK), then sentinel
-      const errName = e instanceof Error ? e.name : 'unknown';
+      const errName    = e instanceof Error ? e.name    : 'unknown';
+      const errMessage = e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300);
+      // Sanitized log — no secrets, no stack traces, no R2 keys
+      console.error('[image-safeguard/dazza async]', { name: errName, message: errMessage });
       const rawCode =
         (e instanceof Error && 'code' in e && typeof (e as { code: unknown }).code === 'string')
           ? (e as { code: string }).code
           : errName !== 'Error' && errName !== 'unknown'
             ? errName
             : 'scan_error';
-      await markRunFailed(runId, rawCode).catch(() => undefined);
+      await markRunFailed(runId, rawCode).catch((failErr: unknown) => {
+        // Log if markRunFailed itself fails — this is the most likely reason errorCode
+        // stays null in the DB (e.g. error_code column not yet migrated).
+        const msg = failErr instanceof Error ? failErr.message.slice(0, 200) : String(failErr).slice(0, 200);
+        console.error('[image-safeguard/dazza async] markRunFailed failed:', { runId, message: msg });
+      });
     }
   })();
 
