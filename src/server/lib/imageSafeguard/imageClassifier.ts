@@ -69,7 +69,7 @@ export interface ClassifyOutcome {
  *
  * Currently returns 'unavailable' because the Python worker is not provisioned.
  */
-export async function classifyImage(req: ClassifyRequest): Promise<ClassifyOutcome> {
+export async function classifyImage(_req: ClassifyRequest): Promise<ClassifyOutcome> {
   const cap = getAdapterCapability();
 
   if (!cap.configured) {
@@ -83,7 +83,8 @@ export async function classifyImage(req: ClassifyRequest): Promise<ClassifyOutco
   }
 
   // ── Future implementation ──────────────────────────────────────────────────
-  // When the Python worker is provisioned:
+  // When the Python worker is provisioned, replace this function signature
+  // with `req: ClassifyRequest` and implement the worker call below.
   //
   // 1. Write buffer to a temporary file (worker-managed, not here).
   // 2. POST to SCANNER_WORKER_URL/classify with:

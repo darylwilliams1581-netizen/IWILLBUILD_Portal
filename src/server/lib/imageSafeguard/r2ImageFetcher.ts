@@ -7,9 +7,10 @@
  *  - All R2 operations are server-side only. No credentials, keys, or signed
  *    URLs are ever returned to the caller or to the browser.
  *  - Object keys are NEVER accepted from client input. The caller supplies
- *    only a key that was obtained from ListObjectsV2 server-side.
+ *    only a key that was obtained from scanListObjects() server-side.
  *  - The key is validated against the hardcoded SCAN_PREFIX before any fetch.
  *  - No PutObject, DeleteObject, CopyObject, or CreateMultipartUpload calls.
+ *    (enforced by using scanGetObject() from r2Provider — read-only).
  *  - Size is checked against MAX_BYTES before allocating a buffer.
  *  - Magic bytes are validated (JPEG/PNG/WebP only — no GIF, HEIC, or other).
  *  - Structural validation is applied after magic-byte check.
@@ -17,9 +18,9 @@
  *  - No image bytes, R2 keys, or signed URLs are returned in error responses.
  *
  * REUSE:
- *  - Uses the existing loadR2Config() from r2Config.ts (single config path).
+ *  - Uses scanGetObject() from r2Provider.ts — the EXISTING R2 provider.
+ *    No second S3Client or loadR2Config() call here.
  *  - Uses detectMimeFromMagic() from uploadPolicy.ts (shared validation).
- *  - Uses the existing AWS SDK lazy-import pattern from r2Provider.ts.
  *
  * SUPPORTED FORMATS (scan only):
  *  - JPEG (image/jpeg)
@@ -29,9 +30,8 @@
  * GIF and HEIC are NOT scanned — they are skipped with reason 'unsupported_format'.
  */
 
-import { Readable } from 'node:stream';
-import { loadR2Config } from '../../storage/r2Config.js';
 import { detectMimeFromMagic } from '../../storage/uploadPolicy.js';
+import { scanGetObject } from '../../storage/providers/r2Provider.js';
 import { SCAN_PREFIX } from './scannerAdapter.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -86,21 +86,17 @@ export interface FetchSkipped {
 
 export type FetchResult = FetchSuccess | FetchSkipped;
 
-// ── AWS SDK lazy import (matches r2Provider.ts pattern) ───────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getS3Lazy(): Promise<any> {
-  return import('@aws-sdk/client-s3');
-}
-
 // ── Key prefix enforcement ────────────────────────────────────────────────────
 
 /**
  * Validates that an object key starts with the hardcoded scan prefix.
  * Rejects any key that could escape the job-photos namespace.
  *
- * The key is obtained from ListObjectsV2 server-side — this is a defence-in-depth
- * check to ensure no code path can accidentally fetch outside the scan scope.
+ * The key is obtained from scanListObjects() server-side — this is a
+ * defence-in-depth check to ensure no code path can accidentally fetch
+ * outside the scan scope.
+ *
+ * @throws with code 'prefix_violation' if the key is invalid.
  */
 export function assertScanPrefix(key: string): void {
   const prefix = `${SCAN_PREFIX}`;
@@ -147,7 +143,7 @@ export function validateImageStructure(
       if (buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
         return { ok: false, reason: 'jpeg_missing_soi' };
       }
-      // EOI marker: FF D9 — must appear somewhere in the last 2 bytes
+      // EOI marker: FF D9 — must appear somewhere in the last 16 bytes
       // (some encoders pad after EOI, so we check the last 16 bytes)
       const tail = buffer.slice(Math.max(0, buffer.length - 16));
       let hasEoi = false;
@@ -274,16 +270,16 @@ export function extractDimensions(
  * Fetches a single image from R2 and validates it for scanner submission.
  *
  * SECURITY:
- *  - key must start with SCAN_PREFIX_NAMESPACE — enforced by assertScanPrefix().
- *  - Uses GetObjectCommand only — no writes.
+ *  - key must start with SCAN_PREFIX — enforced by assertScanPrefix().
+ *  - Uses scanGetObject() from r2Provider — GetObjectCommand only, no writes.
  *  - Returns buffer + validated MIME only — no R2 key, no signed URL.
  *  - Size checked against MAX_BYTES before buffer allocation.
  *  - Magic bytes validated (JPEG/PNG/WebP only).
  *  - Structural integrity validated.
  *  - Pixel dimensions validated against MAX_PIXELS and MAX_DIMENSION.
  *
- * @param key  Full R2 object key — must start with SCAN_PREFIX_NAMESPACE.
- *             Obtained from ListObjectsV2 server-side, never from client.
+ * @param key  Full R2 object key — must start with SCAN_PREFIX.
+ *             Obtained from scanListObjects() server-side, never from client.
  */
 export async function fetchImageForScan(key: string): Promise<FetchResult> {
   // ── 1. Prefix enforcement ──────────────────────────────────────────────────
@@ -293,65 +289,11 @@ export async function fetchImageForScan(key: string): Promise<FetchResult> {
     return { ok: false, reason: 'prefix_violation', detail: 'Key rejected by prefix guard.' };
   }
 
-  // ── 2. Load R2 config (reuses existing loadR2Config — single config path) ──
-  let cfg: ReturnType<typeof loadR2Config>;
-  try {
-    cfg = loadR2Config();
-  } catch {
-    return { ok: false, reason: 'fetch_error', detail: 'R2 configuration unavailable.' };
-  }
-
-  // ── 3. Fetch from R2 using GetObjectCommand ────────────────────────────────
+  // ── 2. Fetch from R2 using scanGetObject (reuses existing r2Provider) ──────
   let buffer: Buffer;
   try {
-    const { S3Client, GetObjectCommand } = await getS3Lazy();
-    const client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
-      forcePathStyle: false,
-      requestHandler: { requestTimeout: 30_000 },
-    });
-
-    const response = await client.send(new GetObjectCommand({
-      Bucket: cfg.physicalBucket,
-      Key: key,
-    }));
-
-    // ── 3a. Size check from Content-Length before streaming ──────────────────
-    const contentLength = response.ContentLength ?? 0;
-    if (contentLength > MAX_BYTES) {
-      return {
-        ok: false,
-        reason: 'oversized',
-        detail: `Object exceeds MAX_BYTES (${MAX_BYTES}).`,
-      };
-    }
-
-    // ── 3b. Stream to buffer ─────────────────────────────────────────────────
-    if (!response.Body) {
-      return { ok: false, reason: 'fetch_error', detail: 'Empty response body.' };
-    }
-
-    const stream = response.Body as unknown as Readable;
-    const chunks: Buffer[] = [];
-    let totalBytes = 0;
-
-    await new Promise<void>((resolve, reject) => {
-      stream.on('data', (chunk: Buffer) => {
-        totalBytes += chunk.length;
-        if (totalBytes > MAX_BYTES) {
-          stream.destroy();
-          reject(Object.assign(new Error('oversized'), { code: 'oversized' }));
-          return;
-        }
-        chunks.push(chunk);
-      });
-      stream.on('end', resolve);
-      stream.on('error', reject);
-    });
-
-    buffer = Buffer.concat(chunks);
+    const result = await scanGetObject(key, MAX_BYTES);
+    buffer = result.buffer;
   } catch (err: unknown) {
     const code = err instanceof Error && 'code' in err ? String((err as { code: string }).code) : '';
     if (code === 'oversized') {
@@ -361,12 +303,12 @@ export async function fetchImageForScan(key: string): Promise<FetchResult> {
     return { ok: false, reason: 'fetch_error', detail: 'R2 fetch failed.' };
   }
 
-  // ── 4. Minimum size check ──────────────────────────────────────────────────
+  // ── 3. Minimum size check ──────────────────────────────────────────────────
   if (buffer.length < MIN_BYTES) {
     return { ok: false, reason: 'undersized', detail: 'Buffer too small to be a valid image.' };
   }
 
-  // ── 5. Magic-byte detection (reuses detectMimeFromMagic from uploadPolicy) ─
+  // ── 4. Magic-byte detection (reuses detectMimeFromMagic from uploadPolicy) ─
   const detectedMime = detectMimeFromMagic(buffer);
   if (!detectedMime || !SCAN_SUPPORTED_MIMES.has(detectedMime)) {
     return {
@@ -378,7 +320,7 @@ export async function fetchImageForScan(key: string): Promise<FetchResult> {
 
   const validatedMime = detectedMime as 'image/jpeg' | 'image/png' | 'image/webp';
 
-  // ── 6. Structural validation ───────────────────────────────────────────────
+  // ── 5. Structural validation ───────────────────────────────────────────────
   const structural = validateImageStructure(buffer, validatedMime);
   if (!structural.ok) {
     return {
@@ -388,7 +330,7 @@ export async function fetchImageForScan(key: string): Promise<FetchResult> {
     };
   }
 
-  // ── 7. Dimension validation ────────────────────────────────────────────────
+  // ── 6. Dimension validation ────────────────────────────────────────────────
   // We extract dimensions from header fields only — never allocate based on them.
   const dims = extractDimensions(buffer, validatedMime);
   if (dims !== null) {

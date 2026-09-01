@@ -5,7 +5,7 @@
  *
  * DESIGN RULES (enforced unconditionally):
  *  - Capability check FIRST — if not configured, fail the run immediately.
- *    Do NOT call ListObjectsV2 when the classifier is unavailable.
+ *    Do NOT call scanListObjects when the classifier is unavailable.
  *    Do NOT create hundreds of 'unavailable' finding rows.
  *  - Scan scope is HARDCODED: bucket = R2_BUCKET, prefix = SCAN_PREFIX.
  *    These are NEVER accepted from the client.
@@ -14,6 +14,7 @@
  *    clear results are counted only — no row created.
  *  - No R2 keys, signed URLs, image bytes, or credentials in any response.
  *  - No PutObject, DeleteObject, CopyObject, or CreateMultipartUpload calls.
+ *    (enforced by using scanListObjects() from r2Provider — read-only).
  *  - Cursor is advanced ONLY after the complete batch succeeds.
  *  - Previous cursor is preserved after partial failure.
  *  - Tenant isolation: all finding rows include company_id from the asset record.
@@ -23,9 +24,14 @@
  *
  * The scanner uses the companyId embedded in the key for tenant isolation.
  * It does NOT trust any company_id from client input.
+ *
+ * R2 PROVIDER REUSE:
+ *  - Uses scanListObjects() from r2Provider.ts — the EXISTING R2 provider.
+ *    No second S3Client or loadR2Config() call here.
+ *  - scanListObjects() uses ListObjectsV2Command only — no writes.
  */
 
-import { loadR2Config } from '../../storage/r2Config.js';
+import { scanListObjects } from '../../storage/providers/r2Provider.js';
 import { getAdapterCapability, SCAN_PREFIX, SCAN_BUCKET, type ScanOutcome, type ImageScanResult } from './scannerAdapter.js';
 import { fetchImageForScan } from './r2ImageFetcher.js';
 import { classifyImage } from './imageClassifier.js';
@@ -45,13 +51,6 @@ export interface ScanRunRequest {
   runId: string;
   rangeStart: Date;
   rangeEnd: Date;
-}
-
-// ── AWS SDK lazy import ───────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getS3Lazy(): Promise<any> {
-  return import('@aws-sdk/client-s3');
 }
 
 // ── Company ID extraction ─────────────────────────────────────────────────────
@@ -78,8 +77,9 @@ export function extractCompanyIdFromKey(key: string): number {
  * SECURITY:
  *  - Capability check first — throws scanner_not_configured if not configured.
  *  - Scan scope (bucket + prefix) is hardcoded — never from request.
+ *  - Uses scanListObjects() from r2Provider — ListObjectsV2 only, no writes.
  *  - No R2 credentials, object keys, signed URLs, or image bytes returned.
- *  - MAX_BATCH_SIZE enforced — stops after 50 objects.
+ *  - MAX_BATCH_SIZE = 50 enforced — stops after 50 objects.
  *  - Only privacy_signal and failed findings stored as rows.
  *  - Cursor advanced only on full success.
  *
@@ -95,55 +95,27 @@ export async function runScan(req: ScanRunRequest): Promise<ScanOutcome> {
     );
   }
 
-  // ── 2. Load R2 config ──────────────────────────────────────────────────────
-  const cfg = loadR2Config();
-
-  // ── 3. Build S3 client ─────────────────────────────────────────────────────
-  const { S3Client, ListObjectsV2Command } = await getS3Lazy();
-  const client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
-    forcePathStyle: false,
-    requestHandler: { requestTimeout: 30_000 },
-  });
-
-  // ── 4. List objects in the scan prefix within the date range ───────────────
-  // We use ListObjectsV2 with the hardcoded prefix.
-  // Date filtering is done client-side on LastModified because R2 does not
+  // ── 2. List objects in the scan prefix within the date range ───────────────
+  // Uses scanListObjects() from r2Provider — ListObjectsV2 only, no writes.
+  // The prefix is the hardcoded SCAN_PREFIX — never from the request.
+  // Date filtering is applied client-side on LastModified because R2 does not
   // support server-side date filtering in ListObjectsV2.
-  // MAX_BATCH_SIZE caps the total objects processed.
+  // We fetch up to MAX_BATCH_SIZE * 20 entries to allow date filtering,
+  // then cap at MAX_BATCH_SIZE after filtering.
+  const allEntries = await scanListObjects(SCAN_PREFIX, MAX_BATCH_SIZE * 20);
+
   const keys: string[] = [];
-  let continuationToken: string | undefined;
-
-  outer: do {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const listResponse: any = await client.send(new ListObjectsV2Command({
-      Bucket: cfg.physicalBucket,
-      Prefix: SCAN_PREFIX,
-      MaxKeys: 1000, // fetch in pages of 1000, filter by date, stop at MAX_BATCH_SIZE
-      ContinuationToken: continuationToken,
-    }));
-
-    const contents: Array<{ Key?: string; LastModified?: Date }> =
-      listResponse.Contents ?? [];
-
-    for (const obj of contents) {
-      if (!obj.Key) continue;
-      const lastMod = obj.LastModified ? new Date(obj.LastModified) : null;
-      // Filter by date range
-      if (lastMod && lastMod >= req.rangeStart && lastMod <= req.rangeEnd) {
-        keys.push(obj.Key);
-        if (keys.length >= MAX_BATCH_SIZE) break outer;
-      }
+  for (const entry of allEntries) {
+    const lastMod = entry.lastModified;
+    if (lastMod && lastMod >= req.rangeStart && lastMod <= req.rangeEnd) {
+      keys.push(entry.key);
+      if (keys.length >= MAX_BATCH_SIZE) break;
     }
+  }
 
-    continuationToken = listResponse.IsTruncated ? listResponse.NextContinuationToken : undefined;
-  } while (continuationToken);
-
-  // ── 5. Process each object ─────────────────────────────────────────────────
+  // ── 3. Process each object ─────────────────────────────────────────────────
   const results: ImageScanResult[] = [];
-  let imagesConsidered = keys.length;
+  const imagesConsidered = keys.length;
   let imagesScanned = 0;
   let imagesSkipped = 0;
   let imagesWithSignal = 0;
@@ -156,7 +128,9 @@ export async function runScan(req: ScanRunRequest): Promise<ScanOutcome> {
   for (const key of keys) {
     const companyId = extractCompanyIdFromKey(key);
 
-    // ── 5a. Fetch and validate ───────────────────────────────────────────────
+    // ── 3a. Fetch and validate ───────────────────────────────────────────────
+    // fetchImageForScan enforces SCAN_PREFIX again (defence-in-depth) and
+    // uses scanGetObject() from r2Provider — GetObjectCommand only, no writes.
     const fetchResult = await fetchImageForScan(key);
     if (!fetchResult.ok) {
       imagesSkipped++;
@@ -177,7 +151,7 @@ export async function runScan(req: ScanRunRequest): Promise<ScanOutcome> {
       continue;
     }
 
-    // ── 5b. Classify ─────────────────────────────────────────────────────────
+    // ── 3b. Classify ─────────────────────────────────────────────────────────
     let outcome: Awaited<ReturnType<typeof classifyImage>>;
     try {
       outcome = await classifyImage({
@@ -208,7 +182,7 @@ export async function runScan(req: ScanRunRequest): Promise<ScanOutcome> {
 
     imagesScanned++;
 
-    // ── 5c. Record result ────────────────────────────────────────────────────
+    // ── 3c. Record result ────────────────────────────────────────────────────
     // Only store rows for privacy_signal and failed — clear is counted only.
     if (outcome.result === 'privacy_signal') {
       imagesWithSignal++;

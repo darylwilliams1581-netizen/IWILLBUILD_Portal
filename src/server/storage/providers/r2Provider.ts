@@ -350,6 +350,137 @@ export const r2Provider: StorageProvider = {
   },
 };
 
+// ── Scan-scoped read/list methods (CP12B3 — Image Safeguard scanner) ──────────
+//
+// These are the ONLY R2 operations available to the scanner.
+// They are intentionally narrow:
+//   - scanGetObject:    GetObjectCommand only — no writes.
+//   - scanListObjects:  ListObjectsV2Command only — no writes.
+//
+// Both reuse the existing getClient() singleton (same credentials, same config).
+// No PutObject, DeleteObject, CopyObject, CreateMultipartUpload, or signed URLs.
+//
+// The caller (r2ImageFetcher / r2Scanner) is responsible for:
+//   - Enforcing SCAN_PREFIX before calling scanGetObject.
+//   - Enforcing MAX_BATCH_SIZE before calling scanListObjects.
+//   - Validating magic bytes and structure on the returned buffer.
+
+export interface ScanGetObjectResult {
+  /** Validated image buffer — never exceeds maxBytes. */
+  buffer: Buffer;
+  /** Content-Length from R2 response (0 if absent). */
+  contentLength: number;
+}
+
+/**
+ * Fetches a single R2 object for scanning.
+ *
+ * SECURITY:
+ *  - GetObjectCommand only — no writes.
+ *  - Caller MUST have validated the key against SCAN_PREFIX before calling.
+ *  - Returns raw bytes only — no key, no signed URL, no credentials.
+ *  - Enforces maxBytes to prevent buffer exhaustion.
+ *
+ * @throws on R2 error or if the object exceeds maxBytes.
+ */
+export async function scanGetObject(
+  key: string,
+  maxBytes: number,
+): Promise<ScanGetObjectResult> {
+  const client = await getClient();
+  const { GetObjectCommand } = await getS3Lazy();
+  const r2Bucket = getBucket();
+
+  const response = await client.send(new GetObjectCommand({
+    Bucket: r2Bucket,
+    Key: key,
+  }));
+
+  const contentLength = response.ContentLength ?? 0;
+  if (contentLength > maxBytes) {
+    throw Object.assign(new Error('oversized'), { code: 'oversized' });
+  }
+
+  if (!response.Body) {
+    throw new Error('empty_body');
+  }
+
+  const stream = response.Body as unknown as Readable;
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+
+  await new Promise<void>((resolve, reject) => {
+    stream.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        stream.destroy();
+        reject(Object.assign(new Error('oversized'), { code: 'oversized' }));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+
+  return {
+    buffer: Buffer.concat(chunks),
+    contentLength,
+  };
+}
+
+export interface ScanListEntry {
+  key: string;
+  lastModified: Date | null;
+}
+
+/**
+ * Lists R2 objects under a prefix for scanning.
+ *
+ * SECURITY:
+ *  - ListObjectsV2Command only — no writes.
+ *  - Prefix is supplied by the caller and MUST be the hardcoded SCAN_PREFIX.
+ *  - Returns only key + lastModified — no signed URLs, no credentials.
+ *  - Stops after maxKeys total entries across all pages.
+ *
+ * @throws on R2 error.
+ */
+export async function scanListObjects(
+  prefix: string,
+  maxKeys: number,
+): Promise<ScanListEntry[]> {
+  const client = await getClient();
+  const { ListObjectsV2Command } = await getS3Lazy();
+  const r2Bucket = getBucket();
+
+  const entries: ScanListEntry[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response: any = await client.send(new ListObjectsV2Command({
+      Bucket: r2Bucket,
+      Prefix: prefix,
+      MaxKeys: Math.min(1000, maxKeys - entries.length + 1000), // over-fetch per page, cap total below
+      ContinuationToken: continuationToken,
+    }));
+
+    const contents: Array<{ Key?: string; LastModified?: Date }> = response.Contents ?? [];
+    for (const obj of contents) {
+      if (!obj.Key) continue;
+      entries.push({
+        key: obj.Key,
+        lastModified: obj.LastModified ? new Date(obj.LastModified) : null,
+      });
+      if (entries.length >= maxKeys) break;
+    }
+
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken && entries.length < maxKeys);
+
+  return entries;
+}
+
 // ── Health check (used by the config API) ─────────────────────────────────────
 
 /**
