@@ -178,6 +178,21 @@ export async function runImageSafeguardScanRunsMigration(): Promise<void> {
     `);
 
     console.log('[migration] image_safeguard_scan_runs: ready');
+
+    // Verify error_code column exists — log so production startup confirms it
+    try {
+      const [verifyRows] = await db.execute(sql`
+        SELECT COUNT(*) AS cnt
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'image_safeguard_scan_runs'
+          AND COLUMN_NAME  = 'error_code'
+      `);
+      const hasCol = Number((verifyRows as Array<{ cnt: number }>)[0]?.cnt ?? 0) > 0;
+      console.log('[migration] image_safeguard_scan_runs.error_code column:', hasCol ? 'present' : 'MISSING — scan failures will not record error codes');
+    } catch {
+      // Non-fatal — verification failure does not block startup
+    }
   } catch (err) {
     console.error(
       '[migration] image_safeguard_scan_runs failed:',

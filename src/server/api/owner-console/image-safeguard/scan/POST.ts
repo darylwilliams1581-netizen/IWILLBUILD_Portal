@@ -127,11 +127,25 @@ export default async function handler(req: Request, res: Response) {
     // The client polls GET /status or GET /runs for updates.
     void (async () => {
       try {
+        console.log('[image-safeguard/scan] markRunStarted', { runId });
         await markRunStarted(runId);
+        console.log('[image-safeguard/scan] executeScan start', {
+          runId,
+          rangeStart: rangeResult.rangeStart.toISOString(),
+          rangeEnd:   rangeResult.rangeEnd.toISOString(),
+        });
         const outcome = await executeScan({
           runId,
           rangeStart: rangeResult.rangeStart,
           rangeEnd:   rangeResult.rangeEnd,
+        });
+        console.log('[image-safeguard/scan] executeScan complete', {
+          runId,
+          imagesConsidered: outcome.imagesConsidered,
+          imagesScanned:    outcome.imagesScanned,
+          imagesWithSignal: outcome.imagesWithSignal,
+          imagesFailed:     outcome.imagesFailed,
+          detectorName:     outcome.detectorName,
         });
 
         // Persist findings — only privacy_signal and failed (clear is counted only)
@@ -173,6 +187,7 @@ export default async function handler(req: Request, res: Response) {
           outcome.detectorName,
           outcome.detectorVersion,
         );
+        console.log('[image-safeguard/scan] markRunCompleted OK', { runId });
 
         // Advance cursor ONLY on successful completion
         await advanceCursor(runId, new Date());
@@ -212,7 +227,13 @@ export default async function handler(req: Request, res: Response) {
               ? errName
               : 'scan_error';
 
-        await markRunFailed(runId, rawCode).catch(() => undefined);
+        console.error('[image-safeguard/scan] marking run failed', { runId, rawCode });
+        await markRunFailed(runId, rawCode).catch((mfErr: unknown) => {
+          console.error('[image-safeguard/scan] markRunFailed itself failed', {
+            runId,
+            message: mfErr instanceof Error ? mfErr.message.slice(0, 200) : String(mfErr).slice(0, 200),
+          });
+        });
 
         // Audit: scan failed (sanitized code only)
         try {

@@ -47,7 +47,10 @@ async function getClient() {
   const cfg = loadR2Config(); // throws with sanitized error if any secret is absent
 
   const { S3Client } = await getS3Lazy();
-  _client = new S3Client({
+  // Do NOT cache yet — only cache after successful construction.
+  // This ensures credential rotation (CP10B) takes effect on the next call
+  // rather than being stuck with a stale singleton.
+  const client = new S3Client({
     region: 'auto',
     endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
@@ -56,6 +59,7 @@ async function getClient() {
       requestTimeout: 30_000, // 30 s per SDK request
     },
   });
+  _client = client;
 
   return _client;
 }
@@ -63,6 +67,15 @@ async function getClient() {
 function getBucket(): string {
   const cfg = loadR2Config();
   return cfg.physicalBucket;
+}
+
+/**
+ * Resets the S3 client singleton so the next call to getClient() re-reads
+ * credentials from secrets. Call this after a credential rotation (e.g. CP10B)
+ * or after receiving an auth error from R2 (InvalidAccessKeyId, AccessDenied).
+ */
+export function resetR2Client(): void {
+  _client = null;
 }
 
 /**
@@ -458,12 +471,31 @@ export async function scanListObjects(
 
   do {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response: any = await client.send(new ListObjectsV2Command({
-      Bucket: r2Bucket,
-      Prefix: prefix,
-      MaxKeys: Math.min(1000, maxKeys - entries.length + 1000), // over-fetch per page, cap total below
-      ContinuationToken: continuationToken,
-    }));
+    let response: any;
+    try {
+      response = await client.send(new ListObjectsV2Command({
+        Bucket: r2Bucket,
+        Prefix: prefix,
+        MaxKeys: Math.min(1000, maxKeys - entries.length + 1000), // over-fetch per page, cap total below
+        ContinuationToken: continuationToken,
+      }));
+    } catch (listErr: unknown) {
+      // On auth errors, reset the singleton so the next scan re-reads credentials.
+      const errName = listErr instanceof Error ? listErr.name : '';
+      const errMsg  = listErr instanceof Error ? listErr.message : String(listErr);
+      const isAuthError =
+        errName === 'InvalidAccessKeyId' ||
+        errName === 'AccessDenied' ||
+        errName === 'SignatureDoesNotMatch' ||
+        /InvalidAccessKeyId|AccessDenied|SignatureDoesNotMatch/i.test(errMsg);
+      if (isAuthError) {
+        resetR2Client();
+        console.error('[r2Provider] scanListObjects auth error — client reset for next call:', errName);
+      } else {
+        console.error('[r2Provider] scanListObjects error:', errName, errMsg.slice(0, 200));
+      }
+      throw listErr;
+    }
 
     const contents: Array<{ Key?: string; LastModified?: Date }> = response.Contents ?? [];
     for (const obj of contents) {
