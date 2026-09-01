@@ -1551,13 +1551,15 @@ async function toolImageSafeguardRunDetail(args: Record<string, unknown>): Promi
 
   if (!runRows?.length) return err(`Run ${runId} not found.`);
 
-  // Fetch findings — R2 key column deliberately excluded
+  // Fetch findings — R2 key column deliberately excluded; finding_type does not exist (column is `result`)
   const [findingRows] = await db.execute(sql.raw(`
-    SELECT id, company_id, finding_type, face_count,
-           detector_name, detector_version, failure_code, created_at
+    SELECT id, scan_run_id, asset_id, company_id, user_id,
+           result, face_count,
+           detector_name, detector_version, failure_code,
+           reviewed, scanned_at
     FROM image_safeguard_findings
     WHERE scan_run_id = '${runId.replace(/'/g, "''")}'
-    ORDER BY created_at DESC
+    ORDER BY scanned_at DESC
     LIMIT 100
   `)) as unknown as [Array<Record<string, unknown>>, unknown];
 
