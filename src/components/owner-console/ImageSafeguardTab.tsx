@@ -992,7 +992,30 @@ export default function ImageSafeguardTab() {
               <span className="text-xs text-slate-400">({recentRuns.length})</span>
             )}
           </div>
-          {runsOpen ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
+          <div className="flex items-center gap-2">
+            {recentRuns.length > 0 && (
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm('Delete all scan history and force-terminate any active runs?')) return;
+                  try {
+                    const r = await fetch('/api/owner-console/image-safeguard/runs', { method: 'DELETE' });
+                    if (r.ok) {
+                      setRecentRuns([]);
+                      setLastScanResult(null);
+                      setLiveProgress(null);
+                      void fetchStatus(true);
+                    }
+                  } catch { /* ignore */ }
+                }}
+                className="text-xs text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+              >
+                Clear history
+              </button>
+            )}
+            {runsOpen ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
+          </div>
         </button>
 
         {runsOpen && (
