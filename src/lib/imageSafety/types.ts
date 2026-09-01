@@ -98,7 +98,9 @@ export interface AttestationResponse {
 // ── Gate result ───────────────────────────────────────────────────────────────
 
 /**
- * Result returned by useImageSafetyGate after the user interacts with the modal.
+ * Result of a batch safeguard gate decision.
+ * Used by useImageSafeguardBatch to communicate whether external sharing
+ * is permitted, cancelled, or blocked.
  */
 export type GateOutcome =
   | { allowed: true;  token: string }

@@ -5,6 +5,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
+import { useImageSafeguardBatch } from '@/hooks/useImageSafeguardBatch';
+import ImageSafeguardBatchModal from '@/components/ImageSafeguardBatchModal';
 // qrcode is loaded lazily (dynamic import) to prevent its module-level
 // constructor code from running on iOS Safari at page parse time, which
 // causes "o is not a constructor" in the minified bundle.
@@ -43,6 +45,9 @@ export default function JobPhotosPage() {
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   // Send-selected state
   const [sendMsg, setSendMsg] = useState<string | null>(null);
+
+  // CP12A §6 — batch safeguard confirmation before external sharing
+  const { checkBatch, modalProps: safeguardModalProps } = useImageSafeguardBatch();
   useEffect(() => {
     if (!id) {
       setLoading(false);
@@ -110,6 +115,24 @@ export default function JobPhotosPage() {
     a.download = `job-${jobId}-share-qr.png`;
     a.click();
   };
+
+  /**
+   * CP12A §6 — Safeguard-gated share link generation.
+   * Runs the batch confirmation check before calling generateShareLink().
+   * storageRefs is empty at this point (we don't enumerate individual photo IDs
+   * here); the batch-status endpoint returns 'unavailable' for an empty ref
+   * list, which correctly shows the honest privacy confirmation modal.
+   */
+  const handleShareWithGate = useCallback(async () => {
+    const outcome = await checkBatch({
+      storageRefs: [],   // job-level share — individual refs not enumerated here
+      imageCount: photoCount,
+      sharingSurface: 'share link',
+      jobId,
+    });
+    if (!outcome.allowed) return;  // user cancelled or blocked — do not share
+    photosRef.current?.generateShareLink();
+  }, [checkBatch, photoCount, jobId]);
 
   /**
    * Download selected photos.
@@ -217,7 +240,7 @@ export default function JobPhotosPage() {
                 </button>
               </>}
               {/* Share */}
-              <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
+              <button onClick={() => void handleShareWithGate()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
                 <Share2 size={12} /> Share
               </button>
             </div>
@@ -255,7 +278,7 @@ export default function JobPhotosPage() {
             </button>
 
             {/* Share */}
-            <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation" title="Share view-only link">
+            <button onClick={() => void handleShareWithGate()} disabled={photoCount === 0} className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation" title="Share view-only link">
               <Share2 size={20} />
               <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
@@ -367,6 +390,9 @@ export default function JobPhotosPage() {
             </motion.div>
           </div>}
       </AnimatePresence>
+      {/* ── CP12A §6: Batch safeguard confirmation modal ── */}
+      <ImageSafeguardBatchModal {...safeguardModalProps} />
+
         </JobFeatureShell>
       </div>
     </div>;

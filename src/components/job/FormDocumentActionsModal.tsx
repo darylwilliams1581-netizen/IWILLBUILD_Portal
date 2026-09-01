@@ -23,7 +23,7 @@
  *   job            — optional Job object, passed through to email modal
  *   onClose        — called when the modal/sheet should be dismissed
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, FileDown, Mail, Link2, Loader2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { isNative, getFilesystemPlugin, getSharePlugin, FilesystemDirectory } from '@/lib/capacitor-plugins';
@@ -32,6 +32,8 @@ import type { JobEmailContext } from '@/components/SendDocumentEmailModal';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import type { Job } from '@/lib/jobs-api';
 import type { DocumentOutputVariant } from '@/lib/document-actions-context';
+import { useImageSafeguardBatch } from '@/hooks/useImageSafeguardBatch';
+import ImageSafeguardBatchModal from '@/components/ImageSafeguardBatchModal';
 
 interface Props {
   submissionId: number;
@@ -67,6 +69,30 @@ export default function FormDocumentActionsModal({
   const [pdfError, setPdfError] = useState('');
 
   const native = isNative();
+
+  // CP12A §6 — batch safeguard confirmation before emailing a form with photos
+  const { checkBatch, modalProps: safeguardModalProps } = useImageSafeguardBatch();
+
+  /**
+   * CP12A §6 — Safeguard-gated email panel open.
+   * The form PDF embeds user-uploaded photos (buildFormPdfDocument fetches them
+   * from R2). We gate the email action so the user confirms before the PDF is
+   * assembled and sent.
+   *
+   * storageRef uses the submission ID as a proxy for all photos in the form.
+   * The batch-status endpoint returns 'unavailable' when no records exist for
+   * this ref, which correctly shows the honest privacy confirmation.
+   */
+  const handleEmailWithGate = useCallback(async () => {
+    const outcome = await checkBatch({
+      storageRefs: [`form_attachment:${submissionId}`],
+      imageCount: 1,   // at least one photo may be embedded; exact count unknown here
+      sharingSurface: 'email',
+      jobId: jobId ?? null,
+    });
+    if (!outcome.allowed) return;  // user cancelled or blocked — do not open email panel
+    setActivePanel('email');
+  }, [checkBatch, submissionId, jobId]);
 
   // ── PDF action ──────────────────────────────────────────────────────────────
 
@@ -248,7 +274,7 @@ export default function FormDocumentActionsModal({
       icon: <Mail size={20} className="text-blue-600" />,
       label: 'Email',
       description: 'Send the PDF as an email attachment',
-      onClick: () => setActivePanel('email'),
+      onClick: () => void handleEmailWithGate(),
       loading: false,
     },
     {
@@ -264,6 +290,7 @@ export default function FormDocumentActionsModal({
   // Bottom sheet on native, centred modal on web
   if (native) {
     return (
+      <>
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           {/* Backdrop */}
@@ -333,11 +360,15 @@ export default function FormDocumentActionsModal({
           </motion.div>
         </div>
       </AnimatePresence>
+      {/* CP12A §6: Batch safeguard confirmation modal */}
+      <ImageSafeguardBatchModal {...safeguardModalProps} />
+    </>
     );
   }
 
   // Desktop modal
   return (
+    <>
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
@@ -399,5 +430,9 @@ export default function FormDocumentActionsModal({
         </motion.div>
       </div>
     </AnimatePresence>
+    {/* CP12A §6: Batch safeguard confirmation modal — rendered outside AnimatePresence
+        so it can appear over the document actions modal */}
+    <ImageSafeguardBatchModal {...safeguardModalProps} />
+    </>
   );
 }
