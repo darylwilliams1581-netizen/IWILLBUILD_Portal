@@ -6,14 +6,21 @@
  * PDF assembly is delegated to buildFormPdfDocument() — the canonical builder
  * shared with the export-pdf endpoint and the secure-share content endpoint.
  *
+ * CP12A7: Requires a valid safeguard confirmation token bound to:
+ *   - authenticated company + user
+ *   - action = 'form_email'
+ *   - exact set of photo refs embedded in the PDF
+ *   - exact set of recipients (to + cc + bcc)
+ *
  * Body: {
- *   to:        string[]
- *   cc?:       string[]
- *   bcc?:      string[]
- *   subject:   string
- *   message:   string
- *   attachPdf: boolean
- *   bccOwner:  boolean
+ *   to:              string[]
+ *   cc?:             string[]
+ *   bcc?:            string[]
+ *   subject:         string
+ *   message:         string
+ *   attachPdf:       boolean
+ *   bccOwner:        boolean
+ *   safeguardToken:  string   // CP12A7: required
  * }
  */
 import type { Request, Response } from 'express';
@@ -24,6 +31,10 @@ import { jobFormSubmissions, profiles, user } from '../../../../db/schema.js';
 import { sendEmail } from '../../../../email.js';
 import { buildFormPdfDocument } from '../../../../lib/form-pdf-document.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
+import {
+  resolveFormPhotoRefs,
+  consumeConfirmationToken,
+} from '../../../../lib/imageSafeguardService.js';
 
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
 const MAX_SUBJECT = 200;
@@ -96,6 +107,63 @@ export default async function handler(req: Request, res: Response) {
     if (subject.length > MAX_SUBJECT) return res.status(400).json({ error: `Subject must be ${MAX_SUBJECT} characters or fewer.` });
     if (!message) return res.status(400).json({ error: 'Message body is required.' });
     if (message.length > MAX_MESSAGE) return res.status(400).json({ error: `Message must be ${MAX_MESSAGE} characters or fewer.` });
+
+    // ── CP12A7: Enforce safeguard confirmation token ───────────────────────────
+    // The token must be bound to the exact recipients and photo refs.
+    // It is issued by POST /api/image-safety/batch-confirm after the user
+    // confirms the privacy notice on the Send action (after recipients are set).
+    const safeguardToken = typeof body.safeguardToken === 'string' ? body.safeguardToken.trim() : '';
+    if (!safeguardToken) {
+      return res.status(403).json({
+        error: 'A safeguard confirmation is required before sending.',
+        code: 'safeguard_token_required',
+      });
+    }
+
+    // Resolve the exact photo refs that will be embedded in the PDF
+    const currentRefs = await resolveFormPhotoRefs(profile.companyId, submissionId);
+
+    // All recipients (to + cc + bcc) are bound in the token
+    const allRecipients = [...toList, ...ccList, ...bccList];
+
+    const consumeResult = await consumeConfirmationToken({
+      tokenId: safeguardToken,
+      companyId: profile.companyId,
+      userId: session.user.id,
+      action: 'form_email',
+      storageRefs: currentRefs,
+      recipients: allRecipients,
+    });
+
+    if (!consumeResult.ok) {
+      const statusMap: Record<string, number> = {
+        missing: 404,
+        expired: 410,
+        used: 409,
+        wrong_company: 403,
+        wrong_user: 403,
+        wrong_refs: 409,
+        wrong_recipients: 409,
+        blocked: 403,
+        db_error: 500,
+      };
+      const status = statusMap[consumeResult.reason] ?? 403;
+      const messages: Record<string, string> = {
+        missing: 'Confirmation token not found.',
+        expired: 'Confirmation has expired. Please confirm again.',
+        used: 'Confirmation has already been used.',
+        wrong_company: 'Confirmation is not valid for this account.',
+        wrong_user: 'Confirmation is not valid for this user.',
+        wrong_refs: 'The attached photos have changed since confirmation. Please confirm again.',
+        wrong_recipients: 'Recipients have changed since confirmation. Please confirm again.',
+        blocked: 'Sending is not permitted for these images.',
+        db_error: 'Confirmation verification failed.',
+      };
+      return res.status(status).json({
+        error: messages[consumeResult.reason] ?? 'Confirmation invalid.',
+        code: `safeguard_${consumeResult.reason}`,
+      });
+    }
 
     // ── Build PDF via canonical builder ────────────────────────────────────────
     const doc = await buildFormPdfDocument(profile.companyId, submissionId);

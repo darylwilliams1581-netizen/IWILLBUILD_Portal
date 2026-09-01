@@ -28,6 +28,8 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { useImageSafeguardBatch } from '@/hooks/useImageSafeguardBatch';
+import ImageSafeguardBatchModal from '@/components/ImageSafeguardBatchModal';
 import {
   dedupeAddresses,
   firstInvalidAddress,
@@ -70,6 +72,12 @@ export interface SendDocumentEmailProps {
    * gateway acceptance. The note is scoped to this job.
    */
   jobId?: number;
+  /**
+   * CP12A7: For documentType='form', the submission ID is required to
+   * resolve the exact photo refs embedded in the PDF for the safeguard gate.
+   * The gate runs at Send time (after recipients are finalised).
+   */
+  submissionId?: number;
   /** Called after the modal closes — parent shows the toast */
   onSuccess?: (payload: SendSuccessPayload) => void;
   onClose: () => void;
@@ -128,6 +136,7 @@ export default function SendDocumentEmailModal({
   defaultMessage = '',
   job,
   jobId,
+  submissionId,
   onSuccess,
   onClose,
 }: SendDocumentEmailProps) {
@@ -142,6 +151,9 @@ export default function SendDocumentEmailModal({
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+
+  // CP12A7: Safeguard gate — runs at Send time for form emails (after recipients finalised)
+  const { checkBatch, modalProps: safeguardModalProps } = useImageSafeguardBatch();
 
   const pdfPreviewHref =
     documentType === 'quote'
@@ -176,6 +188,25 @@ export default function SendDocumentEmailModal({
     const ccList  = showAdvanced ? dedupeAddresses(parseAddresses(cc)) : [];
     const bccList = showAdvanced ? dedupeAddresses(parseAddresses(bcc)) : [];
 
+    // ── CP12A7: Safeguard gate for form emails ────────────────────────────────
+    // Gate runs here — after recipients are finalised — so the token is bound
+    // to the exact recipients and photo refs that will be sent.
+    let safeguardToken: string | undefined;
+    if (documentType === 'form' && submissionId) {
+      const allRecipients = [...toList, ...ccList, ...bccList];
+      const outcome = await checkBatch({
+        action: 'form_email',
+        submissionId,
+        recipients: allRecipients,
+        jobId: jobId ?? null,
+      });
+      if (!outcome.allowed) {
+        // User cancelled or images are blocked — do not send
+        return;
+      }
+      safeguardToken = outcome.confirmationToken;
+    }
+
     setSending(true);
     setError('');
 
@@ -190,6 +221,7 @@ export default function SendDocumentEmailModal({
           to: toList, cc: ccList, bcc: bccList,
           subject: subject.trim(), message: message.trim(),
           attachPdf, bccOwner,
+          ...(safeguardToken ? { safeguardToken } : {}),
         }),
       });
       const data = await res.json() as { ok?: boolean; messageId?: string; attachedPdf?: boolean; ownerBcced?: boolean; senderName?: string; error?: string };

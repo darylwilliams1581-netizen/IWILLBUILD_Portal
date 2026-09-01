@@ -3,6 +3,11 @@
  * Generate a 90-day view-only share token for a job's photos.
  * Returns { shareUrl, expiresAt }
  *
+ * CP12A7: Requires a valid safeguard confirmation token bound to:
+ *   - authenticated company + user
+ *   - action = 'share_link'
+ *   - exact set of job photos at time of confirmation
+ *
  * Strategy: DELETE any existing share for this job, then INSERT fresh.
  * This avoids relying on onDuplicateKeyUpdate for the job_id unique index
  * which may not exist on older DB instances.
@@ -13,6 +18,10 @@ import { jobPhotoShares, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { generateShareToken, hashToken, expiresAt } from '../../../../../lib/share-tokens.js';
+import {
+  resolveJobPhotoRefs,
+  consumeConfirmationToken,
+} from '../../../../../lib/imageSafeguardService.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -35,12 +44,64 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    // ── CP12A7: Enforce safeguard confirmation token ───────────────────────────
+    const body = req.body as { safeguardToken?: unknown };
+    const safeguardToken = typeof body.safeguardToken === 'string' ? body.safeguardToken.trim() : '';
+    if (!safeguardToken) {
+      return res.status(403).json({
+        error: 'A safeguard confirmation is required before sharing photos.',
+        code: 'safeguard_token_required',
+      });
+    }
+
+    // Resolve the exact photo refs at the moment of the share request
+    const currentRefs = await resolveJobPhotoRefs(profile.companyId, jobId);
+
+    // Consume the token — validates all bindings atomically
+    const consumeResult = await consumeConfirmationToken({
+      tokenId: safeguardToken,
+      companyId: profile.companyId,
+      userId: session.user.id,
+      action: 'share_link',
+      storageRefs: currentRefs,
+    });
+
+    if (!consumeResult.ok) {
+      const statusMap: Record<string, number> = {
+        missing: 404,
+        expired: 410,
+        used: 409,
+        wrong_company: 403,
+        wrong_user: 403,
+        wrong_refs: 409,
+        wrong_recipients: 409,
+        blocked: 403,
+        db_error: 500,
+      };
+      const status = statusMap[consumeResult.reason] ?? 403;
+      const messages: Record<string, string> = {
+        missing: 'Confirmation token not found.',
+        expired: 'Confirmation has expired. Please confirm again.',
+        used: 'Confirmation has already been used.',
+        wrong_company: 'Confirmation is not valid for this account.',
+        wrong_user: 'Confirmation is not valid for this user.',
+        wrong_refs: 'The photo selection has changed since confirmation. Please confirm again.',
+        wrong_recipients: 'Recipients have changed since confirmation.',
+        blocked: 'Sharing is not permitted for these images.',
+        db_error: 'Confirmation verification failed.',
+      };
+      return res.status(status).json({
+        error: messages[consumeResult.reason] ?? 'Confirmation invalid.',
+        code: `safeguard_${consumeResult.reason}`,
+      });
+    }
+
+    // ── Generate share link ───────────────────────────────────────────────────
     const raw = generateShareToken();
     const hash = hashToken(raw);
     const exp = expiresAt(90);
 
     // Delete any existing share for this job, then insert fresh.
-    // Safer than onDuplicateKeyUpdate which requires the job_id unique index.
     await db.delete(jobPhotoShares).where(
       and(
         eq(jobPhotoShares.jobId, jobId),

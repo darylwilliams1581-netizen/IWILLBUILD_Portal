@@ -117,21 +117,21 @@ export default function JobPhotosPage() {
   };
 
   /**
-   * CP12A §6 — Safeguard-gated share link generation.
-   * Runs the batch confirmation check before calling generateShareLink().
-   * storageRefs is empty at this point (we don't enumerate individual photo IDs
-   * here); the batch-status endpoint returns 'unavailable' for an empty ref
-   * list, which correctly shows the honest privacy confirmation modal.
+   * CP12A7: Safeguard-gated share link generation.
+   * Calls checkBatch with action='share_link' — the server resolves the exact
+   * photo refs for this job. The returned token is bound to those refs.
+   * The token is passed to POST /api/jobs/:id/photos/share which verifies it.
    */
   const handleShareWithGate = useCallback(async () => {
+    if (!jobId) return;
     const outcome = await checkBatch({
-      storageRefs: [],   // job-level share — individual refs not enumerated here
+      action: 'share_link',
+      jobId,
       imageCount: photoCount,
       sharingSurface: 'share link',
-      jobId,
     });
     if (!outcome.allowed) return;  // user cancelled or blocked — do not share
-    photosRef.current?.generateShareLink();
+    photosRef.current?.generateShareLink(outcome.confirmationToken);
   }, [checkBatch, photoCount, jobId]);
 
   /**

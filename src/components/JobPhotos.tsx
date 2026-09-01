@@ -70,7 +70,8 @@ interface JobPhotosProps {
 export interface JobPhotosHandle {
   openFilePicker: () => void;
   openCamera: () => void;
-  generateShareLink: () => void;
+  /** CP12A7: safeguardToken is required — bound confirmation token from batch-confirm */
+  generateShareLink: (safeguardToken: string) => void;
   setViewSize: (size: ViewSize) => void;
   viewSize: ViewSize;
   selectMode: boolean;
@@ -835,11 +836,12 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   // ── Share link ─────────────────────────────────────────────────────────────
 
-  const generateShareLink = useCallback(async () => {
+  const generateShareLink = useCallback(async (safeguardToken: string) => {
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ safeguardToken }),
       });
       const data = await res.json() as { shareUrl?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate link');
@@ -861,7 +863,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   useImperativeHandle(ref, () => ({
     openFilePicker: () => fileInputRef.current?.click(),
     openCamera: () => cameraInputRef.current?.click(),
-    generateShareLink: () => void generateShareLink(),
+    generateShareLink: (safeguardToken: string) => void generateShareLink(safeguardToken),
     setViewSize,
     get viewSize() { return viewSize; },
     get selectMode() { return selectMode; },
