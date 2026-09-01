@@ -1410,8 +1410,8 @@ async function toolImageSafeguardStatus(): Promise<string> {
     const [countRows] = await db.execute(sql.raw(`
       SELECT
         COUNT(*) AS total,
-        SUM(CASE WHEN finding_type = 'privacy_signal' THEN 1 ELSE 0 END) AS flagged,
-        SUM(CASE WHEN finding_type = 'failed'         THEN 1 ELSE 0 END) AS failed_count
+        SUM(CASE WHEN result = 'privacy_signal' THEN 1 ELSE 0 END) AS flagged,
+        SUM(CASE WHEN result = 'failed'         THEN 1 ELSE 0 END) AS failed_count
       FROM image_safeguard_findings
     `)) as unknown as [Array<Record<string, unknown>>, unknown];
     totalFindings   = Number(countRows?.[0]?.total ?? 0);
