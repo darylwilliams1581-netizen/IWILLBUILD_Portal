@@ -27,6 +27,7 @@ import {
 } from '../../../../storage/storage-service.js';
 import { uploadMedia, normaliseMime } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
+import { createPendingSafeguardRecord } from '../../../../lib/imageSafeguardService.js';
 
 const PHOTO_BUCKET = 'job-photos';
 const MAX_PHOTOS_PER_JOB = 200;
@@ -176,6 +177,16 @@ export default async function handler(req: Request, res: Response) {
       });
 
       saved.push({ id: result.destinationId!, filename: result.storageKey, url: result.url });
+
+      // CP12A: Create pending Image Safeguard record (non-blocking, best-effort)
+      // storage_ref = the DB row ID once persisted — opaque, not an R2 key
+      void createPendingSafeguardRecord({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        storageRef: `job_photo:${result.destinationId ?? result.storageKey}`,
+        surface: 'job_photo',
+        jobId,
+      }).catch(() => { /* safeguard record failure must not affect upload */ });
 
       // Generate thumbnail + preview asynchronously (non-blocking)
       const photoId = result.destinationId!;

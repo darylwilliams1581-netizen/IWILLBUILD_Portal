@@ -13,8 +13,6 @@ import SignaturePad, {
   parseMultiSignatureAnswer,
 } from './SignaturePad';
 import { isGpsAnswer, type GpsAnswer } from './form-types';
-import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
-import ImageSafetyConfirmModal from '@/components/ImageSafetyConfirmModal';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 
@@ -269,11 +267,6 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
   const settings = parseSettings(field.settingsJson);
   const globalListId = typeof settings.globalListId === 'number' && settings.globalListId > 0 ? settings.globalListId : null;
 
-  // ── Image safety gate (for photo fields) ──────────────────────────────────
-  const { checkFile: checkFileSafety, modalProps: safetyModalProps } = useImageSafetyGate({
-    surface: 'form_photo_field',
-  });
-
   // Resolve options: global list takes precedence over optionsJson
   const [resolvedOptions, setResolvedOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
   useEffect(() => {
@@ -512,10 +505,6 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
           try {
             const newUrls: string[] = [];
             for (const file of files) {
-              // Safety gate: scan + confirmation BEFORE upload
-              const outcome = await checkFileSafety(file);
-              if (!outcome.allowed) continue; // user cancelled or blocked — skip this file
-
               const fd = new FormData();
               fd.append('file', file);
               fd.append('fileCategory', 'Forms');
@@ -533,7 +522,7 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
           } finally {
             setUploading(false);
           }
-        }, [urls, allowMultiple, onChange, checkFileSafety]);
+        }, [urls, allowMultiple, onChange]);
 
 
         const removePhoto = (idx: number) => {
@@ -543,8 +532,6 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
 
         return (
           <div className="flex flex-col gap-2">
-            {/* Safety gate modal */}
-            <ImageSafetyConfirmModal {...safetyModalProps} />
             {/* Thumbnails */}
             {urls.length > 0 && (
               <div className="flex flex-wrap gap-2">

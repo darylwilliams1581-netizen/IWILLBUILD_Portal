@@ -4,8 +4,7 @@ import {
   Hash, Factory, Upload, X, ImageIcon,
 } from 'lucide-react';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
-import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
-import ImageSafetyConfirmModal from '@/components/ImageSafetyConfirmModal';
+import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -42,11 +41,6 @@ export default function CompanyTab() {
   const [logoError, setLogoError] = useState('');
   const [logoSaved, setLogoSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // ── Image safety gate ──────────────────────────────────────────────────────
-  const { checkFile: checkFileSafety, modalProps: safetyModalProps } = useImageSafetyGate({
-    surface: 'company_logo',
-  });
 
   useEffect(() => {
     fetch('/api/company', { credentials: 'include' })
@@ -98,17 +92,7 @@ export default function CompanyTab() {
     reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
 
-    // Safety gate then upload
-    void (async () => {
-      const outcome = await checkFileSafety(file, {});
-      if (!outcome.allowed) {
-        // User cancelled — clear preview
-        setLogoPreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
-      void uploadLogo(file);
-    })();
+    void uploadLogo(file);
   }
 
   async function uploadLogo(file: File) {
@@ -141,8 +125,6 @@ export default function CompanyTab() {
 
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-6">
-      {/* Safety gate modal */}
-      <ImageSafetyConfirmModal {...safetyModalProps} />
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4">Company Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
@@ -264,6 +246,8 @@ export default function CompanyTab() {
             className="hidden"
             onChange={handleFileChange}
           />
+          {/* CP12A: Subtle safeguard notice */}
+          <ImageSafeguardNotice className="mt-1" />
         </div>
       </div>
     </form>

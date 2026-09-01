@@ -19,8 +19,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Search, ChevronDown, X, Upload, CheckCircle2, AlertCircle, Loader2, ImagePlus, ExternalLink, RotateCcw } from 'lucide-react';
-import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
-import ImageSafetyConfirmModal from '@/components/ImageSafetyConfirmModal';
+import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 function randomUUID(): string {
   return crypto.randomUUID();
 }
@@ -298,23 +297,11 @@ export default function DashboardPhotoUploader() {
   const hasFiles = files.length > 0;
   const allDone = files.length > 0 && files.every(f => f.status === 'done');
 
-  // ── Image safety gate ──────────────────────────────────────────────────────
-  const { checkFile: checkFileSafety, modalProps: safetyModalProps } = useImageSafetyGate({
-    surface: 'job_photo_dashboard',
-  });
-
   async function addFiles(incoming: File[]) {
     const heicFiles = incoming.filter(isHeic);
     const validFiles = incoming.filter(f => !isHeic(f));
 
-    const safeFiles: File[] = [];
-    for (const file of validFiles) {
-      const outcome = await checkFileSafety(file, { jobId: selectedJob?.id ?? null });
-      if (outcome.allowed) safeFiles.push(file);
-      // cancelled/blocked: silently skip (modal already shown)
-    }
-
-    const entries: FileEntry[] = safeFiles.map(f => ({
+    const entries: FileEntry[] = validFiles.map(f => ({
       id: randomUUID(),
       file: f,
       status: 'pending',
@@ -428,8 +415,6 @@ export default function DashboardPhotoUploader() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return <div className="bg-card border border-border rounded-xl overflow-hidden">
-      {/* Safety gate modal */}
-      <ImageSafetyConfirmModal {...safetyModalProps} />
       {/* Header */}
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
         <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">

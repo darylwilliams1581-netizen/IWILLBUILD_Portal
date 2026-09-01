@@ -747,3 +747,49 @@ export const recoveryChangeBlocks = mysqlTable('recovery_change_blocks', {
 // form_template_fields table — this alias keeps them compiling without
 // requiring a data migration or handler rewrite.
 export const formFields = formTemplateFields;
+
+// ── CP12A: Image Safeguard Protocol ──────────────────────────────────────────
+//
+// image_safeguard_records: one row per image upload.
+//
+// WHAT IS STORED:
+//   - Opaque record ID (UUID)
+//   - Authenticated company and user IDs (from session — never from request body)
+//   - Opaque storage_ref: a stable internal reference (e.g. the upload's
+//     clientUploadId or a DB row ID) — NOT the R2 object key or a signed URL
+//   - Surface identifier (job_photo, form_attachment, incident_attachment, etc.)
+//   - Job/submission context (nullable)
+//   - Protocol status (pending → clear/privacy_signal/elevated/blocked/unavailable/error)
+//   - Scan result JSON (safe metadata only — no image bytes, no signed URLs)
+//   - Policy version active at time of upload
+//   - Review status for elevated/blocked records
+//   - Timestamps
+//
+// WHAT IS NEVER STORED:
+//   - Raw image bytes
+//   - Face crops or extracted face data
+//   - Signed URLs or R2 credentials
+//   - Sensitive image descriptions
+//   - R2 object keys (storage_ref is an opaque internal reference)
+
+export const imageSafeguardRecords = mysqlTable('image_safeguard_records', {
+  id:             varchar('id', { length: 36 }).primaryKey(),
+  companyId:      int('company_id').notNull(),
+  userId:         varchar('user_id', { length: 36 }).notNull(),
+  // Opaque internal reference — NOT an R2 key or signed URL.
+  // Typically the clientUploadId from the upload flow, or a DB row ID
+  // once the upload is persisted.
+  storageRef:     varchar('storage_ref', { length: 255 }).notNull(),
+  surface:        varchar('surface', { length: 64 }).notNull(),
+  jobId:          int('job_id'),
+  submissionId:   int('submission_id'),
+  // Protocol status — see SafeguardStatus in src/lib/imageSafeguard/types.ts
+  status:         varchar('status', { length: 32 }).notNull().default('pending'),
+  // JSON blob of SafeguardScanResult — safe metadata only, no image content
+  scanResultJson: text('scan_result_json'),
+  policyVersion:  varchar('policy_version', { length: 16 }).notNull().default('1.0'),
+  // Review status for elevated/blocked records
+  reviewStatus:   varchar('review_status', { length: 32 }).notNull().default('none'),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});

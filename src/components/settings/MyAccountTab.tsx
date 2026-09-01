@@ -8,8 +8,7 @@ import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
 import AppLockSettings from '@/components/settings/AppLockSettings';
 import PhoneInput from '@/components/ui/PhoneInput';
-import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
-import ImageSafetyConfirmModal from '@/components/ImageSafetyConfirmModal';
+import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -241,11 +240,6 @@ export default function MyAccountTab() {
   const [lightboxAtt,  setLightboxAtt]  = useState<Attachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Image safety gate (for image attachments) ──────────────────────────────
-  const { checkFile: checkFileSafety, modalProps: safetyModalProps } = useImageSafetyGate({
-    surface: 'profile_attachment',
-  });
-
   useEffect(() => {
     fetch('/api/me/profile-extras', { credentials: 'include' })
       .then((r) => r.json())
@@ -282,16 +276,6 @@ export default function MyAccountTab() {
     if (!file) return;
     if (attachments.length >= 5) { setUploadError('Maximum 5 attachments allowed.'); return; }
     setUploadError(''); setUploading(true);
-
-    // Safety gate for image files
-    if (file.type.startsWith('image/')) {
-      const outcome = await checkFileSafety(file, {});
-      if (!outcome.allowed) {
-        setUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
-    }
 
     const fd = new FormData();
     fd.append('file', file);
@@ -364,8 +348,6 @@ export default function MyAccountTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Safety gate modal */}
-      <ImageSafetyConfirmModal {...safetyModalProps} />
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4">Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6">
@@ -505,6 +487,8 @@ export default function MyAccountTab() {
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <p className="text-xs text-slate-500 mb-4">Upload copies of your licences and cards — always have them on hand when on site.</p>
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+          {/* CP12A: Subtle safeguard notice */}
+          <ImageSafeguardNotice className="mb-3" />
           {uploadError && (
             <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
               <AlertCircle size={12} />{uploadError}

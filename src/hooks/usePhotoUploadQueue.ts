@@ -29,7 +29,6 @@ import {
 } from '@/lib/offlinePhotoStore';
 import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
-import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -208,11 +207,6 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
   const activeRef  = useRef(0);
   const queueRef   = useRef<PendingPhoto[]>([]);
   queueRef.current = queue;
-
-  // ── Image safety gate ──────────────────────────────────────────────────────
-  const { checkFile: checkFileSafety, modalProps: safetyModalProps } = useImageSafetyGate({
-    surface: 'job_photo',
-  });
 
   // ── Kick uploads whenever new 'saved' items appear in the queue ───────────
   // This runs *after* the setQueue state flush, so queueRef.current is always
@@ -434,15 +428,6 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      // ── Safety gate: scan + confirmation modal BEFORE IDB or upload ────────
-      const outcome = await checkFileSafety(file, { jobId });
-      if (!outcome.allowed) {
-        // User cancelled, file blocked, or scan error — skip this file
-        continue;
-      }
-      // outcome.token is the attestation token; stored for future server-side
-      // verification (not yet threaded through XHR — added in a future CP).
-
       // Check queue capacity before saving each file
       const capacityError = await checkQueueCapacity(jobId, file.size);
       if (capacityError) {
@@ -491,7 +476,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
     // Upload kick is handled by the useEffect that watches for new 'saved'
     // items — it fires after the setQueue state flush so queueRef is current.
-  }, [jobId, checkFileSafety, processNext]);
+  }, [jobId, processNext]);
 
   // ── Retry a failed item ────────────────────────────────────────────────────
 
@@ -568,7 +553,5 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
     clearAll,
     /** Manually trigger upload of all saved items — for use when auto-sync didn't fire */
     syncNow,
-    /** Spread onto <ImageSafetyConfirmModal> to show the safety gate modal */
-    safetyModalProps,
   };
 }

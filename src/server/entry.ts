@@ -3251,6 +3251,12 @@ if (!process.env.VITEST) {
       console.error('[recovery-email] migration fatal:', e)
     )
   );
+  // CP12A: Image Safeguard Protocol — independent, non-blocking
+  void import('./db/migrations/image-safeguard.js').then(m =>
+    m.runImageSafeguardMigration().catch((e: unknown) =>
+      console.error('[image-safeguard] migration fatal:', e)
+    )
+  );
   // ── sms_verification_codes.id column type repair ─────────────────────────────
   // Historical context: the original CREATE TABLE DDL used INT AUTO_INCREMENT for
   // the id column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.

@@ -15,8 +15,7 @@ import FormSection from '@/components/FormSection';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
 import PortalSidebar from '@/components/PortalSidebar';
-import { useImageSafetyGate } from '@/hooks/useImageSafetyGate';
-import ImageSafetyConfirmModal from '@/components/ImageSafetyConfirmModal';
+import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -650,41 +649,13 @@ export default function IncidentDetailPage() {
   });
   const uploadingFiles = attachQ.isUploading;
   const fileInputRef = attachQ.inputRef;
-
-  // ── Image safety gate for incident attachments ────────────────────────────
-  const { checkFile: checkAttachFileSafety, modalProps: attachSafetyModalProps } = useImageSafetyGate({
-    surface: 'incident_attachment',
-  });
-
-  /**
-   * Wrapped input handler: runs the safety gate for image files before
-   * handing off to the upload queue. PDF and other non-image files pass through.
-   */
-  const handleAttachInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = '';
-    if (files.length === 0) return;
-
-    const accepted: File[] = [];
-    for (const file of files) {
-      if (file.type.startsWith('image/')) {
-        const outcome = await checkAttachFileSafety(file, {});
-        if (!outcome.allowed) continue; // user cancelled or blocked
-      }
-      accepted.push(file);
-    }
-    if (accepted.length > 0) {
-      attachQ.enqueue(accepted);
-    }
-  }, [checkAttachFileSafety, attachQ]);
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
         <Loader2 size={28} className="animate-spin text-red-400" />
       </div>;
   }
   return <>
-      {/* Safety gate modal for incident attachments */}
-      <ImageSafetyConfirmModal {...attachSafetyModalProps} />
+      {/* CP12A: Subtle safeguard notice rendered at page level (hidden, used by upload sections) */}
       <Helmet>
         <title>{pageTitle} — IWILLBUILD</title>
         <meta name="description" content="Incident record detail and corrective actions." />
@@ -1030,7 +1001,9 @@ export default function IncidentDetailPage() {
                           {uploadingFiles ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                           Add
                         </button> : attachments.length > 0 ? <span className="bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5 rounded-full">{attachments.length}</span> : undefined}>
-                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleAttachInputChange} />
+                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={attachQ.handleInputChange} />
+                    {/* CP12A: Subtle safeguard notice */}
+                    {!isClosed && <ImageSafeguardNotice className="mb-2" />}
                     {attachments.length === 0 && <div className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`} onClick={() => !isClosed && fileInputRef.current?.click()}>
                         <Paperclip size={20} className="mx-auto text-slate-300 mb-2" />
                         <p className="text-xs text-slate-400">{isClosed ? 'No attachments' : 'Tap to add photos or PDFs'}</p>
