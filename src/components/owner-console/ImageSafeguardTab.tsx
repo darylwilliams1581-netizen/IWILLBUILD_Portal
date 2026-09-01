@@ -490,6 +490,20 @@ export default function ImageSafeguardTab() {
     void fetchFindings();
   }, [fetchStatus, fetchRuns, fetchFindings]);
 
+  // Poll every 3 s while any run is pending or running — stops automatically
+  // once all visible runs reach a terminal state (completed/failed/cancelled).
+  useEffect(() => {
+    const hasActiveRun = recentRuns.some(
+      r => r.runStatus === 'pending' || r.runStatus === 'running',
+    );
+    if (!hasActiveRun) return;
+    const id = setInterval(() => {
+      void fetchRuns();
+      void fetchStatus(true);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [recentRuns, fetchRuns, fetchStatus]);
+
   const handleRefresh = () => {
     void fetchStatus(true);
     void fetchRuns();
@@ -535,8 +549,10 @@ export default function ImageSafeguardTab() {
         setScanError(data.message ?? data.error ?? 'Scan request failed.');
       } else if (data.runId) {
         setLastScanResult({ runId: data.runId, rangeStart: data.rangeStart ?? '', rangeEnd: data.rangeEnd ?? '' });
-        // Refresh after a short delay to pick up the run record
-        setTimeout(() => { void fetchStatus(true); void fetchRuns(); }, 1500);
+        // Fetch immediately so the run appears in the list right away (status = running),
+        // then the polling effect takes over until it reaches a terminal state.
+        void fetchRuns();
+        void fetchStatus(true);
       }
     } catch {
       setScanError('Network error — could not reach the server.');
@@ -554,8 +570,10 @@ export default function ImageSafeguardTab() {
 
   const canScan = Boolean(status?.configured) && !scanning;
 
-  // The most recent completed run — used for the header-level CSV download.
-  const latestCompletedRun = recentRuns.find(r => r.runStatus === 'completed') ?? null;
+  // The most recent completed run with findings — used for the header-level CSV download.
+  const latestCompletedRun = recentRuns.find(
+    r => r.runStatus === 'completed' && r.imagesWithSignal > 0,
+  ) ?? null;
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -878,7 +896,7 @@ export default function ImageSafeguardTab() {
                     {run.errorCode && (
                       <p className="text-xs text-red-600 mt-1">Error: {run.errorCode}</p>
                     )}
-                    {run.runStatus === 'completed' && (
+                    {run.runStatus === 'completed' && run.imagesWithSignal > 0 && (
                       <div className="mt-3">
                         <CsvDownloadButton
                           runId={run.id}
@@ -886,6 +904,9 @@ export default function ImageSafeguardTab() {
                           ariaLabel={`Download CSV for run ${run.id.slice(0, 8)}…`}
                         />
                       </div>
+                    )}
+                    {run.runStatus === 'completed' && run.imagesWithSignal === 0 && (
+                      <p className="mt-2 text-xs text-slate-400">No findings — CSV not available for this run.</p>
                     )}
                   </div>
                 ))}
