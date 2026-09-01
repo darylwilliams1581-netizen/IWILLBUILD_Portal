@@ -30,6 +30,7 @@ import {
   ZIP_MAX_ENTRIES,
   ZIP_MAX_EXPANDED_BYTES,
   ZIP_MAX_COMPRESSION_RATIO,
+  validateDocxEmbeddedImage,
 } from '../uploadPolicy.js';
 import type { FileToValidate } from '../uploadPolicy.js';
 
@@ -1045,5 +1046,103 @@ describe('UP13 validateZipContainer — ZIP64 rejection', () => {
     const buf = buildMinimalZip(['[Content_Types].xml', 'xl/workbook.xml']);
     const r = validateZipContainer(buf, 'xlsx');
     expect(r.ok).toBe(true);
+  });
+});
+
+// ─── UP12. validateDocxEmbeddedImage — unit tests (CP10A6) ───────────────────
+
+describe('UP12 — validateDocxEmbeddedImage', () => {
+  const JPEG_MAGIC = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9]);
+  const PNG_MAGIC  = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6260000000020001e221bc330000000049454e44ae426082', 'hex');
+  const WEBP_MAGIC = (() => {
+    const b = Buffer.alloc(30);
+    b[0]=0x52;b[1]=0x49;b[2]=0x46;b[3]=0x46; // RIFF
+    b[4]=0x16;b[5]=0x00;b[6]=0x00;b[7]=0x00;
+    b[8]=0x57;b[9]=0x45;b[10]=0x42;b[11]=0x50; // WEBP
+    b[12]=0x56;b[13]=0x50;b[14]=0x38;b[15]=0x4C; // VP8L
+    return b;
+  })();
+
+  it('accepts JPEG — returns ok=true, detectedMime=image/jpeg, safeExt=jpg', () => {
+    const r = validateDocxEmbeddedImage(JPEG_MAGIC);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.detectedMime).toBe('image/jpeg');
+    expect(r.safeExt).toBe('jpg');
+  });
+
+  it('accepts PNG — returns ok=true, detectedMime=image/png, safeExt=png', () => {
+    const r = validateDocxEmbeddedImage(PNG_MAGIC);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.detectedMime).toBe('image/png');
+    expect(r.safeExt).toBe('png');
+  });
+
+  it('accepts WebP — returns ok=true, detectedMime=image/webp, safeExt=webp', () => {
+    const r = validateDocxEmbeddedImage(WEBP_MAGIC);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.detectedMime).toBe('image/webp');
+    expect(r.safeExt).toBe('webp');
+  });
+
+  it('rejects empty buffer — code=empty_file', () => {
+    const r = validateDocxEmbeddedImage(Buffer.alloc(0));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.code).toBe('empty_file');
+  });
+
+  it('rejects oversized buffer (> 10 MB) — code=file_too_large', () => {
+    // Allocate 10 MB + 1 byte with JPEG magic so it is not rejected for format
+    const oversized = Buffer.alloc(10 * 1024 * 1024 + 1);
+    oversized[0] = 0xFF; oversized[1] = 0xD8; oversized[2] = 0xFF;
+    const r = validateDocxEmbeddedImage(oversized);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.code).toBe('file_too_large');
+  });
+
+  it('rejects Windows PE executable (MZ header) — code=blocked_magic', () => {
+    const exe = Buffer.from([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
+    const r = validateDocxEmbeddedImage(exe);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.code).toBe('blocked_magic');
+  });
+
+  it('rejects SVG text (no magic match) — code=unrecognised_format', () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const r = validateDocxEmbeddedImage(svg);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    // SVG has no magic bytes — falls through to unrecognised_format
+    expect(['unrecognised_format', 'unsupported_image_type']).toContain(r.code);
+  });
+
+  it('rejects malformed bytes (no magic match) — code=unrecognised_format', () => {
+    const bad = Buffer.from([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
+    const r = validateDocxEmbeddedImage(bad);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.code).toBe('unrecognised_format');
+  });
+
+  it('rejects GIF (recognised but not in allowed set) — code=unsupported_image_type', () => {
+    // GIF89a magic
+    const gif = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00]);
+    const r = validateDocxEmbeddedImage(gif);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.code).toBe('unsupported_image_type');
+  });
+
+  it('DOCX-declared MIME is irrelevant — only buffer magic is checked', () => {
+    // PNG magic bytes — regardless of what DOCX declared, result is PNG
+    const r = validateDocxEmbeddedImage(PNG_MAGIC);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.detectedMime).toBe('image/png');
   });
 });

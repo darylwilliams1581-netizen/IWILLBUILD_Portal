@@ -104,7 +104,8 @@ export async function runConvertHtml(
   }
 
   const { images, report } = convResult;
-  let { html, css } = convResult;
+  const { css } = convResult;
+  let { html } = convResult;
 
   // Track all storage keys written so we can roll back on DB failure
   const uploadedKeys: Array<{ storageKey: string; bucket: string }> = [];

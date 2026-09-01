@@ -22,6 +22,45 @@ import JSZip from 'jszip';
 import { runConvertHtml, BUCKET_DOC_ASSETS } from '../import-docx-convert-html.js';
 import type { ConvertHtmlDeps, ConvertHtmlInput } from '../import-docx-convert-html.js';
 
+// ─── Shared magic-byte fixtures (used by G10) ─────────────────────────────────
+
+/** Minimal valid 1×1 JPEG (FF D8 FF + JFIF APP0 marker) */
+const JPEG_BUF = Buffer.from([
+  0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
+  0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+  // Minimal SOS + EOI so it's non-trivially sized
+  0xFF, 0xD9,
+]);
+
+/** Minimal valid 1×1 PNG (89 50 4E 47 + IHDR) */
+const PNG_BUF = Buffer.from(
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6260000000020001e221bc330000000049454e44ae426082',
+  'hex',
+);
+
+/** Minimal valid WebP (RIFF????WEBP VP8L header) */
+const WEBP_BUF = (() => {
+  const b = Buffer.alloc(30);
+  // RIFF header
+  b[0] = 0x52; b[1] = 0x49; b[2] = 0x46; b[3] = 0x46; // 'RIFF'
+  b[4] = 0x16; b[5] = 0x00; b[6] = 0x00; b[7] = 0x00; // file size (LE)
+  // WEBP marker at offset 8
+  b[8]  = 0x57; b[9]  = 0x45; b[10] = 0x42; b[11] = 0x50; // 'WEBP'
+  // VP8L chunk
+  b[12] = 0x56; b[13] = 0x50; b[14] = 0x38; b[15] = 0x4C; // 'VP8L'
+  b[16] = 0x0A; b[17] = 0x00; b[18] = 0x00; b[19] = 0x00; // chunk size
+  return b;
+})();
+
+/** Windows PE executable (MZ header) */
+const EXE_BUF = Buffer.from([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
+
+/** SVG text — no magic bytes, not in allowed set */
+const SVG_BUF = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+
+/** Malformed: random bytes that match no magic signature */
+const MALFORMED_BUF = Buffer.from([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
+
 // ─── Minimal DOCX builder ─────────────────────────────────────────────────────
 
 const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
@@ -594,5 +633,171 @@ describe('G9 — keep_word and convert_blocks compatibility (source inspection)'
     expect(htmlIdx).toBeGreaterThan(-1);
     expect(blocksIdx).toBeGreaterThan(-1);
     expect(htmlIdx).toBeLessThan(blocksIdx);
+  });
+});
+
+// ─── G10. Embedded-image validation (CP10A6) ─────────────────────────────────
+//
+// These tests inject controlled image buffers into real DOCX archives so the
+// full validation gate (validateDocxEmbeddedImage) runs on the actual bytes.
+// The real DOCX → image extraction path is also covered by G4 (makeDocxWithImage).
+
+// ── DI1. Accepted images ──────────────────────────────────────────────────────
+
+describe('G10-DI1 — accepted embedded images: JPEG, PNG, WebP', () => {
+  it.each([
+    ['JPEG', JPEG_BUF, 'image/jpeg', 'jpg'],
+    ['PNG',  PNG_BUF,  'image/png',  'png'],
+    ['WebP', WEBP_BUF, 'image/webp', 'webp'],
+  ] as const)('%s: saveFile called once with detected MIME and canonical key', async (label, imgBuf, expectedMime, expectedExt) => {
+    const zip = new JSZip();
+    zip.file('word/media/image1.png', imgBuf);
+    zip.file(
+      'word/document.xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body><w:p><w:r><w:drawing><wp:inline>
+    <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+      <pic:pic><pic:blipFill><a:blip r:embed="rId1"/></pic:blipFill><pic:spPr/></pic:pic>
+    </a:graphicData></a:graphic>
+  </wp:inline></w:drawing></w:r></w:p></w:body>
+</w:document>`,
+    );
+    zip.file(
+      'word/_rels/document.xml.rels',
+      `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>
+</Relationships>`,
+    );
+    zip.file(
+      '[Content_Types].xml',
+      // Declare wrong MIME to prove it is ignored — detected MIME wins
+      `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="png" ContentType="application/octet-stream"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+    );
+    zip.file(
+      '_rels/.rels',
+      `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+    );
+    const docxBuf = await zip.generateAsync({ type: 'nodebuffer' });
+    const deps = makeDeps(state);
+    const result = await runConvertHtml(makeInput(docxBuf, { companyId: 7 }), deps);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // imageCount counts only stored images
+    expect(result.payload.imageCount).toBe(1);
+
+    // saveFile called exactly once for this image
+    const imgSaves = vi.mocked(deps.saveFile).mock.calls.filter(
+      ([input]) => (input as { bucket: string }).bucket === BUCKET_DOC_ASSETS,
+    );
+    expect(imgSaves.length).toBe(1);
+
+    const call = imgSaves[0][0] as { mimeType: string; storageKey: string; originalName: string };
+
+    // Detected MIME used — not the DOCX-declared 'application/octet-stream'
+    expect(call.mimeType).toBe(expectedMime);
+
+    // Canonical key: doc-assets/companies/{companyId}/docx-images/{uuid}/embedded-image.{ext}
+    expect(call.storageKey).toMatch(
+      new RegExp(`^doc-assets/companies/7/docx-images/[^/]+/embedded-image\\.${expectedExt}$`),
+    );
+
+    // Generic filename — never the DOCX relationship filename
+    expect(call.originalName).toBe(`embedded-image.${expectedExt}`);
+
+    // Placeholder replaced in HTML — no __IMG_ASSET_ left
+    expect(result.payload.html).not.toContain('__IMG_ASSET_');
+    // Real CDN URL present
+    expect(result.payload.html).toContain('cdn.example.com');
+  });
+});
+
+// ── DI2. Rejected images ──────────────────────────────────────────────────────
+
+describe('G10-DI2 — rejected embedded images: exe, SVG, malformed', () => {
+  it.each([
+    ['executable (MZ header)', EXE_BUF],
+    ['SVG text',               SVG_BUF],
+    ['malformed bytes',        MALFORMED_BUF],
+  ] as const)('%s: saveFile not called, placeholder stripped, warning present', async (label, imgBuf) => {
+    const zip = new JSZip();
+    zip.file('word/media/image1.png', imgBuf);
+    zip.file(
+      'word/document.xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body><w:p><w:r><w:drawing><wp:inline>
+    <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+      <pic:pic><pic:blipFill><a:blip r:embed="rId1"/></pic:blipFill><pic:spPr/></pic:pic>
+    </a:graphicData></a:graphic>
+  </wp:inline></w:drawing></w:r></w:p></w:body>
+</w:document>`,
+    );
+    zip.file(
+      'word/_rels/document.xml.rels',
+      `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>
+</Relationships>`,
+    );
+    zip.file(
+      '[Content_Types].xml',
+      `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+    );
+    zip.file(
+      '_rels/.rels',
+      `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+    );
+    const docxBuf = await zip.generateAsync({ type: 'nodebuffer' });
+    const deps = makeDeps(state);
+    const result = await runConvertHtml(makeInput(docxBuf, { companyId: 9 }), deps);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // saveFile never called for rejected content
+    const imgSaves = vi.mocked(deps.saveFile).mock.calls.filter(
+      ([input]) => (input as { bucket: string }).bucket === BUCKET_DOC_ASSETS,
+    );
+    expect(imgSaves.length).toBe(0);
+
+    // imageCount is zero — no stored images
+    expect(result.payload.imageCount).toBe(0);
+
+    // Placeholder stripped from HTML — no broken image reference
+    expect(result.payload.html).not.toContain('__IMG_ASSET_');
+
+    // No CDN URL in HTML — no stored reference leaked
+    expect(result.payload.html).not.toContain('cdn.example.com/doc-assets');
+
+    // Sanitised warning present in report
+    expect(result.payload.report.warnings.length).toBeGreaterThan(0);
+    const warn = result.payload.report.warnings[0];
+    // Warning is user-facing and sanitised — no internal path, no raw content
+    expect(warn).toContain('embedded image was removed');
+    expect(warn).not.toContain('__IMG_ASSET_');
+    expect(warn).not.toContain('word/media');
+    expect(warn).not.toContain('companyId');
   });
 });
