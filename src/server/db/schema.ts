@@ -853,3 +853,13 @@ export const imageSafeguardScanCursor = mysqlTable('image_safeguard_scan_cursor'
   lastSuccessfulRunId:    varchar('last_successful_run_id', { length: 36 }),
   updatedAt:              datetime('updated_at', { fsp: 3 }).notNull(),
 });
+
+// ── CP12B3: image_safeguard_finding_keys ─────────────────────────────────────
+// Server-side R2 key lookup table.
+// NEVER exposed via any API response — used only by the authenticated
+// preview endpoint to stream image bytes directly.
+export const imageSafeguardFindingKeys = mysqlTable('image_safeguard_finding_keys', {
+  findingId:  varchar('finding_id', { length: 36 }).primaryKey(),
+  r2Key:      varchar('r2_key', { length: 1024 }).notNull(),
+  createdAt:  datetime('created_at', { fsp: 3 }).notNull(),
+});

@@ -128,19 +128,28 @@ export default async function handler(req: Request, res: Response) {
           rangeEnd:   rangeResult.rangeEnd,
         });
 
-        // Persist findings
+        // Persist findings — only privacy_signal and failed (clear is counted only)
         for (const finding of outcome.results) {
+          if (finding.result !== 'privacy_signal' && finding.result !== 'failed') continue;
           try {
+            const findingId = randomUUID();
             await db.execute(sql`
               INSERT INTO image_safeguard_findings
                 (id, scan_run_id, asset_id, company_id, user_id, result,
                  face_count, detector_name, detector_version, failure_code, scanned_at)
               VALUES
-                (${randomUUID()}, ${runId}, ${finding.assetId}, ${finding.companyId},
+                (${findingId}, ${runId}, ${finding.assetId}, ${finding.companyId},
                  ${finding.userId ?? null}, ${finding.result}, ${finding.faceCount},
                  ${finding.detectorName}, ${finding.detectorVersion},
                  ${finding.failureCode ?? null}, ${new Date().toISOString()})
             `);
+            // Store the R2 key in the server-side lookup table (never exposed via API)
+            if (finding.r2Key) {
+              await db.execute(sql`
+                INSERT INTO image_safeguard_finding_keys (finding_id, r2_key, created_at)
+                VALUES (${findingId}, ${finding.r2Key}, ${new Date().toISOString()})
+              `).catch(() => undefined); // non-fatal — preview will return 404 if missing
+            }
           } catch {
             // Individual finding insert failure — continue
           }

@@ -105,6 +105,12 @@ export interface ImageScanResult {
   detectorVersion: string;
   /** Sanitized failure code only — no stack traces or internal paths. */
   failureCode: string | null;
+  /**
+   * R2 object key — stored server-side ONLY in image_safeguard_finding_keys.
+   * NEVER returned in any API response. Used only for the authenticated
+   * preview endpoint which streams bytes directly.
+   */
+  r2Key?: string;
 }
 
 export interface ScanRequest {
@@ -135,34 +141,23 @@ export interface ScanOutcome {
  *  - No R2 credentials are passed to this function — the worker holds them.
  *  - No image bytes, object keys, or signed URLs are returned.
  *
- * Currently throws scanner_not_configured because no worker is provisioned.
+ * When configured: delegates to r2Scanner.runScan() which calls ListObjectsV2,
+ * fetches each image server-side, validates it, and classifies it.
+ *
+ * When not configured: throws scanner_not_configured immediately.
  */
-export async function executeScan(_req: ScanRequest): Promise<ScanOutcome> {
+export async function executeScan(req: ScanRequest): Promise<ScanOutcome> {
   const cap = getAdapterCapability();
   if (!cap.configured) {
     throw Object.assign(new Error('scanner_not_configured'), { code: 'scanner_not_configured' });
   }
 
-  // Future implementation:
-  // const workerUrl = getSecret('SCANNER_WORKER_URL')!;
-  // const workerSecret = getSecret('SCANNER_WORKER_SECRET')!;
-  // const response = await fetch(`${workerUrl}/scan`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'X-Scanner-Secret': workerSecret,
-  //   },
-  //   body: JSON.stringify({
-  //     runId: req.runId,
-  //     bucket: SCAN_BUCKET,   // hardcoded — never from client
-  //     prefix: SCAN_PREFIX,   // hardcoded — never from client
-  //     since: req.rangeStart.toISOString(),
-  //     until: req.rangeEnd.toISOString(),
-  //   }),
-  //   signal: AbortSignal.timeout(30 * 60 * 1000), // 30-minute run timeout
-  // });
-  // ...
-
-  // This path is unreachable until a worker is configured.
-  throw Object.assign(new Error('scanner_not_configured'), { code: 'scanner_not_configured' });
+  // Delegate to r2Scanner — imported lazily to avoid circular dependency
+  // and to keep the adapter boundary clean.
+  const { runScan } = await import('./r2Scanner.js');
+  return runScan({
+    runId:      req.runId,
+    rangeStart: req.rangeStart,
+    rangeEnd:   req.rangeEnd,
+  });
 }

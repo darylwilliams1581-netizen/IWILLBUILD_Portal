@@ -1,17 +1,21 @@
 /**
  * image-safeguard-scan-runs.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * CP12B2 — Idempotent migration for the image_safeguard_scan_runs table.
+ * CP12B2/CP12B3 — Idempotent migration for the image_safeguard_scan_runs table.
  *
  * TABLES CREATED / ALTERED:
- *   image_safeguard_scan_runs  — one row per scan run initiated by a platform owner
- *   image_safeguard_findings   — one row per image assessed in a scan run
+ *   image_safeguard_scan_runs      — one row per scan run initiated by a platform owner
+ *   image_safeguard_findings       — one row per privacy_signal/failed image in a scan run
+ *   image_safeguard_scan_cursor    — singleton cursor for last successful scan
+ *   image_safeguard_finding_keys   — server-side R2 key lookup (NEVER exposed via API)
  *
  * SAFETY RULES:
  *   - All DDL is idempotent (IF NOT EXISTS / column existence checks).
  *   - Never drops or truncates existing data.
  *   - Migration failure is logged but does not crash the server.
- *   - No credentials, R2 keys, signed URLs or image bytes are stored.
+ *   - No credentials, signed URLs or image bytes are stored.
+ *   - image_safeguard_finding_keys stores R2 keys server-side only —
+ *     they are NEVER returned in any API response.
  */
 
 import { db } from '../client.js';
@@ -124,6 +128,21 @@ export async function runImageSafeguardScanRunsMigration(): Promise<void> {
     await addIndexIfNotExists('image_safeguard_findings',  'idx_isf_company',       'company_id');
     await addIndexIfNotExists('image_safeguard_findings',  'idx_isf_asset',         'asset_id');
     await addIndexIfNotExists('image_safeguard_findings',  'idx_isf_result',        'result');
+
+    // ── 5. image_safeguard_finding_keys (CP12B3) ──────────────────────────────
+    // Server-side R2 key lookup table.
+    // NEVER exposed via any API response — used only by the authenticated
+    // preview endpoint to stream image bytes directly.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS image_safeguard_finding_keys (
+        finding_id  VARCHAR(36)   NOT NULL PRIMARY KEY,
+        -- R2 object key — NEVER returned in any API response
+        r2_key      VARCHAR(1024) NOT NULL,
+        created_at  DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        CONSTRAINT fk_isfk_finding FOREIGN KEY (finding_id)
+          REFERENCES image_safeguard_findings(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
     console.log('[migration] image_safeguard_scan_runs: ready');
   } catch (err) {

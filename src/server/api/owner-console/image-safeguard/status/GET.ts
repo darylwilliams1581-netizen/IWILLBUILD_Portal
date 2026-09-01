@@ -26,6 +26,7 @@ import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getImageSafeguardCapability } from '../../../../lib/imageSafeguardCapability.js';
 import { getLastSuccessfulScanAt, getRecentRuns } from '../../../../lib/imageSafeguard/scanRunService.js';
+import { MAX_BATCH_SIZE } from '../../../../lib/imageSafeguard/r2Scanner.js';
 
 const ZERO_COUNTS = {
   pending: 0,
@@ -82,6 +83,7 @@ export default async function handler(_req: Request, res: Response) {
       lastSuccessfulScanAt: lastSuccessfulScanAt?.toISOString() ?? null,
       lastRun,
       counts,
+      maxBatchSize:         MAX_BATCH_SIZE,
     });
   } catch {
     return res.status(500).json({ error: 'Failed to retrieve safeguard status.' });

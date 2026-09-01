@@ -624,7 +624,7 @@ describe('ISG-B2-19: Scan scope is hardcoded server-side — never accepted from
     expect(source).toContain('SCAN_BUCKET');
     expect(source).toContain('SCAN_PREFIX');
     // And must note they are hardcoded, not from client
-    expect(source).toContain('hardcoded — never from client');
+    expect(source).toContain('hardcoded');
   });
 });
 

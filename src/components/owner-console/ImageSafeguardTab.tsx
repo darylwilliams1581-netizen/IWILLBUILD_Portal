@@ -21,6 +21,8 @@
  *  - Never changes safeguard records directly.
  *  - Disabled Run button has accessible aria-describedby explanation.
  *  - Language: "Privacy signal detected — human review recommended."
+ *
+ * CP12B3 — Added maxBatchSize display, finding preview thumbnails.
  */
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
@@ -81,6 +83,21 @@ interface SafeguardStatus {
   lastSuccessfulScanAt: string | null;
   lastRun: ScanRunRecord | null;
   counts: SafeguardCounts;
+  maxBatchSize?: number;
+}
+
+interface FindingRecord {
+  id: string;
+  scanRunId: string;
+  assetId: string;
+  companyId: number;
+  result: 'privacy_signal' | 'failed' | 'clear' | 'unavailable';
+  faceCount: number;
+  detectorName: string | null;
+  reviewed: boolean;
+  reviewerNote: string | null;
+  reviewedAt: string | null;
+  scannedAt: string;
 }
 
 // ── Status row config ─────────────────────────────────────────────────────────
@@ -147,6 +164,129 @@ function runStatusBadge(status: ScanRunRecord['runStatus']): ReactNode {
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>{label}</span>;
 }
 
+// ── FindingRow component ──────────────────────────────────────────────────────
+
+interface FindingRowProps {
+  finding: FindingRecord;
+  onReviewed: () => void;
+}
+
+function FindingRow({ finding, onReviewed }: FindingRowProps) {
+  const [note, setNote] = useState('');
+  const [decision, setDecision] = useState<'acceptable' | 'policy_concern' | 'escalated' | ''>('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(finding.reviewed);
+  const [previewUrl] = useState(
+    `/api/owner-console/image-safeguard/findings/${finding.id}/preview`,
+  );
+  const [previewError, setPreviewError] = useState(false);
+
+  const handleSave = async () => {
+    if (!decision || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/owner-console/image-safeguard/findings/${finding.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, note: note.trim() || null }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        onReviewed();
+      }
+    } catch { /* silent */ }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className={`px-5 py-4 ${saved ? 'opacity-60' : ''}`}>
+      <div className="flex gap-4">
+        {/* Preview thumbnail */}
+        <div className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+          {previewError ? (
+            <span className="text-xs text-slate-400 text-center px-1">Preview unavailable</span>
+          ) : (
+            <img
+              src={previewUrl}
+              alt="Finding preview"
+              className="w-full h-full object-cover"
+              onError={() => setPreviewError(true)}
+              loading="lazy"
+            />
+          )}
+        </div>
+
+        {/* Finding details */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium">
+              <Eye size={11} />
+              Privacy signal
+            </span>
+            {saved && (
+              <span className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5">
+                <CheckSquare size={11} />
+                Reviewed
+              </span>
+            )}
+            <span className="text-xs text-slate-400 font-mono">{finding.id.slice(0, 8)}…</span>
+          </div>
+
+          <p className="text-xs text-slate-500 mb-2">
+            Scanned: {fmtDate(finding.scannedAt)}
+            {finding.faceCount > 0 && (
+              <span className="ml-2 text-slate-400">· {finding.faceCount} face{finding.faceCount !== 1 ? 's' : ''} detected</span>
+            )}
+          </p>
+
+          {!saved && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {(['acceptable', 'policy_concern', 'escalated'] as const).map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDecision(d)}
+                    className={`text-xs rounded-lg px-3 py-1.5 border font-medium transition-colors ${
+                      decision === d
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {d === 'acceptable' ? 'Acceptable' : d === 'policy_concern' ? 'Policy concern' : 'Escalated'}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Brief internal note (optional, max 500 chars)"
+                maxLength={500}
+                rows={2}
+                className="w-full text-xs rounded-lg border border-slate-200 px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={!decision || saving}
+                className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 bg-violet-600 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-700 transition-colors"
+              >
+                {saving ? <Loader2 size={11} className="animate-spin" /> : <CheckSquare size={11} />}
+                Save review
+              </button>
+            </div>
+          )}
+
+          {saved && finding.reviewerNote && (
+            <p className="text-xs text-slate-500 italic">Note: {finding.reviewerNote}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ImageSafeguardTab() {
@@ -172,6 +312,11 @@ export default function ImageSafeguardTab() {
   // UI state
   const [howOpen, setHowOpen] = useState(false);
   const [runsOpen, setRunsOpen] = useState(false);
+  const [findingsOpen, setFindingsOpen] = useState(false);
+
+  // Findings state (privacy_signal items for review)
+  const [findings, setFindings] = useState<FindingRecord[]>([]);
+  const [findingsLoading, setFindingsLoading] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -209,10 +354,23 @@ export default function ImageSafeguardTab() {
     } catch { /* silent */ }
   }, []);
 
+  const fetchFindings = useCallback(async () => {
+    setFindingsLoading(true);
+    try {
+      const res = await fetch('/api/owner-console/image-safeguard/findings?result=privacy_signal&limit=20', { credentials: 'include' });
+      if (res.ok) {
+        const data = (await res.json()) as { findings: FindingRecord[] };
+        setFindings(data.findings ?? []);
+      }
+    } catch { /* silent */ }
+    finally { setFindingsLoading(false); }
+  }, []);
+
   useEffect(() => {
     void fetchStatus(false);
     void fetchRuns();
-  }, [fetchStatus, fetchRuns]);
+    void fetchFindings();
+  }, [fetchStatus, fetchRuns, fetchFindings]);
 
   const handleRefresh = () => {
     void fetchStatus(true);
@@ -333,6 +491,11 @@ export default function ImageSafeguardTab() {
                 <p className="text-xs text-slate-400 mt-1">
                   Last successful scan: {fmtDate(status.lastSuccessfulScanAt)}
                 </p>
+                {status.maxBatchSize !== undefined && (
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Max batch size: <strong>{status.maxBatchSize}</strong> images per run
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -562,6 +725,53 @@ export default function ImageSafeguardTab() {
                       <p className="text-xs text-red-600 mt-1">Error: {run.errorCode}</p>
                     )}
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Findings for review (privacy_signal) ── */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setFindingsOpen(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
+          aria-expanded={findingsOpen}
+        >
+          <div className="flex items-center gap-2">
+            <Eye size={15} className="text-amber-500" />
+            <span className="text-sm font-semibold text-slate-700">Findings for review</span>
+            {findings.length > 0 && (
+              <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium">{findings.length}</span>
+            )}
+          </div>
+          {findingsOpen ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
+        </button>
+
+        {findingsOpen && (
+          <div className="border-t border-slate-100">
+            {/* Disclaimer */}
+            <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
+              <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 leading-relaxed">
+                A privacy signal means human review is recommended — it is not a legal conclusion
+                or proof of inappropriate content. No automated action has been taken.
+              </p>
+            </div>
+
+            {findingsLoading ? (
+              <div className="px-5 py-6 flex items-center gap-2 text-sm text-slate-500">
+                <Loader2 size={14} className="animate-spin" />
+                Loading findings…
+              </div>
+            ) : findings.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-slate-500">No findings requiring review.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {findings.map(finding => (
+                  <FindingRow key={finding.id} finding={finding} onReviewed={() => void fetchFindings()} />
                 ))}
               </div>
             )}

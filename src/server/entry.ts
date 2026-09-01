@@ -671,6 +671,8 @@ import owner_console_image_safeguard_status_get_638 from "./api/owner-console/im
 // CP12B2 — Image Safeguard scan runs + findings
 import owner_console_image_safeguard_runs_get from "./api/owner-console/image-safeguard/runs/GET";
 import owner_console_image_safeguard_findings_patch from "./api/owner-console/image-safeguard/findings/[id]/PATCH";
+// CP12B3 — Image Safeguard finding preview
+import owner_console_image_safeguard_findings_preview_get from "./api/owner-console/image-safeguard/findings/preview/GET";
 import owner_console_library_items_get_639 from "./api/owner-console/library/items/GET";
 import owner_console_library_items_post_640 from "./api/owner-console/library/items/POST";
 import owner_console_library_items_from_template_post_641 from "./api/owner-console/library/items/from-template/POST";
@@ -4017,6 +4019,8 @@ app.get("/api/owner-console/image-safeguard/status", requirePlatformOwner, owner
 // CP12B2 — Image Safeguard scan runs + findings (platform-owner only)
 app.get("/api/owner-console/image-safeguard/runs", requirePlatformOwner, owner_console_image_safeguard_runs_get);
 app.patch("/api/owner-console/image-safeguard/findings/:id", requirePlatformOwner, owner_console_image_safeguard_findings_patch);
+// CP12B3 — Finding preview (audited — exposes potentially sensitive content)
+app.get("/api/owner-console/image-safeguard/findings/:findingId/preview", requirePlatformOwner, owner_console_image_safeguard_findings_preview_get);
 app.get("/api/owner-console/library/items", owner_console_library_items_get_639);
 app.post("/api/owner-console/library/items", owner_console_library_items_post_640);
 app.post("/api/owner-console/library/items/from-template", owner_console_library_items_from_template_post_641);
