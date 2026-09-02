@@ -28,7 +28,7 @@ export default function ImageSafeguardNotice({ className = '' }: ImageSafeguardN
     <p className={`flex items-center gap-1.5 text-xs text-muted-foreground/70 ${className}`}>
       <ShieldCheck size={11} className="shrink-0 text-muted-foreground/50" aria-hidden="true" />
       <span>
-        Images are protected by the IWILLBUILD Image Safeguard Protocol.{' '}
+        Job photos may be reviewed in a confined owner audit service. Only flags and notes are stored. Unlawful or policy-breaching content may be restricted and, where required, reported to eSafety or police. Clients are not notified of ordinary review flags.{' '}
         <Link
           to="/privacy"
           className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
