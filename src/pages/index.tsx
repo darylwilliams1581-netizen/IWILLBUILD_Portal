@@ -407,7 +407,7 @@ export default function HomePage() {
         '@id': `${site}/#organization`
       },
       datePublished: '2026-06-25',
-      dateModified: '2026-08-31'
+      dateModified: '2026-09-03'
     }]
   };
   return <>
