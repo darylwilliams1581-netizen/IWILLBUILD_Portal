@@ -22,6 +22,7 @@ import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
+import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1853,16 +1854,18 @@ export default function HomeScreen() {
   } = useSession();
 
   // ── Native permissions onboarding ─────────────────────────────────────────
-  // Show once after first login on a native device (iOS / Android).
-  // Delayed by 1.5s to ensure the Capacitor bridge is fully initialised before
-  // any permission plugin calls are made — avoids the "spinning forever" bug
-  // where requestPermissions() hangs because the bridge isn't ready yet.
+  // ── Terms acceptance gate — shown once on first use (web + native) ───────────
+  const [showTermsGate, setShowTermsGate] = useState(() => !hasAcceptedTerms());
+
+  // Show permissions onboarding AFTER terms are accepted (native only)
   const [showPermOnboarding, setShowPermOnboarding] = useState(false);
   useEffect(() => {
     if (!isNative() || hasCompletedOnboarding()) return;
+    // Only start the timer once terms have been accepted
+    if (showTermsGate) return;
     const t = setTimeout(() => setShowPermOnboarding(true), 1500);
     return () => clearTimeout(t);
-  }, []);
+  }, [showTermsGate]);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
@@ -1991,7 +1994,14 @@ export default function HomeScreen() {
       </div>;
   }
   return <>
-      {/* Permissions onboarding — shown once on native after first login */}
+      {/* Terms & Acceptable Use gate — shown once on first use (web + native) */}
+      {showTermsGate && (
+        <TermsAcceptanceGate
+          onAccepted={() => setShowTermsGate(false)}
+        />
+      )}
+
+      {/* Permissions onboarding — shown once on native after terms accepted */}
       {showPermOnboarding && <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />}
 
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0" style={{
