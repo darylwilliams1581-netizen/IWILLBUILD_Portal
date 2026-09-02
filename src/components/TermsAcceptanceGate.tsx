@@ -23,8 +23,11 @@ import { authClient } from '@/lib/auth/auth-client';
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 const TERMS_KEY = 'iwb_terms_accepted_v1';
+const DEV_TEST_EMAIL = 'support@iwillbuild.com';
 
-export function hasAcceptedTerms(): boolean {
+export function hasAcceptedTerms(email?: string): boolean {
+  // Developer test account always sees the gate — never skip it
+  if (email?.toLowerCase() === DEV_TEST_EMAIL) return false;
   try {
     return localStorage.getItem(TERMS_KEY) === 'true';
   } catch {
@@ -42,11 +45,13 @@ function markTermsAccepted(): void {
 
 interface Props {
   onAccepted: () => void;
+  userEmail?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function TermsAcceptanceGate({ onAccepted }: Props) {
+export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
+  const isDevAccount = userEmail?.toLowerCase() === DEV_TEST_EMAIL;
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -69,7 +74,8 @@ export default function TermsAcceptanceGate({ onAccepted }: Props) {
   }
 
   function handleAccept() {
-    markTermsAccepted();
+    // Don't persist acceptance for the dev test account — gate always re-shows
+    if (!isDevAccount) markTermsAccepted();
     setAccepted(true);
     setTimeout(() => onAccepted(), 350);
   }
@@ -88,6 +94,19 @@ export default function TermsAcceptanceGate({ onAccepted }: Props) {
         >
           {/* Header */}
           <div className="flex-none px-5 pt-safe-top pt-6 pb-4 border-b border-gray-800">
+
+            {/* Developer test account banner */}
+            {isDevAccount && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-500/15 border border-amber-500/40 px-3 py-2">
+                <span className="text-amber-400 text-xs font-bold tracking-wide uppercase shrink-0">
+                  Dev / Test Account
+                </span>
+                <span className="text-amber-300/80 text-xs leading-snug">
+                  This gate always shows for <strong className="text-amber-300">support@iwillbuild.com</strong> — acceptance is not persisted for this account.
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center gap-3 max-w-lg mx-auto">
               <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0">
                 <Shield size={18} className="text-white" />

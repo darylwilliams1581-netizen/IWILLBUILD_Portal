@@ -1852,10 +1852,16 @@ export default function HomeScreen() {
   const {
     session
   } = useSession();
+  const email = session?.user?.email ?? me?.user?.email ?? '';
 
-  // ── Native permissions onboarding ─────────────────────────────────────────
   // ── Terms acceptance gate — shown once on first use (web + native) ───────────
-  const [showTermsGate, setShowTermsGate] = useState(() => !hasAcceptedTerms());
+  // Dev account (support@iwillbuild.com) always sees the gate regardless of localStorage.
+  // Initialise conservatively (false = hidden) then re-evaluate once session resolves.
+  const [showTermsGate, setShowTermsGate] = useState(false);
+  useEffect(() => {
+    if (!email && loading) return; // session still loading — wait
+    setShowTermsGate(!hasAcceptedTerms(email));
+  }, [email, loading]);
 
   // Show permissions onboarding AFTER terms are accepted (native only)
   const [showPermOnboarding, setShowPermOnboarding] = useState(false);
@@ -1998,6 +2004,7 @@ export default function HomeScreen() {
       {showTermsGate && (
         <TermsAcceptanceGate
           onAccepted={() => setShowTermsGate(false)}
+          userEmail={email}
         />
       )}
 
