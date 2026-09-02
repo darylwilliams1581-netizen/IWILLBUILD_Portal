@@ -1,5 +1,5 @@
 /**
- * outlook.ts — mailto: compose helper for IWIIlBUILD
+ * outlook.ts — mailto: compose helper for IWIllBUILD
  *
  * Opens the user's default mail client (Outlook, Apple Mail, etc.) with a
  * pre-filled compose window.  No SMTP, no server calls, no attachments.
@@ -107,7 +107,7 @@ export type EmailContext =
 
 // ─── Context → OutlookEmailOptions ───────────────────────────────────────────
 
-const FOOTER = 'Sent from IWIIlBUILD — https://iwillbuild.com';
+const FOOTER = 'Sent from IWIllBUILD — https://iwillbuild.com';
 const DIVIDER = '─────────────────────────────────────';
 
 export function buildOptionsFromContext(ctx: EmailContext): OutlookEmailOptions {

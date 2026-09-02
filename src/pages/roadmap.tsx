@@ -1,5 +1,5 @@
 /**
- * /roadmap  — IWIIlBUILD Portal Product Roadmap
+ * /roadmap  — IWIllBUILD Portal Product Roadmap
  * Internal-only page (noindex). Accessible from Owner Console / Developer Console.
  */
 import { roadmap } from 'virtual:content';
@@ -141,7 +141,7 @@ const EPICS: Epic[] = [
   // ── PHASE 1 ──────────────────────────────────────────────────────────────
   {
     id: 'p1-studio',
-    title: 'Epic 1 — IWIIlBUILD Studio',
+    title: 'Epic 1 — IWIllBUILD Studio',
     icon: Layers,
     color: 'orange',
     phase: 'Phase 1',
@@ -1289,8 +1289,8 @@ export default function RoadmapPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>Product Roadmap — IWIIlBUILD Portal</title>
-        <meta name="description" content="Internal product roadmap for the IWIIlBUILD Portal — epics, stories, release gates and sprint priorities." />
+        <title>Product Roadmap — IWIllBUILD Portal</title>
+        <meta name="description" content="Internal product roadmap for the IWIllBUILD Portal — epics, stories, release gates and sprint priorities." />
         <link rel="canonical" href="https://iwillbuild.com/roadmap" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -1303,7 +1303,7 @@ export default function RoadmapPage() {
               <Rocket size={18} className="text-primary" />
             </div>
             <div>
-              <h1 className="font-heading font-bold text-base text-foreground leading-none">IWIIlBUILD Portal — Product Roadmap</h1>
+              <h1 className="font-heading font-bold text-base text-foreground leading-none">IWIllBUILD Portal — Product Roadmap</h1>
               <p className="text-xs text-muted-foreground mt-0.5">Internal · Updated July 2026</p>
             </div>
           </div>
@@ -1439,7 +1439,7 @@ export default function RoadmapPage() {
         </section>
 
         <p className="text-center text-[11px] text-muted-foreground pb-4">
-          IWIIlBUILD Portal — Internal Roadmap · Not for distribution · {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+          IWIllBUILD Portal — Internal Roadmap · Not for distribution · {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
     </div>

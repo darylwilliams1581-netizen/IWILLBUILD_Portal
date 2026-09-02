@@ -23,7 +23,7 @@ export default function TimesheetsPage() {
   return (
     <>
       <Helmet>
-        <title>Timesheets — IWIIlBUILD</title>
+        <title>Timesheets — IWIllBUILD</title>
         <meta name="description" content="Timesheets — redirecting to Finance workspace." />
         <link rel="canonical" href="https://iwillbuild.com/finance" />
         <meta name="robots" content="noindex,nofollow" />

@@ -313,7 +313,7 @@ export default function ClientRescueTab() {
                     <span className="text-xs font-bold text-white">Suggested call wording</span>
                   </div>
                   <button
-                    onClick={() => copyWording(`Hi ${selected.user_name.split(' ')[0]}, it's Daryl from IWIIlBUILD. Our system flagged that you may have had trouble with ${selected.attempted_action || 'something in the app'}. I wanted to call before it became a bigger headache and make sure we get you working.`)}
+                    onClick={() => copyWording(`Hi ${selected.user_name.split(' ')[0]}, it's Daryl from IWIllBUILD. Our system flagged that you may have had trouble with ${selected.attempted_action || 'something in the app'}. I wanted to call before it became a bigger headache and make sure we get you working.`)}
                     className="flex items-center gap-1 text-[10px] text-violet-200 hover:text-white font-semibold"
                   >
                     {copiedWording ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
@@ -321,7 +321,7 @@ export default function ClientRescueTab() {
                 </div>
                 <div className="p-4">
                   <p className="text-sm text-slate-700 leading-relaxed italic">
-                    "Hi {selected.user_name.split(' ')[0]}, it's Daryl from IWIIlBUILD. Our system flagged that you may have had trouble with {selected.attempted_action || 'something in the app'}. I wanted to call before it became a bigger headache and make sure we get you working."
+                    "Hi {selected.user_name.split(' ')[0]}, it's Daryl from IWIllBUILD. Our system flagged that you may have had trouble with {selected.attempted_action || 'something in the app'}. I wanted to call before it became a bigger headache and make sure we get you working."
                   </p>
                 </div>
               </div>

@@ -708,17 +708,17 @@ export default function OwnerConsolePage() {
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <Helmet>
-          <title>Developer Console — IWIIlBUILD Portal</title>
+          <title>Developer Console — IWIllBUILD Portal</title>
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
           <link rel="canonical" href="https://iwillbuild.com/owner-console" />
           <meta name="robots" content="noindex" />
-          <meta property="og:title" content="Developer Console — IWIIlBUILD Portal" />
+          <meta property="og:title" content="Developer Console — IWIllBUILD Portal" />
           <meta property="og:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://iwillbuild.com/owner-console" />
           <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
           <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content="Developer Console — IWIIlBUILD Portal" />
+          <meta name="twitter:title" content="Developer Console — IWIllBUILD Portal" />
           <meta name="twitter:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         </Helmet>
@@ -1226,7 +1226,7 @@ export default function OwnerConsolePage() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
                     <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Reports are based on data currently in your IWIIlBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
+                      Reports are based on data currently in your IWIllBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
                     </p>
                   </div>
                 </div>}

@@ -1,7 +1,7 @@
 /**
  * imageSafeguard/types.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * CP12A — Shared type contract for the IWIIlBUILD Image Safeguard Protocol.
+ * CP12A — Shared type contract for the IWIllBUILD Image Safeguard Protocol.
  *
  * DESIGN PRINCIPLES:
  *  - Never store raw image bytes, face crops, signed URLs, credentials, or
@@ -28,7 +28,7 @@
  *
  * UPLOAD EXPERIENCE:
  *  No per-upload modal. No checkbox per photo. Uploads proceed normally.
- *  A subtle notice "Images are protected by the IWIIlBUILD Image Safeguard
+ *  A subtle notice "Images are protected by the IWIllBUILD Image Safeguard
  *  Protocol." is shown near upload controls, linking to privacy information.
  *  The batch confirmation is shown ONCE when images are emailed, shared,
  *  exported, or added to a public/guest link — not on upload.

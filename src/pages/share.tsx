@@ -441,7 +441,7 @@ function SecureShareViewer({
   const isMaxed = link?.maxUses !== null && link?.maxUses !== undefined && (link?.useCount ?? 0) >= link.maxUses;
   return <>
       <Helmet>
-        <title>{link ? `${link.title} — IWIIlBUILD` : 'Secure Share — IWIIlBUILD'}</title>
+        <title>{link ? `${link.title} — IWIllBUILD` : 'Secure Share — IWIllBUILD'}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="min-h-screen bg-slate-50">
@@ -450,7 +450,7 @@ function SecureShareViewer({
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <Link2 size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">IWIIlBUILD</span>
+            <span className="font-bold text-slate-800 text-sm">IWIllBUILD</span>
           </div>
           {link && <>
               <span className="text-slate-300">|</span>
@@ -530,7 +530,7 @@ function SecureShareViewer({
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{link.title}</p>
-                      <p className="text-xs text-slate-400">Shared securely via IWIIlBUILD</p>
+                      <p className="text-xs text-slate-400">Shared securely via IWIllBUILD</p>
                     </div>
                   </div>
 
@@ -553,7 +553,7 @@ function SecureShareViewer({
                 </div>}
 
               <p className="text-center text-xs text-slate-400">
-                Shared securely via IWIIlBUILD · {new Date(link.createdAt).toLocaleDateString('en-AU')}
+                Shared securely via IWIllBUILD · {new Date(link.createdAt).toLocaleDateString('en-AU')}
               </p>
             </div>}
         </main>
@@ -637,8 +637,8 @@ export default function SharePage() {
   };
   return <>
       <Helmet>
-        <title>{doc ? `${doc.title} — IWIIlBUILD` : 'Shared Document — IWIIlBUILD'}</title>
-        <meta name="description" content="View a shared document from IWIIlBUILD." />
+        <title>{doc ? `${doc.title} — IWIllBUILD` : 'Shared Document — IWIllBUILD'}</title>
+        <meta name="description" content="View a shared document from IWIllBUILD." />
         <link rel="canonical" href={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${token ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -650,7 +650,7 @@ export default function SharePage() {
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <FileText size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">IWIIlBUILD</span>
+            <span className="font-bold text-slate-800 text-sm">IWIllBUILD</span>
           </div>
           {doc && <>
               <span className="text-slate-300">|</span>

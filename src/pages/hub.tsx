@@ -1,5 +1,5 @@
 /**
- * /hub — IWIIlBUILD Application Hub
+ * /hub — IWIllBUILD Application Hub
  *
  * Blank authenticated page. Hub modules will be added in a future stage.
  */
@@ -11,8 +11,8 @@ export default function HubPage() {
     <div className="portal-page">
       <PortalSidebar />
       <Helmet>
-        <title>Hub — IWIIlBUILD</title>
-        <meta name="description" content="IWIIlBUILD application hub." />
+        <title>Hub — IWIllBUILD</title>
+        <meta name="description" content="IWIllBUILD application hub." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/hub" />
       </Helmet>
@@ -20,12 +20,12 @@ export default function HubPage() {
       <div className="portal-main">
         {/* ── Desktop page header — sticks below the dock (112px) ── */}
         <header className="op-page-header hidden md:flex sticky top-[112px] z-20">
-          <span className="op-page-title">IWIIlBUILD Hub</span>
+          <span className="op-page-title">IWIllBUILD Hub</span>
         </header>
 
         {/* ── Mobile header — sticks at top (no top dock on mobile) ── */}
         <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 sticky top-0 z-20 safe-top">
-          <h1 className="font-heading font-bold text-base text-gray-900">IWIIlBUILD Hub</h1>
+          <h1 className="font-heading font-bold text-base text-gray-900">IWIllBUILD Hub</h1>
         </header>
 
         {/* ── Blank content area ── */}

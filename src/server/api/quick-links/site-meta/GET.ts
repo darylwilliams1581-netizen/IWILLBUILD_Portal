@@ -107,7 +107,7 @@ export default async function handler(req: Request, res: Response) {
     const remote = await fetch(pageUrl, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; IWIIlBUILDBot/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; IWIllBUILDBot/1.0)',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-AU,en;q=0.9',
       },

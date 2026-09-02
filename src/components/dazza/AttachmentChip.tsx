@@ -8,7 +8,7 @@
  *   - Progress bar during upload
  *   - Remove control (detaches from pending question — does NOT delete stored source)
  *
- * Uses the existing IWIIlBUILD/Dazza visual language.
+ * Uses the existing IWIllBUILD/Dazza visual language.
  */
 
 import { X, FileText, Lock, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';

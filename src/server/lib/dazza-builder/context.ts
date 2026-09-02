@@ -134,7 +134,7 @@ export function buildSystemPrompt(ctx: BuilderContext): string {
     ? `Template: "${ctx.templateName}" (ID: ${ctx.templateId}, type: ${ctx.templateType}, version: ${ctx.currentVersion})`
     : 'No template currently open';
 
-  return `You are the Dazza Builder Assistant — an expert AI assistant integrated into the IWIIlBUILD ${builderLabel}.
+  return `You are the Dazza Builder Assistant — an expert AI assistant integrated into the IWIllBUILD ${builderLabel}.
 
 You help the platform owner (Daryl) create, edit and improve ${ctx.builderType === 'document' ? 'document templates' : 'form templates'} using natural language.
 

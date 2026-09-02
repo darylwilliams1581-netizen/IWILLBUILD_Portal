@@ -101,18 +101,18 @@ export default function SettingsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Settings — IWIIlBUILD Portal</title>
-        <meta name="description" content="Configure company profile, users, permissions and data settings for the IWIIlBUILD portal." />
+        <title>Settings — IWIllBUILD Portal</title>
+        <meta name="description" content="Configure company profile, users, permissions and data settings for the IWIllBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/settings" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Settings — IWIIlBUILD Portal" />
-        <meta property="og:description" content="Configure company profile, users, permissions and data settings for the IWIIlBUILD portal." />
+        <meta property="og:title" content="Settings — IWIllBUILD Portal" />
+        <meta property="og:description" content="Configure company profile, users, permissions and data settings for the IWIllBUILD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/settings" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Settings — IWIIlBUILD Portal" />
-        <meta name="twitter:description" content="Configure company profile, users, permissions and data settings for the IWIIlBUILD portal." />
+        <meta name="twitter:title" content="Settings — IWIllBUILD Portal" />
+        <meta name="twitter:description" content="Configure company profile, users, permissions and data settings for the IWIllBUILD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 

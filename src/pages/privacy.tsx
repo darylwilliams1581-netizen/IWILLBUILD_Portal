@@ -5,11 +5,11 @@ const LAST_UPDATED = '13 July 2026';
 export default function PrivacyPage() {
   return <>
       <Helmet>
-        <title>Privacy Policy — IWIIlBUILD</title>
-        <meta name="description" content="How IWIIlBUILD collects, uses, discloses and protects your personal information. Read our Privacy Policy for the fleet and construction management portal." />
+        <title>Privacy Policy — IWIllBUILD</title>
+        <meta name="description" content="How IWIllBUILD collects, uses, discloses and protects your personal information. Read our Privacy Policy for the fleet and construction management portal." />
         <link rel="canonical" href="https://iwillbuild.com/privacy" />
-        <meta property="og:title" content="Privacy Policy — IWIIlBUILD" />
-        <meta property="og:description" content="How IWIIlBUILD collects, uses, discloses and protects your personal information." />
+        <meta property="og:title" content="Privacy Policy — IWIllBUILD" />
+        <meta property="og:description" content="How IWIllBUILD collects, uses, discloses and protects your personal information." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/privacy" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
@@ -19,9 +19,9 @@ export default function PrivacyPage() {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
           '@id': 'https://iwillbuild.com/privacy#webpage',
-          name: 'Privacy Policy — IWIIlBUILD',
+          name: 'Privacy Policy — IWIllBUILD',
           url: 'https://iwillbuild.com/privacy',
-          description: 'How IWIIlBUILD collects, uses, discloses and protects your personal information.',
+          description: 'How IWIllBUILD collects, uses, discloses and protects your personal information.',
           isPartOf: {
             '@id': 'https://iwillbuild.com/#website'
           },
@@ -73,7 +73,7 @@ export default function PrivacyPage() {
               <strong style={{
               color: '#f1f5f9',
               fontSize: 15
-            }}>IWIIlBUILD</strong>
+            }}>IWIllBUILD</strong>
             </Link>
             <Link to="/" style={{
             display: 'flex',
@@ -136,7 +136,7 @@ export default function PrivacyPage() {
             fontSize: 15,
             margin: 0
           }}>
-              Last updated: {LAST_UPDATED}&nbsp;·&nbsp;IWIIlBUILD, Queensland, Australia
+              Last updated: {LAST_UPDATED}&nbsp;·&nbsp;IWIllBUILD, Queensland, Australia
             </p>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function PrivacyPage() {
 
             <Section title="1. About this policy">
               <p>
-                IWIIlBUILD (ABN 89 791 350 823) is a construction and job management software platform operated from Queensland, Australia (<strong style={{
+                IWIllBUILD (ABN 89 791 350 823) is a construction and job management software platform operated from Queensland, Australia (<strong style={{
                 color: '#f1f5f9'
               }}>"we"</strong>, <strong style={{
                 color: '#f1f5f9'
@@ -164,7 +164,7 @@ export default function PrivacyPage() {
               }}>"our"</strong>).
               </p>
               <p>
-                This Privacy Policy explains how we collect, hold, use and disclose personal information in accordance with the <em>Privacy Act 1988</em> (Cth) and the Australian Privacy Principles (APPs). It applies to all users of the IWIIlBUILD portal, website, and related services (collectively, the <strong style={{
+                This Privacy Policy explains how we collect, hold, use and disclose personal information in accordance with the <em>Privacy Act 1988</em> (Cth) and the Australian Privacy Principles (APPs). It applies to all users of the IWIllBUILD portal, website, and related services (collectively, the <strong style={{
                 color: '#f1f5f9'
               }}>"Service"</strong>).
               </p>
@@ -214,12 +214,12 @@ export default function PrivacyPage() {
               <p>We may disclose your personal information to:</p>
               <ul>
                 <li><strong>Service providers</strong> — third-party vendors who assist us in operating the Service, including cloud hosting providers, database infrastructure, email delivery services, and payment processors. These providers are contractually required to handle your information securely and only for the purposes we specify.</li>
-                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWIIlBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{
+                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWIllBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{
                   color: '#7c3aed'
                 }}>stripe.com/au/privacy</a>.</li>
                 <li><strong>Accounting integrations (e.g. Xero)</strong> — if you choose to connect a third-party accounting platform, data such as approved invoices and customer contacts may be synced to that platform at your direction. You can disconnect integrations at any time from <strong>Settings → Integrations</strong>. Data already transmitted to a third-party platform is governed by that platform's privacy policy.</li>
                 <li><strong>Your company administrator</strong> — account owners and administrators within your company workspace can access data created by team members in accordance with their role permissions.</li>
-                <li><strong>Legal and regulatory authorities</strong> — where required by law, court order, or to protect the rights, property, or safety of IWIIlBUILD, our users, or the public.</li>
+                <li><strong>Legal and regulatory authorities</strong> — where required by law, court order, or to protect the rights, property, or safety of IWIllBUILD, our users, or the public.</li>
                 <li><strong>Business transfers</strong> — in the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction. We will notify affected users before personal information is transferred and becomes subject to a different privacy policy.</li>
               </ul>
               <p>We do not otherwise disclose your personal information to third parties without your consent.</p>
@@ -325,7 +325,7 @@ export default function PrivacyPage() {
               <p>
                 <strong style={{
                 color: '#f1f5f9'
-              }}>IWIIlBUILD</strong><br />
+              }}>IWIllBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
                 <a href="mailto:support@iwillbuild.com" style={{
@@ -376,7 +376,7 @@ export default function PrivacyPage() {
           color: '#475569',
           fontSize: 12,
           margin: 0
-        }}>© {new Date().getFullYear()} IWIIlBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
+        }}>© {new Date().getFullYear()} IWIllBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
         </footer>
 
       </div>

@@ -548,12 +548,12 @@ export default function LoginPage() {
   }
   return <div className="relative min-h-screen flex items-center justify-center overflow-y-auto bg-[#0F1117] py-8">
       <Helmet>
-        <title>Sign In — IWIIlBUILD Portal</title>
-        <meta name="description" content="Sign in to the IWIIlBUILD portal to manage jobs, crews, fleet, safety and more." />
+        <title>Sign In — IWIllBUILD Portal</title>
+        <meta name="description" content="Sign in to the IWIllBUILD portal to manage jobs, crews, fleet, safety and more." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/login" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Sign In — IWIIlBUILD Portal" />
+        <meta property="og:title" content="Sign In — IWIllBUILD Portal" />
         <meta property="og:description" content="Sign in to manage your construction jobs, fleet, safety docs and team." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/login" />
@@ -605,7 +605,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
             <div className="flex items-center justify-center mb-6">
-              <img src="/assets/logo.png" alt="IWIIlBUILD" className="h-12 w-auto object-contain" />
+              <img src="/assets/logo.png" alt="IWIllBUILD" className="h-12 w-auto object-contain" />
             </div>
             <h1 className="font-heading font-bold text-xl text-white text-center">
               Portal Sign In
@@ -944,7 +944,7 @@ export default function LoginPage() {
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
             <p className="text-xs text-white/25">
-              IWIIlBUILD Pty Ltd &mdash; Authorised personnel only
+              IWIllBUILD Pty Ltd &mdash; Authorised personnel only
             </p>
           </div>
         </div>
@@ -954,7 +954,7 @@ export default function LoginPage() {
           {isNativeApp ? <>
               <Link to="/subscribe" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors font-medium">
                 <Users size={12} />
-                New to IWIIlBUILD? Start a free trial
+                New to IWIllBUILD? Start a free trial
               </Link>
               <button type="button" onClick={() => openExternalUrl(WEB_PORTAL_URL)} className="flex items-center gap-1.5 text-xs text-white/25 hover:text-primary transition-colors">
                 <ExternalLink size={12} />

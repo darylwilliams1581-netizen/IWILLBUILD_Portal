@@ -10,7 +10,7 @@ import type { ResultSetHeader } from 'mysql2';
 
 const REVIEWER_EMAIL = 'support@iwillbuild.com';
 const REVIEWER_NAME  = 'Apple Reviewer';
-const COMPANY_NAME   = 'IWILLBUILD App Review Demo';
+const COMPANY_NAME   = 'IWIllBUILD App Review Demo';
 const PLAN           = 'team';
 const SUB_STATUS     = 'active';
 

@@ -703,7 +703,7 @@ export function SwmsPrintModal({
               <p className="text-[9px] text-amber-800 leading-relaxed"><strong>Disclaimer:</strong> This Safe Work Method Statement has been prepared to assist in managing workplace health and safety risks. It is the responsibility of the principal contractor, site supervisor, and all workers to ensure this document is reviewed, understood, and followed at all times.</p>
             </div>
             <div className="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-200 pt-3">
-              <span>IWIIlBUILD Portal — Safety Management System</span>
+              <span>IWIllBUILD Portal — Safety Management System</span>
               <span>Rev {swms.revision_number ?? '1'} · Printed {today}</span>
             </div>
           </div>

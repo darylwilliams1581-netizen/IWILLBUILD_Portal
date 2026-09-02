@@ -105,17 +105,17 @@ export default function JobsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Jobs — IWIIlBUILD Portal</title>
+        <title>Jobs — IWIllBUILD Portal</title>
         <meta name="description" content="Manage and track all construction jobs — schedules, crews, attendance, forms and files in one place." />
         <link rel="canonical" href="https://iwillbuild.com/jobs" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Jobs — IWIIlBUILD Portal" />
+        <meta property="og:title" content="Jobs — IWIllBUILD Portal" />
         <meta property="og:description" content="Manage and track all construction jobs — schedules, crews, attendance, forms and files in one place." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/jobs" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Jobs — IWIIlBUILD Portal" />
+        <meta name="twitter:title" content="Jobs — IWIllBUILD Portal" />
         <meta name="twitter:description" content="Manage and track all construction jobs — schedules, crews, attendance, forms and files in one place." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>

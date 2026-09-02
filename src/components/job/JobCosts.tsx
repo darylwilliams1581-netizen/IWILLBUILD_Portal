@@ -650,7 +650,7 @@ export default function JobCosts({ jobId, onRegisterAddEntry }: Props) {
                 <a href={exportUrl('standard')} download className="flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-muted transition-colors">
                   <FileText size={12} className="text-primary" />
                   <div>
-                    <p className="font-semibold">IWIIlBUILD Standard</p>
+                    <p className="font-semibold">IWIllBUILD Standard</p>
                     <p className="text-muted-foreground">Full ledger CSV</p>
                   </div>
                 </a>

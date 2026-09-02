@@ -349,13 +349,13 @@ export default function DocumentViewerPage() {
   })();
   return <>
       <Helmet>
-        <title>{doc ? `${doc.title} — IWIIlBUILD` : 'Document — IWIIlBUILD'}</title>
-        <meta name="description" content={doc ? `View and manage ${doc.title} in IWIIlBUILD.` : 'Internal document viewer — IWIIlBUILD portal.'} />
+        <title>{doc ? `${doc.title} — IWIllBUILD` : 'Document — IWIllBUILD'}</title>
+        <meta name="description" content={doc ? `View and manage ${doc.title} in IWIllBUILD.` : 'Internal document viewer — IWIllBUILD portal.'} />
         <link rel="canonical" href={`https://iwillbuild.com/documents/${id ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
         {/* OG tags — required by SEO checker even on noindex pages */}
-        <meta property="og:title" content={doc ? `${doc.title} — IWIIlBUILD` : 'Document — IWIIlBUILD'} />
-        <meta property="og:description" content={doc ? `View and manage ${doc.title} in IWIIlBUILD.` : 'Internal document viewer — IWIIlBUILD portal.'} />
+        <meta property="og:title" content={doc ? `${doc.title} — IWIllBUILD` : 'Document — IWIllBUILD'} />
+        <meta property="og:description" content={doc ? `View and manage ${doc.title} in IWIllBUILD.` : 'Internal document viewer — IWIllBUILD portal.'} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://iwillbuild.com/documents/${id ?? ''}`} />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />

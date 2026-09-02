@@ -168,7 +168,7 @@ function buildRepairPrompt(cases: BugReportRow[]): string {
   });
 
   return [
-    '# IWIIlBUILD Bug Repair Session',
+    '# IWIllBUILD Bug Repair Session',
     '',
     'Work through the selected bug cases below.',
     '',

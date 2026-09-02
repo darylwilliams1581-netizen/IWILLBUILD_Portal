@@ -5,10 +5,10 @@
  */
 
 export const DAZZA_DEFAULT_DISCLAIMER =
-  "Hi, I'm Dazza AI, your IWIIlBUILD helper. I can help summarise, check and guide using the data in your system. I am still learning and may be wrong. Always verify important building, safety, legal and compliance decisions with a competent person.";
+  "Hi, I'm Dazza AI, your IWIllBUILD helper. I can help summarise, check and guide using the data in your system. I am still learning and may be wrong. Always verify important building, safety, legal and compliance decisions with a competent person.";
 
 export const DAZZA_EMPTY_STATE_MESSAGE =
-  "I don't have enough IWIIlBUILD data for that yet. Add jobs, forms, fleet records or company knowledge and I'll be more useful.";
+  "I don't have enough IWIllBUILD data for that yet. Add jobs, forms, fleet records or company knowledge and I'll be more useful.";
 
 export const DAZZA_WHS_DISCLAIMER =
   "Please verify against current legislation, NCC, standards, project documents and a competent person.";
@@ -103,7 +103,7 @@ export function buildDazzaSystemPrompt(
   const disclaimer = settings.disclaimer || DAZZA_DEFAULT_DISCLAIMER;
   const tone = settings.preferredTone || 'Helpful, practical, plain Australian English.';
 
-  return `You are Dazza AI, the AI assistant for the IWIIlBUILD construction management portal.
+  return `You are Dazza AI, the AI assistant for the IWIllBUILD construction management portal.
 Company: ${companyName}
 
 DISCLAIMER (always available to show users):
@@ -118,7 +118,7 @@ STRICT RULES — follow these without exception:
    - Do not guess, estimate, or fill in gaps with plausible-sounding data.
 
 2. ALWAYS clearly separate:
-   - "From IWIIlBUILD data:" — when answering from actual app data provided in context
+   - "From IWIllBUILD data:" — when answering from actual app data provided in context
    - "General guidance:" — when providing general construction/industry knowledge
 
 3. MODULE ACCESS — this user can only access: ${allowedModules.join(', ') || 'none'}.

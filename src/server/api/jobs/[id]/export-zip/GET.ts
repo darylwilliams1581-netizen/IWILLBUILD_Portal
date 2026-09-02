@@ -170,7 +170,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── README ────────────────────────────────────────────────────────────────
     const readme = [
-      `IWIIlBUILD — Job Pack`,
+      `IWIllBUILD — Job Pack`,
       `=====================`,
       ``,
       `Job Number:  ${jobNumber}`,

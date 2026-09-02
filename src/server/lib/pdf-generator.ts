@@ -68,7 +68,7 @@ function drawHeader(pdfLib: PdfLib, page: PDFPageType, boldFont: PDFFontType, re
   // 3pt accent rule across full width
   page.drawLine({ start: { x: 0, y: PAGE_H - 3 }, end: { x: PAGE_W, y: PAGE_H - 3 }, thickness: 3, color: ACCENT });
   // Company name
-  drawText(page, 'IWIIlBUILD', MARGIN, PAGE_H - 22, boldFont, 13, BLACK);
+  drawText(page, 'IWIllBUILD', MARGIN, PAGE_H - 22, boldFont, 13, BLACK);
   // Document title
   drawText(page, title.toUpperCase(), MARGIN, PAGE_H - 38, boldFont, 10, BLACK);
   if (subtitle) {
@@ -88,7 +88,7 @@ function drawFooter(pdfLib: PdfLib, page: PDFPageType, regularFont: PDFFontType,
   const RULE  = rgb(0.80, 0.80, 0.80);
   // Thin rule above footer text — no filled band
   page.drawLine({ start: { x: MARGIN, y: 22 }, end: { x: PAGE_W - MARGIN, y: 22 }, thickness: 0.5, color: RULE });
-  drawText(page, 'IWIIlBUILD Portal — Confidential', MARGIN, 9, regularFont, 7, MUTED);
+  drawText(page, 'IWIllBUILD Portal — Confidential', MARGIN, 9, regularFont, 7, MUTED);
   const pg = _totalPages ? `Page ${pageNum} of ${_totalPages}` : `Page ${pageNum}`;
   const pw = regularFont.widthOfTextAtSize(pg, 7);
   drawText(page, pg, PAGE_W - MARGIN - pw, 9, regularFont, 7, MUTED);
@@ -501,7 +501,7 @@ export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Arra
     ? `Job #${data.job_number} — ${data.job_name ?? ''}`
     : (data.job_name ?? '');
 
-  const companyDisplay = data.company_name ?? 'IWIIlBUILD';
+  const companyDisplay = data.company_name ?? 'IWIllBUILD';
 
   // ── helpers ───────────────────────────────────────────────────────────────────
   function hRule(pg: PDFPageType, yPos: number) {

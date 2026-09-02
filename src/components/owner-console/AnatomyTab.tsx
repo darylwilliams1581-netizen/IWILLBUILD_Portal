@@ -362,7 +362,7 @@ export default function AnatomyTab() {
         </div>
         <div className="p-4 flex flex-col gap-3">
           <div className="text-xs text-slate-500">
-            Repository: <span className="font-mono font-semibold text-slate-700">darylwilliams1581-netizen/IWIIlBUILD_Portal</span>
+            Repository: <span className="font-mono font-semibold text-slate-700">darylwilliams1581-netizen/IWIllBUILD_Portal</span>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500 shrink-0">Branch / ref:</label>

@@ -320,7 +320,7 @@ export async function requestRecoveryEmailChange(params: {
   // Email to NEW address: verify ownership
   void sendEmail({
     to:      normalised,
-    subject: 'Verify your IWIIlBUILD recovery email',
+    subject: 'Verify your IWIllBUILD recovery email',
     html:    buildVerifyEmail({ verifyLink, holdDays: HOLD_DAYS }),
     text:    `Verify your recovery email: ${verifyLink}\n\nThis link expires in ${VERIFY_TOKEN_MINUTES} minutes.`,
   }).catch(e => console.error('[recovery-email] verify email failed:', e));
@@ -329,7 +329,7 @@ export async function requestRecoveryEmailChange(params: {
   if (existing?.activeEmail) {
     void sendEmail({
       to:      existing.activeEmail,
-      subject: 'Your IWIIlBUILD recovery email is being changed',
+      subject: 'Your IWIllBUILD recovery email is being changed',
       html:    buildNotifyOldEmail({ maskedNew: maskEmail(normalised), cancelLink, freezeLink, holdDays: HOLD_DAYS }),
       text:    `Your recovery email is being changed to ${maskEmail(normalised)}.\n\nCancel: ${cancelLink}\nFreeze account: ${freezeLink}\n\nThis change takes effect in ${HOLD_DAYS} days.`,
     }).catch(e => console.error('[recovery-email] notify-old email failed:', e));
@@ -422,9 +422,9 @@ async function activateProposed(userId: string, ipAddress?: string, userAgent?: 
   // Notify new address that it is now active
   void sendEmail({
     to:      newEmail,
-    subject: 'Your IWIIlBUILD recovery email is now active',
+    subject: 'Your IWIllBUILD recovery email is now active',
     html:    buildActivatedEmail(),
-    text:    'Your recovery email address is now active on IWIIlBUILD.',
+    text:    'Your recovery email address is now active on IWIllBUILD.',
   }).catch(e => console.error('[recovery-email] activated email failed:', e));
 }
 
@@ -638,7 +638,7 @@ function buildVerifyEmail(p: { verifyLink: string; holdDays: number }): string {
   return `
 <!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
 <h2 style="color:#7c3aed">Verify your recovery email</h2>
-<p>Someone requested to set this address as the recovery email for an IWIIlBUILD account.</p>
+<p>Someone requested to set this address as the recovery email for an IWIllBUILD account.</p>
 <p>Click the button below to confirm you own this address. Your address will not be used for account recovery until the <strong>${p.holdDays}-day security hold</strong> expires.</p>
 <p style="margin:24px 0">
   <a href="${p.verifyLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Verify my email address</a>
@@ -652,7 +652,7 @@ function buildNotifyOldEmail(p: { maskedNew: string; cancelLink: string; freezeL
   return `
 <!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
 <h2 style="color:#7c3aed">Your recovery email is being changed</h2>
-<p>A request was made to change the recovery email on your IWIIlBUILD account to <strong>${p.maskedNew}</strong>.</p>
+<p>A request was made to change the recovery email on your IWIllBUILD account to <strong>${p.maskedNew}</strong>.</p>
 <p>The change will take effect in <strong>${p.holdDays} days</strong>. Your current address remains active until then.</p>
 <p><strong>If this was you</strong>, no action is needed.</p>
 <p><strong>If this was NOT you</strong>, act immediately:</p>
@@ -675,7 +675,7 @@ function buildActivatedEmail(): string {
   return `
 <!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
 <h2 style="color:#7c3aed">Recovery email activated</h2>
-<p>Your recovery email address is now active on IWIIlBUILD. You can use it to recover your account if you lose access.</p>
-<p style="font-size:12px;color:#64748b">If you did not set this up, please contact IWIIlBUILD support immediately.</p>
+<p>Your recovery email address is now active on IWIllBUILD. You can use it to recover your account if you lose access.</p>
+<p style="font-size:12px;color:#64748b">If you did not set this up, please contact IWIllBUILD support immediately.</p>
 </body></html>`;
 }

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 /**
- * IWIIlBUILD marketing footer
+ * IWIllBUILD marketing footer
  * Three-column layout: brand + tagline | modules | company links
  * Bottom bar: copyright + legal links
  */
@@ -47,7 +47,7 @@ export default function Footer() {
             color: '#f1f5f9',
             fontFamily: "'Space Grotesk', sans-serif"
           }}>
-              IWIIlBUILD
+              IWIllBUILD
             </strong>
           </Link>
           <p style={{
@@ -243,7 +243,7 @@ export default function Footer() {
           color: '#334155',
           margin: 0
         }}>
-            © {year} IWIIlBUILD. All rights reserved. ABN available on request.
+            © {year} IWIllBUILD. All rights reserved. ABN available on request.
           </p>
           <div style={{
           display: 'flex',

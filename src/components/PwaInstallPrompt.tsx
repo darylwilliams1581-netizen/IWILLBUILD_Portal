@@ -102,7 +102,7 @@ export default function PwaInstallPrompt() {
   return (
     <div
       role="banner"
-      aria-label="Install IWIIlBUILD app"
+      aria-label="Install IWIllBUILD app"
       className="fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto"
     >
       <div className="bg-gray-900 border border-violet-600/40 rounded-2xl shadow-2xl p-4 flex gap-3 items-start">
@@ -113,7 +113,7 @@ export default function PwaInstallPrompt() {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold text-sm leading-tight">Install IWIIlBUILD</p>
+          <p className="text-white font-bold text-sm leading-tight">Install IWIllBUILD</p>
 
           {showIosHint ? (
             <p className="text-gray-400 text-xs mt-1 leading-relaxed">

@@ -1,4 +1,4 @@
-IWILLBUILD iOS DEPLOY PATCH CHECKLIST
+IWIllBUILD iOS DEPLOY PATCH CHECKLIST
 ======================================
 Build: 10
 Date:  2026-07-31

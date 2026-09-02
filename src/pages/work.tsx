@@ -374,7 +374,7 @@ export default function WorkPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Work — IWIIlBUILD</title>
+        <title>Work — IWIllBUILD</title>
         <meta name="description" content="Jobs register — open a job to access Tasks, Notes, Delays, Progress, Attendance and more." />
         <link rel="canonical" href="https://iwillbuild.com/work" />
         <meta name="robots" content="noindex" />

@@ -31,7 +31,7 @@ export function useAndroidNative() {
           navigate(-1);
         } else {
           // On root pages, confirm exit
-          if (window.confirm('Exit IWIIlBUILD?')) {
+          if (window.confirm('Exit IWIllBUILD?')) {
             App.exitApp();
           }
         }

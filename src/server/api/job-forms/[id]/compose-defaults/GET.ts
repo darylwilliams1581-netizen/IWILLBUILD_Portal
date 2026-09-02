@@ -59,7 +59,7 @@ export default async function handler(req: Request, res: Response) {
     const [companyRows] = await db.execute(sql`
       SELECT name FROM companies WHERE id = ${profile.companyId} LIMIT 1
     `) as unknown as [Array<{ name?: string }>, unknown];
-    const companyName = String(companyRows?.[0]?.name ?? 'IWIIlBUILD');
+    const companyName = String(companyRows?.[0]?.name ?? 'IWIllBUILD');
 
     const jobLabel = [jobNumber, jobName].filter(Boolean).join(' – ');
     const status = submission.status === 'completed' ? 'Completed' : 'In Progress';

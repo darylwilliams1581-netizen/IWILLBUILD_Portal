@@ -358,7 +358,7 @@ export default function PrestartPage() {
   const stepTitle = step === 'pick' ? 'Select Equipment' : step === 'form' ? 'Daily Prestart' : 'Prestart Done';
   return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
-        <title>Prestart Check — IWIIlBUILD</title>
+        <title>Prestart Check — IWIllBUILD</title>
         <meta name="description" content="Complete a daily prestart check for fleet equipment." />
         <link rel="canonical" href="https://iwillbuild.com/prestart" />
         <meta name="robots" content="noindex" />
@@ -384,7 +384,7 @@ export default function PrestartPage() {
           </div>
           <div>
             <h1 className="text-gray-900 font-bold text-sm leading-tight">{stepTitle}</h1>
-            <p className="text-gray-400 text-xs">IWIIlBUILD</p>
+            <p className="text-gray-400 text-xs">IWIllBUILD</p>
           </div>
         </div>
 

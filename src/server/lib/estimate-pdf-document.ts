@@ -128,7 +128,7 @@ export async function buildEstimatePdfDocument(companyId: number, estimateId: nu
     estimateId: estimate.id,
     estimateTitle: estimate.title,
     estimateStatus: estimate.status ?? 'Draft',
-    companyName: String(company.name ?? 'IWIIlBUILD'),
+    companyName: String(company.name ?? 'IWIllBUILD'),
     customerName,
     customerEmail,
     total,

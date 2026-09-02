@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Capacitor configuration for IWILLBUILD Portal
+ * Capacitor configuration for IWIllBUILD Portal
  *
  * ── Build number management ───────────────────────────────────────────────────
  * CURRENT_PROJECT_VERSION (CFBundleVersion) must increase with every App Store
@@ -46,7 +46,7 @@ const IOS_BUILD_NUMBER = 12;
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
   appId: 'com.iwillbuild.portal',
-  appName: 'IWILLBUILD',
+  appName: 'IWIllBUILD',
 
   // Where Capacitor looks for the built web assets
   webDir: 'dist/client',
@@ -96,32 +96,32 @@ const config: CapacitorConfig = {
     infoPlist: {
       // Camera — job photos, receipts, incidents, site records
       NSCameraUsageDescription:
-        'IWILLBUILD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.',
+        'IWIllBUILD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.',
 
       // Photo library read — upload existing photos as job evidence
       NSPhotoLibraryUsageDescription:
-        'IWILLBUILD uses your photo library so you can upload job photos, receipts, and site evidence.',
+        'IWIllBUILD uses your photo library so you can upload job photos, receipts, and site evidence.',
 
       // Photo library write — save captured photos back to the camera roll
       NSPhotoLibraryAddUsageDescription:
-        'IWILLBUILD saves captured photos to your photo library.',
+        'IWIllBUILD saves captured photos to your photo library.',
 
       // Location while in use — attendance, job travel, fleet tracking
       NSLocationWhenInUseUsageDescription:
-        'IWILLBUILD uses your location for job travel, fleet tracking, and site attendance records.',
+        'IWIllBUILD uses your location for job travel, fleet tracking, and site attendance records.',
 
       // Location always — background GPS for active drive sessions
       // Also requires "Background Modes > Location updates" in Xcode Capabilities
       NSLocationAlwaysAndWhenInUseUsageDescription:
-        'IWILLBUILD uses your location in the background to track active drive sessions for fleet management.',
+        'IWIllBUILD uses your location in the background to track active drive sessions for fleet management.',
 
       // Legacy key — still required for iOS 10 compatibility
       NSLocationAlwaysUsageDescription:
-        'IWILLBUILD uses your location in the background to track active drive sessions for fleet management.',
+        'IWIllBUILD uses your location in the background to track active drive sessions for fleet management.',
 
       // Microphone — voice notes and dictation
       NSMicrophoneUsageDescription:
-        'IWILLBUILD uses the microphone for voice notes and dictation where enabled.',
+        'IWIllBUILD uses the microphone for voice notes and dictation where enabled.',
 
       // Background modes — location + push notifications
       UIBackgroundModes: ['location', 'fetch', 'remote-notification'],

@@ -5,11 +5,11 @@ const LAST_UPDATED = 'June 2026';
 export default function TermsPage() {
   return <>
       <Helmet>
-        <title>Terms of Use — IWIIlBUILD</title>
-        <meta name="description" content="Terms of use for the IWIIlBUILD fleet and construction management portal. Read before using the platform." />
+        <title>Terms of Use — IWIllBUILD</title>
+        <meta name="description" content="Terms of use for the IWIllBUILD fleet and construction management portal. Read before using the platform." />
         <link rel="canonical" href="https://iwillbuild.com/terms" />
-        <meta property="og:title" content="Terms of Use — IWIIlBUILD" />
-        <meta property="og:description" content="Terms of use for the IWIIlBUILD construction management portal." />
+        <meta property="og:title" content="Terms of Use — IWIllBUILD" />
+        <meta property="og:description" content="Terms of use for the IWIllBUILD construction management portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/terms" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
@@ -19,9 +19,9 @@ export default function TermsPage() {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
           '@id': 'https://iwillbuild.com/terms#webpage',
-          name: 'Terms of Use — IWIIlBUILD',
+          name: 'Terms of Use — IWIllBUILD',
           url: 'https://iwillbuild.com/terms',
-          description: 'Terms of use for the IWIIlBUILD fleet and construction management portal.',
+          description: 'Terms of use for the IWIllBUILD fleet and construction management portal.',
           isPartOf: {
             '@id': 'https://iwillbuild.com/#website'
           },
@@ -72,7 +72,7 @@ export default function TermsPage() {
               <strong style={{
               color: '#f1f5f9',
               fontSize: 15
-            }}>IWIIlBUILD</strong>
+            }}>IWIllBUILD</strong>
             </Link>
             <Link to="/" style={{
             display: 'flex',
@@ -134,7 +134,7 @@ export default function TermsPage() {
             color: '#94a3b8',
             fontSize: 15,
             margin: 0
-          }}>Last updated: {LAST_UPDATED} &nbsp;·&nbsp; IWIIlBUILD, Queensland, Australia</p>
+          }}>Last updated: {LAST_UPDATED} &nbsp;·&nbsp; IWIllBUILD, Queensland, Australia</p>
           </div>
         </div>
 
@@ -150,8 +150,8 @@ export default function TermsPage() {
           gap: 40
         }}>
 
-            <Section title="1. About IWIIlBUILD">
-              <p>IWIIlBUILD is a construction and job management software platform. It provides tools for managing jobs, estimates, forms, safety documents, fleet, files, invoices, and team coordination. By creating an account or using the platform, you agree to these terms.</p>
+            <Section title="1. About IWIllBUILD">
+              <p>IWIllBUILD is a construction and job management software platform. It provides tools for managing jobs, estimates, forms, safety documents, fleet, files, invoices, and team coordination. By creating an account or using the platform, you agree to these terms.</p>
               <p>For questions, contact us at <a href="mailto:support@iwillbuild.com" style={{
                 color: '#7c3aed'
               }}>support@iwillbuild.com</a>.</p>
@@ -165,7 +165,7 @@ export default function TermsPage() {
             </Section>
 
             <Section title="3. Your data and content">
-              <p>You are responsible for the accuracy, completeness, and legality of all data you enter into IWIIlBUILD, including:</p>
+              <p>You are responsible for the accuracy, completeness, and legality of all data you enter into IWIllBUILD, including:</p>
               <ul>
                 <li>Job details, addresses, and notes</li>
                 <li>Estimates, pricing, and invoice information</li>
@@ -174,11 +174,11 @@ export default function TermsPage() {
                 <li>Files, photos, and documents uploaded to the platform</li>
                 <li>Fleet records and maintenance data</li>
               </ul>
-              <p>IWIIlBUILD stores and processes this data on your behalf but does not verify its accuracy.</p>
+              <p>IWIllBUILD stores and processes this data on your behalf but does not verify its accuracy.</p>
             </Section>
 
             <Section title="4. Not a substitute for professional advice">
-              <p>IWIIlBUILD is a software tool. It does not replace professional, legal, safety, accounting, or compliance advice. You should always consult qualified professionals for matters relating to:</p>
+              <p>IWIllBUILD is a software tool. It does not replace professional, legal, safety, accounting, or compliance advice. You should always consult qualified professionals for matters relating to:</p>
               <ul>
                 <li>Workplace health and safety obligations</li>
                 <li>Legal and contractual requirements</li>
@@ -188,18 +188,18 @@ export default function TermsPage() {
             </Section>
 
             <Section title="5. System AI tools">
-              <p>IWIIlBUILD includes internal AI-assisted tools available to platform administrators. These tools provide AI-generated analysis and assistance to help with tasks such as data review, health checks, and generating suggestions. AI outputs are provided as a starting point only and must be reviewed and verified by a competent person before use.</p>
-              <p>IWIIlBUILD does not warrant the accuracy, completeness, or suitability of any AI-generated output. You are responsible for any decisions made based on AI-assisted responses.</p>
+              <p>IWIllBUILD includes internal AI-assisted tools available to platform administrators. These tools provide AI-generated analysis and assistance to help with tasks such as data review, health checks, and generating suggestions. AI outputs are provided as a starting point only and must be reviewed and verified by a competent person before use.</p>
+              <p>IWIllBUILD does not warrant the accuracy, completeness, or suitability of any AI-generated output. You are responsible for any decisions made based on AI-assisted responses.</p>
             </Section>
 
             <Section title="6. Safety documents and SWMS">
-              <p>Safety templates, SWMS (Safe Work Method Statements), site safety plans, and other safety-related documents available in IWIIlBUILD are provided as starting points and examples only.</p>
-              <p>All safety documents must be reviewed, customised, and approved by the responsible person or business before use on any worksite. IWIIlBUILD does not accept responsibility for safety outcomes arising from the use of documents generated through the platform without appropriate review and sign-off.</p>
+              <p>Safety templates, SWMS (Safe Work Method Statements), site safety plans, and other safety-related documents available in IWIllBUILD are provided as starting points and examples only.</p>
+              <p>All safety documents must be reviewed, customised, and approved by the responsible person or business before use on any worksite. IWIllBUILD does not accept responsibility for safety outcomes arising from the use of documents generated through the platform without appropriate review and sign-off.</p>
             </Section>
 
             <Section title="7. Subscriptions and billing">
-              <p>Access to IWIIlBUILD is provided on a subscription basis. Subscription plans, pricing, and billing are managed through <strong>Stripe</strong>. By subscribing, you agree to the applicable plan pricing at the time of purchase.</p>
-              <p>IWIIlBUILD may update pricing and plan features over time. Where material changes are made, we will provide reasonable notice.</p>
+              <p>Access to IWIllBUILD is provided on a subscription basis. Subscription plans, pricing, and billing are managed through <strong>Stripe</strong>. By subscribing, you agree to the applicable plan pricing at the time of purchase.</p>
+              <p>IWIllBUILD may update pricing and plan features over time. Where material changes are made, we will provide reasonable notice.</p>
             </Section>
 
             <Section title="8. Trial and account status">
@@ -207,7 +207,7 @@ export default function TermsPage() {
             </Section>
 
             <Section title="9. Acceptable use">
-              <p>You agree not to use IWIIlBUILD to:</p>
+              <p>You agree not to use IWIllBUILD to:</p>
               <ul>
                 <li>Upload or share unlawful, harmful, or fraudulent content</li>
                 <li>Attempt to gain unauthorised access to the platform or other accounts</li>
@@ -217,11 +217,11 @@ export default function TermsPage() {
             </Section>
 
             <Section title="10. Platform changes">
-              <p>IWIIlBUILD may update, modify, or discontinue features at any time. We aim to provide reasonable notice of significant changes. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
+              <p>IWIllBUILD may update, modify, or discontinue features at any time. We aim to provide reasonable notice of significant changes. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
             </Section>
 
             <Section title="11. Limitation of liability">
-              <p>To the extent permitted by law, IWIIlBUILD is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, or consequential loss arising from your use of the platform, including loss of data, revenue, or business opportunity.</p>
+              <p>To the extent permitted by law, IWIllBUILD is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, or consequential loss arising from your use of the platform, including loss of data, revenue, or business opportunity.</p>
             </Section>
 
             <Section title="12. Governing law">
@@ -233,7 +233,7 @@ export default function TermsPage() {
               <p>
                 <strong style={{
                 color: '#f1f5f9'
-              }}>IWIIlBUILD</strong><br />
+              }}>IWIllBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
                 <a href="mailto:support@iwillbuild.com" style={{
@@ -283,7 +283,7 @@ export default function TermsPage() {
           color: '#475569',
           fontSize: 12,
           margin: 0
-        }}>© {new Date().getFullYear()} IWIIlBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
+        }}>© {new Date().getFullYear()} IWIllBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
         </footer>
 
       </div>

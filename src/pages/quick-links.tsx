@@ -582,7 +582,7 @@ export default function QuickLinksPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Quick Links — IWIIlBUILD Portal</title>
+        <title>Quick Links — IWIllBUILD Portal</title>
         <meta name="description" content="Office launcher for external portals, tools, and systems." />
         <link rel="canonical" href="https://iwillbuild.com/quick-links" />
         <meta name="robots" content="noindex" />

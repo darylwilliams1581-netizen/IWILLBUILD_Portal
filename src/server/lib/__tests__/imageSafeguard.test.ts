@@ -794,7 +794,7 @@ describe('ISG-19: Form-email surface integration', () => {
     // escapeHtml(message) — it never includes R2 keys or signed URLs.
     // We verify the email body construction does not leak storage paths.
     const message = 'Please find the completed Safety Checklist attached.';
-    const SYSTEM_FOOTER = 'This email was sent automatically from IWIIlBUILD.';
+    const SYSTEM_FOOTER = 'This email was sent automatically from IWIllBUILD.';
     const body = `${message}\n\n---\n${SYSTEM_FOOTER}`;
     expect(body).not.toContain('X-Amz');
     expect(body).not.toContain('.r2.cloudflarestorage');

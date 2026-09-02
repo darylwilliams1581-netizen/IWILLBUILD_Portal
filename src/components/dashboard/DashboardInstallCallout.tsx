@@ -87,7 +87,7 @@ export default function DashboardInstallCallout() {
       {/* Text */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-800 leading-tight">
-          Install IWIIlBUILD on your device
+          Install IWIllBUILD on your device
         </p>
         {isIosSafari ? <p className="text-xs text-slate-500 mt-0.5">
             Tap <Share size={10} className="inline mx-0.5 text-violet-600" /> Share → <span className="font-medium text-violet-700">Add to Home Screen</span> for instant access.

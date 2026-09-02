@@ -61,7 +61,7 @@ async function analyseBugWithDazza(report: Record<string, unknown>): Promise<{
   const currentRoute = String(report.current_route ?? '');
   const appVersion = String(report.app_version ?? '');
 
-  const systemPrompt = `You are Dazza, the IWIIlBUILD platform AI. You analyse bug reports submitted by users of the IWIIlBUILD construction management platform and provide:
+  const systemPrompt = `You are Dazza, the IWIllBUILD platform AI. You analyse bug reports submitted by users of the IWIllBUILD construction management platform and provide:
 1. A clear diagnosis of what is likely causing the issue
 2. A specific suggested fix (code change, config, or UX fix)
 3. A concise Airo builder prompt that a developer could paste directly to implement the fix
@@ -197,7 +197,7 @@ export default async function handler(req: Request, res: Response) {
       `));
 
       const smsBody =
-        `🐛 IWIIlBUILD Bug Alert\n` +
+        `🐛 IWIllBUILD Bug Alert\n` +
         `Category: ${String(report.category ?? '').replace(/_/g, ' ')}\n` +
         `Issue: ${String(report.description ?? '').slice(0, 100)}...\n\n` +
         `Dazza Fix: ${suggestedFix.slice(0, 120)}\n\n` +

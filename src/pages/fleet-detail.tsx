@@ -703,7 +703,7 @@ export default function FleetDetailPage() {
   const activeSession = driverSessions.find(s => s.status === 'active') ?? null;
   return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
-        <title>{asset ? `${asset.name} — Fleet` : 'Fleet Asset'} — IWIIlBUILD Portal</title>
+        <title>{asset ? `${asset.name} — Fleet` : 'Fleet Asset'} — IWIllBUILD Portal</title>
         <meta name="description" content="View asset details, daily prestarts, service dates and rego for this fleet asset." />
         <link rel="canonical" href={`https://iwillbuild.com/fleet/${id ?? ''}`} />
         <meta name="robots" content="noindex" />

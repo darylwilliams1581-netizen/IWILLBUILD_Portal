@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright E2E configuration for IWILLBUILD Portal.
+ * Playwright E2E configuration for IWIllBUILD Portal.
  *
  * Separated from Vitest (unit/component tests in src/).
  * E2E tests live in tests/ and are run via `npm run test:e2e`.

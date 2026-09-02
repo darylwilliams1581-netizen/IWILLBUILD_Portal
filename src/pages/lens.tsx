@@ -700,7 +700,7 @@ export default function LensPage() {
   return <>
       <PortalSidebar />
       <Helmet>
-        <title>Lens — IWIIlBUILD</title>
+        <title>Lens — IWIllBUILD</title>
         <meta name="description" content="Company-wide photo gallery. Browse, search and filter all job photos." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/lens" />

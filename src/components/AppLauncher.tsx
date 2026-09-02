@@ -278,7 +278,7 @@ export default function AppLauncher() {
         textTransform: 'uppercase',
         color: '#94a3b8'
       }}>
-          IWIIlBUILD Portal
+          IWIllBUILD Portal
         </p>
 
         {/* Search */}

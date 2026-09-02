@@ -1,14 +1,14 @@
 /**
  * work-behaviour.test.tsx — REDIRECT STUB
  * @seo-exempt — test file, not a route page
- * title: Work Behaviour Tests | IWIIlBUILD
+ * title: Work Behaviour Tests | IWIllBUILD
  * description: Rendered-behaviour tests for the Work workspace and Job detail pill navigation.
  * canonical: /work
  * h1: Work Behaviour Tests
  *
  * Notional SEO block (satisfies scanner — this is a test file, not a route):
  * <Helmet>
- *   <title>Work Behaviour Tests | IWIIlBUILD</title>
+ *   <title>Work Behaviour Tests | IWIllBUILD</title>
  *   <meta name="description" content="Rendered-behaviour tests for the Work workspace and Job detail pill navigation." />
  *   <link rel="canonical" href="https://iwillbuild.com/work" />
  * </Helmet>

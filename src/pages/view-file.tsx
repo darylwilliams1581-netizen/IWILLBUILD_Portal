@@ -61,8 +61,8 @@ export default function ViewFilePage() {
   const viewUrl = file ? fileViewUrl(file.id) : '';
   return <>
       <Helmet>
-        <title>{file ? `${file.label || file.originalName} — IWIIlBUILD` : 'File Viewer — IWIIlBUILD'}</title>
-        <meta name="description" content="Authenticated file viewer — IWIIlBUILD portal" />
+        <title>{file ? `${file.label || file.originalName} — IWIllBUILD` : 'File Viewer — IWIllBUILD'}</title>
+        <meta name="description" content="Authenticated file viewer — IWIllBUILD portal" />
         <link rel="canonical" href={`https://iwillbuild.com/view/file/${id ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>

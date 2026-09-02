@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * @seo-exempt — test file, not a route page
  *
- * Comprehensive tests for the final IWIIlBUILD navigation model:
+ * Comprehensive tests for the final IWIllBUILD navigation model:
  *
  *   Path A — Inside an open Job (job-detail.tsx section dropdown)
  *   Path B — Work & Field launcher → Job picker → standalone page
@@ -585,7 +585,7 @@ describe('PWA fixes', () => {
     expect(manifest.start_url).toBe('/home');
   });
 
-  it('manifest theme_color is IWIIlBUILD purple #7C3AED', () => {
+  it('manifest theme_color is IWIllBUILD purple #7C3AED', () => {
     const manifest = JSON.parse(manifestSrc);
     expect(manifest.theme_color.toLowerCase()).toBe('#7c3aed');
   });

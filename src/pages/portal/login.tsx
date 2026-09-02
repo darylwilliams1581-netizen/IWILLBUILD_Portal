@@ -57,8 +57,8 @@ export default function PortalLoginPage() {
   }, [token]);
   return <>
       <Helmet>
-        <title>Client Portal — IWIIlBUILD</title>
-        <meta name="description" content="Access your IWIIlBUILD client portal to view jobs, estimates, and invoices shared by your contractor." />
+        <title>Client Portal — IWIllBUILD</title>
+        <meta name="description" content="Access your IWIllBUILD client portal to view jobs, estimates, and invoices shared by your contractor." />
         <link rel="canonical" href="https://iwillbuild.com/portal/login" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -98,7 +98,7 @@ export default function PortalLoginPage() {
           </div>
 
           <p className="text-center text-slate-600 text-xs mt-6">
-            Powered by IWIIlBUILD
+            Powered by IWIllBUILD
           </p>
         </div>
       </div>

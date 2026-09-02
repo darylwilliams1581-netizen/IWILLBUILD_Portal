@@ -1,4 +1,4 @@
-// RootLayout.tsx — IWIIlBUILD Portal
+// RootLayout.tsx — IWIllBUILD Portal
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, type ReactNode, useEffect, useState } from 'react';
 import { ScrollRestoration, useLocation } from "react-router";
@@ -103,8 +103,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <div suppressHydrationWarning className="h-full bg-background text-foreground flex flex-col">
       <Helmet>
-        <title>IWIIlBUILD Portal</title>
-        <meta name="description" content="IWIIlBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
+        <title>IWIllBUILD Portal</title>
+        <meta name="description" content="IWIllBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
       </Helmet>
       <ScrollRestoration />
       {/*

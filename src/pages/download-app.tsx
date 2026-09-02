@@ -17,7 +17,7 @@ import { Smartphone, Shield, Wifi, MapPin, Bell, Clock } from 'lucide-react';
 const APK_AVAILABLE = false;
 
 const GITHUB_RELEASES_URL =
-  'https://github.com/darylwilliams1581-netizen/IWIIlBUILD_Portal/releases/latest';
+  'https://github.com/darylwilliams1581-netizen/IWIllBUILD_Portal/releases/latest';
 
 const features = [
   { icon: MapPin,  label: 'Live GPS tracking',   desc: 'Your location updates automatically while on a job' },
@@ -30,7 +30,7 @@ const steps = [
   { n: '1', title: 'Download the APK',    body: 'Tap the Download button below. Your browser will download the APK file.' },
   { n: '2', title: 'Allow installation',  body: 'Android will ask to allow installs from unknown sources. Tap Settings → enable "Install unknown apps" for your browser.' },
   { n: '3', title: 'Install the app',     body: 'Open the downloaded file from your notifications or Downloads folder and tap Install.' },
-  { n: '4', title: 'Sign in',             body: 'Open IWIIlBUILD and sign in with your existing portal credentials.' },
+  { n: '4', title: 'Sign in',             body: 'Open IWIllBUILD and sign in with your existing portal credentials.' },
 ];
 
 export default function DownloadAppPage() {
@@ -40,19 +40,19 @@ export default function DownloadAppPage() {
   return (
     <>
       <Helmet>
-        <title>IWIIlBUILD Driver App — Coming Soon</title>
-        <meta name="description" content="The IWIIlBUILD Android driver app is coming soon. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket." />
+        <title>IWIllBUILD Driver App — Coming Soon</title>
+        <meta name="description" content="The IWIllBUILD Android driver app is coming soon. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket." />
         <link rel="canonical" href="https://iwillbuild.com/download-app" />
         {/* noindex until first APK release is published */}
         <meta name="robots" content="noindex,nofollow" />
-        <meta property="og:title" content="IWIIlBUILD Driver App — Coming Soon" />
-        <meta property="og:description" content="The IWIIlBUILD Android driver app is coming soon. Live GPS, job management, safety forms, and fleet tools." />
+        <meta property="og:title" content="IWIllBUILD Driver App — Coming Soon" />
+        <meta property="og:description" content="The IWIllBUILD Android driver app is coming soon. Live GPS, job management, safety forms, and fleet tools." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/download-app" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="IWIIlBUILD Driver App — Coming Soon" />
-        <meta name="twitter:description" content="The IWIIlBUILD Android driver app is coming soon." />
+        <meta name="twitter:title" content="IWIllBUILD Driver App — Coming Soon" />
+        <meta name="twitter:description" content="The IWIllBUILD Android driver app is coming soon." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
@@ -64,7 +64,7 @@ export default function DownloadAppPage() {
             <span className="text-white font-black text-sm">IW</span>
           </div>
           <div>
-            <p className="font-bold text-white text-sm leading-tight">IWIIlBUILD</p>
+            <p className="font-bold text-white text-sm leading-tight">IWIllBUILD</p>
             <p className="text-gray-400 text-xs">Construction Portal</p>
           </div>
         </div>
@@ -77,9 +77,9 @@ export default function DownloadAppPage() {
               <Smartphone size={36} className="text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white">IWIIlBUILD Android App</h1>
+              <h1 className="text-2xl font-black text-white">IWIllBUILD Android App</h1>
               <p className="text-gray-400 mt-1 text-sm leading-relaxed">
-                The full IWIIlBUILD portal in your pocket — jobs, fleet tracking, forms, and more.
+                The full IWIllBUILD portal in your pocket — jobs, fleet tracking, forms, and more.
               </p>
             </div>
           </div>

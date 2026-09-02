@@ -720,18 +720,18 @@ export default function TeamPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Team — IWIIlBUILD Portal</title>
-        <meta name="description" content="Manage team members, roles and access for the IWIIlBUILD portal." />
+        <title>Team — IWIllBUILD Portal</title>
+        <meta name="description" content="Manage team members, roles and access for the IWIllBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/team" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Team — IWIIlBUILD Portal" />
-        <meta property="og:description" content="Manage team members, roles and access for the IWIIlBUILD portal." />
+        <meta property="og:title" content="Team — IWIllBUILD Portal" />
+        <meta property="og:description" content="Manage team members, roles and access for the IWIllBUILD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/team" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Team — IWIIlBUILD Portal" />
-        <meta name="twitter:description" content="Manage team members, roles and access for the IWIIlBUILD portal." />
+        <meta name="twitter:title" content="Team — IWIllBUILD Portal" />
+        <meta name="twitter:description" content="Manage team members, roles and access for the IWIllBUILD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 

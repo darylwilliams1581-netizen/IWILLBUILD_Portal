@@ -104,14 +104,14 @@ export default function DesktopOnly({
           {pageName} is desktop only
         </h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Open IWIIlBUILD in a desktop browser to access this area.
+          Open IWIllBUILD in a desktop browser to access this area.
         </p>
       </div>
 
       {/* Login link */}
       <a href="https://iwillbuild.com/login" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 bg-primary hover:bg-violet-700 active:bg-violet-800 text-white font-semibold text-base rounded-2xl px-8 py-4 max-w-xs w-full transition-colors shadow-lg">
         <Monitor size={20} />
-        Open IWIIlBUILD.com
+        Open IWIllBUILD.com
       </a>
     </div>;
 }

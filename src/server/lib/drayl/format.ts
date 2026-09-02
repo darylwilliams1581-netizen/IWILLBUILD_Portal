@@ -78,7 +78,7 @@ export function formatAnnetteReply({
   // Source modules
   const usedModules = Array.from(new Set(findings.map((f) => f.module)));
   lines.push(`📦 **Source modules:** ${usedModules.length > 0 ? usedModules.join(', ') : 'All permitted modules'}`);
-  lines.push(`📊 **Confidence:** High — sourced directly from IWIIlBUILD portal data`);
+  lines.push(`📊 **Confidence:** High — sourced directly from IWIllBUILD portal data`);
 
   if (context.warnings.length > 0) {
     lines.push('');
@@ -108,7 +108,7 @@ export function formatContextAnswer({
 }: FormatContextAnswerOptions): string {
   const lines: string[] = [];
 
-  lines.push('📋 **From IWIIlBUILD data:**');
+  lines.push('📋 **From IWIllBUILD data:**');
   lines.push(answer);
 
   if (aiGuidance) {
@@ -119,7 +119,7 @@ export function formatContextAnswer({
 
   lines.push('');
   lines.push(`📦 **Source modules:** ${sources.join(', ')}`);
-  lines.push(`📊 **Confidence:** ${aiGuidance ? 'High — IWIIlBUILD data + AI reasoning' : 'High — IWIIlBUILD portal data'}`);
+  lines.push(`📊 **Confidence:** ${aiGuidance ? 'High — IWIllBUILD data + AI reasoning' : 'High — IWIllBUILD portal data'}`);
 
   if (context.warnings.length > 0) {
     lines.push('');

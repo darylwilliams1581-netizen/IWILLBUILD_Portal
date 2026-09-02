@@ -19,8 +19,8 @@ export default function StudioLibraryPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Library — IWIIlBUILD</title>
-        <meta name="description" content="IWIIlBUILD content library — browse and install document and form templates." />
+        <title>Library — IWIllBUILD</title>
+        <meta name="description" content="IWIllBUILD content library — browse and install document and form templates." />
         <link rel="canonical" href="https://iwillbuild.com/studio/library" />
         <meta name="robots" content="noindex" />
       </Helmet>

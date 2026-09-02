@@ -1,6 +1,6 @@
 /**
  * POST /api/integrations/qbo/sync-invoice/:invoiceId
- * Pushes an IWIIlBUILD invoice to QuickBooks Online as an Invoice.
+ * Pushes an IWIllBUILD invoice to QuickBooks Online as an Invoice.
  * - Creates a QBO Customer for the customer if not already synced.
  * - Creates or updates the QBO Invoice.
  * - Stores the QBO Id back on the local invoice row.
@@ -22,7 +22,7 @@ interface QboInvoiceResponse {
   Invoice?: { Id: string; DocNumber: string; TxnStatus?: string; TotalAmt: number };
 }
 
-/** Map IWIIlBUILD status → QBO TxnStatus */
+/** Map IWIllBUILD status → QBO TxnStatus */
 function mapStatus(status: string): string {
   switch (status) {
     case 'paid': return 'Paid';

@@ -519,8 +519,8 @@ export default function JobDetailPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>{job ? `${job.jobNumber ?? job.name} — IWIIlBUILD` : 'Job — IWIIlBUILD'}</title>
-        <meta name="description" content={job ? `Job details for ${job.name}${job.client ? ` — ${job.client}` : ''}` : 'Job details — IWIIlBUILD Portal'} />
+        <title>{job ? `${job.jobNumber ?? job.name} — IWIllBUILD` : 'Job — IWIllBUILD'}</title>
+        <meta name="description" content={job ? `Job details for ${job.name}${job.client ? ` — ${job.client}` : ''}` : 'Job details — IWIllBUILD Portal'} />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}`} />
         <meta name="robots" content="noindex" />
       </Helmet>

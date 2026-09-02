@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Route-level tests for src/pages/library.tsx.
  * @seo-exempt — test file, not a route page
- * title: Library Tests | IWIIlBUILD
+ * title: Library Tests | IWIllBUILD
  * description: Route-level tests for the library redirect page and named exports.
  * canonical: /library
  * h1: Library Tests
@@ -67,7 +67,7 @@ function _LibraryTestSeoMeta() {
   return (
     <>
       <Helmet>
-        <title>Library Tests | IWIIlBUILD</title>
+        <title>Library Tests | IWIllBUILD</title>
         <meta name="description" content="Route-level tests for the library redirect page and named exports." />
         <link rel="canonical" href="https://iwillbuild.com/library" />
       </Helmet>

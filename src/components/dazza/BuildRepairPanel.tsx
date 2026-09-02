@@ -404,7 +404,7 @@ export default function BuildRepairPanel({ conversationId, onSendMessage, isTypi
   function downloadRepairPackage() {
     if (!activeCase) return;
     const lines: string[] = [
-      `# IWIIlBUILD Builder Case: ${activeCase.title}`,
+      `# IWIllBUILD Builder Case: ${activeCase.title}`,
       `Case ID: ${activeCase.id}`,
       `Status: ${activeCase.status}`,
       `Created: ${fmtDate(activeCase.created_at)}`,

@@ -63,7 +63,7 @@ const TOOLS: ToolCard[] = [
   },
   {
     title: 'Public Toilet Finder',
-    description: 'Find nearby public toilets in Google Maps. Opens Google Maps — no location data is collected by IWIIlBUILD.',
+    description: 'Find nearby public toilets in Google Maps. Opens Google Maps — no location data is collected by IWIllBUILD.',
     icon: MapPin,
     iconBg: 'bg-teal-100',
     iconFg: 'text-teal-600',

@@ -74,7 +74,7 @@ function docHeader(d: DocxLib, title: string, subtitle?: string) {
     children: [
       new d.Paragraph({
         children: [
-          new d.TextRun({ text: 'IWIIlBUILD  ', bold: true, size: 22, color: WHITE_HEX }),
+          new d.TextRun({ text: 'IWIllBUILD  ', bold: true, size: 22, color: WHITE_HEX }),
           new d.TextRun({ text: `| ${title.toUpperCase()}`, size: 20, color: 'FFCCAA' }),
           ...(subtitle ? [new d.TextRun({ text: `  —  ${subtitle}`, size: 18, color: 'FFCCAA' })] : []),
         ],
@@ -90,7 +90,7 @@ function docFooter(d: DocxLib) {
     children: [
       new d.Paragraph({
         children: [
-          muted(d, 'IWIIlBUILD Portal — Confidential   |   Page ', 16),
+          muted(d, 'IWIllBUILD Portal — Confidential   |   Page ', 16),
           new d.TextRun({ children: [d.PageNumber.CURRENT], size: 16, color: MUTED_HEX }),
           muted(d, ' of ', 16),
           new d.TextRun({ children: [d.PageNumber.TOTAL_PAGES], size: 16, color: MUTED_HEX }),

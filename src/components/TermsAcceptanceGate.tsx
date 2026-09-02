@@ -132,7 +132,7 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
 
               {/* Intro */}
               <p>
-                By using <strong className="text-white">IWIIlBUILD</strong> you agree to the
+                By using <strong className="text-white">IWIllBUILD</strong> you agree to the
                 following terms. These apply to all users — company owners, workers, and
                 subcontractors — on both the web portal and the mobile app.
               </p>
@@ -141,14 +141,14 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
               <section className="space-y-2">
                 <div className="flex items-center gap-2">
                   <FileText size={14} className="text-violet-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">What IWIIlBUILD does</h2>
+                  <h2 className="text-sm font-semibold text-white">What IWIllBUILD does</h2>
                 </div>
                 <ul className="space-y-1.5 pl-4 list-disc marker:text-violet-500">
                   <li>Manages jobs, quotes, invoices, and documents for trade businesses.</li>
                   <li>Stores job photos, SWMS, and safety records in cloud storage (Cloudflare R2, Australian region).</li>
                   <li>Uses GPS location for job tracking — only while the app is active and you have granted permission.</li>
                   <li>Sends push notifications and SMS for job alerts — only with your permission.</li>
-                  <li>Processes payments via Stripe. IWIIlBUILD does not store card numbers.</li>
+                  <li>Processes payments via Stripe. IWIllBUILD does not store card numbers.</li>
                 </ul>
               </section>
 
@@ -158,7 +158,7 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
                   <AlertTriangle size={14} className="text-amber-400 shrink-0" />
                   <h2 className="text-sm font-semibold text-white">Acceptable Use Policy</h2>
                 </div>
-                <p>You must not use IWIIlBUILD to:</p>
+                <p>You must not use IWIllBUILD to:</p>
                 <ul className="space-y-1.5 pl-4 list-disc marker:text-amber-500">
                   <li>Upload, store, or share unlawful content — including sexual content involving minors, graphic violence, or material that breaches Australian law.</li>
                   <li>Harass, threaten, or impersonate any person.</li>
@@ -179,7 +179,7 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
                   <h2 className="text-sm font-semibold text-white">Photo &amp; image audit</h2>
                 </div>
                 <p>
-                  Job photos stored in IWIIlBUILD may be reviewed by an automated audit service
+                  Job photos stored in IWIllBUILD may be reviewed by an automated audit service
                   operated by the platform owner. The service checks for content that breaches
                   this Acceptable Use Policy. Only review flags are retained — photo bytes are
                   not copied or shared. Clients are not notified of routine review flags.
@@ -196,13 +196,13 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
                 </div>
                 <ul className="space-y-1.5 pl-4 list-disc marker:text-amber-500">
                   <li>
-                    IWIIlBUILD is a job management tool. It does not provide legal, financial,
+                    IWIllBUILD is a job management tool. It does not provide legal, financial,
                     or safety compliance advice. You are responsible for ensuring your documents,
                     SWMS, and safety records meet applicable Australian regulations.
                   </li>
                   <li>
                     The platform is provided "as is". To the maximum extent permitted by law,
-                    IWIIlBUILD is not liable for loss of data, business interruption, or
+                    IWIllBUILD is not liable for loss of data, business interruption, or
                     consequential damages arising from use of the platform.
                   </li>
                   <li>

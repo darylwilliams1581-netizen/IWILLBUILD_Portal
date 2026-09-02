@@ -320,7 +320,7 @@ export function generateAiroPrompt(c: BuilderCaseRow): string {
     : c.anatomy_snapshot_id ?? 'Not recorded';
 
   const lines: string[] = [
-    '# IWIIlBUILD Repair Case',
+    '# IWIllBUILD Repair Case',
     '',
     `Case ID: ${c.id}`,
     `Linked bug: ${c.linked_bug_id ?? 'None'}`,

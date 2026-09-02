@@ -15,6 +15,6 @@ export interface SiteMeta {
 }
 
 export const siteMeta: SiteMeta = {
-	name: "IWIIlBUILD",
-	summary: "IWIIlBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. As the platform grows, accounting integrations will help approved invoices, customers and supporting documents flow into systems like Xero, QuickBooks and MYOB.",
+	name: "IWIllBUILD",
+	summary: "IWIllBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. As the platform grows, accounting integrations will help approved invoices, customers and supporting documents flow into systems like Xero, QuickBooks and MYOB.",
 };

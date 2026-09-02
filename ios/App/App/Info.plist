@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>IWILLBUILD</string>
+	<string>IWIllBUILD</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,14 +46,14 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>IWILLBUILD uses your camera to capture job site photos and watermarked images.</string>
+	<string>IWIllBUILD uses your camera to capture job site photos and watermarked images.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>IWILLBUILD accesses your photo library to attach images to job cards and reports.</string>
+	<string>IWIllBUILD accesses your photo library to attach images to job cards and reports.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>IWILLBUILD saves captured photos to your photo library.</string>
+	<string>IWIllBUILD saves captured photos to your photo library.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>IWILLBUILD uses your location to display local weather on the dashboard, show your position on the live map, and record job site check-ins.</string>
+	<string>IWIllBUILD uses your location to display local weather on the dashboard, show your position on the live map, and record job site check-ins.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>IWILLBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.</string>
+	<string>IWIllBUILD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.</string>
 </dict>
 </plist>

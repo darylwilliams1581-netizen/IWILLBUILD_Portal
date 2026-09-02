@@ -54,7 +54,7 @@ function newHandlerBody(titleExpr, swmsVar) {
         '\${safe(title)}',
         'General Construction / Site Works',
         '1',
-        'Site Supervisor / IWILLBUILD',
+        'Site Supervisor / IWIllBUILD',
         'Principal Contractor',
         'draft',
         'advanced',

@@ -62,7 +62,7 @@ export default function JobDelaysPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Delays — ${job.name}` : 'Job Delays'} — IWIIlBUILD</title>
+        <title>{job ? `Delays — ${job.name}` : 'Job Delays'} — IWIllBUILD</title>
         <meta name="description" content="View and manage delay entries for this job." />
         <meta name="robots" content="noindex" />
         {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/delays`} />}

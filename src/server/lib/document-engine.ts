@@ -1,7 +1,7 @@
 /**
  * document-engine.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Core library for the IWIIlBUILD Document Engine.
+ * Core library for the IWIllBUILD Document Engine.
  *
  * Every important output (form, estimate, PO, SWMS, invoice, report) becomes a
  * document record with its own internal URL, optional external share link,

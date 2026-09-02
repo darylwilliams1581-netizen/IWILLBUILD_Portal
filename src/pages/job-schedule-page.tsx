@@ -364,7 +364,7 @@ export default function JobSchedulePage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>{title} — IWIIlBUILD</title>
+        <title>{title} — IWIllBUILD</title>
         <meta name="description" content="View and manage the milestone schedule for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/schedule`} />
         <meta name="robots" content="noindex, nofollow" />

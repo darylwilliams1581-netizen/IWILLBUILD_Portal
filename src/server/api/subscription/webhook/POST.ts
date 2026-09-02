@@ -45,7 +45,7 @@ async function sendPaymentFailedEmail(opts: {
       <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none;">
         <p style="margin:0 0 16px;">Hi ${name},</p>
         <p style="margin:0 0 16px;">
-          We couldn't process the payment for your <strong>${companyName}</strong> subscription on IWIIlBUILD.
+          We couldn't process the payment for your <strong>${companyName}</strong> subscription on IWIllBUILD.
         </p>
         <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:16px 20px;margin:0 0 24px;">
           <p style="margin:0;font-size:14px;color:#991B1B;">
@@ -71,7 +71,7 @@ async function sendPaymentFailedEmail(opts: {
   const text = [
     `Hi ${name},`,
     ``,
-    `We couldn't process the payment for your ${companyName} subscription on IWIIlBUILD.`,
+    `We couldn't process the payment for your ${companyName} subscription on IWIllBUILD.`,
     ``,
     `Your account will remain fully active until ${lockDate}. After that it will switch to view-only mode until payment is resolved.`,
     ``,
@@ -81,7 +81,7 @@ async function sendPaymentFailedEmail(opts: {
     `Questions? Email support@iwillbuild.com`,
   ].join('\n');
   try {
-    await sendEmail({ to, subject: `Action required: IWIIlBUILD payment failed`, fromName: 'IWIIlBUILD', html, text });
+    await sendEmail({ to, subject: `Action required: IWIllBUILD payment failed`, fromName: 'IWIllBUILD', html, text });
   } catch (e) {
     console.error('[webhook] payment-failed email error:', e);
   }
@@ -105,7 +105,7 @@ async function sendPaymentReminderEmail(opts: {
       <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none;">
         <p style="margin:0 0 16px;">Hi ${name},</p>
         <p style="margin:0 0 16px;">
-          This is a reminder that your <strong>${companyName}</strong> subscription payment on IWIIlBUILD
+          This is a reminder that your <strong>${companyName}</strong> subscription payment on IWIllBUILD
           is still outstanding.
         </p>
         <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:16px 20px;margin:0 0 24px;">
@@ -128,7 +128,7 @@ async function sendPaymentReminderEmail(opts: {
   const text = [
     `Hi ${name},`,
     ``,
-    `Reminder: your ${companyName} subscription payment on IWIIlBUILD is still outstanding.`,
+    `Reminder: your ${companyName} subscription payment on IWIllBUILD is still outstanding.`,
     ``,
     `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining — your account will switch to view-only mode on ${lockDate} if payment is not resolved.`,
     ``,
@@ -137,7 +137,7 @@ async function sendPaymentReminderEmail(opts: {
     `Questions? Email support@iwillbuild.com`,
   ].join('\n');
   try {
-    await sendEmail({ to, subject: `${urgency}IWIIlBUILD payment reminder — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`, fromName: 'IWIIlBUILD', html, text });
+    await sendEmail({ to, subject: `${urgency}IWIllBUILD payment reminder — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`, fromName: 'IWIllBUILD', html, text });
   } catch (e) {
     console.error('[webhook] payment-reminder email error:', e);
   }

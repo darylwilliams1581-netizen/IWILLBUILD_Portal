@@ -98,7 +98,7 @@ export default function BuilderTab() {
       <div className="flex items-center justify-between px-4 py-1.5 bg-slate-900 border-t border-slate-700 shrink-0">
         <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
           <Code2 size={10} />
-          IWIIlBUILD · App ID: f38wenbvln · Platform owner only
+          IWIllBUILD · App ID: f38wenbvln · Platform owner only
         </span>
         <span className="text-[10px] text-slate-600">
           GoDaddy credentials required · Changes deploy to iwillbuild.com

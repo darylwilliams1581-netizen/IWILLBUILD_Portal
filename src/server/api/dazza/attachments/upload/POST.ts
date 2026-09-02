@@ -43,7 +43,7 @@ export default async function handler(req: Request, res: Response) {
     if (!ownerInfo.isPlatformOwner) {
       return res.status(403).json({
         error: 'forbidden',
-        message: 'Dazza file attachments are restricted to the IWIIlBUILD platform owner.',
+        message: 'Dazza file attachments are restricted to the IWIllBUILD platform owner.',
       });
     }
 

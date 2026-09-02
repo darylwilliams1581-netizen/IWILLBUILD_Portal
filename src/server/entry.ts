@@ -2419,7 +2419,7 @@ async function runStartupMigrations() {
     const defaultEmailSettings = [
       { key: 'contact_notification_email', value: 'darylwilliams1581@gmail.com' },
       { key: 'support_reply_to',           value: 'support@iwillbuild.com' },
-      { key: 'from_name',                  value: 'IWIIlBUILD' },
+      { key: 'from_name',                  value: 'IWIllBUILD' },
     ];
     for (const { key, value } of defaultEmailSettings) {
       await db.execute(sql`

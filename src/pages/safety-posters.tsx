@@ -14,8 +14,8 @@ export default function SafetyPostersPage() {
   const navigate = useNavigate();
   return <div className="flex flex-col flex-1 min-h-0">
       <Helmet>
-        <title>Safety Posters — IWIIlBUILD</title>
-        <meta name="description" content="IWIIlBUILD safety posters — generate and print job-linked safety posters." />
+        <title>Safety Posters — IWIllBUILD</title>
+        <meta name="description" content="IWIllBUILD safety posters — generate and print job-linked safety posters." />
         <link rel="canonical" href="https://iwillbuild.com/safety/posters" />
         <meta name="robots" content="noindex" />
       </Helmet>

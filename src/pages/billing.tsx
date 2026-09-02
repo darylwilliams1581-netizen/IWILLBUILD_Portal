@@ -209,7 +209,7 @@ function CancelConfirmModal({
         {/* Feedback question */}
         <div className="mb-4">
           <p className="text-sm font-semibold text-slate-700 mb-3">
-            Why are you leaving IWIIlBUILD?{' '}
+            Why are you leaving IWIllBUILD?{' '}
             <span className="font-normal text-slate-400">(optional)</span>
           </p>
           <div className="flex flex-col gap-2">
@@ -548,18 +548,18 @@ export default function BillingPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Subscription — IWIIlBUILD Portal</title>
-        <meta name="description" content="Manage your IWIIlBUILD subscription plan, trial status, and billing details." />
+        <title>Subscription — IWIllBUILD Portal</title>
+        <meta name="description" content="Manage your IWIllBUILD subscription plan, trial status, and billing details." />
         <link rel="canonical" href="https://iwillbuild.com/billing" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Subscription — IWIIlBUILD Portal" />
-        <meta property="og:description" content="Manage your IWIIlBUILD subscription plan, trial status, and billing details." />
+        <meta property="og:title" content="Subscription — IWIllBUILD Portal" />
+        <meta property="og:description" content="Manage your IWIllBUILD subscription plan, trial status, and billing details." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/billing" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Subscription — IWIIlBUILD Portal" />
-        <meta name="twitter:description" content="Manage your IWIIlBUILD subscription plan, trial status, and billing details." />
+        <meta name="twitter:title" content="Subscription — IWIllBUILD Portal" />
+        <meta name="twitter:description" content="Manage your IWIllBUILD subscription plan, trial status, and billing details." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 

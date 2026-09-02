@@ -1213,7 +1213,7 @@ export default function FleetLiveMap() {
                 {noGpsSummary === 'denied' && (
                   <>
                     <p className="text-sm font-bold text-slate-700 mb-1">Location access denied</p>
-                    <p className="text-xs text-slate-500 leading-snug">Ask the driver to open Settings and enable location for IWIIlBUILD.</p>
+                    <p className="text-xs text-slate-500 leading-snug">Ask the driver to open Settings and enable location for IWIllBUILD.</p>
                   </>
                 )}
                 {noGpsSummary === 'waiting_permission' && (

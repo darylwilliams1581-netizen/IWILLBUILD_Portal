@@ -105,7 +105,7 @@ export default function InstallAppTab() {
               {justInstalled ? 'App installed successfully!' : 'Already installed'}
             </h3>
             <p className="text-green-700 text-sm mt-1">
-              IWIIlBUILD is installed on this device. You can launch it directly from your home screen or app launcher.
+              IWIllBUILD is installed on this device. You can launch it directly from your home screen or app launcher.
             </p>
           </div>
         </div>
@@ -119,10 +119,10 @@ export default function InstallAppTab() {
       <div>
         <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
           <Smartphone size={20} className="text-primary" />
-          Install IWIIlBUILD App
+          Install IWIllBUILD App
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Add IWIIlBUILD to your home screen for instant access — no app store required. Takes about 5 seconds.
+          Add IWIllBUILD to your home screen for instant access — no app store required. Takes about 5 seconds.
         </p>
       </div>
 
@@ -214,7 +214,7 @@ export default function InstallAppTab() {
                 <>
                   <Step n={1} icon={<Chrome size={15} />} text='Look for the install icon (⊕) in the address bar on the right side.' />
                   <Step n={2} icon={<Download size={15} />} text='Click it and select "Install" in the prompt that appears.' />
-                  <Step n={3} icon={<CheckCircle2 size={15} />} text='IWIIlBUILD will open as a standalone app and appear in your taskbar / app launcher.' />
+                  <Step n={3} icon={<CheckCircle2 size={15} />} text='IWIllBUILD will open as a standalone app and appear in your taskbar / app launcher.' />
                   <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-800">
                     <strong>Tip:</strong> If you don't see the install icon, try refreshing the page or opening the three-dot menu → "Cast, save, and share" → "Install page as app".
                   </div>
@@ -226,7 +226,7 @@ export default function InstallAppTab() {
           {platform === 'desktop-other' && (
             <>
               <p className="text-sm text-slate-600">
-                For the best experience, open IWIIlBUILD in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> to install it as a desktop app.
+                For the best experience, open IWIllBUILD in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> to install it as a desktop app.
               </p>
               <Step n={1} icon={<Chrome size={15} />} text='Open this page in Chrome or Edge.' />
               <Step n={2} icon={<Download size={15} />} text='Click the install icon (⊕) in the address bar.' />
@@ -240,7 +240,7 @@ export default function InstallAppTab() {
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Share with your team</p>
         <p className="text-sm text-slate-600">
-          Send your team to <span className="font-mono font-semibold text-primary">IWIIlBUILD.com</span> and ask them to follow the steps above. No app store, no download — just open and install.
+          Send your team to <span className="font-mono font-semibold text-primary">IWIllBUILD.com</span> and ask them to follow the steps above. No app store, no download — just open and install.
         </p>
       </div>
     </div>

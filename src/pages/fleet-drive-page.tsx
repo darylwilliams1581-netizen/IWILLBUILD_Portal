@@ -334,7 +334,7 @@ export default function FleetDrivePage() {
   const title = asset ? `${assetLabel} — Drive Log` : 'Drive Log';
   return <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
       <Helmet>
-        <title>{title} — IWIIlBUILD</title>
+        <title>{title} — IWIllBUILD</title>
         <meta name="description" content="View drive session history for this fleet asset." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href={`https://iwillbuild.com/fleet/${id}/drive`} />

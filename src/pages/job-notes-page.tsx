@@ -63,7 +63,7 @@ export default function JobNotesPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Notes — ${job.name}` : 'Job Notes'} — IWIIlBUILD</title>
+        <title>{job ? `Notes — ${job.name}` : 'Job Notes'} — IWIllBUILD</title>
         <meta name="description" content="View and manage notes and tasks for this job." />
         <meta name="robots" content="noindex" />
         {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/notes`} />}

@@ -569,11 +569,11 @@ export default function PagedHomeScreen({
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <img
             src="/airo-assets/images/logo/horizontal/dark"
-            alt="IWIIlBUILD"
+            alt="IWIllBUILD"
             className="h-7 w-auto max-w-[80px] object-contain shrink-0"
           />
           <span className="text-[15px] font-black tracking-tight text-foreground select-none">
-            IWIIlBUILD
+            IWIllBUILD
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-1 justify-end">

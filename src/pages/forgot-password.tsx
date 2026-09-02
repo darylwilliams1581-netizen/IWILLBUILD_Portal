@@ -104,8 +104,8 @@ export default function ForgotPasswordPage() {
     </>;
   return <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
       <Helmet>
-        <title>Forgot Password — IWIIlBUILD Portal</title>
-        <meta name="description" content="Reset your IWIIlBUILD Portal password." />
+        <title>Forgot Password — IWIllBUILD Portal</title>
+        <meta name="description" content="Reset your IWIllBUILD Portal password." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/forgot-password" />
         <meta name="robots" content="noindex" />
@@ -127,7 +127,7 @@ export default function ForgotPasswordPage() {
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
             <div className="flex items-center justify-center mb-6">
-              <img src="/airo-assets/images/logo/horizontal" alt="IWIIlBUILD" className="h-10 w-auto object-contain" />
+              <img src="/airo-assets/images/logo/horizontal" alt="IWIllBUILD" className="h-10 w-auto object-contain" />
             </div>
             <h1 className="font-heading font-bold text-xl text-white text-center">
               Forgot your password?
