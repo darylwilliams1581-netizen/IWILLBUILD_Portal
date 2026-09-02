@@ -962,7 +962,7 @@ export default function JobSitePrestartPage() {
             }, {
               label: 'Home',
               icon: <ChevronLeft size={15} />,
-              onSelect: () => navigate('/home'),
+              onSelect: () => navigate(-1),
               dividerAbove: true
             }]} />
               </div>}

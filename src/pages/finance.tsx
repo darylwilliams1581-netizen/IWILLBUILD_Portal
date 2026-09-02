@@ -91,7 +91,7 @@ export default function FinancePage() {
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigate(-1)}
             className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors shrink-0"
             aria-label="Back"
           >

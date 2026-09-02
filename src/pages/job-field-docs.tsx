@@ -976,7 +976,7 @@ export default function JobFieldDocsPage() {
       <DesktopDock />
 
       {/* Job picker sheet — open when no job selected */}
-      <JobPickerSheet open={!selectedJob} onClose={() => navigate('/home')} title="Field Docs" subtitle="Select a job to view its documents" iconBg="bg-teal-100" iconFg="text-teal-600" Icon={FileCheck} onSelect={job => {
+      <JobPickerSheet open={!selectedJob} onClose={() => navigate(-1)} title="Field Docs" subtitle="Select a job to view its documents" iconBg="bg-teal-100" iconFg="text-teal-600" Icon={FileCheck} onSelect={job => {
       setSelectedJob({
         id: job.id,
         name: job.name,
@@ -1002,7 +1002,7 @@ export default function JobFieldDocsPage() {
         paddingTop: 'max(env(safe-area-inset-top), 12px)'
       }}>
         <div className="flex items-center gap-3 w-full px-4 py-3">
-          <button onClick={() => navigate('/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+          <button onClick={() => navigate(-1)} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
@@ -1119,7 +1119,7 @@ export default function JobFieldDocsPage() {
         paddingBottom: 'env(safe-area-inset-bottom)'
       }}>
         <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate('/home')} aria-label="Home" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => navigate(-1)} aria-label="Home" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">

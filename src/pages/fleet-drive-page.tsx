@@ -344,7 +344,7 @@ export default function FleetDrivePage() {
       <div className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center gap-3 shrink-0" style={{
       boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
     }}>
-        <button onClick={() => navigate('/home')} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+        <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -370,7 +370,7 @@ export default function FleetDrivePage() {
       </div>
 
       {/* ── Mobile: back arrow ── */}
-      <button onClick={() => navigate('/home')} className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors" aria-label="Back">
+      <button onClick={() => navigate(-1)} className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors" aria-label="Back">
         <ArrowLeft size={18} />
       </button>
 

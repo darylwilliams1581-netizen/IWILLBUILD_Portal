@@ -191,7 +191,7 @@ export default function RlRegisterPage() {
         {/* ── Header ── */}
         <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3 flex items-center gap-3 safe-top">
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigate(-1)}
             className="flex items-center justify-center w-9 h-9 rounded-xl border border-border hover:bg-muted transition-colors shrink-0"
             aria-label="Back"
           >

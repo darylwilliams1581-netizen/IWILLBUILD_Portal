@@ -669,7 +669,7 @@ export default function IncidentDetailPage() {
         <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5 min-w-0 overflow-hidden">
-            <button type="button" onClick={() => navigate('/home')} className="flex items-center gap-1 hover:text-white transition-colors">
+            <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-red-400" />

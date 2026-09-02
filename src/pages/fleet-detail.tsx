@@ -711,7 +711,7 @@ export default function FleetDetailPage() {
       <div className="flex flex-col flex-1">
         {/* Slim top bar — nav only */}
         <header className="sticky top-0 z-30 bg-white border-b border-border flex items-center gap-2 px-4 py-2 shrink-0 safe-top">
-          <button onClick={() => navigate('/home')} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
             <ArrowLeft size={14} />
             <span className="hidden sm:inline">Home</span>
           </button>
