@@ -8,7 +8,6 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
-import { BrandName } from '@/components/BrandName';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -945,7 +944,7 @@ export default function LoginPage() {
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
             <p className="text-xs text-white/25">
-              <BrandName /> Pty Ltd &mdash; Authorised personnel only
+              IWILLBUILD Pty Ltd &mdash; Authorised personnel only
             </p>
           </div>
         </div>
@@ -955,7 +954,7 @@ export default function LoginPage() {
           {isNativeApp ? <>
               <Link to="/subscribe" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors font-medium">
                 <Users size={12} />
-                New to <BrandName />? Start a free trial
+                New to IWILLBUILD? Start a free trial
               </Link>
               <button type="button" onClick={() => openExternalUrl(WEB_PORTAL_URL)} className="flex items-center gap-1.5 text-xs text-white/25 hover:text-primary transition-colors">
                 <ExternalLink size={12} />
