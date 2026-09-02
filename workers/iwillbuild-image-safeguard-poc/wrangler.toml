@@ -1,0 +1,12 @@
+name = "iwillbuild-image-safeguard-poc"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers AI binding — read-only inference only, no R2 or KV
+[ai]
+binding = "AI"
+
+# No R2 binding — worker never touches storage directly.
+# No KV, Queues, Durable Objects, Cron, or D1.
+# The only external capability is Workers AI inference.

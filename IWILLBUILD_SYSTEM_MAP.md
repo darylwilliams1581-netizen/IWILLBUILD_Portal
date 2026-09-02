@@ -1,4 +1,4 @@
-# IWILLBUILD Portal — System Map / Product Bible
+# IWIllBUIlD Portal — System Map / Product Bible
 
 > **Last updated:** July 2026  
 > **Purpose:** Developer and admin reference. Describes the full platform architecture, module inventory, permission model, data model, API surface, and known constraints. Keep this document updated as the platform evolves.
@@ -43,7 +43,7 @@
 
 ## 1. Product Overview
 
-IWILLBUILD is a SaaS construction management portal for small-to-medium construction, civil, landscaping, plant hire, fuel/dangerous goods, and general trades businesses. It is a **multi-tenant, company-scoped** platform where each subscribing company gets isolated data.
+IWIllBUIlD is a SaaS construction management portal for small-to-medium construction, civil, landscaping, plant hire, fuel/dangerous goods, and general trades businesses. It is a **multi-tenant, company-scoped** platform where each subscribing company gets isolated data.
 
 **Core value proposition:**
 - Job management with estimates, costs, progress, photos, files, forms, and safety
@@ -84,7 +84,7 @@ IWILLBUILD is a SaaS construction management portal for small-to-medium construc
 | ZIP export | JSZip (never `archiver`) |
 | Fonts | Space Grotesk (headers) + Inter (body) |
 | Brand colour | `#F97316` orange / `#FFFFFF` background |
-| PWA | `public/manifest.json` — name: IWILLBUILD, theme: `#ff6b00` |
+| PWA | `public/manifest.json` — name: IWIllBUIlD, theme: `#ff6b00` |
 
 **Critical constraints:**
 - Production runs Alpine Linux (musl libc) — **no native addons** (no `bcrypt`, `sharp`, `canvas`)
@@ -811,7 +811,7 @@ Portal data lookups — DB, no OpenAI:
 
 All Dazza responses are structured with sections:
 ```
-📋 From IWILLBUILD data:
+📋 From IWIllBUIlD data:
 [portal data answer]
 
 🧠 AI reasoning:
@@ -1199,12 +1199,12 @@ interface SkipAction {
 
 ### Overview
 
-IWILLBUILD is installable as a PWA on iOS and Android. No app store required.
+IWIllBUIlD is installable as a PWA on iOS and Android. No app store required.
 
 ### Manifest (`public/manifest.json`)
 
-- `name`: IWILLBUILD
-- `short_name`: IWILLBUILD
+- `name`: IWIllBUIlD
+- `short_name`: IWIllBUIlD
 - `theme_color`: `#ff6b00`
 - `display`: `standalone`
 - Icons provided for all standard sizes
@@ -1524,4 +1524,4 @@ These workflows are core to the platform and must not be broken by any change:
 
 ---
 
-*This document is the authoritative reference for the IWILLBUILD platform. Update it whenever significant architectural changes are made.*
+*This document is the authoritative reference for the IWIllBUIlD platform. Update it whenever significant architectural changes are made.*
