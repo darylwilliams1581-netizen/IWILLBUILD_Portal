@@ -199,6 +199,7 @@ export const RotateCcw = NullIcon;
 export const RotateCw = NullIcon;
 export const Ruler = NullIcon;
 export const Save = NullIcon;
+export const Scale = NullIcon;
 export const Search = NullIcon;
 export const Send = NullIcon;
 export const Server = NullIcon;
