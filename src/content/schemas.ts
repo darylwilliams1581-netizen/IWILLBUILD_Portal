@@ -150,6 +150,34 @@ export const schemas = {
     }))
   }),
   pages: {
+    terms: z.object({
+      "links": z.array(z.object({
+        "to": z.string(),
+        "label": z.string(),
+        "id": z.string()
+      }))
+    }),
+    privacy: z.object({
+      "navLinks": z.array(z.object({
+        "to": z.string(),
+        "label": z.string(),
+        "id": z.string()
+      }))
+    }),
+    fair_use: z.object({
+      "navLinks": z.array(z.object({
+        "to": z.string(),
+        "label": z.string(),
+        "id": z.string()
+      }))
+    }),
+    system_policy: z.object({
+      "navLinks": z.array(z.object({
+        "to": z.string(),
+        "label": z.string(),
+        "id": z.string()
+      }))
+    })
   }
 };
 export type Schemas = typeof schemas;

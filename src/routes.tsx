@@ -19,6 +19,8 @@ import ForgotPasswordPage from './pages/forgot-password';
 import ResetPasswordPage from './pages/reset-password';
 import PrivacyPage from './pages/privacy';
 import TermsPage from './pages/terms';
+import FairUsePage from './pages/fair-use';
+import SystemPolicyPage from './pages/system-policy';
 import ProdNotFoundPage from './pages/_404';
 import SharePage from './pages/share';
 import ExternalFormPage from './pages/external-form';
@@ -238,6 +240,12 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/terms',
   element: <TermsPage />
+}, {
+  path: '/fair-use',
+  element: <FairUsePage />
+}, {
+  path: '/system-policy',
+  element: <SystemPolicyPage />
 }, {
   path: '/check-email',
   element: <CheckEmailPage />
