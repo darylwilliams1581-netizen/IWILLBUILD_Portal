@@ -1,4 +1,3 @@
-import { system_policy } from 'virtual:content';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from "react-router";
 import { ArrowLeft, Cpu } from 'lucide-react';
